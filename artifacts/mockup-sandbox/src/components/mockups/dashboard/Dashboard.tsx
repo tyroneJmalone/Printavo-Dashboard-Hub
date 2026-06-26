@@ -14,6 +14,10 @@ const NAV_GROUPS: { heading: string | null; items: { id: string; label: string; 
     ],
   },
   {
+    heading: "Sales",
+    items: [{ id: "reorders", label: "Reorder Inbox", icon: InboxIcon, badge: "7" }],
+  },
+  {
     heading: "Purchasing",
     items: [
       { id: "reorder", label: "Reorder Scan", icon: ScanIcon, badge: "28" },
@@ -22,7 +26,10 @@ const NAV_GROUPS: { heading: string | null; items: { id: string; label: string; 
   },
   {
     heading: "Production",
-    items: [{ id: "print", label: "Print Queue", icon: PrintIcon }],
+    items: [
+      { id: "print", label: "Print Queue", icon: PrintIcon },
+      { id: "colors", label: "Color Library", icon: PaletteIcon },
+    ],
   },
   {
     heading: "Quoting",
@@ -47,18 +54,20 @@ const KPI_CARDS = [
   { label: "Open Orders", value: "342", sub: "Across all statuses", color: "orange" },
   { label: "Items to Reorder", value: "28", sub: "Needs Ordering flag", color: "red" },
   { label: "Open Vendor POs", value: "12", sub: "3 in transit", color: "purple" },
-  { label: "Quotes This Week", value: "36", sub: "↑ 8 vs last week", color: "teal" },
+  { label: "Reorder Requests", value: "7", sub: "New from portal", color: "teal" },
 ];
 
 const MODULES = [
-  { id: "reports", title: "Reports", desc: "Analytics & exports", stat: "17,284 orders cached", color: "#3b82f6", icon: ChartIcon },
-  { id: "print", title: "Print Queue", desc: "Workorders & auto-print", stat: "5 jobs pending", color: "#06b6d4", icon: PrintIcon },
-  { id: "reorder", title: "Reorder Scan", desc: "Find items to order", stat: "28 items flagged", color: "#ef4444", icon: ScanIcon },
-  { id: "vendor", title: "Vendor Orders", desc: "SanMar & S&S submission", stat: "12 open · 3 in transit", color: "#8b5cf6", icon: TruckIcon },
-  { id: "quote", title: "Price Calculator", desc: "Decoration quoting", stat: "14 pricing matrices", color: "#f59e0b", icon: CalcIcon },
-  { id: "rates", title: "Rate Estimator", desc: "USPS & UPS rates", stat: "ShipStation + EasyPost", color: "#10b981", icon: BoxIcon },
-  { id: "sorter", title: "Label Sorter", desc: "Slip & label matching", stat: "PDF sort + match", color: "#ec4899", icon: PagesIcon },
-  { id: "backups", title: "Backups", desc: "Full account archive", stat: "Last run 2h ago", color: "#64748b", icon: ShieldIcon },
+  { id: "reports", title: "Reports", desc: "Analytics & exports", stat: "17,284 cached", color: "#3b82f6", icon: ChartIcon },
+  { id: "reorders", title: "Reorder Inbox", desc: "Customer portal", stat: "7 new this week", color: "#14b8a6", icon: InboxIcon },
+  { id: "reorder", title: "Reorder Scan", desc: "Items to order", stat: "28 flagged", color: "#ef4444", icon: ScanIcon },
+  { id: "vendor", title: "Vendor Orders", desc: "SanMar & S&S", stat: "12 open · 3 shipping", color: "#8b5cf6", icon: TruckIcon },
+  { id: "quote", title: "Price Calculator", desc: "Decoration quoting", stat: "14 matrices", color: "#f59e0b", icon: CalcIcon },
+  { id: "rates", title: "Rate Estimator", desc: "USPS & UPS", stat: "ShipStation + EasyPost", color: "#10b981", icon: BoxIcon },
+  { id: "sorter", title: "Label Sorter", desc: "Slip + label match", stat: "PDF sort", color: "#ec4899", icon: PagesIcon },
+  { id: "print", title: "Print Queue", desc: "Workorders + auto", stat: "5 pending", color: "#06b6d4", icon: PrintIcon },
+  { id: "colors", title: "Color Library", desc: "Pantone · thread · ink", stat: "6,199 colors", color: "#a855f7", icon: PaletteIcon },
+  { id: "backups", title: "Backups", desc: "Account archive", stat: "Last run 2h ago", color: "#64748b", icon: ShieldIcon },
 ];
 
 const RECENT_ORDERS = [
@@ -69,17 +78,24 @@ const RECENT_ORDERS = [
 ];
 
 const PIPELINE = [
-  { label: "Reorder Scan", value: "28 items flagged", status: "ok", detail: "PO scan 18m ago" },
-  { label: "Vendor Sync", value: "12 POs · 3 tracking", status: "ok", detail: "SanMar + S&S polled 25m ago" },
-  { label: "Auto-Print", value: "Scheduler active", status: "ok", detail: "Next run in 4h" },
-  { label: "Account Backup", value: "Full · Dropbox", status: "ok", detail: "Completed 2h ago" },
-  { label: "Shipping APIs", value: "ShipStation + EasyPost", status: "ok", detail: "Healthy" },
+  { label: "Reorder Scan", value: "28 items flagged", detail: "PO scan 18m ago" },
+  { label: "Vendor Sync", value: "12 POs · 3 tracking", detail: "SanMar + S&S polled 25m ago" },
+  { label: "Auto-Print", value: "Scheduler active", detail: "Next run in 4h" },
+  { label: "Account Backup", value: "Full · Dropbox", detail: "Completed 2h ago" },
+  { label: "Reorder Portal", value: "Live · public", detail: "7 requests this week" },
 ];
 
 const VENDOR_ORDERS = [
   { po: "PO-4821", vendor: "SanMar", items: "PC61 · 4 colors", status: "shipped", track: "1Z99A...", color: "#8b5cf6" },
   { po: "PO-4818", vendor: "S&S", items: "5000 · Black/White", status: "submitted", track: "—", color: "#06b6d4" },
   { po: "PO-4815", vendor: "SanMar", items: "DT6000 · Navy", status: "error", track: "—", color: "#8b5cf6" },
+];
+
+const REORDER_INBOX = [
+  { customer: "Lincoln Elementary", order: "1042", items: "Spirit Week Tees", qty: 120, when: "2h ago", status: "new" },
+  { customer: "Acme Corp", order: "0991", items: "Corporate Polos — restock", qty: 48, when: "5h ago", status: "new" },
+  { customer: "Hartwell LLC", order: "1018", items: "Embroidered Caps", qty: 24, when: "Yesterday", status: "reviewed" },
+  { customer: "City Parks Dept", order: "1003", items: "Marathon 5K Shirts", qty: 200, when: "Yesterday", status: "quoted" },
 ];
 
 export function Dashboard() {
@@ -161,7 +177,7 @@ export function Dashboard() {
         <div className="sticky top-0 z-10 bg-slate-950 border-b border-slate-800 px-8 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-white">Dashboard</h1>
-            <p className="text-xs text-slate-500 mt-0.5">Thursday, June 26, 2026 · Data refreshed 2 hours ago</p>
+            <p className="text-xs text-slate-500 mt-0.5">Friday, June 26, 2026 · Data refreshed 2 hours ago</p>
           </div>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700">
@@ -189,9 +205,9 @@ export function Dashboard() {
           <section>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-white">Your Tools</h2>
-              <span className="text-[11px] text-slate-500">8 modules · one shared Printavo connection</span>
+              <span className="text-[11px] text-slate-500">10 modules · one shared Printavo connection</span>
             </div>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-5 gap-3">
               {MODULES.map((m) => (
                 <ModuleCard key={m.id} {...m} />
               ))}
@@ -247,7 +263,7 @@ export function Dashboard() {
               </div>
               <div className="mx-5 mb-4 mt-1 px-3 py-2.5 bg-blue-950/50 border border-blue-800/40 rounded-lg">
                 <div className="text-[10px] text-blue-400 font-medium mb-1">Shared Rate Limit</div>
-                <div className="text-[10px] text-blue-300/70 leading-relaxed">Every Printavo call — reports, reorder scan, vendor sync, backup — flows through one queue (10 req / 5 sec).</div>
+                <div className="text-[10px] text-blue-300/70 leading-relaxed">Every Printavo call — reports, reorder scan, vendor sync, backup, portal — flows through one queue (10 req / 5 sec).</div>
               </div>
             </section>
           </div>
@@ -286,14 +302,49 @@ export function Dashboard() {
                 <QuickAction label="New Quote" color="amber" icon={CalcIcon} />
                 <QuickAction label="Build PO" color="rose" icon={ScanIcon} badge="28" />
                 <QuickAction label="Submit Order" color="violet" icon={TruckIcon} />
-                <QuickAction label="Print Workorders" color="blue" icon={PrintIcon} />
+                <QuickAction label="Print" color="cyan" icon={PrintIcon} />
                 <QuickAction label="Get Rates" color="emerald" icon={BoxIcon} />
                 <QuickAction label="Sort Labels" color="pink" icon={PagesIcon} />
-                <QuickAction label="Ask AI" color="cyan" icon={SparkleIcon} />
-                <QuickAction label="Run Backup" color="slate" icon={ShieldIcon} />
+                <QuickAction label="Match Color" color="fuchsia" icon={PaletteIcon} />
+                <QuickAction label="Ask AI" color="sky" icon={SparkleIcon} />
               </div>
             </section>
           </div>
+
+          {/* Reorder Inbox (customer portal) */}
+          <section className="bg-slate-900 rounded-xl border border-slate-800">
+            <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                  Reorder Inbox
+                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-teal-900/50 text-teal-400">CUSTOMER PORTAL</span>
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">Incoming reorder requests from customers</p>
+              </div>
+              <button className="text-xs text-blue-400 hover:text-blue-300 font-medium">Open Inbox →</button>
+            </div>
+            <div className="grid grid-cols-12 gap-4 px-5 py-2 border-b border-slate-800 text-[10px] font-medium uppercase tracking-wide text-slate-600">
+              <div className="col-span-3">Customer</div>
+              <div className="col-span-2">Original Order</div>
+              <div className="col-span-4">Items</div>
+              <div className="col-span-1 text-right">Qty</div>
+              <div className="col-span-2 text-right">Status</div>
+            </div>
+            <div className="divide-y divide-slate-800">
+              {REORDER_INBOX.map((r) => (
+                <div key={r.order} className="grid grid-cols-12 gap-4 px-5 py-3 items-center hover:bg-slate-800/50 transition-colors">
+                  <div className="col-span-3 text-xs font-medium text-slate-100 truncate">{r.customer}</div>
+                  <div className="col-span-2"><span className="text-xs font-mono text-slate-400">#{r.order}</span></div>
+                  <div className="col-span-4 min-w-0">
+                    <div className="text-xs text-slate-300 truncate">{r.items}</div>
+                    <div className="text-[10px] text-slate-600">{r.when}</div>
+                  </div>
+                  <div className="col-span-1 text-right text-xs text-slate-300">{r.qty}</div>
+                  <div className="col-span-2 flex justify-end"><StatusBadge status={r.status} /></div>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       </main>
     </div>
@@ -324,8 +375,8 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string; s
 
 function ModuleCard({ title, desc, stat, color, icon: Icon }: { title: string; desc: string; stat: string; color: string; icon: (p: IconProps) => JSX.Element }) {
   return (
-    <button className="text-left bg-slate-900 rounded-xl border border-slate-800 p-4 hover:border-slate-600 hover:bg-slate-800/50 transition-colors group">
-      <div className="flex items-center gap-2.5 mb-3">
+    <button className="text-left bg-slate-900 rounded-xl border border-slate-800 p-3.5 hover:border-slate-600 hover:bg-slate-800/50 transition-colors group">
+      <div className="flex items-center gap-2 mb-3">
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: color + "22" }}>
           <span style={{ color }}><Icon size={16} active /></span>
         </div>
@@ -335,8 +386,8 @@ function ModuleCard({ title, desc, stat, color, icon: Icon }: { title: string; d
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-slate-400">{stat}</span>
-        <span className="text-slate-600 group-hover:text-slate-300 transition-colors">
+        <span className="text-[10px] text-slate-400 truncate">{stat}</span>
+        <span className="text-slate-600 group-hover:text-slate-300 transition-colors flex-shrink-0">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </span>
       </div>
@@ -348,8 +399,11 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     printed: "bg-emerald-900/50 text-emerald-400",
     shipped: "bg-emerald-900/50 text-emerald-400",
+    quoted: "bg-emerald-900/50 text-emerald-400",
     submitted: "bg-blue-900/50 text-blue-400",
+    new: "bg-blue-900/50 text-blue-400",
     pending: "bg-yellow-900/50 text-yellow-400",
+    reviewed: "bg-amber-900/50 text-amber-400",
     error: "bg-red-900/50 text-red-400",
     failed: "bg-red-900/50 text-red-400",
   };
@@ -368,6 +422,8 @@ const ACTION_COLORS: Record<string, string> = {
   emerald: "bg-emerald-600/15 text-emerald-300 hover:bg-emerald-600/25 border-emerald-700/30",
   pink: "bg-pink-600/15 text-pink-300 hover:bg-pink-600/25 border-pink-700/30",
   cyan: "bg-cyan-600/15 text-cyan-300 hover:bg-cyan-600/25 border-cyan-700/30",
+  fuchsia: "bg-fuchsia-600/15 text-fuchsia-300 hover:bg-fuchsia-600/25 border-fuchsia-700/30",
+  sky: "bg-sky-600/15 text-sky-300 hover:bg-sky-600/25 border-sky-700/30",
   slate: "bg-slate-700/30 text-slate-300 hover:bg-slate-700/50 border-slate-600/30",
 };
 
@@ -489,6 +545,24 @@ function ShieldIcon({ size = 16 }: IconProps) {
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
       <path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4l5.5-2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" opacity="0.85" />
       <path d="M5.5 8l1.8 1.8L10.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function InboxIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M2 9l1.8-6.2A1 1 0 014.76 2h6.48a1 1 0 01.96.8L14 9" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" opacity="0.85" />
+      <path d="M2 9h3.5l1 2h3l1-2H14v3.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12.5V9z" fill="currentColor" opacity="0.75" />
+    </svg>
+  );
+}
+
+function PaletteIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M8 1.5c3.6 0 6.5 2.5 6.5 5.6 0 2-1.7 3.2-3.4 3.2H9.7c-.8 0-1.3.9-.8 1.5.4.5.2 1.4-.6 1.6-.1 0-.2 0-.3.1C4.6 13.9 1.5 11 1.5 7.4 1.5 4 4.4 1.5 8 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" opacity="0.85" />
+      <circle cx="5" cy="7" r="1" fill="currentColor" /><circle cx="7.5" cy="4.5" r="1" fill="currentColor" /><circle cx="10.8" cy="6" r="1" fill="currentColor" />
     </svg>
   );
 }
