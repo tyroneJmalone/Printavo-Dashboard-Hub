@@ -1,157 +1,161 @@
 # Printavo Dashboard Consolidation Assessment
-**Prepared:** June 25, 2026
-**Scope:** Consolidating three Replit apps into one unified internal dashboard
+**Prepared:** June 26, 2026
+**Scope:** Consolidating eight Replit apps into one unified internal dashboard ("Printavo Hub")
 
 ---
 
 ## Executive Summary
 
-You currently operate three separate Replit applications — a Reporting/Analytics app, a Workorder Manager (paperwork printing), and a PO Builder (purchasing) — all connecting to the same Printavo account. Each app runs its own Printavo data fetcher, its own background scheduler, and its own database. This causes **active reliability problems today** (the apps are interfering with each other via a shared API rate limit) and creates unnecessary friction for your team (multiple logins, multiple tabs, no shared context between tools).
+You currently operate **eight separate Replit applications**, most of which connect to the same Printavo account (`tyler@mintprintworks.com`). Several run their own Printavo data fetcher, their own background scheduler, and their own database. This causes **active reliability problems today** (the apps interfere with each other through a shared API rate limit) and creates real friction for your team (multiple logins, multiple tabs, no shared context, duplicated vendor integrations).
 
-**Recommendation: Consolidate all three into one app.** The technical foundations are highly compatible, the primary data layer is already well-designed in the Reporting app, and the consolidation solves real problems beyond just UX convenience.
+The eight apps fall into natural workflow groups:
+
+| Group | Apps |
+|---|---|
+| **Analyze** | Reporting/Analytics, Ask AI (a feature of Reporting) |
+| **Purchasing** | PO Builder (find & create POs), Vendor Order Submission (submit to SanMar/S&S + track) |
+| **Production** | Workorder Manager (paperwork printing + auto-print) |
+| **Quoting** | Breezy Quote (decoration price calculator) |
+| **Shipping** | Shipping Rate Estimator (USPS/UPS rates), PDF Sorter (slip + label matching) |
+| **Data** | Printavo Backup (full account archive) |
+
+**Recommendation: Consolidate all eight into one app.** The technical foundations are highly compatible (nearly all share React + Vite + Tailwind + shadcn/ui, Express + TypeScript, PostgreSQL + Drizzle), the primary data layer is already well-designed in the Reporting app, three apps already integrate with the same two vendors (SanMar + S&S), and consolidation solves real problems beyond UX convenience — chiefly the rate-limit collisions caused by **two** independent full-account crawlers (Reporting and Backup) plus several smaller scanners all hitting one account.
 
 ---
 
-## The Three Apps
+## The Eight Apps
 
 ### 1. Reporting App (mintavoreports.replit.app)
-An analytics and reporting dashboard for order data.
+Analytics and reporting dashboard for order data.
 
-**What it does:**
-- Fetches and caches all Printavo orders (up to ~17,000 records)
-- KPI summary cards: Total Orders, Total Revenue, Total Quantity, Total Imprints, Avg Order Value
-- Rich filtering: by status, category, style number, brand, color, customer, date ranges, quantity ranges, invoice total ranges, tags, pricing matrix
-- Data breakdowns: by status, style number, brand, color, pricing matrix, quantity tier, imprints
-- Payments received section with date filtering
-- CSV export of filtered results
-- "Ask AI" — natural language queries against your order data (powered by GPT)
-- Scheduled email reports (daily/weekly/monthly, configurable recipients)
+- Fetches and caches all Printavo orders (~17,000 records)
+- KPI cards, rich filtering (status, category, style, brand, color, customer, dates, quantity/total ranges, tags, pricing matrix), breakdowns, payments, CSV export
+- "Ask AI" — natural language queries against order data (GPT)
+- Scheduled email reports (daily/weekly/monthly)
+- **Printavo:** all orders via REST v1; enrichment (tags, pricing matrix) via GraphQL v2 (slow crawl, up to 30 min); payments via REST v1
+- **Background jobs:** full refresh at 12am/12pm ET; email report scheduler
+- **DB tables:** `report_schedules`, `enrichment_cache`
 
-**Data fetched from Printavo:**
-- All orders via REST v1 API (paginated, up to 200 pages)
-- Enrichment data (tags, pricing matrix) via GraphQL v2 — a slow crawl (up to 30 min full run)
-- Payment records via REST v1
+### 2. Workorder Manager (paperwork printing)
+Print-queue tool for shop documents.
 
-**Background jobs:**
-- Full data refresh at 12:00 AM and 12:00 PM Eastern
-- Email report scheduler (with missed-send catch-up logic)
+- **Manual mode:** filter by status, select orders, print workorders + packing slips + box labels in one dialog
+- **Auto-print mode:** scheduled engine (default every 6h), detects new orders, generates PDFs (headless Chrome for workorders; HTML render for slips/labels), sends to printer via PrintNode, advances Printavo status, category→status routing
+- **Printavo:** orders filtered by status IDs; status update mutation (write)
+- **Background jobs:** auto-print cron
+- **DB tables:** `auto_print_config`, `print_jobs`
+- **Third-party:** PrintNode
 
-**Database tables:** `report_schedules`, `enrichment_cache`
+### 3. PO Builder (purchasing — identify & create)
+Finds blanks that need ordering and builds POs.
 
----
+- Scans Printavo invoices for line items flagged "Needs Ordering"
+- Staff select items across orders → build a combined PO, fetch live SanMar pricing, generate the PO
+- Saves PO to DB; optionally writes the PO back to Printavo as a production-file attachment and updates line-item/order status
+- **Printavo:** two-pass scan of ~50 pages; writes line-item status, order status, production file
+- **Background jobs:** auto-refresh every 20 min
+- **DB tables:** `po_files`
+- **Third-party:** SanMar SOAP (live pricing); S&S was previously blocked here
 
-### 2. Workorder Manager (paperwork printing app)
-A print-queue management tool for generating and sending shop documents.
+### 4. Vendor Order Submission — *NEW* (purchasing — submit & track)
+The downstream half of purchasing. Imports a PO from Printavo, submits it to the vendor, tracks status + shipping.
 
-**What it does:**
+- Import PO from Printavo (browse unordered POs, or enter a visual PO number), or upload a vendor PDF (parsed via `pdf-parse`), or manual entry
+- Per line item: vendor (SanMar / S&S / skip), style + color → live inventory/pricing lookup, warehouse selector, size/qty grid
+- Submits order to vendor; tracks vendor order number, live status, tracking numbers; archive with note
+- **Printavo:** GraphQL v2 — browses POs via `invoices/quotes → lineItems → poLineItem → purchaseOrder`; filters to `goodsStatus = not_ordered`/null. Credentials stored **in the DB** (`printavo_settings`)
+- **Vendors:** SanMar SOAP (`SubmitOrder`, `GetOrderStatus`, inventory by warehouse — 9 locations); S&S REST (SKU resolution, submission, status/tracking — working, not blocked)
+- **DB tables:** `sanmar_orders`, `sanmar_line_items`, `sanmar_settings`, `ss_settings`, `printavo_settings`
+- **Quirks noted:** `vendor { name }` on PurchaseOrder is broken (omit it); no root `purchaseOrders` query; REST v1 returns 404 for this account
 
-*Manual Mode:*
-- Filter orders by one or more Printavo statuses
-- Select specific orders (individual or bulk)
-- Print workorders, packing slips, and box labels — all in one print dialog instead of clicking into each order individually in Printavo
+### 5. Breezy Quote — *NEW* (quoting)
+Per-piece decoration price calculator.
 
-*Auto-Print Mode:*
-- Scheduled background engine (configurable interval, default every 6 hours)
-- Automatically detects new orders in configured statuses
-- Generates PDFs (workorders via headless Chrome; packing slips/box labels via HTML render)
-- Sends PDFs to a physical printer via PrintNode (cloud print service)
-- Advances the order's Printavo status after successful printing
-- Moves to an "error" status if printing fails
-- Category-based routing: different order types (screen printing, embroidery, etc.) route to different target statuses
+- Formula: `(Garment Cost × Markup) + Σ decoration costs = Unit Price`
+- **Decoration matrices:** named 2D pricing tables (qty tiers × colors/stitches/size), shared server-side in PostgreSQL, CRUD + CSV import + starter matrices
+- Up to 4 decoration locations per quote; markup presets 1.0–2.0×
+- **Live vendor garment pricing:** S&S REST (`api.ssactivewear.com/v2`) and SanMar SOAP (product info + pricing services), with sale-price detection toggle
+- Results table per qty tier; copy-to-clipboard; PNG export
+- **DB tables:** `matrices`
+- **Secrets:** `SS_ACCOUNT_NUMBER`, `SS_API_KEY`, `SANMAR_USERNAME`, `SANMAR_PASSWORD`, `SANMAR_ACCOUNT_NUMBER` (164656)
+- **No Printavo integration yet**
 
-**Data fetched from Printavo:**
-- Orders filtered by configured status IDs (not all orders — a targeted subset)
-- Order details including line item groups, imprints, contact info, addresses
+### 6. Shipping Rate Estimator — *NEW* (shipping)
+Side-by-side USPS/UPS rate quotes.
 
-**Writes to Printavo:**
-- Status update mutation (advances order after printing)
+- Enter destination + package → compares rates from **ShipStation** (USPS via `stamps_com`, UPS via reseller account) and **EasyPost** (USPS + UPS on Mint's own linked accounts, so UPS reflects real negotiated discounts)
+- Ship-from is hardcoded (Nashua, NH); box-dimension presets; weight calculator (tees/sweatshirts/jackets/hats → lbs)
+- **Secrets:** `SHIPSTATION_API_KEY`, `SHIPSTATION_API_SECRET`, `EASYPOST_API_KEY`
+- **No Printavo integration yet.** No label purchase yet (EasyPost `Shipment.buy()` is available but not implemented)
 
-**Background jobs:**
-- Auto-print cron (runs every N hours, configurable)
+### 7. PDF Sorter — *NEW* (shipping)
+Sorts and matches packing slips to shipping labels before packing.
 
-**Database tables:** `auto_print_config` (single-row settings), `print_jobs` (history log)
+- Five presets: combine labels, sort slips, sort labels, sort both (+ match report CSV), match labels
+- Extracts `order_number` (Printavo #), customer, style, color, size from slips; recipient/address/tracking from labels; matches across "Last, First" ↔ "FIRST LAST" via token-set intersection
+- **Python child process** (pdfplumber, pypdf, pandas) spawned by Express — required for layout-aware extraction of Printavo's slip layout
+- **Storage:** in-memory jobs, temp files in `/tmp` — stateless, no DB
+- **No Printavo API calls** today, but the extracted Printavo order number is a natural join key
 
-**Third-party integration:** PrintNode (physical printer delivery)
+### 8. Printavo Backup — *NEW* (data)
+Scheduled/on-demand full backup of the entire Printavo account.
 
----
-
-### 3. PO Builder (purchasing app)
-A purchase order generation tool for blank goods procurement.
-
-**What it does:**
-- Scans all Printavo invoices to find line items flagged as "Needs Ordering"
-- Staff select line items across multiple orders to build a combined PO
-- Choose vendor (SanMar or S&S Activewear), fetch live pricing from SanMar's API
-- Enter PO number and notes, generate the PO document
-- PO is saved to the database and can be printed
-- Optionally pushes the PO back to Printavo as a production file attachment on the relevant invoices
-
-**Data fetched from Printavo:**
-- Two-pass scan of 50 pages of invoices (~90 seconds cold, instant from cache)
-  - Pass 1: slim scan for "Needs Ordering" product status
-  - Pass 2: full detail fetch for matched invoices only
-
-**Writes to Printavo:**
-- Line item product status update (e.g., "need_ordering" → "ordered")
-- Order status update
-- Production file attachment (the generated PO HTML)
-
-**Background jobs:**
-- Auto-refresh every 20 minutes
-
-**Database tables:** `po_files` (history of all generated POs)
-
-**Third-party integrations:** SanMar SOAP/XML API (live pricing); S&S Activewear (planned, currently blocked)
+- Connects to Printavo **GraphQL v2**, backs up every entity (account, statuses, customers, contacts, products, invoices, quotes, transactions, tasks, threads, inquiries, merch stores, payment requests) plus all binary files (mockups, production artwork, PDFs, work-order HTML)
+- Modes: sample / incremental (uses `updatedAfter` watermarks) / full (downloads files)
+- Dual-write to local disk + Dropbox; a browse dashboard reads the latest full run
+- **Rate limit:** 10 req / 5 sec enforced client-side via token bucket; query-complexity limit 25,000
+- **Background jobs:** node-cron scheduler (e.g. `0 2 * * *`)
+- **DB tables:** `backup_config`, `backup_runs`, `entity_counts`, `backup_progress`, `entity_watermarks`
+- **Secrets/creds:** Printavo email + token stored **in the DB** (`backup_config`); Dropbox OAuth (access + refresh tokens) in the DB
 
 ---
 
 ## Why Consolidation Makes Sense
 
-### Problem 1: Rate Limit Collision (happening right now)
+### Problem 1: Rate Limit Collision — now worse with two full crawlers
 
-Printavo enforces a limit of **10 requests per 5 seconds, shared across your entire account**. All three apps are on the same account, so they share this limit.
+Printavo enforces **10 requests per 5 seconds, shared across the entire account**. The Printavo-connected apps all share it:
 
-| App | Delay between pages |
-|---|---|
-| Reporting app | 550 ms |
-| Workorder Manager | 600 ms |
-| PO Builder | 1,500 ms (most conservative — likely a response to 429 errors) |
+| App | Printavo load | Throttle |
+|---|---|---|
+| Reporting | Full account crawl (~17k orders) twice daily | 550 ms/page |
+| Backup | **Full account crawl + file downloads** (every entity) on cron | token bucket (10/5s) |
+| Workorder Manager | Targeted status-filtered fetches + auto-print cron | 600 ms/page |
+| PO Builder | ~50-page two-pass scan every 20 min | 1,500 ms/page |
+| Vendor Submission | PO browse (16 pages invoices+quotes) on demand | per request |
 
-When the Reporting app does a full data refresh (especially at its scheduled 12am/12pm runs), it consumes the rate limit for several minutes. During this time, the Workorder Manager and PO Builder experience throttling, backoff delays, and potentially failed requests. **The apps are actively degrading each other.**
+There are now **two independent full-account crawlers** (Reporting *and* Backup). If the backup cron and the reporting refresh overlap — or either overlaps with a PO scan or vendor PO browse — they collectively blow through the shared limit, causing 429s, backoff, and failed requests across every tool. The PO Builder's very conservative 1,500 ms delay is almost certainly a scar from exactly this. **The apps are actively degrading each other.**
 
-Consolidation means one rate-limited fetch queue for the entire account. All three apps read from a single shared cache instead of each making their own Printavo calls.
+Consolidation means **one rate-limited fetch queue** for the whole account. Every feature — reports, backup, reorder scan, vendor sync, auto-print — reads through that single queue (and mostly from the shared cache), so the account is never hit by competing processes.
 
 ### Problem 2: Duplicate Data Fetching
 
-Each app independently fetches overlapping data:
+- **Two full crawls** of the same account (Reporting + Backup) pulling overlapping data
+- Every Printavo app fetches the **status list** independently
+- PO Builder's 90-second scan and Vendor Submission's PO browse both traverse invoices/quotes that the Reporting cache already holds
+- Breezy and Vendor Submission and PO Builder each maintain their **own SanMar/S&S clients**
 
-- All three fetch the **status list** from Printavo on their own
-- The Reporting app and PO Builder both scan large portions of your order history
-- The Reporting app already caches **all orders in memory** — the PO Builder's entire 90-second two-pass scan could be replaced by filtering that existing cache
+Consolidation lets the reorder scan, vendor PO browse, and reporting all read one cache, and routes all SanMar/S&S calls through one shared vendor client.
 
-Consolidation eliminates redundant fetching entirely.
+### Problem 3: The two halves of purchasing are split across two apps
 
-### Problem 3: Three Separate Schedulers
+PO Builder **finds** items that need ordering and **creates** the PO in Printavo. Vendor Order Submission **pulls** that PO from Printavo, **submits** it to SanMar/S&S, and **tracks** shipping. Today a staff member finishes in one app and re-enters the same PO in another. Consolidated, this becomes one continuous **Purchasing** flow: *scan → build PO → submit to vendor → track delivery*, with no re-keying.
 
-Each app runs its own background timer:
-- Reporting: two timers (data refresh + email reports)
-- Workorder Manager: one cron job
-- PO Builder: one refresh timer
+### Problem 4: Three apps integrate with the same two vendors
 
-Multiple schedulers on the same Printavo account can cause refresh collisions, duplicate API bursts, and race conditions. They must be merged into one coordinated scheduler.
+PO Builder, Breezy Quote, and Vendor Submission **all** talk to SanMar (SOAP) and/or S&S (REST) — three separate implementations of the same integrations, with three different credential setups. One shared vendor layer means one place to maintain pricing lookups, SKU resolution, inventory checks, and order submission. (Bonus: the working S&S REST client in Vendor Submission/Breezy resolves the S&S integration that PO Builder couldn't complete.)
 
-### Problem 4: Three Separate Databases
+### Problem 5: Multiple schedulers
 
-Each app has its own PostgreSQL database with no shared context. A consolidated app uses one database with all five tables, enabling future features like cross-referencing PO history with order reports.
+Independent background timers run in Reporting (data refresh + email), Workorder (auto-print cron), PO Builder (20-min refresh), and Backup (node-cron). Uncoordinated, they cause refresh collisions and duplicate API bursts. They must merge into one coordinated scheduler that sequences the heavy jobs (never run the backup full-crawl and the reporting refresh at the same time).
 
-### Problem 5: Team Workflow Friction
+### Problem 6: Fragmented credentials & databases
 
-Staff currently need to:
-- Remember which tool does what
-- Maintain separate browser tabs/logins
-- Context-switch between apps mid-workflow (e.g., checking a report to decide which orders to print)
+Printavo credentials live in **env vars** in some apps (`PRINTAVO_API_TOKEN` vs `PRINTAVO_TOKEN`) and **in the database** in others (Backup's `backup_config`, Vendor Submission's `printavo_settings`). SanMar/S&S creds are similarly split between env vars (Breezy) and DB rows (Vendor Submission). Each app has its own PostgreSQL database. Consolidation establishes one credential source of truth and one database.
 
-One app with a sidebar nav solves this.
+### Problem 7: Team Workflow Friction
+
+Staff juggle eight tools, separate tabs, and constant context-switching (check a report → decide what to print → scan reorders → submit to vendor → quote a new job → estimate shipping). One app with a grouped sidebar removes that friction.
 
 ---
 
@@ -161,106 +165,126 @@ One app with a sidebar nav solves this.
 
 | Component | Notes |
 |---|---|
-| Printavo rate-limited fetch queue | One queue, 550ms between pages, all API calls routed through it |
-| Orders cache (50–150 MB in memory) | Reporting app's existing cache covers all three apps' read needs |
-| v2 GraphQL enrichment crawl | Feeds tags and pricing matrix data to all features |
-| Status list | All three fetch this separately today |
-| Scheduler | One coordinated timer for: data refresh, email reports, auto-print cron, PO scan refresh |
-| PostgreSQL database | One DB, five tables |
-| Printavo credentials | One `PRINTAVO_EMAIL` + `PRINTAVO_API_TOKEN` pair |
+| Printavo rate-limited fetch queue | One queue (10 req/5s), all API calls routed through it |
+| Orders cache (50–150 MB in memory + disk) | Reporting's cache serves reports, reorder scan, and vendor PO browse |
+| v2 GraphQL enrichment crawl | Tags + pricing matrix for all features |
+| Status list | Fetched separately by every Printavo app today |
+| **Vendor integration layer (SanMar SOAP + S&S REST)** | One client for pricing, inventory, SKU resolution, order submission — used by Quoting + both Purchasing stages |
+| Coordinated scheduler | One timer for: data refresh, email reports, auto-print, PO scan, **backup cron** |
+| PostgreSQL database | One DB, all tables below |
+| Printavo credentials | One canonical source of truth (one email + token) |
 
-### Unique (stays separate, becomes a tab/module)
+### Unique (stays separate, becomes a module)
 
-| Feature | App | Cannot be collapsed because... |
+| Feature | App | Cannot be collapsed because… |
 |---|---|---|
 | Ask AI | Reporting | OpenAI integration, unique UI |
 | Scheduled email reports | Reporting | nodemailer, per-schedule DB config |
-| PDF generation | Workorder | Puppeteer/Chromium, headless browser |
+| PDF generation | Workorder | Puppeteer/Chromium headless browser |
 | PrintNode delivery | Workorder | Physical printer integration |
-| Auto-print engine | Workorder | Complex category→status routing logic |
-| PO cart (multi-order selection) | PO Builder | Zustand in-session state |
-| SanMar live pricing | PO Builder | SOAP/XML vendor API |
-| PO history + Printavo attachment | PO Builder | Unique write-back workflow |
+| Auto-print engine | Workorder | Category→status routing |
+| Reorder scan + PO cart | PO Builder | Needs-Ordering scan, multi-order cart |
+| Vendor order submission + tracking | Vendor Submission | `SubmitOrder`/`GetOrderStatus`, warehouse logic, archive |
+| Decoration matrices + quote calculator | Breezy | Matrix CRUD, 4-location pricing, PNG export |
+| Shipping rate comparison | Shipping Estimator | ShipStation + EasyPost, weight calc, box presets |
+| PDF slip/label sorter | PDF Sorter | **Python** (pdfplumber/pypdf/pandas) child process |
+| Full account backup + browse | Backup | Entity crawl + file download, Dropbox dual-write |
 
-### Write Operations (still go directly to Printavo)
+### Write Operations (still go directly to Printavo / vendors)
 
-- Workorder Manager: order status mutation after printing
-- PO Builder: line item status update, order status update, production file attachment
+- Workorder: order status mutation after printing
+- PO Builder: line-item status, order status, production-file attachment
+- Vendor Submission: order submission to SanMar/S&S; status/tracking refresh
 
 ---
 
 ## Tech Stack Compatibility
 
-All three apps use nearly identical stacks — this is the biggest reason consolidation is straightforward.
+Nearly identical stacks — the biggest reason consolidation is straightforward.
 
-| | Reporting | Workorder | PO Builder |
-|---|---|---|---|
-| Frontend | React + Vite + Tailwind + shadcn/ui | React + Vite + Tailwind + shadcn/ui | React + Vite + Tailwind + shadcn/ui |
-| Routing | wouter | wouter | (to confirm) |
-| Backend | Express + TypeScript | Express + TypeScript | Express + TypeScript |
-| Database client | Drizzle ORM | raw `pg` → standardize | Drizzle ORM |
-| State management | React Query | React Query | React Query + Zustand |
+| | Reporting | Workorder | PO Builder | Vendor Sub | Breezy | Shipping | PDF Sorter | Backup |
+|---|---|---|---|---|---|---|---|---|
+| Frontend | RV+T+shadcn | RV+T+shadcn | RV+T+shadcn | RV+T+shadcn | RV+T+shadcn | RV+T+shadcn | RV+T+shadcn | RV+T+shadcn |
+| Backend | Express+TS | Express+TS | Express+TS | Express+TS | Express+TS | Express+TS | Express+TS | Express+TS |
+| DB client | Drizzle | raw `pg` → std. | Drizzle | Drizzle | Drizzle | (none/Zod) | none (in-mem) | Drizzle |
+| State | React Query | React Query | RQ + Zustand | React Query | React Query | React Query | React Query | React Query |
+| Extra runtime | — | Chromium | — | — | — | — | **Python 3** | node-cron |
 
-No framework mismatches. The only standardization needed is the DB client (Workorder Manager uses raw `pg`; standardize to Drizzle ORM).
+*(RV+T+shadcn = React + Vite + Tailwind + shadcn/ui.)*
+
+Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `pg`); and the consolidated app must include a **Python 3 runtime** (pdfplumber, pypdf, pandas) for the PDF Sorter, plus **Chromium** for Workorder PDF generation. Several apps already use a pnpm monorepo with OpenAPI→Orval codegen, which is a good target structure for the combined repo.
 
 ---
 
-## Data Model Conflicts to Resolve Before Building
+## Data Model & Config Conflicts to Resolve Before Building
 
 | Item | Concern |
 |---|---|
-| **Revenue formula** | Use `unit_cost × total_quantities` (verified against `order_total` in Reporting app). All sections must use the same formula. |
-| **Category derivation** | Category is line-item-level, not order-level. No `order.category` field. Derive from `lineitems[].category`. |
-| **Imprints calculation** | `Σ (group quantity × imprint locations per group)`. Requires v2 enrichment data. |
-| **Status name parsing** | Printavo names carry an agency prefix: `"Seps.io - 👕🧢 Name"`. Strip everything up to and including the first ` - ` before comparing. |
-| **Credential env var name** | Reporting/Workorder use `PRINTAVO_API_TOKEN`; PO Builder uses `PRINTAVO_TOKEN`. Standardize to `PRINTAVO_API_TOKEN`. |
+| **Revenue formula** | Use `unit_cost × total_quantities` (verified against `order_total`). Same formula everywhere. |
+| **Category derivation** | Line-item-level, not order-level. Derive from `lineitems[].category`. |
+| **Imprints calculation** | `Σ (group quantity × imprint locations)`. Requires v2 enrichment. |
+| **Status name parsing** | Printavo names carry an agency prefix (`"Seps.io - 👕🧢 Name"`). Strip up to the first ` - `. |
+| **Printavo field quirks (v2)** | `companyName` not `name`; customer via `contact.customer`; qty is `items`; unit price is `price` (dollars); mockup URL is `fullImageUrl`; transactions have no `totalNodes`; `vendor { name }` on PurchaseOrder is broken — omit. |
+| **Printavo credential location** | Split across env vars (`PRINTAVO_API_TOKEN` vs `PRINTAVO_TOKEN`) **and** DB rows (`backup_config`, `printavo_settings`). Pick one source of truth (recommend secrets, with a Settings UI). |
+| **SanMar credential naming** | `SANMAR_CUSTOMER/USER/PASS` (PO Builder) vs `SANMAR_USERNAME/PASSWORD/ACCOUNT_NUMBER` (Breezy) vs DB `sanmar_settings` (Vendor Sub). Standardize one set. |
+| **S&S credential naming** | `SS_ACCOUNT_NUMBER/SS_API_KEY` (Breezy) vs DB `ss_settings` (Vendor Sub). Standardize one set. |
+| **Pricing matrices vs Printavo matrices** | Breezy stores its own decoration `matrices`; Printavo orders also carry pricing-matrix data via enrichment. Decide whether to keep them independent or sync. |
 
 ---
 
 ## Proposed App Structure
 
 ### Navigation
-One app with a persistent sidebar, five sections:
+One app, persistent sidebar, grouped by workflow:
 
-| Section | Source App | What it contains |
+| Group | Module | Source App |
 |---|---|---|
-| **Dashboard** | New | At-a-glance summary: KPI cards, cache status, scheduler health, quick links |
-| **Reports** | Reporting | Full filter panel, breakdowns, CSV export, payments |
-| **Print Queue** | Workorder | Manual print mode + Auto-print config + print job history |
-| **Purchasing** | PO Builder | Needs Ordering scan + PO cart + PO history + SanMar pricing |
-| **Ask AI** | Reporting | Natural language query interface |
-| **Settings** | All | Printavo credentials, SMTP, printer setup, scheduled reports |
+| — | **Dashboard** | New — KPIs, module grid, pipeline health, quick actions |
+| Analyze | **Reports** | Reporting |
+| Analyze | **Ask AI** | Reporting |
+| Purchasing | **Reorder Scan** | PO Builder |
+| Purchasing | **Vendor Orders** | Vendor Submission |
+| Production | **Print Queue** | Workorder Manager |
+| Quoting | **Price Calculator** | Breezy Quote |
+| Shipping | **Rate Estimator** | Shipping Estimator |
+| Shipping | **Label Sorter** | PDF Sorter |
+| Data | **Backups** | Printavo Backup |
+| — | **Settings** | All — credentials, SMTP, printer, schedules, vendor + shipping keys, Dropbox |
 
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│            One Express backend (Reserved VM)          │
-│                                                       │
-│  ┌───────────────────────────────────────────────┐   │
-│  │         Shared Printavo Data Layer            │   │
-│  │  • One rate-limited fetch queue (550ms/page)  │   │
-│  │  • One orders cache (memory + .cache/ disk)   │   │
-│  │  • One v2 enrichment crawl (→ Postgres)       │   │
-│  │  • One coordinated scheduler                  │   │
-│  └──────────────┬────────────────────────────────┘   │
-│                 │ server-side reads, zero extra calls  │
-│     ┌───────────┼──────────┬───────────┐              │
-│     ▼           ▼          ▼           ▼              │
-│  Reports    PrintQueue  Purchasing  AskAI             │
-│  API routes API routes  API routes  API route         │
-└─────────────────────────────────────────────────────┘
-                      │
-┌─────────────────────────────────────────────────────┐
-│              One React frontend                       │
-│   Sidebar nav: Dashboard | Reports | Print | PO | AI │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                 One Express backend (Reserved VM)              │
+│                + Python 3 sidecar (PDF Sorter)                 │
+│                                                                │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │              Shared Printavo Data Layer                 │  │
+│  │  • One rate-limited fetch queue (10 req / 5 sec)        │  │
+│  │  • One orders cache (memory + disk)                     │  │
+│  │  • One v2 enrichment crawl  • One coordinated scheduler │  │
+│  └───────────────┬────────────────────────────────────────┘  │
+│  ┌───────────────┴────────────────────────────────────────┐  │
+│  │        Shared Vendor Layer (SanMar SOAP + S&S REST)    │  │
+│  └───────────────┬────────────────────────────────────────┘  │
+│      ┌─────────┬─┴───────┬──────────┬─────────┬──────────┐    │
+│      ▼         ▼         ▼          ▼         ▼          ▼    │
+│   Reports  Purchasing  Print    Quoting   Shipping    Backup │
+│   + AskAI  (scan+vendor) Queue  (Breezy) (rates+sort) (archive)│
+└──────────────────────────────────────────────────────────────┘
+                              │
+┌──────────────────────────────────────────────────────────────┐
+│                      One React frontend                        │
+│  Sidebar: Dashboard · Reports/AI · Purchasing · Production ·   │
+│           Quoting · Shipping · Backups · Settings              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ### Infrastructure
-- **One Reserved VM** (required — background crawlers and in-process cron break on autoscale)
-- **One PostgreSQL database** with all 5 tables: `report_schedules`, `enrichment_cache`, `auto_print_config`, `print_jobs`, `po_files`
-- **One set of Printavo credentials** (single Printavo account)
+- **One Reserved VM** (required — background crawlers, backup cron, and in-process schedulers break on autoscale; note that Shipping and Breezy currently deploy as autoscale and will move under the VM)
+- **Python 3 runtime** alongside Node (for the PDF Sorter), plus **Chromium** (Workorder PDFs)
+- **One PostgreSQL database** with all tables: `report_schedules`, `enrichment_cache`, `auto_print_config`, `print_jobs`, `po_files`, `sanmar_orders`, `sanmar_line_items`, `matrices`, `backup_config`, `backup_runs`, `entity_counts`, `backup_progress`, `entity_watermarks` (+ consolidated settings)
+- **One canonical credential store** for Printavo, SanMar, S&S, ShipStation, EasyPost, Dropbox, PrintNode, OpenAI
 
 ---
 
@@ -268,51 +292,65 @@ One app with a persistent sidebar, five sections:
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| Puppeteer/Chromium memory footprint | Medium | PDF generation + large orders cache need a well-sized Reserved VM. Profile before finalizing VM tier. |
-| Scheduler merge | Medium | Carefully sequence all timers. Document full schedule before coding. |
-| `.cache/` wipe on redeploy | Low | Already handled — enrichment survives in Postgres; orders re-crawl in minutes. |
-| Prod DB data preservation | Low | On publish, never overwrite production data. Existing Reporting app rule applies everywhere. |
-| PO cart state | Low | Zustand persists within a browser session; standard React SPA behavior. |
-| S&S Activewear | None | Remains blocked (Cloudflare issue on their API). Out of scope. |
+| Two full crawlers + cron overlap | **High** | The core win — serialize all heavy Printavo jobs through one queue + scheduler; never overlap backup and reporting refresh. |
+| Backup file-download volume | Medium | Full backups download all artwork/PDFs — large disk + bandwidth. Keep Dropbox dual-write; size VM storage accordingly. |
+| Python + Chromium in one image | Medium | PDF Sorter needs Python; Workorder needs Chromium. Confirm both run on the Reserved VM and profile memory. |
+| Vendor layer unification | Medium | Three SanMar/S&S implementations to merge into one client — reconcile field mappings and warehouse codes before cutover. |
+| Credential migration (DB ↔ env) | Medium | Backup + Vendor Sub read creds from DB; others from env. Migrate to one source carefully to avoid auth outages. |
+| Scheduler merge | Medium | Document the full timetable (refresh, email, auto-print, PO scan, backup cron) before coding. |
+| `.cache/` wipe on redeploy | Low | Enrichment survives in Postgres; orders re-crawl in minutes. |
+| Prod DB preservation | Low | Never overwrite production data on publish. |
 
 ---
 
 ## Recommended Build Sequence
 
-1. Set up consolidated repo structure (new artifact, shared API server)
-2. Migrate and unify the database schema (all 5 tables, Drizzle ORM)
-3. Port the Printavo data layer from the Reporting app as the shared core
-4. Merge all schedulers into one coordinated timer
-5. Add Print Queue backend routes + PrintNode + Puppeteer integration
-6. Add Purchasing backend routes + SanMar SOAP client
-7. Build unified React frontend with sidebar navigation
-8. Standardize all data model definitions (revenue, category, imprints, status names)
-9. Deploy as one Reserved VM with all required secrets
+1. Set up consolidated repo (pnpm monorepo: one API server, one React app, shared `lib/` packages)
+2. Unify the database schema (all tables, Drizzle ORM) and pick one credential store
+3. Port the Printavo data layer from Reporting as the shared core (queue + cache + enrichment)
+4. Build the shared vendor layer (SanMar SOAP + S&S REST) from the three existing implementations
+5. Merge all schedulers into one coordinated timer (including the backup cron)
+6. Add Python 3 + Chromium runtimes; wire the PDF Sorter subprocess and Workorder PDF generation
+7. Port module backends: Reports/AI, Purchasing (scan + vendor submit/track), Print Queue, Breezy, Shipping, Backup
+8. Build the unified React frontend with grouped sidebar navigation
+9. Standardize data-model definitions (revenue, category, imprints, status names, field quirks)
+10. Deploy as one Reserved VM with all secrets; verify backup + auto-print + crawls don't collide
 
 ---
 
 ## Decision Checklist Before We Build
 
-Please confirm the following before work begins:
+Please confirm the following:
 
-- **[ ] Credentials:** One shared `PRINTAVO_EMAIL` + `PRINTAVO_API_TOKEN` for all three apps?
-- **[ ] PrintNode:** `PRINTNODE_API_KEY` available and physical printer confirmed working?
-- **[ ] SanMar:** `SANMAR_CUSTOMER`, `SANMAR_USER`, `SANMAR_PASS` available?
-- **[ ] Reserved VM:** Able to deploy as Reserved VM (required for background jobs)?
-- **[ ] Existing DB data:** Which tables need data migrated vs. starting fresh?
-  - Scheduled email reports — migrate or recreate?
-  - Auto-print config — migrate or reconfigure?
-  - PO history — migrate or start clean?
+**Credentials & access**
+- [ ] **Printavo:** one canonical email + token for all features (and migrate the copies currently in `backup_config` / `printavo_settings`)?
+- [ ] **SanMar:** which credential set is current (`SANMAR_CUSTOMER/USER/PASS`, `SANMAR_USERNAME/PASSWORD/ACCOUNT_NUMBER 164656`, or the DB `sanmar_settings`)?
+- [ ] **S&S Activewear:** `SS_ACCOUNT_NUMBER` + `SS_API_KEY` confirmed (this replaces the blocked S&S work in PO Builder)?
+- [ ] **Shipping:** `SHIPSTATION_API_KEY`, `SHIPSTATION_API_SECRET`, `EASYPOST_API_KEY` available?
+- [ ] **PrintNode:** `PRINTNODE_API_KEY` available and printer confirmed working?
+- [ ] **Dropbox:** keep the off-site backup dual-write (OAuth refresh token)?
+- [ ] **OpenAI:** key for Ask AI available?
+
+**Infrastructure**
+- [ ] Deploy as one **Reserved VM** (required), with **Python 3** and **Chromium** runtimes?
+- [ ] Disk/bandwidth budget for full backups (artwork + PDFs) acceptable on the VM?
+
+**Data migration (per app: migrate vs. start fresh)**
+- [ ] Scheduled email reports · Auto-print config · PO history · Vendor orders history · Decoration matrices · Backup run history / watermarks
+
+**Scope & priority**
+- [ ] Build all eight modules at once, or phase it (e.g. Purchasing pipeline first, Shipping later)?
+- [ ] Wire the planned Printavo cross-links now (shipping pulls ship-to from an order; PDF Sorter enriches match report from Printavo; quote feeds a Printavo order) or keep modules standalone in v1?
 
 ---
 
 ## What This Does Not Include
 
-- No new Printavo features beyond what the three existing apps already do
+- No new Printavo features beyond what the eight existing apps already do (cross-links above are optional, opt-in)
 - No public-facing pages (remains an internal tool)
-- No real-time data (Printavo has no webhooks; polling/caching model is unchanged)
-- S&S Activewear integration remains blocked (out of scope)
+- No real-time data (Printavo has no webhooks; polling/caching model unchanged)
+- No shipping label *purchase* unless requested (EasyPost `Shipment.buy()` exists but isn't built today)
 
 ---
 
-*End of assessment. For questions or clarification, review with your development team before approving the build plan.*
+*End of assessment. Review with your team before approving the build plan.*
