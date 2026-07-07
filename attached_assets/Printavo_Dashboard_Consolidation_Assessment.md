@@ -1,30 +1,32 @@
 # Printavo Dashboard Consolidation Assessment
-**Prepared:** June 26, 2026
-**Scope:** Consolidating ten Replit apps into one unified system ("Printavo Hub")
+**Prepared:** June 26, 2026 · **Updated:** July 7, 2026
+**Scope:** Consolidating eleven Replit apps into one unified system ("Printavo Hub")
+**Status:** ✅ Source-code review of **all repos** is complete (June–July 2026). This revision incorporates the code-level findings — see "What the Source-Code Review Confirmed" below.
 
 ---
 
 ## Executive Summary
 
-You currently operate **ten separate Replit applications**, most of which connect to the same Printavo account (`tyler@mintprintworks.com`). Several run their own Printavo data fetcher, their own background scheduler, and their own database. This causes **active reliability problems today** (the apps interfere with each other through a shared API rate limit) and creates real friction for your team (multiple logins, multiple tabs, no shared context, duplicated vendor integrations).
+You currently operate **eleven separate Replit applications** (the original ten, plus **Mint Bucks Manager**, added to scope mid-review), most of which connect to the same Printavo account (`tyler@mintprintworks.com`). Several run their own Printavo data fetcher, their own background scheduler, and their own database. This causes **active reliability problems today** (the apps interfere with each other through a shared API rate limit) and creates real friction for your team (multiple logins, multiple tabs, no shared context, duplicated vendor integrations).
 
-The ten apps fall into natural workflow groups:
+The eleven apps fall into natural workflow groups:
 
 | Group | Apps |
 |---|---|
 | **Analyze** | Reporting/Analytics, Ask AI (a feature of Reporting) |
 | **Sales (customer-facing)** | Reorder Portal — *the only public app* |
-| **Purchasing** | PO Builder (find & create POs), Vendor Order Submission (submit to SanMar/S&S + track) |
+| **Sales (customer credit)** | **Mint Bucks Manager** (store-credit ledger, reward rules, gift certificates) |
+| **Purchasing** | PO Builder (find & create POs), Vendor Order Submission (submit to SanMar/S&S + track) — **to be merged into one module** |
 | **Production** | Workorder Manager (paperwork printing + auto-print), Color Reference DB (Pantone→thread/ink matching) |
 | **Quoting** | Breezy Quote (decoration price calculator) |
 | **Shipping** | Shipping Rate Estimator (USPS/UPS rates), PDF Sorter (slip + label matching) |
 | **Data** | Printavo Backup (full account archive) |
 
-**Recommendation: Consolidate into one system — but as two surfaces, not one app.** Nine of the ten are internal staff tools and fold cleanly into one dashboard. The tenth — the **Reorder Portal — is customer-facing**, so it must stay a separate *public* surface with its own access boundary. The right architecture is **one shared backend + data layer powering two front-ends**: the internal "Printavo Hub" dashboard for staff, and the public reorder portal for customers. The technical foundations are otherwise highly compatible (nearly all share React + Vite + Tailwind + shadcn/ui, Express + TypeScript, PostgreSQL + Drizzle), three apps already integrate with the same two vendors (SanMar + S&S), and consolidation solves real problems beyond UX — chiefly the rate-limit collisions caused by **two** independent full-account crawlers (Reporting and Backup) plus several smaller scanners all hitting one account.
+**Recommendation: Consolidate into one system — but as two surfaces, not one app.** Ten of the eleven are internal staff tools and fold cleanly into one dashboard. The eleventh — the **Reorder Portal — is customer-facing**, so it must stay a separate *public* surface with its own access boundary. The right architecture is **one shared backend + data layer powering two front-ends**: the internal "Printavo Hub" dashboard for staff, and the public reorder portal for customers. The technical foundations are otherwise highly compatible (nearly all share React + Vite + Tailwind + shadcn/ui, Express + TypeScript, PostgreSQL + Drizzle), three apps already integrate with the same two vendors (SanMar + S&S), and consolidation solves real problems beyond UX — chiefly the rate-limit collisions caused by **two** independent full-account crawlers (Reporting and Backup) plus several smaller scanners all hitting one account.
 
 ---
 
-## The Ten Apps
+## The Eleven Apps
 
 ### 1. Reporting App (mintavoreports.replit.app)
 Analytics and reporting dashboard for order data.
@@ -49,10 +51,12 @@ Finds blanks that need ordering and builds POs.
 - **Printavo:** two-pass scan (~50 pages); writes line-item status, order status, production file · **Background:** refresh every 20 min · **DB:** `po_files` · **3rd-party:** SanMar SOAP
 
 ### 4. Vendor Order Submission (purchasing — submit & track)
-The downstream half of purchasing. Imports a PO from Printavo, submits it to the vendor, tracks status + shipping.
+The downstream half of purchasing. Imports a PO from Printavo, submits it to the vendor, tracks status + shipping. **The only app with real vendor order submission** — PO Builder finds/preps POs; this app actually places them.
 
 - Import PO from Printavo (or upload a vendor PDF via `pdf-parse`, or manual); per line item: vendor (SanMar/S&S), style+color → live inventory/pricing, warehouse selector, size/qty grid; submits + tracks vendor order #, status, tracking
-- **Printavo:** GraphQL v2 PO browse; creds stored **in the DB** (`printavo_settings`) · **Vendors:** SanMar SOAP (`SubmitOrder`, `GetOrderStatus`, 9-warehouse inventory); S&S REST (working) · **DB:** `sanmar_orders`, `sanmar_line_items`, `sanmar_settings`, `ss_settings`, `printavo_settings`
+- **Printavo:** GraphQL v2 PO browse (invoices **and** quotes traversal); creds stored **in the DB** (`printavo_settings`) · **Vendors:** SanMar SOAP (`submitPO`, `GetOrderStatus`, 9-warehouse inventory); S&S REST orders API (17 warehouses, orders can split across warehouses) · **DB:** `sanmar_orders`, `sanmar_line_items`, `sanmar_settings`, `ss_settings`, `printavo_settings`
+- **Status flags (per Tyler, July 2026):** S&S order submission is **untested in production**; the Printavo PO import "still needs work"; built after PO Builder and overlaps it — **the two should merge into one ordering interface in the Hub**
+- ⚠️ **Security finding:** the DB column named `password_encrypted` actually stores the SanMar password in **plain text** — no encryption exists anywhere in the app. All credentials must move to encrypted secrets in the Hub.
 
 ### 5. Breezy Quote (quoting)
 Per-piece decoration price calculator.
@@ -97,6 +101,57 @@ Master color-matching database for the shop floor. Not Printavo-connected.
 - **Find Color Match:** server-side **Delta E CIE2000** (`/api/colors/match?r&g&b`) returns closest matches per system with ΔE scores; in-memory LAB cache invalidated on writes
 - **DB:** `colors` table (PostgreSQL + Drizzle) · **Secrets:** `DATABASE_URL`, `SESSION_SECRET` (auth not implemented) · seeded from an Excel import script
 
+### 11. Mint Bucks Manager — *added to scope mid-review* (sales — customer credit)
+Promotional store-credit system: issues "Mint Bucks" credits (manually or via reward rules triggered by paid Printavo invoices), tracks balances/partial redemptions/expiry, generates PDF gift certificates with QR codes to a public balance-check page, and emails customers (issued / redeemed / "you have credit" on new orders).
+
+- **⚠️ System of record:** credit balances, redemptions, and reward history live **only in this app's database** — Printavo knows nothing about credits. This ledger must be migrated to the Hub **exactly**, not rebuilt.
+- Reward rules engine (flat / % of paid / % of total / tiered) with annual budget enforcement via atomic DB claims; dedup ledgers prevent double-awarding and duplicate emails
+- **Printavo:** polls for newly-paid invoices every 15 min through a **proven throttled client (620 ms between requests + retry after 5.2 s on 429)** — the best rate-limit implementation in the fleet, and the recommended starting point for the Hub's shared queue
+- **Email:** Resend via Replit connector · **DB:** `customers`, `credits`, `redemptions`, `reward_rules`, `reward_awards`, `notification_log`, `settings` (sensitive values AES-256-GCM encrypted — the only app that encrypts DB-stored credentials properly)
+- **Stack:** modern pnpm monorepo template — ports to the Hub nearly verbatim
+
+---
+
+## What the Source-Code Review Confirmed (July 2026)
+
+All repos have now been reviewed line-by-line. The June assessment holds up — and the review added these concrete findings:
+
+### 1. The fleet splits into two porting tiers
+
+| Tier | Apps | Effort |
+|---|---|---|
+| **Modern monorepo template** — same structure as the Hub target (pnpm workspaces, contract-first API, Drizzle) | Breezy Quote, PO Builder, Mint Bucks, PDF Sorter, Vendor Order Submission | Port **nearly verbatim** — mostly copy modules + merge schema |
+| **Older client/server/shared template** | Reporting, Workorder Manager, Printavo Backup, Shipping Estimator, Color Reference DB | Business logic ports cleanly, but files need **restructuring** into the monorepo layout |
+
+### 2. Purchasing must become ONE module (Tyler's direction)
+PO Builder and Vendor Order Submission cover the same process but don't work hand-in-hand — staff finish in one and re-key into the other. They merge into a single **Ordering** module: *scan needs-ordering → build PO → push to Printavo → submit to vendor → track status/shipping*. Each contributes the half the other lacks, and they even solved "browse POs from Printavo" two different ways — the Hub keeps the better of each.
+
+### 3. Three different SanMar clients → one unified vendor module
+Breezy (pricing service), PO Builder (product info service), and Vendor Submission (order submission + inventory services) each talk to a **different SanMar SOAP service** with separate credential setups. The Hub gets one SanMar module exposing all four capabilities (pricing, product info, inventory, submission), plus one S&S REST client (Breezy's and Vendor Submission's are compatible).
+
+### 4. The rate-limit fix has a proven blueprint
+Mint Bucks' throttle is battle-tested: **620 ms minimum spacing** (~8 req/5 s — 550 ms tripped real 429s), one retry after a **5.2 s cooldown** on 429. This becomes the Hub's single shared Printavo gateway that every module routes through.
+
+### 5. Security findings (fix during consolidation)
+- **Vendor Submission stores the SanMar password in plain text** in a DB column misleadingly named `password_encrypted`
+- Printavo credentials live in DB rows in two apps (Backup, Vendor Submission) and in env vars under three different names elsewhere
+- **Resolution:** all credentials (Printavo, SanMar, S&S, ShipStation, EasyPost, Dropbox, PrintNode, OpenAI, Resend) move to Replit's encrypted secrets — one name each, no DB-stored credentials
+- Good news: **no hardcoded secrets were found in any repo** ✅
+
+### 6. Functional status flags (work needed beyond porting)
+| Item | Status | Hub action |
+|---|---|---|
+| S&S order submission (Vendor Sub) | **Untested in production** | Test against a real S&S order before cutover |
+| Printavo PO import (Vendor Sub) | "Still needs work" per Tyler | Rebuild on the shared cache during the Ordering-module merge |
+| Mint Bucks credit expiry | Tracked but not auto-expired | Add expiry sweep to the Hub scheduler |
+| Credit ledger + color DB + decoration matrices | Systems of record with no Printavo copy | **Migrate data exactly — never rebuild** |
+
+### 7. Approved data-sync strategy
+Hub sync runs in three phases through the shared queue: **12-month seed** (recent orders first, usable within minutes) → **incremental** (poll for changes) → **throttled backfill** (older history fills in gradually in the background).
+
+### 8. Printavo API landmines — catalogued so the Hub doesn't rediscover them
+The review confirmed and documented the account's hard-won API knowledge: quotes never appear in the `invoices` query (must page the `orders` union) · no `paidAt` field (newly-paid detection needs the lookback + dedup-ledger pattern) · page size hard-capped at 25 · query complexity capped at 25,000 · order search is fuzzy (always verify exact ID) · `vendor { name }` on PurchaseOrder errors if requested · no root `purchaseOrders` query and the REST v1 endpoint 404s · `visualId` is a valid recency proxy. All preserved in working notes for the build.
+
 ---
 
 ## Why Consolidation Makes Sense
@@ -112,6 +167,7 @@ Printavo enforces **10 requests per 5 seconds, shared across the entire account*
 | Workorder Manager | Status-filtered fetches + auto-print cron | 600 ms/page |
 | PO Builder | ~50-page two-pass scan every 20 min | 1,500 ms/page |
 | Vendor Submission | PO browse (16 pages) on demand | per request |
+| Mint Bucks | Paid-invoice scan every 15 min | **620 ms + 5.2 s retry (the proven one)** |
 | **Reorder Portal** | **Live customer lookups (15 invoices each) at unpredictable times** | per request |
 
 There are **two independent full-account crawlers** (Reporting *and* Backup), plus a **public portal that fires Printavo queries whenever a customer searches** — outside your control. If the backup cron or reporting refresh overlaps a wave of customer lookups, they collectively blow the shared limit, causing 429s and failures across every tool *and* a slow experience for your customers. The PO Builder's very conservative 1,500 ms delay is almost certainly a scar from this. **One shared rate-limited queue** for the whole account is the fix: reports, backup, reorder scan, vendor sync, auto-print, *and* customer lookups all flow through it (mostly served from the shared cache).
@@ -140,7 +196,7 @@ Independent timers in Reporting (refresh + email), Workorder (auto-print), PO Bu
 Printavo creds live in **env vars** with three different names (`PRINTAVO_API_TOKEN`, `PRINTAVO_TOKEN`, **and now `PRINTAVO_API_EMAIL`**) **and** in **DB rows** (Backup's `backup_config`, Vendor Submission's `printavo_settings`). SanMar/S&S creds are similarly split. Each app has its own database. Consolidation establishes one credential source of truth and one database.
 
 ### Problem 9: Team & customer workflow friction
-Staff juggle nine internal tools; customers use a tenth in isolation. One internal Hub (grouped sidebar) plus one public portal sharing the same data removes the friction on both sides.
+Staff juggle ten internal tools; customers use an eleventh in isolation. One internal Hub (grouped sidebar) plus one public portal sharing the same data removes the friction on both sides.
 
 ---
 
@@ -150,14 +206,14 @@ Staff juggle nine internal tools; customers use a tenth in isolation. One intern
 
 | Component | Notes |
 |---|---|
-| Printavo rate-limited fetch queue | One queue (10 req/5s) — internal jobs **and** public customer lookups route through it |
+| Printavo rate-limited fetch queue | One queue (620 ms spacing + 5.2 s retry on 429 — Mint Bucks' proven client) — internal jobs **and** public customer lookups route through it |
 | Orders cache (memory + disk) | Serves reports, reorder scan, vendor PO browse, and customer lookups |
 | v2 GraphQL enrichment crawl | Tags + pricing matrix for all features |
 | Status list | Fetched separately by every Printavo app today |
 | **Vendor layer (SanMar SOAP + S&S REST)** | One client for pricing, inventory, SKU resolution, submission |
-| Coordinated scheduler | One timer: data refresh, email reports, auto-print, PO scan, backup cron |
-| PostgreSQL database | One DB, all tables below (+ a new `reorder_requests` table for the portal) |
-| Printavo credentials | One canonical source of truth |
+| Coordinated scheduler | One timer: data refresh, email reports, auto-print, PO scan, backup cron, Mint Bucks poller + credit-expiry sweep |
+| PostgreSQL database | One DB, all tables below (+ a new `reorder_requests` table for the portal + the Mint Bucks credit ledger) |
+| Printavo credentials | One canonical source of truth — Replit encrypted secrets, no DB-stored credentials |
 
 ### Unique (stays separate, becomes a module or the public surface)
 
@@ -168,13 +224,14 @@ Staff juggle nine internal tools; customers use a tenth in isolation. One intern
 | PDF generation | Workorder | Puppeteer/Chromium headless browser |
 | PrintNode delivery / auto-print | Workorder | Physical printer + category→status routing |
 | Reorder scan + PO cart | PO Builder | Needs-Ordering scan, multi-order cart |
-| Vendor submission + tracking | Vendor Submission | `SubmitOrder`/`GetOrderStatus`, warehouse logic |
+| Vendor submission + tracking | Vendor Submission | `submitPO`/`GetOrderStatus`, warehouse logic |
 | Decoration matrices + calculator | Breezy | Matrix CRUD, 4-location pricing, PNG export |
 | Shipping rate comparison | Shipping | ShipStation + EasyPost, weight calc |
 | PDF slip/label sorter | PDF Sorter | **Python** (pdfplumber/pypdf/pandas) subprocess |
 | Full account backup + browse | Backup | Entity crawl + file download, Dropbox dual-write |
 | **Customer reorder portal** | **Reorder Portal** | **Public access boundary — customers must never see internal data; stays a separate front-end** |
 | Color matching (Delta E) | Color Reference DB | CIE2000 engine, 6,199-row dataset, LAB cache |
+| Credit ledger + rewards engine | Mint Bucks | System-of-record ledger, budget-claim concurrency, dedup ledgers, PDF certificates + QR, customer emails |
 
 ### Write Operations (still go directly to Printavo / vendors / email)
 - Workorder: order status mutation · PO Builder: line-item/order status + production file · Vendor Submission: vendor order submission + status refresh · Reorder Portal: reorder email (→ becomes a DB write + email)
@@ -185,17 +242,17 @@ Staff juggle nine internal tools; customers use a tenth in isolation. One intern
 
 Nearly identical stacks — the biggest reason consolidation is straightforward.
 
-| | Reporting | Workorder | PO Builder | Vendor Sub | Breezy | Shipping | PDF Sorter | Backup | Reorder Portal | Color DB |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Frontend | RV+T+shadcn | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (wouter) | ✓ (wouter) |
-| Backend | Express+TS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| DB client | Drizzle | raw `pg`→std. | Drizzle | Drizzle | Drizzle | (none) | none | Drizzle | none today | Drizzle |
-| State | React Query | RQ | RQ+Zustand | RQ | RQ | RQ | RQ | RQ | TanStack Q | TanStack Q |
-| Extra | — | Chromium | — | — | — | — | **Python 3** | node-cron | Resend | Delta E + LAB cache |
+| | Reporting | Workorder | PO Builder | Vendor Sub | Breezy | Shipping | PDF Sorter | Backup | Reorder Portal | Color DB | Mint Bucks |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Frontend | RV+T+shadcn | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (wouter) | ✓ (wouter) | ✓ |
+| Backend | Express+TS | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| DB client | Drizzle | raw `pg`→std. | Drizzle | Drizzle | Drizzle | (none) | none | Drizzle | none today | Drizzle | Drizzle |
+| State | React Query | RQ | RQ+Zustand | RQ | RQ | RQ | RQ | RQ | TanStack Q | TanStack Q | RQ |
+| Extra | — | Chromium | — | — | — | — | **Python 3** | node-cron | Resend | Delta E + LAB cache | Resend + pdfkit |
 
 *(RV+T+shadcn = React + Vite + Tailwind + shadcn/ui; ✓ = same.)*
 
-Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `pg`); include a **Python 3 runtime** (PDF Sorter) and **Chromium** (Workorder); add the **Resend** connector for the portal. Several apps already use a pnpm monorepo with OpenAPI→Orval codegen — a good target structure for the combined repo (one `api-server`, two front-end artifacts, shared `lib/` packages).
+Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `pg`); include a **Python 3 runtime** (PDF Sorter) and **Chromium** (Workorder); add the **Resend** connector (portal + Mint Bucks). **Five apps** (Breezy, PO Builder, Mint Bucks, PDF Sorter, Vendor Submission) already use the pnpm monorepo with OpenAPI→Orval codegen — confirmed by the source review as the target structure for the combined repo (one `api-server`, two front-end artifacts, shared `lib/` packages), and those five port nearly verbatim.
 
 ---
 
@@ -212,6 +269,9 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 | **SanMar / S&S credential naming** | Three different SanMar var sets and two S&S sets across apps. Standardize one each. |
 | **Reorder request persistence** | Portal currently only emails. Add a `reorder_requests` table so the internal Reorder Inbox can triage (new/reviewed/quoted) and link to the source order. |
 | **Color match dataset** | 6,199 rows + per-row LAB cache invalidated on writes. Decide whether to map Printavo order colors → in-stock thread/ink (integration) or keep the library standalone in v1. |
+| **Mint Bucks credit ledger** | System of record — credits/redemptions exist nowhere else. Migrate tables exactly; preserve dedup ledgers and budget-claim logic byte-for-byte. |
+| **S&S order submission** | Coded but **never tested in production**. Must place a verified test order before the Hub relies on it. |
+| **Plain-text SanMar password** | Vendor Sub's `password_encrypted` column is not encrypted. Migrate to Replit secrets, then **rotate the SanMar password**. |
 
 ---
 
@@ -221,7 +281,7 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 
 | Surface | Audience | Modules |
 |---|---|---|
-| **Printavo Hub** (internal) | Managers / staff | Dashboard, Reports, Ask AI, **Reorder Inbox**, Reorder Scan, Vendor Orders, Print Queue, **Color Library**, Price Calculator, Rate Estimator, Label Sorter, Backups, Settings |
+| **Printavo Hub** (internal) | Managers / staff | Dashboard, Reports, Ask AI, **Reorder Inbox**, **Ordering** (scan → build → submit → track), **Mint Bucks**, Print Queue, **Color Library**, Price Calculator, Rate Estimator, Label Sorter, Backups, Settings |
 | **Reorder Portal** (public) | Customers | Order lookup + reorder request (writes to the shared `reorder_requests` table → appears in the internal Reorder Inbox) |
 
 ### Internal navigation (grouped sidebar)
@@ -230,8 +290,8 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 |---|---|---|
 | — | **Dashboard** | New |
 | Analyze | Reports · Ask AI | Reporting |
-| Sales | **Reorder Inbox** | Reorder Portal (internal triage side) |
-| Purchasing | Reorder Scan · Vendor Orders | PO Builder · Vendor Submission |
+| Sales | **Reorder Inbox** · **Mint Bucks** | Reorder Portal (internal triage side) · Mint Bucks Manager |
+| Purchasing | **Ordering** (scan → build → submit → track — **one merged interface**) | PO Builder + Vendor Submission (merged) |
 | Production | Print Queue · **Color Library** | Workorder · Color Reference DB |
 | Quoting | Price Calculator | Breezy |
 | Shipping | Rate Estimator · Label Sorter | Shipping · PDF Sorter |
@@ -251,10 +311,11 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
    ┌──────────────────────────▼──────────────────────────────▼──────────────────────┐
    │            One Express backend (Reserved VM) + Python 3 sidecar                  │
    │  ┌──────────────────────────────────────────────────────────────────────────┐  │
-   │  │  Shared Printavo Data Layer — one queue (10/5s) · cache · enrichment ·     │  │
-   │  │  one scheduler   |   Shared Vendor Layer (SanMar SOAP + S&S REST)          │  │
+   │  │  Shared Printavo Data Layer — one queue (620 ms + 5.2 s retry) · cache ·   │  │
+   │  │  one scheduler  ·  Shared Vendor Layer (SanMar SOAP + S&S REST)            │  │
    │  └──────────────────────────────────────────────────────────────────────────┘  │
-   │   Reports/AI · Reorder Inbox · Purchasing · Print · Color · Quote · Ship · Backup│
+   │  Reports/AI · Reorder Inbox · Ordering · Mint Bucks · Print · Color ·            │
+   │  Quote · Ship · Backup                                                           │
    └──────────────────────────────────────┬──────────────────────────────────────────┘
                                            ▼
                               One PostgreSQL database
@@ -263,7 +324,7 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 ### Infrastructure
 - **One Reserved VM** (background crawlers, backup cron, schedulers break on autoscale; Shipping/Breezy move under it), with **Python 3** + **Chromium**
 - **Two deployed front-ends** sharing the one backend: internal Hub (behind staff auth) and public Reorder Portal
-- **One PostgreSQL database** — all existing tables plus a new `reorder_requests` table and the 6,199-row `colors` table
+- **One PostgreSQL database** — all existing tables plus a new `reorder_requests` table, the 6,199-row `colors` table, and the Mint Bucks credit ledger (migrated exactly)
 - **One canonical credential store** for Printavo, SanMar, S&S, ShipStation, EasyPost, Dropbox, PrintNode, OpenAI, Resend
 
 ---
@@ -277,7 +338,9 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 | Backup file-download volume | Medium | Full backups pull all artwork/PDFs — size VM disk + bandwidth; keep Dropbox dual-write. |
 | Python + Chromium in one image | Medium | Confirm both run on the Reserved VM; profile memory. |
 | Vendor layer unification | Medium | Merge three SanMar/S&S implementations — reconcile field mappings + warehouse codes before cutover. |
-| Credential migration (DB ↔ env) | Medium | Backup + Vendor Sub read creds from DB; portal adds `PRINTAVO_API_EMAIL`. Migrate to one source carefully. |
+| **S&S submission untested** | Medium | Place a verified test order with S&S before the Hub's Ordering module goes live; keep SanMar as the proven path meanwhile. |
+| Credential migration (DB ↔ env) | Medium | Backup + Vendor Sub read creds from DB; Vendor Sub's SanMar password is stored in **plain text**. Migrate everything to Replit secrets, then rotate the SanMar password. |
+| Mint Bucks ledger migration | Medium | Credits/redemptions exist nowhere else — migrate row-for-row, verify balances match before decommissioning the old app. |
 | Color dataset + LAB cache | Low | 6,199 rows is small; preserve the in-memory LAB cache + invalidation on writes. |
 | `.cache/` wipe on redeploy | Low | Enrichment survives in Postgres; orders re-crawl in minutes. |
 | Prod DB preservation | Low | Never overwrite production data on publish. |
@@ -286,16 +349,18 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 
 ## Recommended Build Sequence
 
-1. Set up the consolidated repo (pnpm monorepo: one `api-server`, **two** front-end artifacts — internal Hub + public Portal — shared `lib/` packages)
-2. Unify the database schema (all tables + new `reorder_requests` + `colors`, Drizzle ORM) and pick one credential store
-3. Port the Printavo data layer from Reporting as the shared core (queue + cache + enrichment)
-4. Build the shared vendor layer (SanMar SOAP + S&S REST) from the three existing implementations
-5. Merge all schedulers into one coordinated timer (including the backup cron)
+1. Set up the consolidated repo (pnpm monorepo: one `api-server`, **two** front-end artifacts — internal Hub + public Portal — shared `lib/` packages). Five apps already match this structure and port nearly verbatim.
+2. Unify the database schema (all tables + new `reorder_requests` + `colors` + the Mint Bucks ledger, Drizzle ORM); move **all** credentials to Replit secrets (none in the DB) and **rotate the SanMar password** that was stored in plain text
+3. Build the shared Printavo gateway: Mint Bucks' proven throttle (620 ms + 5.2 s retry) as the queue, Reporting's cache + enrichment on top; sync strategy = **12-month seed → incremental → throttled backfill**
+4. Build the shared vendor layer (one SanMar module covering pricing / product info / inventory / submission from the three existing clients + one S&S REST client)
+5. Merge all schedulers into one coordinated timer (reporting refresh, backup cron, ordering scan, auto-print, Mint Bucks poller + a new credit-expiry sweep)
 6. Add Python 3 + Chromium runtimes; wire the PDF Sorter subprocess and Workorder PDF generation
-7. Port internal modules: Reports/AI, Purchasing (scan + submit/track), Print Queue, Color Library, Breezy, Shipping, Backup
-8. Build the public Reorder Portal front-end against the shared backend; persist reorder requests → internal Reorder Inbox (+ keep the Resend email)
-9. Build the internal Hub front-end with grouped sidebar; standardize data-model definitions
-10. Deploy: one Reserved VM, two front-ends, all secrets; verify backup + auto-print + crawls + public lookups don't collide
+7. Port internal modules: Reports/AI, **Ordering (PO Builder + Vendor Submission merged into one scan → build → submit → track flow — rebuild the PO import on the shared cache)**, Mint Bucks, Print Queue, Color Library, Breezy, Shipping, Backup
+8. **Verify the untested paths:** place a real S&S test order; confirm SanMar submission end-to-end from the merged module
+9. Build the public Reorder Portal front-end against the shared backend; persist reorder requests → internal Reorder Inbox (+ keep the Resend email)
+10. Build the internal Hub front-end with grouped sidebar; standardize data-model definitions
+11. Migrate data (Mint Bucks ledger row-for-row with balance verification, color DB, matrices, PO history, configs)
+12. Deploy: one Reserved VM, two front-ends, all secrets; verify backup + auto-print + crawls + public lookups don't collide
 
 ---
 
@@ -307,28 +372,29 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 
 **Credentials & integrations**
 - [ ] **Printavo:** one canonical email + token (migrate the copies in `backup_config` / `printavo_settings`, and reconcile `PRINTAVO_API_EMAIL`)?
-- [ ] **SanMar / S&S:** which credential sets are current (env-var variants vs DB rows)?
-- [ ] **Shipping:** ShipStation + EasyPost keys available? **PrintNode** key + printer confirmed? **Dropbox** dual-write kept? **OpenAI** for Ask AI? **Resend** connector for the portal?
+- [ ] **SanMar / S&S:** which credential sets are current (env-var variants vs DB rows)? Plan to **rotate the SanMar password** after migration (it was stored in plain text)?
+- [ ] **Shipping:** ShipStation + EasyPost keys available? **PrintNode** key + printer confirmed? **Dropbox** dual-write kept? **OpenAI** for Ask AI? **Resend** connector (portal + Mint Bucks)?
+- [ ] **S&S test order:** OK to place (and cancel/keep) one real S&S order to verify the untested submission path?
 
 **Infrastructure**
 - [ ] Deploy as one **Reserved VM** with **Python 3** + **Chromium**, serving **two** front-ends?
 - [ ] Disk/bandwidth budget for full backups acceptable on the VM?
 
 **Data migration (per app: migrate vs. start fresh)**
-- [ ] Email report schedules · auto-print config · PO history · vendor orders · decoration matrices · backup runs/watermarks · **the 6,199-row color database**
+- [ ] Email report schedules · auto-print config · PO history · vendor orders · decoration matrices · backup runs/watermarks · **the 6,199-row color database** · **the Mint Bucks credit ledger (must migrate — system of record)**
 
 **Scope & priority**
-- [ ] Build all modules at once, or phase it (e.g. Purchasing pipeline + Reorder Inbox first)?
+- [ ] Build all modules at once, or phase it (e.g. the merged Ordering pipeline + Reorder Inbox first)?
 - [ ] Wire optional Printavo cross-links now (color match on an order line, shipping ship-to from an order, PDF Sorter enrichment, quote → Printavo order) or keep modules standalone in v1?
 
 ---
 
 ## What This Does Not Include
-- No new Printavo features beyond what the ten existing apps already do (cross-links above are optional)
+- No new Printavo features beyond what the eleven existing apps already do (cross-links above are optional)
 - The Reorder Portal stays the **only** public surface; the rest remain internal
 - No real-time data (Printavo has no webhooks; polling/caching model unchanged)
 - No shipping label *purchase* unless requested (EasyPost `Shipment.buy()` exists but isn't built today)
 
 ---
 
-*End of assessment. Review with your team before approving the build plan.*
+*End of assessment. Source-code review complete (July 7, 2026) — all findings incorporated. Review with your team before approving the build plan.*
