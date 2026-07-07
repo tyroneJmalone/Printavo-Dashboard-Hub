@@ -9,3 +9,4 @@
 - [Shipping estimator](printavo-shipping-estimator.md) — ShipStation vs EasyPost dual quotes, EasyPost carries real UPS discounts, garment weight constants, preset boxes, older non-monorepo template.
 - [ColorCatalog cross-reference](printavo-color-catalog.md) — ~6.2k-row Pantone↔thread/ink table, stock-propagation rule, custom Delta E CIE2000 matcher + LAB cache, older non-monorepo template.
 - [PDF Sorter](printavo-pdf-sorter.md) — Python child-process pdfplumber parsing of Printavo slips + USPS labels, name-match algorithm, size sort constant, modern monorepo template, no secrets.
+- [Vendor Order Hub](printavo-vendor-order-hub.md) — SanMar submitPO SOAP + S&S REST submission (untested), PO browse quirks, DB-stored plaintext creds ⚠️, must merge with PO Builder in Hub.
