@@ -5,3 +5,4 @@
 - [Printavo print engine](printavo-print-engine.md) — public workorder URLs vs session-gated packing slips, Puppeteer login workaround, PrintNode auto-print flow, category→status routing.
 - [Breezy pricing & vendor clients](printavo-breezy-pricing.md) — unit-price formula, matrix jsonb shape, S&S price-field semantics, SanMar SOAP structure + base-size trick, sale detection rules.
 - [PO Builder scan & mutations](printavo-po-builder.md) — two-pass need_ordering scan, complexity/rate limits, lineItemUpdate position gotcha, productionFileCreate push, SanMar field conflict vs Breezy.
+- [Mint Bucks credits & throttle](printavo-mint-bucks.md) — store-credit ledger is system of record, advisory-lock budget claims, 620ms shared throttle, orders-union/quote quirks, no paidAt field.
