@@ -8,3 +8,4 @@
 - [Mint Bucks credits & throttle](printavo-mint-bucks.md) — store-credit ledger is system of record, advisory-lock budget claims, 620ms shared throttle, orders-union/quote quirks, no paidAt field.
 - [Shipping estimator](printavo-shipping-estimator.md) — ShipStation vs EasyPost dual quotes, EasyPost carries real UPS discounts, garment weight constants, preset boxes, older non-monorepo template.
 - [ColorCatalog cross-reference](printavo-color-catalog.md) — ~6.2k-row Pantone↔thread/ink table, stock-propagation rule, custom Delta E CIE2000 matcher + LAB cache, older non-monorepo template.
+- [PDF Sorter](printavo-pdf-sorter.md) — Python child-process pdfplumber parsing of Printavo slips + USPS labels, name-match algorithm, size sort constant, modern monorepo template, no secrets.
