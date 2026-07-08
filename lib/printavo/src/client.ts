@@ -8,6 +8,9 @@ export const MIN_INTERVAL_MS = 620;
 /** Cooldown before the single retry after a 429. */
 export const RETRY_AFTER_429_MS = 5200;
 
+/** Backoff schedule for transient network errors (ECONNRESET etc). */
+export const NETWORK_RETRY_DELAYS_MS = [2000, 6000];
+
 export interface PrintavoClientOptions {
   email: string;
   token: string;
@@ -37,6 +40,12 @@ export class PrintavoApiError extends Error {
 interface GraphQLResponse<T> {
   data?: T;
   errors?: Array<{ message?: string }>;
+}
+
+interface BufferedResponse {
+  status: number;
+  ok: boolean;
+  bodyText: string;
 }
 
 export class PrintavoClient {
@@ -77,13 +86,13 @@ export class PrintavoClient {
     query: string,
     variables: Record<string, unknown>,
   ): Promise<T> {
-    let response = await this.post(query, variables);
+    let response = await this.postWithNetworkRetry(query, variables);
 
     if (response.status === 429) {
       this.last429At = new Date();
       this.retryCount += 1;
       await sleep(RETRY_AFTER_429_MS);
-      response = await this.post(query, variables);
+      response = await this.postWithNetworkRetry(query, variables);
       if (response.status === 429) {
         this.errorCount += 1;
         throw new PrintavoApiError(
@@ -95,14 +104,22 @@ export class PrintavoClient {
 
     if (!response.ok) {
       this.errorCount += 1;
-      const bodyText = await response.text().catch(() => "");
       throw new PrintavoApiError(
-        `Printavo HTTP ${response.status}: ${bodyText.slice(0, 500)}`,
+        `Printavo HTTP ${response.status}: ${response.bodyText.slice(0, 500)}`,
         response.status,
       );
     }
 
-    const body = (await response.json()) as GraphQLResponse<T>;
+    let body: GraphQLResponse<T>;
+    try {
+      body = JSON.parse(response.bodyText) as GraphQLResponse<T>;
+    } catch {
+      this.errorCount += 1;
+      throw new PrintavoApiError(
+        `Printavo returned invalid JSON: ${response.bodyText.slice(0, 200)}`,
+        response.status,
+      );
+    }
 
     if (body.errors && body.errors.length > 0) {
       this.errorCount += 1;
@@ -122,6 +139,35 @@ export class PrintavoClient {
     }
 
     return body.data;
+  }
+
+  /**
+   * fetch() (and body streaming) reject with TypeError ("fetch failed" /
+   * "terminated") on connection-level failures (ECONNRESET, DNS blips).
+   * These are transient — retry with backoff instead of failing the whole
+   * sync run. The response body is fully buffered INSIDE the retried unit
+   * because connection drops surface during body reads too, not just on
+   * the initial fetch. GraphQL queries are read-only, so re-sending after
+   * a partial exchange is safe.
+   */
+  private async postWithNetworkRetry(
+    query: string,
+    variables: Record<string, unknown>,
+  ): Promise<BufferedResponse> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const response = await this.post(query, variables);
+        const bodyText = await response.text();
+        return { status: response.status, ok: response.ok, bodyText };
+      } catch (err) {
+        if (attempt >= NETWORK_RETRY_DELAYS_MS.length) {
+          this.errorCount += 1;
+          throw err;
+        }
+        this.retryCount += 1;
+        await sleep(NETWORK_RETRY_DELAYS_MS[attempt]);
+      }
+    }
   }
 
   private async post(

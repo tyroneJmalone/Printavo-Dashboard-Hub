@@ -94,6 +94,9 @@ export async function upsertOrder(
     total: moneyStr(node.total),
     amountOutstanding: moneyStr(node.amountOutstanding),
     customerDueAt: dateOrNull(node.customerDueAt),
+    invoiceAt: node.invoiceAt ?? null,
+    productionDueAt: dateOrNull(node.dueAt),
+    paymentDueAt: node.paymentDueAt ?? null,
     contactId: node.contact?.id ?? null,
     contactName: node.contact?.fullName ?? null,
     contactEmail: node.contact?.email ?? null,
@@ -144,6 +147,17 @@ export async function upsertOrder(
         newValue: row.customerDueAt?.toISOString() ?? null,
       });
     }
+    pushIfChanged(events, base, "invoiceAt", existing.invoiceAt, row.invoiceAt);
+    if (!sameInstant(existing.productionDueAt, row.productionDueAt ?? null)) {
+      events.push({
+        ...base,
+        eventType: "field_change",
+        field: "productionDueAt",
+        oldValue: existing.productionDueAt?.toISOString() ?? null,
+        newValue: row.productionDueAt?.toISOString() ?? null,
+      });
+    }
+    pushIfChanged(events, base, "paymentDueAt", existing.paymentDueAt, row.paymentDueAt);
     if (events.length === 0) {
       events.push({ ...base, eventType: "updated" });
     }

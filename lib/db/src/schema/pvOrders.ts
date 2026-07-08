@@ -4,6 +4,7 @@ import {
   integer,
   numeric,
   timestamp,
+  date,
   jsonb,
   index,
 } from "drizzle-orm/pg-core";
@@ -29,6 +30,12 @@ export const pvOrdersTable = pgTable(
       scale: 2,
     }),
     customerDueAt: timestamp("customer_due_at", { withTimezone: true }),
+    // Date-only, user-editable in Printavo (defaults to creation date; re-datable).
+    invoiceAt: date("invoice_at"),
+    // Printavo `dueAt` — production due date (full datetime).
+    productionDueAt: timestamp("production_due_at", { withTimezone: true }),
+    // Date-only; defaults to invoiceAt in Printavo.
+    paymentDueAt: date("payment_due_at"),
     contactId: text("contact_id"),
     contactName: text("contact_name"),
     contactEmail: text("contact_email"),

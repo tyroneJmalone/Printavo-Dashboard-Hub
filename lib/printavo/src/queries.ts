@@ -30,6 +30,9 @@ const ORDER_NODE_FIELDS = `
   amountPaid
   amountOutstanding
   customerDueAt
+  invoiceAt
+  dueAt
+  paymentDueAt
   publicUrl
   workorderUrl
   customerNote

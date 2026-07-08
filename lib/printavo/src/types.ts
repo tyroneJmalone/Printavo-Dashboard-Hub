@@ -44,6 +44,12 @@ export interface PvOrderNode {
   amountPaid: number | null;
   amountOutstanding: number | null;
   customerDueAt: string | null;
+  /** User-editable invoice date (date-only, defaults to creation date). */
+  invoiceAt: string | null;
+  /** Production due date (full datetime; usually a few days before customerDueAt). */
+  dueAt: string | null;
+  /** Payment due date (date-only, defaults to invoiceAt). */
+  paymentDueAt: string | null;
   publicUrl: string | null;
   workorderUrl: string | null;
   customerNote: string | null;

@@ -13,7 +13,12 @@ import {
   type PvTransactionNode,
 } from "@workspace/printavo";
 import { getPrintavoClient, printavoConfigured } from "../printavoGateway";
-import { contentHashOf, moneyStr, normalizeTimestamps } from "./differ";
+import {
+  canonicalTransactionDate,
+  contentHashOf,
+  moneyStr,
+  normalizeTimestamps,
+} from "./differ";
 import {
   isSeedActive,
   isPollActive,
@@ -39,7 +44,15 @@ export async function upsertPayment(
   rawNode: PvTransactionNode,
   opts: UpsertOpts,
 ): Promise<UpsertOutcome> {
+  // Correct Printavo's render-timezone drift on transactionDate BEFORE
+  // normalization (the raw createdAt offset is the evidence) and BEFORE
+  // hashing (so the hash is stable across render timezones).
+  const canonicalTxnDate = canonicalTransactionDate(
+    rawNode.timestamps?.createdAt,
+    rawNode.transactionDate,
+  );
   const node = normalizeTimestamps(rawNode);
+  node.transactionDate = canonicalTxnDate;
   const hash = contentHashOf(node);
   const [existing] = await db
     .select()
