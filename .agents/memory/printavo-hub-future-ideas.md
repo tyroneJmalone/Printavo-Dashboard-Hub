@@ -18,3 +18,8 @@ Staff-defined rules that watch incoming orders/quotes and notify the right perso
 3. **Reorder Request → Draft Quote** — portal reorder auto-creates prefilled draft quote in Printavo; reuses proven quote-creation write path.
 
 **How to apply:** all three depend on the change-event sync design above — one more reason v1 sync must emit events, not just overwrite state. Ideas pitched but NOT picked (don't build unprompted): Customer 360, global search, morning digest, vendor stock check at PO time.
+
+# Status duration & frequency analytics (Tyler, July 8, 2026 — for "regimented pipeline monitoring")
+- Time-in-status per order (avg per status, stuck-order flags) + status frequency/recurrence counts (e.g., artwork/proof revision loops = rework rate).
+- **Why:** Tyler wants pipeline discipline metrics; Printavo exposes no status history, so this data only exists if the Hub records status-change events from day one.
+- **How to apply:** derives entirely from the change-event sync (status_change events with timestamps); durations accurate to polling interval. Prioritize getting sync live early so history starts accumulating.

@@ -417,6 +417,13 @@ Flag quotes sitting unanswered past a configurable number of days, presented as 
 ### Reorder Request → Draft Quote *(approved for "down the road" — July 8, 2026)*
 A portal reorder submission auto-creates a **prefilled draft quote in Printavo** (line items, sizes, quantities from the request) instead of email-only — sales reviews and sends. Reuses the quote-creation write path that Breezy/PO Builder already prove out.
 
+### Status Duration & Frequency Analytics *(added July 8, 2026 — for regimented pipeline monitoring)*
+Two views built from the same status-change events as the Activity Timeline:
+- **Time-in-status:** how long each order sat in every status (e.g., "avg 2.3 days in Artwork Approval"; flag orders stuck past a threshold) — the backbone of a regimented pipeline-monitoring process
+- **Status frequency:** how many orders hit a given status, and how many times a status **recurs per order** (e.g., how often orders bounce back for artwork/proof revisions — a rework-rate metric)
+
+**Note:** Printavo doesn't expose status history, so measurement starts the day the Hub sync goes live — history accumulates from launch (accurate to the polling interval, a few minutes). Another reason to build the change-event sync early: the sooner it runs, the sooner this data exists.
+
 ---
 
 ## What This Does Not Include
