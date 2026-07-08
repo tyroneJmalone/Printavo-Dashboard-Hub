@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: sync
+    description: Printavo sync engine
+  - name: printavo
+    description: Printavo gateway
 paths:
   /healthz:
     get:
@@ -24,6 +28,87 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /sync/status:
+    get:
+      operationId: getSyncStatus
+      tags: [sync]
+      summary: Sync engine status
+      description: Local record counts, seed/poll run info, watermarks, scheduler and gateway stats
+      responses:
+        "200":
+          description: Current sync status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncStatus"
+  /sync/events:
+    get:
+      operationId: listChangeEvents
+      tags: [sync]
+      summary: Recent change events
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+        - name: entityType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: eventType
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Change events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChangeEventItem"
+  /sync/seed:
+    post:
+      operationId: startSeed
+      tags: [sync]
+      summary: Start or resume the initial 12-month seed
+      responses:
+        "200":
+          description: Seed start result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedStartResult"
+  /sync/poll:
+    post:
+      operationId: triggerPoll
+      tags: [sync]
+      summary: Run an incremental poll now
+      responses:
+        "200":
+          description: Poll result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PollResult"
+  /printavo/probe:
+    get:
+      operationId: probePrintavo
+      tags: [printavo]
+      summary: One-request connectivity probe against Printavo
+      responses:
+        "200":
+          description: Probe result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProbeResult"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +118,113 @@ components:
           type: string
       required:
         - status
-
+    SyncCounts:
+      type: object
+      properties:
+        orders: { type: integer }
+        quotes: { type: integer }
+        invoices: { type: integer }
+        customers: { type: integer }
+        contacts: { type: integer }
+        statuses: { type: integer }
+        changeEvents: { type: integer }
+      required: [orders, quotes, invoices, customers, contacts, statuses, changeEvents]
+    SyncRunInfo:
+      type: object
+      properties:
+        id: { type: integer }
+        runType: { type: string }
+        status: { type: string }
+        startedAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+        stats:
+          type: ["object", "null"]
+          additionalProperties: true
+        error: { type: ["string", "null"] }
+      required: [id, runType, status, startedAt, finishedAt, stats, error]
+    WatermarkInfo:
+      type: object
+      properties:
+        entity: { type: string }
+        watermark: { type: string }
+      required: [entity, watermark]
+    SchedulerState:
+      type: object
+      properties:
+        running: { type: boolean }
+        pollIntervalMinutes: { type: integer }
+        lastPollAt: { type: ["string", "null"] }
+        lastResult: { type: ["string", "null"] }
+        lastError: { type: ["string", "null"] }
+      required: [running, pollIntervalMinutes, lastPollAt, lastResult, lastError]
+    GatewayStats:
+      type: object
+      properties:
+        requestCount: { type: integer }
+        retryCount: { type: integer }
+        errorCount: { type: integer }
+        lastRequestAt: { type: ["string", "null"] }
+        last429At: { type: ["string", "null"] }
+      required: [requestCount, retryCount, errorCount, lastRequestAt, last429At]
+    SyncStatus:
+      type: object
+      properties:
+        configured: { type: boolean }
+        seedActive: { type: boolean }
+        counts:
+          $ref: "#/components/schemas/SyncCounts"
+        seed:
+          anyOf:
+            - $ref: "#/components/schemas/SyncRunInfo"
+            - type: "null"
+        lastIncremental:
+          anyOf:
+            - $ref: "#/components/schemas/SyncRunInfo"
+            - type: "null"
+        watermarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/WatermarkInfo"
+        scheduler:
+          $ref: "#/components/schemas/SchedulerState"
+        gateway:
+          anyOf:
+            - $ref: "#/components/schemas/GatewayStats"
+            - type: "null"
+      required: [configured, seedActive, counts, seed, lastIncremental, watermarks, scheduler, gateway]
+    ChangeEventItem:
+      type: object
+      properties:
+        id: { type: integer }
+        entityType: { type: string }
+        entityId: { type: string }
+        visualId: { type: ["integer", "null"] }
+        eventType: { type: string }
+        field: { type: ["string", "null"] }
+        oldValue: {}
+        newValue: {}
+        occurredAt: { type: string }
+        syncRunId: { type: ["integer", "null"] }
+      required: [id, entityType, entityId, visualId, eventType, field, occurredAt, syncRunId]
+    SeedStartResult:
+      type: object
+      properties:
+        started: { type: boolean }
+        syncRunId: { type: ["integer", "null"] }
+        message: { type: string }
+      required: [started, syncRunId, message]
+    PollResult:
+      type: object
+      properties:
+        ran: { type: boolean }
+        message: { type: string }
+        stats:
+          type: ["object", "null"]
+          additionalProperties: true
+      required: [ran, message, stats]
+    ProbeResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        message: { type: string }
+      required: [ok, message]

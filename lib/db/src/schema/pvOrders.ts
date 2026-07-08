@@ -1,0 +1,58 @@
+import {
+  pgTable,
+  text,
+  integer,
+  numeric,
+  timestamp,
+  jsonb,
+  index,
+} from "drizzle-orm/pg-core";
+
+/**
+ * Unified quotes + invoices snapshot (Printavo order union).
+ * `data` holds the full raw API payload; hot columns are promoted for querying.
+ * visual_id is indexed (not unique) — quote→invoice conversion may mint a new
+ * printavo id for the same visual id; reconciliation happens in the sync engine.
+ */
+export const pvOrdersTable = pgTable(
+  "pv_orders",
+  {
+    printavoId: text("printavo_id").primaryKey(),
+    visualId: integer("visual_id").notNull(),
+    orderType: text("order_type").notNull(), // 'quote' | 'invoice'
+    statusId: text("status_id"),
+    statusName: text("status_name"),
+    nickname: text("nickname"),
+    total: numeric("total", { precision: 12, scale: 2 }),
+    amountOutstanding: numeric("amount_outstanding", {
+      precision: 12,
+      scale: 2,
+    }),
+    customerDueAt: timestamp("customer_due_at", { withTimezone: true }),
+    contactId: text("contact_id"),
+    contactName: text("contact_name"),
+    contactEmail: text("contact_email"),
+    customerId: text("customer_id"),
+    customerCompany: text("customer_company"),
+    ownerEmail: text("owner_email"),
+    printavoCreatedAt: timestamp("printavo_created_at", { withTimezone: true }),
+    printavoUpdatedAt: timestamp("printavo_updated_at", { withTimezone: true }),
+    data: jsonb("data").notNull(),
+    contentHash: text("content_hash").notNull(),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    syncedAt: timestamp("synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("pv_orders_visual_id_idx").on(t.visualId),
+    index("pv_orders_status_idx").on(t.statusId),
+    index("pv_orders_customer_idx").on(t.customerId),
+    index("pv_orders_pv_updated_idx").on(t.printavoUpdatedAt),
+  ],
+);
+
+export type PvOrder = typeof pvOrdersTable.$inferSelect;
+export type InsertPvOrder = typeof pvOrdersTable.$inferInsert;

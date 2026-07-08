@@ -169,6 +169,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/printavo':
+        specifier: workspace:*
+        version: link:../../lib/printavo
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -438,6 +441,12 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+
+  lib/printavo:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.4
 
   scripts:
     devDependencies:

@@ -5,7 +5,9 @@ description: Durable findings from reading the PrintavoBackup source repo and Pr
 
 # Printavo sync engine — key facts
 
-**Source repo:** `https://github.com/tyroneJmalone/PrintavoBackup.git` (public). Key files: `artifacts/api-server/src/lib/printavo/{client,queries}.ts`, `artifacts/api-server/src/lib/backup/{engine,fetchers,entityWatermarks,scheduler}.ts`, schema in `lib/db/src/schema/`.
+**Source repo:** `https://github.com/tyroneJmalone/PrintavoBackup.git` — WENT PRIVATE (clone auth-failed July 2026). Hub sync engine was rebuilt from these notes instead; if Tyler restores access it's only useful for cross-checking GraphQL field sets.
+
+**Hub v1 note:** order-list GraphQL field sets in `lib/printavo/src/queries.ts` are best-guess pending the first live probe — if Printavo rejects a field, the GraphQL error names it; trim and retry.
 
 ## Official docs (provided by Tyler, July 8 2026)
 - v2 GraphQL (the one to use — all 11 apps use it exclusively): https://www.printavo.com/docs/api/v2
