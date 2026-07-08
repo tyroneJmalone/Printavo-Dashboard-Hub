@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type JSX } from "react";
 
 // ─── Nav (grouped) ──────────────────────────────────────────────────────────
 const NAV_GROUPS: { heading: string | null; items: { id: string; label: string; icon: (p: IconProps) => JSX.Element; badge?: string }[] }[] = [

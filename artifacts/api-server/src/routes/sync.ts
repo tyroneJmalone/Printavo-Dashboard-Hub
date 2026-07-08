@@ -8,6 +8,14 @@ import {
   tableCounts,
 } from "../lib/sync/state";
 import { startOrResumeSeed, isSeedActive } from "../lib/sync/seed";
+import {
+  startOrResumeDetailBackfill,
+  isDetailBackfillActive,
+} from "../lib/sync/detail";
+import {
+  startOrResumePaymentsSeed,
+  isPaymentsSeedActive,
+} from "../lib/sync/payments";
 import { runIncrementalPoll } from "../lib/sync/incremental";
 import { schedulerInfo } from "../lib/sync/scheduler";
 import type { SyncRun } from "@workspace/db";
@@ -29,18 +37,25 @@ function runInfo(run: SyncRun | null) {
 
 router.get("/sync/status", async (req, res) => {
   try {
-    const [counts, seed, incremental, watermarks] = await Promise.all([
-      tableCounts(),
-      latestRun("seed"),
-      latestRun("incremental"),
-      listWatermarks(),
-    ]);
+    const [counts, seed, incremental, detailBackfill, paymentsSeed, watermarks] =
+      await Promise.all([
+        tableCounts(),
+        latestRun("seed"),
+        latestRun("incremental"),
+        latestRun("detail_backfill"),
+        latestRun("payments_seed"),
+        listWatermarks(),
+      ]);
     res.json({
       configured: printavoConfigured(),
       seedActive: isSeedActive(),
+      detailBackfillActive: isDetailBackfillActive(),
+      paymentsSeedActive: isPaymentsSeedActive(),
       counts,
       seed: runInfo(seed),
       lastIncremental: runInfo(incremental),
+      detailBackfill: runInfo(detailBackfill),
+      paymentsSeed: runInfo(paymentsSeed),
       watermarks: watermarks.map((w) => ({
         entity: w.entity,
         watermark: w.watermark.toISOString(),
@@ -105,6 +120,26 @@ router.post("/sync/seed", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to start seed");
     res.status(500).json({ error: "Failed to start seed" });
+  }
+});
+
+router.post("/sync/detail-backfill", async (req, res) => {
+  try {
+    const result = await startOrResumeDetailBackfill(req.log);
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Failed to start detail backfill");
+    res.status(500).json({ error: "Failed to start detail backfill" });
+  }
+});
+
+router.post("/sync/payments-seed", async (req, res) => {
+  try {
+    const result = await startOrResumePaymentsSeed(req.log);
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Failed to start payments seed");
+    res.status(500).json({ error: "Failed to start payments seed" });
   }
 });
 

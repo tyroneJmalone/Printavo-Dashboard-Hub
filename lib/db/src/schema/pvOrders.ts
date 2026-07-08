@@ -39,6 +39,8 @@ export const pvOrdersTable = pgTable(
     printavoUpdatedAt: timestamp("printavo_updated_at", { withTimezone: true }),
     data: jsonb("data").notNull(),
     contentHash: text("content_hash").notNull(),
+    detailContentHash: text("detail_content_hash"),
+    detailSyncedAt: timestamp("detail_synced_at", { withTimezone: true }),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

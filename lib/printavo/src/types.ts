@@ -81,6 +81,113 @@ export interface PvStatusNode {
   name: string;
 }
 
+export interface PvSizeEntry {
+  size: string;
+  count: number;
+}
+
+export interface PvCategoryRef {
+  id: string;
+  name: string | null;
+}
+
+export interface PvProductRef {
+  id: string;
+  brand: string | null;
+}
+
+export interface PvLineItemNode {
+  id: string;
+  itemNumber: string | null;
+  color: string | null;
+  description: string | null;
+  items: number;
+  price: number | null;
+  merch: boolean;
+  productStatus: string | null;
+  sizes: PvSizeEntry[] | null;
+  category: PvCategoryRef | null;
+  product: PvProductRef | null;
+}
+
+export interface PvImprintNode {
+  id: string;
+  details: string | null;
+  pricingMatrixColumn: {
+    id: string;
+    columnName: string | null;
+    matrix: { id: string; name: string | null } | null;
+  } | null;
+  typeOfWork: { id: string; name: string | null } | null;
+}
+
+/** Nested connection in detail queries — inner pageInfo has no endCursor. */
+export interface NestedConnection<T> {
+  nodes: T[];
+  pageInfo: { hasNextPage: boolean };
+}
+
+export interface PvLineItemGroupNode {
+  id: string;
+  position: number | null;
+  lineItems: NestedConnection<PvLineItemNode>;
+  imprints: NestedConnection<PvImprintNode>;
+}
+
+export interface PvOrderDetailNode {
+  id: string;
+  visualId: number;
+  totalQuantity: number | null;
+  timestamps: PvTimestamps;
+  lineItemGroups: NestedConnection<PvLineItemGroupNode>;
+}
+
+export interface InvoicesDetailPage {
+  invoices: Connection<PvOrderDetailNode>;
+}
+
+export interface QuotesDetailPage {
+  quotes: Connection<PvOrderDetailNode>;
+}
+
+export interface SingleOrderDetail {
+  invoice?: PvOrderDetailNode | null;
+  quote?: PvOrderDetailNode | null;
+}
+
+export type PvTransactionTypename =
+  | "Payment"
+  | "PaymentDispute"
+  | "Refund"
+  | "Return"
+  | "Void";
+
+export interface PvTransactedForRef {
+  __typename: "Invoice" | "Quote" | "MerchOrder";
+  id: string;
+  visualId?: number;
+}
+
+export interface PvTransactionNode {
+  __typename: PvTransactionTypename;
+  id: string;
+  amount: number | null;
+  category: string | null;
+  description: string | null;
+  processing: boolean | null;
+  transactionDate: string | null;
+  timestamps: PvTimestamps;
+  transactedFor: PvTransactedForRef | null;
+  /** Payment only */
+  source?: string | null;
+  /** PaymentDispute only */
+  status?: string | null;
+}
+
+export interface TransactionsPage {
+  transactions: Connection<PvTransactionNode>;
+}
+
 export interface InvoicesPage {
   invoices: Connection<PvOrderNode>;
 }

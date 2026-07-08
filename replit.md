@@ -24,9 +24,10 @@ Unified internal hub for Mint Print Works that consolidates 11 separate Printavo
 
 - `lib/printavo/` — standalone Printavo GraphQL v2 client (throttle 620ms, 429 retry, typed queries)
 - `packages/db/` — Drizzle schema: `pv_*` mirror tables, `sync_runs`, `sync_checkpoints`, `entity_watermarks`, `change_events`
-- `artifacts/api-server/src/lib/sync/` — sync engine (seed, incremental poll, differ/hashing, upserts, scheduler, run state)
+- `artifacts/api-server/src/lib/sync/` — sync engine (seed, incremental poll, detail backfill, payments, differ/hashing, upserts, scheduler, run state)
 - `artifacts/api-server/src/routes/sync.ts` — sync status/poll/events API
-- `packages/api-spec/` — OpenAPI source of truth; run codegen after route changes
+- `artifacts/api-server/src/lib/reports/` + `src/routes/reports.ts` — Reports module (reads Postgres ONLY, never the Printavo API — module isolation)
+- `packages/api-spec/` — OpenAPI source of truth; run codegen after route changes (reports endpoints not yet in spec — deferred to UI phase)
 
 ## Architecture decisions
 
@@ -37,7 +38,9 @@ Unified internal hub for Mint Print Works that consolidates 11 separate Printavo
 
 ## Product
 
-- Phase 1 (current): Printavo sync engine — 12-month seed + 5-min incremental polling of quotes/invoices/customers/contacts/statuses into Postgres, with change-event capture (created/updated/status_change/converted).
+- Phase 1 (done): Printavo sync engine — 12-month seed + 5-min incremental polling of quotes/invoices/customers/contacts/statuses into Postgres, with change-event capture (created/updated/status_change/converted).
+- Phase 2 (backend done, awaiting Tyler validation + UI): order detail sync (line item groups/items/imprints), full payments history sync (cash-basis, 2017→today), and Reports API under `/api/reports/*` replicating the legacy Insights app formulas (see `.agents/memory/printavo-reporting-formulas.md`).
+- Known partial data: orders 20104 and 20714 have >25 line-item groups (beyond single-order query caps) — their line items are stored incomplete by design; exclude from report spot checks.
 
 ## Roadmap ideas (Tyler, July 8, 2026)
 
@@ -54,7 +57,9 @@ Unified internal hub for Mint Print Works that consolidates 11 separate Printavo
 - Printavo rate limit is account-wide (10 req/5s) — shared with Tyler's other live apps until they're decommissioned; keep polling headroom.
 - Never hash Printavo nodes without `normalizeTimestamps()` — timezone flapping creates thousands of spurious change events.
 - Poll requests via curl time out client-side (~2.3 min run) but continue server-side; check `sync_runs` table instead.
-- Scheduler ticks ~5 min after boot and every 5 min after; orphaned incremental runs are auto-failed at boot.
+- Scheduler ticks ~5 min after boot and every 5 min after; orphaned incremental runs are auto-failed at boot. Interrupted seed/detail-backfill/payments-seed runs are resumed at boot AND re-checked on every tick (self-healing if two interrupted runs collide at boot).
+- Drizzle `sql` template expands a JS array into a tuple `($1,$2,…)` — for `= ANY(...)` you MUST wrap with `sql.param(arr)` or Postgres errors with "op ANY/ALL (array) requires array on right side".
+- Printavo single-order detail query complexity cap is 25k — top-up limits are 20 groups / 40 items / 15 imprints per group (25/50/25 = 29,636, rejected).
 
 ## Pointers
 

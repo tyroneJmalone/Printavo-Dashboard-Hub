@@ -15,3 +15,5 @@
 - [Hub build decisions](printavo-hub-decisions.md) — answered checklist: staff login (per-user views later), migrate everything, all 6 integrations stay, S&S test OK, phased build.
 - [Breezy reference app](breezy-reference-app.md) — separate SaaS consuming the same color catalog; Hub must export versioned catalog; Printavo file push needs temp public URL; K-Means logo-color idea.
 - [BreezyMock reference app](breezymock-reference-app.md) — lineItemMockupCreate attaches mockups per line item via temp public URL + retry; S&S/SanMar garment image endpoints; proofing canvas schema.
+- [Drizzle raw-SQL array params](drizzle-array-params.md) — sql`` template expands JS arrays into tuples; wrap with sql.param() inside ANY() or Postgres rejects the query.
+- [Printavo detail truncation](printavo-detail-truncation.md) — 25k complexity cap → 20/40/15 top-up limits; truncated counter over-counts re-seen orders; hasNextPage is reliable at exact page boundary.

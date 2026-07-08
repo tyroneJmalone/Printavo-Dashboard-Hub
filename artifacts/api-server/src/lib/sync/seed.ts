@@ -14,7 +14,12 @@ import {
 } from "@workspace/printavo";
 import { getPrintavoClient, printavoConfigured } from "../printavoGateway";
 import { dateOrNull } from "./differ";
-import { isSeedActive, isPollActive, setSeedActive } from "./runState";
+import {
+  isSeedActive,
+  isPollActive,
+  isDetailBackfillActive,
+  setSeedActive,
+} from "./runState";
 import {
   createRun,
   findRunningRun,
@@ -63,6 +68,13 @@ export async function startOrResumeSeed(logger: Logger): Promise<SeedStart> {
       started: false,
       syncRunId: null,
       message: "An incremental poll is running — try again in a moment",
+    };
+  }
+  if (isDetailBackfillActive()) {
+    return {
+      started: false,
+      syncRunId: null,
+      message: "A detail backfill is running — try again once it finishes",
     };
   }
   if (!printavoConfigured()) {

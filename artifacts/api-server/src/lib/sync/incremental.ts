@@ -12,7 +12,20 @@ import {
   type ContactsPage,
 } from "@workspace/printavo";
 import { getPrintavoClient, printavoConfigured } from "../printavoGateway";
-import { isSeedActive, isPollActive, setPollActive } from "./runState";
+import {
+  isSeedActive,
+  isPollActive,
+  isDetailBackfillActive,
+  isPaymentsSeedActive,
+  setPollActive,
+} from "./runState";
+import { crawlTransactions, type PaymentsAgg } from "./payments";
+import {
+  refreshOrderDetail,
+  crawlDetailEntity,
+  newDetailAgg,
+  type DetailAgg,
+} from "./detail";
 import { dateOrNull } from "./differ";
 import { SEED_MONTHS } from "./seed";
 import {
@@ -74,6 +87,20 @@ export async function runIncrementalPoll(
   if (isSeedActive()) {
     return { ran: false, message: "Seed is running — poll skipped", stats: null };
   }
+  if (isDetailBackfillActive()) {
+    return {
+      ran: false,
+      message: "Detail backfill is running — poll skipped",
+      stats: null,
+    };
+  }
+  if (isPaymentsSeedActive()) {
+    return {
+      ran: false,
+      message: "Payments seed is running — poll skipped",
+      stats: null,
+    };
+  }
   if (isPollActive()) {
     return { ran: false, message: "A poll is already running", stats: null };
   }
@@ -101,6 +128,9 @@ export async function runIncrementalPoll(
     const client = getPrintavoClient();
     const opts: UpsertOpts = { emitEvents: true, syncRunId: run.id };
 
+    const changedOrders: Array<{ id: string; kind: "invoices" | "quotes" }> =
+      [];
+
     const invoiceAgg = newAgg();
     let cursor: string | null = null;
     let reachedCutoff = false;
@@ -114,7 +144,11 @@ export async function runIncrementalPoll(
           reachedCutoff = true;
           break;
         }
-        addOutcome(invoiceAgg, await upsertOrder(node, "invoice", opts));
+        const result = await upsertOrder(node, "invoice", opts);
+        addOutcome(invoiceAgg, result);
+        if (result.outcome !== "unchanged") {
+          changedOrders.push({ id: node.id, kind: "invoices" });
+        }
       }
       if (reachedCutoff || !data.invoices.pageInfo.hasNextPage) break;
       cursor = data.invoices.pageInfo.endCursor;
@@ -133,10 +167,40 @@ export async function runIncrementalPoll(
           reachedCutoff = true;
           break;
         }
-        addOutcome(quoteAgg, await upsertOrder(node, "quote", opts));
+        const result = await upsertOrder(node, "quote", opts);
+        addOutcome(quoteAgg, result);
+        if (result.outcome !== "unchanged") {
+          changedOrders.push({ id: node.id, kind: "quotes" });
+        }
       }
       if (reachedCutoff || !data.quotes.pageInfo.hasNextPage) break;
       cursor = data.quotes.pageInfo.endCursor;
+    }
+
+    // Order detail (line items / imprints): refetch for orders whose
+    // list-level hash changed this poll; once a day do a FULL detail
+    // re-crawl to catch child edits that never bump the order's
+    // updatedAt. Skipped until the detail backfill has completed once
+    // (architect ruling: nightly re-crawl runs INSIDE the poll cycle,
+    // never on a separate timer).
+    let detailAgg: DetailAgg | null = null;
+    const detailsWm = await getWatermark("details");
+    if (detailsWm) {
+      detailAgg = newDetailAgg();
+      const detailsDailyWm = await getWatermark("details_daily");
+      const recrawlDue =
+        !detailsDailyWm ||
+        runStart.getTime() - detailsDailyWm.getTime() > DAILY_REFRESH_MS;
+      if (recrawlDue) {
+        await crawlDetailEntity("invoices", cutoff, detailAgg, logger);
+        await crawlDetailEntity("quotes", cutoff, detailAgg, logger);
+        await setWatermark("details_daily", runStart);
+      } else {
+        for (const { id, kind } of changedOrders) {
+          await refreshOrderDetail(id, kind, detailAgg, logger);
+        }
+      }
+      await setWatermark("details", runStart);
     }
 
     let referenceAgg: Agg | null = null;
@@ -144,6 +208,26 @@ export async function runIncrementalPoll(
     if (!refWm || runStart.getTime() - refWm.getTime() > DAILY_REFRESH_MS) {
       referenceAgg = await refreshReferenceEntities(opts, logger);
       await setWatermark("reference_daily", runStart);
+    }
+
+    // Payments: early-stop crawl each poll; once a day do a FULL crawl to
+    // catch backdated transaction-date edits deep in the list. Skipped
+    // entirely until the payments seed has run (no watermark yet).
+    let paymentsAgg: PaymentsAgg | null = null;
+    const paymentsWm = await getWatermark("payments");
+    if (paymentsWm) {
+      const paymentsDailyWm = await getWatermark("payments_daily");
+      const fullCrawlDue =
+        !paymentsDailyWm ||
+        runStart.getTime() - paymentsDailyWm.getTime() > DAILY_REFRESH_MS;
+      paymentsAgg = await crawlTransactions(opts, {
+        stopOnUnchangedPage: !fullCrawlDue,
+        logger,
+      });
+      await setWatermark("payments", runStart);
+      if (fullCrawlDue) {
+        await setWatermark("payments_daily", runStart);
+      }
     }
 
     await setWatermark("invoices", runStart);
@@ -154,11 +238,16 @@ export async function runIncrementalPoll(
       invoices: invoiceAgg,
       quotes: quoteAgg,
       ...(referenceAgg ? { reference: referenceAgg } : {}),
+      ...(paymentsAgg ? { payments: paymentsAgg } : {}),
+      ...(detailAgg ? { details: detailAgg } : {}),
     };
     await completeRun(run.id, stats);
 
     const changes =
-      invoiceAgg.events + quoteAgg.events + (referenceAgg?.events ?? 0);
+      invoiceAgg.events +
+      quoteAgg.events +
+      (referenceAgg?.events ?? 0) +
+      (paymentsAgg?.events ?? 0);
     return {
       ran: true,
       message:

@@ -109,3 +109,142 @@ export function statusesPageQuery(after?: string | null): string {
 export function probeQuery(): string {
   return `query { statuses(first: 1) { nodes { id name } } }`;
 }
+
+/*
+ * ── Order detail (line items / imprints) ────────────────────────────────
+ * Complexity cap is 25,000. The nested list crawl fits at 8 orders/page
+ * with the slim field set below (probed live July 2026); the single-order
+ * query uses generous limits for topping up truncated connections.
+ */
+
+/** Orders per page for the nested detail crawl (complexity-limited: 6 ≈ 22k of the 25k cap; 7 = 25,723 rejected). */
+export const DETAIL_PAGE_SIZE = 6;
+const DETAIL_GROUPS_FIRST = 8;
+const DETAIL_LINE_ITEMS_FIRST = 20;
+const DETAIL_IMPRINTS_FIRST = 8;
+
+const LINE_ITEM_FIELDS = `
+  id
+  itemNumber
+  color
+  description
+  items
+  price
+  merch
+  productStatus
+  sizes { size count }
+  category { id name }
+  product { id brand }
+`;
+
+const IMPRINT_FIELDS = `
+  id
+  details
+  pricingMatrixColumn { id columnName matrix { id name } }
+  typeOfWork { id name }
+`;
+
+function lineItemGroupsSelection(
+  groupsFirst: number,
+  lineItemsFirst: number,
+  imprintsFirst: number,
+): string {
+  return `lineItemGroups(first: ${groupsFirst}) {
+    nodes {
+      id
+      position
+      lineItems(first: ${lineItemsFirst}) {
+        nodes { ${LINE_ITEM_FIELDS} }
+        pageInfo { hasNextPage }
+      }
+      imprints(first: ${imprintsFirst}) {
+        nodes { ${IMPRINT_FIELDS} }
+        pageInfo { hasNextPage }
+      }
+    }
+    pageInfo { hasNextPage }
+  }`;
+}
+
+export type OrderKind = "invoices" | "quotes";
+
+/**
+ * Nested detail crawl page: orders (VISUAL_ID desc) with line item groups,
+ * line items, and imprints inline. Truncation detectable via the nested
+ * pageInfo.hasNextPage flags — top up with singleOrderDetailQuery.
+ */
+export function orderDetailPageQuery(
+  kind: OrderKind,
+  after?: string | null,
+): string {
+  return `query {
+    ${kind}(first: ${DETAIL_PAGE_SIZE}${afterArg(after)}, sortOn: VISUAL_ID, sortDescending: true) {
+      nodes {
+        id
+        visualId
+        totalQuantity
+        timestamps { createdAt updatedAt }
+        ${lineItemGroupsSelection(DETAIL_GROUPS_FIRST, DETAIL_LINE_ITEMS_FIRST, DETAIL_IMPRINTS_FIRST)}
+      }
+      ${PAGE_INFO}
+    }
+  }`;
+}
+
+/**
+ * Single-order detail with generous limits (top-up for truncated orders).
+ * 20/40/15 probed OK July 2026; 25/50/25 = complexity 29,636 > 25k cap.
+ */
+export function singleOrderDetailQuery(
+  kind: "invoice" | "quote",
+  printavoId: string,
+): string {
+  return `query {
+    ${kind}(id: ${lit(printavoId)}) {
+      id
+      visualId
+      totalQuantity
+      timestamps { createdAt updatedAt }
+      ${lineItemGroupsSelection(20, 40, 15)}
+    }
+  }`;
+}
+
+/*
+ * ── Transactions (cash-basis payments) ──────────────────────────────────
+ * Root `transactions` has pagination only (no date filter), newest-first.
+ * TransactionUnion members all share the same core fields; Payment adds
+ * `source`, PaymentDispute adds `status`.
+ */
+
+const TRANSACTION_CORE_FIELDS = `
+  id
+  amount
+  category
+  description
+  processing
+  transactionDate
+  timestamps { createdAt updatedAt }
+  transactedFor {
+    __typename
+    ... on Invoice { id visualId }
+    ... on Quote { id visualId }
+    ... on MerchOrder { id }
+  }
+`;
+
+export function transactionsPageQuery(after?: string | null): string {
+  return `query {
+    transactions(first: ${PAGE_SIZE}${afterArg(after)}) {
+      nodes {
+        __typename
+        ... on Payment { ${TRANSACTION_CORE_FIELDS} source }
+        ... on Refund { ${TRANSACTION_CORE_FIELDS} }
+        ... on Return { ${TRANSACTION_CORE_FIELDS} }
+        ... on Void { ${TRANSACTION_CORE_FIELDS} }
+        ... on PaymentDispute { ${TRANSACTION_CORE_FIELDS} status }
+      }
+      ${PAGE_INFO}
+    }
+  }`;
+}

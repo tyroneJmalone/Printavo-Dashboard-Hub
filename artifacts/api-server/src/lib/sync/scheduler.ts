@@ -2,7 +2,14 @@ import type { Logger } from "pino";
 import { printavoConfigured } from "../printavoGateway";
 import { findRunningRun, failOrphanedRuns } from "./state";
 import { startOrResumeSeed } from "./seed";
+import { startOrResumeDetailBackfill } from "./detail";
+import { startOrResumePaymentsSeed } from "./payments";
 import { runIncrementalPoll } from "./incremental";
+import {
+  isSeedActive,
+  isDetailBackfillActive,
+  isPaymentsSeedActive,
+} from "./runState";
 
 export const POLL_INTERVAL_MINUTES = 5;
 const POLL_INTERVAL_MS = POLL_INTERVAL_MINUTES * 60 * 1000;
@@ -39,7 +46,7 @@ export function startScheduler(logger: Logger): void {
     .catch((err) => {
       logger.error({ err }, "Failed to clean up orphaned runs");
     });
-  void resumeInterruptedSeed(logger);
+  void resumeInterruptedRuns(logger);
   timer = setInterval(() => {
     void tick(logger);
   }, POLL_INTERVAL_MS);
@@ -52,6 +59,7 @@ export function startScheduler(logger: Logger): void {
 
 async function tick(logger: Logger): Promise<void> {
   try {
+    await resumeInterruptedRuns(logger);
     const result = await runIncrementalPoll("scheduler", logger);
     lastPollAt = new Date();
     lastResult = result.message;
@@ -63,8 +71,15 @@ async function tick(logger: Logger): Promise<void> {
   }
 }
 
+async function resumeInterruptedRuns(logger: Logger): Promise<void> {
+  await resumeInterruptedSeed(logger);
+  await resumeInterruptedDetailBackfill(logger);
+  await resumeInterruptedPaymentsSeed(logger);
+}
+
 async function resumeInterruptedSeed(logger: Logger): Promise<void> {
   if (!printavoConfigured()) return;
+  if (isSeedActive()) return;
   try {
     const running = await findRunningRun("seed");
     if (running) {
@@ -73,5 +88,39 @@ async function resumeInterruptedSeed(logger: Logger): Promise<void> {
     }
   } catch (err) {
     logger.error({ err }, "Failed to check for interrupted seed");
+  }
+}
+
+async function resumeInterruptedDetailBackfill(logger: Logger): Promise<void> {
+  if (!printavoConfigured()) return;
+  if (isDetailBackfillActive()) return;
+  try {
+    const running = await findRunningRun("detail_backfill");
+    if (running) {
+      logger.info(
+        { runId: running.id },
+        "Found interrupted detail backfill — resuming",
+      );
+      await startOrResumeDetailBackfill(logger);
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to check for interrupted detail backfill");
+  }
+}
+
+async function resumeInterruptedPaymentsSeed(logger: Logger): Promise<void> {
+  if (!printavoConfigured()) return;
+  if (isPaymentsSeedActive()) return;
+  try {
+    const running = await findRunningRun("payments_seed");
+    if (running) {
+      logger.info(
+        { runId: running.id },
+        "Found interrupted payments seed — resuming",
+      );
+      await startOrResumePaymentsSeed(logger);
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to check for interrupted payments seed");
   }
 }

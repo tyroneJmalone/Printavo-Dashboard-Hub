@@ -16,3 +16,23 @@ export function isPollActive(): boolean {
 export function setPollActive(value: boolean): void {
   pollActive = value;
 }
+
+let detailBackfillActive = false;
+
+export function isDetailBackfillActive(): boolean {
+  return detailBackfillActive;
+}
+
+export function setDetailBackfillActive(value: boolean): void {
+  detailBackfillActive = value;
+}
+
+let paymentsSeedActive = false;
+
+export function isPaymentsSeedActive(): boolean {
+  return paymentsSeedActive;
+}
+
+export function setPaymentsSeedActive(value: boolean): void {
+  paymentsSeedActive = value;
+}
