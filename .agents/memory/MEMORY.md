@@ -14,3 +14,4 @@
 - [Hub future ideas](printavo-hub-future-ideas.md) — parked: custom notification rules on order profiles; v1 sync should emit change events to keep the door open.
 - [Hub build decisions](printavo-hub-decisions.md) — answered checklist: staff login (per-user views later), migrate everything, all 6 integrations stay, S&S test OK, phased build.
 - [Breezy reference app](breezy-reference-app.md) — separate SaaS consuming the same color catalog; Hub must export versioned catalog; Printavo file push needs temp public URL; K-Means logo-color idea.
+- [BreezyMock reference app](breezymock-reference-app.md) — lineItemMockupCreate attaches mockups per line item via temp public URL + retry; S&S/SanMar garment image endpoints; proofing canvas schema.
