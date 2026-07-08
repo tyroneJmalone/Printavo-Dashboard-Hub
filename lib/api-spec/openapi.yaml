@@ -109,7 +109,444 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProbeResult"
+  /reports/orders:
+    get:
+      operationId: getOrdersReport
+      tags: [reports]
+      summary: Filtered orders list with summary stats
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Orders report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrdersReport"
+  /reports/status-breakdown:
+    get:
+      operationId: getStatusBreakdown
+      tags: [reports]
+      summary: Revenue and quantity by order status
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+      responses:
+        "200":
+          description: Breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakdownReport"
+  /reports/pricing-matrix-breakdown:
+    get:
+      operationId: getPricingMatrixBreakdown
+      tags: [reports]
+      summary: Imprint revenue by pricing matrix and column
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+      responses:
+        "200":
+          description: Breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakdownReport"
+  /reports/imprints-by-tier:
+    get:
+      operationId: getImprintsByTier
+      tags: [reports]
+      summary: Imprint revenue by pricing tier (matrix column)
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+      responses:
+        "200":
+          description: Breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakdownReport"
+  /reports/order-quantity-breakdown:
+    get:
+      operationId: getOrderQuantityBreakdown
+      tags: [reports]
+      summary: Revenue by order size bucket
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+      responses:
+        "200":
+          description: Breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakdownReport"
+  /reports/style-number-breakdown:
+    get:
+      operationId: getStyleNumberBreakdown
+      tags: [reports]
+      summary: Line-item revenue by style number
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+      responses:
+        "200":
+          description: Breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakdownReport"
+  /reports/brand-breakdown:
+    get:
+      operationId: getBrandBreakdown
+      tags: [reports]
+      summary: Line-item revenue by brand
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+      responses:
+        "200":
+          description: Breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakdownReport"
+  /reports/color-breakdown:
+    get:
+      operationId: getColorBreakdown
+      tags: [reports]
+      summary: Line-item revenue by color
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+      responses:
+        "200":
+          description: Breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakdownReport"
+  /reports/payments:
+    get:
+      operationId: getPaymentsReport
+      tags: [reports]
+      summary: Cash-basis payment buckets by transaction date
+      parameters:
+        - name: start
+          in: query
+          required: false
+          schema: { type: string }
+        - name: end
+          in: query
+          required: false
+          schema: { type: string }
+        - name: types
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Payments report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentsReport"
+  /reports/payments/stats:
+    get:
+      operationId: getPaymentsStats
+      tags: [reports]
+      summary: Payment totals by type
+      parameters:
+        - name: start
+          in: query
+          required: false
+          schema: { type: string }
+        - name: end
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Payments stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentsStats"
+  /reports/filter-options:
+    get:
+      operationId: getReportFilterOptions
+      tags: [reports]
+      summary: Distinct values for report filter dropdowns
+      responses:
+        "200":
+          description: Filter options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportFilterOptions"
 components:
+  parameters:
+    OrderTypeParam:
+      name: orderType
+      in: query
+      required: false
+      schema: { type: string, enum: [invoice, quote, all] }
+    StatusesParam:
+      name: statuses
+      in: query
+      required: false
+      description: "||-separated status names"
+      schema: { type: string }
+    BrandsParam:
+      name: brands
+      in: query
+      required: false
+      schema: { type: string }
+    CategoriesParam:
+      name: categories
+      in: query
+      required: false
+      schema: { type: string }
+    StyleNumbersParam:
+      name: styleNumbers
+      in: query
+      required: false
+      schema: { type: string }
+    ColorsParam:
+      name: colors
+      in: query
+      required: false
+      schema: { type: string }
+    CreatedStartParam:
+      name: createdStart
+      in: query
+      required: false
+      description: "YYYY-MM-DD, record-created basis (ET)"
+      schema: { type: string }
+    CreatedEndParam:
+      name: createdEnd
+      in: query
+      required: false
+      schema: { type: string }
+    InvoiceStartParam:
+      name: invoiceStart
+      in: query
+      required: false
+      description: "YYYY-MM-DD, invoice-date basis"
+      schema: { type: string }
+    InvoiceEndParam:
+      name: invoiceEnd
+      in: query
+      required: false
+      schema: { type: string }
+    ProductionDueStartParam:
+      name: productionDueStart
+      in: query
+      required: false
+      description: "YYYY-MM-DD, production-due basis (ET)"
+      schema: { type: string }
+    ProductionDueEndParam:
+      name: productionDueEnd
+      in: query
+      required: false
+      schema: { type: string }
+    DueStartParam:
+      name: dueStart
+      in: query
+      required: false
+      description: "YYYY-MM-DD, customer-due basis (ET)"
+      schema: { type: string }
+    DueEndParam:
+      name: dueEnd
+      in: query
+      required: false
+      schema: { type: string }
+    MinQtyParam:
+      name: minQty
+      in: query
+      required: false
+      schema: { type: number }
+    MaxQtyParam:
+      name: maxQty
+      in: query
+      required: false
+      schema: { type: number }
+    MinTotalParam:
+      name: minTotal
+      in: query
+      required: false
+      schema: { type: number }
+    MaxTotalParam:
+      name: maxTotal
+      in: query
+      required: false
+      schema: { type: number }
+    SearchParam:
+      name: search
+      in: query
+      required: false
+      schema: { type: string }
+    ExcludeParam:
+      name: exclude
+      in: query
+      required: false
+      description: "||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)"
+      schema: { type: string }
   schemas:
     HealthStatus:
       type: object
@@ -228,3 +665,132 @@ components:
         ok: { type: boolean }
         message: { type: string }
       required: [ok, message]
+    ReportStats:
+      type: object
+      properties:
+        orders: { type: integer }
+        revenue: { type: number }
+        quantity: { type: integer }
+        avgOrderValue: { type: number }
+      required: [orders, revenue, quantity, avgOrderValue]
+    ReportFiltersEcho:
+      type: object
+      additionalProperties: true
+    ReportOrderSummary:
+      type: object
+      properties:
+        id: { type: string }
+        visualId: { type: ["integer", "null"] }
+        orderType: { type: string }
+        statusName: { type: ["string", "null"] }
+        nickname: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        total: { type: number }
+        qty: { type: integer }
+        createdAt: { type: ["string", "null"] }
+        invoiceAt: { type: ["string", "null"] }
+        productionDueAt: { type: ["string", "null"] }
+        dueAt: { type: ["string", "null"] }
+      required: [id, visualId, orderType, statusName, nickname, customerName, total, qty, createdAt, invoiceAt, productionDueAt, dueAt]
+    OrdersReport:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/ReportFiltersEcho"
+        stats:
+          $ref: "#/components/schemas/ReportStats"
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportOrderSummary"
+      required: [filters, stats, total, limit, offset, orders]
+    ReportBreakdownRow:
+      type: object
+      properties:
+        label: { type: string }
+        orders: { type: integer }
+        quantity: { type: integer }
+        revenue: { type: number }
+        pctOfRevenue: { type: number }
+      required: [label, orders, quantity, revenue, pctOfRevenue]
+    BreakdownReport:
+      type: object
+      properties:
+        filters:
+          $ref: "#/components/schemas/ReportFiltersEcho"
+        stats:
+          $ref: "#/components/schemas/ReportStats"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportBreakdownRow"
+      required: [filters, stats, rows]
+    PaymentBucket:
+      type: object
+      properties:
+        bucket: { type: string }
+        count: { type: integer }
+        amount: { type: number }
+      required: [bucket, count, amount]
+    PaymentsReport:
+      type: object
+      properties:
+        start: { type: string }
+        end: { type: string }
+        types:
+          type: array
+          items: { type: string }
+        granularity: { type: string, enum: [daily, weekly] }
+        total: { type: number }
+        count: { type: integer }
+        buckets:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentBucket"
+      required: [start, end, types, granularity, total, count, buckets]
+    PaymentTypeStat:
+      type: object
+      properties:
+        typename: { type: string }
+        count: { type: integer }
+        amount: { type: number }
+      required: [typename, count, amount]
+    PaymentsStats:
+      type: object
+      properties:
+        start: { type: string }
+        end: { type: string }
+        byType:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentTypeStat"
+        net: { type: number }
+      required: [start, end, byType, net]
+    ReportFilterOptions:
+      type: object
+      properties:
+        statuses:
+          type: array
+          items: { type: string }
+        brands:
+          type: array
+          items: { type: string }
+        categories:
+          type: array
+          items: { type: string }
+        colors:
+          type: array
+          items: { type: string }
+        styleNumbers:
+          type: array
+          items: { type: string }
+        tiers:
+          type: array
+          items: { type: string }
+        paymentTypes:
+          type: array
+          items: { type: string }
+      required: [statuses, brands, categories, colors, styleNumbers, tiers, paymentTypes]

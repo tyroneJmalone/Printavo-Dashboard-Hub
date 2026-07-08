@@ -114,6 +114,173 @@ export interface ProbeResult {
   message: string;
 }
 
+export interface ReportStats {
+  orders: number;
+  revenue: number;
+  quantity: number;
+  avgOrderValue: number;
+}
+
+export interface ReportFiltersEcho { [key: string]: unknown }
+
+export interface ReportOrderSummary {
+  id: string;
+  /** @nullable */
+  visualId: number | null;
+  orderType: string;
+  /** @nullable */
+  statusName: string | null;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  customerName: string | null;
+  total: number;
+  qty: number;
+  /** @nullable */
+  createdAt: string | null;
+  /** @nullable */
+  invoiceAt: string | null;
+  /** @nullable */
+  productionDueAt: string | null;
+  /** @nullable */
+  dueAt: string | null;
+}
+
+export interface OrdersReport {
+  filters: ReportFiltersEcho;
+  stats: ReportStats;
+  total: number;
+  limit: number;
+  offset: number;
+  orders: ReportOrderSummary[];
+}
+
+export interface ReportBreakdownRow {
+  label: string;
+  orders: number;
+  quantity: number;
+  revenue: number;
+  pctOfRevenue: number;
+}
+
+export interface BreakdownReport {
+  filters: ReportFiltersEcho;
+  stats: ReportStats;
+  rows: ReportBreakdownRow[];
+}
+
+export interface PaymentBucket {
+  bucket: string;
+  count: number;
+  amount: number;
+}
+
+export type PaymentsReportGranularity = typeof PaymentsReportGranularity[keyof typeof PaymentsReportGranularity];
+
+
+export const PaymentsReportGranularity = {
+  daily: 'daily',
+  weekly: 'weekly',
+} as const;
+
+export interface PaymentsReport {
+  start: string;
+  end: string;
+  types: string[];
+  granularity: PaymentsReportGranularity;
+  total: number;
+  count: number;
+  buckets: PaymentBucket[];
+}
+
+export interface PaymentTypeStat {
+  typename: string;
+  count: number;
+  amount: number;
+}
+
+export interface PaymentsStats {
+  start: string;
+  end: string;
+  byType: PaymentTypeStat[];
+  net: number;
+}
+
+export interface ReportFilterOptions {
+  statuses: string[];
+  brands: string[];
+  categories: string[];
+  colors: string[];
+  styleNumbers: string[];
+  tiers: string[];
+  paymentTypes: string[];
+}
+
+export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
+
+
+export const OrderTypeParamParameter = {
+  invoice: 'invoice',
+  quote: 'quote',
+  all: 'all',
+} as const;
+
+/**
+ * ||-separated status names
+ */
+export type StatusesParamParameter = string;
+
+export type BrandsParamParameter = string;
+
+export type CategoriesParamParameter = string;
+
+export type StyleNumbersParamParameter = string;
+
+export type ColorsParamParameter = string;
+
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+export type CreatedStartParamParameter = string;
+
+export type CreatedEndParamParameter = string;
+
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+export type InvoiceStartParamParameter = string;
+
+export type InvoiceEndParamParameter = string;
+
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+export type ProductionDueStartParamParameter = string;
+
+export type ProductionDueEndParamParameter = string;
+
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+export type DueStartParamParameter = string;
+
+export type DueEndParamParameter = string;
+
+export type MinQtyParamParameter = number;
+
+export type MaxQtyParamParameter = number;
+
+export type MinTotalParamParameter = number;
+
+export type MaxTotalParamParameter = number;
+
+export type SearchParamParameter = string;
+
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+export type ExcludeParamParameter = string;
+
 export type ListChangeEventsParams = {
 /**
  * @minimum 1
@@ -122,5 +289,353 @@ export type ListChangeEventsParams = {
 limit?: number;
 entityType?: string;
 eventType?: string;
+};
+
+export type GetOrdersReportParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+/**
+ * @minimum 1
+ * @maximum 500
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type GetStatusBreakdownParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+};
+
+export type GetPricingMatrixBreakdownParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+};
+
+export type GetImprintsByTierParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+};
+
+export type GetOrderQuantityBreakdownParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+};
+
+export type GetStyleNumberBreakdownParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+};
+
+export type GetBrandBreakdownParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+};
+
+export type GetColorBreakdownParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+};
+
+export type GetPaymentsReportParams = {
+start?: string;
+end?: string;
+types?: string;
+};
+
+export type GetPaymentsStatsParams = {
+start?: string;
+end?: string;
 };
 

@@ -76,6 +76,8 @@ router.get("/reports/orders", (req, res) => {
       total: o.total,
       qty: o.qty,
       createdAt: o.createdAt,
+      invoiceAt: o.invoiceAt,
+      productionDueAt: o.productionDueAt,
       dueAt: o.dueAt,
     }));
     res.json({

@@ -18,3 +18,5 @@
 - [BreezyMock reference app](breezymock-reference-app.md) — lineItemMockupCreate attaches mockups per line item via temp public URL + retry; S&S/SanMar garment image endpoints; proofing canvas schema.
 - [Drizzle raw-SQL array params](drizzle-array-params.md) — sql`` template expands JS arrays into tuples; wrap with sql.param() inside ANY() or Postgres rejects the query.
 - [Printavo detail truncation](printavo-detail-truncation.md) — 25k complexity cap → 20/40/15 top-up limits; truncated counter over-counts re-seen orders; hasNextPage is reliable at exact page boundary.
+- [Subagent follow-up messaging](subagent-followup-messaging.md) — messageSubagent takes subagentId, not subagentAlias; design subagents may wire only some hooks — audit hook coverage and follow up.
+- [Hub reports UI semantics](hub-reports-ui-semantics.md) — pctOfRevenue arrives already 0-100; invoiceAt is date-only (parse as local, never new Date); money always 2 decimals.

@@ -25,6 +25,10 @@ export interface ReportFilters {
   colors: string[];
   createdStart: string | null;
   createdEnd: string | null;
+  invoiceStart: string | null;
+  invoiceEnd: string | null;
+  productionDueStart: string | null;
+  productionDueEnd: string | null;
   dueStart: string | null;
   dueEnd: string | null;
   minQty: number | null;
@@ -118,6 +122,10 @@ export function parseReportFilters(query: Query): {
     colors: multi(query, "colors"),
     createdStart: dateStr(query, "createdStart", errors),
     createdEnd: dateStr(query, "createdEnd", errors),
+    invoiceStart: dateStr(query, "invoiceStart", errors),
+    invoiceEnd: dateStr(query, "invoiceEnd", errors),
+    productionDueStart: dateStr(query, "productionDueStart", errors),
+    productionDueEnd: dateStr(query, "productionDueEnd", errors),
     dueStart: dateStr(query, "dueStart", errors),
     dueEnd: dateStr(query, "dueEnd", errors),
     minQty: num(query, "minQty", errors),
@@ -142,6 +150,10 @@ export function filtersEcho(f: ReportFilters): Record<string, unknown> {
     colors: f.colors,
     createdStart: f.createdStart,
     createdEnd: f.createdEnd,
+    invoiceStart: f.invoiceStart,
+    invoiceEnd: f.invoiceEnd,
+    productionDueStart: f.productionDueStart,
+    productionDueEnd: f.productionDueEnd,
     dueStart: f.dueStart,
     dueEnd: f.dueEnd,
     minQty: f.minQty,

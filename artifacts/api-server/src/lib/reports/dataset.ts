@@ -40,6 +40,8 @@ export interface ReportOrder {
   total: number;
   qty: number;
   createdAt: string | null;
+  invoiceAt: string | null;
+  productionDueAt: string | null;
   dueAt: string | null;
   groups: ReportGroup[];
 }
@@ -66,6 +68,22 @@ function orderConditions(f: ReportFilters): SQL[] {
   if (f.createdEnd) {
     conds.push(
       sql`(printavo_created_at AT TIME ZONE ${ET})::date <= ${f.createdEnd}::date`,
+    );
+  }
+  if (f.invoiceStart) {
+    conds.push(sql`invoice_at >= ${f.invoiceStart}::date`);
+  }
+  if (f.invoiceEnd) {
+    conds.push(sql`invoice_at <= ${f.invoiceEnd}::date`);
+  }
+  if (f.productionDueStart) {
+    conds.push(
+      sql`(production_due_at AT TIME ZONE ${ET})::date >= ${f.productionDueStart}::date`,
+    );
+  }
+  if (f.productionDueEnd) {
+    conds.push(
+      sql`(production_due_at AT TIME ZONE ${ET})::date <= ${f.productionDueEnd}::date`,
     );
   }
   if (f.dueStart) {
@@ -103,6 +121,8 @@ interface OrderRow {
   contact_name: string | null;
   total: string | null;
   printavo_created_at: string | null;
+  invoice_at: string | null;
+  production_due_at: string | null;
   customer_due_at: string | null;
 }
 
@@ -168,7 +188,7 @@ export async function loadReportOrders(
   const orderRes = await db.execute(sql`
     SELECT printavo_id, visual_id, order_type, status_name, nickname,
            customer_company, contact_name, total,
-           printavo_created_at, customer_due_at
+           printavo_created_at, invoice_at, production_due_at, customer_due_at
     FROM pv_orders${where}
     ORDER BY printavo_created_at DESC NULLS LAST
   `);
@@ -238,6 +258,10 @@ export async function loadReportOrders(
       qty,
       createdAt: r.printavo_created_at
         ? new Date(r.printavo_created_at).toISOString()
+        : null,
+      invoiceAt: r.invoice_at,
+      productionDueAt: r.production_due_at
+        ? new Date(r.production_due_at).toISOString()
         : null,
       dueAt: r.customer_due_at
         ? new Date(r.customer_due_at).toISOString()

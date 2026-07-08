@@ -129,3 +129,431 @@ export const ProbePrintavoResponse = zod.object({
 })
 
 
+/**
+ * @summary Filtered orders list with summary stats
+ */
+export const getOrdersReportQueryLimitMax = 500;
+
+export const getOrdersReportQueryOffsetMin = 0;
+
+
+
+export const GetOrdersReportQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "limit": zod.coerce.number().min(1).max(getOrdersReportQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(getOrdersReportQueryOffsetMin).optional()
+})
+
+export const GetOrdersReportResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number()
+}),
+  "total": zod.number(),
+  "limit": zod.number(),
+  "offset": zod.number(),
+  "orders": zod.array(zod.object({
+  "id": zod.string(),
+  "visualId": zod.number().nullable(),
+  "orderType": zod.string(),
+  "statusName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "total": zod.number(),
+  "qty": zod.number(),
+  "createdAt": zod.string().nullable(),
+  "invoiceAt": zod.string().nullable(),
+  "productionDueAt": zod.string().nullable(),
+  "dueAt": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Revenue and quantity by order status
+ */
+export const GetStatusBreakdownQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+})
+
+export const GetStatusBreakdownResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "orders": zod.number(),
+  "quantity": zod.number(),
+  "revenue": zod.number(),
+  "pctOfRevenue": zod.number()
+}))
+})
+
+
+/**
+ * @summary Imprint revenue by pricing matrix and column
+ */
+export const GetPricingMatrixBreakdownQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+})
+
+export const GetPricingMatrixBreakdownResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "orders": zod.number(),
+  "quantity": zod.number(),
+  "revenue": zod.number(),
+  "pctOfRevenue": zod.number()
+}))
+})
+
+
+/**
+ * @summary Imprint revenue by pricing tier (matrix column)
+ */
+export const GetImprintsByTierQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+})
+
+export const GetImprintsByTierResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "orders": zod.number(),
+  "quantity": zod.number(),
+  "revenue": zod.number(),
+  "pctOfRevenue": zod.number()
+}))
+})
+
+
+/**
+ * @summary Revenue by order size bucket
+ */
+export const GetOrderQuantityBreakdownQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+})
+
+export const GetOrderQuantityBreakdownResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "orders": zod.number(),
+  "quantity": zod.number(),
+  "revenue": zod.number(),
+  "pctOfRevenue": zod.number()
+}))
+})
+
+
+/**
+ * @summary Line-item revenue by style number
+ */
+export const GetStyleNumberBreakdownQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+})
+
+export const GetStyleNumberBreakdownResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "orders": zod.number(),
+  "quantity": zod.number(),
+  "revenue": zod.number(),
+  "pctOfRevenue": zod.number()
+}))
+})
+
+
+/**
+ * @summary Line-item revenue by brand
+ */
+export const GetBrandBreakdownQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+})
+
+export const GetBrandBreakdownResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "orders": zod.number(),
+  "quantity": zod.number(),
+  "revenue": zod.number(),
+  "pctOfRevenue": zod.number()
+}))
+})
+
+
+/**
+ * @summary Line-item revenue by color
+ */
+export const GetColorBreakdownQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+})
+
+export const GetColorBreakdownResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "orders": zod.number(),
+  "quantity": zod.number(),
+  "revenue": zod.number(),
+  "pctOfRevenue": zod.number()
+}))
+})
+
+
+/**
+ * @summary Cash-basis payment buckets by transaction date
+ */
+export const GetPaymentsReportQueryParams = zod.object({
+  "start": zod.coerce.string().optional(),
+  "end": zod.coerce.string().optional(),
+  "types": zod.coerce.string().optional()
+})
+
+export const GetPaymentsReportResponse = zod.object({
+  "start": zod.string(),
+  "end": zod.string(),
+  "types": zod.array(zod.string()),
+  "granularity": zod.enum(['daily', 'weekly']),
+  "total": zod.number(),
+  "count": zod.number(),
+  "buckets": zod.array(zod.object({
+  "bucket": zod.string(),
+  "count": zod.number(),
+  "amount": zod.number()
+}))
+})
+
+
+/**
+ * @summary Payment totals by type
+ */
+export const GetPaymentsStatsQueryParams = zod.object({
+  "start": zod.coerce.string().optional(),
+  "end": zod.coerce.string().optional()
+})
+
+export const GetPaymentsStatsResponse = zod.object({
+  "start": zod.string(),
+  "end": zod.string(),
+  "byType": zod.array(zod.object({
+  "typename": zod.string(),
+  "count": zod.number(),
+  "amount": zod.number()
+})),
+  "net": zod.number()
+})
+
+
+/**
+ * @summary Distinct values for report filter dropdowns
+ */
+export const GetReportFilterOptionsResponse = zod.object({
+  "statuses": zod.array(zod.string()),
+  "brands": zod.array(zod.string()),
+  "categories": zod.array(zod.string()),
+  "colors": zod.array(zod.string()),
+  "styleNumbers": zod.array(zod.string()),
+  "tiers": zod.array(zod.string()),
+  "paymentTypes": zod.array(zod.string())
+})
+
+
