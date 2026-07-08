@@ -39,6 +39,11 @@ Unified internal hub for Mint Print Works that consolidates 11 separate Printavo
 
 - Phase 1 (current): Printavo sync engine — 12-month seed + 5-min incremental polling of quotes/invoices/customers/contacts/statuses into Postgres, with change-event capture (created/updated/status_change/converted).
 
+## Roadmap ideas (Tyler, July 8, 2026)
+
+- Customer enrichment layer on top of synced `pv_customers`: Hub-owned fields such as logo colors, top purchased styles, and a customer category tag ("contractor", "sports", …). Keep in a separate Hub table keyed to the Printavo customer ID — never write into the synced mirror tables.
+- Color database built here will also be the source of the color-matching catalog for the Breezy tweak app (separate SaaS) — design it to be reusable/exportable.
+
 ## User preferences
 
 - **Build one step at a time, testing as we go** (Tyler, July 8, 2026): start with the foundation and verify each phase works before moving to the next — no big-bang builds.
