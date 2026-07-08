@@ -20,6 +20,14 @@ description: Exact revenue/quantity formulas, enrichment attribution, filter sem
 - Payments are **cash-basis**: Σ parseFloat(p.amount) bucketed by transaction_date — daily buckets when range ≤31 days, else ISO-Monday weekly. Payments are separate from order revenue (accrual). Hub needs both views.
 - Percentages = value / totalFilteredRevenue, rounded to 0.1%.
 
+# Two "created" dates in Printavo (verified 2026-07-08)
+- v2 Invoice/Quote top-level `createdAt` is a **date-only, user-editable invoice date** (can be backdated/re-dated in Printavo UI). `timestamps.createdAt` is the immutable record-creation instant (full timestamp).
+- Hub sync stores `timestamps.createdAt` as `printavo_created_at`; the editable invoice date is NOT synced yet.
+- Example: one order entered Apr 23 carried invoice date May 19 — it moves between date buckets depending on basis. Live spot-count differed by 1 order (68 by invoice date vs 67 by record-created) for a 2-month status filter.
+- v1 `created_at` basis (what Insights filtered on) unconfirmed; if Tyler re-dates invoices often, Hub must sync the invoice date and filter on it to replicate legacy numbers.
+- **Why:** silent 1-off (or worse) report mismatches vs Printavo's own UI/legacy app trace to this field split.
+- **How to apply:** when Hub counts differ from Printavo/legacy by a few orders near range boundaries, check date basis first; adding invoice date requires sync query + schema + backfill (content-hash will churn all rows).
+
 # Filter semantics
 - Multi-value params `||`-separated; `exclude` param lists which filters invert to exclusion.
 - Filters: statuses (name, case-insensitive exact), categories, created/production/due date ranges, style number, brand, line-item category, min/max qty, min/max total, text search.
