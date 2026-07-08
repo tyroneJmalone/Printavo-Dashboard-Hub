@@ -29,6 +29,8 @@ export interface PoFileLineItem {
   sizes: PoFileSizeEntry[];
 }
 
+export type PoLockReason = "printavo" | "vendor" | null;
+
 export interface PoFileDto {
   id: string;
   poNumber: string;
@@ -38,11 +40,28 @@ export interface PoFileDto {
   totalCost: number;
   lineItems: PoFileLineItem[];
   pushedToPrintavoAt: string | null;
+  submittedToVendorAt: string | null;
+  locked: boolean;
+  lockReason: PoLockReason;
   createdAt: string;
   updatedAt: string;
 }
 
+/**
+ * Lock rules:
+ * - Submitted to vendor → locked permanently (no unlock, ever).
+ * - Pushed to Printavo → locked, but can be manually unlocked.
+ * - A future re-push to Printavo must reset manuallyUnlocked to false.
+ */
+function lockState(row: PoFileRow): { locked: boolean; lockReason: PoLockReason } {
+  if (row.submittedToVendorAt) return { locked: true, lockReason: "vendor" };
+  if (row.pushedToPrintavoAt && !row.manuallyUnlocked)
+    return { locked: true, lockReason: "printavo" };
+  return { locked: false, lockReason: null };
+}
+
 function toDto(row: PoFileRow): PoFileDto {
+  const { locked, lockReason } = lockState(row);
   return {
     id: row.id,
     poNumber: row.poNumber,
@@ -52,6 +71,9 @@ function toDto(row: PoFileRow): PoFileDto {
     totalCost: Number(row.totalCost),
     lineItems: row.lineItems as unknown as PoFileLineItem[],
     pushedToPrintavoAt: row.pushedToPrintavoAt?.toISOString() ?? null,
+    submittedToVendorAt: row.submittedToVendorAt?.toISOString() ?? null,
+    locked,
+    lockReason,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -110,6 +132,25 @@ export async function getPoFile(id: string): Promise<PoFileDto | null> {
   return rows[0] ? toDto(rows[0]) : null;
 }
 
+export type PoMutationResult =
+  | { status: "ok"; po: PoFileDto }
+  | { status: "not_found" }
+  | { status: "locked"; lockReason: Exclude<PoLockReason, null> };
+
+/** Row fetched inside a transaction with FOR UPDATE so concurrent edits serialize. */
+async function lockRow(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  id: string,
+): Promise<PoFileRow | null> {
+  const rows = await tx
+    .select()
+    .from(poFilesTable)
+    .where(eq(poFilesTable.id, id))
+    .for("update")
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function updatePoFile(
   id: string,
   patch: {
@@ -117,29 +158,89 @@ export async function updatePoFile(
     notes?: string | null;
     lineItems?: PoFileLineItem[];
   },
-): Promise<PoFileDto | null> {
-  const set: Record<string, unknown> = { updatedAt: new Date() };
-  if (patch.poNumber !== undefined) set.poNumber = patch.poNumber;
-  if (patch.notes !== undefined) set.notes = patch.notes;
-  if (patch.lineItems !== undefined) {
-    // Line items are always replaced wholesale; totals never drift from them.
-    const { totalQuantity, totalCost } = computeTotals(patch.lineItems);
-    set.lineItems = patch.lineItems;
-    set.totalQuantity = totalQuantity;
-    set.totalCost = totalCost.toFixed(2);
-  }
-  const rows = await db
-    .update(poFilesTable)
-    .set(set)
-    .where(eq(poFilesTable.id, id))
-    .returning();
-  return rows[0] ? toDto(rows[0]) : null;
+): Promise<PoMutationResult> {
+  return db.transaction(async (tx) => {
+    const row = await lockRow(tx, id);
+    if (!row) return { status: "not_found" as const };
+    const { locked, lockReason } = lockState(row);
+    if (locked) return { status: "locked" as const, lockReason: lockReason! };
+    const set: Record<string, unknown> = { updatedAt: new Date() };
+    if (patch.poNumber !== undefined) set.poNumber = patch.poNumber;
+    if (patch.notes !== undefined) set.notes = patch.notes;
+    if (patch.lineItems !== undefined) {
+      // Line items are always replaced wholesale; totals never drift from them.
+      const { totalQuantity, totalCost } = computeTotals(patch.lineItems);
+      set.lineItems = patch.lineItems;
+      set.totalQuantity = totalQuantity;
+      set.totalCost = totalCost.toFixed(2);
+    }
+    const rows = await tx
+      .update(poFilesTable)
+      .set(set)
+      .where(eq(poFilesTable.id, id))
+      .returning();
+    return { status: "ok" as const, po: toDto(rows[0]) };
+  });
 }
 
-export async function deletePoFile(id: string): Promise<boolean> {
-  const rows = await db
-    .delete(poFilesTable)
-    .where(eq(poFilesTable.id, id))
-    .returning({ id: poFilesTable.id });
-  return rows.length > 0;
+export async function appendPoFileLineItems(
+  id: string,
+  newLines: PoFileLineItem[],
+): Promise<PoMutationResult> {
+  return db.transaction(async (tx) => {
+    const row = await lockRow(tx, id);
+    if (!row) return { status: "not_found" as const };
+    const { locked, lockReason } = lockState(row);
+    if (locked) return { status: "locked" as const, lockReason: lockReason! };
+    const merged = [
+      ...(row.lineItems as unknown as PoFileLineItem[]),
+      ...newLines,
+    ];
+    const { totalQuantity, totalCost } = computeTotals(merged);
+    const rows = await tx
+      .update(poFilesTable)
+      .set({
+        lineItems: merged,
+        totalQuantity,
+        totalCost: totalCost.toFixed(2),
+        updatedAt: new Date(),
+      })
+      .where(eq(poFilesTable.id, id))
+      .returning();
+    return { status: "ok" as const, po: toDto(rows[0]) };
+  });
+}
+
+export type PoUnlockResult =
+  | { status: "ok"; po: PoFileDto }
+  | { status: "not_found" }
+  | { status: "vendor_locked" }
+  | { status: "not_locked" };
+
+export async function unlockPoFile(id: string): Promise<PoUnlockResult> {
+  return db.transaction(async (tx) => {
+    const row = await lockRow(tx, id);
+    if (!row) return { status: "not_found" as const };
+    if (row.submittedToVendorAt) return { status: "vendor_locked" as const };
+    const { locked } = lockState(row);
+    if (!locked) return { status: "not_locked" as const };
+    const rows = await tx
+      .update(poFilesTable)
+      .set({ manuallyUnlocked: true, updatedAt: new Date() })
+      .where(eq(poFilesTable.id, id))
+      .returning();
+    return { status: "ok" as const, po: toDto(rows[0]) };
+  });
+}
+
+export async function deletePoFile(
+  id: string,
+): Promise<"deleted" | "not_found" | "locked"> {
+  return db.transaction(async (tx) => {
+    const row = await lockRow(tx, id);
+    if (!row) return "not_found" as const;
+    if (lockState(row).locked) return "locked" as const;
+    await tx.delete(poFilesTable).where(eq(poFilesTable.id, id));
+    return "deleted" as const;
+  });
 }

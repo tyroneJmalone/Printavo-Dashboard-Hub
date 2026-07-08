@@ -383,6 +383,18 @@ export interface PoFileLineItem {
   sizes: PoFileSizeEntry[];
 }
 
+/**
+ * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+ * @nullable
+ */
+export type PoFileLockReason = typeof PoFileLockReason[keyof typeof PoFileLockReason] | null;
+
+
+export const PoFileLockReason = {
+  printavo: 'printavo',
+  vendor: 'vendor',
+} as const;
+
 export interface PoFile {
   id: string;
   poNumber: string;
@@ -394,6 +406,14 @@ export interface PoFile {
   lineItems: PoFileLineItem[];
   /** @nullable */
   pushedToPrintavoAt: string | null;
+  /** @nullable */
+  submittedToVendorAt: string | null;
+  locked: boolean;
+  /**
+     * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+     * @nullable
+     */
+  lockReason: PoFileLockReason;
   createdAt: string;
   updatedAt: string;
 }
@@ -428,6 +448,11 @@ export interface UpdatePoFileRequest {
   notes?: string | null;
   /** @minItems 1 */
   lineItems?: PoFileLineItem[];
+}
+
+export interface AppendPoLineItemsRequest {
+  /** @minItems 1 */
+  lineItems: PoFileLineItem[];
 }
 
 export interface ReportFilterOptions {

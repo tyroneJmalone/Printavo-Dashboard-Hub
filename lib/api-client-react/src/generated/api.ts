@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AppendPoLineItemsRequest,
   BreakdownReport,
   ChangeEventItem,
   CreatePoFileRequest,
@@ -918,7 +919,7 @@ export const getDeletePoFileUrl = (id: string,) => {
 }
 
 /**
- * @summary Delete a purchase order
+ * @summary Delete a purchase order (blocked while locked)
  */
 export const deletePoFile = async (id: string, options?: RequestInit): Promise<void> => {
 
@@ -966,7 +967,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeletePoFileMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Delete a purchase order
+ * @summary Delete a purchase order (blocked while locked)
  */
 export const useDeletePoFile = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePoFile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -988,7 +989,7 @@ export const getUpdatePoFileUrl = (id: string,) => {
 }
 
 /**
- * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side)
+ * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side). Blocked while locked.
  */
 export const updatePoFile = async (id: string,
     updatePoFileRequest: UpdatePoFileRequest, options?: RequestInit): Promise<PoFile> => {
@@ -1037,7 +1038,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdatePoFileMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side)
+ * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side). Blocked while locked.
  */
 export const useUpdatePoFile = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePoFile>>, TError,{id: string;data: BodyType<UpdatePoFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1048,6 +1049,147 @@ export const useUpdatePoFile = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getUpdatePoFileMutationOptions(options));
+    }
+
+export const getAppendPoLineItemsUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}/line-items`
+}
+
+/**
+ * @summary Append line items to an existing PO (totals recomputed server-side). Blocked while locked.
+ */
+export const appendPoLineItems = async (id: string,
+    appendPoLineItemsRequest: AppendPoLineItemsRequest, options?: RequestInit): Promise<PoFile> => {
+
+  return customFetch<PoFile>(getAppendPoLineItemsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(appendPoLineItemsRequest)
+  }
+);}
+
+
+
+
+export const getAppendPoLineItemsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof appendPoLineItems>>, TError,{id: string;data: BodyType<AppendPoLineItemsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof appendPoLineItems>>, TError,{id: string;data: BodyType<AppendPoLineItemsRequest>}, TContext> => {
+
+const mutationKey = ['appendPoLineItems'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof appendPoLineItems>>, {id: string;data: BodyType<AppendPoLineItemsRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  appendPoLineItems(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AppendPoLineItemsMutationResult = NonNullable<Awaited<ReturnType<typeof appendPoLineItems>>>
+    export type AppendPoLineItemsMutationBody = BodyType<AppendPoLineItemsRequest>
+    export type AppendPoLineItemsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Append line items to an existing PO (totals recomputed server-side). Blocked while locked.
+ */
+export const useAppendPoLineItems = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof appendPoLineItems>>, TError,{id: string;data: BodyType<AppendPoLineItemsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof appendPoLineItems>>,
+        TError,
+        {id: string;data: BodyType<AppendPoLineItemsRequest>},
+        TContext
+      > => {
+      return useMutation(getAppendPoLineItemsMutationOptions(options));
+    }
+
+export const getUnlockPoFileUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}/unlock`
+}
+
+/**
+ * @summary Manually unlock a PO that was pushed to Printavo. POs submitted to a vendor can never be unlocked.
+ */
+export const unlockPoFile = async (id: string, options?: RequestInit): Promise<PoFile> => {
+
+  return customFetch<PoFile>(getUnlockPoFileUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getUnlockPoFileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockPoFile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlockPoFile>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['unlockPoFile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlockPoFile>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  unlockPoFile(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlockPoFileMutationResult = NonNullable<Awaited<ReturnType<typeof unlockPoFile>>>
+
+    export type UnlockPoFileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Manually unlock a PO that was pushed to Printavo. POs submitted to a vendor can never be unlocked.
+ */
+export const useUnlockPoFile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockPoFile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlockPoFile>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getUnlockPoFileMutationOptions(options));
     }
 
 export const getGetPoFileHtmlUrl = (id: string,) => {

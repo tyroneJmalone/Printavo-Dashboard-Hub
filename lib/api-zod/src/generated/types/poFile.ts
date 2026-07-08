@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PoFileLineItem } from './poFileLineItem';
+import type { PoFileLockReason } from './poFileLockReason';
 
 export interface PoFile {
   id: string;
@@ -18,6 +19,14 @@ export interface PoFile {
   lineItems: PoFileLineItem[];
   /** @nullable */
   pushedToPrintavoAt: string | null;
+  /** @nullable */
+  submittedToVendorAt: string | null;
+  locked: boolean;
+  /**
+     * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+     * @nullable
+     */
+  lockReason: PoFileLockReason;
   createdAt: string;
   updatedAt: string;
 }

@@ -2,9 +2,12 @@ import { useState } from "react";
 import {
   useVendorLookup,
   useCreatePoFile,
+  useAppendPoLineItems,
+  useListPoFiles,
   getListPoFilesQueryKey,
   type VendorLookupResult,
   type PoFileLineItem,
+  type PoFile,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -293,10 +296,19 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [poNumber, setPoNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  // Per-vendor save target: "new" (default) or an existing PO id to append to.
+  const [targets, setTargets] = useState<Record<string, string>>({});
 
   const createPo = useCreatePoFile();
+  const appendLines = useAppendPoLineItems();
+  const { data: poData } = useListPoFiles();
 
   if (!open) return null;
+
+  const openPosForVendor = (vendor: CartVendor): PoFile[] =>
+    (poData?.poFiles ?? []).filter((p) => p.vendorName === vendor && !p.locked);
+
+  const targetFor = (vendor: CartVendor): string => targets[vendor] ?? "new";
 
   const allReady =
     items.length > 0 &&
@@ -324,12 +336,16 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     vendorGroups.set(i.vendor, g);
   }
 
+  const newPoGroups = [...vendorGroups.keys()].filter((v) => targetFor(v) === "new");
+  const needsPoNumber = newPoGroups.length > 0;
+
   async function handleSave() {
-    if (!allReady || poNumber.trim().length === 0) return;
+    if (!allReady || (needsPoNumber && poNumber.trim().length === 0)) return;
     setSaving(true);
     const suffixes: Record<CartVendor, string> = { sanmar: "SM", ss: "SS", manual: "M" };
-    const multi = vendorGroups.size > 1;
+    const multi = newPoGroups.length > 1;
     const saved: string[] = [];
+    const appended: string[] = [];
     let failed: string | null = null;
     for (const [vendor, groupItems] of vendorGroups) {
       try {
@@ -354,16 +370,25 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               sizeIndex: s.sizeIndex,
             })),
         }));
-        const num = multi ? `${poNumber.trim()}-${suffixes[vendor]}` : poNumber.trim();
-        await createPo.mutateAsync({
-          data: {
-            poNumber: num,
-            vendorName: vendor,
-            notes: notes.trim() ? notes.trim() : null,
-            lineItems,
-          },
-        });
-        saved.push(num);
+        const target = targetFor(vendor);
+        if (target === "new") {
+          const num = multi ? `${poNumber.trim()}-${suffixes[vendor]}` : poNumber.trim();
+          await createPo.mutateAsync({
+            data: {
+              poNumber: num,
+              vendorName: vendor,
+              notes: notes.trim() ? notes.trim() : null,
+              lineItems,
+            },
+          });
+          saved.push(num);
+        } else {
+          const po = await appendLines.mutateAsync({
+            id: target,
+            data: { lineItems },
+          });
+          appended.push(po.poNumber);
+        }
         // Drop saved items immediately so a retry after a later failure
         // can never create duplicate POs for this vendor group.
         for (const i of groupItems) removeItem(i.key);
@@ -376,12 +401,14 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         break;
       }
     }
-    if (saved.length > 0) {
+    if (saved.length > 0 || appended.length > 0) {
       queryClient.invalidateQueries({ queryKey: getListPoFilesQueryKey() });
-      toast({
-        title: `Saved ${saved.length} PO${saved.length > 1 ? "s" : ""}: ${saved.join(", ")}`,
-        description: "Find them in the PO Log.",
-      });
+      const parts: string[] = [];
+      if (saved.length > 0)
+        parts.push(`Saved ${saved.length} new PO${saved.length > 1 ? "s" : ""}: ${saved.join(", ")}`);
+      if (appended.length > 0)
+        parts.push(`Added items to PO${appended.length > 1 ? "s" : ""} ${appended.join(", ")}`);
+      toast({ title: parts.join(" · "), description: "Find them in the PO Log." });
     }
     if (failed) {
       toast({
@@ -392,6 +419,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     } else {
       setPoNumber("");
       setNotes("");
+      setTargets({});
       onClose();
     }
     setSaving(false);
@@ -430,17 +458,50 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <div className="flex-shrink-0 border-t border-slate-800 p-4 space-y-3 bg-slate-900/60">
             {vendorGroups.size > 1 && (
               <div className="text-[11px] text-slate-400">
-                {vendorGroups.size} vendors in cart — one PO will be saved per vendor
-                (suffixes added to the PO number).
+                {vendorGroups.size} vendors in cart — each saves to its own PO
+                {newPoGroups.length > 1 ? " (suffixes added to new PO numbers)" : ""}.
               </div>
             )}
+            {[...vendorGroups.keys()].map((vendor) => {
+              const existing = openPosForVendor(vendor);
+              if (existing.length === 0) return null;
+              return (
+                <div key={vendor} className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-slate-400 w-28 flex-shrink-0">
+                    {VENDOR_LABELS[vendor]} items →
+                  </span>
+                  <select
+                    value={targetFor(vendor)}
+                    onChange={(e) =>
+                      setTargets((t) => ({ ...t, [vendor]: e.target.value }))
+                    }
+                    aria-label={`Destination for ${VENDOR_LABELS[vendor]} items`}
+                    className="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200"
+                  >
+                    <option value="new">Create new PO</option>
+                    {existing.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        Add to PO {p.poNumber} ({p.lineItems.length} line
+                        {p.lineItems.length === 1 ? "" : "s"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
             <div className="flex gap-2">
-              <input
-                value={poNumber}
-                onChange={(e) => setPoNumber(e.target.value)}
-                placeholder="PO number"
-                className="flex-1 bg-slate-800 border border-slate-600 rounded px-2.5 py-2 text-sm font-mono text-white"
-              />
+              {needsPoNumber ? (
+                <input
+                  value={poNumber}
+                  onChange={(e) => setPoNumber(e.target.value)}
+                  placeholder="PO number"
+                  className="flex-1 bg-slate-800 border border-slate-600 rounded px-2.5 py-2 text-sm font-mono text-white"
+                />
+              ) : (
+                <div className="flex-1 flex items-center text-xs text-slate-400">
+                  All items will be added to existing POs.
+                </div>
+              )}
               <div className="text-right">
                 <div className="text-[10px] text-slate-500 uppercase font-semibold">Total</div>
                 <div className="font-mono font-bold text-[#10b981]">
@@ -458,11 +519,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSave}
-                disabled={!allReady || poNumber.trim().length === 0 || saving}
+                disabled={!allReady || (needsPoNumber && poNumber.trim().length === 0) || saving}
                 className="flex-1 flex items-center justify-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-[#059669] text-white hover:bg-[#047857] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                Save PO{vendorGroups.size > 1 ? "s" : ""}
+                {needsPoNumber ? `Save PO${newPoGroups.length > 1 ? "s" : ""}` : "Add to PO"}
               </button>
               <Link
                 href="/po-log"

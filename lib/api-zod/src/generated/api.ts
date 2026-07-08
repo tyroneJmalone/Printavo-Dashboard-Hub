@@ -245,6 +245,9 @@ export const ListPoFilesResponse = zod.object({
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
+  "submittedToVendorAt": zod.string().nullable(),
+  "locked": zod.boolean(),
+  "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }))
@@ -316,6 +319,9 @@ export const CreatePoFileResponse = zod.object({
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
+  "submittedToVendorAt": zod.string().nullable(),
+  "locked": zod.boolean(),
+  "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -359,13 +365,16 @@ export const GetPoFileResponse = zod.object({
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
+  "submittedToVendorAt": zod.string().nullable(),
+  "locked": zod.boolean(),
+  "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
 
 
 /**
- * @summary Delete a purchase order
+ * @summary Delete a purchase order (blocked while locked)
  */
 export const DeletePoFileParams = zod.object({
   "id": zod.coerce.string()
@@ -375,7 +384,7 @@ export const DeletePoFileResponse = zod.void()
 
 
 /**
- * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side)
+ * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side). Blocked while locked.
  */
 export const UpdatePoFileParams = zod.object({
   "id": zod.coerce.string()
@@ -442,6 +451,128 @@ export const UpdatePoFileResponse = zod.object({
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
+  "submittedToVendorAt": zod.string().nullable(),
+  "locked": zod.boolean(),
+  "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Append line items to an existing PO (totals recomputed server-side). Blocked while locked.
+ */
+export const AppendPoLineItemsParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const appendPoLineItemsBodyLineItemsItemSizesItemQtyMin = 0;
+
+
+
+
+export const AppendPoLineItemsBody = zod.object({
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(appendPoLineItemsBodyLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})).min(1)
+})
+
+export const appendPoLineItemsResponseLineItemsItemSizesItemQtyMin = 0;
+
+
+
+export const AppendPoLineItemsResponse = zod.object({
+  "id": zod.string(),
+  "poNumber": zod.string(),
+  "vendorName": zod.string(),
+  "notes": zod.string().nullable(),
+  "totalQuantity": zod.number(),
+  "totalCost": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(appendPoLineItemsResponseLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})),
+  "pushedToPrintavoAt": zod.string().nullable(),
+  "submittedToVendorAt": zod.string().nullable(),
+  "locked": zod.boolean(),
+  "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Manually unlock a PO that was pushed to Printavo. POs submitted to a vendor can never be unlocked.
+ */
+export const UnlockPoFileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const unlockPoFileResponseLineItemsItemSizesItemQtyMin = 0;
+
+
+
+export const UnlockPoFileResponse = zod.object({
+  "id": zod.string(),
+  "poNumber": zod.string(),
+  "vendorName": zod.string(),
+  "notes": zod.string().nullable(),
+  "totalQuantity": zod.number(),
+  "totalCost": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(unlockPoFileResponseLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})),
+  "pushedToPrintavoAt": zod.string().nullable(),
+  "submittedToVendorAt": zod.string().nullable(),
+  "locked": zod.boolean(),
+  "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })

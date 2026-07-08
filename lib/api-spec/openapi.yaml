@@ -204,7 +204,7 @@ paths:
     delete:
       operationId: deletePoFile
       tags: [purchasing]
-      summary: Delete a purchase order
+      summary: Delete a purchase order (blocked while locked)
       parameters:
         - name: id
           in: path
@@ -219,10 +219,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: PO is locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     patch:
       operationId: updatePoFile
       tags: [purchasing]
-      summary: Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side)
+      summary: Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side). Blocked while locked.
       parameters:
         - name: id
           in: path
@@ -243,6 +249,76 @@ paths:
                 $ref: "#/components/schemas/PoFile"
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: PO is locked or the PO number is already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/po-files/{id}/line-items:
+    post:
+      operationId: appendPoLineItems
+      tags: [purchasing]
+      summary: Append line items to an existing PO (totals recomputed server-side). Blocked while locked.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppendPoLineItemsRequest"
+      responses:
+        "200":
+          description: Updated PO file with the appended lines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoFile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: PO is locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/po-files/{id}/unlock:
+    post:
+      operationId: unlockPoFile
+      tags: [purchasing]
+      summary: Manually unlock a PO that was pushed to Printavo. POs submitted to a vendor can never be unlocked.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Unlocked PO file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoFile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: PO is not locked, or was submitted to the vendor (permanent lock)
           content:
             application/json:
               schema:
@@ -1081,9 +1157,15 @@ components:
           items:
             $ref: "#/components/schemas/PoFileLineItem"
         pushedToPrintavoAt: { type: ["string", "null"] }
+        submittedToVendorAt: { type: ["string", "null"] }
+        locked: { type: boolean }
+        lockReason:
+          type: ["string", "null"]
+          enum: [printavo, vendor, null]
+          description: Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
         createdAt: { type: string }
         updatedAt: { type: string }
-      required: [id, poNumber, vendorName, notes, totalQuantity, totalCost, lineItems, pushedToPrintavoAt, createdAt, updatedAt]
+      required: [id, poNumber, vendorName, notes, totalQuantity, totalCost, lineItems, pushedToPrintavoAt, submittedToVendorAt, locked, lockReason, createdAt, updatedAt]
     PoFileList:
       type: object
       properties:
@@ -1114,6 +1196,15 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/PoFileLineItem"
+    AppendPoLineItemsRequest:
+      type: object
+      properties:
+        lineItems:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PoFileLineItem"
+      required: [lineItems]
     ReportFilterOptions:
       type: object
       properties:

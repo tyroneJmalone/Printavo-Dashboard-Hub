@@ -1,8 +1,9 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
 import {
   VendorLookupBody,
   CreatePoFileBody,
   UpdatePoFileBody,
+  AppendPoLineItemsBody,
 } from "@workspace/api-zod";
 import { loadNeedsOrdering } from "../lib/purchasing/needsOrdering";
 import { vendorLookup, VendorConfigError } from "../lib/purchasing/vendorLookup";
@@ -11,8 +12,11 @@ import {
   listPoFiles,
   getPoFile,
   updatePoFile,
+  appendPoFileLineItems,
+  unlockPoFile,
   deletePoFile,
   type PoFileLineItem,
+  type PoMutationResult,
 } from "../lib/purchasing/poFiles";
 import { renderPoHtml } from "../lib/purchasing/poHtml";
 
@@ -111,6 +115,23 @@ router.get("/purchasing/po-files/:id", (req, res) => {
     });
 });
 
+const LOCK_MESSAGES: Record<"printavo" | "vendor", string> = {
+  printavo: "PO is locked — it was pushed to Printavo. Unlock it first to make changes.",
+  vendor: "PO is locked — it was submitted to the vendor and can no longer be changed.",
+};
+
+function sendMutationResult(res: Response, result: PoMutationResult): void {
+  if (result.status === "not_found") {
+    res.status(404).json({ error: "PO not found" });
+    return;
+  }
+  if (result.status === "locked") {
+    res.status(409).json({ error: LOCK_MESSAGES[result.lockReason] });
+    return;
+  }
+  res.json(result.po);
+}
+
 router.patch("/purchasing/po-files/:id", (req, res) => {
   const parsed = UpdatePoFileBody.safeParse(req.body);
   if (!parsed.success) {
@@ -122,13 +143,7 @@ router.patch("/purchasing/po-files/:id", (req, res) => {
     notes: parsed.data.notes,
     lineItems: parsed.data.lineItems as PoFileLineItem[] | undefined,
   })
-    .then((po) => {
-      if (!po) {
-        res.status(404).json({ error: "PO not found" });
-        return;
-      }
-      res.json(po);
-    })
+    .then((result) => sendMutationResult(res, result))
     .catch((err) => {
       if (isUniqueViolation(err)) {
         res.status(409).json({ error: "That PO number is already in use" });
@@ -139,11 +154,54 @@ router.patch("/purchasing/po-files/:id", (req, res) => {
     });
 });
 
+router.post("/purchasing/po-files/:id/line-items", (req, res) => {
+  const parsed = AppendPoLineItemsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid line items payload" });
+    return;
+  }
+  appendPoFileLineItems(req.params.id, parsed.data.lineItems as PoFileLineItem[])
+    .then((result) => sendMutationResult(res, result))
+    .catch((err) => {
+      req.log.error({ err }, "PO line item append failed");
+      res.status(500).json({ error: "Failed to add items to PO" });
+    });
+});
+
+router.post("/purchasing/po-files/:id/unlock", (req, res) => {
+  unlockPoFile(req.params.id)
+    .then((result) => {
+      switch (result.status) {
+        case "not_found":
+          res.status(404).json({ error: "PO not found" });
+          return;
+        case "vendor_locked":
+          res.status(409).json({
+            error: "This PO was submitted to the vendor — it can never be unlocked.",
+          });
+          return;
+        case "not_locked":
+          res.status(409).json({ error: "PO is not locked" });
+          return;
+        case "ok":
+          res.json(result.po);
+      }
+    })
+    .catch((err) => {
+      req.log.error({ err }, "PO unlock failed");
+      res.status(500).json({ error: "Failed to unlock PO" });
+    });
+});
+
 router.delete("/purchasing/po-files/:id", (req, res) => {
   deletePoFile(req.params.id)
-    .then((deleted) => {
-      if (!deleted) {
+    .then((outcome) => {
+      if (outcome === "not_found") {
         res.status(404).json({ error: "PO not found" });
+        return;
+      }
+      if (outcome === "locked") {
+        res.status(409).json({ error: "PO is locked and cannot be deleted" });
         return;
       }
       res.status(204).end();

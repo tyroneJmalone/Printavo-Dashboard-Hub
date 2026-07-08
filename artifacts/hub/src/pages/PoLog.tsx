@@ -2,9 +2,13 @@ import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import {
   useListPoFiles,
+  useUnlockPoFile,
+  getListPoFilesQueryKey,
   getGetPoFileHtmlUrl,
   type PoFile,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { PoEditor } from "@/components/purchasing/PoEditor";
 import { formatNumber } from "@/lib/format";
 import {
@@ -15,6 +19,8 @@ import {
   ChevronDown,
   ChevronRight,
   Pencil,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -30,6 +36,32 @@ function money(n: number): string {
 function PoRow({ po }: { po: PoFile }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const unlock = useUnlockPoFile({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListPoFilesQueryKey() });
+        toast({
+          title: `PO ${po.poNumber} unlocked`,
+          description:
+            "It was already pushed to Printavo — re-push after your changes so Printavo matches.",
+        });
+      },
+      onError: (err) => {
+        const apiMsg =
+          err && typeof err === "object" && "data" in err
+            ? (err as { data?: { error?: string } }).data?.error
+            : undefined;
+        toast({
+          title: "Could not unlock PO",
+          description: apiMsg ?? "Unlock failed",
+          variant: "destructive",
+        });
+      },
+    },
+  });
 
   const created = new Date(po.createdAt).toLocaleDateString("en-US", {
     month: "short",
@@ -61,22 +93,64 @@ function PoRow({ po }: { po: PoFile }) {
         <div className="font-mono font-bold text-[#10b981]">{money(po.totalCost)}</div>
         <span
           className={`inline-flex items-center px-2 py-1 rounded text-[11px] font-semibold ${
-            po.pushedToPrintavoAt
-              ? "bg-[#059669]/10 text-[#10b981] border border-[#059669]/20"
-              : "bg-slate-800/70 text-slate-500 border border-slate-700"
+            po.submittedToVendorAt
+              ? "bg-sky-500/10 text-sky-400 border border-sky-500/20"
+              : po.pushedToPrintavoAt
+                ? "bg-[#059669]/10 text-[#10b981] border border-[#059669]/20"
+                : "bg-slate-800/70 text-slate-500 border border-slate-700"
           }`}
         >
-          {po.pushedToPrintavoAt ? "Pushed to Printavo" : "Not pushed"}
+          {po.submittedToVendorAt
+            ? "Submitted to vendor"
+            : po.pushedToPrintavoAt
+              ? "Pushed to Printavo"
+              : "Not pushed"}
         </span>
+        {po.locked && (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
+            title={
+              po.lockReason === "vendor"
+                ? "Submitted to the vendor — permanently locked"
+                : "Pushed to Printavo — unlock to edit"
+            }
+          >
+            <Lock size={11} /> Locked
+          </span>
+        )}
         <div className="flex-1" />
         {!editing && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setEditing(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
-            >
-              <Pencil size={13} /> Edit
-            </button>
+            {!po.locked && (
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
+              >
+                <Pencil size={13} /> Edit
+              </button>
+            )}
+            {po.locked && po.lockReason === "printavo" && (
+              <button
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Unlock PO ${po.poNumber}? It was already pushed to Printavo — after editing, re-push it so Printavo matches.`,
+                    )
+                  ) {
+                    unlock.mutate({ id: po.id });
+                  }
+                }}
+                disabled={unlock.isPending}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+              >
+                {unlock.isPending ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Unlock size={13} />
+                )}
+                Unlock
+              </button>
+            )}
             <a
               href={getGetPoFileHtmlUrl(po.id)}
               target="_blank"

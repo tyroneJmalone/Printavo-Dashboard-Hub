@@ -6,6 +6,7 @@ import {
   numeric,
   jsonb,
   timestamp,
+  boolean,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -27,6 +28,12 @@ export const poFilesTable = pgTable(
     /** PoFileLineItem[] snapshot — see purchasing types in api-server. */
     lineItems: jsonb("line_items").notNull(),
     pushedToPrintavoAt: timestamp("pushed_to_printavo_at", { withTimezone: true }),
+    submittedToVendorAt: timestamp("submitted_to_vendor_at", { withTimezone: true }),
+    /**
+     * Manual unlock after a Printavo push (allowed) — vendor submission can
+     * never be unlocked. A future re-push must reset this to false.
+     */
+    manuallyUnlocked: boolean("manually_unlocked").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

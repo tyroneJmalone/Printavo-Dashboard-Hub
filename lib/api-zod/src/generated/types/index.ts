@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './appendPoLineItemsRequest';
 export * from './brandsParamParameter';
 export * from './breakdownReport';
 export * from './categoriesParamParameter';
@@ -52,6 +53,7 @@ export * from './poFile';
 export * from './poFileLineItem';
 export * from './poFileLineItemSource';
 export * from './poFileList';
+export * from './poFileLockReason';
 export * from './poFileSizeEntry';
 export * from './pollResult';
 export * from './pollResultStats';

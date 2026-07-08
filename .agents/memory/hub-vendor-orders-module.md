@@ -28,6 +28,13 @@ description: Durable decisions from the Hub's purchasing module (P2 cart/pricing
 - The e2e subagent edits REAL PO data when testing PO Log edit flows. Always snapshot the PO list (curl) before running such tests and restore afterwards — line-item snapshots can be reconstructed from pv_line_items sizes + a fresh vendor lookup (SKUs/costs), but only if you know which line was touched.
   **Why:** a test once removed a real line from Tyler's PO; restoration required cross-referencing DB + S&S.
 
+# PO lock model (P2.6, approved)
+- Two lock tiers: vendor submission (`submitted_to_vendor_at`) is a **permanent** lock — no unlock path by design; Printavo push (`pushed_to_printavo_at`) locks but is manually unlockable (`manually_unlocked` flag).
+  **Why:** Tyler's rule — once a vendor has the order, the PO must match what was sent forever; Printavo pushes are internal and correctable.
+- `lockState()` in the api-server po_files lib is the **single source of truth**; every mutation (patch/append/delete/unlock) runs in a transaction with SELECT FOR UPDATE and re-checks it server-side. UI hiding buttons is cosmetic only.
+- **P3 obligation:** re-pushing a PO to Printavo must reset `manually_unlocked=false` (re-lock). Documented in schema + lib comments — do not forget when building write-backs.
+- Cart append-to-existing: destination selects list only *unlocked* POs with matching vendor_name; cart Notes apply only to NEW POs (silently ignored on append).
+
 # P3/P4 landmines (recorded by architect review, not yet actioned)
 - Closest-match lookups save the *queried* style as styleNumber, not the vendor's resolved styleName — persist styleName (or rely on SKUs) before P4 vendor submission.
 - PO edit/delete is allowed regardless of pushedToPrintavoAt — add a guard/warning when P3 write-backs land.
