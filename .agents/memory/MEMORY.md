@@ -13,3 +13,4 @@
 - [Reorder Portal](printavo-reorder-portal.md) — only public app; unauthenticated lookup, substring company match, no throttle/rate-limit ⚠️; no DB, email-only submission, older template, prototype.
 - [Hub future ideas](printavo-hub-future-ideas.md) — parked: custom notification rules on order profiles; v1 sync should emit change events to keep the door open.
 - [Hub build decisions](printavo-hub-decisions.md) — answered checklist: staff login (per-user views later), migrate everything, all 6 integrations stay, S&S test OK, phased build.
+- [Breezy reference app](breezy-reference-app.md) — separate SaaS consuming the same color catalog; Hub must export versioned catalog; Printavo file push needs temp public URL; K-Means logo-color idea.
