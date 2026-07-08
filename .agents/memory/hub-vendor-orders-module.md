@@ -35,6 +35,11 @@ description: Durable decisions from the Hub's purchasing module (P2 cart/pricing
 - **P3 obligation:** re-pushing a PO to Printavo must reset `manually_unlocked=false` (re-lock). Documented in schema + lib comments — do not forget when building write-backs.
 - Cart append-to-existing: destination selects list only *unlocked* POs with matching vendor_name; cart Notes apply only to NEW POs (silently ignored on append).
 
+# SanMar live inventory (verified working July 2026)
+- `getInventoryQtyForStyleColorSize` works and is fast (~200-600ms) BUT requires the EXACT catalogColor from ProductInfo ("Jet Black", not "Black") or it errors "Invalid product specified". The legacy app's "flaky inventory" reputation was almost certainly this mismatch — do not design around it being broken.
+  **Why:** probed live with real creds after Tyler pushed back on the flakiness assumption; PC54 failed with "Black", succeeded with "Jet Black".
+- Quantities are capped at 3000 per warehouse (display "3000+"); array order aligns with the SANMAR_WAREHOUSES constant in lib/sanmar.
+
 # P3/P4 landmines (recorded by architect review, not yet actioned)
 - Closest-match lookups save the *queried* style as styleNumber, not the vendor's resolved styleName — persist styleName (or rely on SKUs) before P4 vendor submission.
 - PO edit/delete is allowed regardless of pushedToPrintavoAt — add a guard/warning when P3 write-backs land.
