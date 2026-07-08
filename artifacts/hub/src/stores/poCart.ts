@@ -64,6 +64,7 @@ interface PoCartState {
   removeItem: (key: string) => void;
   clear: () => void;
   setVendor: (key: string, vendor: CartVendor) => void;
+  setStyleNumber: (key: string, styleNumber: string) => void;
   setSizeQty: (key: string, size: string, qty: number) => void;
   setManualCost: (key: string, cost: number) => void;
   applyVendorData: (
@@ -104,6 +105,28 @@ export const usePoCart = create<PoCartState>((set) => ({
               ...i,
               vendor,
               // switching vendor invalidates any prior resolution
+              resolved: false,
+              vendorCatalogColor: null,
+              sizes: i.sizes.map((sz) => ({
+                ...sz,
+                unitCost: null,
+                sku: null,
+                inventoryKey: null,
+                sizeIndex: null,
+              })),
+            }
+          : i,
+      ),
+    })),
+
+  setStyleNumber: (key, styleNumber) =>
+    set((s) => ({
+      items: s.items.map((i) =>
+        i.key === key
+          ? {
+              ...i,
+              styleNumber,
+              // a different style invalidates any prior vendor resolution
               resolved: false,
               vendorCatalogColor: null,
               sizes: i.sizes.map((sz) => ({

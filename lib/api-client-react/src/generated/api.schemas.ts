@@ -426,6 +426,8 @@ export interface UpdatePoFileRequest {
   poNumber?: string;
   /** @nullable */
   notes?: string | null;
+  /** @minItems 1 */
+  lineItems?: PoFileLineItem[];
 }
 
 export interface ReportFilterOptions {

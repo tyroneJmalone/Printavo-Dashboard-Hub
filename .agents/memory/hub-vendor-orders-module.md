@@ -19,7 +19,18 @@ description: Durable decisions from the Hub's purchasing module (P2 cart/pricing
 - Printavo and vendor size labels disagree constantly (XXL vs 2XL, OS/ONE SIZE/ADJ vs OSFA). Cart matching canonicalizes both sides through an alias map before comparing. Extend the map, don't add ad-hoc comparisons.
 - Line items with no sizes get a single OSFA row with qty = items.
 
+# PO editing (post-P2 change requests, approved pattern)
+- PO Log edit replaces line items **wholesale** via PATCH; server always recomputes totals from the lines — client never sends totals.
+- A PO can never be saved with a 0-piece line or an empty line list; deleting the whole PO is a separate explicit action.
+- Add-replacement flow searches the **PO's own vendor**; manual entry is always available as fallback (vendor style not in catalog).
+
+# E2E testing rule for this module
+- The e2e subagent edits REAL PO data when testing PO Log edit flows. Always snapshot the PO list (curl) before running such tests and restore afterwards — line-item snapshots can be reconstructed from pv_line_items sizes + a fresh vendor lookup (SKUs/costs), but only if you know which line was touched.
+  **Why:** a test once removed a real line from Tyler's PO; restoration required cross-referencing DB + S&S.
+
 # P3/P4 landmines (recorded by architect review, not yet actioned)
+- Closest-match lookups save the *queried* style as styleNumber, not the vendor's resolved styleName — persist styleName (or rely on SKUs) before P4 vendor submission.
+- PO edit/delete is allowed regardless of pushedToPrintavoAt — add a guard/warning when P3 write-backs land.
 - **P3 auth:** api-server has no auth + open CORS. `productionFileCreate` needs a public URL for the PO HTML — before any public exposure, add auth or signed/tokenized HTML URLs, or vendor-lookup becomes an unauthenticated proxy burning SanMar/S&S quota.
 - **P3 drift:** HTML renders live from the row; consider freezing PO edits once `pushed_to_printavo_at` is set, or Printavo's referenced document silently changes.
 - **P4:** warehouse quantities from lookup are dropped at save (no warehouse field in the size entry) — plan to re-lookup at submit time (inventory must be current anyway). Sale unitCost is saved without saleEndsAt; an expired sale can mismatch the vendor invoice.

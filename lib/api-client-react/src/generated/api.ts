@@ -909,6 +909,76 @@ export function useGetPoFile<TData = Awaited<ReturnType<typeof getPoFile>>, TErr
 
 
 
+export const getDeletePoFileUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}`
+}
+
+/**
+ * @summary Delete a purchase order
+ */
+export const deletePoFile = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeletePoFileUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeletePoFileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePoFile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePoFile>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deletePoFile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePoFile>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePoFile(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePoFileMutationResult = NonNullable<Awaited<ReturnType<typeof deletePoFile>>>
+
+    export type DeletePoFileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a purchase order
+ */
+export const useDeletePoFile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePoFile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePoFile>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeletePoFileMutationOptions(options));
+    }
+
 export const getUpdatePoFileUrl = (id: string,) => {
 
 
@@ -918,7 +988,7 @@ export const getUpdatePoFileUrl = (id: string,) => {
 }
 
 /**
- * @summary Update PO metadata (number, notes)
+ * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side)
  */
 export const updatePoFile = async (id: string,
     updatePoFileRequest: UpdatePoFileRequest, options?: RequestInit): Promise<PoFile> => {
@@ -967,7 +1037,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdatePoFileMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Update PO metadata (number, notes)
+ * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side)
  */
 export const useUpdatePoFile = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePoFile>>, TError,{id: string;data: BodyType<UpdatePoFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}

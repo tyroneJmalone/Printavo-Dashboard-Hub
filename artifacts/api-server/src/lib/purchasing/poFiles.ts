@@ -112,15 +112,34 @@ export async function getPoFile(id: string): Promise<PoFileDto | null> {
 
 export async function updatePoFile(
   id: string,
-  patch: { poNumber?: string; notes?: string | null },
+  patch: {
+    poNumber?: string;
+    notes?: string | null;
+    lineItems?: PoFileLineItem[];
+  },
 ): Promise<PoFileDto | null> {
   const set: Record<string, unknown> = { updatedAt: new Date() };
   if (patch.poNumber !== undefined) set.poNumber = patch.poNumber;
   if (patch.notes !== undefined) set.notes = patch.notes;
+  if (patch.lineItems !== undefined) {
+    // Line items are always replaced wholesale; totals never drift from them.
+    const { totalQuantity, totalCost } = computeTotals(patch.lineItems);
+    set.lineItems = patch.lineItems;
+    set.totalQuantity = totalQuantity;
+    set.totalCost = totalCost.toFixed(2);
+  }
   const rows = await db
     .update(poFilesTable)
     .set(set)
     .where(eq(poFilesTable.id, id))
     .returning();
   return rows[0] ? toDto(rows[0]) : null;
+}
+
+export async function deletePoFile(id: string): Promise<boolean> {
+  const rows = await db
+    .delete(poFilesTable)
+    .where(eq(poFilesTable.id, id))
+    .returning({ id: poFilesTable.id });
+  return rows.length > 0;
 }

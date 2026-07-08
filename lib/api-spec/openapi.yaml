@@ -201,10 +201,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePoFile
+      tags: [purchasing]
+      summary: Delete a purchase order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     patch:
       operationId: updatePoFile
       tags: [purchasing]
-      summary: Update PO metadata (number, notes)
+      summary: Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side)
       parameters:
         - name: id
           in: path
@@ -1091,6 +1109,11 @@ components:
       properties:
         poNumber: { type: string, minLength: 1 }
         notes: { type: ["string", "null"] }
+        lineItems:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PoFileLineItem"
     ReportFilterOptions:
       type: object
       properties:

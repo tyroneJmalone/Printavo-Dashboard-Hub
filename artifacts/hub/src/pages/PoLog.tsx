@@ -2,13 +2,10 @@ import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import {
   useListPoFiles,
-  useUpdatePoFile,
-  getListPoFilesQueryKey,
   getGetPoFileHtmlUrl,
   type PoFile,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { PoEditor } from "@/components/purchasing/PoEditor";
 import { formatNumber } from "@/lib/format";
 import {
   ClipboardList,
@@ -18,8 +15,6 @@ import {
   ChevronDown,
   ChevronRight,
   Pencil,
-  Check,
-  X,
 } from "lucide-react";
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -35,21 +30,6 @@ function money(n: number): string {
 function PoRow({ po }: { po: PoFile }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [poNumber, setPoNumber] = useState(po.poNumber);
-  const [notes, setNotes] = useState(po.notes ?? "");
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const update = useUpdatePoFile({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListPoFilesQueryKey() });
-        setEditing(false);
-        toast({ title: "PO updated" });
-      },
-      onError: () =>
-        toast({ title: "Update failed", variant: "destructive" }),
-    },
-  });
 
   const created = new Date(po.createdAt).toLocaleDateString("en-US", {
     month: "short",
@@ -68,15 +48,7 @@ function PoRow({ po }: { po: PoFile }) {
           {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </button>
         <div className="min-w-[140px]">
-          {editing ? (
-            <input
-              value={poNumber}
-              onChange={(e) => setPoNumber(e.target.value)}
-              className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm font-mono text-white w-36"
-            />
-          ) : (
-            <div className="font-mono font-bold text-white">{po.poNumber}</div>
-          )}
+          <div className="font-mono font-bold text-white">{po.poNumber}</div>
           <div className="text-[11px] text-slate-500">{created}</div>
         </div>
         <span className="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
@@ -97,30 +69,7 @@ function PoRow({ po }: { po: PoFile }) {
           {po.pushedToPrintavoAt ? "Pushed to Printavo" : "Not pushed"}
         </span>
         <div className="flex-1" />
-        {editing ? (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                update.mutate({ id: po.id, data: { poNumber, notes: notes || null } })
-              }
-              disabled={update.isPending || poNumber.trim().length === 0}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#059669] text-white hover:bg-[#047857] transition-colors disabled:opacity-50"
-            >
-              {update.isPending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-              Save
-            </button>
-            <button
-              onClick={() => {
-                setEditing(false);
-                setPoNumber(po.poNumber);
-                setNotes(po.notes ?? "");
-              }}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
-            >
-              <X size={13} /> Cancel
-            </button>
-          </div>
-        ) : (
+        {!editing && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setEditing(true)}
@@ -140,19 +89,9 @@ function PoRow({ po }: { po: PoFile }) {
         )}
       </div>
 
-      {editing && (
-        <div className="px-5 pb-4">
-          <label className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            className="mt-1 w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-200"
-          />
-        </div>
-      )}
+      {editing && <PoEditor po={po} onClose={() => setEditing(false)} />}
 
-      {open && (
+      {open && !editing && (
         <div className="border-t border-slate-800">
           {po.notes && !editing && (
             <div className="px-5 py-2 text-xs text-slate-400 bg-slate-900/60 border-b border-slate-800 whitespace-pre-wrap">

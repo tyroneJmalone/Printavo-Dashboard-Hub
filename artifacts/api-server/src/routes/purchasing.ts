@@ -11,6 +11,7 @@ import {
   listPoFiles,
   getPoFile,
   updatePoFile,
+  deletePoFile,
   type PoFileLineItem,
 } from "../lib/purchasing/poFiles";
 import { renderPoHtml } from "../lib/purchasing/poHtml";
@@ -116,7 +117,11 @@ router.patch("/purchasing/po-files/:id", (req, res) => {
     res.status(400).json({ error: "Invalid PO update" });
     return;
   }
-  updatePoFile(req.params.id, parsed.data)
+  updatePoFile(req.params.id, {
+    poNumber: parsed.data.poNumber,
+    notes: parsed.data.notes,
+    lineItems: parsed.data.lineItems as PoFileLineItem[] | undefined,
+  })
     .then((po) => {
       if (!po) {
         res.status(404).json({ error: "PO not found" });
@@ -131,6 +136,21 @@ router.patch("/purchasing/po-files/:id", (req, res) => {
       }
       req.log.error({ err }, "PO file update failed");
       res.status(500).json({ error: "Failed to update PO" });
+    });
+});
+
+router.delete("/purchasing/po-files/:id", (req, res) => {
+  deletePoFile(req.params.id)
+    .then((deleted) => {
+      if (!deleted) {
+        res.status(404).json({ error: "PO not found" });
+        return;
+      }
+      res.status(204).end();
+    })
+    .catch((err) => {
+      req.log.error({ err }, "PO file delete failed");
+      res.status(500).json({ error: "Failed to delete PO" });
     });
 });
 

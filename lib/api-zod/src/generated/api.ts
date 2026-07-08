@@ -365,18 +365,50 @@ export const GetPoFileResponse = zod.object({
 
 
 /**
- * @summary Update PO metadata (number, notes)
+ * @summary Delete a purchase order
+ */
+export const DeletePoFileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeletePoFileResponse = zod.void()
+
+
+/**
+ * @summary Update a PO — metadata (number, notes) and/or replace the line items (totals recomputed server-side)
  */
 export const UpdatePoFileParams = zod.object({
   "id": zod.coerce.string()
 })
 
 
+export const updatePoFileBodyLineItemsItemSizesItemQtyMin = 0;
+
+
 
 
 export const UpdatePoFileBody = zod.object({
   "poNumber": zod.string().min(1).optional(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(updatePoFileBodyLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})).min(1).optional()
 })
 
 export const updatePoFileResponseLineItemsItemSizesItemQtyMin = 0;

@@ -52,6 +52,7 @@ function itemTotals(item: CartItem): { qty: number; cost: number; costed: boolea
 function CartItemCard({ item }: { item: CartItem }) {
   const removeItem = usePoCart((s) => s.removeItem);
   const setVendor = usePoCart((s) => s.setVendor);
+  const setStyleNumber = usePoCart((s) => s.setStyleNumber);
   const setSizeQty = usePoCart((s) => s.setSizeQty);
   const setManualCost = usePoCart((s) => s.setManualCost);
   const applyVendorData = usePoCart((s) => s.applyVendorData);
@@ -59,6 +60,9 @@ function CartItemCard({ item }: { item: CartItem }) {
 
   const [lookupResult, setLookupResult] = useState<VendorLookupResult | null>(null);
   const [manualCostInput, setManualCostInput] = useState("");
+  // Printavo's style number sometimes differs from the vendor's (e.g. "1000C"
+  // in Printavo vs "1000" at S&S) — let the user correct it before lookup.
+  const [styleInput, setStyleInput] = useState(item.styleNumber);
 
   const lookup = useVendorLookup({
     mutation: {
@@ -66,8 +70,9 @@ function CartItemCard({ item }: { item: CartItem }) {
         setLookupResult(res);
         if (!res.found) {
           toast({
-            title: `Style ${item.styleNumber} not found at ${VENDOR_LABELS[item.vendor as CartVendor] ?? res.vendor}`,
-            description: "Try Manual cost, or check the style number.",
+            title: `Style ${res.styleQueried} not found at ${VENDOR_LABELS[item.vendor as CartVendor] ?? res.vendor}`,
+            description:
+              "Vendors sometimes use a different style number than Printavo — edit the style and search again, or use Manual cost.",
             variant: "destructive",
           });
           return;
@@ -159,22 +164,35 @@ function CartItemCard({ item }: { item: CartItem }) {
         </select>
 
         {canLookup && (
-          <button
-            onClick={() =>
-              lookup.mutate({
-                data: { vendor: item.vendor as "sanmar" | "ss", style: item.styleNumber },
-              })
-            }
-            disabled={lookup.isPending}
-            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
-          >
-            {lookup.isPending ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <Search size={12} />
-            )}
-            Get pricing
-          </button>
+          <>
+            <input
+              value={styleInput}
+              onChange={(e) => setStyleInput(e.target.value)}
+              placeholder="Style #"
+              aria-label="Vendor style number"
+              className="w-20 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs font-mono text-slate-200"
+            />
+            <button
+              onClick={() => {
+                const style = styleInput.trim();
+                if (!style) return;
+                setLookupResult(null);
+                if (style !== item.styleNumber) setStyleNumber(item.key, style);
+                lookup.mutate({
+                  data: { vendor: item.vendor as "sanmar" | "ss", style },
+                });
+              }}
+              disabled={lookup.isPending || styleInput.trim().length === 0}
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
+            >
+              {lookup.isPending ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Search size={12} />
+              )}
+              Get pricing
+            </button>
+          </>
         )}
 
         {item.vendor === "manual" && (

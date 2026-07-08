@@ -5,10 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PoFileLineItem } from './poFileLineItem';
 
 export interface UpdatePoFileRequest {
   /** @minLength 1 */
   poNumber?: string;
   /** @nullable */
   notes?: string | null;
+  /** @minItems 1 */
+  lineItems?: PoFileLineItem[];
 }
