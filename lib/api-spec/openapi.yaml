@@ -124,6 +124,132 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NeedsOrderingResult"
+  /purchasing/vendor-lookup:
+    post:
+      operationId: vendorLookup
+      tags: [purchasing]
+      summary: Live vendor catalog lookup by style
+      description: Fetches all colors/sizes with cost and inventory for a style from SanMar or S&S Activewear. Cached in-memory ~15 minutes per vendor+style.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendorLookupRequest"
+      responses:
+        "200":
+          description: Unified vendor catalog result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorLookupResult"
+        "503":
+          description: Vendor credentials missing or vendor API unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/po-files:
+    get:
+      operationId: listPoFiles
+      tags: [purchasing]
+      summary: List saved purchase orders (newest first)
+      responses:
+        "200":
+          description: PO file list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoFileList"
+    post:
+      operationId: createPoFile
+      tags: [purchasing]
+      summary: Save a purchase order built from the cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePoFileRequest"
+      responses:
+        "201":
+          description: Created PO file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoFile"
+  /purchasing/po-files/{id}:
+    get:
+      operationId: getPoFile
+      tags: [purchasing]
+      summary: Fetch one purchase order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: PO file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoFile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updatePoFile
+      tags: [purchasing]
+      summary: Update PO metadata (number, notes)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePoFileRequest"
+      responses:
+        "200":
+          description: Updated PO file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoFile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/po-files/{id}/html:
+    get:
+      operationId: getPoFileHtml
+      tags: [purchasing]
+      summary: Printable PO document rendered on demand from the stored line items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Printable PO document
+          content:
+            text/html:
+              schema: { type: string }
+        "404":
+          description: Not found
+          content:
+            text/html:
+              schema: { type: string }
   /reports/orders:
     get:
       operationId: getOrdersReport
@@ -836,6 +962,135 @@ components:
         totalLineItems: { type: integer }
         totalPieces: { type: integer }
       required: [orders, totalOrders, totalLineItems, totalPieces]
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    VendorLookupRequest:
+      type: object
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        style: { type: string, minLength: 1 }
+      required: [vendor, style]
+    VendorWarehouseQty:
+      type: object
+      properties:
+        code: { type: string }
+        qty: { type: integer }
+      required: [code, qty]
+    VendorSizeOffer:
+      type: object
+      properties:
+        size: { type: string }
+        sku: { type: ["string", "null"] }
+        inventoryKey: { type: ["string", "null"] }
+        sizeIndex: { type: ["integer", "null"] }
+        cost: { type: ["number", "null"] }
+        msrp: { type: ["number", "null"] }
+        salePrice: { type: ["number", "null"] }
+        saleEndsAt: { type: ["string", "null"] }
+        inventoryTotal: { type: ["integer", "null"] }
+        warehouses:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/VendorWarehouseQty"
+      required: [size, sku, inventoryKey, sizeIndex, cost, msrp, salePrice, saleEndsAt, inventoryTotal, warehouses]
+    VendorColorOffer:
+      type: object
+      properties:
+        colorName: { type: string }
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorSizeOffer"
+      required: [colorName, sizes]
+    VendorLookupResult:
+      type: object
+      properties:
+        found: { type: boolean }
+        matchType: { type: string, enum: [exact, closest, none] }
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleQueried: { type: string }
+        styleName: { type: ["string", "null"] }
+        brand: { type: ["string", "null"] }
+        title: { type: ["string", "null"] }
+        colors:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorColorOffer"
+        cached: { type: boolean }
+        fetchedAt: { type: string }
+      required: [found, matchType, vendor, styleQueried, styleName, brand, title, colors, cached, fetchedAt]
+    PoFileSizeEntry:
+      type: object
+      properties:
+        size: { type: string }
+        qty: { type: integer, minimum: 0 }
+        unitCost: { type: number }
+        sku: { type: ["string", "null"] }
+        inventoryKey: { type: ["string", "null"] }
+        sizeIndex: { type: ["integer", "null"] }
+      required: [size, qty, unitCost, sku, inventoryKey, sizeIndex]
+    PoFileLineItem:
+      type: object
+      properties:
+        printavoLineItemId: { type: ["string", "null"] }
+        printavoOrderId: { type: ["string", "null"] }
+        visualId: { type: ["integer", "null"] }
+        styleNumber: { type: string }
+        color: { type: ["string", "null"] }
+        vendorCatalogColor: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        brand: { type: ["string", "null"] }
+        source: { type: string, enum: [vendor, manual] }
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoFileSizeEntry"
+      required: [printavoLineItemId, printavoOrderId, visualId, styleNumber, color, vendorCatalogColor, description, brand, source, sizes]
+    PoFile:
+      type: object
+      properties:
+        id: { type: string }
+        poNumber: { type: string }
+        vendorName: { type: string }
+        notes: { type: ["string", "null"] }
+        totalQuantity: { type: integer }
+        totalCost: { type: number }
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoFileLineItem"
+        pushedToPrintavoAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [id, poNumber, vendorName, notes, totalQuantity, totalCost, lineItems, pushedToPrintavoAt, createdAt, updatedAt]
+    PoFileList:
+      type: object
+      properties:
+        poFiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoFile"
+      required: [poFiles]
+    CreatePoFileRequest:
+      type: object
+      properties:
+        poNumber: { type: string, minLength: 1 }
+        vendorName: { type: string, enum: [sanmar, ss, manual] }
+        notes: { type: ["string", "null"] }
+        lineItems:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PoFileLineItem"
+      required: [poNumber, vendorName, lineItems]
+    UpdatePoFileRequest:
+      type: object
+      properties:
+        poNumber: { type: string, minLength: 1 }
+        notes: { type: ["string", "null"] }
     ReportFilterOptions:
       type: object
       properties:

@@ -22,6 +22,8 @@ import type {
 import type {
   BreakdownReport,
   ChangeEventItem,
+  CreatePoFileRequest,
+  ErrorResponse,
   GetBrandBreakdownParams,
   GetColorBreakdownParams,
   GetImprintsByTierParams,
@@ -38,15 +40,20 @@ import type {
   OrdersReport,
   PaymentsReport,
   PaymentsStats,
+  PoFile,
+  PoFileList,
   PollResult,
   ProbeResult,
   ReportFilterOptions,
   SeedStartResult,
-  SyncStatus
+  SyncStatus,
+  UpdatePoFileRequest,
+  VendorLookupRequest,
+  VendorLookupResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import type { ErrorType , BodyType } from '../custom-fetch';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -595,6 +602,449 @@ export function useGetNeedsOrdering<TData = Awaited<ReturnType<typeof getNeedsOr
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetNeedsOrderingQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getVendorLookupUrl = () => {
+
+
+
+
+  return `/api/purchasing/vendor-lookup`
+}
+
+/**
+ * Fetches all colors/sizes with cost and inventory for a style from SanMar or S&S Activewear. Cached in-memory ~15 minutes per vendor+style.
+ * @summary Live vendor catalog lookup by style
+ */
+export const vendorLookup = async (vendorLookupRequest: VendorLookupRequest, options?: RequestInit): Promise<VendorLookupResult> => {
+
+  return customFetch<VendorLookupResult>(getVendorLookupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(vendorLookupRequest)
+  }
+);}
+
+
+
+
+export const getVendorLookupMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vendorLookup>>, TError,{data: BodyType<VendorLookupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof vendorLookup>>, TError,{data: BodyType<VendorLookupRequest>}, TContext> => {
+
+const mutationKey = ['vendorLookup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof vendorLookup>>, {data: BodyType<VendorLookupRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  vendorLookup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VendorLookupMutationResult = NonNullable<Awaited<ReturnType<typeof vendorLookup>>>
+    export type VendorLookupMutationBody = BodyType<VendorLookupRequest>
+    export type VendorLookupMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Live vendor catalog lookup by style
+ */
+export const useVendorLookup = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vendorLookup>>, TError,{data: BodyType<VendorLookupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof vendorLookup>>,
+        TError,
+        {data: BodyType<VendorLookupRequest>},
+        TContext
+      > => {
+      return useMutation(getVendorLookupMutationOptions(options));
+    }
+
+export const getListPoFilesUrl = () => {
+
+
+
+
+  return `/api/purchasing/po-files`
+}
+
+/**
+ * @summary List saved purchase orders (newest first)
+ */
+export const listPoFiles = async ( options?: RequestInit): Promise<PoFileList> => {
+
+  return customFetch<PoFileList>(getListPoFilesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPoFilesQueryKey = () => {
+    return [
+    `/api/purchasing/po-files`
+    ] as const;
+    }
+
+
+export const getListPoFilesQueryOptions = <TData = Awaited<ReturnType<typeof listPoFiles>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPoFiles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPoFilesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPoFiles>>> = ({ signal }) => listPoFiles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPoFiles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPoFilesQueryResult = NonNullable<Awaited<ReturnType<typeof listPoFiles>>>
+export type ListPoFilesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List saved purchase orders (newest first)
+ */
+
+export function useListPoFiles<TData = Awaited<ReturnType<typeof listPoFiles>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPoFiles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPoFilesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePoFileUrl = () => {
+
+
+
+
+  return `/api/purchasing/po-files`
+}
+
+/**
+ * @summary Save a purchase order built from the cart
+ */
+export const createPoFile = async (createPoFileRequest: CreatePoFileRequest, options?: RequestInit): Promise<PoFile> => {
+
+  return customFetch<PoFile>(getCreatePoFileUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPoFileRequest)
+  }
+);}
+
+
+
+
+export const getCreatePoFileMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPoFile>>, TError,{data: BodyType<CreatePoFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPoFile>>, TError,{data: BodyType<CreatePoFileRequest>}, TContext> => {
+
+const mutationKey = ['createPoFile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPoFile>>, {data: BodyType<CreatePoFileRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPoFile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePoFileMutationResult = NonNullable<Awaited<ReturnType<typeof createPoFile>>>
+    export type CreatePoFileMutationBody = BodyType<CreatePoFileRequest>
+    export type CreatePoFileMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Save a purchase order built from the cart
+ */
+export const useCreatePoFile = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPoFile>>, TError,{data: BodyType<CreatePoFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPoFile>>,
+        TError,
+        {data: BodyType<CreatePoFileRequest>},
+        TContext
+      > => {
+      return useMutation(getCreatePoFileMutationOptions(options));
+    }
+
+export const getGetPoFileUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}`
+}
+
+/**
+ * @summary Fetch one purchase order
+ */
+export const getPoFile = async (id: string, options?: RequestInit): Promise<PoFile> => {
+
+  return customFetch<PoFile>(getGetPoFileUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPoFileQueryKey = (id: string,) => {
+    return [
+    `/api/purchasing/po-files/${id}`
+    ] as const;
+    }
+
+
+export const getGetPoFileQueryOptions = <TData = Awaited<ReturnType<typeof getPoFile>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPoFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPoFileQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPoFile>>> = ({ signal }) => getPoFile(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPoFile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPoFileQueryResult = NonNullable<Awaited<ReturnType<typeof getPoFile>>>
+export type GetPoFileQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Fetch one purchase order
+ */
+
+export function useGetPoFile<TData = Awaited<ReturnType<typeof getPoFile>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPoFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPoFileQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePoFileUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}`
+}
+
+/**
+ * @summary Update PO metadata (number, notes)
+ */
+export const updatePoFile = async (id: string,
+    updatePoFileRequest: UpdatePoFileRequest, options?: RequestInit): Promise<PoFile> => {
+
+  return customFetch<PoFile>(getUpdatePoFileUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updatePoFileRequest)
+  }
+);}
+
+
+
+
+export const getUpdatePoFileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePoFile>>, TError,{id: string;data: BodyType<UpdatePoFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePoFile>>, TError,{id: string;data: BodyType<UpdatePoFileRequest>}, TContext> => {
+
+const mutationKey = ['updatePoFile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePoFile>>, {id: string;data: BodyType<UpdatePoFileRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePoFile(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePoFileMutationResult = NonNullable<Awaited<ReturnType<typeof updatePoFile>>>
+    export type UpdatePoFileMutationBody = BodyType<UpdatePoFileRequest>
+    export type UpdatePoFileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update PO metadata (number, notes)
+ */
+export const useUpdatePoFile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePoFile>>, TError,{id: string;data: BodyType<UpdatePoFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePoFile>>,
+        TError,
+        {id: string;data: BodyType<UpdatePoFileRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdatePoFileMutationOptions(options));
+    }
+
+export const getGetPoFileHtmlUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}/html`
+}
+
+/**
+ * @summary Printable PO document rendered on demand from the stored line items
+ */
+export const getPoFileHtml = async (id: string, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getGetPoFileHtmlUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPoFileHtmlQueryKey = (id: string,) => {
+    return [
+    `/api/purchasing/po-files/${id}/html`
+    ] as const;
+    }
+
+
+export const getGetPoFileHtmlQueryOptions = <TData = Awaited<ReturnType<typeof getPoFileHtml>>, TError = ErrorType<string>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPoFileHtml>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPoFileHtmlQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPoFileHtml>>> = ({ signal }) => getPoFileHtml(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPoFileHtml>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPoFileHtmlQueryResult = NonNullable<Awaited<ReturnType<typeof getPoFileHtml>>>
+export type GetPoFileHtmlQueryError = ErrorType<string>
+
+
+/**
+ * @summary Printable PO document rendered on demand from the stored line items
+ */
+
+export function useGetPoFileHtml<TData = Awaited<ReturnType<typeof getPoFileHtml>>, TError = ErrorType<string>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPoFileHtml>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPoFileHtmlQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

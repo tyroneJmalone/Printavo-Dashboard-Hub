@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -41,6 +41,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "reorder", label: "Reorder Scan", icon: Scan, disabled: true },
       { id: "vendor", label: "Vendor Orders", href: "/vendor-orders", icon: Truck },
+      { id: "polog", label: "PO Log", href: "/po-log", icon: ClipboardList },
     ],
   },
   {

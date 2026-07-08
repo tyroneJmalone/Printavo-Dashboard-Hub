@@ -259,6 +259,175 @@ export interface NeedsOrderingResult {
   totalPieces: number;
 }
 
+export interface ErrorResponse {
+  error: string;
+}
+
+export type VendorLookupRequestVendor = typeof VendorLookupRequestVendor[keyof typeof VendorLookupRequestVendor];
+
+
+export const VendorLookupRequestVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface VendorLookupRequest {
+  vendor: VendorLookupRequestVendor;
+  /** @minLength 1 */
+  style: string;
+}
+
+export interface VendorWarehouseQty {
+  code: string;
+  qty: number;
+}
+
+export interface VendorSizeOffer {
+  size: string;
+  /** @nullable */
+  sku: string | null;
+  /** @nullable */
+  inventoryKey: string | null;
+  /** @nullable */
+  sizeIndex: number | null;
+  /** @nullable */
+  cost: number | null;
+  /** @nullable */
+  msrp: number | null;
+  /** @nullable */
+  salePrice: number | null;
+  /** @nullable */
+  saleEndsAt: string | null;
+  /** @nullable */
+  inventoryTotal: number | null;
+  /** @nullable */
+  warehouses: VendorWarehouseQty[] | null;
+}
+
+export interface VendorColorOffer {
+  colorName: string;
+  sizes: VendorSizeOffer[];
+}
+
+export type VendorLookupResultMatchType = typeof VendorLookupResultMatchType[keyof typeof VendorLookupResultMatchType];
+
+
+export const VendorLookupResultMatchType = {
+  exact: 'exact',
+  closest: 'closest',
+  none: 'none',
+} as const;
+
+export type VendorLookupResultVendor = typeof VendorLookupResultVendor[keyof typeof VendorLookupResultVendor];
+
+
+export const VendorLookupResultVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface VendorLookupResult {
+  found: boolean;
+  matchType: VendorLookupResultMatchType;
+  vendor: VendorLookupResultVendor;
+  styleQueried: string;
+  /** @nullable */
+  styleName: string | null;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  colors: VendorColorOffer[];
+  cached: boolean;
+  fetchedAt: string;
+}
+
+export interface PoFileSizeEntry {
+  size: string;
+  /** @minimum 0 */
+  qty: number;
+  unitCost: number;
+  /** @nullable */
+  sku: string | null;
+  /** @nullable */
+  inventoryKey: string | null;
+  /** @nullable */
+  sizeIndex: number | null;
+}
+
+export type PoFileLineItemSource = typeof PoFileLineItemSource[keyof typeof PoFileLineItemSource];
+
+
+export const PoFileLineItemSource = {
+  vendor: 'vendor',
+  manual: 'manual',
+} as const;
+
+export interface PoFileLineItem {
+  /** @nullable */
+  printavoLineItemId: string | null;
+  /** @nullable */
+  printavoOrderId: string | null;
+  /** @nullable */
+  visualId: number | null;
+  styleNumber: string;
+  /** @nullable */
+  color: string | null;
+  /** @nullable */
+  vendorCatalogColor: string | null;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  brand: string | null;
+  source: PoFileLineItemSource;
+  sizes: PoFileSizeEntry[];
+}
+
+export interface PoFile {
+  id: string;
+  poNumber: string;
+  vendorName: string;
+  /** @nullable */
+  notes: string | null;
+  totalQuantity: number;
+  totalCost: number;
+  lineItems: PoFileLineItem[];
+  /** @nullable */
+  pushedToPrintavoAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PoFileList {
+  poFiles: PoFile[];
+}
+
+export type CreatePoFileRequestVendorName = typeof CreatePoFileRequestVendorName[keyof typeof CreatePoFileRequestVendorName];
+
+
+export const CreatePoFileRequestVendorName = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+  manual: 'manual',
+} as const;
+
+export interface CreatePoFileRequest {
+  /** @minLength 1 */
+  poNumber: string;
+  vendorName: CreatePoFileRequestVendorName;
+  /** @nullable */
+  notes?: string | null;
+  /** @minItems 1 */
+  lineItems: PoFileLineItem[];
+}
+
+export interface UpdatePoFileRequest {
+  /** @minLength 1 */
+  poNumber?: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
 export interface ReportFilterOptions {
   statuses: string[];
   brands: string[];

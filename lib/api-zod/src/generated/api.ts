@@ -168,6 +168,264 @@ export const GetNeedsOrderingResponse = zod.object({
 
 
 /**
+ * Fetches all colors/sizes with cost and inventory for a style from SanMar or S&S Activewear. Cached in-memory ~15 minutes per vendor+style.
+ * @summary Live vendor catalog lookup by style
+ */
+
+
+
+export const VendorLookupBody = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "style": zod.string().min(1)
+})
+
+export const VendorLookupResponse = zod.object({
+  "found": zod.boolean(),
+  "matchType": zod.enum(['exact', 'closest', 'none']),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleQueried": zod.string(),
+  "styleName": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "colors": zod.array(zod.object({
+  "colorName": zod.string(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable(),
+  "cost": zod.number().nullable(),
+  "msrp": zod.number().nullable(),
+  "salePrice": zod.number().nullable(),
+  "saleEndsAt": zod.string().nullable(),
+  "inventoryTotal": zod.number().nullable(),
+  "warehouses": zod.array(zod.object({
+  "code": zod.string(),
+  "qty": zod.number()
+})).nullable()
+}))
+})),
+  "cached": zod.boolean(),
+  "fetchedAt": zod.string()
+})
+
+
+/**
+ * @summary List saved purchase orders (newest first)
+ */
+export const listPoFilesResponsePoFilesItemLineItemsItemSizesItemQtyMin = 0;
+
+
+
+export const ListPoFilesResponse = zod.object({
+  "poFiles": zod.array(zod.object({
+  "id": zod.string(),
+  "poNumber": zod.string(),
+  "vendorName": zod.string(),
+  "notes": zod.string().nullable(),
+  "totalQuantity": zod.number(),
+  "totalCost": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(listPoFilesResponsePoFilesItemLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})),
+  "pushedToPrintavoAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Save a purchase order built from the cart
+ */
+
+export const createPoFileBodyLineItemsItemSizesItemQtyMin = 0;
+
+
+
+
+export const CreatePoFileBody = zod.object({
+  "poNumber": zod.string().min(1),
+  "vendorName": zod.enum(['sanmar', 'ss', 'manual']),
+  "notes": zod.string().nullish(),
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(createPoFileBodyLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})).min(1)
+})
+
+export const createPoFileResponseLineItemsItemSizesItemQtyMin = 0;
+
+
+
+export const CreatePoFileResponse = zod.object({
+  "id": zod.string(),
+  "poNumber": zod.string(),
+  "vendorName": zod.string(),
+  "notes": zod.string().nullable(),
+  "totalQuantity": zod.number(),
+  "totalCost": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(createPoFileResponseLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})),
+  "pushedToPrintavoAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Fetch one purchase order
+ */
+export const GetPoFileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const getPoFileResponseLineItemsItemSizesItemQtyMin = 0;
+
+
+
+export const GetPoFileResponse = zod.object({
+  "id": zod.string(),
+  "poNumber": zod.string(),
+  "vendorName": zod.string(),
+  "notes": zod.string().nullable(),
+  "totalQuantity": zod.number(),
+  "totalCost": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(getPoFileResponseLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})),
+  "pushedToPrintavoAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Update PO metadata (number, notes)
+ */
+export const UpdatePoFileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const UpdatePoFileBody = zod.object({
+  "poNumber": zod.string().min(1).optional(),
+  "notes": zod.string().nullish()
+})
+
+export const updatePoFileResponseLineItemsItemSizesItemQtyMin = 0;
+
+
+
+export const UpdatePoFileResponse = zod.object({
+  "id": zod.string(),
+  "poNumber": zod.string(),
+  "vendorName": zod.string(),
+  "notes": zod.string().nullable(),
+  "totalQuantity": zod.number(),
+  "totalCost": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "vendorCatalogColor": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "source": zod.enum(['vendor', 'manual']),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "qty": zod.number().min(updatePoFileResponseLineItemsItemSizesItemQtyMin),
+  "unitCost": zod.number(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable()
+}))
+})),
+  "pushedToPrintavoAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Printable PO document rendered on demand from the stored line items
+ */
+export const GetPoFileHtmlParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetPoFileHtmlResponse = zod.unknown()
+
+
+/**
  * @summary Filtered orders list with summary stats
  */
 export const getOrdersReportQueryLimitMax = 500;

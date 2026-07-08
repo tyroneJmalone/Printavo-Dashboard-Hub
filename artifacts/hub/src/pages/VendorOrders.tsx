@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { useGetNeedsOrdering } from "@workspace/api-client-react";
+import { useGetNeedsOrdering, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
 import { formatNumber, formatDate } from "@/lib/format";
-import { Truck, Loader2, RefreshCw, PackageSearch, Layers, Boxes, CalendarClock } from "lucide-react";
+import { usePoCart, guessVendor, type CartItem } from "@/stores/poCart";
+import { CartDrawer } from "@/components/purchasing/CartDrawer";
+import { Truck, Loader2, RefreshCw, PackageSearch, Layers, Boxes, CalendarClock, ShoppingCart, Plus, Check, AlertTriangle } from "lucide-react";
 
 function statusPill(name: string | null): string {
   if (!name) return "Unknown";
@@ -9,8 +12,51 @@ function statusPill(name: string | null): string {
   return idx >= 0 ? name.slice(idx + 3).trim() : name;
 }
 
+/** Stale-flag rule: warn (never block) when the row looks already handled. */
+function staleWarning(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): string | null {
+  if (li.items <= 0) return "0 pieces on this line — verify in Printavo";
+  const s = (order.statusName ?? "").toLowerCase();
+  if (s.includes("picked up") || s.includes("complete") || s.includes("delivered")) {
+    return `Order status is "${statusPill(order.statusName)}" — may already be done`;
+  }
+  return null;
+}
+
+function buildCartItem(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): CartItem {
+  const sizes =
+    li.sizes.length > 0
+      ? li.sizes.map((s) => ({
+          size: s.size,
+          qty: s.count,
+          unitCost: null,
+          sku: null,
+          inventoryKey: null,
+          sizeIndex: null,
+        }))
+      : [{ size: "OSFA", qty: li.items > 0 ? li.items : 0, unitCost: null, sku: null, inventoryKey: null, sizeIndex: null }];
+  return {
+    key: li.id,
+    printavoLineItemId: li.id,
+    printavoOrderId: order.orderId,
+    visualId: order.visualId,
+    styleNumber: li.itemNumber ?? "",
+    color: li.color,
+    description: li.description,
+    brand: li.brand,
+    vendor: guessVendor(li.brand),
+    vendorCatalogColor: null,
+    resolved: false,
+    sizes,
+  };
+}
+
 export default function VendorOrders() {
   const { data, isLoading, isFetching, refetch } = useGetNeedsOrdering();
+  const cartItems = usePoCart((s) => s.items);
+  const addItem = usePoCart((s) => s.addItem);
+  const removeItem = usePoCart((s) => s.removeItem);
+  const [cartOpen, setCartOpen] = useState(false);
+  const inCart = new Set(cartItems.map((i) => i.key));
 
   return (
     <AppShell>
@@ -24,14 +70,28 @@ export default function VendorOrders() {
               </h1>
               <p className="text-xs text-slate-400 mt-1">Line items flagged "needs ordering" in Printavo, refreshed by the 5-minute sync</p>
             </div>
-            <button
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={isFetching ? "animate-spin" : ""} />
+                Refresh
+              </button>
+              <button
+                onClick={() => setCartOpen(true)}
+                className="relative flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-lg bg-[#059669] text-white hover:bg-[#047857] transition-colors"
+              >
+                <ShoppingCart size={14} />
+                PO Cart
+                {cartItems.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-white text-[#059669] text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {cartItems.length}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
           {!isLoading && data && (
@@ -96,33 +156,66 @@ export default function VendorOrders() {
                       <th className="px-5 py-2.5 font-semibold">Description</th>
                       <th className="px-5 py-2.5 font-semibold">Sizes</th>
                       <th className="px-5 py-2.5 font-semibold text-right">Qty</th>
+                      <th className="px-5 py-2.5 font-semibold text-right">Cart</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {order.lineItems.map((li) => (
-                      <tr key={li.id} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="px-5 py-3">
-                          <div className="font-mono font-semibold text-slate-200">{li.itemNumber || "—"}</div>
-                          <div className="text-[11px] text-slate-500">{li.brand || ""}</div>
-                        </td>
-                        <td className="px-5 py-3 text-slate-300">{li.color || "—"}</td>
-                        <td className="px-5 py-3 text-slate-400 max-w-[280px] truncate">{li.description || "—"}</td>
-                        <td className="px-5 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {li.sizes.length === 0 ? (
-                              <span className="text-slate-600 text-xs">—</span>
-                            ) : (
-                              li.sizes.map((s, i) => (
-                                <span key={i} className="text-[10px] font-mono bg-slate-800 border border-slate-700 text-slate-300 px-1.5 py-0.5 rounded">
-                                  {s.size}×{s.count}
-                                </span>
-                              ))
+                    {order.lineItems.map((li) => {
+                      const warn = staleWarning(order, li);
+                      const added = inCart.has(li.id);
+                      return (
+                        <tr key={li.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-5 py-3">
+                            <div className="font-mono font-semibold text-slate-200">{li.itemNumber || "—"}</div>
+                            <div className="text-[11px] text-slate-500">{li.brand || ""}</div>
+                          </td>
+                          <td className="px-5 py-3 text-slate-300">{li.color || "—"}</td>
+                          <td className="px-5 py-3 text-slate-400 max-w-[280px]">
+                            <div className="truncate">{li.description || "—"}</div>
+                            {warn && (
+                              <div className="flex items-center gap-1 text-[11px] text-amber-400 mt-0.5">
+                                <AlertTriangle size={11} className="flex-shrink-0" />
+                                {warn}
+                              </div>
                             )}
-                          </div>
-                        </td>
-                        <td className="px-5 py-3 text-right font-mono font-bold text-[#10b981]">{formatNumber(li.items)}</td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-5 py-3">
+                            <div className="flex flex-wrap gap-1">
+                              {li.sizes.length === 0 ? (
+                                <span className="text-slate-600 text-xs">—</span>
+                              ) : (
+                                li.sizes.map((s, i) => (
+                                  <span key={i} className="text-[10px] font-mono bg-slate-800 border border-slate-700 text-slate-300 px-1.5 py-0.5 rounded">
+                                    {s.size}×{s.count}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-right font-mono font-bold text-[#10b981]">{formatNumber(li.items)}</td>
+                          <td className="px-5 py-3 text-right">
+                            <button
+                              onClick={() => {
+                                if (added) {
+                                  removeItem(li.id);
+                                } else {
+                                  addItem(buildCartItem(order, li));
+                                  setCartOpen(true);
+                                }
+                              }}
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-md border transition-colors ${
+                                added
+                                  ? "bg-[#059669]/10 text-[#10b981] border-[#059669]/30 hover:bg-[#059669]/20"
+                                  : "bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+                              }`}
+                            >
+                              {added ? <Check size={12} /> : <Plus size={12} />}
+                              {added ? "Added" : "Add"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -130,6 +223,7 @@ export default function VendorOrders() {
           )}
         </div>
       </div>
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </AppShell>
   );
 }
