@@ -14,14 +14,15 @@ description: Durable findings from reading the PrintavoBackup source repo and Pr
 - v1 REST (legacy Apiary docs — reference only, do not build on): https://printavo.docs.apiary.io/#
 
 ## API constraints (Printavo GraphQL v2)
-- `updatedAfter` filter is supported ONLY on `invoices` and `quotes` queries. All other entities (customers, contacts, transactions, tasks…) must be fully re-fetched and filtered client-side by `timestamps.updatedAt`.
+- CORRECTED (live introspection, July 2026): NO `updatedAfter` / changed-since filter exists on ANY list field in v2, and no UPDATED_AT sort (OrderSortField = CUSTOMER_DUE_AT, CUSTOMER_NAME, STATUS, OWNER, TOTAL, VISUAL_ID only). Incremental sync must full re-crawl lists (VISUAL_ID desc, early-stop at createdAt cutoff) and hash-diff. Live cost: ~140 requests / ~2.3 min for 3.4k orders per poll.
+- CRITICAL quirk: Printavo renders the SAME instant in varying timezones between fetches (e.g. `-05:00`/`-06:00` local vs `Z` UTC, replica-dependent) in `timestamps.*` and date fields. Any content hashing MUST canonicalize all ISO8601 strings to UTC first, or ~75% of orders flag as changed every poll. Diagnosed by snapshotting rows and diffing jsonb between two polls.
 - Rate limit: 10 requests / 5 seconds. Max query depth 13, max complexity 25,000.
 - No `UPDATED_AT` sort field — only VISUAL_ID, CUSTOMER_DUE_AT, CUSTOMER_NAME, OWNER, STATUS, TOTAL.
 - `products()` requires a mandatory `query: String!` arg (pass "").
 - `LineItemStatus` enum includes `need_ordering`; `PoGoodsStatus` includes `not_ordered`.
 
 ## Sync cost reality
-- Invoice sync is two-phase: cheap ID list (with updatedAfter), then 2+ requests PER invoice (detail + lineItemGroups + mockup downloads).
+- Invoice sync in the old backup repo was two-phase: cheap ID list, then 2+ requests PER invoice (detail + lineItemGroups + mockup downloads). Hub v1 syncs list-level fields only (no per-invoice detail fetch).
 - Full crawl of ~17k orders ≈ 35k+ requests ≈ 5+ hours at rate limit. Page-count math is wrong; per-invoice math is right.
 - **Why:** this makes a limited initial seed (last 12 months) essential, with historical backfill as a throttled background job.
 

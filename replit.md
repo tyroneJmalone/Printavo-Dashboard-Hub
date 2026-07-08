@@ -1,6 +1,6 @@
-# [Project name]
+# Printavo Hub
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Unified internal hub for Mint Print Works that consolidates 11 separate Printavo-connected apps into one platform (plus a future public Reorder Portal), built on a shared Printavo sync engine.
 
 ## Run & Operate
 
@@ -22,15 +22,22 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/printavo/` — standalone Printavo GraphQL v2 client (throttle 620ms, 429 retry, typed queries)
+- `packages/db/` — Drizzle schema: `pv_*` mirror tables, `sync_runs`, `sync_checkpoints`, `entity_watermarks`, `change_events`
+- `artifacts/api-server/src/lib/sync/` — sync engine (seed, incremental poll, differ/hashing, upserts, scheduler, run state)
+- `artifacts/api-server/src/routes/sync.ts` — sync status/poll/events API
+- `packages/api-spec/` — OpenAPI source of truth; run codegen after route changes
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Printavo v2 has NO `updatedAfter` filter and no UPDATED_AT sort (verified via live schema introspection). Incremental sync therefore does a full re-crawl of invoices+quotes (VISUAL_ID desc, early-stop at a rolling 12-month createdAt cutoff) every 5 min and detects changes by content hash (~140 requests, ~2.3 min per poll — ~23% of the 10 req/5s account budget).
+- All fetched nodes pass through timestamp normalization (every ISO8601 string → UTC) before hashing/storing, because Printavo renders the same instant in varying timezones between fetches.
+- Watermarks are seed-completion markers / poll timestamps only, not incremental cursors.
+- Known Phase-1 limitations (accepted): orders older than the 12-month window silently age out of syncing; Printavo-side deletions are not detected; early-stop assumes VISUAL_ID order correlates with createdAt.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Phase 1 (current): Printavo sync engine — 12-month seed + 5-min incremental polling of quotes/invoices/customers/contacts/statuses into Postgres, with change-event capture (created/updated/status_change/converted).
 
 ## User preferences
 
@@ -39,7 +46,10 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Printavo rate limit is account-wide (10 req/5s) — shared with Tyler's other live apps until they're decommissioned; keep polling headroom.
+- Never hash Printavo nodes without `normalizeTimestamps()` — timezone flapping creates thousands of spurious change events.
+- Poll requests via curl time out client-side (~2.3 min run) but continue server-side; check `sync_runs` table instead.
+- Scheduler ticks ~5 min after boot and every 5 min after; orphaned incremental runs are auto-failed at boot.
 
 ## Pointers
 

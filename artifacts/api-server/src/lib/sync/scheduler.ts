@@ -1,6 +1,6 @@
 import type { Logger } from "pino";
 import { printavoConfigured } from "../printavoGateway";
-import { findRunningRun } from "./state";
+import { findRunningRun, failOrphanedRuns } from "./state";
 import { startOrResumeSeed } from "./seed";
 import { runIncrementalPoll } from "./incremental";
 
@@ -32,6 +32,13 @@ export function schedulerInfo(): SchedulerInfo {
 
 export function startScheduler(logger: Logger): void {
   if (timer) return;
+  void failOrphanedRuns("incremental", new Date())
+    .then((n) => {
+      if (n > 0) logger.warn({ count: n }, "Marked orphaned incremental runs failed");
+    })
+    .catch((err) => {
+      logger.error({ err }, "Failed to clean up orphaned runs");
+    });
   void resumeInterruptedSeed(logger);
   timer = setInterval(() => {
     void tick(logger);

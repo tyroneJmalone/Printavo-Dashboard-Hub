@@ -15,7 +15,13 @@ import type {
   PvContactNode,
   PvStatusNode,
 } from "@workspace/printavo";
-import { contentHashOf, moneyStr, dateOrNull, sameInstant } from "./differ";
+import {
+  contentHashOf,
+  moneyStr,
+  dateOrNull,
+  sameInstant,
+  normalizeTimestamps,
+} from "./differ";
 
 export interface UpsertOpts {
   emitEvents: boolean;
@@ -58,10 +64,11 @@ async function persistEvents(
 }
 
 export async function upsertOrder(
-  node: PvOrderNode,
+  rawNode: PvOrderNode,
   orderType: "quote" | "invoice",
   opts: UpsertOpts,
 ): Promise<UpsertOutcome> {
+  const node = normalizeTimestamps(rawNode);
   const hash = contentHashOf(node);
   const [existing] = await db
     .select()
@@ -188,9 +195,10 @@ export async function upsertOrder(
 }
 
 export async function upsertCustomer(
-  node: PvCustomerNode,
+  rawNode: PvCustomerNode,
   opts: UpsertOpts,
 ): Promise<UpsertOutcome> {
+  const node = normalizeTimestamps(rawNode);
   const hash = contentHashOf(node);
   const [existing] = await db
     .select()
@@ -249,9 +257,10 @@ export async function upsertCustomer(
 }
 
 export async function upsertContact(
-  node: PvContactNode,
+  rawNode: PvContactNode,
   opts: UpsertOpts,
 ): Promise<UpsertOutcome> {
+  const node = normalizeTimestamps(rawNode);
   const hash = contentHashOf(node);
   const [existing] = await db
     .select()
@@ -313,9 +322,10 @@ export async function upsertContact(
 }
 
 export async function upsertStatus(
-  node: PvStatusNode,
+  rawNode: PvStatusNode,
   opts: UpsertOpts,
 ): Promise<UpsertOutcome> {
+  const node = normalizeTimestamps(rawNode);
   const hash = contentHashOf(node);
   const [existing] = await db
     .select()

@@ -4,10 +4,11 @@
  * Values are inlined as literals (safely JSON-quoted) instead of typed
  * variables so we never have to guess Printavo's scalar/enum type names.
  *
- * Constraints (verified from the legacy apps + docs):
+ * Constraints (verified via live schema introspection, July 2026):
  * - page size hard-capped at 25 regardless of `first`
- * - `updatedAfter` exists ONLY on invoices + quotes
- * - no UPDATED_AT sort; VISUAL_ID desc is the recency proxy
+ * - NO `updatedAfter` / changed-since filter exists on any list field
+ * - no UPDATED_AT sort; VISUAL_ID desc is the recency proxy, so
+ *   incremental sync = full re-crawl to cutoff + hash diff
  */
 
 export const PAGE_SIZE = 25;
@@ -44,15 +45,11 @@ const PAGE_INFO = `pageInfo { hasNextPage endCursor }`;
 
 export interface OrderPageArgs {
   after?: string | null;
-  updatedAfter?: string | null;
 }
 
 export function invoicesPageQuery(args: OrderPageArgs = {}): string {
-  const updatedAfter = args.updatedAfter
-    ? `, updatedAfter: ${lit(args.updatedAfter)}`
-    : "";
   return `query {
-    invoices(first: ${PAGE_SIZE}${afterArg(args.after)}${updatedAfter}, sortOn: VISUAL_ID, sortDescending: true) {
+    invoices(first: ${PAGE_SIZE}${afterArg(args.after)}, sortOn: VISUAL_ID, sortDescending: true) {
       nodes { ${ORDER_NODE_FIELDS} }
       ${PAGE_INFO}
     }
@@ -60,11 +57,8 @@ export function invoicesPageQuery(args: OrderPageArgs = {}): string {
 }
 
 export function quotesPageQuery(args: OrderPageArgs = {}): string {
-  const updatedAfter = args.updatedAfter
-    ? `, updatedAfter: ${lit(args.updatedAfter)}`
-    : "";
   return `query {
-    quotes(first: ${PAGE_SIZE}${afterArg(args.after)}${updatedAfter}, sortOn: VISUAL_ID, sortDescending: true) {
+    quotes(first: ${PAGE_SIZE}${afterArg(args.after)}, sortOn: VISUAL_ID, sortDescending: true) {
       nodes { ${ORDER_NODE_FIELDS} }
       ${PAGE_INFO}
     }

@@ -13,6 +13,8 @@ import {
 } from "@workspace/printavo";
 import { getPrintavoClient, printavoConfigured } from "../printavoGateway";
 import { isSeedActive, isPollActive, setPollActive } from "./runState";
+import { dateOrNull } from "./differ";
+import { SEED_MONTHS } from "./seed";
 import {
   createRun,
   completeRun,
@@ -94,32 +96,46 @@ export async function runIncrementalPoll(
 
     run = await createRun("incremental");
     const runStart = run.startedAt;
+    const cutoff = new Date(runStart);
+    cutoff.setMonth(cutoff.getMonth() - SEED_MONTHS);
     const client = getPrintavoClient();
     const opts: UpsertOpts = { emitEvents: true, syncRunId: run.id };
 
     const invoiceAgg = newAgg();
     let cursor: string | null = null;
+    let reachedCutoff = false;
     for (;;) {
       const data: InvoicesPage = await client.query<InvoicesPage>(
-        invoicesPageQuery({ after: cursor, updatedAfter: invoiceWm.toISOString() }),
+        invoicesPageQuery({ after: cursor }),
       );
       for (const node of data.invoices.nodes) {
+        const createdAt = dateOrNull(node.timestamps?.createdAt);
+        if (createdAt && createdAt < cutoff) {
+          reachedCutoff = true;
+          break;
+        }
         addOutcome(invoiceAgg, await upsertOrder(node, "invoice", opts));
       }
-      if (!data.invoices.pageInfo.hasNextPage) break;
+      if (reachedCutoff || !data.invoices.pageInfo.hasNextPage) break;
       cursor = data.invoices.pageInfo.endCursor;
     }
 
     const quoteAgg = newAgg();
     cursor = null;
+    reachedCutoff = false;
     for (;;) {
       const data: QuotesPage = await client.query<QuotesPage>(
-        quotesPageQuery({ after: cursor, updatedAfter: quoteWm.toISOString() }),
+        quotesPageQuery({ after: cursor }),
       );
       for (const node of data.quotes.nodes) {
+        const createdAt = dateOrNull(node.timestamps?.createdAt);
+        if (createdAt && createdAt < cutoff) {
+          reachedCutoff = true;
+          break;
+        }
         addOutcome(quoteAgg, await upsertOrder(node, "quote", opts));
       }
-      if (!data.quotes.pageInfo.hasNextPage) break;
+      if (reachedCutoff || !data.quotes.pageInfo.hasNextPage) break;
       cursor = data.quotes.pageInfo.endCursor;
     }
 

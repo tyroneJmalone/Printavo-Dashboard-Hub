@@ -11,7 +11,7 @@ import {
   type SyncRun,
   type SyncCheckpoint,
 } from "@workspace/db";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, lt } from "drizzle-orm";
 
 export async function createRun(runType: string): Promise<SyncRun> {
   const [run] = await db
@@ -59,6 +59,36 @@ export async function failRun(runId: number, error: string): Promise<void> {
     .update(syncRunsTable)
     .set({ status: "failed", finishedAt: new Date(), error })
     .where(eq(syncRunsTable.id, runId));
+}
+
+/**
+ * Mark orphaned "running" runs of a type as failed. Incremental runs
+ * cannot survive a process restart (poll state is in-memory), so any
+ * still marked running at boot are stale. Seed runs are excluded —
+ * they are resumed via findRunningRun + checkpoints.
+ * Only runs started BEFORE `bootTime` are touched, so a manual poll
+ * that races the boot-time cleanup is never clobbered.
+ */
+export async function failOrphanedRuns(
+  runType: string,
+  bootTime: Date,
+): Promise<number> {
+  const rows = await db
+    .update(syncRunsTable)
+    .set({
+      status: "failed",
+      finishedAt: new Date(),
+      error: "Orphaned: process restarted mid-run",
+    })
+    .where(
+      and(
+        eq(syncRunsTable.runType, runType),
+        eq(syncRunsTable.status, "running"),
+        lt(syncRunsTable.startedAt, bootTime),
+      ),
+    )
+    .returning({ id: syncRunsTable.id });
+  return rows.length;
 }
 
 export async function getOrCreateCheckpoint(
