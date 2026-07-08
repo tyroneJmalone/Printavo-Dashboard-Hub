@@ -11,3 +11,4 @@
 - [PDF Sorter](printavo-pdf-sorter.md) — Python child-process pdfplumber parsing of Printavo slips + USPS labels, name-match algorithm, size sort constant, modern monorepo template, no secrets.
 - [Vendor Order Hub](printavo-vendor-order-hub.md) — SanMar submitPO SOAP + S&S REST submission (untested), PO browse quirks, DB-stored plaintext creds ⚠️, must merge with PO Builder in Hub.
 - [Reorder Portal](printavo-reorder-portal.md) — only public app; unauthenticated lookup, substring company match, no throttle/rate-limit ⚠️; no DB, email-only submission, older template, prototype.
+- [Hub future ideas](printavo-hub-future-ideas.md) — parked: custom notification rules on order profiles; v1 sync should emit change events to keep the door open.

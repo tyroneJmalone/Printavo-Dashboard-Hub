@@ -397,6 +397,19 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 
 ---
 
+## Future Ideas (not in scope for v1 — parked by Tyler)
+
+### Custom internal notifications for order profiles *(idea from a team meeting, July 8, 2026)*
+Let staff define **notification rules** that watch incoming orders/quotes and alert the right person when a rule matches. Tyler's examples:
+- Notify the **sales manager** when a **quote over $5,000** is entered
+- Notify **Purchasing** when a **rush order** is entered (due date within 7 days of creation)
+
+**Why the Hub makes this easy later:** the sync engine already detects every new/changed order and quote each polling cycle — a rules engine just evaluates conditions against those change events (no extra Printavo API calls). A simple rule builder (field + condition + threshold + who to notify), delivery via the existing Resend email integration, and a `notification_rules` table would cover it. Rules could match on value, due-date window, status, customer, order type, line-item contents, etc.
+
+**Design note for the build:** nothing needs to change in the v1 architecture to keep this door open — the sync layer's change detection is the hook. Worth building v1 sync so each cycle knows *what changed* (new order, status change, field change), not just *current state*; that also benefits the reporting and backup modules.
+
+---
+
 ## What This Does Not Include
 - No new Printavo features beyond what the eleven existing apps already do (cross-links above are optional)
 - The Reorder Portal stays the **only** public surface; the rest remain internal
