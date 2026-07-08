@@ -34,7 +34,8 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- **Build one step at a time, testing as we go** (Tyler, July 8, 2026): start with the foundation and verify each phase works before moving to the next — no big-bang builds.
+- **Module isolation is a hard requirement**: individual functional pieces (Reports, Ordering, Mint Bucks, Print Queue, Color Library, Breezy, Shipping, Backup, Portal) must be tunable/iterable independently without breaking the others.
 
 ## Gotchas
 
