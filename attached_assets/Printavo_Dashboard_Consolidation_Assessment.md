@@ -368,32 +368,32 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 
 ---
 
-## Decision Checklist Before We Build
+## Decision Checklist — ✅ ANSWERED (Tyler, July 8, 2026)
 
 **Architecture & access**
-- [ ] Keep the **Reorder Portal as a separate public surface** sharing one backend (recommended), and add an internal **Reorder Inbox** that persists + triages requests — instead of email-only?
-- [ ] Does the internal Hub need staff login/auth (currently none of the internal apps appear to enforce it)?
+- [x] **Reorder Portal stays a separate public surface** sharing one backend, plus an internal **Reorder Inbox** that persists + triages requests — **approved**
+- [x] **Internal Hub gets staff login** — **approved.** Tyler's note: this also enables **filtering by Invoice Owner (salesperson)** and possibly **user-defined views** later — design staff accounts so filters/views can be per-user from the start
 
 **Credentials & integrations**
-- [ ] **Printavo:** one canonical email + token (migrate the copies in `backup_config` / `printavo_settings`, and reconcile `PRINTAVO_API_EMAIL`)?
-- [ ] **SanMar / S&S:** which credential sets are current (env-var variants vs DB rows)? Plan to **rotate the SanMar password** after migration (it was stored in plain text)?
-- [ ] **Shipping:** ShipStation + EasyPost keys available? **PrintNode** key + printer confirmed? **Dropbox** dual-write kept? **OpenAI** for Ask AI? **Resend** connector (portal + Mint Bucks)?
-- [ ] **S&S test order:** OK to place (and cancel/keep) one real S&S order to verify the untested submission path?
+- [x] One canonical Printavo email + token in encrypted secrets — **approved**
+- [x] All integrations confirmed **active and staying**: ShipStation, EasyPost, PrintNode, Dropbox, OpenAI, Resend — keys gathered at build time
+- [x] **S&S test order approved** — place one small real order to verify the untested submission path before the Ordering module goes live
+- [ ] *Deferred to build time:* confirm which SanMar/S&S credential sets are current; **rotate the SanMar password** after migration (was stored in plain text)
 
-**Public portal security (new — from the portal code review)**
-- [ ] Add customer identity verification to the portal lookup (recommended: emailed one-time code / magic link) instead of open email/company search?
-- [ ] Company search becomes exact-match (or verified association) rather than substring?
+**Public portal security**
+- [x] Customer identity verification (emailed one-time code / magic link) — **approved**
+- [x] Company lookup becomes exact-match — **approved**
 
 **Infrastructure**
-- [ ] Deploy as one **Reserved VM** with **Python 3** + **Chromium**, serving **two** front-ends?
-- [ ] Disk/bandwidth budget for full backups acceptable on the VM?
+- [x] One **Reserved VM** with **Python 3** + **Chromium**, serving **two** front-ends — approved (technical call)
+- [ ] *Deferred to build time:* size disk/bandwidth for full backups during the foundation phase
 
-**Data migration (per app: migrate vs. start fresh)**
-- [ ] Email report schedules · auto-print config · PO history · vendor orders · decoration matrices · backup runs/watermarks · **the 6,199-row color database** · **the Mint Bucks credit ledger (must migrate — system of record)**
+**Data migration**
+- [x] **Migrate everything** — all data + configs move over (PO history, vendor orders, report schedules, auto-print config, decoration matrices, backup runs/watermarks, the 6,199-row color database, the Mint Bucks credit ledger). Nothing starts fresh
 
 **Scope & priority**
-- [ ] Build all modules at once, or phase it (e.g. the merged Ordering pipeline + Reorder Inbox first)?
-- [ ] Wire optional Printavo cross-links now (color match on an order line, shipping ship-to from an order, PDF Sorter enrichment, quote → Printavo order) or keep modules standalone in v1?
+- [x] **Phased build** — foundation first, then modules one at a time with testing between each (Tyler's standing rule)
+- [x] Modules **standalone in v1**; optional cross-links (color match on an order line, shipping ship-to, PDF Sorter enrichment, quote → Printavo order) wired later, one at a time
 
 ---
 
