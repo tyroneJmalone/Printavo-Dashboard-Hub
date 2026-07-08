@@ -408,6 +408,15 @@ Let staff define **notification rules** that watch incoming orders/quotes and al
 
 **Design note for the build:** nothing needs to change in the v1 architecture to keep this door open — the sync layer's change detection is the hook. Worth building v1 sync so each cycle knows *what changed* (new order, status change, field change), not just *current state*; that also benefits the reporting and backup modules.
 
+### Order Activity Timeline *(approved for "down the road" — July 8, 2026)*
+Per-order history built from sync change events (Printavo itself shows no history): status changes, due-date moves, value changes — plus a shop-wide activity feed. Rides on the same change-event plumbing as notification rules.
+
+### Quote Aging Alerts / pipeline view *(approved for "down the road" — July 8, 2026)*
+Flag quotes sitting unanswered past a configurable number of days, presented as a **pipeline view** (quotes by stage/age) so sales sees what needs follow-up. Data already in the shared cache; alerts reuse Resend.
+
+### Reorder Request → Draft Quote *(approved for "down the road" — July 8, 2026)*
+A portal reorder submission auto-creates a **prefilled draft quote in Printavo** (line items, sizes, quantities from the request) instead of email-only — sales reviews and sends. Reuses the quote-creation write path that Breezy/PO Builder already prove out.
+
 ---
 
 ## What This Does Not Include

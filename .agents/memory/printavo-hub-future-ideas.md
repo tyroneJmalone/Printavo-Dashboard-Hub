@@ -11,3 +11,10 @@ Staff-defined rules that watch incoming orders/quotes and notify the right perso
 **Why:** came out of a team meeting; Tyler wants it remembered, explicitly not scheduled.
 
 **How to apply:** when building Hub v1 sync, make each polling cycle emit change events (new order/quote, status change, field change) rather than only overwriting current state — the rules engine later just subscribes to those events with zero extra Printavo API cost. Delivery can reuse the Resend connector. Recorded in the assessment doc under "Future Ideas".
+
+# Approved "down the road" features (Tyler picked these July 8, 2026)
+1. **Order Activity Timeline** — per-order change history + shop-wide feed, built from sync change events (Printavo shows no history). Same plumbing as notification rules.
+2. **Quote Aging Alerts (pipeline view)** — flag quotes unanswered past N days; pipeline-by-stage/age view for sales.
+3. **Reorder Request → Draft Quote** — portal reorder auto-creates prefilled draft quote in Printavo; reuses proven quote-creation write path.
+
+**How to apply:** all three depend on the change-event sync design above — one more reason v1 sync must emit events, not just overwrite state. Ideas pitched but NOT picked (don't build unprompted): Customer 360, global search, morning digest, vendor stock check at PO time.
