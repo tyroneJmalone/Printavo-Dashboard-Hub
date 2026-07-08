@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import Payments from "./pages/Payments";
+import VendorOrders from "./pages/VendorOrders";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/orders" component={Orders} />
       <Route path="/payments" component={Payments} />
+      <Route path="/vendor-orders" component={VendorOrders} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
+import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings } from "lucide-react";
 
 interface NavItem {
@@ -33,13 +34,13 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: "Sales",
-    items: [{ id: "reorders", label: "Reorder Inbox", icon: Inbox, badge: "7", disabled: true }],
+    items: [{ id: "reorders", label: "Reorder Inbox", icon: Inbox, disabled: true }],
   },
   {
     heading: "Purchasing",
     items: [
-      { id: "reorder", label: "Reorder Scan", icon: Scan, badge: "28", disabled: true },
-      { id: "vendor", label: "Vendor Orders", icon: Truck, badge: "12", disabled: true },
+      { id: "reorder", label: "Reorder Scan", icon: Scan, disabled: true },
+      { id: "vendor", label: "Vendor Orders", href: "/vendor-orders", icon: Truck },
     ],
   },
   {
@@ -68,6 +69,12 @@ const NAV_GROUPS: NavGroup[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const { data: needsOrdering } = useGetNeedsOrdering({
+    query: { queryKey: getGetNeedsOrderingQueryKey(), staleTime: 60_000 },
+  });
+  const vendorBadge = needsOrdering && needsOrdering.totalLineItems > 0
+    ? String(needsOrdering.totalLineItems)
+    : undefined;
 
   return (
     <div className="flex h-screen bg-[#020617] text-slate-100 font-sans overflow-hidden">
@@ -99,6 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = item.href && location === item.href;
+                  const badge = item.id === "vendor" ? vendorBadge : item.badge;
                   
                   const content = (
                     <div className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium transition-colors text-left ${
@@ -110,9 +118,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                     }`}>
                       <item.icon size={15} strokeWidth={isActive ? 2.5 : 2} className={isActive ? "text-[#10b981]" : ""} />
                       <span className="flex-1">{item.label}</span>
-                      {item.badge && (
+                      {badge && (
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded text-center min-w-[20px] ${isActive ? "bg-[#059669]/20 text-[#10b981]" : "bg-slate-800 text-slate-400"}`}>
-                          {item.badge}
+                          {badge}
                         </span>
                       )}
                     </div>

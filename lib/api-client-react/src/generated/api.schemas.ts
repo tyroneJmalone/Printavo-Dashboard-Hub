@@ -206,6 +206,59 @@ export interface PaymentsStats {
   net: number;
 }
 
+export interface SizeCount {
+  size: string;
+  count: number;
+}
+
+export interface NeedsOrderingLineItem {
+  id: string;
+  /** @nullable */
+  itemNumber: string | null;
+  /** @nullable */
+  color: string | null;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  categoryName: string | null;
+  items: number;
+  /** @nullable */
+  price: number | null;
+  sizes: SizeCount[];
+}
+
+export interface NeedsOrderingOrder {
+  orderId: string;
+  visualId: number;
+  orderType: string;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  customerCompany: string | null;
+  /** @nullable */
+  contactName: string | null;
+  /** @nullable */
+  statusName: string | null;
+  /** @nullable */
+  invoiceAt: string | null;
+  /** @nullable */
+  productionDueAt: string | null;
+  /** @nullable */
+  customerDueAt: string | null;
+  /** @nullable */
+  detailSyncedAt: string | null;
+  lineItems: NeedsOrderingLineItem[];
+}
+
+export interface NeedsOrderingResult {
+  orders: NeedsOrderingOrder[];
+  totalOrders: number;
+  totalLineItems: number;
+  totalPieces: number;
+}
+
 export interface ReportFilterOptions {
   statuses: string[];
   brands: string[];

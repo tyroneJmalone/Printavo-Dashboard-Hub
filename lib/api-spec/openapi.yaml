@@ -14,6 +14,8 @@ tags:
     description: Printavo sync engine
   - name: printavo
     description: Printavo gateway
+  - name: purchasing
+    description: Purchasing / vendor orders module
 paths:
   /healthz:
     get:
@@ -109,6 +111,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProbeResult"
+  /purchasing/needs-ordering:
+    get:
+      operationId: getNeedsOrdering
+      tags: [purchasing]
+      summary: Orders with line items needing ordering
+      description: Scans synced pv_line_items for product_status='need_ordering', grouped by order
+      responses:
+        "200":
+          description: Needs-ordering scan result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NeedsOrderingResult"
   /reports/orders:
     get:
       operationId: getOrdersReport
@@ -769,6 +784,58 @@ components:
             $ref: "#/components/schemas/PaymentTypeStat"
         net: { type: number }
       required: [start, end, byType, net]
+    SizeCount:
+      type: object
+      properties:
+        size: { type: string }
+        count: { type: integer }
+      required: [size, count]
+    NeedsOrderingLineItem:
+      type: object
+      properties:
+        id: { type: string }
+        itemNumber: { type: ["string", "null"] }
+        color: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        brand: { type: ["string", "null"] }
+        categoryName: { type: ["string", "null"] }
+        items: { type: integer }
+        price: { type: ["number", "null"] }
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SizeCount"
+      required: [id, itemNumber, color, description, brand, categoryName, items, price, sizes]
+    NeedsOrderingOrder:
+      type: object
+      properties:
+        orderId: { type: string }
+        visualId: { type: integer }
+        orderType: { type: string }
+        nickname: { type: ["string", "null"] }
+        customerCompany: { type: ["string", "null"] }
+        contactName: { type: ["string", "null"] }
+        statusName: { type: ["string", "null"] }
+        invoiceAt: { type: ["string", "null"] }
+        productionDueAt: { type: ["string", "null"] }
+        customerDueAt: { type: ["string", "null"] }
+        detailSyncedAt: { type: ["string", "null"] }
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/NeedsOrderingLineItem"
+      required: [orderId, visualId, orderType, nickname, customerCompany, contactName, statusName, invoiceAt, productionDueAt, customerDueAt, detailSyncedAt, lineItems]
+    NeedsOrderingResult:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/NeedsOrderingOrder"
+        totalOrders: { type: integer }
+        totalLineItems: { type: integer }
+        totalPieces: { type: integer }
+      required: [orders, totalOrders, totalLineItems, totalPieces]
     ReportFilterOptions:
       type: object
       properties:

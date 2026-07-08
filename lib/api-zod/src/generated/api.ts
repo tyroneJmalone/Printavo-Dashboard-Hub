@@ -130,6 +130,44 @@ export const ProbePrintavoResponse = zod.object({
 
 
 /**
+ * Scans synced pv_line_items for product_status='need_ordering', grouped by order
+ * @summary Orders with line items needing ordering
+ */
+export const GetNeedsOrderingResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "orderType": zod.string(),
+  "nickname": zod.string().nullable(),
+  "customerCompany": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "invoiceAt": zod.string().nullable(),
+  "productionDueAt": zod.string().nullable(),
+  "customerDueAt": zod.string().nullable(),
+  "detailSyncedAt": zod.string().nullable(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.string(),
+  "itemNumber": zod.string().nullable(),
+  "color": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "categoryName": zod.string().nullable(),
+  "items": zod.number(),
+  "price": zod.number().nullable(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "count": zod.number()
+}))
+}))
+})),
+  "totalOrders": zod.number(),
+  "totalLineItems": zod.number(),
+  "totalPieces": zod.number()
+})
+
+
+/**
  * @summary Filtered orders list with summary stats
  */
 export const getOrdersReportQueryLimitMax = 500;

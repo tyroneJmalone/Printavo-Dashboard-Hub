@@ -34,6 +34,7 @@ import type {
   GetStyleNumberBreakdownParams,
   HealthStatus,
   ListChangeEventsParams,
+  NeedsOrderingResult,
   OrdersReport,
   PaymentsReport,
   PaymentsStats,
@@ -516,6 +517,84 @@ export function useProbePrintavo<TData = Awaited<ReturnType<typeof probePrintavo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getProbePrintavoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetNeedsOrderingUrl = () => {
+
+
+
+
+  return `/api/purchasing/needs-ordering`
+}
+
+/**
+ * Scans synced pv_line_items for product_status='need_ordering', grouped by order
+ * @summary Orders with line items needing ordering
+ */
+export const getNeedsOrdering = async ( options?: RequestInit): Promise<NeedsOrderingResult> => {
+
+  return customFetch<NeedsOrderingResult>(getGetNeedsOrderingUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNeedsOrderingQueryKey = () => {
+    return [
+    `/api/purchasing/needs-ordering`
+    ] as const;
+    }
+
+
+export const getGetNeedsOrderingQueryOptions = <TData = Awaited<ReturnType<typeof getNeedsOrdering>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNeedsOrdering>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNeedsOrderingQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNeedsOrdering>>> = ({ signal }) => getNeedsOrdering({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNeedsOrdering>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNeedsOrderingQueryResult = NonNullable<Awaited<ReturnType<typeof getNeedsOrdering>>>
+export type GetNeedsOrderingQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Orders with line items needing ordering
+ */
+
+export function useGetNeedsOrdering<TData = Awaited<ReturnType<typeof getNeedsOrdering>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNeedsOrdering>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNeedsOrderingQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

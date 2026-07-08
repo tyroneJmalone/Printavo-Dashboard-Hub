@@ -46,3 +46,7 @@ POST /api/parse-po, pdf-parse with pagerender hook for coordinate-based text ite
 - Merge with PO Builder into one ordering interface (user request): PO Builder's need_ordering scan + line-item mutations + productionFileCreate, plus this app's actual vendor submission + status/tracking.
 - Third distinct SanMar client in the fleet: Breezy (PricingService), PO Builder (ProductInfo), this (PO submitPO + inventory). Hub should unify into one SanMar module with all three services.
 - drizzle-kit push (no migration files) — same pattern as other monorepo apps.
+
+## need_ordering data-quality quirks (seen in live data, July 2026)
+- The need_ordering flag can be stale: orders already in "PICKED UP" status (e.g. items=0 lines) may still carry it. Cart building must filter items<=0 or surface a "stale flag" warning — never auto-add to vendor carts.
+- Line item `sizes` counts may not sum to `items`. For per-size vendor submission, `sizes` (count>0) is the source of truth, not `items`.
