@@ -1,7 +1,7 @@
 # Printavo Dashboard Consolidation Assessment
 **Prepared:** June 26, 2026 · **Updated:** July 7, 2026
 **Scope:** Consolidating eleven Replit apps into one unified system ("Printavo Hub")
-**Status:** ✅ Source-code review of **all repos** is complete (June–July 2026). This revision incorporates the code-level findings — see "What the Source-Code Review Confirmed" below.
+**Status:** ✅ Source-code review of **all 11 repos** is complete (June–July 2026, Reorder Portal reviewed last). This revision incorporates the code-level findings — see "What the Source-Code Review Confirmed" below.
 
 ---
 
@@ -90,8 +90,10 @@ A public portal where customers look up their order history and request reorders
 - Customer searches by **email or company name** → sees their order cards (mockup thumbnail, status, total, due date, pcs); opens a reorder modal with per-product size/qty grids (prefilled "was X" hints) + notes → submits
 - **No database** — everything fetched **live** from Printavo GraphQL v2 (`invoices`, `lineItemGroups`, `imprints/mockups`), line items deduplicated server-side
 - A reorder submission **emails the sales team** (`info@mintprintworks.com`) via **Resend** (Replit connector) — it does **not** persist anywhere today
-- **Secrets:** `PRINTAVO_API_EMAIL`, `PRINTAVO_API_TOKEN`, `SESSION_SECRET`; Resend key fetched at runtime from the connector
+- **Secrets:** `PRINTAVO_API_EMAIL`, `PRINTAVO_API_TOKEN`; Resend key fetched at runtime from the connector (the handoff doc also listed `SESSION_SECRET`, but the code review found sessions aren't actually used — `express-session` is an unused dependency)
 - **Stack:** React + Vite + wouter + shadcn, Express, TanStack Query — same family as the rest
+- **Status flags (per Tyler, July 2026):** "not fully dialed in but on the right track" — treat as a working prototype; each search sees only the **15 newest matching invoices** (older history invisible); **no Printavo throttle at all** (every customer search fires unmetered API calls against the shared account limit)
+- ⚠️ **Security findings (code review):** no identity verification on lookup (anyone with a customer's email can view their order history, totals, and mockups); company search is a **substring match** (overlapping names could expose other companies' orders); no rate limiting on the public endpoints; reorder notes are interpolated into the email HTML unsanitized. All addressed in the Hub rebuild (see below).
 
 ### 10. Color Reference DB — *NEW* (production reference)
 Master color-matching database for the shop floor. Not Printavo-connected.
@@ -121,7 +123,7 @@ All repos have now been reviewed line-by-line. The June assessment holds up — 
 | Tier | Apps | Effort |
 |---|---|---|
 | **Modern monorepo template** — same structure as the Hub target (pnpm workspaces, contract-first API, Drizzle) | Breezy Quote, PO Builder, Mint Bucks, PDF Sorter, Vendor Order Submission | Port **nearly verbatim** — mostly copy modules + merge schema |
-| **Older client/server/shared template** | Reporting, Workorder Manager, Printavo Backup, Shipping Estimator, Color Reference DB | Business logic ports cleanly, but files need **restructuring** into the monorepo layout |
+| **Older client/server/shared template** | Reporting, Workorder Manager, Printavo Backup, Shipping Estimator, Color Reference DB, Reorder Portal | Business logic ports cleanly, but files need **restructuring** into the monorepo layout |
 
 ### 2. Purchasing must become ONE module (Tyler's direction)
 PO Builder and Vendor Order Submission cover the same process but don't work hand-in-hand — staff finish in one and re-key into the other. They merge into a single **Ordering** module: *scan needs-ordering → build PO → push to Printavo → submit to vendor → track status/shipping*. Each contributes the half the other lacks, and they even solved "browse POs from Printavo" two different ways — the Hub keeps the better of each.
@@ -135,6 +137,7 @@ Mint Bucks' throttle is battle-tested: **620 ms minimum spacing** (~8 req/5 s �
 ### 5. Security findings (fix during consolidation)
 - **Vendor Submission stores the SanMar password in plain text** in a DB column misleadingly named `password_encrypted`
 - Printavo credentials live in DB rows in two apps (Backup, Vendor Submission) and in env vars under three different names elsewhere
+- **The public Reorder Portal has no identity verification and no abuse protection** — anyone with a customer's email can view that customer's order history, and company search matches substrings. The Hub rebuild adds customer verification (emailed code / magic link), exact-match lookups, and per-IP rate limiting on the public endpoints
 - **Resolution:** all credentials (Printavo, SanMar, S&S, ShipStation, EasyPost, Dropbox, PrintNode, OpenAI, Resend) move to Replit's encrypted secrets — one name each, no DB-stored credentials
 - Good news: **no hardcoded secrets were found in any repo** ✅
 
@@ -143,6 +146,7 @@ Mint Bucks' throttle is battle-tested: **620 ms minimum spacing** (~8 req/5 s �
 |---|---|---|
 | S&S order submission (Vendor Sub) | **Untested in production** | Test against a real S&S order before cutover |
 | Printavo PO import (Vendor Sub) | "Still needs work" per Tyler | Rebuild on the shared cache during the Ordering-module merge |
+| Reorder Portal | "Not fully dialed in" per Tyler — prototype; each search sees only the 15 newest matching invoices; no throttle; no lookup verification | Rebuild on the shared cache with customer verification, full history, and rate limiting |
 | Mint Bucks credit expiry | Tracked but not auto-expired | Add expiry sweep to the Hub scheduler |
 | Credit ledger + color DB + decoration matrices | Systems of record with no Printavo copy | **Migrate data exactly — never rebuild** |
 
@@ -334,7 +338,7 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 | Risk | Severity | Mitigation |
 |---|---|---|
 | Two full crawlers + cron + live public lookups | **High** | The core win — serialize all Printavo traffic through one queue + scheduler; the portal reads cache, never overlaps backup/reporting. |
-| Public access boundary (customer surface) | **High** | The portal must never expose internal data or staff routes. Keep it a separate front-end with its own restricted API scope; staff Hub behind auth. |
+| Public access boundary (customer surface) | **High** | The portal must never expose internal data or staff routes. Keep it a separate front-end with its own restricted API scope; staff Hub behind auth. Code review confirmed the current portal has **no identity verification or abuse limits** — add emailed-code verification + per-IP rate limiting in the rebuild. |
 | Backup file-download volume | Medium | Full backups pull all artwork/PDFs — size VM disk + bandwidth; keep Dropbox dual-write. |
 | Python + Chromium in one image | Medium | Confirm both run on the Reserved VM; profile memory. |
 | Vendor layer unification | Medium | Merge three SanMar/S&S implementations — reconcile field mappings + warehouse codes before cutover. |
@@ -375,6 +379,10 @@ Standardizations needed: DB client → Drizzle everywhere (Workorder uses raw `p
 - [ ] **SanMar / S&S:** which credential sets are current (env-var variants vs DB rows)? Plan to **rotate the SanMar password** after migration (it was stored in plain text)?
 - [ ] **Shipping:** ShipStation + EasyPost keys available? **PrintNode** key + printer confirmed? **Dropbox** dual-write kept? **OpenAI** for Ask AI? **Resend** connector (portal + Mint Bucks)?
 - [ ] **S&S test order:** OK to place (and cancel/keep) one real S&S order to verify the untested submission path?
+
+**Public portal security (new — from the portal code review)**
+- [ ] Add customer identity verification to the portal lookup (recommended: emailed one-time code / magic link) instead of open email/company search?
+- [ ] Company search becomes exact-match (or verified association) rather than substring?
 
 **Infrastructure**
 - [ ] Deploy as one **Reserved VM** with **Python 3** + **Chromium**, serving **two** front-ends?
