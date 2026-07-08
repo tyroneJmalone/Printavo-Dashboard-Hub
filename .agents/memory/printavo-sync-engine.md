@@ -7,6 +7,10 @@ description: Durable findings from reading the PrintavoBackup source repo and Pr
 
 **Source repo:** `https://github.com/tyroneJmalone/PrintavoBackup.git` (public). Key files: `artifacts/api-server/src/lib/printavo/{client,queries}.ts`, `artifacts/api-server/src/lib/backup/{engine,fetchers,entityWatermarks,scheduler}.ts`, schema in `lib/db/src/schema/`.
 
+## Official docs (provided by Tyler, July 8 2026)
+- v2 GraphQL (the one to use — all 11 apps use it exclusively): https://www.printavo.com/docs/api/v2
+- v1 REST (legacy Apiary docs — reference only, do not build on): https://printavo.docs.apiary.io/#
+
 ## API constraints (Printavo GraphQL v2)
 - `updatedAfter` filter is supported ONLY on `invoices` and `quotes` queries. All other entities (customers, contacts, transactions, tasks…) must be fully re-fetched and filtered client-side by `timestamps.updatedAt`.
 - Rate limit: 10 requests / 5 seconds. Max query depth 13, max complexity 25,000.
