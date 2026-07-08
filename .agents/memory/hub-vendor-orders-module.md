@@ -40,6 +40,14 @@ description: Durable decisions from the Hub's purchasing module (P2 cart/pricing
   **Why:** probed live with real creds after Tyler pushed back on the flakiness assumption; PC54 failed with "Black", succeeded with "Jet Black".
 - Quantities are capped at 3000 per warehouse (display "3000+"); array order aligns with the SANMAR_WAREHOUSES constant in lib/sanmar.
 
+# Workspace build quirk
+- api-server/hub typecheck reads lib/db's emitted `dist/*.d.ts` (composite TS project refs) — after ANY lib/db schema change run `./node_modules/.bin/tsc -b lib/db` or typecheck fails with "property does not exist" on new columns.
+  **Why:** lib/db has no build script; drizzle push updates the DB but not the declaration output.
+
+# PO HTML public token route (P3a, July 2026)
+- `/api/purchasing/po-html/:token` is the ONLY unauthenticated endpoint by design (Printavo fetches PO HTML async after productionFileCreate). Token = 256-bit hex, unique-indexed, never in DTOs/OpenAPI, NON-expiring; every P3c push must regenerate it via newHtmlToken() and hand Printavo publicPoHtmlUrl().
+- Replace action in PoEditor inherits printavoLineItemId/orderId/visualId but NOT quantities — P3c lineItemUpdate must push the new sizes/qty to Printavo rather than assume they match the invoice line.
+
 # P3/P4 landmines (recorded by architect review, not yet actioned)
 - Closest-match lookups save the *queried* style as styleNumber, not the vendor's resolved styleName — persist styleName (or rely on SKUs) before P4 vendor submission.
 - PO edit/delete is allowed regardless of pushedToPrintavoAt — add a guard/warning when P3 write-backs land.

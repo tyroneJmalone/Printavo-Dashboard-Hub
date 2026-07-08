@@ -18,6 +18,7 @@ import {
   Check,
   X,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -380,6 +381,8 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
     po.lineItems.map((li) => ({ ...li, sizes: li.sizes.map((s) => ({ ...s })) })),
   );
   const [addMode, setAddMode] = useState<"vendor" | "manual" | null>(null);
+  /** Index of the line being replaced — the added line inherits its Printavo link. */
+  const [replaceIdx, setReplaceIdx] = useState<number | null>(null);
 
   const canVendorSearch = po.vendorName === "sanmar" || po.vendorName === "ss";
 
@@ -432,6 +435,37 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
 
   function removeLine(idx: number) {
     setLines((prev) => prev.filter((_, i) => i !== idx));
+    // Indexes shift after a removal — drop any pending replace to stay safe.
+    setReplaceIdx(null);
+  }
+
+  /**
+   * Append or, in replace mode, swap in for the replaced line. A replacement
+   * inherits the old line's Printavo linkage (line item id / order id /
+   * visual id) so P3 write-backs still know which invoice line it fulfills.
+   */
+  function handleAddLine(line: PoFileLineItem) {
+    if (replaceIdx !== null && lines[replaceIdx]) {
+      const old = lines[replaceIdx];
+      const merged: PoFileLineItem = {
+        ...line,
+        printavoLineItemId: old.printavoLineItemId,
+        printavoOrderId: old.printavoOrderId,
+        visualId: old.visualId,
+        color: line.color ?? old.color,
+      };
+      setLines((prev) => prev.map((li, i) => (i === replaceIdx ? merged : li)));
+      setReplaceIdx(null);
+    } else {
+      setLines((prev) => [...prev, line]);
+    }
+    setAddMode(null);
+  }
+
+  function toggleAddMode(mode: "vendor" | "manual") {
+    const next = addMode === mode ? null : mode;
+    setAddMode(next);
+    if (next === null) setReplaceIdx(null);
   }
 
   const emptyLines = lines.filter((li) => lineQty(li) === 0);
@@ -534,6 +568,21 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
                     {qty} pcs · <span className="text-[#10b981]">{money(cost)}</span>
                   </span>
                   <button
+                    onClick={() => {
+                      setReplaceIdx(idx);
+                      setAddMode(canVendorSearch ? "vendor" : "manual");
+                    }}
+                    className={`transition-colors ${
+                      replaceIdx === idx
+                        ? "text-amber-400"
+                        : "text-slate-500 hover:text-amber-400"
+                    }`}
+                    aria-label={`Replace line ${li.styleNumber}`}
+                    title="Replace with a different item (keeps the Printavo link)"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                  <button
                     onClick={() => removeLine(idx)}
                     className="text-slate-500 hover:text-red-400 transition-colors"
                     aria-label={`Remove line ${li.styleNumber}`}
@@ -580,10 +629,31 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
       </div>
 
       <div className="space-y-2.5">
+        {replaceIdx !== null && lines[replaceIdx] && (
+          <div className="flex items-center gap-2 text-[11px] text-amber-300 bg-amber-950/40 border border-amber-900/50 rounded px-2.5 py-1.5">
+            <RefreshCw size={12} className="shrink-0" />
+            <span>
+              Replacing{" "}
+              <span className="font-mono font-bold">
+                {lines[replaceIdx].styleNumber}
+              </span>
+              {lines[replaceIdx].visualId ? ` (order #${lines[replaceIdx].visualId})` : ""}{" "}
+              — the item you add will take over this line and keep its Printavo
+              link.
+            </span>
+            <button
+              onClick={() => setReplaceIdx(null)}
+              className="ml-auto text-slate-400 hover:text-white transition-colors"
+              aria-label="Cancel replace"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {canVendorSearch && (
             <button
-              onClick={() => setAddMode(addMode === "vendor" ? null : "vendor")}
+              onClick={() => toggleAddMode("vendor")}
               className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded transition-colors border ${
                 addMode === "vendor"
                   ? "bg-slate-700 border-slate-500 text-white"
@@ -594,7 +664,7 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
             </button>
           )}
           <button
-            onClick={() => setAddMode(addMode === "manual" ? null : "manual")}
+            onClick={() => toggleAddMode("manual")}
             className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded transition-colors border ${
               addMode === "manual"
                 ? "bg-slate-700 border-slate-500 text-white"
@@ -607,20 +677,10 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
         {addMode === "vendor" && canVendorSearch && (
           <VendorAddForm
             vendor={po.vendorName as "sanmar" | "ss"}
-            onAdd={(line) => {
-              setLines((prev) => [...prev, line]);
-              setAddMode(null);
-            }}
+            onAdd={handleAddLine}
           />
         )}
-        {addMode === "manual" && (
-          <ManualAddForm
-            onAdd={(line) => {
-              setLines((prev) => [...prev, line]);
-              setAddMode(null);
-            }}
-          />
-        )}
+        {addMode === "manual" && <ManualAddForm onAdd={handleAddLine} />}
       </div>
 
       <div className="flex items-center gap-2 pt-1 border-t border-slate-800/60">

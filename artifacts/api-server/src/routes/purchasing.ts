@@ -11,6 +11,7 @@ import {
   createPoFile,
   listPoFiles,
   getPoFile,
+  getPoFileByHtmlToken,
   updatePoFile,
   appendPoFileLineItems,
   unlockPoFile,
@@ -209,6 +210,26 @@ router.delete("/purchasing/po-files/:id", (req, res) => {
     .catch((err) => {
       req.log.error({ err }, "PO file delete failed");
       res.status(500).json({ error: "Failed to delete PO" });
+    });
+});
+
+/**
+ * PUBLIC (unauthenticated) PO HTML by secret token — the URL handed to
+ * Printavo's productionFileCreate. The token is a 64-char hex secret,
+ * regenerated on every push; this must stay the ONLY public endpoint.
+ */
+router.get("/purchasing/po-html/:token", (req, res) => {
+  getPoFileByHtmlToken(req.params.token)
+    .then((po) => {
+      if (!po) {
+        res.status(404).send("Not found");
+        return;
+      }
+      res.type("html").send(renderPoHtml(po));
+    })
+    .catch((err) => {
+      req.log.error({ err }, "public PO render failed");
+      res.status(500).send("Render failed");
     });
 });
 

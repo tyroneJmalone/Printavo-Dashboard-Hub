@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Purchase order documents built from the needs-ordering cart.
@@ -34,12 +35,24 @@ export const poFilesTable = pgTable(
      * never be unlocked. A future re-push must reset this to false.
      */
     manuallyUnlocked: boolean("manually_unlocked").notNull().default(false),
+    /**
+     * Secret token for the public (unauthenticated) PO HTML URL that Printavo
+     * fetches via productionFileCreate. Non-expiring by design (Printavo
+     * fetches asynchronously); regenerated on every push so old links die.
+     * App code sets it explicitly; the SQL default only backfills old rows.
+     */
+    htmlToken: text("html_token")
+      .notNull()
+      .default(
+        sql`replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')`,
+      ),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("po_files_created_at_idx").on(t.createdAt),
     uniqueIndex("po_files_po_number_uq").on(t.poNumber),
+    uniqueIndex("po_files_html_token_uq").on(t.htmlToken),
   ],
 );
 

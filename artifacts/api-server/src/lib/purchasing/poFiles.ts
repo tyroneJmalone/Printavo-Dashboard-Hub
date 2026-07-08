@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { db, poFilesTable, type PoFile as PoFileRow } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 
@@ -110,9 +111,31 @@ export async function createPoFile(input: {
       totalQuantity,
       totalCost: totalCost.toFixed(2),
       lineItems: input.lineItems,
+      htmlToken: newHtmlToken(),
     })
     .returning();
   return toDto(row);
+}
+
+/**
+ * Secret for the public PO HTML URL (the only unauthenticated endpoint).
+ * Non-expiring by design — Printavo fetches the file asynchronously after
+ * productionFileCreate, so an expiring link would silently break the attach.
+ * A push (P3c) must regenerate it so previously shared links die.
+ */
+export function newHtmlToken(): string {
+  return randomBytes(32).toString("hex");
+}
+
+/** Internal row lookup for the public HTML route — NOT exposed in the DTO. */
+export async function getPoFileByHtmlToken(token: string): Promise<PoFileDto | null> {
+  if (!/^[0-9a-f]{64}$/.test(token)) return null;
+  const rows = await db
+    .select()
+    .from(poFilesTable)
+    .where(eq(poFilesTable.htmlToken, token))
+    .limit(1);
+  return rows[0] ? toDto(rows[0]) : null;
 }
 
 export async function listPoFiles(): Promise<PoFileDto[]> {
