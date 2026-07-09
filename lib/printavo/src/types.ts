@@ -161,6 +161,26 @@ export interface SingleOrderDetail {
   quote?: PvOrderDetailNode | null;
 }
 
+export interface PvSweepLineItemNode {
+  id: string;
+  productStatus: string | null;
+}
+
+export interface PvSweepGroupNode {
+  id: string;
+  lineItems: NestedConnection<PvSweepLineItemNode>;
+}
+
+export interface PvSweepOrderNode {
+  id: string;
+  timestamps: PvTimestamps;
+  lineItemGroups: NestedConnection<PvSweepGroupNode>;
+}
+
+export interface ProductStatusSweepPage {
+  invoices: Connection<PvSweepOrderNode>;
+}
+
 export type PvTransactionTypename =
   | "Payment"
   | "PaymentDispute"

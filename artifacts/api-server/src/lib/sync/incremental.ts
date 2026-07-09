@@ -26,6 +26,7 @@ import {
   newDetailAgg,
   type DetailAgg,
 } from "./detail";
+import { sweepProductStatuses, type SweepAgg } from "./productStatusSweep";
 import { dateOrNull } from "./differ";
 import { SEED_MONTHS } from "./seed";
 import {
@@ -45,6 +46,15 @@ import {
 } from "./upserts";
 
 const DAILY_REFRESH_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Product-status sweep depth (25 invoices/page, newest first).
+ * Scheduler polls skim the newest ~250 invoices (~7s of throttled
+ * requests); manual "Sync now" digs to legacy PO Builder depth (~1250
+ * invoices, ~35-50s) since the user is explicitly asking for freshness.
+ */
+const SWEEP_PAGES_SCHEDULED = 10;
+const SWEEP_PAGES_MANUAL = 50;
 
 export { isPollActive } from "./runState";
 
@@ -184,6 +194,7 @@ export async function runIncrementalPoll(
     // (architect ruling: nightly re-crawl runs INSIDE the poll cycle,
     // never on a separate timer).
     let detailAgg: DetailAgg | null = null;
+    let sweepAgg: SweepAgg | null = null;
     const detailsWm = await getWatermark("details");
     if (detailsWm) {
       detailAgg = newDetailAgg();
@@ -196,7 +207,22 @@ export async function runIncrementalPoll(
         await crawlDetailEntity("quotes", cutoff, detailAgg, logger);
         await setWatermark("details_daily", runStart);
       } else {
-        for (const { id, kind } of changedOrders) {
+        // Product-status sweep: line item productStatus edits never bump
+        // the order's updatedAt, so the list-hash crawl above misses them.
+        // Diff a slim status-only crawl against the DB and refresh the
+        // disagreeing orders alongside the hash-changed ones.
+        const sweep = await sweepProductStatuses(
+          trigger === "manual" ? SWEEP_PAGES_MANUAL : SWEEP_PAGES_SCHEDULED,
+          cutoff,
+          logger,
+        );
+        sweepAgg = sweep.agg;
+        const toRefresh = new Map<string, "invoices" | "quotes">();
+        for (const { id, kind } of changedOrders) toRefresh.set(id, kind);
+        for (const id of sweep.mismatchedOrderIds) {
+          if (!toRefresh.has(id)) toRefresh.set(id, "invoices");
+        }
+        for (const [id, kind] of toRefresh) {
           await refreshOrderDetail(id, kind, detailAgg, logger);
         }
       }
@@ -240,6 +266,7 @@ export async function runIncrementalPoll(
       ...(referenceAgg ? { reference: referenceAgg } : {}),
       ...(paymentsAgg ? { payments: paymentsAgg } : {}),
       ...(detailAgg ? { details: detailAgg } : {}),
+      ...(sweepAgg ? { productStatusSweep: sweepAgg } : {}),
     };
     await completeRun(run.id, stats);
 

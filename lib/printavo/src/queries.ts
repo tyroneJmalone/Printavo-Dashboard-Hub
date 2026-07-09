@@ -214,6 +214,41 @@ export function singleOrderDetailQuery(
 }
 
 /*
+ * ── Product-status sweep (slim) ─────────────────────────────────────────
+ * Printavo does NOT bump an order's updatedAt when a line item's
+ * productStatus changes (verified live July 2026), so the hash-based list
+ * crawl never notices. This slim page fetches ONLY line item id +
+ * productStatus so the sync can diff against the DB and re-pull details
+ * for mismatched orders. Nesting limits (25 invoices × 5 groups × 8 items)
+ * are the legacy PO Builder's proven-safe complexity budget — do NOT raise.
+ */
+
+const SWEEP_GROUPS_FIRST = 5;
+const SWEEP_LINE_ITEMS_FIRST = 8;
+
+export function productStatusSweepPageQuery(after?: string | null): string {
+  return `query {
+    invoices(first: ${PAGE_SIZE}${afterArg(after)}, sortOn: VISUAL_ID, sortDescending: true) {
+      nodes {
+        id
+        timestamps { createdAt updatedAt }
+        lineItemGroups(first: ${SWEEP_GROUPS_FIRST}) {
+          nodes {
+            id
+            lineItems(first: ${SWEEP_LINE_ITEMS_FIRST}) {
+              nodes { id productStatus }
+              pageInfo { hasNextPage }
+            }
+          }
+          pageInfo { hasNextPage }
+        }
+      }
+      ${PAGE_INFO}
+    }
+  }`;
+}
+
+/*
  * ── Transactions (cash-basis payments) ──────────────────────────────────
  * Root `transactions` has pagination only (no date filter), newest-first.
  * TransactionUnion members all share the same core fields; Payment adds
