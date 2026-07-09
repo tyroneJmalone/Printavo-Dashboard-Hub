@@ -25,5 +25,15 @@ export interface PoFileLineItem {
   /** @nullable */
   brand: string | null;
   source: PoFileLineItemSource;
+  /**
+     * Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.
+     * @nullable
+     */
+  warehouseCode?: string | null;
+  /**
+     * Display name for the warehouse (e.g. "Dallas, TX").
+     * @nullable
+     */
+  warehouseName?: string | null;
   sizes: PoFileSizeEntry[];
 }

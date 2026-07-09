@@ -1,12 +1,14 @@
 import { Router, type IRouter, type Response } from "express";
 import {
   VendorLookupBody,
+  VendorInventoryBody,
   CreatePoFileBody,
   UpdatePoFileBody,
   AppendPoLineItemsBody,
 } from "@workspace/api-zod";
 import { loadNeedsOrdering } from "../lib/purchasing/needsOrdering";
 import { vendorLookup, VendorConfigError } from "../lib/purchasing/vendorLookup";
+import { vendorInventory } from "../lib/purchasing/vendorInventory";
 import {
   createPoFile,
   listPoFiles,
@@ -65,6 +67,27 @@ router.post("/purchasing/vendor-lookup", (req, res) => {
       req.log.error({ err, vendor, style }, "Vendor lookup failed");
       res.status(503).json({
         error: `${vendor === "sanmar" ? "SanMar" : "S&S Activewear"} lookup failed — vendor API may be temporarily unavailable`,
+      });
+    });
+});
+
+router.post("/purchasing/vendor-inventory", (req, res) => {
+  const parsed = VendorInventoryBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid vendor-inventory request" });
+    return;
+  }
+  const { vendor, style, catalogColor, sizes } = parsed.data;
+  vendorInventory(vendor, style, catalogColor, sizes)
+    .then((result) => res.json(result))
+    .catch((err) => {
+      if (err instanceof VendorConfigError) {
+        res.status(503).json({ error: err.message });
+        return;
+      }
+      req.log.error({ err, vendor, style, catalogColor }, "Vendor inventory failed");
+      res.status(503).json({
+        error: `${vendor === "sanmar" ? "SanMar" : "S&S Activewear"} inventory check failed — vendor API may be temporarily unavailable`,
       });
     });
 });

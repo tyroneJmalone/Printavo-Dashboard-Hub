@@ -27,6 +27,9 @@ export interface PoFileLineItem {
   description: string | null;
   brand: string | null;
   source: "vendor" | "manual";
+  /** Warehouse the whole line ships from — optional (older POs / manual lines). */
+  warehouseCode?: string | null;
+  warehouseName?: string | null;
   sizes: PoFileSizeEntry[];
 }
 

@@ -49,6 +49,8 @@ import type {
   SeedStartResult,
   SyncStatus,
   UpdatePoFileRequest,
+  VendorInventoryRequest,
+  VendorInventoryResult,
   VendorLookupRequest,
   VendorLookupResult
 } from './api.schemas';
@@ -685,6 +687,77 @@ export const useVendorLookup = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getVendorLookupMutationOptions(options));
+    }
+
+export const getVendorInventoryUrl = () => {
+
+
+
+
+  return `/api/purchasing/vendor-inventory`
+}
+
+/**
+ * Live warehouse quantities for the given sizes of an exact vendor catalog color. SanMar quantities are capped at 3000 per warehouse (capped=true means "3000+"). Cached in-memory ~5 minutes per vendor+style+color.
+ * @summary Per-warehouse availability for a resolved style+color
+ */
+export const vendorInventory = async (vendorInventoryRequest: VendorInventoryRequest, options?: RequestInit): Promise<VendorInventoryResult> => {
+
+  return customFetch<VendorInventoryResult>(getVendorInventoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(vendorInventoryRequest)
+  }
+);}
+
+
+
+
+export const getVendorInventoryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vendorInventory>>, TError,{data: BodyType<VendorInventoryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof vendorInventory>>, TError,{data: BodyType<VendorInventoryRequest>}, TContext> => {
+
+const mutationKey = ['vendorInventory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof vendorInventory>>, {data: BodyType<VendorInventoryRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  vendorInventory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VendorInventoryMutationResult = NonNullable<Awaited<ReturnType<typeof vendorInventory>>>
+    export type VendorInventoryMutationBody = BodyType<VendorInventoryRequest>
+    export type VendorInventoryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Per-warehouse availability for a resolved style+color
+ */
+export const useVendorInventory = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vendorInventory>>, TError,{data: BodyType<VendorInventoryRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof vendorInventory>>,
+        TError,
+        {data: BodyType<VendorInventoryRequest>},
+        TContext
+      > => {
+      return useMutation(getVendorInventoryMutationOptions(options));
     }
 
 export const getListPoFilesUrl = () => {

@@ -89,6 +89,10 @@ function buildCartItem(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): Ca
     vendorCatalogColor: null,
     resolved: false,
     sizes,
+    inventory: null,
+    warehouseCode: null,
+    warehouseName: null,
+    warehouseManual: false,
   };
 }
 

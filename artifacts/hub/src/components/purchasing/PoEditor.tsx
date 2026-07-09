@@ -562,6 +562,11 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
                       #{li.visualId}
                     </span>
                   )}
+                  {(li.warehouseName ?? li.warehouseCode) && (
+                    <span className="ml-2 text-[11px] text-sky-400/80">
+                      ships from {li.warehouseName ?? li.warehouseCode}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-mono text-slate-400">

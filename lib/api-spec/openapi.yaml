@@ -156,6 +156,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/vendor-inventory:
+    post:
+      operationId: vendorInventory
+      tags: [purchasing]
+      summary: Per-warehouse availability for a resolved style+color
+      description: Live warehouse quantities for the given sizes of an exact vendor catalog color. SanMar quantities are capped at 3000 per warehouse (capped=true means "3000+"). Cached in-memory ~5 minutes per vendor+style+color.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendorInventoryRequest"
+      responses:
+        "200":
+          description: Per-size warehouse availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorInventoryResult"
+        "503":
+          description: Vendor credentials missing or vendor API unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /purchasing/po-files:
     get:
       operationId: listPoFiles
@@ -1123,6 +1148,51 @@ components:
         cached: { type: boolean }
         fetchedAt: { type: string }
       required: [found, matchType, vendor, styleQueried, styleName, brand, title, colors, cached, fetchedAt]
+    VendorInventoryRequest:
+      type: object
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        style: { type: string, minLength: 1 }
+        catalogColor: { type: string, minLength: 1 }
+        sizes:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, minLength: 1 }
+      required: [vendor, style, catalogColor, sizes]
+    VendorWarehouseAvailability:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        qty: { type: integer }
+        capped:
+          type: boolean
+          description: True when the vendor caps the reported quantity (SanMar reports at most 3000 per warehouse — display "3000+").
+      required: [code, name, qty, capped]
+    VendorInventorySize:
+      type: object
+      properties:
+        size: { type: string }
+        found: { type: boolean }
+        warehouses:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorWarehouseAvailability"
+      required: [size, found, warehouses]
+    VendorInventoryResult:
+      type: object
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        style: { type: string }
+        catalogColor: { type: string }
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorInventorySize"
+        cached: { type: boolean }
+        fetchedAt: { type: string }
+      required: [vendor, style, catalogColor, sizes, cached, fetchedAt]
     PoFileSizeEntry:
       type: object
       properties:
@@ -1145,6 +1215,12 @@ components:
         description: { type: ["string", "null"] }
         brand: { type: ["string", "null"] }
         source: { type: string, enum: [vendor, manual] }
+        warehouseCode:
+          type: ["string", "null"]
+          description: Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.
+        warehouseName:
+          type: ["string", "null"]
+          description: Display name for the warehouse (e.g. "Dallas, TX").
         sizes:
           type: array
           items:

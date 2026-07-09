@@ -38,7 +38,13 @@ description: Durable decisions from the Hub's purchasing module (P2 cart/pricing
 # SanMar live inventory (verified working July 2026)
 - `getInventoryQtyForStyleColorSize` works and is fast (~200-600ms) BUT requires the EXACT catalogColor from ProductInfo ("Jet Black", not "Black") or it errors "Invalid product specified". The legacy app's "flaky inventory" reputation was almost certainly this mismatch — do not design around it being broken.
   **Why:** probed live with real creds after Tyler pushed back on the flakiness assumption; PC54 failed with "Black", succeeded with "Jet Black".
-- Quantities are capped at 3000 per warehouse (display "3000+"); array order aligns with the SANMAR_WAREHOUSES constant in lib/sanmar.
+
+# Warehouse auto-pick (P3b, approved behavior)
+- Auto-pick hierarchy per vendor+order group in the cart: one warehouse covering the whole order → per style+color subgroup → per-line best; ties broken by deepest total stock. A capped "3000+" counts as covering (a single size never needs >3000 for this shop).
+- **Deep-stock SanMar styles tie at 3000 everywhere → auto-pick defaults to warehouse #1 (Seattle).** This is the NORMAL case for popular styles, not an edge case. If Tyler wants proximity, add a preferred-warehouse ordering constant — flagged to him at P3b delivery.
+  **Why:** SanMar caps reported qty at 3000/warehouse, so total-stock tie-breaking degenerates to SANMAR_WAREHOUSES array order.
+- S&S per-warehouse quantities come free from the cached vendorLookup feed (no extra API call); warehouse "name" is just the abbr code (e.g. "CN") — S&S publishes no long names in that feed.
+- Stale-response guard in the cart drawer compares catalogColor only; if two styles share an identical color name a stale response could slip through. Add a style/request token if this code is touched again (architect: low probability, deferred).
 
 # Workspace build quirk
 - api-server/hub typecheck reads lib/db's emitted `dist/*.d.ts` (composite TS project refs) — after ANY lib/db schema change run `./node_modules/.bin/tsc -b lib/db` or typecheck fails with "property does not exist" on new columns.

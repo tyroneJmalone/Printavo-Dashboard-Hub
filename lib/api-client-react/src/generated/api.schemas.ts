@@ -342,6 +342,59 @@ export interface VendorLookupResult {
   fetchedAt: string;
 }
 
+export type VendorInventoryRequestVendor = typeof VendorInventoryRequestVendor[keyof typeof VendorInventoryRequestVendor];
+
+
+export const VendorInventoryRequestVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface VendorInventoryRequest {
+  vendor: VendorInventoryRequestVendor;
+  /** @minLength 1 */
+  style: string;
+  /** @minLength 1 */
+  catalogColor: string;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     * @items.minLength 1
+     */
+  sizes: string[];
+}
+
+export interface VendorWarehouseAvailability {
+  code: string;
+  name: string;
+  qty: number;
+  /** True when the vendor caps the reported quantity (SanMar reports at most 3000 per warehouse — display "3000+"). */
+  capped: boolean;
+}
+
+export interface VendorInventorySize {
+  size: string;
+  found: boolean;
+  warehouses: VendorWarehouseAvailability[];
+}
+
+export type VendorInventoryResultVendor = typeof VendorInventoryResultVendor[keyof typeof VendorInventoryResultVendor];
+
+
+export const VendorInventoryResultVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface VendorInventoryResult {
+  vendor: VendorInventoryResultVendor;
+  style: string;
+  catalogColor: string;
+  sizes: VendorInventorySize[];
+  cached: boolean;
+  fetchedAt: string;
+}
+
 export interface PoFileSizeEntry {
   size: string;
   /** @minimum 0 */
@@ -380,6 +433,16 @@ export interface PoFileLineItem {
   /** @nullable */
   brand: string | null;
   source: PoFileLineItemSource;
+  /**
+     * Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.
+     * @nullable
+     */
+  warehouseCode?: string | null;
+  /**
+     * Display name for the warehouse (e.g. "Dallas, TX").
+     * @nullable
+     */
+  warehouseName?: string | null;
   sizes: PoFileSizeEntry[];
 }
 

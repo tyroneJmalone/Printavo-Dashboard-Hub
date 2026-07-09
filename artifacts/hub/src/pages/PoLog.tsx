@@ -178,6 +178,7 @@ function PoRow({ po }: { po: PoFile }) {
                 <th className="px-5 py-2 font-semibold">Style</th>
                 <th className="px-5 py-2 font-semibold">Color</th>
                 <th className="px-5 py-2 font-semibold">Sizes</th>
+                <th className="px-5 py-2 font-semibold">Ship From</th>
                 <th className="px-5 py-2 font-semibold text-center">Order</th>
                 <th className="px-5 py-2 font-semibold text-right">Qty</th>
                 <th className="px-5 py-2 font-semibold text-right">Cost</th>
@@ -206,6 +207,9 @@ function PoRow({ po }: { po: PoFile }) {
                             </span>
                           ))}
                       </div>
+                    </td>
+                    <td className="px-5 py-2.5 text-slate-400 text-xs">
+                      {li.warehouseName ?? li.warehouseCode ?? "—"}
                     </td>
                     <td className="px-5 py-2.5 text-center font-mono text-slate-400">
                       {li.visualId ? `#${li.visualId}` : "—"}

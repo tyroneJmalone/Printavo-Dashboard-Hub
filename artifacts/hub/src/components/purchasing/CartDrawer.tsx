@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   useVendorLookup,
+  useVendorInventory,
   useCreatePoFile,
   useAppendPoLineItems,
   useListPoFiles,
@@ -13,6 +14,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   usePoCart,
+  canonSize,
+  warehouseOptionsFor,
   type CartItem,
   type CartVendor,
 } from "@/stores/poCart";
@@ -59,6 +62,8 @@ function CartItemCard({ item }: { item: CartItem }) {
   const setSizeQty = usePoCart((s) => s.setSizeQty);
   const setManualCost = usePoCart((s) => s.setManualCost);
   const applyVendorData = usePoCart((s) => s.applyVendorData);
+  const applyInventory = usePoCart((s) => s.applyInventory);
+  const setWarehouse = usePoCart((s) => s.setWarehouse);
   const { toast } = useToast();
 
   const [lookupResult, setLookupResult] = useState<VendorLookupResult | null>(null);
@@ -99,6 +104,32 @@ function CartItemCard({ item }: { item: CartItem }) {
     },
   });
 
+  const inventoryFetch = useVendorInventory({
+    mutation: {
+      onSuccess: (res) => {
+        // Ignore stale responses if the user has since changed the color.
+        const current = usePoCart.getState().items.find((i) => i.key === item.key);
+        if (!current || current.vendorCatalogColor !== res.catalogColor) return;
+        applyInventory(
+          item.key,
+          res.sizes.map((s) => ({
+            size: s.size,
+            found: s.found,
+            warehouses: s.warehouses,
+          })),
+        );
+      },
+      onError: () => {
+        toast({
+          title: "Warehouse stock check failed",
+          description:
+            "You can still save the PO without a warehouse — or re-pick the color to retry.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
   function applyColor(res: VendorLookupResult, colorName: string) {
     const color = res.colors.find((c) => c.colorName === colorName);
     if (!color) return;
@@ -112,6 +143,24 @@ function CartItemCard({ item }: { item: CartItem }) {
         sizeIndex: s.sizeIndex,
       })),
     });
+    // Warehouse availability for the sizes this line could need — vendor size
+    // labels (matched via canonSize) because SanMar rejects Printavo labels.
+    if (item.vendor === "sanmar" || item.vendor === "ss") {
+      const vendorSizes = color.sizes
+        .filter((vs) => item.sizes.some((sz) => canonSize(sz.size) === canonSize(vs.size)))
+        .map((vs) => vs.size)
+        .slice(0, 20);
+      if (vendorSizes.length > 0) {
+        inventoryFetch.mutate({
+          data: {
+            vendor: item.vendor,
+            style: res.styleQueried,
+            catalogColor: color.colorName,
+            sizes: vendorSizes,
+          },
+        });
+      }
+    }
   }
 
   const totals = itemTotals(item);
@@ -277,6 +326,68 @@ function CartItemCard({ item }: { item: CartItem }) {
         </div>
       )}
 
+      {inventoryFetch.isPending && (
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+          <Loader2 size={12} className="animate-spin" />
+          Checking warehouse stock…
+        </div>
+      )}
+
+      {item.inventory !== null &&
+        (() => {
+          const options = warehouseOptionsFor(item);
+          if (options.length === 0) {
+            return (
+              <div className="flex items-center gap-1.5 text-[11px] text-amber-400">
+                <AlertTriangle size={12} />
+                No warehouse stock data for this color.
+              </div>
+            );
+          }
+          const selected = options.find((o) => o.code === item.warehouseCode);
+          return (
+            <div>
+              <label className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
+                Ship from{" "}
+                <span className="normal-case font-normal text-slate-600">
+                  {item.warehouseManual ? "(manual pick)" : "(auto-picked)"}
+                </span>
+              </label>
+              <select
+                value={item.warehouseCode ?? ""}
+                onChange={(e) => {
+                  const code = e.target.value || null;
+                  const opt = options.find((w) => w.code === code);
+                  setWarehouse(item.key, code, opt?.name ?? null);
+                }}
+                aria-label="Ship from warehouse"
+                className="mt-1 w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200"
+              >
+                <option value="">Auto</option>
+                {options.map((w) => (
+                  <option key={w.code} value={w.code}>
+                    {w.name} —{" "}
+                    {w.short.length === 0 ? "covers all sizes" : `short: ${w.short.join(", ")}`}{" "}
+                    ({w.totalQty.toLocaleString()}{w.capped ? "+" : ""} pcs)
+                  </option>
+                ))}
+              </select>
+              {selected && selected.short.length > 0 && (
+                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-400">
+                  <AlertTriangle size={12} />
+                  {selected.name} is short on: {selected.short.join(", ")}
+                </div>
+              )}
+              {!selected && item.warehouseCode === null && (
+                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-amber-400">
+                  <AlertTriangle size={12} />
+                  No single warehouse covers this line — pick one manually.
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
       <div className="flex items-center justify-between text-xs">
         <span className="text-slate-500">{totals.qty} pcs</span>
         <span className="font-mono font-bold text-[#10b981]">
@@ -359,6 +470,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           description: i.description,
           brand: i.brand,
           source: vendor === "manual" ? "manual" : "vendor",
+          warehouseCode: i.warehouseCode,
+          warehouseName: i.warehouseName,
           sizes: i.sizes
             .filter((s) => s.qty > 0)
             .map((s) => ({

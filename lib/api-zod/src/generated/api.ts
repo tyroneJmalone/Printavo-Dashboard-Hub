@@ -212,6 +212,43 @@ export const VendorLookupResponse = zod.object({
 
 
 /**
+ * Live warehouse quantities for the given sizes of an exact vendor catalog color. SanMar quantities are capped at 3000 per warehouse (capped=true means "3000+"). Cached in-memory ~5 minutes per vendor+style+color.
+ * @summary Per-warehouse availability for a resolved style+color
+ */
+
+
+
+export const vendorInventoryBodySizesMax = 20;
+
+
+
+export const VendorInventoryBody = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "style": zod.string().min(1),
+  "catalogColor": zod.string().min(1),
+  "sizes": zod.array(zod.string().min(1)).min(1).max(vendorInventoryBodySizesMax)
+})
+
+export const VendorInventoryResponse = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "style": zod.string(),
+  "catalogColor": zod.string(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "found": zod.boolean(),
+  "warehouses": zod.array(zod.object({
+  "code": zod.string(),
+  "name": zod.string(),
+  "qty": zod.number(),
+  "capped": zod.boolean().describe('True when the vendor caps the reported quantity (SanMar reports at most 3000 per warehouse — display \"3000+\").')
+}))
+})),
+  "cached": zod.boolean(),
+  "fetchedAt": zod.string()
+})
+
+
+/**
  * @summary List saved purchase orders (newest first)
  */
 export const listPoFilesResponsePoFilesItemLineItemsItemSizesItemQtyMin = 0;
@@ -236,6 +273,8 @@ export const ListPoFilesResponse = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(listPoFilesResponsePoFilesItemLineItemsItemSizesItemQtyMin),
@@ -278,6 +317,8 @@ export const CreatePoFileBody = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(createPoFileBodyLineItemsItemSizesItemQtyMin),
@@ -310,6 +351,8 @@ export const CreatePoFileResponse = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(createPoFileResponseLineItemsItemSizesItemQtyMin),
@@ -356,6 +399,8 @@ export const GetPoFileResponse = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(getPoFileResponseLineItemsItemSizesItemQtyMin),
@@ -410,6 +455,8 @@ export const UpdatePoFileBody = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(updatePoFileBodyLineItemsItemSizesItemQtyMin),
@@ -442,6 +489,8 @@ export const UpdatePoFileResponse = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(updatePoFileResponseLineItemsItemSizesItemQtyMin),
@@ -483,6 +532,8 @@ export const AppendPoLineItemsBody = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(appendPoLineItemsBodyLineItemsItemSizesItemQtyMin),
@@ -515,6 +566,8 @@ export const AppendPoLineItemsResponse = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(appendPoLineItemsResponseLineItemsItemSizesItemQtyMin),
@@ -561,6 +614,8 @@ export const UnlockPoFileResponse = zod.object({
   "description": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "source": zod.enum(['vendor', 'manual']),
+  "warehouseCode": zod.string().nullish().describe('Vendor warehouse the whole line ships from (SanMar whseNo as string, S&S warehouse abbreviation). Optional — older POs and manual lines have none.'),
+  "warehouseName": zod.string().nullish().describe('Display name for the warehouse (e.g. \"Dallas, TX\").'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "qty": zod.number().min(unlockPoFileResponseLineItemsItemSizesItemQtyMin),

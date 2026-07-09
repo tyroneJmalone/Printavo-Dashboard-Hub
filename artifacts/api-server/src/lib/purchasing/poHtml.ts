@@ -50,11 +50,13 @@ export function renderPoHtml(po: PoFileDto): string {
         if (costs.length === 1) return money(costs[0]);
         return `${money(Math.min(...costs))}–${money(Math.max(...costs))}`;
       })();
+      const warehouse = li.warehouseName ?? li.warehouseCode ?? null;
       return `<tr>
         <td class="mono">${esc(li.styleNumber)}</td>
         <td>${esc(colorShown) || "—"}</td>
         <td class="desc">${esc(li.description) || "—"}${li.source === "manual" ? ' <span class="tag">manual cost</span>' : ""}</td>
         <td class="mono small">${sizesStr || "—"}</td>
+        <td class="small">${warehouse ? esc(warehouse) : "—"}</td>
         <td class="mono center">${orderRef}</td>
         <td class="mono right">${t.qty}</td>
         <td class="mono right">${costRange}</td>
@@ -120,6 +122,7 @@ export function renderPoHtml(po: PoFileDto): string {
     <thead>
       <tr>
         <th>Style</th><th>Color</th><th>Description</th><th>Sizes</th>
+        <th>Ship From</th>
         <th style="text-align:center">Order</th>
         <th style="text-align:right">Qty</th>
         <th style="text-align:right">Unit Cost</th>
