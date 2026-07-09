@@ -115,6 +115,20 @@ export function renderPoHtml(po: PoFileDto): string {
       <div class="num">PO ${esc(po.poNumber)}</div>
       <div>${esc(created)}</div>
       <div>${esc(VENDOR_LABELS[po.vendorName] ?? po.vendorName)}</div>
+      ${
+        po.submittedToVendorAt
+          ? `<div style="margin-top:4px;color:#0369a1;font-weight:600">Submitted to vendor ${esc(
+              new Date(po.submittedToVendorAt).toLocaleString("en-US", {
+                timeZone: "America/New_York",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }),
+            )}${po.vendorOrderNumber ? ` — Order # ${esc(po.vendorOrderNumber)}` : ""}</div>`
+          : ""
+      }
     </div>
   </div>
   ${po.notes ? `<div class="notes">${esc(po.notes)}</div>` : ""}

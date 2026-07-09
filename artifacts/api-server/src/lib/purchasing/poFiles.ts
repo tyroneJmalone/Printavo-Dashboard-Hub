@@ -60,8 +60,10 @@ export interface PoFileDto {
  * executing was interrupted by a restart — surface it as retryable failure.
  */
 function effectivePushState(row: PoFileRow): PoPushState | null {
-  const state = (row.pushState as PoPushState | null) ?? null;
-  if (!state) return null;
+  const raw = (row.pushState as PoPushState | null) ?? null;
+  if (!raw) return null;
+  // Older push cycles predate the statusSuggestions field.
+  const state: PoPushState = { ...raw, statusSuggestions: raw.statusSuggestions ?? [] };
   if (state.status === "running" && !isPushActive(row.id)) {
     return {
       ...state,
@@ -74,7 +76,8 @@ function effectivePushState(row: PoFileRow): PoPushState | null {
 
 /**
  * Lock rules:
- * - Submitted to vendor → locked permanently (no unlock, ever).
+ * - Submitted to vendor → locked; only the admin unlock (ADMIN_PIN) can
+ *   remove it, which un-marks the submission entirely.
  * - Pushed to Printavo → locked, but can be manually unlocked.
  * - A future re-push to Printavo must reset manuallyUnlocked to false.
  */
@@ -311,6 +314,39 @@ export async function unlockPoFile(id: string): Promise<PoUnlockResult> {
     const rows = await tx
       .update(poFilesTable)
       .set({ manuallyUnlocked: true, updatedAt: new Date() })
+      .where(eq(poFilesTable.id, id))
+      .returning();
+    return { status: "ok" as const, po: toDto(rows[0]) };
+  });
+}
+
+export type PoAdminUnlockResult =
+  | { status: "ok"; po: PoFileDto }
+  | { status: "not_found" }
+  | { status: "not_vendor_locked" };
+
+/**
+ * Admin-only escape hatch: un-marks a mistaken "submitted to vendor" —
+ * clears the timestamp and vendor order number. PIN verification happens at
+ * the route layer.
+ */
+export async function adminUnlockVendorPoFile(
+  id: string,
+): Promise<PoAdminUnlockResult> {
+  return db.transaction(async (tx) => {
+    const row = await lockRow(tx, id);
+    if (!row) return { status: "not_found" as const };
+    if (!row.submittedToVendorAt) return { status: "not_vendor_locked" as const };
+    const rows = await tx
+      .update(poFilesTable)
+      .set({
+        submittedToVendorAt: null,
+        vendorOrderNumber: null,
+        // Leave the PO editable right away — if it was also pushed to
+        // Printavo, the printavo lock would otherwise re-engage instantly.
+        manuallyUnlocked: true,
+        updatedAt: new Date(),
+      })
       .where(eq(poFilesTable.id, id))
       .returning();
     return { status: "ok" as const, po: toDto(rows[0]) };

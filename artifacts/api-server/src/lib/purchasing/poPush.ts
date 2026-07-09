@@ -15,7 +15,7 @@ import { refreshOrderDetail } from "../sync/detail";
 import { newDetailAgg } from "../sync/detail";
 import { newHtmlToken, type PoFileLineItem } from "./poFiles";
 import { claimPush, releasePush } from "./pushRegistry";
-import { evaluateAfterPush } from "./statusRules";
+import { evaluateAfterPush, type CreatedStatusSuggestion } from "./statusRules";
 
 /**
  * Push a PO to Printavo (P3c).
@@ -73,6 +73,8 @@ export interface PoPushState {
   attachedInvoiceIds: string[];
   /** Orders whose Postgres detail was refreshed after status writes. */
   refreshedOrderIds: string[];
+  /** Status suggestions the rules engine created after this push (each needs manual confirmation). */
+  statusSuggestions: CreatedStatusSuggestion[];
 }
 
 export type StartPushResult =
@@ -155,6 +157,7 @@ export async function startPoPush(
         lines,
         attachedInvoiceIds: resume ? prior.attachedInvoiceIds : [],
         refreshedOrderIds: resume ? prior.refreshedOrderIds : [],
+        statusSuggestions: resume ? (prior.statusSuggestions ?? []) : [],
       };
 
       await tx
@@ -413,12 +416,18 @@ async function runPush(poFileId: string, logger: Logger): Promise<void> {
 
     /* 5 — status rules (P3d): evaluate refreshed orders whose need_ordering
        items are now all ordered. Suggestions only — nothing is written to
-       Printavo until Tyler confirms. Best-effort, never fails the push. */
-    await evaluateAfterPush(
+       Printavo until Tyler confirms. Best-effort, never fails the push.
+       Created suggestions are recorded on the push state so the PO Log's
+       push confirmation panel can surface them. */
+    const createdSuggestions = await evaluateAfterPush(
       state.refreshedOrderIds,
       new Date(state.finishedAt),
       log,
     );
+    if (createdSuggestions.length > 0 || state.statusSuggestions.length === 0) {
+      state.statusSuggestions = createdSuggestions;
+      await persistState(poFileId, state);
+    }
   } catch (err) {
     log.error({ err }, "PO push crashed");
     if (state) {

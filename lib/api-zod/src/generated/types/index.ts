@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminUnlockPoFileRequest';
 export * from './appendPoLineItemsRequest';
 export * from './applyStatusSuggestionError';
 export * from './brandsParamParameter';
@@ -68,6 +69,7 @@ export * from './poPushLine';
 export * from './poPushLineStatus';
 export * from './poPushState';
 export * from './poPushStateStatus';
+export * from './poPushStatusSuggestion';
 export * from './printavoStatus';
 export * from './printavoStatusesResponse';
 export * from './probeResult';

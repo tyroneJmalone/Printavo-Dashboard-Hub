@@ -29,7 +29,7 @@ export interface PoFile {
   vendorOrderNumber: string | null;
   locked: boolean;
   /**
-     * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+     * Why the PO is locked — "vendor" locks need the admin unlock (PIN), "printavo" locks can be manually unlocked.
      * @nullable
      */
   lockReason: PoFileLockReason;

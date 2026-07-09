@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { createHash, timingSafeEqual } from "node:crypto";
 import {
   VendorLookupBody,
   VendorInventoryBody,
@@ -6,6 +7,7 @@ import {
   UpdatePoFileBody,
   AppendPoLineItemsBody,
   SubmitPoToVendorBody,
+  AdminUnlockPoFileBody,
   CreateStatusRuleBody,
   UpdateStatusRuleBody,
   ReorderStatusRulesBody,
@@ -21,6 +23,7 @@ import {
   updatePoFile,
   appendPoFileLineItems,
   unlockPoFile,
+  adminUnlockVendorPoFile,
   deletePoFile,
   submitPoToVendor,
   type PoFileLineItem,
@@ -292,7 +295,8 @@ router.post("/purchasing/po-files/:id/unlock", (req, res) => {
           return;
         case "vendor_locked":
           res.status(409).json({
-            error: "This PO was submitted to the vendor — it can never be unlocked.",
+            error:
+              "This PO was submitted to the vendor — only an admin can unlock it (Admin unlock, PIN required).",
           });
           return;
         case "not_locked":
@@ -304,6 +308,87 @@ router.post("/purchasing/po-files/:id/unlock", (req, res) => {
     })
     .catch((err) => {
       req.log.error({ err }, "PO unlock failed");
+      res.status(500).json({ error: "Failed to unlock PO" });
+    });
+});
+
+/** Constant-time PIN check against the ADMIN_PIN secret. */
+function adminPinMatches(pin: string): boolean {
+  const expected = process.env.ADMIN_PIN;
+  if (!expected) return false;
+  const a = createHash("sha256").update(pin).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+/**
+ * Brute-force friction for the admin PIN: after 5 wrong attempts, further
+ * tries are rejected for 15 minutes (process-wide — this is an internal
+ * single-user app). Reset on success or restart.
+ */
+const PIN_MAX_FAILURES = 5;
+const PIN_LOCKOUT_MS = 15 * 60 * 1000;
+let pinFailures = 0;
+let pinLockedUntil = 0;
+
+router.post("/purchasing/po-files/:id/admin-unlock", (req, res) => {
+  if (rejectIfPushActive(req.params.id, res)) return;
+  const parsed = AdminUnlockPoFileBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid admin unlock payload" });
+    return;
+  }
+  if (!process.env.ADMIN_PIN) {
+    res.status(403).json({
+      error: "Admin PIN isn't set up yet — add the ADMIN_PIN secret first.",
+    });
+    return;
+  }
+  if (Date.now() < pinLockedUntil) {
+    const mins = Math.ceil((pinLockedUntil - Date.now()) / 60_000);
+    res.status(429).json({
+      error: `Too many wrong PIN attempts — try again in ${mins} minute${mins === 1 ? "" : "s"}.`,
+    });
+    return;
+  }
+  if (!adminPinMatches(parsed.data.adminPin)) {
+    pinFailures += 1;
+    if (pinFailures >= PIN_MAX_FAILURES) {
+      pinLockedUntil = Date.now() + PIN_LOCKOUT_MS;
+      pinFailures = 0;
+      req.log.warn(
+        { poFileId: req.params.id },
+        "admin unlock: too many wrong PINs — locked out 15 min",
+      );
+    } else {
+      req.log.warn({ poFileId: req.params.id }, "admin unlock rejected: wrong PIN");
+    }
+    res.status(403).json({ error: "Incorrect admin PIN" });
+    return;
+  }
+  pinFailures = 0;
+  pinLockedUntil = 0;
+  adminUnlockVendorPoFile(req.params.id)
+    .then((result) => {
+      switch (result.status) {
+        case "not_found":
+          res.status(404).json({ error: "PO not found" });
+          return;
+        case "not_vendor_locked":
+          res.status(409).json({
+            error: "This PO isn't marked as submitted to the vendor.",
+          });
+          return;
+        case "ok":
+          req.log.info(
+            { poFileId: req.params.id },
+            "admin unlock: vendor submission un-marked",
+          );
+          res.json(result.po);
+      }
+    })
+    .catch((err) => {
+      req.log.error({ err }, "PO admin unlock failed");
       res.status(500).json({ error: "Failed to unlock PO" });
     });
 });

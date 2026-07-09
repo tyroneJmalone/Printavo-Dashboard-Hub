@@ -406,17 +406,25 @@ function ruleMatches(
  * completed orders (also zero need_ordering) from being resurrected by a
  * manual evaluation. Returns how many suggestions were created/updated.
  */
+export interface CreatedStatusSuggestion {
+  suggestionId: string;
+  orderPrintavoId: string;
+  visualId: number | null;
+  suggestedStatusName: string;
+}
+
 export async function evaluateStatusRules(
   candidates: EvalCandidate[],
   log: Logger,
-): Promise<{ checked: number; suggested: number }> {
-  if (candidates.length === 0) return { checked: 0, suggested: 0 };
+): Promise<{ checked: number; suggested: number; created: CreatedStatusSuggestion[] }> {
+  if (candidates.length === 0) return { checked: 0, suggested: 0, created: [] };
   const rules = await db
     .select()
     .from(poStatusRulesTable)
     .where(eq(poStatusRulesTable.enabled, true))
     .orderBy(asc(poStatusRulesTable.priority), asc(poStatusRulesTable.createdAt));
-  if (rules.length === 0) return { checked: 0, suggested: 0 };
+  if (rules.length === 0) return { checked: 0, suggested: 0, created: [] };
+  const created: CreatedStatusSuggestion[] = [];
 
   let suggested = 0;
   let checked = 0;
@@ -514,18 +522,27 @@ export async function evaluateStatusRules(
           eq(poStatusSuggestionsTable.state, "failed"),
         ),
       );
-    await db
+    const [inserted] = await db
       .insert(poStatusSuggestionsTable)
       .values({ orderPrintavoId: cand.orderPrintavoId, ...snapshot })
       .onConflictDoUpdate({
         target: [poStatusSuggestionsTable.orderPrintavoId],
         targetWhere: sql`state = 'pending'`,
         set: snapshot,
+      })
+      .returning({ id: poStatusSuggestionsTable.id });
+    if (inserted) {
+      created.push({
+        suggestionId: inserted.id,
+        orderPrintavoId: cand.orderPrintavoId,
+        visualId: order.visualId,
+        suggestedStatusName: matched.targetStatusName,
       });
+    }
     suggested += 1;
   }
   log.info({ checked, suggested }, "status rules evaluated");
-  return { checked, suggested };
+  return { checked, suggested, created };
 }
 
 /**
@@ -536,15 +553,17 @@ export async function evaluateAfterPush(
   orderIds: string[],
   poDate: Date,
   log: Logger,
-): Promise<void> {
-  if (orderIds.length === 0) return;
+): Promise<CreatedStatusSuggestion[]> {
+  if (orderIds.length === 0) return [];
   try {
-    await evaluateStatusRules(
+    const { created } = await evaluateStatusRules(
       orderIds.map((orderPrintavoId) => ({ orderPrintavoId, poDate })),
       log,
     );
+    return created;
   } catch (err) {
     log.warn({ err }, "post-push status rule evaluation failed (non-fatal)");
+    return [];
   }
 }
 

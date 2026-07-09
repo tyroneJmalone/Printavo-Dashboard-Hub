@@ -365,7 +365,7 @@ paths:
     post:
       operationId: submitPoToVendor
       tags: [purchasing]
-      summary: Mark a PO as submitted to the vendor — permanently locks edits — optionally recording the vendor's order/confirmation number.
+      summary: Mark a PO as submitted to the vendor — locks edits (only the admin unlock can remove it) — optionally recording the vendor's order/confirmation number.
       parameters:
         - name: id
           in: path
@@ -400,7 +400,7 @@ paths:
     post:
       operationId: unlockPoFile
       tags: [purchasing]
-      summary: Manually unlock a PO that was pushed to Printavo. POs submitted to a vendor can never be unlocked.
+      summary: Manually unlock a PO that was pushed to Printavo. Vendor-submitted POs need the admin unlock instead.
       parameters:
         - name: id
           in: path
@@ -420,7 +420,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: PO is not locked, or was submitted to the vendor (permanent lock)
+          description: PO is not locked, or was submitted to the vendor (admin unlock required)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/po-files/{id}/admin-unlock:
+    post:
+      operationId: adminUnlockPoFile
+      tags: [purchasing]
+      summary: Admin-only — un-mark a PO as submitted to the vendor (clears the vendor lock and the vendor order number). Requires the admin PIN.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUnlockPoFileRequest"
+      responses:
+        "200":
+          description: Unlocked PO file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoFile"
+        "403":
+          description: Admin PIN missing, incorrect, or not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: PO is not vendor-locked
           content:
             application/json:
               schema:
@@ -1566,7 +1607,20 @@ components:
         refreshedOrderIds:
           type: array
           items: { type: string }
-      required: [status, startedAt, finishedAt, error, lines, attachedInvoiceIds, refreshedOrderIds]
+        statusSuggestions:
+          type: array
+          description: Order status suggestions created by the rules engine after this push (each needs manual confirmation).
+          items:
+            $ref: "#/components/schemas/PoPushStatusSuggestion"
+      required: [status, startedAt, finishedAt, error, lines, attachedInvoiceIds, refreshedOrderIds, statusSuggestions]
+    PoPushStatusSuggestion:
+      type: object
+      properties:
+        suggestionId: { type: string }
+        orderPrintavoId: { type: string }
+        visualId: { type: ["integer", "null"] }
+        suggestedStatusName: { type: string }
+      required: [suggestionId, orderPrintavoId, visualId, suggestedStatusName]
     PushStartResponse:
       type: object
       properties:
@@ -1594,7 +1648,7 @@ components:
         lockReason:
           type: ["string", "null"]
           enum: [printavo, vendor, null]
-          description: Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+          description: Why the PO is locked — "vendor" locks need the admin unlock (PIN), "printavo" locks can be manually unlocked.
         pushState:
           anyOf:
             - $ref: "#/components/schemas/PoPushState"
@@ -1616,6 +1670,14 @@ components:
         vendorOrderNumber:
           type: ["string", "null"]
           description: Vendor's order/confirmation number from checkout (optional).
+    AdminUnlockPoFileRequest:
+      type: object
+      properties:
+        adminPin:
+          type: string
+          minLength: 1
+          description: Admin PIN (ADMIN_PIN secret) — required to remove a vendor-submitted lock.
+      required: [adminPin]
     PrintavoStatus:
       type: object
       properties:

@@ -7,7 +7,7 @@
  */
 
 /**
- * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+ * Why the PO is locked — "vendor" locks need the admin unlock (PIN), "printavo" locks can be manually unlocked.
  * @nullable
  */
 export type PoFileLockReason = typeof PoFileLockReason[keyof typeof PoFileLockReason] | null;

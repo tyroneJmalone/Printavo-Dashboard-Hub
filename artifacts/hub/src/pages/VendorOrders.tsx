@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
+import { LastSynced } from "@/components/LastSynced";
 import { useGetNeedsOrdering, triggerPoll, getSyncStatus, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
 import { formatNumber, formatDate } from "@/lib/format";
 import { usePoCart, guessVendor, type CartItem } from "@/stores/poCart";
@@ -184,6 +185,7 @@ export default function VendorOrders() {
               <p className="text-xs text-slate-400 mt-1">Line items flagged "needs ordering" in Printavo, refreshed by the 5-minute sync</p>
             </div>
             <div className="flex items-center gap-2">
+              <LastSynced className="mr-2" />
               <button
                 onClick={() => void handleSync()}
                 disabled={refreshing}

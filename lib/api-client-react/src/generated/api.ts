@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminUnlockPoFileRequest,
   AppendPoLineItemsRequest,
   ApplyStatusSuggestionError,
   BreakdownReport,
@@ -1288,7 +1289,7 @@ export const getSubmitPoToVendorUrl = (id: string,) => {
 }
 
 /**
- * @summary Mark a PO as submitted to the vendor — permanently locks edits — optionally recording the vendor's order/confirmation number.
+ * @summary Mark a PO as submitted to the vendor — locks edits (only the admin unlock can remove it) — optionally recording the vendor's order/confirmation number.
  */
 export const submitPoToVendor = async (id: string,
     submitPoToVendorRequest: SubmitPoToVendorRequest, options?: RequestInit): Promise<PoFile> => {
@@ -1337,7 +1338,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SubmitPoToVendorMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Mark a PO as submitted to the vendor — permanently locks edits — optionally recording the vendor's order/confirmation number.
+ * @summary Mark a PO as submitted to the vendor — locks edits (only the admin unlock can remove it) — optionally recording the vendor's order/confirmation number.
  */
 export const useSubmitPoToVendor = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitPoToVendor>>, TError,{id: string;data: BodyType<SubmitPoToVendorRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1359,7 +1360,7 @@ export const getUnlockPoFileUrl = (id: string,) => {
 }
 
 /**
- * @summary Manually unlock a PO that was pushed to Printavo. POs submitted to a vendor can never be unlocked.
+ * @summary Manually unlock a PO that was pushed to Printavo. Vendor-submitted POs need the admin unlock instead.
  */
 export const unlockPoFile = async (id: string, options?: RequestInit): Promise<PoFile> => {
 
@@ -1407,7 +1408,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UnlockPoFileMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Manually unlock a PO that was pushed to Printavo. POs submitted to a vendor can never be unlocked.
+ * @summary Manually unlock a PO that was pushed to Printavo. Vendor-submitted POs need the admin unlock instead.
  */
 export const useUnlockPoFile = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockPoFile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1418,6 +1419,77 @@ export const useUnlockPoFile = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getUnlockPoFileMutationOptions(options));
+    }
+
+export const getAdminUnlockPoFileUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}/admin-unlock`
+}
+
+/**
+ * @summary Admin-only — un-mark a PO as submitted to the vendor (clears the vendor lock and the vendor order number). Requires the admin PIN.
+ */
+export const adminUnlockPoFile = async (id: string,
+    adminUnlockPoFileRequest: AdminUnlockPoFileRequest, options?: RequestInit): Promise<PoFile> => {
+
+  return customFetch<PoFile>(getAdminUnlockPoFileUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminUnlockPoFileRequest)
+  }
+);}
+
+
+
+
+export const getAdminUnlockPoFileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminUnlockPoFile>>, TError,{id: string;data: BodyType<AdminUnlockPoFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adminUnlockPoFile>>, TError,{id: string;data: BodyType<AdminUnlockPoFileRequest>}, TContext> => {
+
+const mutationKey = ['adminUnlockPoFile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adminUnlockPoFile>>, {id: string;data: BodyType<AdminUnlockPoFileRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  adminUnlockPoFile(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdminUnlockPoFileMutationResult = NonNullable<Awaited<ReturnType<typeof adminUnlockPoFile>>>
+    export type AdminUnlockPoFileMutationBody = BodyType<AdminUnlockPoFileRequest>
+    export type AdminUnlockPoFileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Admin-only — un-mark a PO as submitted to the vendor (clears the vendor lock and the vendor order number). Requires the admin PIN.
+ */
+export const useAdminUnlockPoFile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adminUnlockPoFile>>, TError,{id: string;data: BodyType<AdminUnlockPoFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adminUnlockPoFile>>,
+        TError,
+        {id: string;data: BodyType<AdminUnlockPoFileRequest>},
+        TContext
+      > => {
+      return useMutation(getAdminUnlockPoFileMutationOptions(options));
     }
 
 export const getGetPoFileHtmlUrl = (id: string,) => {

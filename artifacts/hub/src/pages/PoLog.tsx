@@ -4,6 +4,7 @@ import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import {
   useListPoFiles,
   useUnlockPoFile,
+  useAdminUnlockPoFile,
   usePushPoFile,
   useSubmitPoToVendor,
   getListPoFilesQueryKey,
@@ -29,6 +30,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   PackageCheck,
+  ShieldAlert,
+  Wand2,
 } from "lucide-react";
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -99,15 +102,35 @@ function PushStatusPanel({ po }: { po: PoFile }) {
 
   const done = ps.lines.filter((l) => l.status === "done").length;
   const skipped = ps.lines.filter((l) => l.status === "skipped_ordered").length;
+  const suggestions = ps.statusSuggestions ?? [];
   return (
-    <div className="mx-5 mb-3 px-4 py-2.5 rounded-lg bg-[#059669]/10 border border-[#059669]/20 flex items-center gap-2 text-xs text-[#10b981]">
-      <CheckCircle2 size={13} className="flex-shrink-0" />
-      Pushed{ps.finishedAt ? ` ${new Date(ps.finishedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}
-      : {done} line{done === 1 ? "" : "s"} marked ordered
-      {skipped > 0 ? `, ${skipped} already ordered` : ""}
-      {ps.attachedInvoiceIds.length > 0
-        ? `, PO attached to ${ps.attachedInvoiceIds.length} invoice${ps.attachedInvoiceIds.length === 1 ? "" : "s"}`
-        : ""}
+    <div className="mx-5 mb-3 px-4 py-2.5 rounded-lg bg-[#059669]/10 border border-[#059669]/20 text-xs space-y-1.5">
+      <div className="flex items-center gap-2 text-[#10b981]">
+        <CheckCircle2 size={13} className="flex-shrink-0" />
+        Pushed{ps.finishedAt ? ` ${new Date(ps.finishedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}
+        : {done} line{done === 1 ? "" : "s"} marked ordered
+        {skipped > 0 ? `, ${skipped} already ordered` : ""}
+        {ps.attachedInvoiceIds.length > 0
+          ? `, PO attached to ${ps.attachedInvoiceIds.length} invoice${ps.attachedInvoiceIds.length === 1 ? "" : "s"}`
+          : ""}
+      </div>
+      {suggestions.length > 0 && (
+        <div className="flex items-start gap-2 text-sky-300">
+          <Wand2 size={13} className="flex-shrink-0 mt-0.5" />
+          <div>
+            Order status change suggested:{" "}
+            {suggestions.map((s, i) => (
+              <span key={s.suggestionId}>
+                {i > 0 && ", "}
+                <span className="font-mono font-semibold">#{s.visualId ?? s.orderPrintavoId}</span>
+                {" → "}
+                <span className="font-semibold">{s.suggestedStatusName}</span>
+              </span>
+            ))}
+            {" — confirm it in the suggestions card at the top of this page."}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -154,13 +177,34 @@ function PoRow({ po }: { po: PoFile }) {
     },
   });
 
+  const adminUnlock = useAdminUnlockPoFile({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListPoFilesQueryKey() });
+        toast({
+          title: `PO ${po.poNumber} vendor lock removed`,
+          description:
+            "It's no longer marked as submitted to the vendor — you can edit or delete it now.",
+        });
+      },
+      onError: (err) => {
+        toast({
+          title: "Admin unlock failed",
+          description: apiError(err) ?? "Could not unlock this PO",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
   const submitToVendor = useSubmitPoToVendor({
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListPoFilesQueryKey() });
         toast({
           title: `PO ${po.poNumber} marked as submitted to vendor`,
-          description: "Edits are now permanently locked. You can still push it to Printavo.",
+          description:
+            "Edits are locked (admin PIN can unlock). You can still push it to Printavo.",
         });
       },
       onError: (err) => {
@@ -175,7 +219,7 @@ function PoRow({ po }: { po: PoFile }) {
 
   const confirmSubmitToVendor = () => {
     const entered = window.prompt(
-      `Mark PO ${po.poNumber} as submitted to ${VENDOR_LABELS[po.vendorName] ?? po.vendorName}?\n\nWARNING: this PERMANENTLY locks the PO — it can never be edited or unlocked again (pushing to Printavo is still allowed).\n\nEnter the vendor's order/confirmation number below (leave blank if you don't have one), or press Cancel.`,
+      `Mark PO ${po.poNumber} as submitted to ${VENDOR_LABELS[po.vendorName] ?? po.vendorName}?\n\nThis locks the PO against edits — only an admin with the PIN can unlock it afterwards (pushing to Printavo is still allowed).\n\nEnter the vendor's order/confirmation number below (leave blank if you don't have one), or press Cancel.`,
       "",
     );
     if (entered === null) return;
@@ -245,11 +289,23 @@ function PoRow({ po }: { po: PoFile }) {
                 : "bg-slate-800/70 text-slate-500 border border-slate-700"
           }`}
         >
-          {po.submittedToVendorAt
-            ? "Submitted to vendor"
-            : po.pushedToPrintavoAt
-              ? "Pushed to Printavo"
-              : "Not pushed"}
+          {po.submittedToVendorAt ? (
+            <span
+              title={`Submitted to vendor ${new Date(po.submittedToVendorAt).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}`}
+            >
+              Submitted to vendor{" "}
+              {new Date(po.submittedToVendorAt).toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </span>
+          ) : po.pushedToPrintavoAt ? (
+            "Pushed to Printavo"
+          ) : (
+            "Not pushed"
+          )}
         </span>
         {po.vendorOrderNumber && (
           <span
@@ -264,7 +320,7 @@ function PoRow({ po }: { po: PoFile }) {
             className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
             title={
               po.lockReason === "vendor"
-                ? "Submitted to the vendor — permanently locked"
+                ? "Submitted to the vendor — admin PIN required to unlock"
                 : "Pushed to Printavo — unlock to edit"
             }
           >
@@ -312,6 +368,26 @@ function PoRow({ po }: { po: PoFile }) {
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
               >
                 <Pencil size={13} /> Edit
+              </button>
+            )}
+            {po.locked && po.lockReason === "vendor" && !pushing && (
+              <button
+                onClick={() => {
+                  const pin = window.prompt(
+                    `Admin unlock PO ${po.poNumber}?\n\nThis un-marks it as submitted to the vendor — the submitted date and vendor order # are cleared, and the PO becomes editable and deletable again.\n\nEnter the admin PIN:`,
+                  );
+                  if (pin === null || pin.trim() === "") return;
+                  adminUnlock.mutate({ id: po.id, data: { adminPin: pin.trim() } });
+                }}
+                disabled={adminUnlock.isPending}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+              >
+                {adminUnlock.isPending ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <ShieldAlert size={13} />
+                )}
+                Admin unlock
               </button>
             )}
             {po.locked && po.lockReason === "printavo" && !pushing && (

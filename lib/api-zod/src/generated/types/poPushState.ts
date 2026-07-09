@@ -7,6 +7,7 @@
  */
 import type { PoPushLine } from './poPushLine';
 import type { PoPushStateStatus } from './poPushStateStatus';
+import type { PoPushStatusSuggestion } from './poPushStatusSuggestion';
 
 /**
  * Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.
@@ -21,4 +22,6 @@ export interface PoPushState {
   lines: PoPushLine[];
   attachedInvoiceIds: string[];
   refreshedOrderIds: string[];
+  /** Order status suggestions created by the rules engine after this push (each needs manual confirmation). */
+  statusSuggestions: PoPushStatusSuggestion[];
 }

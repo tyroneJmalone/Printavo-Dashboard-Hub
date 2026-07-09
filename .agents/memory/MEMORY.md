@@ -20,7 +20,8 @@
 - [Printavo detail truncation](printavo-detail-truncation.md) — 25k complexity cap → 20/40/15 top-up limits; truncated counter over-counts re-seen orders; hasNextPage is reliable at exact page boundary.
 - [Subagent follow-up messaging](subagent-followup-messaging.md) — messageSubagent takes subagentId, not subagentAlias; design subagents may wire only some hooks — audit hook coverage and follow up.
 - [Hub reports UI semantics](hub-reports-ui-semantics.md) — pctOfRevenue arrives already 0-100; invoiceAt is date-only (parse as local, never new Date); money always 2 decimals.
-- [Hub Vendor Orders module](hub-vendor-orders-module.md) — PO snapshots w/ no pv_* FKs, two-tier lock model (vendor permanent / printavo unlockable), SanMar net-cost-only rule, size alias map, P3 landmines.
+- [Hub Vendor Orders module](hub-vendor-orders-module.md) — PO snapshots w/ no pv_* FKs, two-tier lock model (vendor = admin-PIN unlock / printavo unlockable), SanMar net-cost-only rule, size alias map, P3 landmines.
+- [Admin PIN gate pattern](admin-pin-pattern.md) — privileged routes gated by ADMIN_PIN secret: constant-time compare + lockout, graceful 403 when unset; reuse until real staff auth lands.
 - [Replit proxy kills long requests](replit-proxy-long-requests.md) — edge proxy drops held-open responses at ~48s; long ops must be fire-and-forget + status polling.
 - [E2E tests restart workflows](e2e-workflow-restarts.md) — testing sessions bounce all workflows, orphaning long background jobs mid-test; check job table before blaming code.
 - [Printavo productStatus staleness](printavo-product-status-staleness.md) — line-item productStatus edits never bump order updatedAt; hash sync misses them, per-poll sweep compensates.

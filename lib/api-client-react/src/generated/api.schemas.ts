@@ -502,6 +502,14 @@ export const PoPushStateStatus = {
   failed: 'failed',
 } as const;
 
+export interface PoPushStatusSuggestion {
+  suggestionId: string;
+  orderPrintavoId: string;
+  /** @nullable */
+  visualId: number | null;
+  suggestedStatusName: string;
+}
+
 /**
  * Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.
  */
@@ -515,6 +523,8 @@ export interface PoPushState {
   lines: PoPushLine[];
   attachedInvoiceIds: string[];
   refreshedOrderIds: string[];
+  /** Order status suggestions created by the rules engine after this push (each needs manual confirmation). */
+  statusSuggestions: PoPushStatusSuggestion[];
 }
 
 export interface PushStartResponse {
@@ -522,7 +532,7 @@ export interface PushStartResponse {
 }
 
 /**
- * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+ * Why the PO is locked — "vendor" locks need the admin unlock (PIN), "printavo" locks can be manually unlocked.
  * @nullable
  */
 export type PoFileLockReason = typeof PoFileLockReason[keyof typeof PoFileLockReason] | null;
@@ -553,7 +563,7 @@ export interface PoFile {
   vendorOrderNumber: string | null;
   locked: boolean;
   /**
-     * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+     * Why the PO is locked — "vendor" locks need the admin unlock (PIN), "printavo" locks can be manually unlocked.
      * @nullable
      */
   lockReason: PoFileLockReason;
@@ -572,6 +582,14 @@ export interface SubmitPoToVendorRequest {
      * @nullable
      */
   vendorOrderNumber?: string | null;
+}
+
+export interface AdminUnlockPoFileRequest {
+  /**
+     * Admin PIN (ADMIN_PIN secret) — required to remove a vendor-submitted lock.
+     * @minLength 1
+     */
+  adminPin: string;
 }
 
 export interface PrintavoStatus {

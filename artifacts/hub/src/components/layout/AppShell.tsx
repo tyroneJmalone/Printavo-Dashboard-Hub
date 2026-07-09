@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
+import { LastSynced } from "@/components/LastSynced";
 import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2 } from "lucide-react";
 
 interface NavItem {
@@ -97,6 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="text-[10px] text-slate-400 mt-0.5 font-medium">Mint Print Works</div>
             </div>
           </div>
+          <LastSynced className="mt-3" />
         </div>
 
         <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto custom-scrollbar">
