@@ -48,6 +48,7 @@ import type {
   PushStartResponse,
   ReportFilterOptions,
   SeedStartResult,
+  SubmitPoToVendorRequest,
   SyncStatus,
   UpdatePoFileRequest,
   VendorInventoryRequest,
@@ -1265,6 +1266,77 @@ export const usePushPoFile = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getPushPoFileMutationOptions(options));
+    }
+
+export const getSubmitPoToVendorUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}/submit-to-vendor`
+}
+
+/**
+ * @summary Mark a PO as submitted to the vendor — permanently locks edits — optionally recording the vendor's order/confirmation number.
+ */
+export const submitPoToVendor = async (id: string,
+    submitPoToVendorRequest: SubmitPoToVendorRequest, options?: RequestInit): Promise<PoFile> => {
+
+  return customFetch<PoFile>(getSubmitPoToVendorUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(submitPoToVendorRequest)
+  }
+);}
+
+
+
+
+export const getSubmitPoToVendorMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitPoToVendor>>, TError,{id: string;data: BodyType<SubmitPoToVendorRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitPoToVendor>>, TError,{id: string;data: BodyType<SubmitPoToVendorRequest>}, TContext> => {
+
+const mutationKey = ['submitPoToVendor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitPoToVendor>>, {id: string;data: BodyType<SubmitPoToVendorRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  submitPoToVendor(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitPoToVendorMutationResult = NonNullable<Awaited<ReturnType<typeof submitPoToVendor>>>
+    export type SubmitPoToVendorMutationBody = BodyType<SubmitPoToVendorRequest>
+    export type SubmitPoToVendorMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Mark a PO as submitted to the vendor — permanently locks edits — optionally recording the vendor's order/confirmation number.
+ */
+export const useSubmitPoToVendor = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitPoToVendor>>, TError,{id: string;data: BodyType<SubmitPoToVendorRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitPoToVendor>>,
+        TError,
+        {id: string;data: BodyType<SubmitPoToVendorRequest>},
+        TContext
+      > => {
+      return useMutation(getSubmitPoToVendorMutationOptions(options));
     }
 
 export const getUnlockPoFileUrl = (id: string,) => {

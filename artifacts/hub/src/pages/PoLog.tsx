@@ -5,6 +5,7 @@ import {
   useListPoFiles,
   useUnlockPoFile,
   usePushPoFile,
+  useSubmitPoToVendor,
   getListPoFilesQueryKey,
   getGetPoFileHtmlUrl,
   type PoFile,
@@ -26,6 +27,7 @@ import {
   Send,
   AlertTriangle,
   CheckCircle2,
+  PackageCheck,
 } from "lucide-react";
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -151,6 +153,37 @@ function PoRow({ po }: { po: PoFile }) {
     },
   });
 
+  const submitToVendor = useSubmitPoToVendor({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListPoFilesQueryKey() });
+        toast({
+          title: `PO ${po.poNumber} marked as submitted to vendor`,
+          description: "Edits are now permanently locked. You can still push it to Printavo.",
+        });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not mark PO as submitted",
+          description: apiError(err) ?? "Submit failed",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const confirmSubmitToVendor = () => {
+    const entered = window.prompt(
+      `Mark PO ${po.poNumber} as submitted to ${VENDOR_LABELS[po.vendorName] ?? po.vendorName}?\n\nWARNING: this PERMANENTLY locks the PO — it can never be edited or unlocked again (pushing to Printavo is still allowed).\n\nEnter the vendor's order/confirmation number below (leave blank if you don't have one), or press Cancel.`,
+      "",
+    );
+    if (entered === null) return;
+    submitToVendor.mutate({
+      id: po.id,
+      data: { vendorOrderNumber: entered.trim() || null },
+    });
+  };
+
   const pushing = po.pushState?.status === "running";
   const linkedLines = po.lineItems.filter((li) => li.printavoLineItemId).length;
   const linkedInvoices = new Set(
@@ -217,6 +250,14 @@ function PoRow({ po }: { po: PoFile }) {
               ? "Pushed to Printavo"
               : "Not pushed"}
         </span>
+        {po.vendorOrderNumber && (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold bg-slate-800/70 text-slate-300 border border-slate-700 font-mono"
+            title="Vendor order/confirmation number"
+          >
+            Vendor # {po.vendorOrderNumber}
+          </span>
+        )}
         {po.locked && (
           <span
             className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
@@ -248,6 +289,20 @@ function PoRow({ po }: { po: PoFile }) {
                   <Send size={13} />
                 )}
                 {pushing ? "Pushing…" : pushLabel}
+              </button>
+            )}
+            {!po.submittedToVendorAt && !pushing && (
+              <button
+                onClick={confirmSubmitToVendor}
+                disabled={submitToVendor.isPending}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20 transition-colors disabled:opacity-50"
+              >
+                {submitToVendor.isPending ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <PackageCheck size={13} />
+                )}
+                Mark ordered
               </button>
             )}
             {!po.locked && !pushing && (

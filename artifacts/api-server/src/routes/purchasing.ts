@@ -5,6 +5,7 @@ import {
   CreatePoFileBody,
   UpdatePoFileBody,
   AppendPoLineItemsBody,
+  SubmitPoToVendorBody,
 } from "@workspace/api-zod";
 import { loadNeedsOrdering } from "../lib/purchasing/needsOrdering";
 import { vendorLookup, VendorConfigError } from "../lib/purchasing/vendorLookup";
@@ -18,6 +19,7 @@ import {
   appendPoFileLineItems,
   unlockPoFile,
   deletePoFile,
+  submitPoToVendor,
   type PoFileLineItem,
   type PoMutationResult,
 } from "../lib/purchasing/poFiles";
@@ -232,6 +234,35 @@ router.post("/purchasing/po-files/:id/line-items", (req, res) => {
     .catch((err) => {
       req.log.error({ err }, "PO line item append failed");
       res.status(500).json({ error: "Failed to add items to PO" });
+    });
+});
+
+router.post("/purchasing/po-files/:id/submit-to-vendor", (req, res) => {
+  const parsed = SubmitPoToVendorBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid submit-to-vendor payload" });
+    return;
+  }
+  const raw = parsed.data.vendorOrderNumber ?? null;
+  const vendorOrderNumber = raw && raw.trim().length > 0 ? raw.trim() : null;
+  submitPoToVendor(req.params.id, vendorOrderNumber)
+    .then((result) => {
+      switch (result.status) {
+        case "not_found":
+          res.status(404).json({ error: "PO not found" });
+          return;
+        case "already_submitted":
+          res.status(409).json({
+            error: "This PO is already marked as submitted to the vendor.",
+          });
+          return;
+        case "ok":
+          res.json(result.po);
+      }
+    })
+    .catch((err) => {
+      req.log.error({ err }, "PO submit-to-vendor failed");
+      res.status(500).json({ error: "Failed to mark PO as submitted" });
     });
 });
 

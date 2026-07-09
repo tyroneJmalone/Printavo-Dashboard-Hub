@@ -22,6 +22,11 @@ export interface PoFile {
   pushedToPrintavoAt: string | null;
   /** @nullable */
   submittedToVendorAt: string | null;
+  /**
+     * Vendor's order/confirmation number, recorded when the PO is marked submitted.
+     * @nullable
+     */
+  vendorOrderNumber: string | null;
   locked: boolean;
   /**
      * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.

@@ -47,6 +47,7 @@ export interface PoFileDto {
   lineItems: PoFileLineItem[];
   pushedToPrintavoAt: string | null;
   submittedToVendorAt: string | null;
+  vendorOrderNumber: string | null;
   locked: boolean;
   lockReason: PoLockReason;
   pushState: PoPushState | null;
@@ -96,6 +97,7 @@ function toDto(row: PoFileRow): PoFileDto {
     lineItems: row.lineItems as unknown as PoFileLineItem[],
     pushedToPrintavoAt: row.pushedToPrintavoAt?.toISOString() ?? null,
     submittedToVendorAt: row.submittedToVendorAt?.toISOString() ?? null,
+    vendorOrderNumber: row.vendorOrderNumber,
     locked,
     lockReason,
     pushState: effectivePushState(row),
@@ -253,6 +255,38 @@ export async function appendPoFileLineItems(
         lineItems: merged,
         totalQuantity,
         totalCost: totalCost.toFixed(2),
+        updatedAt: new Date(),
+      })
+      .where(eq(poFilesTable.id, id))
+      .returning();
+    return { status: "ok" as const, po: toDto(rows[0]) };
+  });
+}
+
+export type PoSubmitToVendorResult =
+  | { status: "ok"; po: PoFileDto }
+  | { status: "not_found" }
+  | { status: "already_submitted" };
+
+/**
+ * Mark a PO as submitted to the vendor — a PERMANENT lock on edits (pushes to
+ * Printavo remain allowed; Tyler's flow is order from vendor first, push after).
+ * Optionally records the vendor's order/confirmation number. One-way: there is
+ * no unsubmit, so the route must warn before calling this.
+ */
+export async function submitPoToVendor(
+  id: string,
+  vendorOrderNumber: string | null,
+): Promise<PoSubmitToVendorResult> {
+  return db.transaction(async (tx) => {
+    const row = await lockRow(tx, id);
+    if (!row) return { status: "not_found" as const };
+    if (row.submittedToVendorAt) return { status: "already_submitted" as const };
+    const rows = await tx
+      .update(poFilesTable)
+      .set({
+        submittedToVendorAt: new Date(),
+        vendorOrderNumber,
         updatedAt: new Date(),
       })
       .where(eq(poFilesTable.id, id))

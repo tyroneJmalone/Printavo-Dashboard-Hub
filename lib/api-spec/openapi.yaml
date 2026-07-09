@@ -361,6 +361,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/po-files/{id}/submit-to-vendor:
+    post:
+      operationId: submitPoToVendor
+      tags: [purchasing]
+      summary: Mark a PO as submitted to the vendor — permanently locks edits — optionally recording the vendor's order/confirmation number.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitPoToVendorRequest"
+      responses:
+        "200":
+          description: Updated PO file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoFile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already submitted to the vendor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /purchasing/po-files/{id}/unlock:
     post:
       operationId: unlockPoFile
@@ -1328,6 +1363,9 @@ components:
             $ref: "#/components/schemas/PoFileLineItem"
         pushedToPrintavoAt: { type: ["string", "null"] }
         submittedToVendorAt: { type: ["string", "null"] }
+        vendorOrderNumber:
+          type: ["string", "null"]
+          description: Vendor's order/confirmation number, recorded when the PO is marked submitted.
         locked: { type: boolean }
         lockReason:
           type: ["string", "null"]
@@ -1339,7 +1377,7 @@ components:
             - type: "null"
         createdAt: { type: string }
         updatedAt: { type: string }
-      required: [id, poNumber, vendorName, notes, totalQuantity, totalCost, lineItems, pushedToPrintavoAt, submittedToVendorAt, locked, lockReason, pushState, createdAt, updatedAt]
+      required: [id, poNumber, vendorName, notes, totalQuantity, totalCost, lineItems, pushedToPrintavoAt, submittedToVendorAt, vendorOrderNumber, locked, lockReason, pushState, createdAt, updatedAt]
     PoFileList:
       type: object
       properties:
@@ -1348,6 +1386,12 @@ components:
           items:
             $ref: "#/components/schemas/PoFile"
       required: [poFiles]
+    SubmitPoToVendorRequest:
+      type: object
+      properties:
+        vendorOrderNumber:
+          type: ["string", "null"]
+          description: Vendor's order/confirmation number from checkout (optional).
     CreatePoFileRequest:
       type: object
       properties:

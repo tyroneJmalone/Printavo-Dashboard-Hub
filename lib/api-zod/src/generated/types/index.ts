@@ -76,6 +76,7 @@ export * from './seedStartResult';
 export * from './sizeCount';
 export * from './statusesParamParameter';
 export * from './styleNumbersParamParameter';
+export * from './submitPoToVendorRequest';
 export * from './syncCounts';
 export * from './syncRunInfo';
 export * from './syncRunInfoStats';

@@ -30,6 +30,8 @@ export const poFilesTable = pgTable(
     lineItems: jsonb("line_items").notNull(),
     pushedToPrintavoAt: timestamp("pushed_to_printavo_at", { withTimezone: true }),
     submittedToVendorAt: timestamp("submitted_to_vendor_at", { withTimezone: true }),
+    /** Vendor's order/confirmation number captured when the PO is marked submitted. */
+    vendorOrderNumber: text("vendor_order_number"),
     /**
      * Manual unlock after a Printavo push (allowed) — vendor submission can
      * never be unlocked. A future re-push must reset this to false.
