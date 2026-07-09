@@ -111,6 +111,7 @@ export const StartSeedResponse = zod.object({
 
 
 /**
+ * Starts a manual incremental poll. Guard cases (another sync running, seed incomplete, credentials missing, immediate failure) return within ~1.5s with ran:false and an explanatory message. Otherwise responds immediately with ran:true / "Poll started" and stats:null while the poll continues in the background — watch GET /sync/status until lastIncremental leaves the "running" state.
  * @summary Run an incremental poll now
  */
 export const TriggerPollResponse = zod.object({

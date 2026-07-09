@@ -145,8 +145,34 @@ router.post("/sync/payments-seed", async (req, res) => {
 
 router.post("/sync/poll", async (req, res) => {
   try {
-    const result = await runIncrementalPoll("manual", req.log);
-    res.json(result);
+    // A real poll holds the Printavo-throttled crawl for ~1-3 minutes, which
+    // is longer than the dev/prod proxies keep an idle HTTP response alive
+    // (observed cutoff ~48s). So: give the poll a short head start — guard
+    // no-ops ("already running", "seed active", creds missing) resolve in
+    // milliseconds and are returned directly. If it is still going after the
+    // grace period, respond immediately with ran:true / "Poll started" and
+    // let it finish in the background; clients watch GET /sync/status for
+    // the run to leave "running" state.
+    const pollPromise = runIncrementalPoll("manual", req.log);
+    const GRACE_MS = 1500;
+    const raced = await Promise.race([
+      pollPromise,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), GRACE_MS)),
+    ]);
+    if (raced !== null) {
+      res.json(raced);
+      return;
+    }
+    // Detached completion: runIncrementalPoll never rejects (it catches and
+    // returns ran:false), but guard against surprises so nothing is unhandled.
+    pollPromise.catch((err) => {
+      req.log.error({ err }, "Background poll promise rejected unexpectedly");
+    });
+    res.json({
+      ran: true,
+      message: "Poll started — pulling the latest from Printavo in the background",
+      stats: null,
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to run poll");
     res.status(500).json({ error: "Failed to run poll" });
