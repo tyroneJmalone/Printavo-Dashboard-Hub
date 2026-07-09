@@ -45,6 +45,7 @@ import type {
   PoFileList,
   PollResult,
   ProbeResult,
+  PushStartResponse,
   ReportFilterOptions,
   SeedStartResult,
   SyncStatus,
@@ -1194,6 +1195,76 @@ export const useAppendPoLineItems = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getAppendPoLineItemsMutationOptions(options));
+    }
+
+export const getPushPoFileUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}/push`
+}
+
+/**
+ * @summary Start a background push of this PO to Printavo (marks linked lines Ordered, attaches the PO document to each invoice). Progress is reported via PoFile.pushState.
+ */
+export const pushPoFile = async (id: string, options?: RequestInit): Promise<PushStartResponse> => {
+
+  return customFetch<PushStartResponse>(getPushPoFileUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPushPoFileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pushPoFile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pushPoFile>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['pushPoFile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pushPoFile>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  pushPoFile(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PushPoFileMutationResult = NonNullable<Awaited<ReturnType<typeof pushPoFile>>>
+
+    export type PushPoFileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Start a background push of this PO to Printavo (marks linked lines Ordered, attaches the PO document to each invoice). Progress is reported via PoFile.pushState.
+ */
+export const usePushPoFile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pushPoFile>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pushPoFile>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getPushPoFileMutationOptions(options));
     }
 
 export const getUnlockPoFileUrl = (id: string,) => {

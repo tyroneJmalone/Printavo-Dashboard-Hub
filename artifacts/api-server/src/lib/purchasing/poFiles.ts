@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { db, poFilesTable, type PoFile as PoFileRow } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
+import { isPushActive } from "./pushRegistry";
+import type { PoPushState } from "./poPush";
 
 /**
  * Purchase order documents. Line items are jsonb snapshots — Printavo ids
@@ -47,8 +49,26 @@ export interface PoFileDto {
   submittedToVendorAt: string | null;
   locked: boolean;
   lockReason: PoLockReason;
+  pushState: PoPushState | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A push that the DB says is "running" but that this process isn't actually
+ * executing was interrupted by a restart — surface it as retryable failure.
+ */
+function effectivePushState(row: PoFileRow): PoPushState | null {
+  const state = (row.pushState as PoPushState | null) ?? null;
+  if (!state) return null;
+  if (state.status === "running" && !isPushActive(row.id)) {
+    return {
+      ...state,
+      status: "failed",
+      error: "Push was interrupted (server restarted) — retry to resume where it left off",
+    };
+  }
+  return state;
 }
 
 /**
@@ -78,6 +98,7 @@ function toDto(row: PoFileRow): PoFileDto {
     submittedToVendorAt: row.submittedToVendorAt?.toISOString() ?? null,
     locked,
     lockReason,
+    pushState: effectivePushState(row),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -199,6 +220,9 @@ export async function updatePoFile(
       set.lineItems = patch.lineItems;
       set.totalQuantity = totalQuantity;
       set.totalCost = totalCost.toFixed(2);
+      // Old push progress refers to the old lines — the next push starts a
+      // fresh cycle instead of resuming against a stale line list.
+      set.pushState = null;
     }
     const rows = await tx
       .update(poFilesTable)

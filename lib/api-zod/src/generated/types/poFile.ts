@@ -7,6 +7,7 @@
  */
 import type { PoFileLineItem } from './poFileLineItem';
 import type { PoFileLockReason } from './poFileLockReason';
+import type { PoPushState } from './poPushState';
 
 export interface PoFile {
   id: string;
@@ -27,6 +28,7 @@ export interface PoFile {
      * @nullable
      */
   lockReason: PoFileLockReason;
+  pushState: PoPushState | null;
   createdAt: string;
   updatedAt: string;
 }

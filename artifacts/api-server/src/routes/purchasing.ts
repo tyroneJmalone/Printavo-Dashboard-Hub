@@ -21,6 +21,8 @@ import {
   type PoFileLineItem,
   type PoMutationResult,
 } from "../lib/purchasing/poFiles";
+import { startPoPush } from "../lib/purchasing/poPush";
+import { isPushActive } from "../lib/purchasing/pushRegistry";
 import { renderPoHtml } from "../lib/purchasing/poHtml";
 
 /**
@@ -156,7 +158,52 @@ function sendMutationResult(res: Response, result: PoMutationResult): void {
   res.json(result.po);
 }
 
+/** Mutating a PO mid-push would corrupt the push's view of the lines. */
+function rejectIfPushActive(id: string, res: Response): boolean {
+  if (isPushActive(id)) {
+    res.status(409).json({
+      error: "A push to Printavo is in progress — wait for it to finish.",
+    });
+    return true;
+  }
+  return false;
+}
+
+router.post("/purchasing/po-files/:id/push", (req, res) => {
+  startPoPush(req.params.id, req.log)
+    .then((result) => {
+      switch (result) {
+        case "started":
+          res.status(202).json({ started: true });
+          return;
+        case "not_found":
+          res.status(404).json({ error: "PO not found" });
+          return;
+        case "already_running":
+          res.status(409).json({ error: "A push for this PO is already running" });
+          return;
+        case "vendor_locked":
+          res.status(409).json({
+            error: "This PO was submitted to the vendor — it can no longer be pushed.",
+          });
+          return;
+        case "no_linked_lines":
+          res.status(409).json({
+            error: "This PO has no Printavo-linked line items to push",
+          });
+          return;
+        case "not_configured":
+          res.status(503).json({ error: "Printavo credentials are not configured" });
+      }
+    })
+    .catch((err) => {
+      req.log.error({ err }, "PO push start failed");
+      res.status(500).json({ error: "Failed to start push" });
+    });
+});
+
 router.patch("/purchasing/po-files/:id", (req, res) => {
+  if (rejectIfPushActive(req.params.id, res)) return;
   const parsed = UpdatePoFileBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid PO update" });
@@ -179,6 +226,7 @@ router.patch("/purchasing/po-files/:id", (req, res) => {
 });
 
 router.post("/purchasing/po-files/:id/line-items", (req, res) => {
+  if (rejectIfPushActive(req.params.id, res)) return;
   const parsed = AppendPoLineItemsBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid line items payload" });
@@ -193,6 +241,7 @@ router.post("/purchasing/po-files/:id/line-items", (req, res) => {
 });
 
 router.post("/purchasing/po-files/:id/unlock", (req, res) => {
+  if (rejectIfPushActive(req.params.id, res)) return;
   unlockPoFile(req.params.id)
     .then((result) => {
       switch (result.status) {
@@ -218,6 +267,7 @@ router.post("/purchasing/po-files/:id/unlock", (req, res) => {
 });
 
 router.delete("/purchasing/po-files/:id", (req, res) => {
+  if (rejectIfPushActive(req.params.id, res)) return;
   deletePoFile(req.params.id)
     .then((outcome) => {
       if (outcome === "not_found") {

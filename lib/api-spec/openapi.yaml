@@ -326,6 +326,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/po-files/{id}/push:
+    post:
+      operationId: pushPoFile
+      tags: [purchasing]
+      summary: Start a background push of this PO to Printavo (marks linked lines Ordered, attaches the PO document to each invoice). Progress is reported via PoFile.pushState.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "202":
+          description: Push started (or resumed after a failure)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushStartResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already running, submitted to the vendor, or no Printavo-linked lines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Printavo credentials not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /purchasing/po-files/{id}/unlock:
     post:
       operationId: unlockPoFile
@@ -1238,6 +1273,46 @@ components:
           items:
             $ref: "#/components/schemas/PoFileSizeEntry"
       required: [printavoLineItemId, printavoOrderId, visualId, styleNumber, color, vendorCatalogColor, description, brand, source, sizes]
+    PoPushLine:
+      type: object
+      properties:
+        key: { type: string }
+        printavoLineItemId: { type: ["string", "null"] }
+        printavoOrderId: { type: ["string", "null"] }
+        visualId: { type: ["integer", "null"] }
+        styleNumber: { type: string }
+        color: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [pending, done, skipped_ordered, no_link, failed]
+        detail: { type: ["string", "null"] }
+      required: [key, printavoLineItemId, printavoOrderId, visualId, styleNumber, color, status, detail]
+    PoPushState:
+      type: object
+      description: Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.
+      properties:
+        status:
+          type: string
+          enum: [running, success, failed]
+        startedAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+        error: { type: ["string", "null"] }
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoPushLine"
+        attachedInvoiceIds:
+          type: array
+          items: { type: string }
+        refreshedOrderIds:
+          type: array
+          items: { type: string }
+      required: [status, startedAt, finishedAt, error, lines, attachedInvoiceIds, refreshedOrderIds]
+    PushStartResponse:
+      type: object
+      properties:
+        started: { type: boolean }
+      required: [started]
     PoFile:
       type: object
       properties:
@@ -1258,9 +1333,13 @@ components:
           type: ["string", "null"]
           enum: [printavo, vendor, null]
           description: Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
+        pushState:
+          anyOf:
+            - $ref: "#/components/schemas/PoPushState"
+            - type: "null"
         createdAt: { type: string }
         updatedAt: { type: string }
-      required: [id, poNumber, vendorName, notes, totalQuantity, totalCost, lineItems, pushedToPrintavoAt, submittedToVendorAt, locked, lockReason, createdAt, updatedAt]
+      required: [id, poNumber, vendorName, notes, totalQuantity, totalCost, lineItems, pushedToPrintavoAt, submittedToVendorAt, locked, lockReason, pushState, createdAt, updatedAt]
     PoFileList:
       type: object
       properties:

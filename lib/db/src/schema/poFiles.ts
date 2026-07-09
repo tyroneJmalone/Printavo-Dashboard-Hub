@@ -36,6 +36,15 @@ export const poFilesTable = pgTable(
      */
     manuallyUnlocked: boolean("manually_unlocked").notNull().default(false),
     /**
+     * PoPushState jsonb (see api-server purchasing/poPush) — progress and
+     * per-line results of the latest push-to-Printavo cycle. Persisted so a
+     * failed push can be retried resuming only unfinished steps (the
+     * productionFileCreate mutation is NOT idempotent — attached invoice ids
+     * are tracked here to prevent duplicate attachments). Cleared when the
+     * PO's line items are edited (next push is then a fresh cycle).
+     */
+    pushState: jsonb("push_state"),
+    /**
      * Secret token for the public (unauthenticated) PO HTML URL that Printavo
      * fetches via productionFileCreate. Non-expiring by design (Printavo
      * fetches asynchronously); regenerated on every push so old links die.

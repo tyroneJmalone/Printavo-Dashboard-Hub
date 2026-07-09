@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import {
   useListPoFiles,
   useUnlockPoFile,
+  usePushPoFile,
   getListPoFilesQueryKey,
   getGetPoFileHtmlUrl,
   type PoFile,
@@ -21,6 +22,9 @@ import {
   Pencil,
   Lock,
   Unlock,
+  Send,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -31,6 +35,65 @@ const VENDOR_LABELS: Record<string, string> = {
 
 function money(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function apiError(err: unknown): string | undefined {
+  return err && typeof err === "object" && "data" in err
+    ? (err as { data?: { error?: string } }).data?.error
+    : undefined;
+}
+
+/** Inline status panel for the latest push cycle (running / failed / success). */
+function PushStatusPanel({ po }: { po: PoFile }) {
+  const ps = po.pushState;
+  if (!ps) return null;
+
+  if (ps.status === "running") {
+    const total = ps.lines.filter((l) => l.status !== "no_link").length;
+    const finished = ps.lines.filter(
+      (l) => l.status === "done" || l.status === "skipped_ordered" || l.status === "failed",
+    ).length;
+    return (
+      <div className="mx-5 mb-3 px-4 py-2.5 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center gap-2 text-xs text-sky-300">
+        <Loader2 size={13} className="animate-spin flex-shrink-0" />
+        Pushing to Printavo… {finished} of {total} line{total === 1 ? "" : "s"} processed
+      </div>
+    );
+  }
+
+  if (ps.status === "failed") {
+    const failedLines = ps.lines.filter((l) => l.status === "failed");
+    return (
+      <div className="mx-5 mb-3 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/25 text-xs space-y-1.5">
+        <div className="flex items-center gap-2 text-red-400 font-semibold">
+          <AlertTriangle size={13} className="flex-shrink-0" />
+          Push failed — retry will resume where it left off
+        </div>
+        {ps.error && <div className="text-red-300/90">{ps.error}</div>}
+        {failedLines.map((l) => (
+          <div key={l.key} className="text-red-300/90">
+            <span className="font-mono font-semibold">{l.styleNumber}</span>
+            {l.color ? ` ${l.color}` : ""}
+            {l.visualId ? ` (order #${l.visualId})` : ""}: {l.detail ?? "failed"}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const done = ps.lines.filter((l) => l.status === "done").length;
+  const skipped = ps.lines.filter((l) => l.status === "skipped_ordered").length;
+  return (
+    <div className="mx-5 mb-3 px-4 py-2.5 rounded-lg bg-[#059669]/10 border border-[#059669]/20 flex items-center gap-2 text-xs text-[#10b981]">
+      <CheckCircle2 size={13} className="flex-shrink-0" />
+      Pushed{ps.finishedAt ? ` ${new Date(ps.finishedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}
+      : {done} line{done === 1 ? "" : "s"} marked ordered
+      {skipped > 0 ? `, ${skipped} already ordered` : ""}
+      {ps.attachedInvoiceIds.length > 0
+        ? `, PO attached to ${ps.attachedInvoiceIds.length} invoice${ps.attachedInvoiceIds.length === 1 ? "" : "s"}`
+        : ""}
+    </div>
+  );
 }
 
 function PoRow({ po }: { po: PoFile }) {
@@ -50,18 +113,53 @@ function PoRow({ po }: { po: PoFile }) {
         });
       },
       onError: (err) => {
-        const apiMsg =
-          err && typeof err === "object" && "data" in err
-            ? (err as { data?: { error?: string } }).data?.error
-            : undefined;
         toast({
           title: "Could not unlock PO",
-          description: apiMsg ?? "Unlock failed",
+          description: apiError(err) ?? "Unlock failed",
           variant: "destructive",
         });
       },
     },
   });
+
+  const push = usePushPoFile({
+    mutation: {
+      onSuccess: () => {
+        // Push runs in the background — polling picks up progress via pushState.
+        queryClient.invalidateQueries({ queryKey: getListPoFilesQueryKey() });
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not start push",
+          description: apiError(err) ?? "Push failed to start",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const pushing = po.pushState?.status === "running";
+  const linkedLines = po.lineItems.filter((li) => li.printavoLineItemId).length;
+  const linkedInvoices = new Set(
+    po.lineItems.map((li) => li.printavoOrderId).filter(Boolean),
+  ).size;
+  const canPush = !po.submittedToVendorAt && linkedLines > 0;
+  const pushLabel =
+    po.pushState?.status === "failed"
+      ? "Retry push"
+      : po.pushedToPrintavoAt
+        ? "Re-push"
+        : "Push to Printavo";
+
+  const confirmPush = () => {
+    if (
+      window.confirm(
+        `Push PO ${po.poNumber} to Printavo?\n\nThis will mark ${linkedLines} linked line${linkedLines === 1 ? "" : "s"} as Ordered and attach the PO document to ${linkedInvoices} invoice${linkedInvoices === 1 ? "" : "s"}. Lines already marked ordered in Printavo are left untouched.`,
+      )
+    ) {
+      push.mutate({ id: po.id });
+    }
+  };
 
   const created = new Date(po.createdAt).toLocaleDateString("en-US", {
     month: "short",
@@ -121,7 +219,25 @@ function PoRow({ po }: { po: PoFile }) {
         <div className="flex-1" />
         {!editing && (
           <div className="flex items-center gap-2">
-            {!po.locked && (
+            {canPush && (
+              <button
+                onClick={confirmPush}
+                disabled={pushing || push.isPending}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                  po.pushState?.status === "failed"
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                    : "bg-[#059669]/10 border-[#059669]/30 text-[#10b981] hover:bg-[#059669]/20"
+                }`}
+              >
+                {pushing || push.isPending ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Send size={13} />
+                )}
+                {pushing ? "Pushing…" : pushLabel}
+              </button>
+            )}
+            {!po.locked && !pushing && (
               <button
                 onClick={() => setEditing(true)}
                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
@@ -129,7 +245,7 @@ function PoRow({ po }: { po: PoFile }) {
                 <Pencil size={13} /> Edit
               </button>
             )}
-            {po.locked && po.lockReason === "printavo" && (
+            {po.locked && po.lockReason === "printavo" && !pushing && (
               <button
                 onClick={() => {
                   if (
@@ -162,6 +278,8 @@ function PoRow({ po }: { po: PoFile }) {
           </div>
         )}
       </div>
+
+      {!editing && <PushStatusPanel po={po} />}
 
       {editing && <PoEditor po={po} onClose={() => setEditing(false)} />}
 
@@ -228,7 +346,16 @@ function PoRow({ po }: { po: PoFile }) {
 }
 
 export default function PoLog() {
-  const { data, isLoading, isFetching, refetch } = useListPoFiles();
+  const { data, isLoading, isFetching, refetch } = useListPoFiles({
+    query: {
+      queryKey: getListPoFilesQueryKey(),
+      // Poll while any PO's push is running so progress/result appear live.
+      refetchInterval: (query) =>
+        query.state.data?.poFiles.some((p) => p.pushState?.status === "running")
+          ? 2000
+          : false,
+    },
+  });
 
   return (
     <AppShell>

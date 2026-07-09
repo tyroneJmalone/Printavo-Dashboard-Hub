@@ -54,6 +54,14 @@ description: Durable decisions from the Hub's purchasing module (P2 cart/pricing
 - `/api/purchasing/po-html/:token` is the ONLY unauthenticated endpoint by design (Printavo fetches PO HTML async after productionFileCreate). Token = 256-bit hex, unique-indexed, never in DTOs/OpenAPI, NON-expiring; every P3c push must regenerate it via newHtmlToken() and hand Printavo publicPoHtmlUrl().
 - Replace action in PoEditor inherits printavoLineItemId/orderId/visualId but NOT quantities — P3c lineItemUpdate must push the new sizes/qty to Printavo rather than assume they match the invoice line.
 
+# Push-to-Printavo cycle rules (P3c, approved + architect PASS)
+- **productionFileCreate is NOT idempotent** — every attach appends another copy of the document to the invoice. Attached invoice ids must be persisted to push_state *immediately* after each successful attach, before any other work, so a retry never re-attaches.
+- **html_token lifecycle**: rotate ONLY on a fresh push cycle (no prior state or prior success); a retry of a failed cycle must KEEP the token — Printavo fetches attached file URLs asynchronously and may not have fetched yet. Rotating mid-cycle silently breaks already-attached documents.
+- **Printavo lineItemUpdate**: `position` is REQUIRED in LineItemInput (fetch it first); pushes are diff-based (itemNumber/color/sizes only when the PO diverged from the invoice — covers the Replace flow). Sizes push only if ALL PO sizes map via strict `size_`+lowercase to the LineItemSize enum; there is NO OSFA enum value, so the cart's synthetic OSFA rows never map → sizes left untouched with a note, never guessed to size_other (would ADD sizes to a size-less invoice line).
+- Lines already ordered/arrived/partially_received/received in Printavo are skipped (idempotent re-push). pushed_to_printavo_at + manually_unlocked=false stamp on the FIRST successful write of a run, so even partial pushes lock the PO.
+- **Safe test recipe**: a scratch PO with fake printavoLineItemId/orderId exercises the entire runner (per-line error capture, no stamp, no attach) with ZERO real Printavo writes. First real push is always Tyler's, per standing rule.
+- push_state is cleared whenever line items are edited (resume must never run against a stale line list); mutating routes 409 while a push is active; a "running" state with no in-memory claim (server restarted) is surfaced as failed/retryable.
+
 # P3/P4 landmines (recorded by architect review, not yet actioned)
 - Closest-match lookups save the *queried* style as styleNumber, not the vendor's resolved styleName — persist styleName (or rely on SKUs) before P4 vendor submission.
 - PO edit/delete is allowed regardless of pushedToPrintavoAt — add a guard/warning when P3 write-backs land.

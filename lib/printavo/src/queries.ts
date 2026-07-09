@@ -249,6 +249,117 @@ export function productStatusSweepPageQuery(after?: string | null): string {
 }
 
 /*
+ * ── PO push write mutations (P3c) ───────────────────────────────────────
+ * Verified via live introspection July 2026:
+ * - lineItemUpdate(id: ID!, input: LineItemInput!) — position is REQUIRED
+ *   in the input or the mutation fails; productStatus is the LineItemStatus
+ *   enum (need_ordering, attached_to_po, ordered, arrived,
+ *   partially_received, received, in); sizes is [LineItemSizeCountInput!]
+ *   with size being the LineItemSize enum (size_s … size_5t).
+ * - productionFileCreate(parentId: ID!, publicFileUrl: String!) — Printavo
+ *   fetches the file from the URL asynchronously after the mutation.
+ */
+
+/** LineItemSize enum values accepted by lineItemUpdate (introspected live). */
+export const PRINTAVO_SIZE_ENUM = new Set([
+  "size_yxs", "size_ys", "size_ym", "size_yl", "size_yxl",
+  "size_xs", "size_s", "size_m", "size_l", "size_xl",
+  "size_2xl", "size_3xl", "size_4xl", "size_5xl", "size_6xl",
+  "size_other",
+  "size_6m", "size_12m", "size_18m", "size_24m",
+  "size_2t", "size_3t", "size_4t", "size_5t",
+]);
+
+/**
+ * Map a Hub-normalized size label (stripped `size_` prefix, uppercased —
+ * e.g. "M", "2XL", "6M") back to Printavo's LineItemSize enum. Returns null
+ * for anything that does not map exactly (e.g. the synthetic "OSFA" rows the
+ * cart adds for size-less lines) — callers must then leave sizes untouched.
+ */
+export function toLineItemSizeEnum(label: string): string | null {
+  const candidate = `size_${label.trim().toLowerCase()}`;
+  return PRINTAVO_SIZE_ENUM.has(candidate) ? candidate : null;
+}
+
+/** Line item statuses that mean "the goods are already ordered/here" — a push must skip these. */
+export const ORDERED_OR_LATER_STATUSES = new Set([
+  "ordered",
+  "arrived",
+  "partially_received",
+  "received",
+]);
+
+/** Slim single line item fetch used by the PO push to diff before writing. */
+export function poPushLineItemQuery(lineItemId: string): string {
+  return `query {
+    lineItem(id: ${lit(lineItemId)}) {
+      id
+      position
+      productStatus
+      itemNumber
+      color
+      sizes { size count }
+    }
+  }`;
+}
+
+export interface LineItemUpdateInput {
+  /** REQUIRED by Printavo's LineItemInput. */
+  position: number;
+  /** LineItemStatus enum value, e.g. "ordered" (unquoted enum literal). */
+  productStatus?: string;
+  itemNumber?: string;
+  color?: string;
+  /** Pairs of (LineItemSize enum value, count). Enum values must come from PRINTAVO_SIZE_ENUM. */
+  sizes?: Array<{ size: string; count: number }>;
+}
+
+const ENUM_LITERAL = /^[a-z_][a-z0-9_]*$/;
+
+function enumLit(value: string, what: string): string {
+  if (!ENUM_LITERAL.test(value)) {
+    throw new Error(`Invalid ${what} enum value: ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+
+export function lineItemUpdateMutation(
+  lineItemId: string,
+  input: LineItemUpdateInput,
+): string {
+  const parts: string[] = [`position: ${Math.trunc(input.position)}`];
+  if (input.productStatus !== undefined) {
+    parts.push(`productStatus: ${enumLit(input.productStatus, "LineItemStatus")}`);
+  }
+  if (input.itemNumber !== undefined) parts.push(`itemNumber: ${lit(input.itemNumber)}`);
+  if (input.color !== undefined) parts.push(`color: ${lit(input.color)}`);
+  if (input.sizes !== undefined) {
+    const sizeLits = input.sizes.map(
+      (s) => `{ size: ${enumLit(s.size, "LineItemSize")}, count: ${Math.trunc(s.count)} }`,
+    );
+    parts.push(`sizes: [${sizeLits.join(", ")}]`);
+  }
+  return `mutation {
+    lineItemUpdate(id: ${lit(lineItemId)}, input: { ${parts.join(", ")} }) {
+      id
+      productStatus
+    }
+  }`;
+}
+
+export function productionFileCreateMutation(
+  parentId: string,
+  publicFileUrl: string,
+): string {
+  return `mutation {
+    productionFileCreate(parentId: ${lit(parentId)}, publicFileUrl: ${lit(publicFileUrl)}) {
+      id
+      fileUrl
+    }
+  }`;
+}
+
+/*
  * ── Transactions (cash-basis payments) ──────────────────────────────────
  * Root `transactions` has pagination only (no date filter), newest-first.
  * TransactionUnion members all share the same core fields; Payment adds

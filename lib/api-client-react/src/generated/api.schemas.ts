@@ -466,6 +466,61 @@ export interface PoFileLineItem {
   sizes: PoFileSizeEntry[];
 }
 
+export type PoPushLineStatus = typeof PoPushLineStatus[keyof typeof PoPushLineStatus];
+
+
+export const PoPushLineStatus = {
+  pending: 'pending',
+  done: 'done',
+  skipped_ordered: 'skipped_ordered',
+  no_link: 'no_link',
+  failed: 'failed',
+} as const;
+
+export interface PoPushLine {
+  key: string;
+  /** @nullable */
+  printavoLineItemId: string | null;
+  /** @nullable */
+  printavoOrderId: string | null;
+  /** @nullable */
+  visualId: number | null;
+  styleNumber: string;
+  /** @nullable */
+  color: string | null;
+  status: PoPushLineStatus;
+  /** @nullable */
+  detail: string | null;
+}
+
+export type PoPushStateStatus = typeof PoPushStateStatus[keyof typeof PoPushStateStatus];
+
+
+export const PoPushStateStatus = {
+  running: 'running',
+  success: 'success',
+  failed: 'failed',
+} as const;
+
+/**
+ * Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.
+ */
+export interface PoPushState {
+  status: PoPushStateStatus;
+  startedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+  /** @nullable */
+  error: string | null;
+  lines: PoPushLine[];
+  attachedInvoiceIds: string[];
+  refreshedOrderIds: string[];
+}
+
+export interface PushStartResponse {
+  started: boolean;
+}
+
 /**
  * Why the PO is locked — "vendor" locks are permanent, "printavo" locks can be manually unlocked.
  * @nullable
@@ -497,6 +552,7 @@ export interface PoFile {
      * @nullable
      */
   lockReason: PoFileLockReason;
+  pushState: PoPushState | null;
   createdAt: string;
   updatedAt: string;
 }

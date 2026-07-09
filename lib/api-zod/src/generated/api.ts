@@ -292,6 +292,24 @@ export const ListPoFilesResponse = zod.object({
   "submittedToVendorAt": zod.string().nullable(),
   "locked": zod.boolean(),
   "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
+  "pushState": zod.union([zod.object({
+  "status": zod.enum(['running', 'success', 'failed']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "key": zod.string(),
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "status": zod.enum(['pending', 'done', 'skipped_ordered', 'no_link', 'failed']),
+  "detail": zod.string().nullable()
+})),
+  "attachedInvoiceIds": zod.array(zod.string()),
+  "refreshedOrderIds": zod.array(zod.string())
+}).describe('Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.'),zod.null()]),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }))
@@ -370,6 +388,24 @@ export const CreatePoFileResponse = zod.object({
   "submittedToVendorAt": zod.string().nullable(),
   "locked": zod.boolean(),
   "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
+  "pushState": zod.union([zod.object({
+  "status": zod.enum(['running', 'success', 'failed']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "key": zod.string(),
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "status": zod.enum(['pending', 'done', 'skipped_ordered', 'no_link', 'failed']),
+  "detail": zod.string().nullable()
+})),
+  "attachedInvoiceIds": zod.array(zod.string()),
+  "refreshedOrderIds": zod.array(zod.string())
+}).describe('Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.'),zod.null()]),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -418,6 +454,24 @@ export const GetPoFileResponse = zod.object({
   "submittedToVendorAt": zod.string().nullable(),
   "locked": zod.boolean(),
   "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
+  "pushState": zod.union([zod.object({
+  "status": zod.enum(['running', 'success', 'failed']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "key": zod.string(),
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "status": zod.enum(['pending', 'done', 'skipped_ordered', 'no_link', 'failed']),
+  "detail": zod.string().nullable()
+})),
+  "attachedInvoiceIds": zod.array(zod.string()),
+  "refreshedOrderIds": zod.array(zod.string())
+}).describe('Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.'),zod.null()]),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -508,6 +562,24 @@ export const UpdatePoFileResponse = zod.object({
   "submittedToVendorAt": zod.string().nullable(),
   "locked": zod.boolean(),
   "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
+  "pushState": zod.union([zod.object({
+  "status": zod.enum(['running', 'success', 'failed']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "key": zod.string(),
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "status": zod.enum(['pending', 'done', 'skipped_ordered', 'no_link', 'failed']),
+  "detail": zod.string().nullable()
+})),
+  "attachedInvoiceIds": zod.array(zod.string()),
+  "refreshedOrderIds": zod.array(zod.string())
+}).describe('Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.'),zod.null()]),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -585,8 +657,38 @@ export const AppendPoLineItemsResponse = zod.object({
   "submittedToVendorAt": zod.string().nullable(),
   "locked": zod.boolean(),
   "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
+  "pushState": zod.union([zod.object({
+  "status": zod.enum(['running', 'success', 'failed']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "key": zod.string(),
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "status": zod.enum(['pending', 'done', 'skipped_ordered', 'no_link', 'failed']),
+  "detail": zod.string().nullable()
+})),
+  "attachedInvoiceIds": zod.array(zod.string()),
+  "refreshedOrderIds": zod.array(zod.string())
+}).describe('Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.'),zod.null()]),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Start a background push of this PO to Printavo (marks linked lines Ordered, attaches the PO document to each invoice). Progress is reported via PoFile.pushState.
+ */
+export const PushPoFileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const PushPoFileResponse = zod.object({
+  "started": zod.boolean()
 })
 
 
@@ -633,6 +735,24 @@ export const UnlockPoFileResponse = zod.object({
   "submittedToVendorAt": zod.string().nullable(),
   "locked": zod.boolean(),
   "lockReason": zod.union([zod.literal('printavo'),zod.literal('vendor'),zod.literal(null)]).nullable().describe('Why the PO is locked — \"vendor\" locks are permanent, \"printavo\" locks can be manually unlocked.'),
+  "pushState": zod.union([zod.object({
+  "status": zod.enum(['running', 'success', 'failed']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "key": zod.string(),
+  "printavoLineItemId": zod.string().nullable(),
+  "printavoOrderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "styleNumber": zod.string(),
+  "color": zod.string().nullable(),
+  "status": zod.enum(['pending', 'done', 'skipped_ordered', 'no_link', 'failed']),
+  "detail": zod.string().nullable()
+})),
+  "attachedInvoiceIds": zod.array(zod.string()),
+  "refreshedOrderIds": zod.array(zod.string())
+}).describe('Progress of the latest push-to-Printavo cycle. A failed push can be retried — it resumes only the unfinished steps.'),zod.null()]),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
