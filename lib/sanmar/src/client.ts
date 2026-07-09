@@ -49,32 +49,54 @@ function num(value: string | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * SanMar's SOAP services intermittently hang: the same request that fails
+ * after 30s succeeds in ~300ms moments later. Fail fast and retry once
+ * instead of waiting — total worst case must stay under ~45s because the
+ * Replit edge proxy kills held-open responses around 48s.
+ */
+const ATTEMPT_TIMEOUTS_MS = [15_000, 25_000];
+
 export class SanMarClient {
-  constructor(
-    private readonly creds: SanMarCredentials,
-    private readonly timeoutMs = 30_000,
-  ) {}
+  constructor(private readonly creds: SanMarCredentials) {}
 
   private async soapCall(endpoint: string, body: string): Promise<string> {
-    let res: Response;
-    try {
-      res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: '""' },
-        body,
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
-    } catch (err) {
+    let text: string | null = null;
+    let status = 0;
+    let ok = false;
+    let lastErr: unknown = null;
+    for (const timeoutMs of ATTEMPT_TIMEOUTS_MS) {
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: '""' },
+          body,
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        // The body read MUST stay inside the retry: SanMar's hangs often
+        // happen mid-stream (headers arrive fast, then the body stalls),
+        // and AbortSignal.timeout aborts res.text() too.
+        status = res.status;
+        ok = res.ok;
+        text = await res.text();
+        break;
+      } catch (err) {
+        // Hangs/network drops are worth one more try; SOAP faults and
+        // API errors below are not.
+        lastErr = err;
+        text = null;
+      }
+    }
+    if (text === null) {
       throw new SanMarApiError(
-        `SanMar request failed: ${err instanceof Error ? err.message : String(err)}`,
+        `SanMar request failed: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
         "network",
       );
     }
-    const text = await res.text();
     const fault = text.match(/<faultstring>([^<]*)<\/faultstring>/);
     if (fault) throw new SanMarApiError(`SanMar SOAP fault: ${fault[1]}`, "fault");
-    if (!res.ok) {
-      throw new SanMarApiError(`SanMar HTTP ${res.status}`, "http");
+    if (!ok) {
+      throw new SanMarApiError(`SanMar HTTP ${status}`, "http");
     }
     // Both misspelled and correct forms appear across SanMar services.
     const errOccurred = text.match(/<errorOccur?red>([^<]*)<\/errorOccur?red>/i);

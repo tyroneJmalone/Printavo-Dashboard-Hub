@@ -1098,6 +1098,12 @@ components:
       properties:
         vendor: { type: string, enum: [sanmar, ss] }
         style: { type: string, minLength: 1 }
+        brandHint:
+          type: ["string", "null"]
+          description: Printavo brand (e.g. "Gildan") — disambiguates when multiple brands share a style number at the vendor.
+        descriptionHint:
+          type: ["string", "null"]
+          description: Printavo line-item description — secondary disambiguation signal.
       required: [vendor, style]
     VendorWarehouseQty:
       type: object
@@ -1138,6 +1144,9 @@ components:
         matchType: { type: string, enum: [exact, closest, none] }
         vendor: { type: string, enum: [sanmar, ss] }
         styleQueried: { type: string }
+        styleId:
+          type: ["string", "null"]
+          description: Vendor-internal id of the matched product (S&S styleID). Pass it to vendor-inventory so stock comes from the SAME product that priced the line. Null for SanMar.
         styleName: { type: ["string", "null"] }
         brand: { type: ["string", "null"] }
         title: { type: ["string", "null"] }
@@ -1147,12 +1156,15 @@ components:
             $ref: "#/components/schemas/VendorColorOffer"
         cached: { type: boolean }
         fetchedAt: { type: string }
-      required: [found, matchType, vendor, styleQueried, styleName, brand, title, colors, cached, fetchedAt]
+      required: [found, matchType, vendor, styleQueried, styleId, styleName, brand, title, colors, cached, fetchedAt]
     VendorInventoryRequest:
       type: object
       properties:
         vendor: { type: string, enum: [sanmar, ss] }
         style: { type: string, minLength: 1 }
+        styleId:
+          type: ["string", "null"]
+          description: Vendor-internal id from the lookup result (S&S styleID). When set, inventory is read from exactly that product instead of re-searching by style number.
         catalogColor: { type: string, minLength: 1 }
         sizes:
           type: array

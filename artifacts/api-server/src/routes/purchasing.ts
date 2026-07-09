@@ -56,8 +56,8 @@ router.post("/purchasing/vendor-lookup", (req, res) => {
     res.status(400).json({ error: "Invalid vendor-lookup request" });
     return;
   }
-  const { vendor, style } = parsed.data;
-  vendorLookup(vendor, style)
+  const { vendor, style, brandHint, descriptionHint } = parsed.data;
+  vendorLookup(vendor, style, { brandHint, descriptionHint })
     .then((result) => res.json(result))
     .catch((err) => {
       if (err instanceof VendorConfigError) {
@@ -77,8 +77,8 @@ router.post("/purchasing/vendor-inventory", (req, res) => {
     res.status(400).json({ error: "Invalid vendor-inventory request" });
     return;
   }
-  const { vendor, style, catalogColor, sizes } = parsed.data;
-  vendorInventory(vendor, style, catalogColor, sizes)
+  const { vendor, style, styleId, catalogColor, sizes } = parsed.data;
+  vendorInventory(vendor, style, catalogColor, sizes, styleId ?? null)
     .then((result) => res.json(result))
     .catch((err) => {
       if (err instanceof VendorConfigError) {

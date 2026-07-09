@@ -41,6 +41,16 @@ function money(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
+/** True when the vendor matched a different brand than Printavo's line item. */
+function brandMismatch(printavoBrand: string | null, vendorBrand: string | null): boolean {
+  if (!printavoBrand || !vendorBrand) return false;
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const a = norm(printavoBrand);
+  const b = norm(vendorBrand);
+  if (!a || !b) return false;
+  return !(a.includes(b) || b.includes(a));
+}
+
 function itemTotals(item: CartItem): { qty: number; cost: number; costed: boolean } {
   let qty = 0;
   let cost = 0;
@@ -135,6 +145,7 @@ function CartItemCard({ item }: { item: CartItem }) {
     if (!color) return;
     applyVendorData(item.key, {
       vendorCatalogColor: color.colorName,
+      vendorStyleId: res.styleId,
       sizes: color.sizes.map((s) => ({
         size: s.size,
         unitCost: s.salePrice ?? s.cost,
@@ -155,6 +166,9 @@ function CartItemCard({ item }: { item: CartItem }) {
           data: {
             vendor: item.vendor,
             style: res.styleQueried,
+            // Pin stock to the SAME product the lookup priced — a re-search
+            // by style number alone can hit another brand's identical number.
+            styleId: res.styleId,
             catalogColor: color.colorName,
             sizes: vendorSizes,
           },
@@ -231,7 +245,14 @@ function CartItemCard({ item }: { item: CartItem }) {
                 setLookupResult(null);
                 if (style !== item.styleNumber) setStyleNumber(item.key, style);
                 lookup.mutate({
-                  data: { vendor: item.vendor as "sanmar" | "ss", style },
+                  data: {
+                    vendor: item.vendor as "sanmar" | "ss",
+                    style,
+                    // Printavo brand/description disambiguate when brands
+                    // share a style number (Gildan 5000 vs Bayside 5000).
+                    brandHint: item.brand,
+                    descriptionHint: item.description,
+                  },
                 });
               }}
               disabled={lookup.isPending || styleInput.trim().length === 0}
@@ -281,6 +302,23 @@ function CartItemCard({ item }: { item: CartItem }) {
               </span>
             )}
           </label>
+          <div
+            className={`text-[11px] mt-0.5 ${
+              brandMismatch(item.brand, lookupResult.brand)
+                ? "text-amber-400"
+                : "text-slate-500"
+            }`}
+          >
+            Matched:{" "}
+            <span className="font-semibold">
+              {[lookupResult.brand, lookupResult.styleName].filter(Boolean).join(" ") ||
+                lookupResult.styleQueried}
+            </span>
+            {lookupResult.title ? ` — ${lookupResult.title}` : ""}
+            {brandMismatch(item.brand, lookupResult.brand)
+              ? ` (Printavo says ${item.brand})`
+              : ""}
+          </div>
           <select
             value={item.vendorCatalogColor ?? ""}
             onChange={(e) => applyColor(lookupResult, e.target.value)}

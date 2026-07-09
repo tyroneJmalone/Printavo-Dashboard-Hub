@@ -177,7 +177,9 @@ export const GetNeedsOrderingResponse = zod.object({
 
 export const VendorLookupBody = zod.object({
   "vendor": zod.enum(['sanmar', 'ss']),
-  "style": zod.string().min(1)
+  "style": zod.string().min(1),
+  "brandHint": zod.string().nullish().describe('Printavo brand (e.g. \"Gildan\") — disambiguates when multiple brands share a style number at the vendor.'),
+  "descriptionHint": zod.string().nullish().describe('Printavo line-item description — secondary disambiguation signal.')
 })
 
 export const VendorLookupResponse = zod.object({
@@ -185,6 +187,7 @@ export const VendorLookupResponse = zod.object({
   "matchType": zod.enum(['exact', 'closest', 'none']),
   "vendor": zod.enum(['sanmar', 'ss']),
   "styleQueried": zod.string(),
+  "styleId": zod.string().nullable().describe('Vendor-internal id of the matched product (S&S styleID). Pass it to vendor-inventory so stock comes from the SAME product that priced the line. Null for SanMar.'),
   "styleName": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
@@ -225,6 +228,7 @@ export const vendorInventoryBodySizesMax = 20;
 export const VendorInventoryBody = zod.object({
   "vendor": zod.enum(['sanmar', 'ss']),
   "style": zod.string().min(1),
+  "styleId": zod.string().nullish().describe('Vendor-internal id from the lookup result (S&S styleID). When set, inventory is read from exactly that product instead of re-searching by style number.'),
   "catalogColor": zod.string().min(1),
   "sizes": zod.array(zod.string().min(1)).min(1).max(vendorInventoryBodySizesMax)
 })

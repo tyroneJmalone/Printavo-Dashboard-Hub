@@ -14,6 +14,11 @@ export interface VendorLookupResult {
   matchType: VendorLookupResultMatchType;
   vendor: VendorLookupResultVendor;
   styleQueried: string;
+  /**
+     * Vendor-internal id of the matched product (S&S styleID). Pass it to vendor-inventory so stock comes from the SAME product that priced the line. Null for SanMar.
+     * @nullable
+     */
+  styleId: string | null;
   /** @nullable */
   styleName: string | null;
   /** @nullable */

@@ -40,12 +40,19 @@ export interface VendorLookupResult {
   matchType: "exact" | "closest" | "none";
   vendor: VendorId;
   styleQueried: string;
+  /** Vendor-internal id of the matched product (S&S styleID); null for SanMar. */
+  styleId: string | null;
   styleName: string | null;
   brand: string | null;
   title: string | null;
   colors: VendorColorOffer[];
   cached: boolean;
   fetchedAt: string;
+}
+
+export interface VendorLookupHints {
+  brandHint?: string | null;
+  descriptionHint?: string | null;
 }
 
 export class VendorConfigError extends Error {
@@ -158,6 +165,7 @@ async function lookupSanMar(style: string): Promise<VendorLookupResult> {
     matchType: entries.length > 0 ? "exact" : "none",
     vendor: "sanmar",
     styleQueried: style,
+    styleId: null,
     styleName: first?.style ?? null,
     brand: first?.brandName ?? null,
     title: first?.productTitle ?? null,
@@ -167,19 +175,72 @@ async function lookupSanMar(style: string): Promise<VendorLookupResult> {
   };
 }
 
-async function lookupSS(style: string): Promise<VendorLookupResult> {
+/** Lowercase, alphanumeric-only tokens — brand/title strings across
+ *  Printavo and vendors disagree on punctuation ("Independent Trading Co."). */
+function normText(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/**
+ * Score an S&S search candidate against the queried style + Printavo hints.
+ * Multiple brands share manufacturer style numbers (S&S carries BOTH
+ * Bayside 5000 and Gildan 5000 — search returns Bayside first), so an
+ * exact style-number match alone is not enough; the brand hint dominates
+ * among exact matches.
+ */
+function scoreSSCandidate(
+  candidate: { styleName: string; brandName: string; title: string | null },
+  style: string,
+  hints: VendorLookupHints,
+): number {
+  let score = 0;
+  if (candidate.styleName.toLowerCase() === style.toLowerCase()) score += 100;
+  const brand = normText(candidate.brandName);
+  const brandHint = normText(hints.brandHint ?? "");
+  const descHint = normText(hints.descriptionHint ?? "");
+  if (brand) {
+    if (brandHint && (brandHint.includes(brand) || brand.includes(brandHint))) {
+      score += 50;
+    } else if (descHint && descHint.includes(brand)) {
+      score += 30;
+    }
+  }
+  if (descHint && candidate.title) {
+    const descTokens = new Set(descHint.split(" ").filter((t) => t.length >= 3));
+    const overlap = normText(candidate.title)
+      .split(" ")
+      .filter((t) => t.length >= 3 && descTokens.has(t)).length;
+    score += Math.min(overlap, 10);
+  }
+  return score;
+}
+
+async function lookupSS(
+  style: string,
+  hints: VendorLookupHints,
+): Promise<VendorLookupResult> {
   const client = getSSClient();
   const styles = await client.searchStyles(style);
-  const exact = styles.find(
-    (s) => s.styleName.toLowerCase() === style.toLowerCase(),
-  );
-  const chosen = exact ?? styles[0];
+  let chosen: (typeof styles)[number] | undefined;
+  let best = -1;
+  for (const s of styles) {
+    const score = scoreSSCandidate(s, style, hints);
+    // Strict > keeps the first result on ties (S&S's own relevance order).
+    if (score > best) {
+      best = score;
+      chosen = s;
+    }
+  }
   if (!chosen) {
     return {
       found: false,
       matchType: "none",
       vendor: "ss",
       styleQueried: style,
+      styleId: null,
       styleName: null,
       brand: null,
       title: null,
@@ -188,12 +249,14 @@ async function lookupSS(style: string): Promise<VendorLookupResult> {
       fetchedAt: new Date().toISOString(),
     };
   }
+  const exact = chosen.styleName.toLowerCase() === style.toLowerCase();
   const products = await client.getProducts(chosen.styleID);
   return {
     found: products.length > 0,
     matchType: products.length === 0 ? "none" : exact ? "exact" : "closest",
     vendor: "ss",
     styleQueried: style,
+    styleId: String(chosen.styleID),
     styleName: chosen.styleName,
     brand: chosen.brandName,
     title: chosen.title,
@@ -203,11 +266,33 @@ async function lookupSS(style: string): Promise<VendorLookupResult> {
   };
 }
 
+/**
+ * Per-warehouse color/size offers for an exact S&S styleID — used by
+ * vendor-inventory so stock always comes from the SAME product the lookup
+ * priced, never a re-search that could land on a different brand.
+ */
+const ssStyleIdCache = new Map<number, { at: number; colors: VendorColorOffer[] }>();
+const SS_STYLE_ID_TTL_MS = 5 * 60 * 1000;
+
+export async function ssColorsByStyleId(styleID: number): Promise<VendorColorOffer[]> {
+  const hit = ssStyleIdCache.get(styleID);
+  if (hit && Date.now() - hit.at < SS_STYLE_ID_TTL_MS) return hit.colors;
+  const products = await getSSClient().getProducts(styleID);
+  const colors = ssToColors(products);
+  ssStyleIdCache.set(styleID, { at: Date.now(), colors });
+  return colors;
+}
+
 export async function vendorLookup(
   vendor: VendorId,
   style: string,
+  hints: VendorLookupHints = {},
 ): Promise<VendorLookupResult> {
-  const key = `${vendor}:${style.trim().toUpperCase()}`;
+  const hintKey =
+    vendor === "ss"
+      ? `:${normText(hints.brandHint ?? "")}:${normText(hints.descriptionHint ?? "")}`
+      : "";
+  const key = `${vendor}:${style.trim().toUpperCase()}${hintKey}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
     return { ...hit.result, cached: true };
@@ -215,7 +300,7 @@ export async function vendorLookup(
   const result =
     vendor === "sanmar"
       ? await lookupSanMar(style.trim())
-      : await lookupSS(style.trim());
+      : await lookupSS(style.trim(), hints);
   cache.set(key, { at: Date.now(), result });
   return result;
 }

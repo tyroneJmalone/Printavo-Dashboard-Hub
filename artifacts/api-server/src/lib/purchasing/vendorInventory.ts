@@ -1,5 +1,10 @@
 import { SanMarClient, SANMAR_WAREHOUSES } from "@workspace/sanmar";
-import { vendorLookup, VendorConfigError, type VendorId } from "./vendorLookup";
+import {
+  vendorLookup,
+  ssColorsByStyleId,
+  VendorConfigError,
+  type VendorId,
+} from "./vendorLookup";
 
 /**
  * Per-warehouse availability for an exact vendor catalog color.
@@ -92,9 +97,16 @@ async function ssInventory(
   style: string,
   catalogColor: string,
   sizes: string[],
+  styleId: string | null,
 ): Promise<InventorySizeResult[]> {
-  const lookup = await vendorLookup("ss", style);
-  const color = lookup.colors.find(
+  // Prefer the exact styleID from the lookup that priced this line —
+  // re-searching by style number can land on a DIFFERENT brand that
+  // shares the number (e.g. Bayside 5000 vs Gildan 5000).
+  const colors =
+    styleId && /^\d+$/.test(styleId)
+      ? await ssColorsByStyleId(Number(styleId))
+      : (await vendorLookup("ss", style)).colors;
+  const color = colors.find(
     (c) => c.colorName.trim().toLowerCase() === catalogColor.trim().toLowerCase(),
   );
   return sizes.map((size) => {
@@ -120,11 +132,12 @@ export async function vendorInventory(
   style: string,
   catalogColor: string,
   sizes: string[],
+  styleId: string | null = null,
 ): Promise<VendorInventoryResult> {
   const cleanStyle = style.trim();
   const cleanColor = catalogColor.trim();
   const cleanSizes = [...new Set(sizes.map((s) => s.trim()).filter(Boolean))];
-  const key = `${vendor}:${cleanStyle.toUpperCase()}:${cleanColor.toUpperCase()}:${cleanSizes
+  const key = `${vendor}:${cleanStyle.toUpperCase()}:${styleId ?? ""}:${cleanColor.toUpperCase()}:${cleanSizes
     .map((s) => s.toUpperCase())
     .sort()
     .join(",")}`;
@@ -135,7 +148,7 @@ export async function vendorInventory(
   const sizeResults =
     vendor === "sanmar"
       ? await sanMarInventory(cleanStyle, cleanColor, cleanSizes)
-      : await ssInventory(cleanStyle, cleanColor, cleanSizes);
+      : await ssInventory(cleanStyle, cleanColor, cleanSizes, styleId);
   const result: VendorInventoryResult = {
     vendor,
     style: cleanStyle,

@@ -11,4 +11,14 @@ export interface VendorLookupRequest {
   vendor: VendorLookupRequestVendor;
   /** @minLength 1 */
   style: string;
+  /**
+     * Printavo brand (e.g. "Gildan") — disambiguates when multiple brands share a style number at the vendor.
+     * @nullable
+     */
+  brandHint?: string | null;
+  /**
+     * Printavo line-item description — secondary disambiguation signal.
+     * @nullable
+     */
+  descriptionHint?: string | null;
 }

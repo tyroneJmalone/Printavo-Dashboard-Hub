@@ -11,6 +11,11 @@ export interface VendorInventoryRequest {
   vendor: VendorInventoryRequestVendor;
   /** @minLength 1 */
   style: string;
+  /**
+     * Vendor-internal id from the lookup result (S&S styleID). When set, inventory is read from exactly that product instead of re-searching by style number.
+     * @nullable
+     */
+  styleId?: string | null;
   /** @minLength 1 */
   catalogColor: string;
   /**

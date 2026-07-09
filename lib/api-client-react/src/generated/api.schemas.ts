@@ -275,6 +275,16 @@ export interface VendorLookupRequest {
   vendor: VendorLookupRequestVendor;
   /** @minLength 1 */
   style: string;
+  /**
+     * Printavo brand (e.g. "Gildan") — disambiguates when multiple brands share a style number at the vendor.
+     * @nullable
+     */
+  brandHint?: string | null;
+  /**
+     * Printavo line-item description — secondary disambiguation signal.
+     * @nullable
+     */
+  descriptionHint?: string | null;
 }
 
 export interface VendorWarehouseQty {
@@ -331,6 +341,11 @@ export interface VendorLookupResult {
   matchType: VendorLookupResultMatchType;
   vendor: VendorLookupResultVendor;
   styleQueried: string;
+  /**
+     * Vendor-internal id of the matched product (S&S styleID). Pass it to vendor-inventory so stock comes from the SAME product that priced the line. Null for SanMar.
+     * @nullable
+     */
+  styleId: string | null;
   /** @nullable */
   styleName: string | null;
   /** @nullable */
@@ -354,6 +369,11 @@ export interface VendorInventoryRequest {
   vendor: VendorInventoryRequestVendor;
   /** @minLength 1 */
   style: string;
+  /**
+     * Vendor-internal id from the lookup result (S&S styleID). When set, inventory is read from exactly that product instead of re-searching by style number.
+     * @nullable
+     */
+  styleId?: string | null;
   /** @minLength 1 */
   catalogColor: string;
   /**

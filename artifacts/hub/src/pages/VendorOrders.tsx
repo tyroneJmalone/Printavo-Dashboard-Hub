@@ -87,6 +87,7 @@ function buildCartItem(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): Ca
     brand: li.brand,
     vendor: guessVendor(li.brand),
     vendorCatalogColor: null,
+    vendorStyleId: null,
     resolved: false,
     sizes,
     inventory: null,

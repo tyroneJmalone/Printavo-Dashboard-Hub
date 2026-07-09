@@ -68,6 +68,9 @@ export interface CartItem {
   brand: string | null;
   vendor: CartVendor | null;
   vendorCatalogColor: string | null;
+  /** Vendor-internal id of the matched product (S&S styleID) — keeps the
+   *  inventory check on the SAME product the lookup priced. */
+  vendorStyleId: string | null;
   resolved: boolean;
   sizes: CartSizeRow[];
   /** Per-size warehouse availability for the resolved color (null until fetched). */
@@ -246,6 +249,7 @@ interface PoCartState {
     key: string,
     data: {
       vendorCatalogColor: string;
+      vendorStyleId: string | null;
       sizes: {
         size: string;
         unitCost: number | null;
@@ -284,6 +288,7 @@ export const usePoCart = create<PoCartState>((set) => ({
               // switching vendor invalidates any prior resolution
               resolved: false,
               vendorCatalogColor: null,
+              vendorStyleId: null,
               inventory: null,
               warehouseCode: null,
               warehouseName: null,
@@ -310,6 +315,7 @@ export const usePoCart = create<PoCartState>((set) => ({
               // a different style invalidates any prior vendor resolution
               resolved: false,
               vendorCatalogColor: null,
+              vendorStyleId: null,
               inventory: null,
               warehouseCode: null,
               warehouseName: null,
@@ -364,6 +370,7 @@ export const usePoCart = create<PoCartState>((set) => ({
           ...i,
           resolved: true,
           vendorCatalogColor: data.vendorCatalogColor,
+          vendorStyleId: data.vendorStyleId,
           // a (possibly different) color means the old availability is stale
           inventory: null,
           warehouseCode: null,
