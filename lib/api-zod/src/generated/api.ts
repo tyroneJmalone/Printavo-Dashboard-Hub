@@ -846,6 +846,241 @@ export const GetPoFileHtmlResponse = zod.unknown()
 
 
 /**
+ * @summary All Printavo order statuses (from the local sync) for the rule target picker
+ */
+export const ListPrintavoStatusesResponse = zod.object({
+  "statuses": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+}))
+})
+
+
+/**
+ * @summary Status rules ordered by priority (first match wins)
+ */
+export const ListStatusRulesResponse = zod.object({
+  "rules": zod.array(zod.object({
+  "id": zod.string(),
+  "priority": zod.number(),
+  "enabled": zod.boolean(),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullable(),
+  "specialMixedDeco": zod.boolean(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().nullable(),
+  "targetStatusId": zod.string(),
+  "targetStatusName": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date.'))
+})
+
+
+/**
+ * @summary Create a status rule
+ */
+
+
+
+export const CreateStatusRuleBody = zod.object({
+  "priority": zod.number().optional(),
+  "enabled": zod.boolean().optional(),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullish(),
+  "specialMixedDeco": zod.boolean().optional(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullish(),
+  "dueBusinessDays": zod.number().nullish(),
+  "targetStatusId": zod.string().min(1)
+})
+
+export const CreateStatusRuleResponse = zod.object({
+  "id": zod.string(),
+  "priority": zod.number(),
+  "enabled": zod.boolean(),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullable(),
+  "specialMixedDeco": zod.boolean(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().nullable(),
+  "targetStatusId": zod.string(),
+  "targetStatusName": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date.')
+
+
+/**
+ * @summary Update a status rule (any subset of fields, including priority and enabled)
+ */
+export const UpdateStatusRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const UpdateStatusRuleBody = zod.object({
+  "priority": zod.number().optional(),
+  "enabled": zod.boolean().optional(),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullish(),
+  "specialMixedDeco": zod.boolean().optional(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullish(),
+  "dueBusinessDays": zod.number().nullish(),
+  "targetStatusId": zod.string().min(1).optional()
+})
+
+export const UpdateStatusRuleResponse = zod.object({
+  "id": zod.string(),
+  "priority": zod.number(),
+  "enabled": zod.boolean(),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullable(),
+  "specialMixedDeco": zod.boolean(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().nullable(),
+  "targetStatusId": zod.string(),
+  "targetStatusName": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date.')
+
+
+/**
+ * @summary Delete a status rule
+ */
+export const DeleteStatusRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteStatusRuleResponse = zod.void()
+
+
+/**
+ * @summary Atomically renumber rule priorities to match the given order
+ */
+
+
+
+export const ReorderStatusRulesBody = zod.object({
+  "orderedIds": zod.array(zod.string()).min(1)
+})
+
+export const ReorderStatusRulesResponse = zod.object({
+  "rules": zod.array(zod.object({
+  "id": zod.string(),
+  "priority": zod.number(),
+  "enabled": zod.boolean(),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullable(),
+  "specialMixedDeco": zod.boolean(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().nullable(),
+  "targetStatusId": zod.string(),
+  "targetStatusName": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date.'))
+})
+
+
+/**
+ * @summary Suggested Printavo status changes (preview/confirm — nothing is applied automatically)
+ */
+export const ListStatusSuggestionsQueryParams = zod.object({
+  "scope": zod.enum(['open', 'all']).optional().describe('open (default) = pending + failed; all = recent history too')
+})
+
+export const ListStatusSuggestionsResponse = zod.object({
+  "suggestions": zod.array(zod.object({
+  "id": zod.string(),
+  "orderPrintavoId": zod.string(),
+  "orderType": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "customerCompany": zod.string().nullable(),
+  "decoGroups": zod.array(zod.string()),
+  "mixed": zod.boolean(),
+  "currentStatusId": zod.string().nullable(),
+  "currentStatusName": zod.string().nullable(),
+  "suggestedStatusId": zod.string(),
+  "suggestedStatusName": zod.string(),
+  "poDate": zod.string(),
+  "dueDate": zod.string().nullable(),
+  "businessDaysOut": zod.number().nullable(),
+  "state": zod.enum(['pending', 'applied', 'dismissed', 'failed']),
+  "error": zod.string().nullable(),
+  "appliedAt": zod.string().nullable(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Re-evaluate rules now for orders on POs pushed in the last 30 days
+ */
+export const EvaluateStatusSuggestionsResponse = zod.object({
+  "checked": zod.number(),
+  "suggested": zod.number()
+})
+
+
+/**
+ * @summary Apply a suggestion — changes the order's status in Printavo via the shared gateway
+ */
+export const ApplyStatusSuggestionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ApplyStatusSuggestionResponse = zod.object({
+  "id": zod.string(),
+  "orderPrintavoId": zod.string(),
+  "orderType": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "customerCompany": zod.string().nullable(),
+  "decoGroups": zod.array(zod.string()),
+  "mixed": zod.boolean(),
+  "currentStatusId": zod.string().nullable(),
+  "currentStatusName": zod.string().nullable(),
+  "suggestedStatusId": zod.string(),
+  "suggestedStatusName": zod.string(),
+  "poDate": zod.string(),
+  "dueDate": zod.string().nullable(),
+  "businessDaysOut": zod.number().nullable(),
+  "state": zod.enum(['pending', 'applied', 'dismissed', 'failed']),
+  "error": zod.string().nullable(),
+  "appliedAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Dismiss a suggestion without writing to Printavo
+ */
+export const DismissStatusSuggestionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DismissStatusSuggestionResponse = zod.object({
+  "id": zod.string(),
+  "orderPrintavoId": zod.string(),
+  "orderType": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "customerCompany": zod.string().nullable(),
+  "decoGroups": zod.array(zod.string()),
+  "mixed": zod.boolean(),
+  "currentStatusId": zod.string().nullable(),
+  "currentStatusName": zod.string().nullable(),
+  "suggestedStatusId": zod.string(),
+  "suggestedStatusName": zod.string(),
+  "poDate": zod.string(),
+  "dueDate": zod.string().nullable(),
+  "businessDaysOut": zod.number().nullable(),
+  "state": zod.enum(['pending', 'applied', 'dismissed', 'failed']),
+  "error": zod.string().nullable(),
+  "appliedAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Filtered orders list with summary stats
  */
 export const getOrdersReportQueryLimitMax = 500;

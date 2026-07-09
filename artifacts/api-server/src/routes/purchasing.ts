@@ -6,6 +6,9 @@ import {
   UpdatePoFileBody,
   AppendPoLineItemsBody,
   SubmitPoToVendorBody,
+  CreateStatusRuleBody,
+  UpdateStatusRuleBody,
+  ReorderStatusRulesBody,
 } from "@workspace/api-zod";
 import { loadNeedsOrdering } from "../lib/purchasing/needsOrdering";
 import { vendorLookup, VendorConfigError } from "../lib/purchasing/vendorLookup";
@@ -26,6 +29,19 @@ import {
 import { startPoPush } from "../lib/purchasing/poPush";
 import { isPushActive } from "../lib/purchasing/pushRegistry";
 import { renderPoHtml } from "../lib/purchasing/poHtml";
+import {
+  listStatusRules,
+  createStatusRule,
+  updateStatusRule,
+  reorderStatusRules,
+  deleteStatusRule,
+  listPrintavoStatuses,
+  listStatusSuggestions,
+  evaluateRecentPushedOrders,
+  applyStatusSuggestion,
+  dismissStatusSuggestion,
+  type StatusRuleInput,
+} from "../lib/purchasing/statusRules";
 
 /**
  * Purchasing (Vendor Orders) module routes.
@@ -338,6 +354,191 @@ const servePublicPoHtml = (
 };
 router.get("/purchasing/po-html/:token", servePublicPoHtml);
 router.get("/purchasing/po-html/:token/:filename", servePublicPoHtml);
+
+/* ── Status rules engine (P3d) ───────────────────────────────────────── */
+
+router.get("/purchasing/printavo-statuses", (req, res) => {
+  listPrintavoStatuses()
+    .then((statuses) => res.json({ statuses }))
+    .catch((err) => {
+      req.log.error({ err }, "Printavo status list failed");
+      res.status(500).json({ error: "Failed to list statuses" });
+    });
+});
+
+router.get("/purchasing/status-rules", (req, res) => {
+  listStatusRules()
+    .then((rules) => res.json({ rules }))
+    .catch((err) => {
+      req.log.error({ err }, "Status rule list failed");
+      res.status(500).json({ error: "Failed to list status rules" });
+    });
+});
+
+router.post("/purchasing/status-rules", (req, res) => {
+  const parsed = CreateStatusRuleBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid status rule" });
+    return;
+  }
+  createStatusRule(parsed.data as StatusRuleInput)
+    .then((result) => {
+      if (result.status === "invalid") {
+        res.status(400).json({ error: result.message });
+        return;
+      }
+      if (result.status === "ok") {
+        res.status(201).json(result.rule);
+      }
+    })
+    .catch((err) => {
+      req.log.error({ err }, "Status rule create failed");
+      res.status(500).json({ error: "Failed to create status rule" });
+    });
+});
+
+router.patch("/purchasing/status-rules/:id", (req, res) => {
+  const parsed = UpdateStatusRuleBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid status rule update" });
+    return;
+  }
+  updateStatusRule(req.params.id, parsed.data as StatusRuleInput)
+    .then((result) => {
+      switch (result.status) {
+        case "not_found":
+          res.status(404).json({ error: "Rule not found" });
+          return;
+        case "invalid":
+          res.status(400).json({ error: result.message });
+          return;
+        case "ok":
+          res.json(result.rule);
+      }
+    })
+    .catch((err) => {
+      req.log.error({ err }, "Status rule update failed");
+      res.status(500).json({ error: "Failed to update status rule" });
+    });
+});
+
+router.post("/purchasing/status-rules/reorder", (req, res) => {
+  const parsed = ReorderStatusRulesBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid reorder request" });
+    return;
+  }
+  reorderStatusRules(parsed.data.orderedIds)
+    .then((result) => {
+      if (result.status === "invalid") {
+        res.status(400).json({ error: result.message });
+        return;
+      }
+      res.json({ rules: result.rules });
+    })
+    .catch((err) => {
+      req.log.error({ err }, "Status rule reorder failed");
+      res.status(500).json({ error: "Failed to reorder status rules" });
+    });
+});
+
+router.delete("/purchasing/status-rules/:id", (req, res) => {
+  deleteStatusRule(req.params.id)
+    .then((outcome) => {
+      if (outcome === "not_found") {
+        res.status(404).json({ error: "Rule not found" });
+        return;
+      }
+      res.status(204).end();
+    })
+    .catch((err) => {
+      req.log.error({ err }, "Status rule delete failed");
+      res.status(500).json({ error: "Failed to delete status rule" });
+    });
+});
+
+router.get("/purchasing/status-suggestions", (req, res) => {
+  const scope = req.query.scope === "all" ? "all" : "open";
+  listStatusSuggestions(scope)
+    .then((suggestions) => res.json({ suggestions }))
+    .catch((err) => {
+      req.log.error({ err }, "Status suggestion list failed");
+      res.status(500).json({ error: "Failed to list status suggestions" });
+    });
+});
+
+router.post("/purchasing/status-suggestions/evaluate", (req, res) => {
+  evaluateRecentPushedOrders(req.log)
+    .then((summary) => res.json(summary))
+    .catch((err) => {
+      req.log.error({ err }, "Status rule evaluation failed");
+      res.status(500).json({ error: "Failed to evaluate status rules" });
+    });
+});
+
+router.post("/purchasing/status-suggestions/:id/apply", (req, res) => {
+  applyStatusSuggestion(req.params.id, req.log)
+    .then((result) => {
+      switch (result.status) {
+        case "not_found":
+          res.status(404).json({ error: "Suggestion not found" });
+          return;
+        case "invalid_state":
+          res.status(409).json({
+            error: `This suggestion was already ${result.state}`,
+          });
+          return;
+        case "already_in_target":
+          res.status(409).json({
+            error:
+              "The order is already in the suggested status — suggestion cleared",
+          });
+          return;
+        case "stale_status":
+          res.status(409).json({
+            error: `The order's status changed to "${result.suggestion.currentStatusName ?? "unknown"}" since this was suggested — review and apply again`,
+          });
+          return;
+        case "not_configured":
+          res.status(503).json({ error: "Printavo credentials are not configured" });
+          return;
+        case "gateway_error":
+          res.status(502).json({
+            error: `Printavo rejected the status change: ${result.error}`,
+            suggestion: result.suggestion,
+          });
+          return;
+        case "ok":
+          res.json(result.suggestion);
+      }
+    })
+    .catch((err) => {
+      req.log.error({ err }, "Status suggestion apply failed");
+      res.status(500).json({ error: "Failed to apply status change" });
+    });
+});
+
+router.post("/purchasing/status-suggestions/:id/dismiss", (req, res) => {
+  dismissStatusSuggestion(req.params.id)
+    .then((result) => {
+      switch (result.status) {
+        case "not_found":
+          res.status(404).json({ error: "Suggestion not found" });
+          return;
+        case "invalid_state":
+          res.status(409).json({
+            error: `This suggestion was already ${result.state}`,
+          });
+          return;
+        case "ok":
+          res.json(result.suggestion);
+      }
+    })
+    .catch((err) => {
+      req.log.error({ err }, "Status suggestion dismiss failed");
+      res.status(500).json({ error: "Failed to dismiss suggestion" });
+    });
+});
 
 router.get("/purchasing/po-files/:id/html", (req, res) => {
   getPoFile(req.params.id)

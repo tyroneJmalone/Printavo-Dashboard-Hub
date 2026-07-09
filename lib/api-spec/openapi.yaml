@@ -446,6 +446,230 @@ paths:
           content:
             text/html:
               schema: { type: string }
+  /purchasing/printavo-statuses:
+    get:
+      operationId: listPrintavoStatuses
+      tags: [purchasing]
+      summary: All Printavo order statuses (from the local sync) for the rule target picker
+      responses:
+        "200":
+          description: Statuses sorted by name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoStatusesResponse"
+  /purchasing/status-rules:
+    get:
+      operationId: listStatusRules
+      tags: [purchasing]
+      summary: Status rules ordered by priority (first match wins)
+      responses:
+        "200":
+          description: Rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusRulesResponse"
+    post:
+      operationId: createStatusRule
+      tags: [purchasing]
+      summary: Create a status rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStatusRuleRequest"
+      responses:
+        "201":
+          description: Created rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusRule"
+        "400":
+          description: Invalid rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/status-rules/{id}:
+    patch:
+      operationId: updateStatusRule
+      tags: [purchasing]
+      summary: Update a status rule (any subset of fields, including priority and enabled)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusRuleRequest"
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusRule"
+        "400":
+          description: Invalid rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteStatusRule
+      tags: [purchasing]
+      summary: Delete a status rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/status-rules/reorder:
+    post:
+      operationId: reorderStatusRules
+      tags: [purchasing]
+      summary: Atomically renumber rule priorities to match the given order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderStatusRulesRequest"
+      responses:
+        "200":
+          description: Rules in their new order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusRulesResponse"
+        "400":
+          description: Stale or invalid id list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/status-suggestions:
+    get:
+      operationId: listStatusSuggestions
+      tags: [purchasing]
+      summary: Suggested Printavo status changes (preview/confirm — nothing is applied automatically)
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          description: open (default) = pending + failed; all = recent history too
+          schema: { type: string, enum: [open, all] }
+      responses:
+        "200":
+          description: Suggestions, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusSuggestionsResponse"
+  /purchasing/status-suggestions/evaluate:
+    post:
+      operationId: evaluateStatusSuggestions
+      tags: [purchasing]
+      summary: Re-evaluate rules now for orders on POs pushed in the last 30 days
+      responses:
+        "200":
+          description: Evaluation summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluateStatusRulesResponse"
+  /purchasing/status-suggestions/{id}/apply:
+    post:
+      operationId: applyStatusSuggestion
+      tags: [purchasing]
+      summary: Apply a suggestion — changes the order's status in Printavo via the shared gateway
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusSuggestion"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already applied/dismissed, order already in the target status, or the order's status changed since evaluation (snapshot refreshed — re-confirm)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Printavo rejected the status change (suggestion marked failed, retryable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplyStatusSuggestionError"
+        "503":
+          description: Printavo credentials not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/status-suggestions/{id}/dismiss:
+    post:
+      operationId: dismissStatusSuggestion
+      tags: [purchasing]
+      summary: Dismiss a suggestion without writing to Printavo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusSuggestion"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already applied or dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /reports/orders:
     get:
       operationId: getOrdersReport
@@ -1392,6 +1616,165 @@ components:
         vendorOrderNumber:
           type: ["string", "null"]
           description: Vendor's order/confirmation number from checkout (optional).
+    PrintavoStatus:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+      required: [id, name]
+    PrintavoStatusesResponse:
+      type: object
+      properties:
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrintavoStatus"
+      required: [statuses]
+    StatusRule:
+      type: object
+      description: "First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null/false = catch-all. Due window counts business days from the PO push to the customer due date."
+      properties:
+        id: { type: string }
+        priority: { type: integer }
+        enabled: { type: boolean }
+        decoGroup:
+          type: ["string", "null"]
+          enum: [print, heat, embroidery, null]
+        specialMixedDeco: { type: boolean }
+        dueComparator:
+          type: ["string", "null"]
+          enum: [more_than, at_most, null]
+        dueBusinessDays: { type: ["integer", "null"] }
+        targetStatusId: { type: string }
+        targetStatusName: { type: string }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required:
+        [
+          id,
+          priority,
+          enabled,
+          decoGroup,
+          specialMixedDeco,
+          dueComparator,
+          dueBusinessDays,
+          targetStatusId,
+          targetStatusName,
+          createdAt,
+          updatedAt,
+        ]
+    StatusRulesResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusRule"
+      required: [rules]
+    ReorderStatusRulesRequest:
+      type: object
+      properties:
+        orderedIds:
+          type: array
+          items: { type: string }
+          minItems: 1
+      required: [orderedIds]
+    CreateStatusRuleRequest:
+      type: object
+      properties:
+        priority: { type: integer }
+        enabled: { type: boolean }
+        decoGroup:
+          type: ["string", "null"]
+          enum: [print, heat, embroidery, null]
+        specialMixedDeco: { type: boolean }
+        dueComparator:
+          type: ["string", "null"]
+          enum: [more_than, at_most, null]
+        dueBusinessDays: { type: ["integer", "null"] }
+        targetStatusId: { type: string, minLength: 1 }
+      required: [targetStatusId]
+    UpdateStatusRuleRequest:
+      type: object
+      properties:
+        priority: { type: integer }
+        enabled: { type: boolean }
+        decoGroup:
+          type: ["string", "null"]
+          enum: [print, heat, embroidery, null]
+        specialMixedDeco: { type: boolean }
+        dueComparator:
+          type: ["string", "null"]
+          enum: [more_than, at_most, null]
+        dueBusinessDays: { type: ["integer", "null"] }
+        targetStatusId: { type: string, minLength: 1 }
+    StatusSuggestion:
+      type: object
+      properties:
+        id: { type: string }
+        orderPrintavoId: { type: string }
+        orderType: { type: string }
+        visualId: { type: ["integer", "null"] }
+        nickname: { type: ["string", "null"] }
+        customerCompany: { type: ["string", "null"] }
+        decoGroups:
+          type: array
+          items: { type: string }
+        mixed: { type: boolean }
+        currentStatusId: { type: ["string", "null"] }
+        currentStatusName: { type: ["string", "null"] }
+        suggestedStatusId: { type: string }
+        suggestedStatusName: { type: string }
+        poDate: { type: string }
+        dueDate: { type: ["string", "null"] }
+        businessDaysOut: { type: ["integer", "null"] }
+        state: { type: string, enum: [pending, applied, dismissed, failed] }
+        error: { type: ["string", "null"] }
+        appliedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+      required:
+        [
+          id,
+          orderPrintavoId,
+          orderType,
+          visualId,
+          nickname,
+          customerCompany,
+          decoGroups,
+          mixed,
+          currentStatusId,
+          currentStatusName,
+          suggestedStatusId,
+          suggestedStatusName,
+          poDate,
+          dueDate,
+          businessDaysOut,
+          state,
+          error,
+          appliedAt,
+          createdAt,
+        ]
+    StatusSuggestionsResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusSuggestion"
+      required: [suggestions]
+    EvaluateStatusRulesResponse:
+      type: object
+      properties:
+        checked: { type: integer }
+        suggested: { type: integer }
+      required: [checked, suggested]
+    ApplyStatusSuggestionError:
+      type: object
+      properties:
+        error: { type: string }
+        suggestion:
+          $ref: "#/components/schemas/StatusSuggestion"
+      required: [error, suggestion]
     CreatePoFileRequest:
       type: object
       properties:

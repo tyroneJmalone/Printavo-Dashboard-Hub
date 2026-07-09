@@ -24,3 +24,4 @@
 - [Replit proxy kills long requests](replit-proxy-long-requests.md) — edge proxy drops held-open responses at ~48s; long ops must be fire-and-forget + status polling.
 - [E2E tests restart workflows](e2e-workflow-restarts.md) — testing sessions bounce all workflows, orphaning long background jobs mid-test; check job table before blaming code.
 - [Printavo productStatus staleness](printavo-product-status-staleness.md) — line-item productStatus edits never bump order updatedAt; hash sync misses them, per-poll sweep compensates.
+- [Printavo API quirks](printavo-api-quirks.md) — statusUpdate reads lag writes ~1s (post-write refresh may be stale; sync reconciles); scratch invoice #19004 is the reversible write-test target.

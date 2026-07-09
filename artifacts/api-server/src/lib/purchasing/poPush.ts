@@ -15,6 +15,7 @@ import { refreshOrderDetail } from "../sync/detail";
 import { newDetailAgg } from "../sync/detail";
 import { newHtmlToken, type PoFileLineItem } from "./poFiles";
 import { claimPush, releasePush } from "./pushRegistry";
+import { evaluateAfterPush } from "./statusRules";
 
 /**
  * Push a PO to Printavo (P3c).
@@ -408,6 +409,15 @@ async function runPush(poFileId: string, logger: Logger): Promise<void> {
         refreshed: state.refreshedOrderIds.length,
       },
       "PO push finished",
+    );
+
+    /* 5 — status rules (P3d): evaluate refreshed orders whose need_ordering
+       items are now all ordered. Suggestions only — nothing is written to
+       Printavo until Tyler confirms. Best-effort, never fails the push. */
+    await evaluateAfterPush(
+      state.refreshedOrderIds,
+      new Date(state.finishedAt),
+      log,
     );
   } catch (err) {
     log.error({ err }, "PO push crashed");

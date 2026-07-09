@@ -21,10 +21,13 @@ import type {
 
 import type {
   AppendPoLineItemsRequest,
+  ApplyStatusSuggestionError,
   BreakdownReport,
   ChangeEventItem,
   CreatePoFileRequest,
+  CreateStatusRuleRequest,
   ErrorResponse,
+  EvaluateStatusRulesResponse,
   GetBrandBreakdownParams,
   GetColorBreakdownParams,
   GetImprintsByTierParams,
@@ -37,6 +40,7 @@ import type {
   GetStyleNumberBreakdownParams,
   HealthStatus,
   ListChangeEventsParams,
+  ListStatusSuggestionsParams,
   NeedsOrderingResult,
   OrdersReport,
   PaymentsReport,
@@ -44,13 +48,20 @@ import type {
   PoFile,
   PoFileList,
   PollResult,
+  PrintavoStatusesResponse,
   ProbeResult,
   PushStartResponse,
+  ReorderStatusRulesRequest,
   ReportFilterOptions,
   SeedStartResult,
+  StatusRule,
+  StatusRulesResponse,
+  StatusSuggestion,
+  StatusSuggestionsResponse,
   SubmitPoToVendorRequest,
   SyncStatus,
   UpdatePoFileRequest,
+  UpdateStatusRuleRequest,
   VendorInventoryRequest,
   VendorInventoryResult,
   VendorLookupRequest,
@@ -1485,6 +1496,735 @@ export function useGetPoFileHtml<TData = Awaited<ReturnType<typeof getPoFileHtml
 
 
 
+
+export const getListPrintavoStatusesUrl = () => {
+
+
+
+
+  return `/api/purchasing/printavo-statuses`
+}
+
+/**
+ * @summary All Printavo order statuses (from the local sync) for the rule target picker
+ */
+export const listPrintavoStatuses = async ( options?: RequestInit): Promise<PrintavoStatusesResponse> => {
+
+  return customFetch<PrintavoStatusesResponse>(getListPrintavoStatusesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPrintavoStatusesQueryKey = () => {
+    return [
+    `/api/purchasing/printavo-statuses`
+    ] as const;
+    }
+
+
+export const getListPrintavoStatusesQueryOptions = <TData = Awaited<ReturnType<typeof listPrintavoStatuses>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintavoStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPrintavoStatusesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrintavoStatuses>>> = ({ signal }) => listPrintavoStatuses({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPrintavoStatuses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPrintavoStatusesQueryResult = NonNullable<Awaited<ReturnType<typeof listPrintavoStatuses>>>
+export type ListPrintavoStatusesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary All Printavo order statuses (from the local sync) for the rule target picker
+ */
+
+export function useListPrintavoStatuses<TData = Awaited<ReturnType<typeof listPrintavoStatuses>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintavoStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPrintavoStatusesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListStatusRulesUrl = () => {
+
+
+
+
+  return `/api/purchasing/status-rules`
+}
+
+/**
+ * @summary Status rules ordered by priority (first match wins)
+ */
+export const listStatusRules = async ( options?: RequestInit): Promise<StatusRulesResponse> => {
+
+  return customFetch<StatusRulesResponse>(getListStatusRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStatusRulesQueryKey = () => {
+    return [
+    `/api/purchasing/status-rules`
+    ] as const;
+    }
+
+
+export const getListStatusRulesQueryOptions = <TData = Awaited<ReturnType<typeof listStatusRules>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStatusRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStatusRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStatusRules>>> = ({ signal }) => listStatusRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStatusRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStatusRulesQueryResult = NonNullable<Awaited<ReturnType<typeof listStatusRules>>>
+export type ListStatusRulesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Status rules ordered by priority (first match wins)
+ */
+
+export function useListStatusRules<TData = Awaited<ReturnType<typeof listStatusRules>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStatusRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStatusRulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateStatusRuleUrl = () => {
+
+
+
+
+  return `/api/purchasing/status-rules`
+}
+
+/**
+ * @summary Create a status rule
+ */
+export const createStatusRule = async (createStatusRuleRequest: CreateStatusRuleRequest, options?: RequestInit): Promise<StatusRule> => {
+
+  return customFetch<StatusRule>(getCreateStatusRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createStatusRuleRequest)
+  }
+);}
+
+
+
+
+export const getCreateStatusRuleMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStatusRule>>, TError,{data: BodyType<CreateStatusRuleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStatusRule>>, TError,{data: BodyType<CreateStatusRuleRequest>}, TContext> => {
+
+const mutationKey = ['createStatusRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStatusRule>>, {data: BodyType<CreateStatusRuleRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createStatusRule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStatusRuleMutationResult = NonNullable<Awaited<ReturnType<typeof createStatusRule>>>
+    export type CreateStatusRuleMutationBody = BodyType<CreateStatusRuleRequest>
+    export type CreateStatusRuleMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a status rule
+ */
+export const useCreateStatusRule = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStatusRule>>, TError,{data: BodyType<CreateStatusRuleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStatusRule>>,
+        TError,
+        {data: BodyType<CreateStatusRuleRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateStatusRuleMutationOptions(options));
+    }
+
+export const getUpdateStatusRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/status-rules/${id}`
+}
+
+/**
+ * @summary Update a status rule (any subset of fields, including priority and enabled)
+ */
+export const updateStatusRule = async (id: string,
+    updateStatusRuleRequest: UpdateStatusRuleRequest, options?: RequestInit): Promise<StatusRule> => {
+
+  return customFetch<StatusRule>(getUpdateStatusRuleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateStatusRuleRequest)
+  }
+);}
+
+
+
+
+export const getUpdateStatusRuleMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStatusRule>>, TError,{id: string;data: BodyType<UpdateStatusRuleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateStatusRule>>, TError,{id: string;data: BodyType<UpdateStatusRuleRequest>}, TContext> => {
+
+const mutationKey = ['updateStatusRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateStatusRule>>, {id: string;data: BodyType<UpdateStatusRuleRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateStatusRule(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateStatusRuleMutationResult = NonNullable<Awaited<ReturnType<typeof updateStatusRule>>>
+    export type UpdateStatusRuleMutationBody = BodyType<UpdateStatusRuleRequest>
+    export type UpdateStatusRuleMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a status rule (any subset of fields, including priority and enabled)
+ */
+export const useUpdateStatusRule = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStatusRule>>, TError,{id: string;data: BodyType<UpdateStatusRuleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateStatusRule>>,
+        TError,
+        {id: string;data: BodyType<UpdateStatusRuleRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateStatusRuleMutationOptions(options));
+    }
+
+export const getDeleteStatusRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/status-rules/${id}`
+}
+
+/**
+ * @summary Delete a status rule
+ */
+export const deleteStatusRule = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteStatusRuleUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteStatusRuleMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStatusRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteStatusRule>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteStatusRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteStatusRule>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteStatusRule(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteStatusRuleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteStatusRule>>>
+
+    export type DeleteStatusRuleMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a status rule
+ */
+export const useDeleteStatusRule = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStatusRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteStatusRule>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteStatusRuleMutationOptions(options));
+    }
+
+export const getReorderStatusRulesUrl = () => {
+
+
+
+
+  return `/api/purchasing/status-rules/reorder`
+}
+
+/**
+ * @summary Atomically renumber rule priorities to match the given order
+ */
+export const reorderStatusRules = async (reorderStatusRulesRequest: ReorderStatusRulesRequest, options?: RequestInit): Promise<StatusRulesResponse> => {
+
+  return customFetch<StatusRulesResponse>(getReorderStatusRulesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reorderStatusRulesRequest)
+  }
+);}
+
+
+
+
+export const getReorderStatusRulesMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderStatusRules>>, TError,{data: BodyType<ReorderStatusRulesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reorderStatusRules>>, TError,{data: BodyType<ReorderStatusRulesRequest>}, TContext> => {
+
+const mutationKey = ['reorderStatusRules'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reorderStatusRules>>, {data: BodyType<ReorderStatusRulesRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reorderStatusRules(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReorderStatusRulesMutationResult = NonNullable<Awaited<ReturnType<typeof reorderStatusRules>>>
+    export type ReorderStatusRulesMutationBody = BodyType<ReorderStatusRulesRequest>
+    export type ReorderStatusRulesMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Atomically renumber rule priorities to match the given order
+ */
+export const useReorderStatusRules = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderStatusRules>>, TError,{data: BodyType<ReorderStatusRulesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reorderStatusRules>>,
+        TError,
+        {data: BodyType<ReorderStatusRulesRequest>},
+        TContext
+      > => {
+      return useMutation(getReorderStatusRulesMutationOptions(options));
+    }
+
+export const getListStatusSuggestionsUrl = (params?: ListStatusSuggestionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/purchasing/status-suggestions?${stringifiedParams}` : `/api/purchasing/status-suggestions`
+}
+
+/**
+ * @summary Suggested Printavo status changes (preview/confirm — nothing is applied automatically)
+ */
+export const listStatusSuggestions = async (params?: ListStatusSuggestionsParams, options?: RequestInit): Promise<StatusSuggestionsResponse> => {
+
+  return customFetch<StatusSuggestionsResponse>(getListStatusSuggestionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStatusSuggestionsQueryKey = (params?: ListStatusSuggestionsParams,) => {
+    return [
+    `/api/purchasing/status-suggestions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStatusSuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listStatusSuggestions>>, TError = ErrorType<unknown>>(params?: ListStatusSuggestionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStatusSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStatusSuggestionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStatusSuggestions>>> = ({ signal }) => listStatusSuggestions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStatusSuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStatusSuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof listStatusSuggestions>>>
+export type ListStatusSuggestionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Suggested Printavo status changes (preview/confirm — nothing is applied automatically)
+ */
+
+export function useListStatusSuggestions<TData = Awaited<ReturnType<typeof listStatusSuggestions>>, TError = ErrorType<unknown>>(
+ params?: ListStatusSuggestionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStatusSuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStatusSuggestionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getEvaluateStatusSuggestionsUrl = () => {
+
+
+
+
+  return `/api/purchasing/status-suggestions/evaluate`
+}
+
+/**
+ * @summary Re-evaluate rules now for orders on POs pushed in the last 30 days
+ */
+export const evaluateStatusSuggestions = async ( options?: RequestInit): Promise<EvaluateStatusRulesResponse> => {
+
+  return customFetch<EvaluateStatusRulesResponse>(getEvaluateStatusSuggestionsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getEvaluateStatusSuggestionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof evaluateStatusSuggestions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof evaluateStatusSuggestions>>, TError,void, TContext> => {
+
+const mutationKey = ['evaluateStatusSuggestions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof evaluateStatusSuggestions>>, void> = () => {
+
+
+          return  evaluateStatusSuggestions(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EvaluateStatusSuggestionsMutationResult = NonNullable<Awaited<ReturnType<typeof evaluateStatusSuggestions>>>
+
+    export type EvaluateStatusSuggestionsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Re-evaluate rules now for orders on POs pushed in the last 30 days
+ */
+export const useEvaluateStatusSuggestions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof evaluateStatusSuggestions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof evaluateStatusSuggestions>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getEvaluateStatusSuggestionsMutationOptions(options));
+    }
+
+export const getApplyStatusSuggestionUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/status-suggestions/${id}/apply`
+}
+
+/**
+ * @summary Apply a suggestion — changes the order's status in Printavo via the shared gateway
+ */
+export const applyStatusSuggestion = async (id: string, options?: RequestInit): Promise<StatusSuggestion> => {
+
+  return customFetch<StatusSuggestion>(getApplyStatusSuggestionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getApplyStatusSuggestionMutationOptions = <TError = ErrorType<ErrorResponse | ApplyStatusSuggestionError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyStatusSuggestion>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof applyStatusSuggestion>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['applyStatusSuggestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof applyStatusSuggestion>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  applyStatusSuggestion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApplyStatusSuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof applyStatusSuggestion>>>
+
+    export type ApplyStatusSuggestionMutationError = ErrorType<ErrorResponse | ApplyStatusSuggestionError>
+
+    /**
+ * @summary Apply a suggestion — changes the order's status in Printavo via the shared gateway
+ */
+export const useApplyStatusSuggestion = <TError = ErrorType<ErrorResponse | ApplyStatusSuggestionError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof applyStatusSuggestion>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof applyStatusSuggestion>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getApplyStatusSuggestionMutationOptions(options));
+    }
+
+export const getDismissStatusSuggestionUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/status-suggestions/${id}/dismiss`
+}
+
+/**
+ * @summary Dismiss a suggestion without writing to Printavo
+ */
+export const dismissStatusSuggestion = async (id: string, options?: RequestInit): Promise<StatusSuggestion> => {
+
+  return customFetch<StatusSuggestion>(getDismissStatusSuggestionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDismissStatusSuggestionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissStatusSuggestion>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissStatusSuggestion>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['dismissStatusSuggestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissStatusSuggestion>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  dismissStatusSuggestion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissStatusSuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof dismissStatusSuggestion>>>
+
+    export type DismissStatusSuggestionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Dismiss a suggestion without writing to Printavo
+ */
+export const useDismissStatusSuggestion = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissStatusSuggestion>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dismissStatusSuggestion>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDismissStatusSuggestionMutationOptions(options));
+    }
 
 export const getGetOrdersReportUrl = (params?: GetOrdersReportParams,) => {
   const normalizedParams = new URLSearchParams();

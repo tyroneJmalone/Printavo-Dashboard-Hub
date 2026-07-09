@@ -28,5 +28,7 @@ export * from "./pvPayments";
 export * from "./changeEvents";
 export * from "./syncRuns";
 export * from "./poFiles";
+export * from "./poStatusRules";
+export * from "./poStatusSuggestions";
 export * from "./syncCheckpoints";
 export * from "./entityWatermarks";

@@ -359,6 +359,20 @@ export function productionFileCreateMutation(
   }`;
 }
 
+/**
+ * Change an order's status. `parentId` is the invoice/quote GraphQL id;
+ * returns OrderUnion, so the selection needs inline fragments (verified via
+ * introspection: statusUpdate(parentId: ID!, statusId: ID!): OrderUnion).
+ */
+export function statusUpdateMutation(parentId: string, statusId: string): string {
+  return `mutation {
+    statusUpdate(parentId: ${lit(parentId)}, statusId: ${lit(statusId)}) {
+      ... on Invoice { id status { id name } }
+      ... on Quote { id status { id name } }
+    }
+  }`;
+}
+
 /*
  * ── Transactions (cash-basis payments) ──────────────────────────────────
  * Root `transactions` has pagination only (no date filter), newest-first.

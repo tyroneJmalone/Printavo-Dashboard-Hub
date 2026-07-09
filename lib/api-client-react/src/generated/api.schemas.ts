@@ -574,6 +574,196 @@ export interface SubmitPoToVendorRequest {
   vendorOrderNumber?: string | null;
 }
 
+export interface PrintavoStatus {
+  id: string;
+  name: string;
+}
+
+export interface PrintavoStatusesResponse {
+  statuses: PrintavoStatus[];
+}
+
+/**
+ * @nullable
+ */
+export type StatusRuleDecoGroup = typeof StatusRuleDecoGroup[keyof typeof StatusRuleDecoGroup] | null;
+
+
+export const StatusRuleDecoGroup = {
+  print: 'print',
+  heat: 'heat',
+  embroidery: 'embroidery',
+} as const;
+
+/**
+ * @nullable
+ */
+export type StatusRuleDueComparator = typeof StatusRuleDueComparator[keyof typeof StatusRuleDueComparator] | null;
+
+
+export const StatusRuleDueComparator = {
+  more_than: 'more_than',
+  at_most: 'at_most',
+} as const;
+
+/**
+ * First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null/false = catch-all. Due window counts business days from the PO push to the customer due date.
+ */
+export interface StatusRule {
+  id: string;
+  priority: number;
+  enabled: boolean;
+  /** @nullable */
+  decoGroup: StatusRuleDecoGroup;
+  specialMixedDeco: boolean;
+  /** @nullable */
+  dueComparator: StatusRuleDueComparator;
+  /** @nullable */
+  dueBusinessDays: number | null;
+  targetStatusId: string;
+  targetStatusName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StatusRulesResponse {
+  rules: StatusRule[];
+}
+
+export interface ReorderStatusRulesRequest {
+  /** @minItems 1 */
+  orderedIds: string[];
+}
+
+/**
+ * @nullable
+ */
+export type CreateStatusRuleRequestDecoGroup = typeof CreateStatusRuleRequestDecoGroup[keyof typeof CreateStatusRuleRequestDecoGroup] | null;
+
+
+export const CreateStatusRuleRequestDecoGroup = {
+  print: 'print',
+  heat: 'heat',
+  embroidery: 'embroidery',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CreateStatusRuleRequestDueComparator = typeof CreateStatusRuleRequestDueComparator[keyof typeof CreateStatusRuleRequestDueComparator] | null;
+
+
+export const CreateStatusRuleRequestDueComparator = {
+  more_than: 'more_than',
+  at_most: 'at_most',
+} as const;
+
+export interface CreateStatusRuleRequest {
+  priority?: number;
+  enabled?: boolean;
+  /** @nullable */
+  decoGroup?: CreateStatusRuleRequestDecoGroup;
+  specialMixedDeco?: boolean;
+  /** @nullable */
+  dueComparator?: CreateStatusRuleRequestDueComparator;
+  /** @nullable */
+  dueBusinessDays?: number | null;
+  /** @minLength 1 */
+  targetStatusId: string;
+}
+
+/**
+ * @nullable
+ */
+export type UpdateStatusRuleRequestDecoGroup = typeof UpdateStatusRuleRequestDecoGroup[keyof typeof UpdateStatusRuleRequestDecoGroup] | null;
+
+
+export const UpdateStatusRuleRequestDecoGroup = {
+  print: 'print',
+  heat: 'heat',
+  embroidery: 'embroidery',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateStatusRuleRequestDueComparator = typeof UpdateStatusRuleRequestDueComparator[keyof typeof UpdateStatusRuleRequestDueComparator] | null;
+
+
+export const UpdateStatusRuleRequestDueComparator = {
+  more_than: 'more_than',
+  at_most: 'at_most',
+} as const;
+
+export interface UpdateStatusRuleRequest {
+  priority?: number;
+  enabled?: boolean;
+  /** @nullable */
+  decoGroup?: UpdateStatusRuleRequestDecoGroup;
+  specialMixedDeco?: boolean;
+  /** @nullable */
+  dueComparator?: UpdateStatusRuleRequestDueComparator;
+  /** @nullable */
+  dueBusinessDays?: number | null;
+  /** @minLength 1 */
+  targetStatusId?: string;
+}
+
+export type StatusSuggestionState = typeof StatusSuggestionState[keyof typeof StatusSuggestionState];
+
+
+export const StatusSuggestionState = {
+  pending: 'pending',
+  applied: 'applied',
+  dismissed: 'dismissed',
+  failed: 'failed',
+} as const;
+
+export interface StatusSuggestion {
+  id: string;
+  orderPrintavoId: string;
+  orderType: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  customerCompany: string | null;
+  decoGroups: string[];
+  mixed: boolean;
+  /** @nullable */
+  currentStatusId: string | null;
+  /** @nullable */
+  currentStatusName: string | null;
+  suggestedStatusId: string;
+  suggestedStatusName: string;
+  poDate: string;
+  /** @nullable */
+  dueDate: string | null;
+  /** @nullable */
+  businessDaysOut: number | null;
+  state: StatusSuggestionState;
+  /** @nullable */
+  error: string | null;
+  /** @nullable */
+  appliedAt: string | null;
+  createdAt: string;
+}
+
+export interface StatusSuggestionsResponse {
+  suggestions: StatusSuggestion[];
+}
+
+export interface EvaluateStatusRulesResponse {
+  checked: number;
+  suggested: number;
+}
+
+export interface ApplyStatusSuggestionError {
+  error: string;
+  suggestion: StatusSuggestion;
+}
+
 export type CreatePoFileRequestVendorName = typeof CreatePoFileRequestVendorName[keyof typeof CreatePoFileRequestVendorName];
 
 
@@ -691,6 +881,21 @@ limit?: number;
 entityType?: string;
 eventType?: string;
 };
+
+export type ListStatusSuggestionsParams = {
+/**
+ * open (default) = pending + failed; all = recent history too
+ */
+scope?: ListStatusSuggestionsScope;
+};
+
+export type ListStatusSuggestionsScope = typeof ListStatusSuggestionsScope[keyof typeof ListStatusSuggestionsScope];
+
+
+export const ListStatusSuggestionsScope = {
+  open: 'open',
+  all: 'all',
+} as const;
 
 export type GetOrdersReportParams = {
 orderType?: OrderTypeParamParameter;

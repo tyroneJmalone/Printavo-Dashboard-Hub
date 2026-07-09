@@ -9,6 +9,7 @@ import Orders from "./pages/Orders";
 import Payments from "./pages/Payments";
 import VendorOrders from "./pages/VendorOrders";
 import PoLog from "./pages/PoLog";
+import StatusRules from "./pages/StatusRules";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/payments" component={Payments} />
       <Route path="/vendor-orders" component={VendorOrders} />
       <Route path="/po-log" component={PoLog} />
+      <Route path="/status-rules" component={StatusRules} />
       <Route component={NotFound} />
     </Switch>
   );

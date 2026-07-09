@@ -40,6 +40,7 @@ Unified internal hub for Mint Print Works that consolidates 11 separate Printavo
 
 - Phase 1 (done): Printavo sync engine — 12-month seed + 5-min incremental polling of quotes/invoices/customers/contacts/statuses into Postgres, with change-event capture (created/updated/status_change/converted).
 - Phase 2 (backend done, awaiting Tyler validation + UI): order detail sync (line item groups/items/imprints), full payments history sync (cash-basis, 2017→today), and Reports API under `/api/reports/*` replicating the legacy Insights app formulas (see `.agents/memory/printavo-reporting-formulas.md`).
+- Vendor Orders / Purchasing module (P1–P3d done, July 2026): needs-ordering scan, vendor pricing (SanMar SOAP + S&S REST), PO builder w/ cart + warehouse auto-pick, PO Log w/ two-tier lock model, push-to-Printavo (line item updates + production file attach via throttled gateway), and the status rules engine (`/status-rules`): priority-ordered deco/due-window rules generate status *suggestions* after a PO push — nothing auto-applies, staff confirms each apply. P4 (vendor submission + tracking) awaits Tyler sign-off.
 - Known partial data: orders 20104 and 20714 have >25 line-item groups (beyond single-order query caps) — their line items are stored incomplete by design; exclude from report spot checks.
 
 ## Roadmap ideas (Tyler, July 8, 2026)

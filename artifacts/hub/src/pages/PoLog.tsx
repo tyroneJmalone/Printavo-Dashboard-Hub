@@ -13,6 +13,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { PoEditor } from "@/components/purchasing/PoEditor";
+import { StatusSuggestionsCard } from "@/components/purchasing/StatusSuggestionsCard";
 import { formatNumber } from "@/lib/format";
 import {
   ClipboardList,
@@ -452,6 +453,7 @@ export default function PoLog() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+          <StatusSuggestionsCard />
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="animate-spin text-[#10b981]" size={32} />
