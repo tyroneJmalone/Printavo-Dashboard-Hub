@@ -77,7 +77,6 @@ export interface PoPushState {
 export type StartPushResult =
   | "started"
   | "not_found"
-  | "vendor_locked"
   | "already_running"
   | "no_linked_lines"
   | "not_configured";
@@ -119,7 +118,8 @@ export async function startPoPush(
         .limit(1);
       const row = rows[0];
       if (!row) return "not_found" as const;
-      if (row.submittedToVendorAt) return "vendor_locked" as const;
+      // Vendor-locked POs CAN be pushed — Tyler's flow is: submit to vendor
+      // first, then push to Printavo. The vendor lock freezes edits, not pushes.
 
       const lineItems = row.lineItems as unknown as PoFileLineItem[];
       if (!lineItems.some((li) => li.printavoLineItemId)) {
@@ -338,7 +338,7 @@ async function runPush(poFileId: string, logger: Logger): Promise<void> {
     }
 
     /* 2 — attach the PO document once per distinct invoice */
-    const fileUrl = publicPoHtmlUrl(row.htmlToken);
+    const fileUrl = publicPoHtmlUrl(row.htmlToken, row.poNumber);
     const attachTargets = new Map<string, number | null>();
     for (const line of state.lines) {
       if (

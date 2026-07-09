@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { 
   useGetOrdersReport, 
   useGetReportFilterOptions,
@@ -366,7 +367,9 @@ export default function Orders() {
                       <tbody className="divide-y divide-slate-800">
                         {ordersData?.orders?.map((order) => (
                           <tr key={order.id} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="px-6 py-4 font-mono text-slate-300">#{order.visualId}</td>
+                            <td className="px-6 py-4 font-mono text-slate-300">
+                              <PrintavoOrderLink orderId={order.id} visualId={order.visualId} />
+                            </td>
                             <td className="px-6 py-4 text-xs font-medium text-slate-400 capitalize">{order.orderType}</td>
                             <td className="px-6 py-4 font-medium text-white">{order.customerName}</td>
                             <td className="px-6 py-4 text-slate-400 max-w-[200px] truncate" title={order.nickname || ''}>

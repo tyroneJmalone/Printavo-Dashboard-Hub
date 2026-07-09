@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import {
   useVendorLookup,
   useVendorInventory,
@@ -195,7 +196,11 @@ function CartItemCard({ item }: { item: CartItem }) {
             </span>
           </div>
           <div className="text-[11px] text-slate-500">
-            #{item.visualId} · {item.brand ?? "—"}
+            <PrintavoOrderLink
+              orderId={item.printavoOrderId}
+              visualId={item.visualId}
+            />{" "}
+            · {item.brand ?? "—"}
           </div>
         </div>
         <div className="flex items-center gap-1.5">

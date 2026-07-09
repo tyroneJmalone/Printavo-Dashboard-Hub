@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { useGetOrdersReport, useGetPaymentsStats, useGetStatusBreakdown } from "@workspace/api-client-react";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { ArrowRight, BarChart3, TrendingUp, AlertCircle, PackageSearch, Clock, CreditCard } from "lucide-react";
@@ -102,7 +103,9 @@ export default function Dashboard() {
                       {reportData?.orders?.slice(0, 7).map((order) => (
                         <tr key={order.id} className="hover:bg-slate-800/30 transition-colors group">
                           <td className="px-6 py-4">
-                            <div className="font-medium text-slate-200">#{order.visualId}</div>
+                            <div className="font-medium text-slate-200">
+                              <PrintavoOrderLink orderId={order.id} visualId={order.visualId} />
+                            </div>
                             <div className="text-xs text-slate-500">{order.nickname || '—'}</div>
                           </td>
                           <td className="px-6 py-4 font-medium text-slate-300">

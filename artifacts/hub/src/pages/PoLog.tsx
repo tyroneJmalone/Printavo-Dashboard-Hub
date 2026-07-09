@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import {
   useListPoFiles,
   useUnlockPoFile,
@@ -74,7 +75,19 @@ function PushStatusPanel({ po }: { po: PoFile }) {
           <div key={l.key} className="text-red-300/90">
             <span className="font-mono font-semibold">{l.styleNumber}</span>
             {l.color ? ` ${l.color}` : ""}
-            {l.visualId ? ` (order #${l.visualId})` : ""}: {l.detail ?? "failed"}
+            {l.visualId ? (
+              <>
+                {" (order "}
+                <PrintavoOrderLink
+                  orderId={l.printavoOrderId}
+                  visualId={l.visualId}
+                />
+                {")"}
+              </>
+            ) : (
+              ""
+            )}
+            : {l.detail ?? "failed"}
           </div>
         ))}
       </div>
@@ -143,7 +156,7 @@ function PoRow({ po }: { po: PoFile }) {
   const linkedInvoices = new Set(
     po.lineItems.map((li) => li.printavoOrderId).filter(Boolean),
   ).size;
-  const canPush = !po.submittedToVendorAt && linkedLines > 0;
+  const canPush = linkedLines > 0;
   const pushLabel =
     po.pushState?.status === "failed"
       ? "Retry push"
@@ -330,7 +343,10 @@ function PoRow({ po }: { po: PoFile }) {
                       {li.warehouseName ?? li.warehouseCode ?? "—"}
                     </td>
                     <td className="px-5 py-2.5 text-center font-mono text-slate-400">
-                      {li.visualId ? `#${li.visualId}` : "—"}
+                      <PrintavoOrderLink
+                        orderId={li.printavoOrderId}
+                        visualId={li.visualId}
+                      />
                     </td>
                     <td className="px-5 py-2.5 text-right font-mono text-slate-200">{qty}</td>
                     <td className="px-5 py-2.5 text-right font-mono text-[#10b981]">{money(cost)}</td>

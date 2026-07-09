@@ -18,7 +18,14 @@ export function publicBaseUrl(): string {
   return `https://${domain}`;
 }
 
-/** Public, token-secured URL for a PO's printable HTML. */
-export function publicPoHtmlUrl(htmlToken: string): string {
-  return `${publicBaseUrl()}/api/purchasing/po-html/${htmlToken}`;
+/**
+ * Public, token-secured URL for a PO's printable HTML.
+ *
+ * The trailing filename segment is ignored by the route — it exists only so
+ * Printavo names the attached production file after the PO number instead of
+ * a junk name derived from the bare token URL ("convert").
+ */
+export function publicPoHtmlUrl(htmlToken: string, poNumber: string): string {
+  const fileName = `${poNumber.replace(/[^A-Za-z0-9._-]+/g, "-")}-PO.html`;
+  return `${publicBaseUrl()}/api/purchasing/po-html/${htmlToken}/${fileName}`;
 }

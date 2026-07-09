@@ -350,7 +350,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: Already running, submitted to the vendor, or no Printavo-linked lines
+          description: Already running, or no Printavo-linked lines
           content:
             application/json:
               schema:

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { useGetNeedsOrdering, triggerPoll, getSyncStatus, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
 import { formatNumber, formatDate } from "@/lib/format";
 import { usePoCart, guessVendor, type CartItem } from "@/stores/poCart";
@@ -242,7 +243,9 @@ export default function VendorOrders() {
                 <div className="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-900/60">
                   <div className="flex items-center gap-4">
                     <div>
-                      <div className="text-base font-bold text-white">#{order.visualId}</div>
+                      <div className="text-base font-bold text-white">
+                        <PrintavoOrderLink orderId={order.orderId} visualId={order.visualId} />
+                      </div>
                       <div className="text-xs text-slate-500">{order.nickname || "—"}</div>
                     </div>
                     <div className="h-8 w-px bg-slate-800" />

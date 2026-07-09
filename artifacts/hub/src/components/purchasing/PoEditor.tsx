@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import {
   useUpdatePoFile,
   useDeletePoFile,
@@ -559,7 +560,10 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
                   </span>
                   {li.visualId && (
                     <span className="ml-2 text-[11px] font-mono text-slate-500">
-                      #{li.visualId}
+                      <PrintavoOrderLink
+                        orderId={li.printavoOrderId}
+                        visualId={li.visualId}
+                      />
                     </span>
                   )}
                   {(li.warehouseName ?? li.warehouseCode) && (

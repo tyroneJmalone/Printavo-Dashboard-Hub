@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Response } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import {
   VendorLookupBody,
   VendorInventoryBody,
@@ -182,11 +182,6 @@ router.post("/purchasing/po-files/:id/push", (req, res) => {
         case "already_running":
           res.status(409).json({ error: "A push for this PO is already running" });
           return;
-        case "vendor_locked":
-          res.status(409).json({
-            error: "This PO was submitted to the vendor — it can no longer be pushed.",
-          });
-          return;
         case "no_linked_lines":
           res.status(409).json({
             error: "This PO has no Printavo-linked line items to push",
@@ -290,8 +285,13 @@ router.delete("/purchasing/po-files/:id", (req, res) => {
  * PUBLIC (unauthenticated) PO HTML by secret token — the URL handed to
  * Printavo's productionFileCreate. The token is a 64-char hex secret,
  * regenerated on every push; this must stay the ONLY public endpoint.
+ * The optional trailing :filename segment is ignored — it only makes
+ * Printavo name the attached file after the PO number.
  */
-router.get("/purchasing/po-html/:token", (req, res) => {
+const servePublicPoHtml = (
+  req: Request<{ token: string; filename?: string }>,
+  res: Response,
+) => {
   getPoFileByHtmlToken(req.params.token)
     .then((po) => {
       if (!po) {
@@ -304,7 +304,9 @@ router.get("/purchasing/po-html/:token", (req, res) => {
       req.log.error({ err }, "public PO render failed");
       res.status(500).send("Render failed");
     });
-});
+};
+router.get("/purchasing/po-html/:token", servePublicPoHtml);
+router.get("/purchasing/po-html/:token/:filename", servePublicPoHtml);
 
 router.get("/purchasing/po-files/:id/html", (req, res) => {
   getPoFile(req.params.id)
