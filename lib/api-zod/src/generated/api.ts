@@ -881,6 +881,55 @@ export const VendorSubmitResponse = zod.object({
 
 
 /**
+ * @summary Get the ship-to address vendor orders (SanMar/S&S) are shipped to. Returns null when not configured yet.
+ */
+export const GetVendorShipToResponse = zod.object({
+  "shipTo": zod.union([zod.object({
+  "companyName": zod.string(),
+  "attention": zod.string().nullable(),
+  "address1": zod.string(),
+  "address2": zod.string().nullable(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "zip": zod.string(),
+  "email": zod.string().nullable(),
+  "residential": zod.boolean(),
+  "defaultShipMethod": zod.enum(['GROUND', '2DAY', 'OVERNIGHT'])
+}),zod.null()])
+})
+
+
+/**
+ * @summary Save the ship-to address used for vendor orders.
+ */
+export const SetVendorShipToBody = zod.object({
+  "companyName": zod.string(),
+  "attention": zod.string().nullable(),
+  "address1": zod.string(),
+  "address2": zod.string().nullable(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "zip": zod.string(),
+  "email": zod.string().nullable(),
+  "residential": zod.boolean(),
+  "defaultShipMethod": zod.enum(['GROUND', '2DAY', 'OVERNIGHT'])
+})
+
+export const SetVendorShipToResponse = zod.object({
+  "companyName": zod.string(),
+  "attention": zod.string().nullable(),
+  "address1": zod.string(),
+  "address2": zod.string().nullable(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "zip": zod.string(),
+  "email": zod.string().nullable(),
+  "residential": zod.boolean(),
+  "defaultShipMethod": zod.enum(['GROUND', '2DAY', 'OVERNIGHT'])
+})
+
+
+/**
  * @summary Manually unlock a PO that was pushed to Printavo. Vendor-submitted POs need the admin unlock instead.
  */
 export const UnlockPoFileParams = zod.object({

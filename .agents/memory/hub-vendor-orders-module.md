@@ -81,6 +81,13 @@ description: Durable decisions from the Hub's purchasing module (P2 cart/pricing
 - `vendorName` IS the vendor id ("sanmar"/"ss") — no mapping. Credentials come only from env and are NEVER in the persisted `requestPayload`/`shippingAddress`. Ship-to lives in `app_settings` under key `vendor_ship_to` (single-tenant shop).
 - Safe self-test recipe (NO network): create a scratch PO via the API, dry-run it (ship-to-unset → ineligible; seed `vendor_ship_to` → preview), and confirm `select count(*) from vendor_orders` stays 0. Real PO 22251 is already vendor-submitted → the already-submitted gate returns ineligible, so it's read-only-safe as a gate test target.
 
+# Electronic submission UI (P4b, July 2026)
+- **Two "order" actions coexist BY DESIGN — never merge them.** Manual "Mark ordered" (`useSubmitPoToVendor` → `/submit-to-vendor`) only records a vendor order/confirmation # and locks the PO; electronic "Order from {vendor}" (`useVendorSubmit` → `/vendor-submit`) actually previews/sends (dry_run/test/live). Both render as separate buttons while `!submittedToVendorAt`.
+  **Why:** Tyler needs the hand-entry fallback for orders placed outside the app (phone/portal) even after electronic submit exists.
+- **The submit dialog defers the PO-list refetch until it closes.** It runs a dry_run on open; on a live `submitted` it does NOT invalidate immediately — it flags and invalidates in the close handler.
+  **Why:** the trigger button only renders while `!submittedToVendorAt`; invalidating on success flips that flag on refetch and unmounts the dialog mid-view, yanking the success screen (and vendor order #s) out from under the user.
+- Ship-to settings API shape: GET wraps in `{shipTo: VendorShipTo|null}` (a bare `null` body is awkward for typed clients); PUT takes and returns a bare `VendorShipTo`. There is NO delete — clear the `vendor_ship_to` row directly in `app_settings` if you need an empty-form state for testing.
+
 # Vendor lookup bug fixes (July 2026, both architect-PASSed)
 - **SanMar SOAP stalls mid-body-stream**: headers arrive fast, then the body hangs — so `res.text()` must be INSIDE the retry try/catch (AbortSignal.timeout aborts the body read too, and the raw DOMException leaked past a fetch-only catch). soapCall retries with per-attempt timeouts 15s→25s (~40s worst case, under the ~48s proxy kill). Same request that stalls typically succeeds in <1s on retry.
   **Why:** live logs showed a 30s TimeoutError followed by a 320ms success; first fix attempt only wrapped fetch() and still failed at exactly 15s with a raw DOMException — that signature (unwrapped error at exactly one attempt-timeout) means the body read escaped the retry.

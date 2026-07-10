@@ -636,6 +636,10 @@ export interface VendorShipTo {
   defaultShipMethod: VendorShipToDefaultShipMethod;
 }
 
+export interface VendorShipToResponse {
+  shipTo: VendorShipTo | null;
+}
+
 export interface VendorSubmitEligibility {
   ok: boolean;
   blockers: string[];

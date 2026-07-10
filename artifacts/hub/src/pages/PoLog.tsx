@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { PoEditor } from "@/components/purchasing/PoEditor";
 import { StatusSuggestionsCard } from "@/components/purchasing/StatusSuggestionsCard";
+import { VendorSubmitButton } from "@/components/purchasing/VendorSubmitDialog";
 import { formatNumber } from "@/lib/format";
 import {
   ClipboardList,
@@ -347,6 +348,9 @@ function PoRow({ po }: { po: PoFile }) {
                 )}
                 {pushing ? "Pushing…" : pushLabel}
               </button>
+            )}
+            {!po.submittedToVendorAt && !pushing && (
+              <VendorSubmitButton po={po} />
             )}
             {!po.submittedToVendorAt && !pushing && (
               <button

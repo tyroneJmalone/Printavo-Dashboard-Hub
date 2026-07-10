@@ -118,6 +118,7 @@ export * from './vendorLookupResultVendor';
 export * from './vendorOrder';
 export * from './vendorShipTo';
 export * from './vendorShipToDefaultShipMethod';
+export * from './vendorShipToResponse';
 export * from './vendorSizeOffer';
 export * from './vendorSubmitEligibility';
 export * from './vendorSubmitPreview';

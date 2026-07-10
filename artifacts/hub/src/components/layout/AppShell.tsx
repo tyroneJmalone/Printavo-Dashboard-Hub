@@ -146,13 +146,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="px-3 py-2 border-t border-slate-800">
-          <button
-            disabled
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium transition-colors text-left text-slate-600 cursor-not-allowed border border-transparent"
-          >
-            <Settings size={15} />
-            Settings
-          </button>
+          <Link href="/settings" className="block">
+            <div
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium transition-colors text-left ${
+                location === "/settings"
+                  ? "bg-[#059669]/10 text-[#10b981] border border-[#059669]/20"
+                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-800 border border-transparent"
+              }`}
+            >
+              <Settings size={15} strokeWidth={location === "/settings" ? 2.5 : 2} className={location === "/settings" ? "text-[#10b981]" : ""} />
+              Settings
+            </div>
+          </Link>
         </div>
 
         <div className="px-4 py-4 border-t border-slate-800 bg-slate-900/50">

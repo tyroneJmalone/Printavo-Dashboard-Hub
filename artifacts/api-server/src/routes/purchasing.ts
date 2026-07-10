@@ -9,6 +9,7 @@ import {
   SubmitPoToVendorBody,
   AdminUnlockPoFileBody,
   VendorSubmitBody,
+  SetVendorShipToBody,
   CreateStatusRuleBody,
   UpdateStatusRuleBody,
   ReorderStatusRulesBody,
@@ -31,6 +32,11 @@ import {
   type PoMutationResult,
 } from "../lib/purchasing/poFiles";
 import { submitVendorOrder } from "../lib/purchasing/vendorSubmit";
+import {
+  getVendorShipTo,
+  setVendorShipTo,
+  type VendorShipTo,
+} from "../lib/purchasing/vendorSettings";
 import { startPoPush } from "../lib/purchasing/poPush";
 import { isPushActive } from "../lib/purchasing/pushRegistry";
 import { renderPoHtml } from "../lib/purchasing/poHtml";
@@ -479,6 +485,29 @@ router.post("/purchasing/po-files/:id/vendor-submit", (req, res) => {
     .catch((err) => {
       req.log.error({ err }, "vendor-submit failed");
       res.status(500).json({ error: "Failed to submit vendor order" });
+    });
+});
+
+router.get("/purchasing/settings/ship-to", (_req, res) => {
+  getVendorShipTo()
+    .then((shipTo) => res.json({ shipTo }))
+    .catch((err) => {
+      _req.log.error({ err }, "get ship-to failed");
+      res.status(500).json({ error: "Failed to load ship-to address" });
+    });
+});
+
+router.put("/purchasing/settings/ship-to", (req, res) => {
+  const parsed = SetVendorShipToBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid ship-to payload" });
+    return;
+  }
+  setVendorShipTo(parsed.data as VendorShipTo)
+    .then((shipTo) => res.json(shipTo))
+    .catch((err) => {
+      req.log.error({ err }, "save ship-to failed");
+      res.status(500).json({ error: "Failed to save ship-to address" });
     });
 });
 

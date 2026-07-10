@@ -443,6 +443,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/settings/ship-to:
+    get:
+      operationId: getVendorShipTo
+      tags: [purchasing]
+      summary: Get the ship-to address vendor orders (SanMar/S&S) are shipped to. Returns null when not configured yet.
+      responses:
+        "200":
+          description: The configured ship-to address, or null.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorShipToResponse"
+    put:
+      operationId: setVendorShipTo
+      tags: [purchasing]
+      summary: Save the ship-to address used for vendor orders.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendorShipTo"
+      responses:
+        "200":
+          description: The saved ship-to address.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorShipTo"
+        "400":
+          description: Invalid ship-to payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /purchasing/po-files/{id}/unlock:
     post:
       operationId: unlockPoFile
@@ -1752,6 +1787,14 @@ components:
           type: string
           enum: [GROUND, "2DAY", OVERNIGHT]
       required: [companyName, attention, address1, address2, city, state, zip, email, residential, defaultShipMethod]
+    VendorShipToResponse:
+      type: object
+      properties:
+        shipTo:
+          anyOf:
+            - $ref: "#/components/schemas/VendorShipTo"
+            - type: "null"
+      required: [shipTo]
     VendorSubmitEligibility:
       type: object
       properties:

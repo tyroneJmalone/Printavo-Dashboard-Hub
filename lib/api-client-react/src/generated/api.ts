@@ -67,6 +67,8 @@ import type {
   VendorInventoryResult,
   VendorLookupRequest,
   VendorLookupResult,
+  VendorShipTo,
+  VendorShipToResponse,
   VendorSubmitRequest,
   VendorSubmitResult
 } from './api.schemas';
@@ -1422,6 +1424,153 @@ export const useVendorSubmit = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getVendorSubmitMutationOptions(options));
+    }
+
+export const getGetVendorShipToUrl = () => {
+
+
+
+
+  return `/api/purchasing/settings/ship-to`
+}
+
+/**
+ * @summary Get the ship-to address vendor orders (SanMar/S&S) are shipped to. Returns null when not configured yet.
+ */
+export const getVendorShipTo = async ( options?: RequestInit): Promise<VendorShipToResponse> => {
+
+  return customFetch<VendorShipToResponse>(getGetVendorShipToUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVendorShipToQueryKey = () => {
+    return [
+    `/api/purchasing/settings/ship-to`
+    ] as const;
+    }
+
+
+export const getGetVendorShipToQueryOptions = <TData = Awaited<ReturnType<typeof getVendorShipTo>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVendorShipTo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVendorShipToQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVendorShipTo>>> = ({ signal }) => getVendorShipTo({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVendorShipTo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVendorShipToQueryResult = NonNullable<Awaited<ReturnType<typeof getVendorShipTo>>>
+export type GetVendorShipToQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the ship-to address vendor orders (SanMar/S&S) are shipped to. Returns null when not configured yet.
+ */
+
+export function useGetVendorShipTo<TData = Awaited<ReturnType<typeof getVendorShipTo>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVendorShipTo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVendorShipToQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetVendorShipToUrl = () => {
+
+
+
+
+  return `/api/purchasing/settings/ship-to`
+}
+
+/**
+ * @summary Save the ship-to address used for vendor orders.
+ */
+export const setVendorShipTo = async (vendorShipTo: VendorShipTo, options?: RequestInit): Promise<VendorShipTo> => {
+
+  return customFetch<VendorShipTo>(getSetVendorShipToUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(vendorShipTo)
+  }
+);}
+
+
+
+
+export const getSetVendorShipToMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setVendorShipTo>>, TError,{data: BodyType<VendorShipTo>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setVendorShipTo>>, TError,{data: BodyType<VendorShipTo>}, TContext> => {
+
+const mutationKey = ['setVendorShipTo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setVendorShipTo>>, {data: BodyType<VendorShipTo>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setVendorShipTo(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetVendorShipToMutationResult = NonNullable<Awaited<ReturnType<typeof setVendorShipTo>>>
+    export type SetVendorShipToMutationBody = BodyType<VendorShipTo>
+    export type SetVendorShipToMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save the ship-to address used for vendor orders.
+ */
+export const useSetVendorShipTo = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setVendorShipTo>>, TError,{data: BodyType<VendorShipTo>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setVendorShipTo>>,
+        TError,
+        {data: BodyType<VendorShipTo>},
+        TContext
+      > => {
+      return useMutation(getSetVendorShipToMutationOptions(options));
     }
 
 export const getUnlockPoFileUrl = (id: string,) => {
