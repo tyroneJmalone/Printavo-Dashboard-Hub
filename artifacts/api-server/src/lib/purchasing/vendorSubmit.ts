@@ -279,8 +279,12 @@ function buildEligibility(
   // Two lines resolving to the SAME vendor unit + warehouse would place two
   // detail lines for one item — a double order (the shop's cardinal rule). This
   // only arises from combined-size mapping (S and M both → S/M). Block it.
+  // Identity is style+color+SIZE+warehouse (the wire size SanMar/S&S orders by).
+  // SanMar's inventoryKey is shared across a whole size RANGE (S–XL share one
+  // key, distinguished only by sizeIndex), so it must NOT be the discriminator —
+  // doing so falsely flags every normal S/M/L/XL run as a duplicate.
   const dupKey = (l: EligibleLine) =>
-    `${l.style}|${l.color}|${vendor === "sanmar" ? (l.inventoryKey ?? l.size) : (l.sku ?? l.size)}|${l.warehouseCode}`;
+    `${l.style}|${l.color}|${vendor === "sanmar" ? l.size : (l.sku ?? l.size)}|${l.warehouseCode}`;
   const dupCounts = new Map<string, number>();
   for (const l of lines) dupCounts.set(dupKey(l), (dupCounts.get(dupKey(l)) ?? 0) + 1);
   const dupSeen = new Set<string>();

@@ -31,12 +31,19 @@ is the first component ("S") but the vendor needs "S/M". That combined label
 
 Two eligible lines resolving to the same vendor unit + warehouse = a double order.
 The hard blocker lives in `vendorSubmit.ts` `buildEligibility`, keyed on
-`style | (vendorCatalogColor ?? color) | inventoryKey(sanmar)/sku(ss) | warehouse`.
-`inventoryKey`/`sku` (not the size label) is the true vendor unit, so it catches
-combined-size remaps. It runs on the snapshot at submit time, so a dup saved from
-the cart OR created later in PoEditor still cannot reach the wire. The cart also
-shows a soft amber warning, but the snapshot-time blocker is the real safety net.
+`style | color | WIRE SIZE (sanmar) / sku (ss) | warehouse`. The wire size is
+`vendorSize ?? size` — the exact label SanMar/S&S orders by — so two Printavo
+columns manually remapped to the same combined size (S and M both → "S/M")
+collide and are blocked. It runs on the snapshot at submit time, so a dup saved
+from the cart OR created later in PoEditor still cannot reach the wire. The cart
+also shows a soft amber warning, but the snapshot-time blocker is the real net.
 
-**Known friction:** two legitimately-separate Printavo line items that share
-style/color/inventoryKey/warehouse now trip this blocker; PoEditor has no
-merge-lines affordance, so the user must combine quantities by hand.
+**Do NOT key on SanMar `inventoryKey`.** SanMar's inventoryKey is shared across a
+whole size RANGE (BC3001 Black XS–XL all = 129389, distinguished only by
+sizeIndex; PC61 S–XL = 17576). Keying dedup on it falsely flagged every normal
+S/M/L/XL run as a duplicate. The per-line identity SanMar actually orders by is
+style+color+size (see the wire envelope in `lib/sanmar/src/client.ts`).
+
+**Friction (much reduced):** two legitimately-separate Printavo line items that
+share style+color+SIZE+warehouse still trip this blocker (correctly — that IS a
+double order); PoEditor has no merge-lines affordance, so combine qty by hand.
