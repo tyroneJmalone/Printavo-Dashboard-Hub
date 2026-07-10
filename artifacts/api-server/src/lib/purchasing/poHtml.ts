@@ -1,4 +1,5 @@
 import type { PoFileDto, PoFileLineItem } from "./poFiles";
+import { MINT_LOGO_DATA_URI, VENDOR_LOGO_DATA_URI } from "./poLogos";
 
 /**
  * Renders a printable PO document from the structured jsonb snapshot.
@@ -72,19 +73,25 @@ export function renderPoHtml(po: PoFileDto): string {
     timeZone: "America/New_York",
   });
 
+  const vendorLabel = VENDOR_LABELS[po.vendorName] ?? po.vendorName;
+  const vendorLogo = VENDOR_LOGO_DATA_URI[po.vendorName] ?? null;
+
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PO ${esc(po.poNumber)} — Mint Print Works</title>
+<title>PO ${esc(po.poNumber)} — Mint Printworks</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a1f24; margin: 0; padding: 40px; }
   .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0f9d6e; padding-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .mint-logo { height: 58px; width: auto; display: block; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .shop { font-size: 13px; color: #66717d; }
   .po-meta { text-align: right; font-size: 13px; }
+  .vendor-logo { height: 24px; width: auto; display: inline-block; margin-bottom: 8px; }
   .po-meta .num { font-size: 20px; font-weight: 700; font-family: ui-monospace, monospace; }
   .vendor { margin: 18px 0 6px; font-size: 15px; font-weight: 600; }
   .notes { font-size: 13px; color: #444; background: #f6f8f7; border: 1px solid #e3e8ee; border-radius: 6px; padding: 10px 12px; margin: 10px 0 18px; white-space: pre-wrap; }
@@ -108,14 +115,18 @@ export function renderPoHtml(po: PoFileDto): string {
 </head>
 <body>
   <div class="head">
-    <div>
-      <h1>Purchase Order</h1>
-      <div class="shop">Mint Print Works</div>
+    <div class="brand">
+      <img class="mint-logo" src="${MINT_LOGO_DATA_URI}" alt="Mint Printworks" />
+      <div>
+        <h1>Purchase Order</h1>
+        <div class="shop">Mint Printworks</div>
+      </div>
     </div>
     <div class="po-meta">
+      ${vendorLogo ? `<img class="vendor-logo" src="${vendorLogo}" alt="${esc(vendorLabel)}" /><br>` : ""}
       <div class="num">PO ${esc(po.poNumber)}</div>
       <div>${esc(created)}</div>
-      <div>${esc(VENDOR_LABELS[po.vendorName] ?? po.vendorName)}</div>
+      <div>${esc(vendorLabel)}</div>
       ${
         po.submittedToVendorAt
           ? `<div style="margin-top:4px;color:#0369a1;font-weight:600">Submitted to vendor ${esc(

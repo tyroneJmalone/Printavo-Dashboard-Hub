@@ -178,7 +178,7 @@ export default function Settings() {
                     className={inputCls}
                     value={form.companyName}
                     onChange={(e) => set("companyName", e.target.value)}
-                    placeholder="Mint Print Works"
+                    placeholder="Mint Printworks"
                   />
                 </label>
                 <label className={labelCls}>

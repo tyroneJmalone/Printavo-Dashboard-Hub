@@ -117,7 +117,7 @@ export function Dashboard() {
             </div>
             <div>
               <div className="text-sm font-semibold text-white leading-none">Printavo Hub</div>
-              <div className="text-[10px] text-slate-400 mt-0.5">Mint Print Works</div>
+              <div className="text-[10px] text-slate-400 mt-0.5">Mint Printworks</div>
             </div>
           </div>
         </div>

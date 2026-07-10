@@ -1,6 +1,6 @@
 # Printavo Hub
 
-Unified internal hub for Mint Print Works that consolidates 11 separate Printavo-connected apps into one platform (plus a future public Reorder Portal), built on a shared Printavo sync engine.
+Unified internal hub for Mint Printworks that consolidates 11 separate Printavo-connected apps into one platform (plus a future public Reorder Portal), built on a shared Printavo sync engine.
 
 ## Run & Operate
 

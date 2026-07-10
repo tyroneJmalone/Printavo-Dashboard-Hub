@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { LastSynced } from "@/components/LastSynced";
+import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
 import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2 } from "lucide-react";
 
 interface NavItem {
@@ -85,17 +86,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="w-60 flex flex-col bg-[#0f172a] border-r border-slate-800 flex-shrink-0">
         <div className="px-5 py-5 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[#059669] flex items-center justify-center flex-shrink-0 shadow-[0_0_12px_rgba(5,150,105,0.4)]">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="1" y="1" width="5" height="5" rx="1" fill="#022c22" opacity="0.9" />
-                <rect x="8" y="1" width="5" height="5" rx="1" fill="#022c22" opacity="0.6" />
-                <rect x="1" y="8" width="5" height="5" rx="1" fill="#022c22" opacity="0.6" />
-                <rect x="8" y="8" width="5" height="5" rx="1" fill="#022c22" opacity="0.9" />
-              </svg>
-            </div>
+            <img
+              src={mintLogo}
+              alt="Mint Printworks"
+              className="h-10 w-auto flex-shrink-0 drop-shadow-[0_0_10px_rgba(5,150,105,0.35)]"
+            />
             <div>
               <div className="text-sm font-semibold text-white leading-none tracking-tight">Printavo Hub</div>
-              <div className="text-[10px] text-slate-400 mt-0.5 font-medium">Mint Print Works</div>
+              <div className="text-[10px] text-slate-400 mt-0.5 font-medium">Mint Printworks</div>
             </div>
           </div>
           <LastSynced className="mt-3" />
