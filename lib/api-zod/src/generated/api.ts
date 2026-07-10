@@ -805,6 +805,82 @@ export const SubmitPoToVendorResponse = zod.object({
 
 
 /**
+ * @summary Preview or electronically submit a PO to its vendor (SanMar submitPO / S&S orders). Defaults to a no-network dry-run preview; test and live modes require the admin PIN and are coerced to dry_run unless electronic submission is enabled on the server.
+ */
+export const VendorSubmitParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const vendorSubmitBodyModeDefault = `dry_run`;
+
+export const VendorSubmitBody = zod.object({
+  "mode": zod.enum(['dry_run', 'test', 'live']).default(vendorSubmitBodyModeDefault).describe('dry_run previews the payload with no network call (default). test sends to the vendor\'s test environment; live places a real order. test\/live require adminPin and are coerced to dry_run unless electronic submission is enabled on the server.'),
+  "adminPin": zod.string().optional().describe('Admin PIN (ADMIN_PIN) — required for test and live modes.')
+})
+
+export const VendorSubmitResponse = zod.object({
+  "outcome": zod.enum(['preview', 'ineligible', 'submitted', 'failed', 'unknown', 'not_found', 'already_active', 'in_progress', 'not_configured']),
+  "vendor": zod.union([zod.literal('sanmar'),zod.literal('ss'),zod.literal(null)]).nullable(),
+  "mode": zod.enum(['dry_run', 'test', 'live']),
+  "poNumber": zod.string().nullable(),
+  "eligibility": zod.union([zod.object({
+  "ok": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "warnings": zod.array(zod.string())
+}),zod.null()]),
+  "preview": zod.union([zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "poNumber": zod.string(),
+  "shipTo": zod.union([zod.object({
+  "companyName": zod.string(),
+  "attention": zod.string().nullable(),
+  "address1": zod.string(),
+  "address2": zod.string().nullable(),
+  "city": zod.string(),
+  "state": zod.string(),
+  "zip": zod.string(),
+  "email": zod.string().nullable(),
+  "residential": zod.boolean(),
+  "defaultShipMethod": zod.enum(['GROUND', '2DAY', 'OVERNIGHT'])
+}),zod.null()]),
+  "shipMethod": zod.string().nullable(),
+  "shipMethodVendorCode": zod.string().nullable(),
+  "totalQuantity": zod.number(),
+  "totalCost": zod.number(),
+  "lineCount": zod.number(),
+  "lines": zod.array(zod.object({
+  "style": zod.string(),
+  "color": zod.string(),
+  "size": zod.string(),
+  "quantity": zod.number(),
+  "warehouseCode": zod.string(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable(),
+  "unitCost": zod.number()
+}))
+}),zod.null()]),
+  "vendorOrder": zod.union([zod.object({
+  "id": zod.string(),
+  "poFileId": zod.string(),
+  "vendor": zod.string(),
+  "mode": zod.string(),
+  "status": zod.string(),
+  "poNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "vendorOrderNumbers": zod.array(zod.string()),
+  "vendorStatus": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "submittedAt": zod.string().nullable(),
+  "lastStatusCheckAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "message": zod.string().nullable()
+})
+
+
+/**
  * @summary Manually unlock a PO that was pushed to Printavo. Vendor-submitted POs need the admin unlock instead.
  */
 export const UnlockPoFileParams = zod.object({

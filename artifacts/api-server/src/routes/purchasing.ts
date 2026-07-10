@@ -8,6 +8,7 @@ import {
   AppendPoLineItemsBody,
   SubmitPoToVendorBody,
   AdminUnlockPoFileBody,
+  VendorSubmitBody,
   CreateStatusRuleBody,
   UpdateStatusRuleBody,
   ReorderStatusRulesBody,
@@ -29,6 +30,7 @@ import {
   type PoFileLineItem,
   type PoMutationResult,
 } from "../lib/purchasing/poFiles";
+import { submitVendorOrder } from "../lib/purchasing/vendorSubmit";
 import { startPoPush } from "../lib/purchasing/poPush";
 import { isPushActive } from "../lib/purchasing/pushRegistry";
 import { renderPoHtml } from "../lib/purchasing/poHtml";
@@ -390,6 +392,93 @@ router.post("/purchasing/po-files/:id/admin-unlock", (req, res) => {
     .catch((err) => {
       req.log.error({ err }, "PO admin unlock failed");
       res.status(500).json({ error: "Failed to unlock PO" });
+    });
+});
+
+/**
+ * Preview or electronically submit a PO to its vendor.
+ *
+ * Safety gates (in order):
+ * 1. Server kill switch — unless VENDOR_SUBMIT_ENABLED is truthy, ANY test/live
+ *    request is coerced to a no-network dry-run preview. This is the outermost
+ *    guarantee that no real order goes out until submission is switched on.
+ * 2. Admin PIN — required for a real send (test/live), with the same 5-strike /
+ *    15-minute lockout as the admin unlock. dry-run needs no PIN.
+ * The orchestrator (submitVendorOrder) enforces eligibility + single-active-
+ * order idempotency and records the attempt.
+ */
+router.post("/purchasing/po-files/:id/vendor-submit", (req, res) => {
+  const parsed = VendorSubmitBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid vendor-submit payload" });
+    return;
+  }
+  const requestedMode = (parsed.data.mode ?? "dry_run") as "dry_run" | "test" | "live";
+  const submitEnabled =
+    process.env.VENDOR_SUBMIT_ENABLED === "true" ||
+    process.env.VENDOR_SUBMIT_ENABLED === "1";
+  const effectiveMode = submitEnabled ? requestedMode : "dry_run";
+
+  if (effectiveMode !== "dry_run") {
+    if (!process.env.ADMIN_PIN) {
+      res.status(403).json({
+        error: "Admin PIN isn't set up yet — add the ADMIN_PIN secret first.",
+      });
+      return;
+    }
+    if (Date.now() < pinLockedUntil) {
+      const mins = Math.ceil((pinLockedUntil - Date.now()) / 60_000);
+      res.status(429).json({
+        error: `Too many wrong PIN attempts — try again in ${mins} minute${mins === 1 ? "" : "s"}.`,
+      });
+      return;
+    }
+    const pin = parsed.data.adminPin ?? "";
+    if (!pin || !adminPinMatches(pin)) {
+      pinFailures += 1;
+      if (pinFailures >= PIN_MAX_FAILURES) {
+        pinLockedUntil = Date.now() + PIN_LOCKOUT_MS;
+        pinFailures = 0;
+        req.log.warn(
+          { poFileId: req.params.id },
+          "vendor-submit: too many wrong PINs — locked out 15 min",
+        );
+      } else {
+        req.log.warn({ poFileId: req.params.id }, "vendor-submit rejected: wrong PIN");
+      }
+      res.status(403).json({ error: "Incorrect admin PIN" });
+      return;
+    }
+    pinFailures = 0;
+    pinLockedUntil = 0;
+  }
+
+  submitVendorOrder(req.params.id, effectiveMode)
+    .then((result) => {
+      if (result.outcome === "not_found") {
+        res.status(404).json({ error: "PO not found" });
+        return;
+      }
+      // A test/live request that got coerced to preview — tell the user why.
+      if (!submitEnabled && requestedMode !== "dry_run") {
+        result.message =
+          "Electronic submission is turned off on the server — this is a preview only.";
+      }
+      req.log.info(
+        {
+          poFileId: req.params.id,
+          requestedMode,
+          effectiveMode,
+          outcome: result.outcome,
+          vendor: result.vendor,
+        },
+        "vendor-submit",
+      );
+      res.json(result);
+    })
+    .catch((err) => {
+      req.log.error({ err }, "vendor-submit failed");
+      res.status(500).json({ error: "Failed to submit vendor order" });
     });
 });
 

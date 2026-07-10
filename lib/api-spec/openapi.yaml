@@ -396,6 +396,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/po-files/{id}/vendor-submit:
+    post:
+      operationId: vendorSubmit
+      tags: [purchasing]
+      summary: Preview or electronically submit a PO to its vendor (SanMar submitPO / S&S orders). Defaults to a no-network dry-run preview; test and live modes require the admin PIN and are coerced to dry_run unless electronic submission is enabled on the server.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VendorSubmitRequest"
+      responses:
+        "200":
+          description: Submission result — preview, ineligible, submitted, failed, unknown, already_active, in_progress, or not_configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorSubmitResult"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin PIN incorrect, or the admin PIN isn't set up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many wrong PIN attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /purchasing/po-files/{id}/unlock:
     post:
       operationId: unlockPoFile
@@ -1678,6 +1725,125 @@ components:
           minLength: 1
           description: Admin PIN (ADMIN_PIN secret) — required to remove a vendor-submitted lock.
       required: [adminPin]
+    VendorSubmitRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [dry_run, test, live]
+          default: dry_run
+          description: dry_run previews the payload with no network call (default). test sends to the vendor's test environment; live places a real order. test/live require adminPin and are coerced to dry_run unless electronic submission is enabled on the server.
+        adminPin:
+          type: string
+          description: Admin PIN (ADMIN_PIN) — required for test and live modes.
+    VendorShipTo:
+      type: object
+      properties:
+        companyName: { type: string }
+        attention: { type: ["string", "null"] }
+        address1: { type: string }
+        address2: { type: ["string", "null"] }
+        city: { type: string }
+        state: { type: string }
+        zip: { type: string }
+        email: { type: ["string", "null"] }
+        residential: { type: boolean }
+        defaultShipMethod:
+          type: string
+          enum: [GROUND, "2DAY", OVERNIGHT]
+      required: [companyName, attention, address1, address2, city, state, zip, email, residential, defaultShipMethod]
+    VendorSubmitEligibility:
+      type: object
+      properties:
+        ok: { type: boolean }
+        blockers:
+          type: array
+          items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+      required: [ok, blockers, warnings]
+    VendorSubmitPreviewLine:
+      type: object
+      properties:
+        style: { type: string }
+        color: { type: string }
+        size: { type: string }
+        quantity: { type: integer }
+        warehouseCode: { type: string }
+        sku: { type: ["string", "null"] }
+        inventoryKey: { type: ["string", "null"] }
+        sizeIndex: { type: ["integer", "null"] }
+        unitCost: { type: number }
+      required: [style, color, size, quantity, warehouseCode, sku, inventoryKey, sizeIndex, unitCost]
+    VendorSubmitPreview:
+      type: object
+      properties:
+        vendor:
+          type: string
+          enum: [sanmar, ss]
+        poNumber: { type: string }
+        shipTo:
+          anyOf:
+            - $ref: "#/components/schemas/VendorShipTo"
+            - type: "null"
+        shipMethod: { type: ["string", "null"] }
+        shipMethodVendorCode: { type: ["string", "null"] }
+        totalQuantity: { type: integer }
+        totalCost: { type: number }
+        lineCount: { type: integer }
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorSubmitPreviewLine"
+      required: [vendor, poNumber, shipTo, shipMethod, shipMethodVendorCode, totalQuantity, totalCost, lineCount, lines]
+    VendorOrder:
+      type: object
+      properties:
+        id: { type: string }
+        poFileId: { type: string }
+        vendor: { type: string }
+        mode: { type: string }
+        status: { type: string }
+        poNumber: { type: string }
+        shipMethod: { type: ["string", "null"] }
+        vendorOrderNumbers:
+          type: array
+          items: { type: string }
+        vendorStatus: { type: ["string", "null"] }
+        error: { type: ["string", "null"] }
+        submittedAt: { type: ["string", "null"] }
+        lastStatusCheckAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [id, poFileId, vendor, mode, status, poNumber, shipMethod, vendorOrderNumbers, vendorStatus, error, submittedAt, lastStatusCheckAt, createdAt, updatedAt]
+    VendorSubmitResult:
+      type: object
+      properties:
+        outcome:
+          type: string
+          enum: [preview, ineligible, submitted, failed, unknown, not_found, already_active, in_progress, not_configured]
+        vendor:
+          type: ["string", "null"]
+          enum: [sanmar, ss, null]
+        mode:
+          type: string
+          enum: [dry_run, test, live]
+        poNumber: { type: ["string", "null"] }
+        eligibility:
+          anyOf:
+            - $ref: "#/components/schemas/VendorSubmitEligibility"
+            - type: "null"
+        preview:
+          anyOf:
+            - $ref: "#/components/schemas/VendorSubmitPreview"
+            - type: "null"
+        vendorOrder:
+          anyOf:
+            - $ref: "#/components/schemas/VendorOrder"
+            - type: "null"
+        message: { type: ["string", "null"] }
+      required: [outcome, vendor, mode, poNumber, eligibility, preview, vendorOrder, message]
     PrintavoStatus:
       type: object
       properties:

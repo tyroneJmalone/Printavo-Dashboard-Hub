@@ -28,6 +28,8 @@ export * from "./pvPayments";
 export * from "./changeEvents";
 export * from "./syncRuns";
 export * from "./poFiles";
+export * from "./vendorOrders";
+export * from "./appSettings";
 export * from "./poStatusRules";
 export * from "./poStatusSuggestions";
 export * from "./syncCheckpoints";

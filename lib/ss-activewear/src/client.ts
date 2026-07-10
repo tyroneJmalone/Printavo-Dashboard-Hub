@@ -32,6 +32,47 @@ export interface SSProduct {
   warehouses: SSWarehouseQty[];
 }
 
+export interface SSPoLine {
+  /** S&S "identifier" — the SKU. */
+  identifier: string;
+  qty: number;
+  /** Warehouse abbr to ship from (autoselectWarehouse stays false). */
+  warehouseAbbr: string;
+}
+
+export interface SSShippingAddress {
+  customer: string;
+  attn?: string | null;
+  address: string;
+  city: string;
+  state: string;
+  /** 5-digit ZIP. */
+  zip: string;
+  residential: boolean;
+}
+
+export interface SSOrderInput {
+  poNumber: string;
+  shippingAddress: SSShippingAddress;
+  /** S&S code: "1" ground, "2" next day, "3" 2nd day (see SS_SHIP_METHODS). */
+  shippingMethod: string;
+  emailConfirmation?: string | null;
+  lines: SSPoLine[];
+}
+
+export interface SSOrderResult {
+  /** S&S order numbers — one order can split across warehouses → several. */
+  orderNumbers: string[];
+  raw: unknown;
+}
+
+/** Our canonical ship-method codes → S&S shippingMethod codes. */
+export const SS_SHIP_METHODS: Record<string, string> = {
+  GROUND: "1",
+  OVERNIGHT: "2",
+  "2DAY": "3",
+};
+
 export class SSApiError extends Error {
   constructor(
     message: string,
@@ -112,5 +153,79 @@ export class SSClient {
           : [],
       }))
       .filter((p) => p.sku.length > 0);
+  }
+
+  /**
+   * Place an order with S&S (POST /orders).
+   *
+   * SINGLE ATTEMPT — deliberately NOT retried: a lost response after the order
+   * was accepted would double-order. A network failure throws (caller marks
+   * the order "unknown" and reconciles). The response is an ARRAY of orders
+   * (S&S splits across warehouses).
+   *
+   * @param opts.test send testOrder=true (S&S creates then immediately cancels).
+   */
+  async submitOrder(
+    input: SSOrderInput,
+    opts: { test?: boolean } = {},
+  ): Promise<SSOrderResult> {
+    const body = {
+      poNumber: input.poNumber,
+      testOrder: opts.test === true,
+      autoselectWarehouse: false,
+      // false = fill the lines we can and report per-line errors, rather than
+      // rejecting the whole order.
+      rejectLineErrors: false,
+      shippingMethod: input.shippingMethod,
+      emailConfirmation: input.emailConfirmation ?? "",
+      shippingAddress: {
+        customer: input.shippingAddress.customer,
+        attn: input.shippingAddress.attn ?? "",
+        address: input.shippingAddress.address,
+        city: input.shippingAddress.city,
+        state: input.shippingAddress.state,
+        zip: input.shippingAddress.zip,
+        residential: input.shippingAddress.residential,
+      },
+      lines: input.lines.map((l) => ({
+        identifier: l.identifier,
+        qty: l.qty,
+        warehouseAbbr: l.warehouseAbbr,
+      })),
+    };
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/orders/`, {
+        method: "POST",
+        headers: {
+          Authorization: this.authHeader,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch (err) {
+      throw new SSApiError(
+        `S&S order network error (ambiguous — order may or may not exist, do NOT retry): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    const raw = await res.json().catch(() => null);
+    if (!res.ok) {
+      const msg =
+        raw && typeof raw === "object" && "message" in raw
+          ? String((raw as { message: unknown }).message)
+          : `S&S HTTP ${res.status}`;
+      throw new SSApiError(msg, res.status);
+    }
+    const orders = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+    const orderNumbers = orders
+      .map((o) =>
+        o && typeof o === "object" && "orderNumber" in o
+          ? String((o as { orderNumber: unknown }).orderNumber)
+          : null,
+      )
+      .filter((n): n is string => !!n && n !== "null" && n !== "undefined");
+    return { orderNumbers, raw };
   }
 }

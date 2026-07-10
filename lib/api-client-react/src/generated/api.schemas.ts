@@ -592,6 +592,164 @@ export interface AdminUnlockPoFileRequest {
   adminPin: string;
 }
 
+/**
+ * dry_run previews the payload with no network call (default). test sends to the vendor's test environment; live places a real order. test/live require adminPin and are coerced to dry_run unless electronic submission is enabled on the server.
+ */
+export type VendorSubmitRequestMode = typeof VendorSubmitRequestMode[keyof typeof VendorSubmitRequestMode];
+
+
+export const VendorSubmitRequestMode = {
+  dry_run: 'dry_run',
+  test: 'test',
+  live: 'live',
+} as const;
+
+export interface VendorSubmitRequest {
+  /** dry_run previews the payload with no network call (default). test sends to the vendor's test environment; live places a real order. test/live require adminPin and are coerced to dry_run unless electronic submission is enabled on the server. */
+  mode?: VendorSubmitRequestMode;
+  /** Admin PIN (ADMIN_PIN) — required for test and live modes. */
+  adminPin?: string;
+}
+
+export type VendorShipToDefaultShipMethod = typeof VendorShipToDefaultShipMethod[keyof typeof VendorShipToDefaultShipMethod];
+
+
+export const VendorShipToDefaultShipMethod = {
+  GROUND: 'GROUND',
+  '2DAY': '2DAY',
+  OVERNIGHT: 'OVERNIGHT',
+} as const;
+
+export interface VendorShipTo {
+  companyName: string;
+  /** @nullable */
+  attention: string | null;
+  address1: string;
+  /** @nullable */
+  address2: string | null;
+  city: string;
+  state: string;
+  zip: string;
+  /** @nullable */
+  email: string | null;
+  residential: boolean;
+  defaultShipMethod: VendorShipToDefaultShipMethod;
+}
+
+export interface VendorSubmitEligibility {
+  ok: boolean;
+  blockers: string[];
+  warnings: string[];
+}
+
+export interface VendorSubmitPreviewLine {
+  style: string;
+  color: string;
+  size: string;
+  quantity: number;
+  warehouseCode: string;
+  /** @nullable */
+  sku: string | null;
+  /** @nullable */
+  inventoryKey: string | null;
+  /** @nullable */
+  sizeIndex: number | null;
+  unitCost: number;
+}
+
+export type VendorSubmitPreviewVendor = typeof VendorSubmitPreviewVendor[keyof typeof VendorSubmitPreviewVendor];
+
+
+export const VendorSubmitPreviewVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface VendorSubmitPreview {
+  vendor: VendorSubmitPreviewVendor;
+  poNumber: string;
+  shipTo: VendorShipTo | null;
+  /** @nullable */
+  shipMethod: string | null;
+  /** @nullable */
+  shipMethodVendorCode: string | null;
+  totalQuantity: number;
+  totalCost: number;
+  lineCount: number;
+  lines: VendorSubmitPreviewLine[];
+}
+
+export interface VendorOrder {
+  id: string;
+  poFileId: string;
+  vendor: string;
+  mode: string;
+  status: string;
+  poNumber: string;
+  /** @nullable */
+  shipMethod: string | null;
+  vendorOrderNumbers: string[];
+  /** @nullable */
+  vendorStatus: string | null;
+  /** @nullable */
+  error: string | null;
+  /** @nullable */
+  submittedAt: string | null;
+  /** @nullable */
+  lastStatusCheckAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type VendorSubmitResultOutcome = typeof VendorSubmitResultOutcome[keyof typeof VendorSubmitResultOutcome];
+
+
+export const VendorSubmitResultOutcome = {
+  preview: 'preview',
+  ineligible: 'ineligible',
+  submitted: 'submitted',
+  failed: 'failed',
+  unknown: 'unknown',
+  not_found: 'not_found',
+  already_active: 'already_active',
+  in_progress: 'in_progress',
+  not_configured: 'not_configured',
+} as const;
+
+/**
+ * @nullable
+ */
+export type VendorSubmitResultVendor = typeof VendorSubmitResultVendor[keyof typeof VendorSubmitResultVendor] | null;
+
+
+export const VendorSubmitResultVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export type VendorSubmitResultMode = typeof VendorSubmitResultMode[keyof typeof VendorSubmitResultMode];
+
+
+export const VendorSubmitResultMode = {
+  dry_run: 'dry_run',
+  test: 'test',
+  live: 'live',
+} as const;
+
+export interface VendorSubmitResult {
+  outcome: VendorSubmitResultOutcome;
+  /** @nullable */
+  vendor: VendorSubmitResultVendor;
+  mode: VendorSubmitResultMode;
+  /** @nullable */
+  poNumber: string | null;
+  eligibility: VendorSubmitEligibility | null;
+  preview: VendorSubmitPreview | null;
+  vendorOrder: VendorOrder | null;
+  /** @nullable */
+  message: string | null;
+}
+
 export interface PrintavoStatus {
   id: string;
   name: string;

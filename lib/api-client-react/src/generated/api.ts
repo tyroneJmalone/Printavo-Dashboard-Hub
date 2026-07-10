@@ -66,7 +66,9 @@ import type {
   VendorInventoryRequest,
   VendorInventoryResult,
   VendorLookupRequest,
-  VendorLookupResult
+  VendorLookupResult,
+  VendorSubmitRequest,
+  VendorSubmitResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1349,6 +1351,77 @@ export const useSubmitPoToVendor = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getSubmitPoToVendorMutationOptions(options));
+    }
+
+export const getVendorSubmitUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/po-files/${id}/vendor-submit`
+}
+
+/**
+ * @summary Preview or electronically submit a PO to its vendor (SanMar submitPO / S&S orders). Defaults to a no-network dry-run preview; test and live modes require the admin PIN and are coerced to dry_run unless electronic submission is enabled on the server.
+ */
+export const vendorSubmit = async (id: string,
+    vendorSubmitRequest: VendorSubmitRequest, options?: RequestInit): Promise<VendorSubmitResult> => {
+
+  return customFetch<VendorSubmitResult>(getVendorSubmitUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(vendorSubmitRequest)
+  }
+);}
+
+
+
+
+export const getVendorSubmitMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vendorSubmit>>, TError,{id: string;data: BodyType<VendorSubmitRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof vendorSubmit>>, TError,{id: string;data: BodyType<VendorSubmitRequest>}, TContext> => {
+
+const mutationKey = ['vendorSubmit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof vendorSubmit>>, {id: string;data: BodyType<VendorSubmitRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  vendorSubmit(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VendorSubmitMutationResult = NonNullable<Awaited<ReturnType<typeof vendorSubmit>>>
+    export type VendorSubmitMutationBody = BodyType<VendorSubmitRequest>
+    export type VendorSubmitMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Preview or electronically submit a PO to its vendor (SanMar submitPO / S&S orders). Defaults to a no-network dry-run preview; test and live modes require the admin PIN and are coerced to dry_run unless electronic submission is enabled on the server.
+ */
+export const useVendorSubmit = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vendorSubmit>>, TError,{id: string;data: BodyType<VendorSubmitRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof vendorSubmit>>,
+        TError,
+        {id: string;data: BodyType<VendorSubmitRequest>},
+        TContext
+      > => {
+      return useMutation(getVendorSubmitMutationOptions(options));
     }
 
 export const getUnlockPoFileUrl = (id: string,) => {

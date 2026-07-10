@@ -2,6 +2,8 @@ import type {
   SanMarCredentials,
   SanMarProductEntry,
   SanMarInventoryResult,
+  SanMarPoInput,
+  SanMarPoResult,
 } from "./types";
 
 const PRODUCT_INFO_ENDPOINT =
@@ -10,11 +12,22 @@ const INVENTORY_ENDPOINT =
   "https://ws.sanmar.com:8080/SanMarWebService/SanMarWebServicePort";
 const PRODUCT_INFO_NS = "http://impl.webservice.integration.sanmar.com/";
 const INVENTORY_NS = "http://webservice.integration.sanmar.com/";
+const PO_PROD_ENDPOINT =
+  "https://ws.sanmar.com:8080/SanMarWebService/SanMarPOServicePort";
+/** SanMar's UAT/test environment — submitPO here places NO real order. */
+const PO_TEST_ENDPOINT =
+  "https://test-ws.sanmar.com:8080/SanMarWebService/SanMarPOServicePort";
+/** submitPO shares the integration namespace with the inventory service. */
+const PO_NS = INVENTORY_NS;
+/** One shot only — a submit is never retried (see submitPO). */
+const SUBMIT_TIMEOUT_MS = 30_000;
 
 export class SanMarApiError extends Error {
   constructor(
     message: string,
     public readonly kind: "auth" | "fault" | "http" | "network" = "http",
+    /** HTTP status when kind === "http" — lets callers treat 5xx as ambiguous. */
+    public readonly httpStatus?: number,
   ) {
     super(message);
     this.name = "SanMarApiError";
@@ -57,6 +70,75 @@ function num(value: string | null): number | null {
  */
 const ATTEMPT_TIMEOUTS_MS = [15_000, 25_000];
 
+/**
+ * Build the submitPO SOAP envelope. Kept as a standalone pure function so the
+ * dry-run path can render a preview without a client/network. Credentials are
+ * injected here and only here — they are NEVER part of the persisted payload.
+ *
+ * Field structure per the SanMar PO Integration Guide v24.3 (poNum ≤ 12 chars,
+ * shipTo ≤ 28, shipAddress1/attention ≤ 35, shipCity ≤ 28, shipState 2-letter,
+ * one <webServicePoDetailList> per line). Validate against PO_TEST_ENDPOINT
+ * before any live submission.
+ */
+export function buildSanMarPoEnvelope(
+  creds: SanMarCredentials,
+  input: SanMarPoInput,
+): string {
+  const details = input.lines
+    .map(
+      (l) => `
+        <webServicePoDetailList>
+          <style>${xmlEscape(l.style)}</style>
+          <color>${xmlEscape(l.color)}</color>
+          <size>${xmlEscape(l.size)}</size>${
+            l.sizeIndex != null
+              ? `\n          <sizeIndex>${l.sizeIndex}</sizeIndex>`
+              : ""
+          }${
+            l.inventoryKey
+              ? `\n          <inventoryKey>${xmlEscape(l.inventoryKey)}</inventoryKey>`
+              : ""
+          }
+          <quantity>${l.quantity}</quantity>
+          <whseNo>${l.whseNo}</whseNo>
+        </webServicePoDetailList>`,
+    )
+    .join("");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="${PO_NS}">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <web:submitPO>
+      <arg0>
+        <sanMarCustomerNumber>${xmlEscape(creds.customerNumber)}</sanMarCustomerNumber>
+        <sanMarUserName>${xmlEscape(creds.username)}</sanMarUserName>
+        <sanMarUserPassword>${xmlEscape(creds.password)}</sanMarUserPassword>
+        <poNum>${xmlEscape(input.poNumber)}</poNum>${
+          input.attention
+            ? `\n        <attention>${xmlEscape(input.attention)}</attention>`
+            : ""
+        }${input.notes ? `\n        <notes>${xmlEscape(input.notes)}</notes>` : ""}
+        <shipTo>${xmlEscape(input.shipTo)}</shipTo>
+        <shipAddress1>${xmlEscape(input.shipAddress1)}</shipAddress1>${
+          input.shipAddress2
+            ? `\n        <shipAddress2>${xmlEscape(input.shipAddress2)}</shipAddress2>`
+            : ""
+        }
+        <shipCity>${xmlEscape(input.shipCity)}</shipCity>
+        <shipState>${xmlEscape(input.shipState)}</shipState>
+        <shipZip>${xmlEscape(input.shipZip)}</shipZip>
+        <shipMethod>${xmlEscape(input.shipMethod)}</shipMethod>${
+          input.shipEmail
+            ? `\n        <shipEmail>${xmlEscape(input.shipEmail)}</shipEmail>`
+            : ""
+        }
+        <residence>${input.residential ? "Y" : "N"}</residence>${details}
+      </arg0>
+    </web:submitPO>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+}
+
 export class SanMarClient {
   constructor(private readonly creds: SanMarCredentials) {}
 
@@ -96,7 +178,7 @@ export class SanMarClient {
     const fault = text.match(/<faultstring>([^<]*)<\/faultstring>/);
     if (fault) throw new SanMarApiError(`SanMar SOAP fault: ${fault[1]}`, "fault");
     if (!ok) {
-      throw new SanMarApiError(`SanMar HTTP ${status}`, "http");
+      throw new SanMarApiError(`SanMar HTTP ${status}`, "http", status);
     }
     // Both misspelled and correct forms appear across SanMar services.
     const errOccurred = text.match(/<errorOccur?red>([^<]*)<\/errorOccur?red>/i);
@@ -190,5 +272,62 @@ export class SanMarClient {
       .map((m) => Number(m.replace(/<[^>]+>/g, "").trim()))
       .map((n) => (Number.isFinite(n) ? n : 0));
     return { quantities, total: quantities.reduce((a, b) => a + b, 0) };
+  }
+
+  /**
+   * Submit a purchase order to SanMar (SOAP submitPO).
+   *
+   * SINGLE ATTEMPT — deliberately NOT retried: a submit that reaches SanMar
+   * but whose response is lost would create a duplicate order on retry. A
+   * network/read failure is thrown as kind "network" so the caller marks the
+   * order "unknown" and reconciles via a status lookup rather than resending.
+   *
+   * @param opts.test route to the UAT/test environment (places no real order).
+   */
+  async submitPO(
+    input: SanMarPoInput,
+    opts: { test?: boolean } = {},
+  ): Promise<SanMarPoResult> {
+    const endpoint = opts.test ? PO_TEST_ENDPOINT : PO_PROD_ENDPOINT;
+    const body = buildSanMarPoEnvelope(this.creds, input);
+    let res: Response;
+    try {
+      res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: '""' },
+        body,
+        signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
+      });
+    } catch (err) {
+      throw new SanMarApiError(
+        `SanMar submitPO network error (ambiguous — order may or may not exist, do NOT retry): ${err instanceof Error ? err.message : String(err)}`,
+        "network",
+      );
+    }
+    let text: string;
+    try {
+      text = await res.text();
+    } catch (err) {
+      throw new SanMarApiError(
+        `SanMar submitPO response read error (ambiguous — do NOT retry): ${err instanceof Error ? err.message : String(err)}`,
+        "network",
+      );
+    }
+    const fault = text.match(/<faultstring>([^<]*)<\/faultstring>/);
+    if (fault) throw new SanMarApiError(`SanMar SOAP fault: ${xmlDecode(fault[1])}`, "fault");
+    if (!res.ok) throw new SanMarApiError(`SanMar HTTP ${res.status}`, "http", res.status);
+    const rawMessage =
+      text.match(/<message>([\s\S]*?)<\/message>/)?.[1] ??
+      text.match(/<return>([\s\S]*?)<\/return>/)?.[1] ??
+      "";
+    const message = xmlDecode(rawMessage.trim());
+    const errOccurred = text
+      .match(/<errorOccur?red>([^<]*)<\/errorOccur?red>/i)?.[1]
+      ?.toLowerCase();
+    const success =
+      errOccurred != null
+        ? errOccurred !== "true"
+        : /success/i.test(message) && !/error/i.test(message);
+    return { success, message: message || "(no message returned)", raw: text };
   }
 }
