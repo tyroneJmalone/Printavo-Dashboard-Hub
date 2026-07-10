@@ -56,7 +56,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: "Quoting",
-    items: [{ id: "quote", label: "Price Calculator", icon: Calculator, disabled: true }],
+    items: [{ id: "quote", label: "Price Calculator", href: "/price-calculator", icon: Calculator }],
   },
   {
     heading: "Shipping",

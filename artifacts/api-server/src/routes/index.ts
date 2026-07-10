@@ -5,6 +5,7 @@ import printavoRouter from "./printavo";
 import reportsRouter from "./reports";
 import reportsValidatorRouter from "./reportsValidator";
 import purchasingRouter from "./purchasing";
+import pricingRouter from "./pricing";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(printavoRouter);
 router.use(reportsRouter);
 router.use(reportsValidatorRouter);
 router.use(purchasingRouter);
+router.use(pricingRouter);
 
 export default router;

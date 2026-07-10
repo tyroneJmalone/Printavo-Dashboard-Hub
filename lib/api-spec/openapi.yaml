@@ -1123,6 +1123,60 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReportFilterOptions"
+  /pricing/matrices:
+    get:
+      operationId: listDecorationMatrices
+      tags: [pricing]
+      summary: List all decoration pricing matrices (team-shared), newest first
+      responses:
+        "200":
+          description: Matrices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecorationMatricesResponse"
+    post:
+      operationId: upsertDecorationMatrix
+      tags: [pricing]
+      summary: Create a matrix, or update it in place when an id is supplied (upsert)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertDecorationMatrixRequest"
+      responses:
+        "200":
+          description: Created or updated matrix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecorationMatrix"
+        "400":
+          description: Invalid matrix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /pricing/matrices/{id}:
+    delete:
+      operationId: deleteDecorationMatrix
+      tags: [pricing]
+      summary: Delete a decoration matrix
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   parameters:
     OrderTypeParam:
@@ -2108,3 +2162,57 @@ components:
           type: array
           items: { type: string }
       required: [statuses, brands, categories, colors, styleNumbers, tiers, paymentTypes]
+    DecorationBreak:
+      type: object
+      description: A quantity price break within a matrix column. The highest break whose qty <= order qty wins.
+      properties:
+        qty: { type: integer }
+        decorationCost: { type: number }
+      required: [qty, decorationCost]
+    DecorationColumn:
+      type: object
+      description: One value along the matrix xAxis (e.g. "1 Color", "8k stitches") with its own qty breaks.
+      properties:
+        label: { type: string }
+        breaks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecorationBreak"
+      required: [label, breaks]
+    DecorationMatrixData:
+      type: object
+      description: "Faithful Breezy jsonb shape: named decoration cost table keyed by an xAxis (colors, stitches, ...)."
+      properties:
+        name: { type: string }
+        xAxisLabel: { type: string }
+        xValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecorationColumn"
+      required: [name, xAxisLabel, xValues]
+    DecorationMatrix:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        data:
+          $ref: "#/components/schemas/DecorationMatrixData"
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [id, name, data, createdAt, updatedAt]
+    DecorationMatricesResponse:
+      type: object
+      properties:
+        matrices:
+          type: array
+          items:
+            $ref: "#/components/schemas/DecorationMatrix"
+      required: [matrices]
+    UpsertDecorationMatrixRequest:
+      type: object
+      description: Create when id is omitted; update in place when a matching id is supplied (upsert). Enables byte-for-byte re-import of exported matrices.
+      properties:
+        id: { type: string, minLength: 1 }
+        data:
+          $ref: "#/components/schemas/DecorationMatrixData"
+      required: [data]

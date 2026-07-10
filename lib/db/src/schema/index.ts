@@ -32,5 +32,6 @@ export * from "./vendorOrders";
 export * from "./appSettings";
 export * from "./poStatusRules";
 export * from "./poStatusSuggestions";
+export * from "./decorationMatrices";
 export * from "./syncCheckpoints";
 export * from "./entityWatermarks";

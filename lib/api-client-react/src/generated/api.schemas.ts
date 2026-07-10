@@ -992,6 +992,52 @@ export interface ReportFilterOptions {
   paymentTypes: string[];
 }
 
+/**
+ * A quantity price break within a matrix column. The highest break whose qty <= order qty wins.
+ */
+export interface DecorationBreak {
+  qty: number;
+  decorationCost: number;
+}
+
+/**
+ * One value along the matrix xAxis (e.g. "1 Color", "8k stitches") with its own qty breaks.
+ */
+export interface DecorationColumn {
+  label: string;
+  breaks: DecorationBreak[];
+}
+
+/**
+ * Faithful Breezy jsonb shape: named decoration cost table keyed by an xAxis (colors, stitches, ...).
+ */
+export interface DecorationMatrixData {
+  name: string;
+  xAxisLabel: string;
+  xValues: DecorationColumn[];
+}
+
+export interface DecorationMatrix {
+  id: string;
+  name: string;
+  data: DecorationMatrixData;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DecorationMatricesResponse {
+  matrices: DecorationMatrix[];
+}
+
+/**
+ * Create when id is omitted; update in place when a matching id is supplied (upsert). Enables byte-for-byte re-import of exported matrices.
+ */
+export interface UpsertDecorationMatrixRequest {
+  /** @minLength 1 */
+  id?: string;
+  data: DecorationMatrixData;
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 

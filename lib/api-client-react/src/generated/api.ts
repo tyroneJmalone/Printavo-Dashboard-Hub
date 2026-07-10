@@ -27,6 +27,8 @@ import type {
   ChangeEventItem,
   CreatePoFileRequest,
   CreateStatusRuleRequest,
+  DecorationMatricesResponse,
+  DecorationMatrix,
   ErrorResponse,
   EvaluateStatusRulesResponse,
   GetBrandBreakdownParams,
@@ -63,6 +65,7 @@ import type {
   SyncStatus,
   UpdatePoFileRequest,
   UpdateStatusRuleRequest,
+  UpsertDecorationMatrixRequest,
   VendorInventoryRequest,
   VendorInventoryResult,
   VendorLookupRequest,
@@ -3436,4 +3439,221 @@ export function useGetReportFilterOptions<TData = Awaited<ReturnType<typeof getR
 
 
 
+
+export const getListDecorationMatricesUrl = () => {
+
+
+
+
+  return `/api/pricing/matrices`
+}
+
+/**
+ * @summary List all decoration pricing matrices (team-shared), newest first
+ */
+export const listDecorationMatrices = async ( options?: RequestInit): Promise<DecorationMatricesResponse> => {
+
+  return customFetch<DecorationMatricesResponse>(getListDecorationMatricesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDecorationMatricesQueryKey = () => {
+    return [
+    `/api/pricing/matrices`
+    ] as const;
+    }
+
+
+export const getListDecorationMatricesQueryOptions = <TData = Awaited<ReturnType<typeof listDecorationMatrices>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDecorationMatrices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDecorationMatricesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDecorationMatrices>>> = ({ signal }) => listDecorationMatrices({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDecorationMatrices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDecorationMatricesQueryResult = NonNullable<Awaited<ReturnType<typeof listDecorationMatrices>>>
+export type ListDecorationMatricesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all decoration pricing matrices (team-shared), newest first
+ */
+
+export function useListDecorationMatrices<TData = Awaited<ReturnType<typeof listDecorationMatrices>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDecorationMatrices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDecorationMatricesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpsertDecorationMatrixUrl = () => {
+
+
+
+
+  return `/api/pricing/matrices`
+}
+
+/**
+ * @summary Create a matrix, or update it in place when an id is supplied (upsert)
+ */
+export const upsertDecorationMatrix = async (upsertDecorationMatrixRequest: UpsertDecorationMatrixRequest, options?: RequestInit): Promise<DecorationMatrix> => {
+
+  return customFetch<DecorationMatrix>(getUpsertDecorationMatrixUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(upsertDecorationMatrixRequest)
+  }
+);}
+
+
+
+
+export const getUpsertDecorationMatrixMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertDecorationMatrix>>, TError,{data: BodyType<UpsertDecorationMatrixRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertDecorationMatrix>>, TError,{data: BodyType<UpsertDecorationMatrixRequest>}, TContext> => {
+
+const mutationKey = ['upsertDecorationMatrix'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertDecorationMatrix>>, {data: BodyType<UpsertDecorationMatrixRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  upsertDecorationMatrix(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertDecorationMatrixMutationResult = NonNullable<Awaited<ReturnType<typeof upsertDecorationMatrix>>>
+    export type UpsertDecorationMatrixMutationBody = BodyType<UpsertDecorationMatrixRequest>
+    export type UpsertDecorationMatrixMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a matrix, or update it in place when an id is supplied (upsert)
+ */
+export const useUpsertDecorationMatrix = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertDecorationMatrix>>, TError,{data: BodyType<UpsertDecorationMatrixRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertDecorationMatrix>>,
+        TError,
+        {data: BodyType<UpsertDecorationMatrixRequest>},
+        TContext
+      > => {
+      return useMutation(getUpsertDecorationMatrixMutationOptions(options));
+    }
+
+export const getDeleteDecorationMatrixUrl = (id: string,) => {
+
+
+
+
+  return `/api/pricing/matrices/${id}`
+}
+
+/**
+ * @summary Delete a decoration matrix
+ */
+export const deleteDecorationMatrix = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteDecorationMatrixUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteDecorationMatrixMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDecorationMatrix>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDecorationMatrix>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteDecorationMatrix'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDecorationMatrix>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteDecorationMatrix(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDecorationMatrixMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDecorationMatrix>>>
+
+    export type DeleteDecorationMatrixMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a decoration matrix
+ */
+export const useDeleteDecorationMatrix = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDecorationMatrix>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDecorationMatrix>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteDecorationMatrixMutationOptions(options));
+    }
 

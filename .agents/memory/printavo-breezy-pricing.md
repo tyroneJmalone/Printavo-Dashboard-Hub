@@ -9,9 +9,11 @@ description: Exact price-calc formula, matrix data shape, and working S&S REST +
 - Result rows come from the FIRST location's breaks (canonical qty tiers); other locations resolve their cost at that qty.
 - Markup presets 1.0–2.0 in 0.05 steps, default 1.75; custom values allowed. Total order value = unitPrice × qty.
 
-# Matrix data shape (jsonb `data` in `matrices` table: id text PK, name, data, timestamps)
-`{ name, xAxisLabel, xValues: [{ label, breaks: [{ qty, decorationCost }] }] }`
-- POST /api/matrices is an UPSERT when `id` supplied. CSV bulk import + starter matrices exist in UI.
+# Matrix data shape (jsonb `data` column)
+`{ name, xAxisLabel, xValues: [{ label, breaks: [{ qty(integer≥1), decorationCost(≥0) }] }] }`
+- Breezy standalone: table `matrices`, id text PK. HUB PORT (what we built, PC1): table `decoration_matrices`, id **uuid** PK, endpoints `GET/POST /api/pricing/matrices` + `DELETE /api/pricing/matrices/:id`.
+- POST is an UPSERT when `id` supplied (onConflictDoUpdate name/data/updatedAt, preserves createdAt); id-supplied-but-absent inserts with that id (Breezy import path). CSV bulk import + starter matrices in UI.
+- Grid<->stored round-trip: rows=shared qty tiers, cols=xValues each w/ per-column breaks; ragged imports densified price-preserving. Blank cost cell must be rejected in the editor (Number("")→0 = silent $0 mispricing).
 - No auth, single-tenant, team-shared.
 
 # S&S Activewear client (REST, proven)

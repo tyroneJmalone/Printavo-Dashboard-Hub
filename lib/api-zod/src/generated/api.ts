@@ -1766,3 +1766,77 @@ export const GetReportFilterOptionsResponse = zod.object({
 })
 
 
+/**
+ * @summary List all decoration pricing matrices (team-shared), newest first
+ */
+export const ListDecorationMatricesResponse = zod.object({
+  "matrices": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "data": zod.object({
+  "name": zod.string(),
+  "xAxisLabel": zod.string(),
+  "xValues": zod.array(zod.object({
+  "label": zod.string(),
+  "breaks": zod.array(zod.object({
+  "qty": zod.number(),
+  "decorationCost": zod.number()
+}).describe('A quantity price break within a matrix column. The highest break whose qty <= order qty wins.'))
+}).describe('One value along the matrix xAxis (e.g. \"1 Color\", \"8k stitches\") with its own qty breaks.'))
+}).describe('Faithful Breezy jsonb shape: named decoration cost table keyed by an xAxis (colors, stitches, ...).'),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Create a matrix, or update it in place when an id is supplied (upsert)
+ */
+
+
+
+export const UpsertDecorationMatrixBody = zod.object({
+  "id": zod.string().min(1).optional(),
+  "data": zod.object({
+  "name": zod.string(),
+  "xAxisLabel": zod.string(),
+  "xValues": zod.array(zod.object({
+  "label": zod.string(),
+  "breaks": zod.array(zod.object({
+  "qty": zod.number(),
+  "decorationCost": zod.number()
+}).describe('A quantity price break within a matrix column. The highest break whose qty <= order qty wins.'))
+}).describe('One value along the matrix xAxis (e.g. \"1 Color\", \"8k stitches\") with its own qty breaks.'))
+}).describe('Faithful Breezy jsonb shape: named decoration cost table keyed by an xAxis (colors, stitches, ...).')
+}).describe('Create when id is omitted; update in place when a matching id is supplied (upsert). Enables byte-for-byte re-import of exported matrices.')
+
+export const UpsertDecorationMatrixResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "data": zod.object({
+  "name": zod.string(),
+  "xAxisLabel": zod.string(),
+  "xValues": zod.array(zod.object({
+  "label": zod.string(),
+  "breaks": zod.array(zod.object({
+  "qty": zod.number(),
+  "decorationCost": zod.number()
+}).describe('A quantity price break within a matrix column. The highest break whose qty <= order qty wins.'))
+}).describe('One value along the matrix xAxis (e.g. \"1 Color\", \"8k stitches\") with its own qty breaks.'))
+}).describe('Faithful Breezy jsonb shape: named decoration cost table keyed by an xAxis (colors, stitches, ...).'),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a decoration matrix
+ */
+export const DeleteDecorationMatrixParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteDecorationMatrixResponse = zod.void()
+
+
