@@ -30,7 +30,7 @@ Scans all Printavo invoices for line items with productStatus `need_ordering`, s
 - 6 hardcoded "Need 2 Order" pill labels incl. VENDOR SPECIAL PRICING / RUSH / ADD ON / PARTIAL IN-HOUSE / STOCK ISSUE variants (emoji-prefixed); anything else shows as dynamic "Other" pill.
 
 # SanMar pricing — DIFFERENT approach from Breezy (reconcile in Hub!)
-- PO Builder uses ONLY ProductInfoService (getProductInfoByStyleColorSize with style+color): `pieceSalePrice`/`dozenSalePrice` = account net cost (USE), `piecePrice`/`dozenPrice` = MSRP (do NOT use as cost).
+- PO Builder uses ONLY ProductInfoService (getProductInfoByStyleColorSize with style+color). NOTE: its original assumption `pieceSalePrice = net cost, piecePrice = MSRP` is WRONG — verified against the live API, `piecePrice` is the regular net piece cost and `pieceSalePrice` is a dated-sale-only promo. See [sanmar-pricing-semantics.md](sanmar-pricing-semantics.md). (PO Builder is legacy/untouched; the Hub uses the corrected logic.)
 - Breezy uses ProductInfo piecePrice as catalog + separate PricingService casePrice as regular dealer net.
 - Env names also differ: PO Builder = SANMAR_CUSTOMER/SANMAR_USER/SANMAR_PASS; Breezy = SANMAR_ACCOUNT_NUMBER/SANMAR_USERNAME/SANMAR_PASSWORD. Hub should standardize one set + one SanMar client.
 - S&S pricing here is BLOCKED (Cloudflare 503 on their API from this app) — but Breezy's S&S client works; use Breezy's.

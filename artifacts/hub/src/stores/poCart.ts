@@ -35,6 +35,23 @@ export function canonSize(size: string): string {
 }
 
 /**
+ * First component of a combined vendor size, canonicalized. Handles SanMar's
+ * abbreviated form where the size-class letters live only on the LAST token and
+ * distribute across bare-number prefixes: "2/3X" means 2XL/3XL, so the first
+ * component is "2X" (→ 2XL), and "4/5X" → "4X" (→ 4XL). Labels that already
+ * carry their own suffix ("S/M", "L/XL", "2XL/3XL") pass straight through.
+ */
+function combinedFirstComponent(canonVendorSize: string): string {
+  const parts = canonVendorSize.split("/");
+  let first = parts[0] ?? "";
+  if (/^\d+$/.test(first)) {
+    const last = parts[parts.length - 1] ?? "";
+    first += last.replace(/^\d+/, ""); // "3X" → "X", "3XL" → "XL"
+  }
+  return canonSize(first);
+}
+
+/**
  * Match a Printavo size row to a vendor size offer. True on canonical equality,
  * OR when the vendor sells a COMBINED size (e.g. "S/M", "L/XL") whose FIRST
  * component canonically equals the Printavo size — the shop convention stocks a
@@ -48,10 +65,7 @@ export function sizesMatch(printavoSize: string, vendorSize: string): boolean {
   if (p === v) return true;
   // Canonicalize the FULL label first — "O/S" is an OSFA alias, not a combined
   // size (canonSize already collapsed it above, so it never reaches here).
-  if (v.includes("/")) {
-    const first = v.split("/")[0];
-    if (first && canonSize(first) === p) return true;
-  }
+  if (v.includes("/") && combinedFirstComponent(v) === p) return true;
   return false;
 }
 

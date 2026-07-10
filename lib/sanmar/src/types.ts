@@ -14,9 +14,9 @@ export interface SanMarProductEntry {
   brandName: string | null;
   productTitle: string | null;
   caseSize: number | null;
-  /** MSRP / catalog price — do NOT use as cost. */
+  /** Regular account NET piece cost — THE cost figure for POs (not MSRP). */
   piecePrice: number | null;
-  /** Account net cost — THE cost figure for POs. */
+  /** Promotional piece price — populated ONLY during a dated sale, else null. */
   pieceSalePrice: number | null;
   casePrice: number | null;
   caseSalePrice: number | null;

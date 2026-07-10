@@ -11,8 +11,8 @@ description: Durable decisions from the Hub's purchasing module (P2 cart/pricing
   **Why:** sequential group saves + retry previously could silently re-insert already-saved groups.
 
 # Cost semantics (do not regress)
-- SanMar: `pieceSalePrice` IS the account net cost; `piecePrice` is MSRP. **Never fall back to MSRP when net cost is null** — return null and let the UI show "No vendor price" + manual cost.
-  **Why:** the fallback silently inflated PO totals with retail pricing.
+- SanMar: `piecePrice` = the regular account NET piece cost (**THE cost**); `pieceSalePrice` is a promo price present ONLY during a dated sale. cost = piecePrice; treat pieceSalePrice as a genuine sale only when `>0 && < piecePrice && saleEndDate` present. See [sanmar-pricing-semantics.md](sanmar-pricing-semantics.md).
+  **Why:** the old "pieceSalePrice = net cost, piecePrice = MSRP" belief was disproven against the live API — it left every not-on-sale style (e.g. CSV102) with a null cost and blocked save.
 - S&S: sale price is genuine only if `salePrice > 0 && salePrice < piecePrice && saleExpiration` present.
 
 # Size matching

@@ -3,8 +3,12 @@ import { SSClient, type SSProduct } from "@workspace/ss-activewear";
 
 /**
  * Unified live vendor catalog lookup (SanMar SOAP / S&S REST).
- * Cost semantics (proven in legacy apps — do not change):
- *  - SanMar: pieceSalePrice = account net cost (THE cost), piecePrice = MSRP.
+ * Cost semantics (verified against the live authenticated APIs):
+ *  - SanMar: piecePrice = the regular account NET piece cost (THE cost);
+ *    pieceSalePrice is a promotional price present ONLY during a dated sale
+ *    (piece/dozen/case is a net tier ladder — MAP/retail lives in mapPrice,
+ *    not piecePrice). Treat pieceSalePrice as a genuine sale only when >0,
+ *    < piecePrice, and saleEndDate present; otherwise cost = piecePrice.
  *  - S&S: piecePrice = regular dealer cost; salePrice genuine only if
  *    >0, < piecePrice, and saleExpiration present (customerPrice mirrors
  *    salePrice during sales — never a baseline).
@@ -98,18 +102,28 @@ function sanMarToColors(entries: SanMarProductEntry[]): VendorColorOffer[] {
       sizes = [];
       byColor.set(e.catalogColor, sizes);
     }
+    // SanMar's authenticated productPriceInfo returns the account's NET pricing:
+    // piecePrice is the regular net piece cost, pieceSalePrice is a promotional
+    // price present only during a dated sale (piece/dozen/case is a tier ladder,
+    // not MSRP — MAP/retail lives in mapPrice). So cost = piecePrice, and the
+    // sale price only counts when it's genuinely lower inside a sale window.
+    // (Mirrors the S&S branch below.) Using only pieceSalePrice previously left
+    // every not-on-sale item with a null cost.
+    const genuineSale =
+      e.pieceSalePrice !== null &&
+      e.pieceSalePrice > 0 &&
+      e.piecePrice !== null &&
+      e.pieceSalePrice < e.piecePrice &&
+      e.saleEndDate !== null;
     sizes.push({
       size: e.size.toUpperCase(),
       sku: null,
       inventoryKey: e.inventoryKey,
       sizeIndex: e.sizeIndex,
-      // pieceSalePrice IS the account net cost. Never fall back to
-      // piecePrice (MSRP) — a null cost must surface in the UI instead
-      // of silently inflating the PO.
-      cost: e.pieceSalePrice,
-      msrp: e.piecePrice,
-      salePrice: null,
-      saleEndsAt: null,
+      cost: e.piecePrice,
+      msrp: null,
+      salePrice: genuineSale ? e.pieceSalePrice : null,
+      saleEndsAt: genuineSale ? e.saleEndDate : null,
       inventoryTotal: null,
       warehouses: null,
     });
