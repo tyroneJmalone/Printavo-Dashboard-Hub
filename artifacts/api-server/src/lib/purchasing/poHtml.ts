@@ -69,6 +69,7 @@ export function renderPoHtml(po: PoFileDto): string {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "America/New_York",
   });
 
   return `<!doctype html>
