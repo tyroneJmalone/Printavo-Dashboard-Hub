@@ -17,6 +17,10 @@ export interface PoFileSizeEntry {
   sku: string | null;
   inventoryKey: string | null;
   sizeIndex: number | null;
+  /** Vendor's actual size label when it differs from the Printavo `size` (e.g.
+   *  SanMar's combined "S/M" stocked in the "S" column). Optional for backward
+   *  compatibility — older snapshots have none. Submission sends `vendorSize ?? size`. */
+  vendorSize?: string | null;
 }
 
 export interface PoFileLineItem {

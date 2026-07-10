@@ -263,7 +263,9 @@ function buildEligibility(
       lines.push({
         style: li.styleNumber.trim(),
         color,
-        size: s.size,
+        // Send the vendor's real size label (SanMar's combined "S/M"), not the
+        // Printavo column it was stocked in. Falls back to size for normal lines.
+        size: s.vendorSize ?? s.size,
         quantity: s.qty,
         warehouseCode,
         sku: s.sku,
@@ -271,6 +273,24 @@ function buildEligibility(
         sizeIndex: s.sizeIndex,
         unitCost: s.unitCost,
       });
+    }
+  }
+
+  // Two lines resolving to the SAME vendor unit + warehouse would place two
+  // detail lines for one item — a double order (the shop's cardinal rule). This
+  // only arises from combined-size mapping (S and M both → S/M). Block it.
+  const dupKey = (l: EligibleLine) =>
+    `${l.style}|${l.color}|${vendor === "sanmar" ? (l.inventoryKey ?? l.size) : (l.sku ?? l.size)}|${l.warehouseCode}`;
+  const dupCounts = new Map<string, number>();
+  for (const l of lines) dupCounts.set(dupKey(l), (dupCounts.get(dupKey(l)) ?? 0) + 1);
+  const dupSeen = new Set<string>();
+  for (const l of lines) {
+    const k = dupKey(l);
+    if ((dupCounts.get(k) ?? 0) > 1 && !dupSeen.has(k)) {
+      dupSeen.add(k);
+      blockers.push(
+        `"${l.style} / ${l.color} ${l.size}" resolves to the same vendor item + warehouse as another line — combine them into one line so it isn't double-ordered.`,
+      );
     }
   }
 

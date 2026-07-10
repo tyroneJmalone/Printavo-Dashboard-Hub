@@ -606,7 +606,9 @@ export function PoEditor({ po, onClose }: { po: PoFile; onClose: () => void }) {
                     key={`${s.size}-${si}`}
                     className="flex items-center gap-1 bg-slate-800/70 border border-slate-700 rounded px-1.5 py-1"
                   >
-                    <span className="text-[10px] font-mono text-slate-400">{s.size}</span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {s.vendorSize ?? s.size}
+                    </span>
                     <input
                       type="number"
                       min="0"

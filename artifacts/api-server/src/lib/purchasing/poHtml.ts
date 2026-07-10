@@ -40,7 +40,7 @@ export function renderPoHtml(po: PoFileDto): string {
       const t = lineTotal(li);
       const sizesStr = li.sizes
         .filter((s) => s.qty > 0)
-        .map((s) => `${esc(s.size)}&times;${s.qty}`)
+        .map((s) => `${esc(s.vendorSize ?? s.size)}&times;${s.qty}`)
         .join(", ");
       const orderRef = li.visualId ? `#${li.visualId}` : "—";
       const colorShown = li.vendorCatalogColor ?? li.color;

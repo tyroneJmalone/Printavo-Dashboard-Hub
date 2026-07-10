@@ -15,7 +15,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   usePoCart,
-  canonSize,
   warehouseOptionsFor,
   type CartItem,
   type CartVendor,
@@ -73,6 +72,7 @@ function CartItemCard({ item }: { item: CartItem }) {
   const setSizeQty = usePoCart((s) => s.setSizeQty);
   const setManualCost = usePoCart((s) => s.setManualCost);
   const applyVendorData = usePoCart((s) => s.applyVendorData);
+  const matchSizeToVendor = usePoCart((s) => s.matchSizeToVendor);
   const applyInventory = usePoCart((s) => s.applyInventory);
   const setWarehouse = usePoCart((s) => s.setWarehouse);
   const { toast } = useToast();
@@ -141,6 +141,33 @@ function CartItemCard({ item }: { item: CartItem }) {
     },
   });
 
+  // Check warehouse stock for the vendor size labels this line actually matched
+  // (SanMar rejects Printavo labels). Reads live cart state so it works after
+  // both the initial color match AND a manual per-size remap of a combined size.
+  function refetchMatchedInventory(res: VendorLookupResult, colorName: string) {
+    const vendor = item.vendor;
+    if (vendor !== "sanmar" && vendor !== "ss") return;
+    const current = usePoCart.getState().items.find((i) => i.key === item.key);
+    if (!current) return;
+    const vendorSizes = [
+      ...new Set(
+        current.sizes.map((s) => s.vendorSize).filter((v): v is string => v !== null),
+      ),
+    ].slice(0, 20);
+    if (vendorSizes.length === 0) return;
+    inventoryFetch.mutate({
+      data: {
+        vendor,
+        style: res.styleQueried,
+        // Pin stock to the SAME product the lookup priced — a re-search by style
+        // number alone can hit another brand's identical number.
+        styleId: res.styleId,
+        catalogColor: colorName,
+        sizes: vendorSizes,
+      },
+    });
+  }
+
   function applyColor(res: VendorLookupResult, colorName: string) {
     const color = res.colors.find((c) => c.colorName === colorName);
     if (!color) return;
@@ -155,27 +182,7 @@ function CartItemCard({ item }: { item: CartItem }) {
         sizeIndex: s.sizeIndex,
       })),
     });
-    // Warehouse availability for the sizes this line could need — vendor size
-    // labels (matched via canonSize) because SanMar rejects Printavo labels.
-    if (item.vendor === "sanmar" || item.vendor === "ss") {
-      const vendorSizes = color.sizes
-        .filter((vs) => item.sizes.some((sz) => canonSize(sz.size) === canonSize(vs.size)))
-        .map((vs) => vs.size)
-        .slice(0, 20);
-      if (vendorSizes.length > 0) {
-        inventoryFetch.mutate({
-          data: {
-            vendor: item.vendor,
-            style: res.styleQueried,
-            // Pin stock to the SAME product the lookup priced — a re-search
-            // by style number alone can hit another brand's identical number.
-            styleId: res.styleId,
-            catalogColor: color.colorName,
-            sizes: vendorSizes,
-          },
-        });
-      }
-    }
+    refetchMatchedInventory(res, color.colorName);
   }
 
   const totals = itemTotals(item);
@@ -184,6 +191,29 @@ function CartItemCard({ item }: { item: CartItem }) {
     item.resolved && item.vendor !== "manual"
       ? item.sizes.filter((s) => s.qty > 0 && s.unitCost === null)
       : [];
+  // Vendor sizes for the currently-selected color — only while a fresh lookup is
+  // in hand. Powers the per-size mapping dropdown for combined-size products.
+  const selectedColorSizes =
+    lookupResult?.found && item.vendorCatalogColor
+      ? (lookupResult.colors.find((c) => c.colorName === item.vendorCatalogColor)?.sizes ?? [])
+      : [];
+  // Rows needing a manual size decision: unpriced (no auto-match) OR matched to a
+  // COMBINED vendor size (so Tyler can verify/correct the S→S/M guess). Plain
+  // exact matches are left alone to avoid inviting accidental remaps.
+  const sizesToMap =
+    canLookup
+      ? item.sizes.filter(
+          (s) => s.qty > 0 && (s.unitCost === null || (s.vendorSize?.includes("/") ?? false)),
+        )
+      : [];
+  // Two rows pointing at one vendor unit = a double order — surface it loudly.
+  const dupVendorSizes = (() => {
+    const seen = new Map<string, number>();
+    for (const s of item.sizes) {
+      if (s.qty > 0 && s.vendorSize) seen.set(s.vendorSize, (seen.get(s.vendorSize) ?? 0) + 1);
+    }
+    return [...seen.entries()].filter(([, n]) => n > 1).map(([v]) => v);
+  })();
 
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-3.5 space-y-3">
@@ -362,10 +392,69 @@ function CartItemCard({ item }: { item: CartItem }) {
         ))}
       </div>
 
-      {unmatchedSizes.length > 0 && (
-        <div className="flex items-center gap-1.5 text-[11px] text-amber-400">
-          <AlertTriangle size={12} />
-          No vendor price for: {unmatchedSizes.map((s) => s.size).join(", ")}
+      {(unmatchedSizes.length > 0 ||
+        (sizesToMap.length > 0 && selectedColorSizes.length > 0) ||
+        dupVendorSizes.length > 0) && (
+        <div className="space-y-1.5">
+          {unmatchedSizes.length > 0 && (
+            <div className="flex items-center gap-1.5 text-[11px] text-amber-400">
+              <AlertTriangle size={12} />
+              No vendor price for: {unmatchedSizes.map((s) => s.size).join(", ")}
+            </div>
+          )}
+          {sizesToMap.length > 0 && selectedColorSizes.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[10px] text-slate-500">
+                This vendor may combine sizes — pick the vendor size for each Printavo size:
+              </div>
+              {sizesToMap.map((s) => (
+                <div key={s.size} className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono text-slate-400 w-9 flex-shrink-0">
+                    {s.size}
+                  </span>
+                  <span className="text-slate-600 text-[10px]">→</span>
+                  <select
+                    value={s.vendorSize ?? ""}
+                    onChange={(e) => {
+                      const vs = selectedColorSizes.find((o) => o.size === e.target.value);
+                      if (!vs) return;
+                      matchSizeToVendor(item.key, s.size, {
+                        vendorSize: vs.size,
+                        unitCost: vs.salePrice ?? vs.cost,
+                        sku: vs.sku,
+                        inventoryKey: vs.inventoryKey,
+                        sizeIndex: vs.sizeIndex,
+                      });
+                      if (lookupResult && item.vendorCatalogColor)
+                        refetchMatchedInventory(lookupResult, item.vendorCatalogColor);
+                    }}
+                    aria-label={`Vendor size for ${s.size}`}
+                    className="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-[11px] text-slate-200"
+                  >
+                    <option value="" disabled>
+                      Pick vendor size…
+                    </option>
+                    {selectedColorSizes.map((o) => {
+                      const c = o.salePrice ?? o.cost;
+                      return (
+                        <option key={o.size} value={o.size}>
+                          {o.size}
+                          {c !== null ? ` — ${money(c)}` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+          {dupVendorSizes.length > 0 && (
+            <div className="flex items-center gap-1.5 text-[11px] text-amber-400">
+              <AlertTriangle size={12} />
+              Two sizes map to {dupVendorSizes.join(", ")} — this would double-order. Combine their
+              quantities into one row and set the other to 0.
+            </div>
+          )}
         </div>
       )}
 
@@ -524,6 +613,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               sku: s.sku,
               inventoryKey: s.inventoryKey,
               sizeIndex: s.sizeIndex,
+              vendorSize: s.vendorSize,
             })),
         }));
         const target = targetFor(vendor);

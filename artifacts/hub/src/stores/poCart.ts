@@ -34,6 +34,27 @@ export function canonSize(size: string): string {
   return SIZE_ALIASES[u] ?? u;
 }
 
+/**
+ * Match a Printavo size row to a vendor size offer. True on canonical equality,
+ * OR when the vendor sells a COMBINED size (e.g. "S/M", "L/XL") whose FIRST
+ * component canonically equals the Printavo size — the shop convention stocks a
+ * combined unit in the first component's column (S/M → S, L/XL → L, 2XL/3XL →
+ * 2XL). First token only: matching any component would let two Printavo columns
+ * (S and M) both claim one vendor unit and double-order it.
+ */
+export function sizesMatch(printavoSize: string, vendorSize: string): boolean {
+  const p = canonSize(printavoSize);
+  const v = canonSize(vendorSize);
+  if (p === v) return true;
+  // Canonicalize the FULL label first — "O/S" is an OSFA alias, not a combined
+  // size (canonSize already collapsed it above, so it never reaches here).
+  if (v.includes("/")) {
+    const first = v.split("/")[0];
+    if (first && canonSize(first) === p) return true;
+  }
+  return false;
+}
+
 export interface CartSizeRow {
   size: string;
   qty: number;
@@ -41,6 +62,10 @@ export interface CartSizeRow {
   sku: string | null;
   inventoryKey: string | null;
   sizeIndex: number | null;
+  /** Vendor's actual size label when it differs from the Printavo size — e.g.
+   *  SanMar's combined "S/M" stocked in Printavo's "S" column. Null until a
+   *  vendor size is matched (auto or hand-picked). Sent on the wire to SanMar. */
+  vendorSize: string | null;
 }
 
 export interface WarehouseStock {
@@ -95,7 +120,7 @@ export interface WarehouseOption {
 function neededSizes(item: CartItem): { size: string; qty: number }[] {
   return item.sizes
     .filter((s) => s.qty > 0)
-    .map((s) => ({ size: canonSize(s.size), qty: s.qty }));
+    .map((s) => ({ size: canonSize(s.vendorSize ?? s.size), qty: s.qty }));
 }
 
 function invForSize(item: CartItem, canon: string): SizeInventory | undefined {
@@ -259,6 +284,19 @@ interface PoCartState {
       }[];
     },
   ) => void;
+  /** Hand-map one Printavo size row to a specific vendor size offer (used when
+   *  the vendor combines sizes and the auto-match guessed wrong or not at all). */
+  matchSizeToVendor: (
+    key: string,
+    printavoSize: string,
+    offer: {
+      vendorSize: string;
+      unitCost: number | null;
+      sku: string | null;
+      inventoryKey: string | null;
+      sizeIndex: number | null;
+    },
+  ) => void;
   applyInventory: (key: string, inventory: SizeInventory[]) => void;
   setWarehouse: (key: string, code: string | null, name: string | null) => void;
 }
@@ -377,21 +415,50 @@ export const usePoCart = create<PoCartState>((set) => ({
           warehouseName: null,
           warehouseManual: false,
           sizes: i.sizes.map((sz) => {
-            const match = data.sizes.find(
-              (v) => canonSize(v.size) === canonSize(sz.size),
-            );
+            const match = data.sizes.find((v) => sizesMatch(sz.size, v.size));
             return match
               ? {
                   ...sz,
+                  vendorSize: match.size,
                   unitCost: match.unitCost,
                   sku: match.sku,
                   inventoryKey: match.inventoryKey,
                   sizeIndex: match.sizeIndex,
                 }
-              : { ...sz, unitCost: null, sku: null, inventoryKey: null, sizeIndex: null };
+              : {
+                  ...sz,
+                  vendorSize: null,
+                  unitCost: null,
+                  sku: null,
+                  inventoryKey: null,
+                  sizeIndex: null,
+                };
           }),
         };
       }),
+    })),
+
+  matchSizeToVendor: (key, printavoSize, offer) =>
+    set((s) => ({
+      items: s.items.map((i) =>
+        i.key === key
+          ? {
+              ...i,
+              sizes: i.sizes.map((sz) =>
+                sz.size === printavoSize
+                  ? {
+                      ...sz,
+                      vendorSize: offer.vendorSize,
+                      unitCost: offer.unitCost,
+                      sku: offer.sku,
+                      inventoryKey: offer.inventoryKey,
+                      sizeIndex: offer.sizeIndex,
+                    }
+                  : sz,
+              ),
+            }
+          : i,
+      ),
     })),
 
   applyInventory: (key, inventory) =>

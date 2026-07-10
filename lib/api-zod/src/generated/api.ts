@@ -285,7 +285,8 @@ export const ListPoFilesResponse = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
@@ -354,7 +355,8 @@ export const CreatePoFileBody = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })).min(1)
 })
@@ -388,7 +390,8 @@ export const CreatePoFileResponse = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
@@ -461,7 +464,8 @@ export const GetPoFileResponse = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
@@ -542,7 +546,8 @@ export const UpdatePoFileBody = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })).min(1).optional()
 })
@@ -576,7 +581,8 @@ export const UpdatePoFileResponse = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
@@ -644,7 +650,8 @@ export const AppendPoLineItemsBody = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })).min(1)
 })
@@ -678,7 +685,8 @@ export const AppendPoLineItemsResponse = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
@@ -767,7 +775,8 @@ export const SubmitPoToVendorResponse = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
@@ -965,7 +974,8 @@ export const UnlockPoFileResponse = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),
@@ -1045,7 +1055,8 @@ export const AdminUnlockPoFileResponse = zod.object({
   "unitCost": zod.number(),
   "sku": zod.string().nullable(),
   "inventoryKey": zod.string().nullable(),
-  "sizeIndex": zod.number().nullable()
+  "sizeIndex": zod.number().nullable(),
+  "vendorSize": zod.string().nullish().describe('Vendor\'s actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined \"S\/M\" stocked in Printavo\'s \"S\" column. Optional (older POs have none); submission sends `vendorSize ?? size`.')
 }))
 })),
   "pushedToPrintavoAt": zod.string().nullable(),

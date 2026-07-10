@@ -1631,6 +1631,12 @@ components:
         sku: { type: ["string", "null"] }
         inventoryKey: { type: ["string", "null"] }
         sizeIndex: { type: ["integer", "null"] }
+        vendorSize:
+          type: ["string", "null"]
+          description: >-
+            Vendor's actual size label when it differs from the Printavo `size` —
+            e.g. SanMar sells combined "S/M" stocked in Printavo's "S" column.
+            Optional (older POs have none); submission sends `vendorSize ?? size`.
       required: [size, qty, unitCost, sku, inventoryKey, sizeIndex]
     PoFileLineItem:
       type: object

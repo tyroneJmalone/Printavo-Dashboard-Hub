@@ -17,4 +17,9 @@ export interface PoFileSizeEntry {
   inventoryKey: string | null;
   /** @nullable */
   sizeIndex: number | null;
+  /**
+     * Vendor's actual size label when it differs from the Printavo `size` — e.g. SanMar sells combined "S/M" stocked in Printavo's "S" column. Optional (older POs have none); submission sends `vendorSize ?? size`.
+     * @nullable
+     */
+  vendorSize?: string | null;
 }

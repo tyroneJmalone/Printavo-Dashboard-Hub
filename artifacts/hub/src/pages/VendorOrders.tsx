@@ -76,8 +76,9 @@ function buildCartItem(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): Ca
           sku: null,
           inventoryKey: null,
           sizeIndex: null,
+          vendorSize: null,
         }))
-      : [{ size: "OSFA", qty: li.items > 0 ? li.items : 0, unitCost: null, sku: null, inventoryKey: null, sizeIndex: null }];
+      : [{ size: "OSFA", qty: li.items > 0 ? li.items : 0, unitCost: null, sku: null, inventoryKey: null, sizeIndex: null, vendorSize: null }];
   return {
     key: li.id,
     printavoLineItemId: li.id,
