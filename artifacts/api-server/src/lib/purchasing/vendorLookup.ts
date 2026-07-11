@@ -16,7 +16,11 @@ import { SSClient, type SSProduct } from "@workspace/ss-activewear";
  * Search accepts a bare style number ("PC54") or brand/keywords + number
  * ("port company pc54", "bella 3001") — tokens containing a digit are tried
  * as style numbers; the remaining words disambiguate brand (Gildan 5000 vs
- * Bayside 5000) and decide exact-vs-closest.
+ * Bayside 5000) and decide exact-vs-closest. Because many vendor style codes
+ * are brand initials + digits ("sport tek 350" → ST350), initial-letter
+ * combos are also tried as candidates, and S&S candidates whose style number
+ * merely CONTAINS the typed digits still score (partial/split matches
+ * surface as results instead of "not found").
  */
 
 export type VendorId = "sanmar" | "ss";
@@ -236,18 +240,41 @@ function textTokensMatch(textTokens: string[], brand: string | null, title: stri
   return textTokens.every((t) => hay.includes(` ${t} `));
 }
 
-const MAX_STYLE_TOKEN_TRIES = 3;
+const MAX_CANDIDATE_TRIES = 3;
+
+/**
+ * Style-number candidates derived from the query, in priority order: the
+ * digit-bearing tokens as typed, then brand-initials + digits combos —
+ * vendor style codes are often brand initials prefixed to the number
+ * ("sport tek 350" → ST350, so try "350" then "st350").
+ */
+function styleCandidates(styleTokens: string[], textTokens: string[]): string[] {
+  const out = [...styleTokens];
+  if (textTokens.length > 0) {
+    const initials = textTokens.map((t) => t[0]).join("");
+    for (const t of styleTokens) {
+      out.push(initials + t);
+      // A single brand word may also abbreviate to its first two letters
+      // ("sport 350" → "sp350"-style codes). Cheap extra guess — wrong
+      // guesses just return "Invalid style" quickly.
+      if (textTokens.length === 1) out.push(textTokens[0]!.slice(0, 2) + t);
+    }
+  }
+  return Array.from(new Set(out));
+}
 
 async function lookupSanMar(query: string): Promise<VendorLookupResult> {
   const client = getSanMarClient();
   const { styleTokens, textTokens } = parseQuery(query);
   // Direct lookup first — the common case is a bare style number. If SanMar
-  // doesn't recognize the whole query, retry each digit-bearing token
-  // ("port company pc54" → "PC54"). SOAP is slow, so cap the retries.
+  // doesn't recognize the whole query, retry the style-number candidates
+  // ("port company pc54" → "PC54"; "sport tek 350" → "350" then "ST350" —
+  // SanMar SOAP has no keyword search, so initials+digits combos are the only
+  // way partial queries can land). SOAP is slow, so cap the retries.
   let entries = await client.getProductInfo(query);
   let viaFullQuery = entries.length > 0;
   if (entries.length === 0) {
-    for (const t of styleTokens.slice(0, MAX_STYLE_TOKEN_TRIES)) {
+    for (const t of styleCandidates(styleTokens, textTokens).slice(0, MAX_CANDIDATE_TRIES)) {
       if (normText(t) === normText(query)) continue; // same as the direct try
       entries = await client.getProductInfo(t.toUpperCase());
       if (entries.length > 0) break;
@@ -290,15 +317,23 @@ function scoreSSCandidate(
   candidate: { styleName: string; brandName: string; title: string | null },
   style: string,
   hints: VendorLookupHints,
+  candidates: string[],
   styleTokens: string[],
   textTokens: string[],
 ): number {
   let score = 0;
+  const nameNorm = normText(candidate.styleName);
   if (candidate.styleName.toLowerCase() === style.toLowerCase()) {
     score += 100;
-  } else if (styleTokens.includes(normText(candidate.styleName))) {
-    // "bella 3001" — the digit token IS the style number.
+  } else if (candidates.includes(nameNorm)) {
+    // "bella 3001" — the digit token IS the style number — or an
+    // initials+digits combo hit ("sport tek 350" → st350).
     score += 90;
+  } else if (styleTokens.some((t) => nameNorm.includes(t))) {
+    // Partial: the typed digits appear inside the style number
+    // ("350" ⊂ "ST350") — keep close matches in the running instead of
+    // letting unrelated results win on title words alone.
+    score += 40;
   }
   const brand = normText(candidate.brandName);
   const brandHint = normText(hints.brandHint ?? "");
@@ -338,12 +373,14 @@ async function lookupSS(
 ): Promise<VendorLookupResult> {
   const client = getSSClient();
   const { styleTokens, textTokens } = parseQuery(style);
+  const candidates = styleCandidates(styleTokens, textTokens);
   // S&S's search handles free text reasonably well, but if the combined
   // query returns nothing ("port company pc54"-style input), retry with
-  // just the digit-bearing tokens — those are the style-number candidates.
+  // the style-number candidates — digit tokens first, then initials+digits
+  // combos ("sport tek 350" → "350", "st350").
   let styles = await client.searchStyles(style);
   if (styles.length === 0) {
-    for (const t of styleTokens.slice(0, MAX_STYLE_TOKEN_TRIES)) {
+    for (const t of candidates.slice(0, MAX_CANDIDATE_TRIES)) {
       if (normText(t) === normText(style)) continue;
       styles = await client.searchStyles(t);
       if (styles.length > 0) break;
@@ -352,7 +389,7 @@ async function lookupSS(
   let chosen: (typeof styles)[number] | undefined;
   let best = -1;
   for (const s of styles) {
-    const score = scoreSSCandidate(s, style, hints, styleTokens, textTokens);
+    const score = scoreSSCandidate(s, style, hints, candidates, styleTokens, textTokens);
     // Strict > keeps the first result on ties (S&S's own relevance order).
     if (score > best) {
       best = score;
@@ -375,14 +412,15 @@ async function lookupSS(
       fetchedAt: new Date().toISOString(),
     };
   }
-  // Exact when the whole query is the style number, or when the digit token
-  // matches the style number AND the remaining words agree with the brand/
-  // title ("bella 3001" → BELLA + CANVAS 3001 = exact; bare "5000" landing
-  // on Bayside when Gildan also makes a 5000 stays "closest"-worthy only if
-  // the user typed words that don't match).
+  // Exact when the whole query is the style number, or when a style-number
+  // candidate (digit token or initials+digits combo) matches the style
+  // number AND the remaining words agree with the brand/title
+  // ("bella 3001" → BELLA + CANVAS 3001 = exact; "sport tek 350" → ST350
+  // = exact because "sport tek" matches the Sport-Tek brand). Partial
+  // digits-only hits stay "closest" so the user double-checks.
   const exact =
     chosen.styleName.toLowerCase() === style.toLowerCase() ||
-    (styleTokens.includes(normText(chosen.styleName)) &&
+    (candidates.includes(normText(chosen.styleName)) &&
       textTokensMatch(textTokens, chosen.brandName, chosen.title));
   const products = await client.getProducts(chosen.styleID);
   return {

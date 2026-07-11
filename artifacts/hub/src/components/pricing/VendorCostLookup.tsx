@@ -23,16 +23,27 @@ const inputCls =
   "w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#059669]";
 
 /**
- * Breezy base-size rule: per color, the size entry with the LOWEST regular
- * cost is the base size (S–XL) — using it avoids 2XL+ upcharges.
+ * Breezy base-size rule: the base price ALWAYS comes from the standard
+ * XS–XL range — never a plus size, even if the vendor happens to price one
+ * lower (plus sizes normally cost more and Tyler adjusts for them by hand).
+ * Among XS–XL take the cheapest priced size; only when NO standard size has
+ * a price fall back to the cheapest size overall.
  */
+const STANDARD_SIZES = new Set(["XS", "S", "M", "L", "XL"]);
 function baseSizeEntry(color: VendorColorOffer): VendorSizeOffer | null {
-  let best: VendorSizeOffer | null = null;
+  let bestStandard: VendorSizeOffer | null = null;
+  let bestAny: VendorSizeOffer | null = null;
   for (const s of color.sizes) {
     if (s.cost === null) continue;
-    if (best === null || s.cost < (best.cost as number)) best = s;
+    if (bestAny === null || s.cost < (bestAny.cost as number)) bestAny = s;
+    if (
+      STANDARD_SIZES.has(s.size) &&
+      (bestStandard === null || s.cost < (bestStandard.cost as number))
+    ) {
+      bestStandard = s;
+    }
   }
-  return best;
+  return bestStandard ?? bestAny;
 }
 
 function formatSaleEnd(raw: string): string {
@@ -152,8 +163,16 @@ export function VendorCostLookup({
         setResult(res);
         setPriceMode("regular");
         // Pre-select the first color so the thumbnail + price show right away
-        // (the user can still pick any swatch).
-        const firstPriced = res.colors.find((c) => baseSizeEntry(c) !== null);
+        // (the user can still pick any swatch). Prefer a color priced in the
+        // standard XS–XL range: SanMar sometimes splits 4XL/5XL into a
+        // separate color bucket ("AntqChryRd" vs "Antqu Chry Red"), and a
+        // plus-size-only bucket must never seed the base price.
+        const firstStandard = res.colors.find((c) => {
+          const b = baseSizeEntry(c);
+          return b !== null && STANDARD_SIZES.has(b.size);
+        });
+        const firstPriced =
+          firstStandard ?? res.colors.find((c) => baseSizeEntry(c) !== null);
         setColorName(firstPriced?.colorName ?? "");
         if (!res.found || res.colors.length === 0) {
           toast({

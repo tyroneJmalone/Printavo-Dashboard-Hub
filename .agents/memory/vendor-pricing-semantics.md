@@ -23,8 +23,16 @@ SanMar abbreviates combined sizes: `2XL/3XL` comes back as **`2/3X`**, `4XL/5XL`
 
 `piecePrice` = regular dealer cost. `salePrice` genuine only if >0, < piecePrice, and `saleExpiration` present. `customerPrice` mirrors salePrice during sales — never a baseline.
 
+# SanMar plus-size color-bucket split
+
+SanMar sometimes returns 4XL/5XL rows under a SEPARATE, abbreviated `catalogColor` ("AntqChryRd") from the S–3XL bucket ("Antqu Chry Red"), even though both share the same display `<color>` tag ("Antique Cherry Red"). Verified live on Gildan 5000.
+
+**Why it matters:** the abbreviated bucket sorts alphabetically first and is plus-size-only, so any "first color" / "cheapest size" default can surface a plus-size price as the base garment cost (Tyler's rule: base price ALWAYS from XS–XL; plus-size upcharges are adjusted manually).
+
+**How to apply:** do NOT merge these buckets server-side — inventory checks and PO submits require the exact per-bucket catalogColor string per size (merging risks wrong-color orders). Handle it at display time: prefer XS–XL-priced sizes/colors when picking a default price.
+
 # Vendor search quirks
 
 - S&S `/styles/?search=` relevance can put the WRONG brand first when brands share a style number (bare "5000" → Bayside, not Gildan). Brand words typed in the query must outweigh S&S's own ordering.
-- SanMar SOAP has no keyword search — only exact style lookup. Multi-word queries need token fallback (try digit-bearing tokens as style numbers); each SOAP call is slow (15s+) and the edge proxy kills requests around ~48s, so cap fallback attempts.
+- SanMar SOAP has no keyword search — only exact style lookup. Multi-word queries need candidate fallback: digit-bearing tokens as style numbers, then brand-initials+digits combos ("sport tek 350" → try "350", then "ST350" — many vendor codes are brand initials + number). Each SOAP call is slow (15s+) and the edge proxy kills requests around ~48s, so cap fallback attempts; wrong candidates fail fast with "Invalid style".
 - Exact-vs-closest labeling: match remaining query words against brand+title with WHOLE-WORD comparison only; substring matching lets "co" match "cotton" and suppresses the double-check warning.
