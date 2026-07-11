@@ -159,7 +159,7 @@ export function VendorCostLookup({
           toast({
             title: `Style ${res.styleQueried} not found at ${VENDOR_LABELS[res.vendor]}`,
             description:
-              "Vendors sometimes use a different style number — adjust it and search again, or type the cost manually.",
+              "Try a brand + style number combo (e.g. \"bella 3001\"), adjust the style number, or type the cost manually.",
             variant: "destructive",
           });
         }
@@ -290,7 +290,7 @@ export function VendorCostLookup({
                   onKeyDown={(e) => {
                     if (e.key === "Enter") search();
                   }}
-                  placeholder="Style # — e.g. PC54, 3001, G500"
+                  placeholder="Style # or brand + style — e.g. PC54, bella 3001"
                   className={`${inputCls} font-mono`}
                   aria-label="Vendor style number"
                   data-testid="vendor-style-input"
@@ -318,9 +318,9 @@ export function VendorCostLookup({
 
               {result !== null && !found && !lookup.isPending && (
                 <p className="text-[11px] text-amber-400">
-                  Style {result.styleQueried} not found at{" "}
-                  {VENDOR_LABELS[result.vendor]} — check the style number or
-                  enter the cost manually.
+                  "{result.styleQueried}" not found at{" "}
+                  {VENDOR_LABELS[result.vendor]} — try a brand + style combo
+                  (e.g. "bella 3001"), or enter the cost manually.
                 </p>
               )}
 

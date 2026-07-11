@@ -1,2 +1,2 @@
 - [Vendor submit runs off the snapshot](vendor-submit-snapshot.md) — any per-line field needed at SanMar/S&S submit time must persist end-to-end, not cart-only.
-- [SanMar pricing semantics](sanmar-pricing-semantics.md) — piecePrice IS the net cost (not MSRP); pieceSalePrice is a dated-sale-only promo. Combined sizes come as "2/3X".
+- [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.

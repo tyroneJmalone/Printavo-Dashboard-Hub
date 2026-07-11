@@ -3,15 +3,20 @@ import { SSClient, type SSProduct } from "@workspace/ss-activewear";
 
 /**
  * Unified live vendor catalog lookup (SanMar SOAP / S&S REST).
- * Cost semantics (verified against the live authenticated APIs):
- *  - SanMar: piecePrice = the regular account NET piece cost (THE cost);
- *    pieceSalePrice is a promotional price present ONLY during a dated sale
- *    (piece/dozen/case is a net tier ladder — MAP/retail lives in mapPrice,
- *    not piecePrice). Treat pieceSalePrice as a genuine sale only when >0,
- *    < piecePrice, and saleEndDate present; otherwise cost = piecePrice.
+ * Cost semantics (verified against the live authenticated APIs + Tyler):
+ *  - SanMar: casePrice = the regular dealer NET cost (THE cost — what the
+ *    shop actually pays; PC54 Jet Black case $3.00 vs piece $4.00, and Tyler
+ *    confirmed $3 is right). piecePrice is the higher broken-case tier —
+ *    never the baseline. caseSalePrice is promotional, present ONLY during
+ *    a dated sale; genuine only when >0, < regular, and saleEndDate present.
+ *    (The original Breezy app likewise used the Pricing service's casePrice.)
  *  - S&S: piecePrice = regular dealer cost; salePrice genuine only if
  *    >0, < piecePrice, and saleExpiration present (customerPrice mirrors
  *    salePrice during sales — never a baseline).
+ * Search accepts a bare style number ("PC54") or brand/keywords + number
+ * ("port company pc54", "bella 3001") — tokens containing a digit are tried
+ * as style numbers; the remaining words disambiguate brand (Gildan 5000 vs
+ * Bayside 5000) and decide exact-vs-closest.
  */
 
 export type VendorId = "sanmar" | "ss";
@@ -122,27 +127,26 @@ function sanMarToColors(entries: SanMarProductEntry[]): VendorColorOffer[] {
     const sizes = bucket.sizes;
     bucket.swatchImage ??= e.colorSwatchImage;
     bucket.productImage ??= e.colorProductImage;
-    // SanMar's authenticated productPriceInfo returns the account's NET pricing:
-    // piecePrice is the regular net piece cost, pieceSalePrice is a promotional
-    // price present only during a dated sale (piece/dozen/case is a tier ladder,
-    // not MSRP — MAP/retail lives in mapPrice). So cost = piecePrice, and the
-    // sale price only counts when it's genuinely lower inside a sale window.
-    // (Mirrors the S&S branch below.) Using only pieceSalePrice previously left
-    // every not-on-sale item with a null cost.
+    // casePrice is the shop's regular dealer net (Tyler-confirmed: PC54 = $3.00);
+    // piecePrice is the higher broken-case tier ($4.00) — only a fallback when
+    // casePrice is missing. Sale prices follow the same case-first preference
+    // and only count when genuinely lower inside a dated sale window.
+    const regular = e.casePrice ?? e.piecePrice;
+    const salePrice = e.casePrice !== null ? e.caseSalePrice : e.pieceSalePrice;
     const genuineSale =
-      e.pieceSalePrice !== null &&
-      e.pieceSalePrice > 0 &&
-      e.piecePrice !== null &&
-      e.pieceSalePrice < e.piecePrice &&
+      salePrice !== null &&
+      salePrice > 0 &&
+      regular !== null &&
+      salePrice < regular &&
       e.saleEndDate !== null;
     sizes.push({
       size: e.size.toUpperCase(),
       sku: null,
       inventoryKey: e.inventoryKey,
       sizeIndex: e.sizeIndex,
-      cost: e.piecePrice,
+      cost: regular,
       msrp: null,
-      salePrice: genuineSale ? e.pieceSalePrice : null,
+      salePrice: genuineSale ? salePrice : null,
       saleEndsAt: genuineSale ? e.saleEndDate : null,
       inventoryTotal: null,
       warehouses: null,
@@ -201,15 +205,68 @@ function ssToColors(products: SSProduct[]): VendorColorOffer[] {
     .sort((a, b) => a.colorName.localeCompare(b.colorName));
 }
 
-async function lookupSanMar(style: string): Promise<VendorLookupResult> {
-  const entries = await getSanMarClient().getProductInfo(style);
+/** Lowercase, alphanumeric-only tokens — brand/title strings across
+ *  Printavo and vendors disagree on punctuation ("Independent Trading Co."). */
+function normText(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/**
+ * Split a search query into style-number candidates (tokens containing a
+ * digit, e.g. "pc54", "3001", "5000") and plain words (brand/description,
+ * e.g. "port", "company", "bella"). Lets "port company pc54" find PC54.
+ */
+function parseQuery(query: string): { styleTokens: string[]; textTokens: string[] } {
+  const tokens = normText(query).split(" ").filter(Boolean);
+  return {
+    styleTokens: tokens.filter((t) => /\d/.test(t)),
+    textTokens: tokens.filter((t) => !/\d/.test(t)),
+  };
+}
+
+/** Do all plain query words appear in the matched product's brand+title?
+ *  Whole-word matches only — a loose substring test would let "co" match
+ *  "cotton" and wrongly suppress the closest-match double-check cue. */
+function textTokensMatch(textTokens: string[], brand: string | null, title: string | null): boolean {
+  if (textTokens.length === 0) return true;
+  const hay = ` ${normText(`${brand ?? ""} ${title ?? ""}`)} `;
+  return textTokens.every((t) => hay.includes(` ${t} `));
+}
+
+const MAX_STYLE_TOKEN_TRIES = 3;
+
+async function lookupSanMar(query: string): Promise<VendorLookupResult> {
+  const client = getSanMarClient();
+  const { styleTokens, textTokens } = parseQuery(query);
+  // Direct lookup first — the common case is a bare style number. If SanMar
+  // doesn't recognize the whole query, retry each digit-bearing token
+  // ("port company pc54" → "PC54"). SOAP is slow, so cap the retries.
+  let entries = await client.getProductInfo(query);
+  let viaFullQuery = entries.length > 0;
+  if (entries.length === 0) {
+    for (const t of styleTokens.slice(0, MAX_STYLE_TOKEN_TRIES)) {
+      if (normText(t) === normText(query)) continue; // same as the direct try
+      entries = await client.getProductInfo(t.toUpperCase());
+      if (entries.length > 0) break;
+    }
+  }
   const first = entries[0];
   const colors = sanMarToColors(entries);
+  // Token-based match counts as exact only when the remaining words agree
+  // with what SanMar returned ("port company pc54" → Port & Company PC54);
+  // otherwise flag it so the user double-checks ("gildan pc54" → closest).
+  const exact =
+    entries.length > 0 &&
+    (viaFullQuery ||
+      textTokensMatch(textTokens, first?.brandName ?? null, first?.productTitle ?? null));
   return {
     found: entries.length > 0,
-    matchType: entries.length > 0 ? "exact" : "none",
+    matchType: entries.length === 0 ? "none" : exact ? "exact" : "closest",
     vendor: "sanmar",
-    styleQueried: style,
+    styleQueried: query,
     styleId: null,
     styleName: first?.style ?? null,
     brand: first?.brandName ?? null,
@@ -220,15 +277,6 @@ async function lookupSanMar(style: string): Promise<VendorLookupResult> {
     cached: false,
     fetchedAt: new Date().toISOString(),
   };
-}
-
-/** Lowercase, alphanumeric-only tokens — brand/title strings across
- *  Printavo and vendors disagree on punctuation ("Independent Trading Co."). */
-function normText(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
 }
 
 /**
@@ -242,25 +290,44 @@ function scoreSSCandidate(
   candidate: { styleName: string; brandName: string; title: string | null },
   style: string,
   hints: VendorLookupHints,
+  styleTokens: string[],
+  textTokens: string[],
 ): number {
   let score = 0;
-  if (candidate.styleName.toLowerCase() === style.toLowerCase()) score += 100;
+  if (candidate.styleName.toLowerCase() === style.toLowerCase()) {
+    score += 100;
+  } else if (styleTokens.includes(normText(candidate.styleName))) {
+    // "bella 3001" — the digit token IS the style number.
+    score += 90;
+  }
   const brand = normText(candidate.brandName);
   const brandHint = normText(hints.brandHint ?? "");
   const descHint = normText(hints.descriptionHint ?? "");
   if (brand) {
+    // Brand words typed directly in the query dominate ("gildan 5000" must
+    // beat Bayside 5000 even though S&S's own relevance puts Bayside first).
+    const brandWords = brand.split(" ").filter(Boolean);
+    const typedOverlap = brandWords.filter((w) => textTokens.includes(w)).length;
+    if (typedOverlap > 0) score += 50 + typedOverlap;
     if (brandHint && (brandHint.includes(brand) || brand.includes(brandHint))) {
       score += 50;
     } else if (descHint && descHint.includes(brand)) {
       score += 30;
     }
   }
-  if (descHint && candidate.title) {
-    const descTokens = new Set(descHint.split(" ").filter((t) => t.length >= 3));
-    const overlap = normText(candidate.title)
-      .split(" ")
-      .filter((t) => t.length >= 3 && descTokens.has(t)).length;
-    score += Math.min(overlap, 10);
+  if (candidate.title) {
+    const titleWords = normText(candidate.title).split(" ");
+    if (textTokens.length > 0) {
+      const typed = new Set(textTokens.filter((t) => t.length >= 3));
+      score += Math.min(titleWords.filter((w) => typed.has(w)).length, 10);
+    }
+    if (descHint) {
+      const descTokens = new Set(descHint.split(" ").filter((t) => t.length >= 3));
+      score += Math.min(
+        titleWords.filter((w) => w.length >= 3 && descTokens.has(w)).length,
+        10,
+      );
+    }
   }
   return score;
 }
@@ -270,11 +337,22 @@ async function lookupSS(
   hints: VendorLookupHints,
 ): Promise<VendorLookupResult> {
   const client = getSSClient();
-  const styles = await client.searchStyles(style);
+  const { styleTokens, textTokens } = parseQuery(style);
+  // S&S's search handles free text reasonably well, but if the combined
+  // query returns nothing ("port company pc54"-style input), retry with
+  // just the digit-bearing tokens — those are the style-number candidates.
+  let styles = await client.searchStyles(style);
+  if (styles.length === 0) {
+    for (const t of styleTokens.slice(0, MAX_STYLE_TOKEN_TRIES)) {
+      if (normText(t) === normText(style)) continue;
+      styles = await client.searchStyles(t);
+      if (styles.length > 0) break;
+    }
+  }
   let chosen: (typeof styles)[number] | undefined;
   let best = -1;
   for (const s of styles) {
-    const score = scoreSSCandidate(s, style, hints);
+    const score = scoreSSCandidate(s, style, hints, styleTokens, textTokens);
     // Strict > keeps the first result on ties (S&S's own relevance order).
     if (score > best) {
       best = score;
@@ -297,7 +375,15 @@ async function lookupSS(
       fetchedAt: new Date().toISOString(),
     };
   }
-  const exact = chosen.styleName.toLowerCase() === style.toLowerCase();
+  // Exact when the whole query is the style number, or when the digit token
+  // matches the style number AND the remaining words agree with the brand/
+  // title ("bella 3001" → BELLA + CANVAS 3001 = exact; bare "5000" landing
+  // on Bayside when Gildan also makes a 5000 stays "closest"-worthy only if
+  // the user typed words that don't match).
+  const exact =
+    chosen.styleName.toLowerCase() === style.toLowerCase() ||
+    (styleTokens.includes(normText(chosen.styleName)) &&
+      textTokensMatch(textTokens, chosen.brandName, chosen.title));
   const products = await client.getProducts(chosen.styleID);
   return {
     found: products.length > 0,
