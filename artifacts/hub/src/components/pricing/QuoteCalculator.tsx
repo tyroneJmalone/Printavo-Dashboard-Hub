@@ -164,9 +164,9 @@ export function QuoteCalculator({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[400px,1fr] gap-6 items-start">
-      {/* Inputs */}
-      <div className="space-y-4">
+    <div className="space-y-4">
+      {/* Inputs: narrow cost column on the left, locations to its right */}
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 items-start">
         <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-4">
           <VendorCostLookup
             onApply={(cost) => setGarmentCostStr(cost.toFixed(2))}
@@ -197,23 +197,43 @@ export function QuoteCalculator({
           </div>
 
           <div>
-            <label className={labelCls} htmlFor="markup">
-              Markup multiplier
-            </label>
-            <div className="flex gap-2">
-              <select
-                id="markup"
-                value={markupSel}
-                onChange={(e) => setMarkupSel(e.target.value)}
-                className={inputCls}
+            <span className={labelCls}>Markup multiplier</span>
+            <div
+              className="grid grid-cols-7 gap-1"
+              role="group"
+              aria-label="Markup multiplier"
+            >
+              {MARKUP_PRESETS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMarkupSel(String(m))}
+                  data-testid={`markup-${m.toFixed(2)}`}
+                  aria-pressed={markupSel === String(m)}
+                  className={`text-[10px] font-mono px-0.5 py-1.5 rounded-md border transition-colors ${
+                    markupSel === String(m)
+                      ? "bg-[#059669]/15 border-[#059669]/50 text-[#10b981] font-bold"
+                      : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                  }`}
+                >
+                  {m.toFixed(2)}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-1.5">
+              <button
+                type="button"
+                onClick={() => setMarkupSel("custom")}
+                data-testid="markup-custom"
+                aria-pressed={isCustomMarkup}
+                className={`text-[10px] font-semibold px-2.5 py-1.5 rounded-md border transition-colors shrink-0 ${
+                  isCustomMarkup
+                    ? "bg-[#059669]/15 border-[#059669]/50 text-[#10b981]"
+                    : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                }`}
               >
-                {MARKUP_PRESETS.map((m) => (
-                  <option key={m} value={String(m)}>
-                    {m.toFixed(2)}×
-                  </option>
-                ))}
-                <option value="custom">Custom…</option>
-              </select>
+                Custom
+              </button>
               {isCustomMarkup && (
                 <input
                   type="text"
@@ -223,6 +243,8 @@ export function QuoteCalculator({
                   placeholder="e.g. 2.25"
                   className={`${inputCls} font-mono`}
                   aria-label="Custom markup"
+                  // eslint-disable-next-line jsx-a11y/no-autofocus
+                  autoFocus
                 />
               )}
             </div>
@@ -257,6 +279,7 @@ export function QuoteCalculator({
             </button>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {rows.map((r, i) => {
             const state = rowStates[i];
             const mx =
@@ -341,6 +364,7 @@ export function QuoteCalculator({
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
