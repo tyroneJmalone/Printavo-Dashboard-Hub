@@ -123,37 +123,12 @@ export function QuoteCalculator({
     );
 
   const copyQuote = async () => {
-    const locLines = rows
-      .map((r, i) => {
-        const mx = byId.get(r.matrixId);
-        const col = mx?.data.xValues[r.columnIndex];
-        return mx && col
-          ? `Location ${i + 1}: ${mx.data.name} — ${col.label}`
-          : null;
-      })
-      .filter(Boolean)
+    const lines = quote
+      .map((q) => `${q.qty}+\t$${money(q.unitPrice)}`)
       .join("\n");
-    const header = `Garment $${money(garmentCost)} × ${markup} markup`;
-    const table = [
-      "Qty\tGarment Cost\tGarment Markup $\tBase Cost $\tDecoration/PC\tUnit Price\tTotal Cost\tTotal Blank Markup\tTotal Deco\tTotal Order Value",
-      ...quote.map((q) =>
-        [
-          q.qty,
-          `$${money(q.garmentCost)}`,
-          `$${money(q.garmentMarkup)}`,
-          `$${money(q.baseCost)}`,
-          `$${money(q.decorationCost)}`,
-          `$${money(q.unitPrice)}`,
-          `$${money(q.totalGarment)}`,
-          `$${money(q.totalBlankMarkup)}`,
-          `$${money(q.totalDecoration)}`,
-          `$${money(q.total)}`,
-        ].join("\t"),
-      ),
-    ].join("\n");
     try {
-      await navigator.clipboard.writeText(`${header}\n${locLines}\n\n${table}`);
-      toast({ title: "Quote copied to clipboard" });
+      await navigator.clipboard.writeText(lines);
+      toast({ title: "Price breaks copied to clipboard" });
     } catch {
       toast({ title: "Couldn't copy to clipboard", variant: "destructive" });
     }
