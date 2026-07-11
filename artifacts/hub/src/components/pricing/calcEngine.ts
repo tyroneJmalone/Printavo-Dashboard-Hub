@@ -15,10 +15,22 @@ export interface QuoteLocation {
 
 export interface QuoteRow {
   qty: number;
+  /** Raw garment cost per piece (same every row). */
+  garmentCost: number;
+  /** Markup dollars per piece: garmentCost × (markup − 1). */
+  garmentMarkup: number;
+  /** Marked-up garment per piece: garmentCost × markup. */
+  baseCost: number;
   /** Per-piece decoration cost summed across all locations at this qty. */
   decorationCost: number;
-  /** (garmentCost × markup) + decorationCost — unrounded; round at display only. */
+  /** baseCost + decorationCost — unrounded; round at display only. */
   unitPrice: number;
+  /** garmentCost × qty — what the blanks cost you. */
+  totalGarment: number;
+  /** garmentMarkup × qty — profit on the blanks. */
+  totalBlankMarkup: number;
+  /** decorationCost × qty. */
+  totalDecoration: number;
   /** unitPrice × qty — unrounded; round at display only. */
   total: number;
 }
@@ -43,7 +55,8 @@ export function computeQuote(
   const tiers = [...new Set(firstCol.breaks.map((b) => b.qty))].sort(
     (a, b) => a - b,
   );
-  const markedUpGarment = garmentCost * markup;
+  const baseCost = garmentCost * markup;
+  const garmentMarkup = baseCost - garmentCost;
 
   return tiers.map((qty) => {
     const decorationCost = valid.reduce(
@@ -51,7 +64,18 @@ export function computeQuote(
         sum + resolveBreakCost(l.data.xValues[l.columnIndex].breaks, qty),
       0,
     );
-    const unitPrice = markedUpGarment + decorationCost;
-    return { qty, decorationCost, unitPrice, total: unitPrice * qty };
+    const unitPrice = baseCost + decorationCost;
+    return {
+      qty,
+      garmentCost,
+      garmentMarkup,
+      baseCost,
+      decorationCost,
+      unitPrice,
+      totalGarment: garmentCost * qty,
+      totalBlankMarkup: garmentMarkup * qty,
+      totalDecoration: decorationCost * qty,
+      total: unitPrice * qty,
+    };
   });
 }

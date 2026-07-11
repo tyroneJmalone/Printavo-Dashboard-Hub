@@ -135,10 +135,20 @@ export function QuoteCalculator({
       .join("\n");
     const header = `Garment $${money(garmentCost)} × ${markup} markup`;
     const table = [
-      "Qty\tDecoration / pc\tUnit Price\tTotal",
-      ...quote.map(
-        (q) =>
-          `${q.qty}\t$${money(q.decorationCost)}\t$${money(q.unitPrice)}\t$${money(q.total)}`,
+      "Qty\tGarment Cost\tGarment Markup $\tBase Cost $\tDecoration/PC\tUnit Price\tTotal Cost\tTotal Blank Markup\tTotal Deco\tTotal Order Value",
+      ...quote.map((q) =>
+        [
+          q.qty,
+          `$${money(q.garmentCost)}`,
+          `$${money(q.garmentMarkup)}`,
+          `$${money(q.baseCost)}`,
+          `$${money(q.decorationCost)}`,
+          `$${money(q.unitPrice)}`,
+          `$${money(q.totalGarment)}`,
+          `$${money(q.totalBlankMarkup)}`,
+          `$${money(q.totalDecoration)}`,
+          `$${money(q.total)}`,
+        ].join("\t"),
       ),
     ].join("\n");
     try {
@@ -386,42 +396,74 @@ export function QuoteCalculator({
             </p>
           </div>
         ) : (
-          <table className="w-full text-xs border-collapse" data-testid="quote-results">
-            <thead>
-              <tr className="bg-slate-900/60">
-                <th className="px-4 py-2.5 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                  Quantity
-                </th>
-                <th className="px-4 py-2.5 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                  Decoration / pc
-                </th>
-                <th className="px-4 py-2.5 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                  Unit price
-                </th>
-                <th className="px-4 py-2.5 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500">
-                  Total order value
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {quote.map((q) => (
-                <tr key={q.qty} className="border-t border-slate-800">
-                  <td className="px-4 py-2.5 font-mono text-slate-300">
-                    {q.qty}+
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-slate-400">
-                    ${money(q.decorationCost)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-[#10b981] font-semibold">
-                    ${money(q.unitPrice)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-slate-200">
-                    ${money(q.total)}
-                  </td>
+          <div className="overflow-x-auto custom-scrollbar">
+            <table
+              className="w-full text-xs border-collapse"
+              data-testid="quote-results"
+            >
+              <thead>
+                <tr className="bg-slate-900/60">
+                  {[
+                    ["Qty", "left"],
+                    ["Garment Cost", "right"],
+                    ["Garment Markup $", "right"],
+                    ["Base Cost $", "right"],
+                    ["Decoration/PC", "right"],
+                    ["Unit Price", "right"],
+                    ["Total Cost", "right"],
+                    ["Total Blank Markup", "right"],
+                    ["Total Deco", "right"],
+                    ["Total Order Value", "right"],
+                  ].map(([label, align]) => (
+                    <th
+                      key={label}
+                      className={`px-3 py-2.5 ${
+                        align === "left" ? "text-left" : "text-right"
+                      } text-[9px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap`}
+                    >
+                      {label}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {quote.map((q) => (
+                  <tr key={q.qty} className="border-t border-slate-800">
+                    <td className="px-3 py-2.5 font-mono text-slate-300 whitespace-nowrap">
+                      {q.qty}+
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">
+                      ${money(q.garmentCost)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">
+                      ${money(q.garmentMarkup)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">
+                      ${money(q.baseCost)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">
+                      ${money(q.decorationCost)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-[#10b981] font-semibold whitespace-nowrap">
+                      ${money(q.unitPrice)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">
+                      ${money(q.totalGarment)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">
+                      ${money(q.totalBlankMarkup)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">
+                      ${money(q.totalDecoration)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-200 font-semibold whitespace-nowrap">
+                      ${money(q.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
