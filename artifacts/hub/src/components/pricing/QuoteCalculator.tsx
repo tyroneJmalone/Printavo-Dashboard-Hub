@@ -20,6 +20,7 @@ import {
   MAX_LOCATIONS,
   type QuoteLocation,
 } from "./calcEngine";
+import { VendorCostLookup } from "./VendorCostLookup";
 
 const money = (n: number) =>
   n.toLocaleString("en-US", {
@@ -167,7 +168,10 @@ export function QuoteCalculator({
       {/* Inputs */}
       <div className="space-y-4">
         <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-4">
-          <div>
+          <VendorCostLookup
+            onApply={(cost) => setGarmentCostStr(cost.toFixed(2))}
+          />
+          <div className="border-t border-slate-800 -mx-4 px-4 pt-4">
             <label className={labelCls} htmlFor="garment-cost">
               Garment cost (per piece)
             </label>
