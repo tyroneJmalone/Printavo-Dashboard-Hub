@@ -36,6 +36,10 @@ export interface VendorSizeOffer {
 
 export interface VendorColorOffer {
   colorName: string;
+  /** Small color swatch image (absolute URL) — null when the vendor has none. */
+  swatchImage: string | null;
+  /** Product photo in this color (absolute URL) — null when the vendor has none. */
+  productImage: string | null;
   sizes: VendorSizeOffer[];
 }
 
@@ -49,6 +53,8 @@ export interface VendorLookupResult {
   styleName: string | null;
   brand: string | null;
   title: string | null;
+  /** Style-level hero image (absolute URL) — fallback before a color is chosen. */
+  styleImage: string | null;
   colors: VendorColorOffer[];
   cached: boolean;
   fetchedAt: string;
@@ -94,14 +100,28 @@ function getSSClient(): SSClient {
   return new SSClient({ accountNumber, apiKey });
 }
 
+/** S&S image fields are RELATIVE paths (e.g. "Images/Color/..._fm.jpg"). */
+const SS_IMAGE_BASE = "https://www.ssactivewear.com/";
+function ssImageUrl(path: string | null): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return SS_IMAGE_BASE + path.replace(/^\/+/, "");
+}
+
 function sanMarToColors(entries: SanMarProductEntry[]): VendorColorOffer[] {
-  const byColor = new Map<string, VendorSizeOffer[]>();
+  const byColor = new Map<
+    string,
+    { sizes: VendorSizeOffer[]; swatchImage: string | null; productImage: string | null }
+  >();
   for (const e of entries) {
-    let sizes = byColor.get(e.catalogColor);
-    if (!sizes) {
-      sizes = [];
-      byColor.set(e.catalogColor, sizes);
+    let bucket = byColor.get(e.catalogColor);
+    if (!bucket) {
+      bucket = { sizes: [], swatchImage: null, productImage: null };
+      byColor.set(e.catalogColor, bucket);
     }
+    const sizes = bucket.sizes;
+    bucket.swatchImage ??= e.colorSwatchImage;
+    bucket.productImage ??= e.colorProductImage;
     // SanMar's authenticated productPriceInfo returns the account's NET pricing:
     // piecePrice is the regular net piece cost, pieceSalePrice is a promotional
     // price present only during a dated sale (piece/dozen/case is a tier ladder,
@@ -129,21 +149,29 @@ function sanMarToColors(entries: SanMarProductEntry[]): VendorColorOffer[] {
     });
   }
   return Array.from(byColor.entries())
-    .map(([colorName, sizes]) => ({
+    .map(([colorName, bucket]) => ({
       colorName,
-      sizes: sizes.sort((a, b) => sizeRank(a.size) - sizeRank(b.size)),
+      swatchImage: bucket.swatchImage,
+      productImage: bucket.productImage,
+      sizes: bucket.sizes.sort((a, b) => sizeRank(a.size) - sizeRank(b.size)),
     }))
     .sort((a, b) => a.colorName.localeCompare(b.colorName));
 }
 
 function ssToColors(products: SSProduct[]): VendorColorOffer[] {
-  const byColor = new Map<string, VendorSizeOffer[]>();
+  const byColor = new Map<
+    string,
+    { sizes: VendorSizeOffer[]; swatchImage: string | null; productImage: string | null }
+  >();
   for (const p of products) {
-    let sizes = byColor.get(p.colorName);
-    if (!sizes) {
-      sizes = [];
-      byColor.set(p.colorName, sizes);
+    let bucket = byColor.get(p.colorName);
+    if (!bucket) {
+      bucket = { sizes: [], swatchImage: null, productImage: null };
+      byColor.set(p.colorName, bucket);
     }
+    const sizes = bucket.sizes;
+    bucket.swatchImage ??= ssImageUrl(p.colorSwatchImage);
+    bucket.productImage ??= ssImageUrl(p.colorFrontImage);
     const genuineSale =
       p.salePrice !== null &&
       p.salePrice > 0 &&
@@ -164,9 +192,11 @@ function ssToColors(products: SSProduct[]): VendorColorOffer[] {
     });
   }
   return Array.from(byColor.entries())
-    .map(([colorName, sizes]) => ({
+    .map(([colorName, bucket]) => ({
       colorName,
-      sizes: sizes.sort((a, b) => sizeRank(a.size) - sizeRank(b.size)),
+      swatchImage: bucket.swatchImage,
+      productImage: bucket.productImage,
+      sizes: bucket.sizes.sort((a, b) => sizeRank(a.size) - sizeRank(b.size)),
     }))
     .sort((a, b) => a.colorName.localeCompare(b.colorName));
 }
@@ -174,6 +204,7 @@ function ssToColors(products: SSProduct[]): VendorColorOffer[] {
 async function lookupSanMar(style: string): Promise<VendorLookupResult> {
   const entries = await getSanMarClient().getProductInfo(style);
   const first = entries[0];
+  const colors = sanMarToColors(entries);
   return {
     found: entries.length > 0,
     matchType: entries.length > 0 ? "exact" : "none",
@@ -183,7 +214,9 @@ async function lookupSanMar(style: string): Promise<VendorLookupResult> {
     styleName: first?.style ?? null,
     brand: first?.brandName ?? null,
     title: first?.productTitle ?? null,
-    colors: sanMarToColors(entries),
+    // SanMar has no style-level hero image in this service — first color's photo.
+    styleImage: colors.find((c) => c.productImage)?.productImage ?? null,
+    colors,
     cached: false,
     fetchedAt: new Date().toISOString(),
   };
@@ -258,6 +291,7 @@ async function lookupSS(
       styleName: null,
       brand: null,
       title: null,
+      styleImage: null,
       colors: [],
       cached: false,
       fetchedAt: new Date().toISOString(),
@@ -274,6 +308,7 @@ async function lookupSS(
     styleName: chosen.styleName,
     brand: chosen.brandName,
     title: chosen.title,
+    styleImage: ssImageUrl(chosen.styleImage),
     colors: ssToColors(products),
     cached: false,
     fetchedAt: new Date().toISOString(),

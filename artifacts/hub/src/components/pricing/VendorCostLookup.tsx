@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Loader2, Search, Tag } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Search, Tag, X } from "lucide-react";
 import {
   useVendorLookup,
   type VendorLookupResult,
@@ -21,8 +21,6 @@ const money = (n: number) =>
 
 const inputCls =
   "w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#059669]";
-const labelCls =
-  "block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5";
 
 /**
  * Breezy base-size rule: per color, the size entry with the LOWEST regular
@@ -48,13 +46,84 @@ function formatSaleEnd(raw: string): string {
       });
 }
 
+/** Color swatch — vendor image when available, else initials tile. */
+function Swatch({
+  color,
+  selected,
+  onPick,
+}: {
+  color: VendorColorOffer;
+  selected: boolean;
+  onPick: () => void;
+}) {
+  const [broken, setBroken] = useState(false);
+  const initials = color.colorName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .toUpperCase();
+  return (
+    <button
+      onClick={onPick}
+      title={color.colorName}
+      aria-label={`Color ${color.colorName}`}
+      aria-pressed={selected}
+      data-testid={`swatch-${color.colorName}`}
+      className={`w-8 h-8 rounded-md overflow-hidden border transition-all flex items-center justify-center shrink-0 ${
+        selected
+          ? "border-[#10b981] ring-2 ring-[#059669]/60"
+          : "border-slate-700 hover:border-slate-500"
+      }`}
+    >
+      {color.swatchImage && !broken ? (
+        <img
+          src={color.swatchImage}
+          alt={color.colorName}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <span className="text-[9px] font-bold text-slate-400 bg-slate-800 w-full h-full flex items-center justify-center">
+          {initials}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Remounted via key={src} by the caller, so `broken` resets per image. */
+function ProductThumb({ src, alt }: { src: string | null; alt: string }) {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) {
+    return (
+      <div className="w-24 h-28 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+        <span className="text-[10px] text-slate-500">No image</span>
+      </div>
+    );
+  }
+  return (
+    <div className="w-24 h-28 rounded-lg bg-white border border-slate-700 overflow-hidden shrink-0">
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-contain"
+        onError={() => setBroken(true)}
+        data-testid="vendor-product-thumb"
+      />
+    </div>
+  );
+}
+
 export function VendorCostLookup({
   onApply,
 }: {
-  /** Called with the chosen per-piece garment cost whenever a price is picked. */
+  /** Called with the chosen per-piece garment cost when the user applies a price. */
   onApply: (cost: number) => void;
 }) {
   const { toast } = useToast();
+  const [open, setOpen] = useState(false);
   const [vendor, setVendor] = useState<"sanmar" | "ss">("sanmar");
   const [style, setStyle] = useState("");
   const [result, setResult] = useState<VendorLookupResult | null>(null);
@@ -64,14 +133,28 @@ export function VendorCostLookup({
   // vendors (SanMar SOAP can take 15s+) — a stale result would show the old
   // vendor's prices under the new vendor's label.
   const vendorRef = useRef(vendor);
+  const styleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    styleInputRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   const lookup = useVendorLookup({
     mutation: {
       onSuccess: (res) => {
         if (res.vendor !== vendorRef.current) return;
         setResult(res);
-        setColorName("");
         setPriceMode("regular");
+        // Pre-select the first color so the thumbnail + price show right away
+        // (the user can still pick any swatch).
+        const firstPriced = res.colors.find((c) => baseSizeEntry(c) !== null);
+        setColorName(firstPriced?.colorName ?? "");
         if (!res.found || res.colors.length === 0) {
           toast({
             title: `Style ${res.styleQueried} not found at ${VENDOR_LABELS[res.vendor]}`,
@@ -97,6 +180,15 @@ export function VendorCostLookup({
     lookup.mutate({ data: { vendor, style: style.trim() } });
   };
 
+  const switchVendor = (next: "sanmar" | "ss") => {
+    if (next === vendor) return;
+    vendorRef.current = next;
+    setVendor(next);
+    setResult(null);
+    setColorName("");
+    setPriceMode("regular");
+  };
+
   const found = result !== null && result.found && result.colors.length > 0;
   const selectedColor = found
     ? result.colors.find((c) => c.colorName === colorName)
@@ -104,172 +196,286 @@ export function VendorCostLookup({
   const base = selectedColor ? baseSizeEntry(selectedColor) : null;
   const hasSale = base !== null && base.salePrice !== null;
 
-  const priceFor = (mode: "regular" | "sale"): number | null => {
-    if (!base) return null;
-    if (mode === "sale" && base.salePrice !== null) return base.salePrice;
-    return base.cost;
-  };
+  const chosenPrice: number | null =
+    base === null
+      ? null
+      : priceMode === "sale" && base.salePrice !== null
+        ? base.salePrice
+        : base.cost;
 
   const pickColor = (name: string) => {
     setColorName(name);
     setPriceMode("regular");
-    if (!found) return;
-    const color = result.colors.find((c) => c.colorName === name);
-    const entry = color ? baseSizeEntry(color) : null;
-    if (name && entry === null) {
-      toast({
-        title: "No vendor price for this color",
-        description: "Type the garment cost manually.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (entry?.cost !== null && entry !== null) onApply(entry.cost as number);
   };
 
-  const pickMode = (mode: "regular" | "sale") => {
-    setPriceMode(mode);
-    const p = priceFor(mode);
-    if (p !== null) onApply(p);
+  const apply = () => {
+    if (chosenPrice === null) return;
+    onApply(chosenPrice);
+    setOpen(false);
+    toast({
+      title: `Garment cost set to $${money(chosenPrice)}`,
+      description: selectedColor
+        ? `${[result?.brand, result?.styleName].filter(Boolean).join(" ")} · ${selectedColor.colorName}${base ? ` · base size ${base.size}` : ""}${priceMode === "sale" ? " · sale price" : ""}`
+        : undefined,
+    });
   };
+
+  const thumbSrc = selectedColor?.productImage ?? result?.styleImage ?? null;
 
   return (
-    <div className="space-y-2.5" data-testid="vendor-cost-lookup">
-      <span className={`${labelCls} mb-0`}>Vendor price lookup</span>
-      <div className="flex gap-2">
-        <select
-          value={vendor}
-          onChange={(e) => {
-            const next = e.target.value as "sanmar" | "ss";
-            vendorRef.current = next;
-            setVendor(next);
-            setResult(null);
-            setColorName("");
-          }}
-          className={`${inputCls} w-32 shrink-0`}
-          aria-label="Vendor"
-        >
-          <option value="sanmar">SanMar</option>
-          <option value="ss">S&amp;S</option>
-        </select>
-        <input
-          type="text"
-          value={style}
-          onChange={(e) => setStyle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") search();
-          }}
-          placeholder={`Style # at ${VENDOR_LABELS[vendor]} — e.g. PC54`}
-          className={`${inputCls} font-mono`}
-          aria-label="Vendor style number"
-        />
-        <button
-          onClick={search}
-          disabled={lookup.isPending || style.trim().length === 0}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-40 shrink-0"
-          aria-label="Look up style"
-        >
-          {lookup.isPending ? (
-            <Loader2 size={13} className="animate-spin" />
-          ) : (
-            <Search size={13} />
-          )}
-        </button>
-      </div>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center justify-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+        data-testid="vendor-cost-lookup"
+      >
+        <Search size={13} />
+        Look up vendor pricing
+      </button>
 
-      {result !== null && !found && (
-        <p className="text-[11px] text-amber-400">
-          Style {result.styleQueried} not found at{" "}
-          {VENDOR_LABELS[result.vendor]} — check the style number or enter the
-          cost manually.
-        </p>
-      )}
-
-      {found && (
-        <>
-          <p className="text-[11px] text-slate-400">
-            Matched:{" "}
-            <span className="text-slate-200 font-medium">
-              {[result.brand, result.styleName].filter(Boolean).join(" ")}
-            </span>
-            {result.title ? (
-              <span className="text-slate-500"> — {result.title}</span>
-            ) : null}
-          </p>
-          {result.matchType === "closest" && (
-            <p className="text-[11px] text-amber-400">
-              Closest match — the vendor didn't have an exact style-number
-              match. Double-check this is the right product.
-            </p>
-          )}
-          <select
-            value={colorName}
-            onChange={(e) => pickColor(e.target.value)}
-            className={inputCls}
-            aria-label="Vendor color"
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setOpen(false);
+          }}
+        >
+          <div
+            className="bg-[#0f172a] border border-slate-800 rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl"
+            data-testid="vendor-lookup-dialog"
           >
-            <option value="">Select a color…</option>
-            {result.colors.map((c) => (
-              <option key={c.colorName} value={c.colorName}>
-                {c.colorName}
-              </option>
-            ))}
-          </select>
+            <header className="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
+              <h2 className="text-base font-bold text-white">
+                Vendor price lookup
+              </h2>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </header>
 
-          {selectedColor && base !== null && (
-            <div className="space-y-1.5">
-              {hasSale ? (
-                <div className="flex gap-2" role="group" aria-label="Price to use">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+              {/* Vendor toggle */}
+              <div
+                className="grid grid-cols-2 gap-2"
+                role="group"
+                aria-label="Vendor"
+              >
+                {(["sanmar", "ss"] as const).map((v) => (
                   <button
-                    onClick={() => pickMode("regular")}
-                    className={`flex-1 text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
-                      priceMode === "regular"
+                    key={v}
+                    onClick={() => switchVendor(v)}
+                    data-testid={`vendor-toggle-${v}`}
+                    className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
+                      vendor === v
                         ? "bg-[#059669]/10 border-[#059669]/40 text-[#10b981]"
                         : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
                     }`}
                   >
-                    Regular ${money(base.cost as number)}
+                    {VENDOR_LABELS[v]}
                   </button>
-                  <button
-                    onClick={() => pickMode("sale")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
-                      priceMode === "sale"
-                        ? "bg-[#059669]/10 border-[#059669]/40 text-[#10b981]"
-                        : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
-                    }`}
-                  >
-                    <Tag size={12} /> Sale ${money(base.salePrice as number)}
-                  </button>
-                </div>
-              ) : (
-                <p className="text-[11px] text-slate-400">
-                  Applied{" "}
-                  <span className="text-slate-200 font-mono">
-                    ${money(base.cost as number)}
-                  </span>{" "}
-                  <span className="text-slate-500">
-                    (base size {base.size})
-                  </span>
+                ))}
+              </div>
+
+              {/* Style search */}
+              <div className="flex gap-2">
+                <input
+                  ref={styleInputRef}
+                  type="text"
+                  value={style}
+                  onChange={(e) => setStyle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") search();
+                  }}
+                  placeholder="Style # — e.g. PC54, 3001, G500"
+                  className={`${inputCls} font-mono`}
+                  aria-label="Vendor style number"
+                  data-testid="vendor-style-input"
+                />
+                <button
+                  onClick={search}
+                  disabled={lookup.isPending || style.trim().length === 0}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-[#059669]/10 border border-[#059669]/30 text-[#10b981] hover:bg-[#059669]/20 transition-colors disabled:opacity-40 shrink-0"
+                  data-testid="vendor-search-button"
+                >
+                  {lookup.isPending ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Search size={13} />
+                  )}
+                  Search
+                </button>
+              </div>
+
+              {lookup.isPending && (
+                <p className="text-[11px] text-slate-500">
+                  Checking {VENDOR_LABELS[vendor]}… this can take a few seconds.
                 </p>
               )}
-              {hasSale && (
-                <p className="text-[11px] text-slate-500">
-                  Applied{" "}
-                  <span className="text-slate-300 font-mono">
-                    ${money(priceFor(priceMode) as number)}
-                  </span>{" "}
-                  (base size {base.size})
-                  {base.saleEndsAt
-                    ? ` · sale ends ${formatSaleEnd(base.saleEndsAt)}`
-                    : ""}{" "}
-                  — you decide whether the client gets the sale price or the
-                  shop keeps the margin.
+
+              {result !== null && !found && !lookup.isPending && (
+                <p className="text-[11px] text-amber-400">
+                  Style {result.styleQueried} not found at{" "}
+                  {VENDOR_LABELS[result.vendor]} — check the style number or
+                  enter the cost manually.
                 </p>
+              )}
+
+              {found && (
+                <>
+                  {result.matchType === "closest" && (
+                    <p className="text-[11px] text-amber-400">
+                      Closest match — the vendor didn't have an exact
+                      style-number match. Double-check this is the right
+                      product.
+                    </p>
+                  )}
+
+                  {/* Product summary: thumbnail + info + price */}
+                  <div className="flex gap-4">
+                    <ProductThumb
+                      key={thumbSrc ?? "none"}
+                      src={thumbSrc}
+                      alt={
+                        [result.brand, result.styleName]
+                          .filter(Boolean)
+                          .join(" ") || "Product"
+                      }
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-sm font-semibold text-white truncate">
+                        {[result.brand, result.styleName]
+                          .filter(Boolean)
+                          .join(" ")}
+                      </p>
+                      {result.title && (
+                        <p className="text-[11px] text-slate-400 leading-snug">
+                          {result.title}
+                        </p>
+                      )}
+                      {selectedColor && (
+                        <p className="text-[11px] text-slate-500">
+                          {selectedColor.colorName}
+                          {base ? ` · base size ${base.size}` : ""}
+                        </p>
+                      )}
+                      {base !== null && (
+                        <div className="pt-1">
+                          {hasSale ? (
+                            <p className="text-sm font-mono">
+                              <span className="text-slate-500 line-through">
+                                ${money(base.cost as number)}
+                              </span>{" "}
+                              <span className="text-[#10b981] font-bold">
+                                ${money(base.salePrice as number)}
+                              </span>
+                            </p>
+                          ) : (
+                            <p className="text-sm font-mono text-white font-bold">
+                              ${money(base.cost as number)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {selectedColor && base === null && (
+                        <p className="text-[11px] text-amber-400">
+                          No vendor price for this color.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Color swatches */}
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                      Color — {result.colors.length}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+                      {/* Keyed by style+color: colors like "Black" recur across
+                          styles, and a stale broken-image flag from the previous
+                          search must not hide a valid swatch. */}
+                      {result.colors.map((c) => (
+                        <Swatch
+                          key={`${result.styleId ?? result.styleName ?? ""}:${c.colorName}`}
+                          color={c}
+                          selected={c.colorName === colorName}
+                          onPick={() => pickColor(c.colorName)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sale banner + Regular/Sale choice */}
+                  {hasSale && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 space-y-2">
+                      <p className="text-[11px] text-amber-300">
+                        <Tag size={11} className="inline mr-1 -mt-0.5" />
+                        This color is on sale
+                        {base?.saleEndsAt
+                          ? ` through ${formatSaleEnd(base.saleEndsAt)}`
+                          : ""}{" "}
+                        — choose which price feeds the calculator.
+                      </p>
+                      <div
+                        className="grid grid-cols-2 gap-2"
+                        role="group"
+                        aria-label="Price to use"
+                      >
+                        <button
+                          onClick={() => setPriceMode("regular")}
+                          data-testid="price-mode-regular"
+                          className={`text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
+                            priceMode === "regular"
+                              ? "bg-[#059669]/10 border-[#059669]/40 text-[#10b981]"
+                              : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
+                          }`}
+                        >
+                          Regular ${money(base?.cost as number)}
+                        </button>
+                        <button
+                          onClick={() => setPriceMode("sale")}
+                          data-testid="price-mode-sale"
+                          className={`flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
+                            priceMode === "sale"
+                              ? "bg-[#059669]/10 border-[#059669]/40 text-[#10b981]"
+                              : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
+                          }`}
+                        >
+                          <Tag size={12} /> Sale ${money(
+                            base?.salePrice as number,
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
-          )}
-        </>
+
+            <footer className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-800 flex-shrink-0">
+              <button
+                onClick={() => setOpen(false)}
+                className="text-xs font-semibold px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={apply}
+                disabled={chosenPrice === null}
+                data-testid="vendor-lookup-apply"
+                className="text-xs font-semibold px-4 py-2 rounded-lg bg-[#059669]/10 border border-[#059669]/30 text-[#10b981] hover:bg-[#059669]/20 transition-colors disabled:opacity-40"
+              >
+                {chosenPrice !== null
+                  ? `Use $${money(chosenPrice)} in calculator`
+                  : "Use in calculator"}
+              </button>
+            </footer>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }

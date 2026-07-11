@@ -23,6 +23,10 @@ export interface SanMarProductEntry {
   saleStartDate: string | null;
   saleEndDate: string | null;
   priceText: string | null;
+  /** Small color-square swatch image (productImageInfo.colorSquareImage) — absolute CDN URL. */
+  colorSwatchImage: string | null;
+  /** Product photo in this color (productImageInfo.colorProductImage) — absolute CDN URL. */
+  colorProductImage: string | null;
 }
 
 export interface SanMarInventoryResult {

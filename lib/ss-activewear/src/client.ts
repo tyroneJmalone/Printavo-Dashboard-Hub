@@ -10,6 +10,8 @@ export interface SSStyle {
   styleName: string;
   brandName: string;
   title: string | null;
+  /** Style hero image — RELATIVE path (prefix https://www.ssactivewear.com/). */
+  styleImage: string | null;
 }
 
 export interface SSWarehouseQty {
@@ -30,6 +32,10 @@ export interface SSProduct {
   saleExpiration: string | null;
   qty: number;
   warehouses: SSWarehouseQty[];
+  /** Color swatch image — RELATIVE path (prefix https://www.ssactivewear.com/). */
+  colorSwatchImage: string | null;
+  /** Front product photo in this color — RELATIVE path (same prefix). */
+  colorFrontImage: string | null;
 }
 
 export interface SSPoLine {
@@ -124,6 +130,7 @@ export class SSClient {
         styleName: String(s.styleName ?? ""),
         brandName: String(s.brandName ?? ""),
         title: s.title ? String(s.title) : null,
+        styleImage: s.styleImage ? String(s.styleImage) : null,
       }))
       .filter((s) => Number.isFinite(s.styleID));
   }
@@ -143,6 +150,8 @@ export class SSClient {
         customerPrice: toNum(p.customerPrice),
         saleExpiration: p.saleExpiration ? String(p.saleExpiration) : null,
         qty: toNum(p.qty) ?? 0,
+        colorSwatchImage: p.colorSwatchImage ? String(p.colorSwatchImage) : null,
+        colorFrontImage: p.colorFrontImage ? String(p.colorFrontImage) : null,
         warehouses: Array.isArray(p.warehouses)
           ? p.warehouses
               .filter((w): w is Record<string, unknown> => typeof w === "object" && w !== null)

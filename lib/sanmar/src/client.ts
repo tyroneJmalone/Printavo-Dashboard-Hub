@@ -220,6 +220,7 @@ export class SanMarClient {
     for (const block of blocks) {
       const basic = block.match(/<productBasicInfo>([\s\S]*?)<\/productBasicInfo>/)?.[1];
       const price = block.match(/<productPriceInfo>([\s\S]*?)<\/productPriceInfo>/)?.[1];
+      const image = block.match(/<productImageInfo>([\s\S]*?)<\/productImageInfo>/)?.[1];
       if (!basic) continue;
       const entryStyle = tag(basic, "style");
       const catalogColor = tag(basic, "catalogColor") ?? tag(basic, "color");
@@ -242,6 +243,8 @@ export class SanMarClient {
         saleStartDate: price ? tag(price, "saleStartDate") : null,
         saleEndDate: price ? tag(price, "saleEndDate") : null,
         priceText: price ? tag(price, "priceText") : null,
+        colorSwatchImage: image ? tag(image, "colorSquareImage") : null,
+        colorProductImage: image ? tag(image, "colorProductImage") : null,
       });
     }
     return entries;

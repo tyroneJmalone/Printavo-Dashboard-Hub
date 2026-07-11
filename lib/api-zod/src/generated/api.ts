@@ -191,8 +191,11 @@ export const VendorLookupResponse = zod.object({
   "styleName": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable().describe('Style-level hero image (absolute URL) — fallback before a color is chosen.'),
   "colors": zod.array(zod.object({
   "colorName": zod.string(),
+  "swatchImage": zod.string().nullable().describe('Small color swatch image (absolute URL) — null when the vendor has none.'),
+  "productImage": zod.string().nullable().describe('Product photo in this color (absolute URL) — null when the vendor has none.'),
   "sizes": zod.array(zod.object({
   "size": zod.string(),
   "sku": zod.string().nullable(),

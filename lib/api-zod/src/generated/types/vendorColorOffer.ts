@@ -9,5 +9,15 @@ import type { VendorSizeOffer } from './vendorSizeOffer';
 
 export interface VendorColorOffer {
   colorName: string;
+  /**
+     * Small color swatch image (absolute URL) — null when the vendor has none.
+     * @nullable
+     */
+  swatchImage: string | null;
+  /**
+     * Product photo in this color (absolute URL) — null when the vendor has none.
+     * @nullable
+     */
+  productImage: string | null;
   sizes: VendorSizeOffer[];
 }

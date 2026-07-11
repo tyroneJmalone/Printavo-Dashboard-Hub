@@ -1603,11 +1603,17 @@ components:
       type: object
       properties:
         colorName: { type: string }
+        swatchImage:
+          type: ["string", "null"]
+          description: Small color swatch image (absolute URL) — null when the vendor has none.
+        productImage:
+          type: ["string", "null"]
+          description: Product photo in this color (absolute URL) — null when the vendor has none.
         sizes:
           type: array
           items:
             $ref: "#/components/schemas/VendorSizeOffer"
-      required: [colorName, sizes]
+      required: [colorName, swatchImage, productImage, sizes]
     VendorLookupResult:
       type: object
       properties:
@@ -1621,13 +1627,16 @@ components:
         styleName: { type: ["string", "null"] }
         brand: { type: ["string", "null"] }
         title: { type: ["string", "null"] }
+        styleImage:
+          type: ["string", "null"]
+          description: Style-level hero image (absolute URL) — fallback before a color is chosen.
         colors:
           type: array
           items:
             $ref: "#/components/schemas/VendorColorOffer"
         cached: { type: boolean }
         fetchedAt: { type: string }
-      required: [found, matchType, vendor, styleQueried, styleId, styleName, brand, title, colors, cached, fetchedAt]
+      required: [found, matchType, vendor, styleQueried, styleId, styleName, brand, title, styleImage, colors, cached, fetchedAt]
     VendorInventoryRequest:
       type: object
       properties:

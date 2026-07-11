@@ -25,6 +25,11 @@ export interface VendorLookupResult {
   brand: string | null;
   /** @nullable */
   title: string | null;
+  /**
+     * Style-level hero image (absolute URL) — fallback before a color is chosen.
+     * @nullable
+     */
+  styleImage: string | null;
   colors: VendorColorOffer[];
   cached: boolean;
   fetchedAt: string;
