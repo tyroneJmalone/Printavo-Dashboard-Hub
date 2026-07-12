@@ -330,12 +330,22 @@ export async function deleteStatusRule(id: string): Promise<"ok" | "not_found"> 
 }
 
 /** Printavo statuses for the rule target picker (Postgres only). */
-export async function listPrintavoStatuses(): Promise<{ id: string; name: string }[]> {
+export async function listPrintavoStatuses(): Promise<
+  { id: string; name: string; color: string | null }[]
+> {
   const rows = await db
-    .select({ id: pvStatusesTable.printavoId, name: pvStatusesTable.name })
+    .select({
+      id: pvStatusesTable.printavoId,
+      name: pvStatusesTable.name,
+      data: pvStatusesTable.data,
+    })
     .from(pvStatusesTable)
     .orderBy(asc(pvStatusesTable.name));
-  return rows;
+  return rows.map((r) => {
+    const raw = r.data as { color?: unknown } | null;
+    const color = typeof raw?.color === "string" ? raw.color : null;
+    return { id: r.id, name: r.name, color };
+  });
 }
 
 /* ── Evaluation ──────────────────────────────────────────────────────── */

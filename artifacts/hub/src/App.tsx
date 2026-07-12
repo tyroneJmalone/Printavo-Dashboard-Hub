@@ -10,6 +10,7 @@ import Payments from "./pages/Payments";
 import VendorOrders from "./pages/VendorOrders";
 import PoLog from "./pages/PoLog";
 import StatusRules from "./pages/StatusRules";
+import PrintQueue from "./pages/PrintQueue";
 import PriceCalculator from "./pages/PriceCalculator";
 import Settings from "./pages/Settings";
 
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/vendor-orders" component={VendorOrders} />
       <Route path="/po-log" component={PoLog} />
       <Route path="/status-rules" component={StatusRules} />
+      <Route path="/print-queue" component={PrintQueue} />
       <Route path="/price-calculator" component={PriceCalculator} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />

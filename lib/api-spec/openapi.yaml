@@ -16,6 +16,8 @@ tags:
     description: Printavo gateway
   - name: purchasing
     description: Purchasing / vendor orders module
+  - name: printQueue
+    description: Production print queue (workorders / packing slips / box labels)
 paths:
   /healthz:
     get:
@@ -1177,6 +1179,63 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/orders:
+    get:
+      operationId: listPrintQueueOrders
+      tags: [printQueue]
+      summary: Orders in the selected Printavo statuses (from the local sync, newest first)
+      parameters:
+        - name: statusIds
+          in: query
+          required: true
+          description: Comma-separated Printavo status ids
+          schema: { type: string }
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintQueueOrdersResponse"
+        "400":
+          description: Missing / invalid statusIds
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/workorders/html:
+    get:
+      operationId: getCombinedWorkordersHtml
+      tags: [printQueue]
+      summary: Combined printable HTML of the selected orders' public workorder pages
+      description: >
+        Resolves each order's public workorderUrl from the local sync (never
+        accepts raw URLs), fetches the pages server-side, and returns one HTML
+        document with a page break between orders. Open in a popup and print.
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: Comma-separated Printavo order ids (max 50)
+          schema: { type: string }
+      responses:
+        "200":
+          description: Printable HTML document
+          content:
+            text/html:
+              schema: { type: string }
+        "400":
+          description: Missing ids / over the 50-order cap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: None of the ids matched a synced order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   parameters:
     OrderTypeParam:
@@ -1961,7 +2020,51 @@ components:
       properties:
         id: { type: string }
         name: { type: string }
+        color: { type: string, nullable: true }
       required: [id, name]
+    PrintQueueOrder:
+      type: object
+      properties:
+        printavoId: { type: string }
+        visualId: { type: integer }
+        orderType: { type: string, enum: [invoice, quote] }
+        nickname: { type: string, nullable: true }
+        contactName: { type: string, nullable: true }
+        customerCompany: { type: string, nullable: true }
+        total: { type: string, nullable: true }
+        quantity:
+          type: integer
+          nullable: true
+          description: Sum of line-item quantities; null while detail sync is pending
+        statusId: { type: string, nullable: true }
+        statusName: { type: string, nullable: true }
+        productionDueAt: { type: string, format: date-time, nullable: true }
+        customerDueAt: { type: string, format: date-time, nullable: true }
+        hasWorkorder: { type: boolean }
+      required:
+        [
+          printavoId,
+          visualId,
+          orderType,
+          nickname,
+          contactName,
+          customerCompany,
+          total,
+          quantity,
+          statusId,
+          statusName,
+          productionDueAt,
+          customerDueAt,
+          hasWorkorder,
+        ]
+    PrintQueueOrdersResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrintQueueOrder"
+      required: [orders]
     PrintavoStatusesResponse:
       type: object
       properties:

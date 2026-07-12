@@ -102,7 +102,7 @@ export function contactsPageQuery(after?: string | null): string {
 export function statusesPageQuery(after?: string | null): string {
   return `query {
     statuses(first: ${PAGE_SIZE}${afterArg(after)}) {
-      nodes { id name }
+      nodes { id name color position }
       ${PAGE_INFO}
     }
   }`;

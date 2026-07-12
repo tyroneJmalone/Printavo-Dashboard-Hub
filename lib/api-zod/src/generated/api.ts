@@ -1112,7 +1112,8 @@ export const GetPoFileHtmlResponse = zod.unknown()
 export const ListPrintavoStatusesResponse = zod.object({
   "statuses": zod.array(zod.object({
   "id": zod.string(),
-  "name": zod.string()
+  "name": zod.string(),
+  "color": zod.string().nullish()
 }))
 })
 
@@ -1841,5 +1842,42 @@ export const DeleteDecorationMatrixParams = zod.object({
 })
 
 export const DeleteDecorationMatrixResponse = zod.void()
+
+
+/**
+ * @summary Orders in the selected Printavo statuses (from the local sync, newest first)
+ */
+export const ListPrintQueueOrdersQueryParams = zod.object({
+  "statusIds": zod.coerce.string().describe('Comma-separated Printavo status ids')
+})
+
+export const ListPrintQueueOrdersResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "printavoId": zod.string(),
+  "visualId": zod.number(),
+  "orderType": zod.enum(['invoice', 'quote']),
+  "nickname": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "customerCompany": zod.string().nullable(),
+  "total": zod.string().nullable(),
+  "quantity": zod.number().nullable().describe('Sum of line-item quantities; null while detail sync is pending'),
+  "statusId": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "productionDueAt": zod.coerce.date().nullable(),
+  "customerDueAt": zod.coerce.date().nullable(),
+  "hasWorkorder": zod.boolean()
+}))
+})
+
+
+/**
+ * Resolves each order's public workorderUrl from the local sync (never accepts raw URLs), fetches the pages server-side, and returns one HTML document with a page break between orders. Open in a popup and print.
+ * @summary Combined printable HTML of the selected orders' public workorder pages
+ */
+export const GetCombinedWorkordersHtmlQueryParams = zod.object({
+  "ids": zod.coerce.string().describe('Comma-separated Printavo order ids (max 50)')
+})
+
+export const GetCombinedWorkordersHtmlResponse = zod.unknown()
 
 

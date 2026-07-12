@@ -50,7 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     heading: "Production",
     items: [
-      { id: "print", label: "Print Queue", icon: Printer, disabled: true },
+      { id: "print", label: "Print Queue", href: "/print-queue", icon: Printer },
       { id: "colors", label: "Color Library", icon: Palette, disabled: true },
     ],
   },

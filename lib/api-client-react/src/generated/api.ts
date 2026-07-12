@@ -33,6 +33,7 @@ import type {
   EvaluateStatusRulesResponse,
   GetBrandBreakdownParams,
   GetColorBreakdownParams,
+  GetCombinedWorkordersHtmlParams,
   GetImprintsByTierParams,
   GetOrderQuantityBreakdownParams,
   GetOrdersReportParams,
@@ -43,6 +44,7 @@ import type {
   GetStyleNumberBreakdownParams,
   HealthStatus,
   ListChangeEventsParams,
+  ListPrintQueueOrdersParams,
   ListStatusSuggestionsParams,
   NeedsOrderingResult,
   OrdersReport,
@@ -51,6 +53,7 @@ import type {
   PoFile,
   PoFileList,
   PollResult,
+  PrintQueueOrdersResponse,
   PrintavoStatusesResponse,
   ProbeResult,
   PushStartResponse,
@@ -3656,4 +3659,173 @@ export const useDeleteDecorationMatrix = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getDeleteDecorationMatrixMutationOptions(options));
     }
+
+export const getListPrintQueueOrdersUrl = (params: ListPrintQueueOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/print-queue/orders?${stringifiedParams}` : `/api/print-queue/orders`
+}
+
+/**
+ * @summary Orders in the selected Printavo statuses (from the local sync, newest first)
+ */
+export const listPrintQueueOrders = async (params: ListPrintQueueOrdersParams, options?: RequestInit): Promise<PrintQueueOrdersResponse> => {
+
+  return customFetch<PrintQueueOrdersResponse>(getListPrintQueueOrdersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPrintQueueOrdersQueryKey = (params?: ListPrintQueueOrdersParams,) => {
+    return [
+    `/api/print-queue/orders`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPrintQueueOrdersQueryOptions = <TData = Awaited<ReturnType<typeof listPrintQueueOrders>>, TError = ErrorType<ErrorResponse>>(params: ListPrintQueueOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintQueueOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPrintQueueOrdersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrintQueueOrders>>> = ({ signal }) => listPrintQueueOrders(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPrintQueueOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPrintQueueOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof listPrintQueueOrders>>>
+export type ListPrintQueueOrdersQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Orders in the selected Printavo statuses (from the local sync, newest first)
+ */
+
+export function useListPrintQueueOrders<TData = Awaited<ReturnType<typeof listPrintQueueOrders>>, TError = ErrorType<ErrorResponse>>(
+ params: ListPrintQueueOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintQueueOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPrintQueueOrdersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCombinedWorkordersHtmlUrl = (params: GetCombinedWorkordersHtmlParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/print-queue/workorders/html?${stringifiedParams}` : `/api/print-queue/workorders/html`
+}
+
+/**
+ * Resolves each order's public workorderUrl from the local sync (never accepts raw URLs), fetches the pages server-side, and returns one HTML document with a page break between orders. Open in a popup and print.
+ * @summary Combined printable HTML of the selected orders' public workorder pages
+ */
+export const getCombinedWorkordersHtml = async (params: GetCombinedWorkordersHtmlParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getGetCombinedWorkordersHtmlUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCombinedWorkordersHtmlQueryKey = (params?: GetCombinedWorkordersHtmlParams,) => {
+    return [
+    `/api/print-queue/workorders/html`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCombinedWorkordersHtmlQueryOptions = <TData = Awaited<ReturnType<typeof getCombinedWorkordersHtml>>, TError = ErrorType<ErrorResponse>>(params: GetCombinedWorkordersHtmlParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCombinedWorkordersHtml>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCombinedWorkordersHtmlQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCombinedWorkordersHtml>>> = ({ signal }) => getCombinedWorkordersHtml(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCombinedWorkordersHtml>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCombinedWorkordersHtmlQueryResult = NonNullable<Awaited<ReturnType<typeof getCombinedWorkordersHtml>>>
+export type GetCombinedWorkordersHtmlQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Combined printable HTML of the selected orders' public workorder pages
+ */
+
+export function useGetCombinedWorkordersHtml<TData = Awaited<ReturnType<typeof getCombinedWorkordersHtml>>, TError = ErrorType<ErrorResponse>>(
+ params: GetCombinedWorkordersHtmlParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCombinedWorkordersHtml>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCombinedWorkordersHtmlQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

@@ -1,4 +1,5 @@
 - [Vendor submit runs off the snapshot](vendor-submit-snapshot.md) — any per-line field needed at SanMar/S&S submit time must persist end-to-end, not cart-only.
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [Tailwind v4 arbitrary values](tailwind-v4-arbitrary-values.md) — commas stay literal in v4: grid-cols-[400px,1fr] silently no-ops; use underscores (300px_1fr); verify layout visually.
+- [Reference sync daily watermark](reference-sync-daily-watermark.md) — new fields on reference queries (statuses etc.) don't backfill until the daily refresh; delete the entity_watermarks row to force it.
 - [Catalog search requirements](catalog-search-requirements.md) — tabled but returning: must be a key-authed read-only API usable by Tyler's OTHER app, with product images.

@@ -777,6 +777,36 @@ export interface VendorSubmitResult {
 export interface PrintavoStatus {
   id: string;
   name: string;
+  color?: string | null;
+}
+
+export type PrintQueueOrderOrderType = typeof PrintQueueOrderOrderType[keyof typeof PrintQueueOrderOrderType];
+
+
+export const PrintQueueOrderOrderType = {
+  invoice: 'invoice',
+  quote: 'quote',
+} as const;
+
+export interface PrintQueueOrder {
+  printavoId: string;
+  visualId: number;
+  orderType: PrintQueueOrderOrderType;
+  nickname: string | null;
+  contactName: string | null;
+  customerCompany: string | null;
+  total: string | null;
+  /** Sum of line-item quantities; null while detail sync is pending */
+  quantity: number | null;
+  statusId: string | null;
+  statusName: string | null;
+  productionDueAt: string | null;
+  customerDueAt: string | null;
+  hasWorkorder: boolean;
+}
+
+export interface PrintQueueOrdersResponse {
+  orders: PrintQueueOrder[];
 }
 
 export interface PrintavoStatusesResponse {
@@ -1489,5 +1519,19 @@ types?: string;
 export type GetPaymentsStatsParams = {
 start?: string;
 end?: string;
+};
+
+export type ListPrintQueueOrdersParams = {
+/**
+ * Comma-separated Printavo status ids
+ */
+statusIds: string;
+};
+
+export type GetCombinedWorkordersHtmlParams = {
+/**
+ * Comma-separated Printavo order ids (max 50)
+ */
+ids: string;
 };
 

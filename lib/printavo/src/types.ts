@@ -85,6 +85,8 @@ export interface PvContactNode {
 export interface PvStatusNode {
   id: string;
   name: string;
+  color?: string | null;
+  position?: number | null;
 }
 
 export interface PvSizeEntry {
