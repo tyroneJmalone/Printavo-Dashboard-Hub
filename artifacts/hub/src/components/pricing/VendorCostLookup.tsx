@@ -178,7 +178,9 @@ export function VendorCostLookup({
           toast({
             title: `Style ${res.styleQueried} not found at ${VENDOR_LABELS[res.vendor]}`,
             description:
-              "Try a brand + style number combo (e.g. \"bella 3001\"), adjust the style number, or type the cost manually.",
+              res.vendor === "sanmar" && !/\d/.test(res.styleQueried)
+                ? 'SanMar can only search by style number — include the number (e.g. "bella 3001").'
+                : 'Try a brand + style number combo (e.g. "bella 3001"), adjust the style number, or type the cost manually.',
             variant: "destructive",
           });
         }
@@ -337,9 +339,20 @@ export function VendorCostLookup({
 
               {result !== null && !found && !lookup.isPending && (
                 <p className="text-[11px] text-amber-400">
-                  "{result.styleQueried}" not found at{" "}
-                  {VENDOR_LABELS[result.vendor]} — try a brand + style combo
-                  (e.g. "bella 3001"), or enter the cost manually.
+                  {result.vendor === "sanmar" &&
+                  !/\d/.test(result.styleQueried) ? (
+                    <>
+                      SanMar can only search by style number — add the number
+                      to your search (e.g. "bella 3001"), or enter the cost
+                      manually.
+                    </>
+                  ) : (
+                    <>
+                      "{result.styleQueried}" not found at{" "}
+                      {VENDOR_LABELS[result.vendor]} — try a brand + style
+                      combo (e.g. "bella 3001"), or enter the cost manually.
+                    </>
+                  )}
                 </p>
               )}
 

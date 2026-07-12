@@ -243,13 +243,50 @@ function textTokensMatch(textTokens: string[], brand: string | null, title: stri
 const MAX_CANDIDATE_TRIES = 3;
 
 /**
- * Style-number candidates derived from the query, in priority order: the
- * digit-bearing tokens as typed, then brand-initials + digits combos —
- * vendor style codes are often brand initials prefixed to the number
- * ("sport tek 350" → ST350, so try "350" then "st350").
+ * Known SanMar catalog prefixes for brands whose style codes do NOT start
+ * with the brand's typed words' initials ("bella 3000" → BC3000: the
+ * initials heuristic below yields "b3000"/"be3000" and misses BC). Aliases
+ * are matched whole-word against the typed plain words. Brands whose SanMar
+ * styles are bare numbers (Gildan 5000, Comfort Colors 1717) need no entry —
+ * the digit token alone already hits.
+ */
+const BRAND_PREFIXES: ReadonlyArray<readonly [alias: string, prefix: string]> = [
+  ["bella", "bc"],
+  ["canvas", "bc"],
+  ["district", "dt"],
+  ["next level", "nl"],
+  ["port company", "pc"],
+  ["port and company", "pc"],
+  ["port authority", "k"],
+  ["sport tek", "st"],
+  ["sporttek", "st"],
+  ["new era", "ne"],
+  ["carhartt", "ct"],
+  ["eddie bauer", "eb"],
+  ["ogio", "og"],
+  ["cornerstone", "cs"],
+  ["rabbit skins", "rs"],
+  ["allmade", "al"],
+];
+
+/**
+ * Style-number candidates derived from the query, in priority order:
+ * known brand-prefix + digits ("bella 3000" → "bc3000" — highest
+ * confidence), then the digit-bearing tokens as typed, then generic
+ * brand-initials + digits combos ("sport tek 350" → "st350" — vendor
+ * style codes are often brand initials prefixed to the number).
  */
 function styleCandidates(styleTokens: string[], textTokens: string[]): string[] {
-  const out = [...styleTokens];
+  const out: string[] = [];
+  if (textTokens.length > 0) {
+    const joined = ` ${textTokens.join(" ")} `;
+    for (const [alias, prefix] of BRAND_PREFIXES) {
+      if (!joined.includes(` ${alias} `)) continue;
+      // Only prefix bare numbers — "pc54" already carries its prefix.
+      for (const t of styleTokens) if (/^\d+$/.test(t)) out.push(prefix + t);
+    }
+  }
+  out.push(...styleTokens);
   if (textTokens.length > 0) {
     const initials = textTokens.map((t) => t[0]).join("");
     for (const t of styleTokens) {
