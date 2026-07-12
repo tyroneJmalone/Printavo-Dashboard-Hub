@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Copy,
+  Download,
   Loader2,
   MapPin,
   Plus,
   Trash2,
 } from "lucide-react";
+import { toPng } from "html-to-image";
 import {
   useListDecorationMatrices,
   getListDecorationMatricesQueryKey,
@@ -135,6 +137,47 @@ export function QuoteCalculator({
     }
   };
 
+  const exportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const savePng = async () => {
+    const node = exportRef.current;
+    if (node === null || exporting) return;
+    setExporting(true);
+    try {
+      // 2× resolution like the original Breezy Quote export; solid page
+      // background so the transparent gaps between cards don't come out
+      // checkered in the PNG.
+      const dataUrl = await toPng(node, {
+        pixelRatio: 2,
+        backgroundColor: "#020617",
+      });
+      const firstValid = rowStates.find(
+        (s): s is Extract<RowState, { status: "ok" }> => s.status === "ok",
+      );
+      const matrixSlug = (firstValid?.mx.data.name ?? "quote")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      const d = new Date();
+      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `quote-${matrixSlug || "quote"}-${date}.png`;
+      a.click();
+      toast({ title: "Quote saved as PNG" });
+    } catch (err) {
+      console.error("PNG export failed", err);
+      toast({
+        title: "Couldn't save PNG",
+        description: "Something went wrong rendering the image — try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="py-12 flex justify-center">
@@ -164,7 +207,7 @@ export function QuoteCalculator({
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={exportRef} className="space-y-4">
       {/* Inputs: narrow cost column on the left, locations to its right */}
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 items-start">
         <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-4">
@@ -378,12 +421,27 @@ export function QuoteCalculator({
             </div>
           </div>
           {quote.length > 0 && (
-            <button
-              onClick={copyQuote}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
-            >
-              <Copy size={13} /> Copy
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={copyQuote}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
+              >
+                <Copy size={13} /> Copy
+              </button>
+              <button
+                onClick={savePng}
+                disabled={exporting}
+                data-testid="save-png"
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-[#059669]/10 border border-[#059669]/30 text-[#10b981] hover:bg-[#059669]/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {exporting ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Download size={13} />
+                )}
+                Save PNG
+              </button>
+            </div>
           )}
         </div>
 
