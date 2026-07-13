@@ -43,10 +43,17 @@ Unified internal hub for Mint Printworks that consolidates 11 separate Printavo-
 - Vendor Orders / Purchasing module (P1–P3d done, July 2026): needs-ordering scan, vendor pricing (SanMar SOAP + S&S REST), PO builder w/ cart + warehouse auto-pick, PO Log w/ two-tier lock model, push-to-Printavo (line item updates + production file attach via throttled gateway), and the status rules engine (`/status-rules`): priority-ordered deco/due-window rules generate status *suggestions* after a PO push — nothing auto-applies, staff confirms each apply. P4 (vendor submission + tracking) awaits Tyler sign-off.
 - Known partial data: orders 20104 and 20714 have >25 line-item groups (beyond single-order query caps) — their line items are stored incomplete by design; exclude from report spot checks.
 
-## Roadmap ideas (Tyler, July 8, 2026)
+## Roadmap ideas (Tyler, July 8 + 13, 2026)
 
-- Customer enrichment layer on top of synced `pv_customers`: Hub-owned fields such as logo colors, top purchased styles, and a customer category tag ("contractor", "sports", …). Keep in a separate Hub table keyed to the Printavo customer ID — never write into the synced mirror tables.
-- Color database built here will also be the source of the color-matching catalog for the Breezy tweak app (separate SaaS) — design it to be reusable/exportable.
+- Complete Printavo backup of ALL data + scheduled resync (Backup module from the original consolidation list — full-fidelity archive beyond the 12-month sync window).
+- Internal customer portal: quick-access page per customer — branding colors, popular styles, contacts, assignable customer type/category. Builds on the customer-enrichment layer: Hub-owned fields in a separate table keyed to the Printavo customer ID — never write into the synced mirror tables.
+- Color catalog/database: also the source of the color-matching catalog for the Breezy tweak app (separate SaaS) — design it to be reusable/exportable (likely a key-authed API like catalog search).
+- Centralized knowledge base: FAQ, SOPs, internal reference docs — structured for BOTH human use and AI/platform integrations to consume.
+- External analytics hub (admin-only vs granted-access tiers required): Fireflies (meeting notes), JustCall (phone/auto-attendant/virtual CS), Google Analytics (web traffic/AdWords/SEO), Meta (ads & socials), RB2B (website visitor identification), EmailAnalytics (Google Workspace email stats), ActivTrak (computer/browser activity), Constant Contact (email campaigns), possibly more. Depends on staff auth with roles.
+- Sales & front-end support tools: customizable proactive follow-up reminders for past customers, receivables tracking, custom notifications on customer activity (order value thresholds, customer type, new customer, …).
+- Maintenance & sidework log with scheduled reminders — possibly tied into the task management app integration.
+- Preset reports library in the Reports module — Tyler has a list to work through.
+- (Also logged in session plan: outgoing activity log, task management app integration, Missive messaging portal, public Reorder Portal.)
 
 ## User preferences
 
