@@ -33,6 +33,8 @@ export * from "./appSettings";
 export * from "./poStatusRules";
 export * from "./pqStatusRules";
 export * from "./pqStatusJobs";
+export * from "./pqPrintRuns";
+export * from "./pqPrintJobs";
 export * from "./poStatusSuggestions";
 export * from "./decorationMatrices";
 export * from "./syncCheckpoints";

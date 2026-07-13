@@ -2086,7 +2086,7 @@ export const ListPqStatusJobsQueryParams = zod.object({
 export const ListPqStatusJobsResponse = zod.object({
   "jobs": zod.array(zod.object({
   "id": zod.string(),
-  "trigger": zod.enum(['manual', 'ask', 'auto']),
+  "trigger": zod.enum(['manual', 'ask', 'auto', 'autoprint']),
   "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
@@ -2126,7 +2126,7 @@ export const StartPqStatusJobBody = zod.object({
 
 export const StartPqStatusJobResponse = zod.object({
   "id": zod.string(),
-  "trigger": zod.enum(['manual', 'ask', 'auto']),
+  "trigger": zod.enum(['manual', 'ask', 'auto', 'autoprint']),
   "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
@@ -2154,7 +2154,7 @@ export const GetPqStatusJobParams = zod.object({
 
 export const GetPqStatusJobResponse = zod.object({
   "id": zod.string(),
-  "trigger": zod.enum(['manual', 'ask', 'auto']),
+  "trigger": zod.enum(['manual', 'ask', 'auto', 'autoprint']),
   "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
@@ -2171,5 +2171,243 @@ export const GetPqStatusJobResponse = zod.object({
 })),
   "createdAt": zod.string()
 }).describe('status: running | success | failed | interrupted (server restarted mid-job — unfinished lines are retryable).')
+
+
+/**
+ * @summary Auto-print configuration (defaults enabled=false, dryRun=true)
+ */
+export const getAutoPrintConfigResponseScheduleHoursMax = 24;
+
+export const getAutoPrintConfigResponseCopiesMax = 10;
+
+
+
+
+
+export const GetAutoPrintConfigResponse = zod.object({
+  "enabled": zod.boolean(),
+  "scheduleHours": zod.number().min(1).max(getAutoPrintConfigResponseScheduleHoursMax),
+  "sourceStatusIds": zod.array(zod.string()),
+  "errorStatusId": zod.string().nullable(),
+  "errorStatusName": zod.string().nullable(),
+  "printerId": zod.string().nullable(),
+  "printerName": zod.string().nullable(),
+  "copies": zod.number().min(1).max(getAutoPrintConfigResponseCopiesMax),
+  "dryRun": zod.boolean(),
+  "categoryMappings": zod.array(zod.object({
+  "category": zod.string().min(1),
+  "statusId": zod.string().min(1),
+  "statusName": zod.string()
+}))
+}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.')
+
+
+/**
+ * @summary Replace the auto-print configuration (server normalizes invalid fields to safe defaults)
+ */
+export const updateAutoPrintConfigBodyScheduleHoursMax = 24;
+
+export const updateAutoPrintConfigBodyCopiesMax = 10;
+
+
+
+
+
+export const UpdateAutoPrintConfigBody = zod.object({
+  "enabled": zod.boolean(),
+  "scheduleHours": zod.number().min(1).max(updateAutoPrintConfigBodyScheduleHoursMax),
+  "sourceStatusIds": zod.array(zod.string()),
+  "errorStatusId": zod.string().nullable(),
+  "errorStatusName": zod.string().nullable(),
+  "printerId": zod.string().nullable(),
+  "printerName": zod.string().nullable(),
+  "copies": zod.number().min(1).max(updateAutoPrintConfigBodyCopiesMax),
+  "dryRun": zod.boolean(),
+  "categoryMappings": zod.array(zod.object({
+  "category": zod.string().min(1),
+  "statusId": zod.string().min(1),
+  "statusName": zod.string()
+}))
+}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.')
+
+export const updateAutoPrintConfigResponseScheduleHoursMax = 24;
+
+export const updateAutoPrintConfigResponseCopiesMax = 10;
+
+
+
+
+
+export const UpdateAutoPrintConfigResponse = zod.object({
+  "enabled": zod.boolean(),
+  "scheduleHours": zod.number().min(1).max(updateAutoPrintConfigResponseScheduleHoursMax),
+  "sourceStatusIds": zod.array(zod.string()),
+  "errorStatusId": zod.string().nullable(),
+  "errorStatusName": zod.string().nullable(),
+  "printerId": zod.string().nullable(),
+  "printerName": zod.string().nullable(),
+  "copies": zod.number().min(1).max(updateAutoPrintConfigResponseCopiesMax),
+  "dryRun": zod.boolean(),
+  "categoryMappings": zod.array(zod.object({
+  "category": zod.string().min(1),
+  "statusId": zod.string().min(1),
+  "statusName": zod.string()
+}))
+}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.')
+
+
+/**
+ * @summary PrintNode printers on the account (configured=false when the API key is missing)
+ */
+export const ListAutoPrintPrintersResponse = zod.object({
+  "configured": zod.boolean(),
+  "printers": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "state": zod.string(),
+  "computerName": zod.string().nullable(),
+  "computerState": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Distinct typeOfWork categories seen in synced imprints (for the mapping editor)
+ */
+export const ListImprintCategoriesResponse = zod.object({
+  "categories": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Start an auto-print run now (one at a time; dryRun in the body overrides the config flag)
+ */
+export const StartAutoPrintRunBody = zod.object({
+  "dryRun": zod.boolean().nullable().describe('Overrides the config dryRun flag for this run only; null\/omitted uses the config value.')
+})
+
+export const StartAutoPrintRunResponse = zod.object({
+  "id": zod.string(),
+  "trigger": zod.enum(['scheduled', 'manual']),
+  "dryRun": zod.boolean(),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "counts": zod.object({
+  "candidates": zod.number(),
+  "alreadyPrinted": zod.number(),
+  "detailPending": zod.number(),
+  "deferred": zod.number(),
+  "printed": zod.number(),
+  "failed": zod.number(),
+  "dryRun": zod.number()
+}),
+  "error": zod.string().nullable(),
+  "advanceJobId": zod.string().nullable().describe('Id of the status-change job started after printing (poll \/print-queue\/status-jobs\/{id}).'),
+  "advanceSkipped": zod.string().nullable(),
+  "createdAt": zod.string()
+}).describe('status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run).')
+
+
+/**
+ * @summary Recent auto-print runs, newest first
+ */
+export const listAutoPrintRunsQueryLimitMax = 50;
+
+
+
+export const ListAutoPrintRunsQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listAutoPrintRunsQueryLimitMax).optional()
+})
+
+export const ListAutoPrintRunsResponse = zod.object({
+  "runs": zod.array(zod.object({
+  "id": zod.string(),
+  "trigger": zod.enum(['scheduled', 'manual']),
+  "dryRun": zod.boolean(),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "counts": zod.object({
+  "candidates": zod.number(),
+  "alreadyPrinted": zod.number(),
+  "detailPending": zod.number(),
+  "deferred": zod.number(),
+  "printed": zod.number(),
+  "failed": zod.number(),
+  "dryRun": zod.number()
+}),
+  "error": zod.string().nullable(),
+  "advanceJobId": zod.string().nullable().describe('Id of the status-change job started after printing (poll \/print-queue\/status-jobs\/{id}).'),
+  "advanceSkipped": zod.string().nullable(),
+  "createdAt": zod.string()
+}).describe('status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run).'))
+})
+
+
+/**
+ * @summary Poll one auto-print run
+ */
+export const GetAutoPrintRunParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetAutoPrintRunResponse = zod.object({
+  "id": zod.string(),
+  "trigger": zod.enum(['scheduled', 'manual']),
+  "dryRun": zod.boolean(),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "counts": zod.object({
+  "candidates": zod.number(),
+  "alreadyPrinted": zod.number(),
+  "detailPending": zod.number(),
+  "deferred": zod.number(),
+  "printed": zod.number(),
+  "failed": zod.number(),
+  "dryRun": zod.number()
+}),
+  "error": zod.string().nullable(),
+  "advanceJobId": zod.string().nullable().describe('Id of the status-change job started after printing (poll \/print-queue\/status-jobs\/{id}).'),
+  "advanceSkipped": zod.string().nullable(),
+  "createdAt": zod.string()
+}).describe('status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run).')
+
+
+/**
+ * @summary Per-order print history (the dedup source), newest first
+ */
+export const listAutoPrintJobsQueryLimitMax = 200;
+
+
+
+export const ListAutoPrintJobsQueryParams = zod.object({
+  "runId": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().min(1).max(listAutoPrintJobsQueryLimitMax).optional()
+})
+
+export const ListAutoPrintJobsResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "id": zod.string(),
+  "runId": zod.string(),
+  "orderId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "docType": zod.string(),
+  "sourceStatusId": zod.string().nullable(),
+  "sourceStatusName": zod.string().nullable(),
+  "targetStatusId": zod.string().nullable(),
+  "targetStatusName": zod.string().nullable(),
+  "printnodeJobId": zod.string().nullable(),
+  "printerName": zod.string().nullable(),
+  "copies": zod.number(),
+  "status": zod.enum(['pending', 'printed', 'failed', 'dry_run', 'skipped']),
+  "errorMessage": zod.string().nullable(),
+  "isReprint": zod.boolean(),
+  "printedAt": zod.string().nullable(),
+  "createdAt": zod.string()
+}).describe('status: pending | printed | failed | dry_run | skipped. Printed rows are the dedup source — an order matching by printavoOrderId OR visualId never auto-prints twice.'))
+})
 
 

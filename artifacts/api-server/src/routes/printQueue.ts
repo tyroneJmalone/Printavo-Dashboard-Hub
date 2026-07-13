@@ -7,6 +7,8 @@ import {
   SetPqAutomationBody,
   EvaluatePqRulesAndRunBody,
   StartPqStatusJobBody,
+  UpdateAutoPrintConfigBody,
+  StartAutoPrintRunBody,
 } from "@workspace/api-zod";
 import { listPrintQueueOrders } from "../lib/printQueue/orders";
 import {
@@ -31,6 +33,22 @@ import {
   listPqStatusJobs,
   type PqJobLineInput,
 } from "../lib/printQueue/statusJobs";
+import {
+  getAutoPrintConfig,
+  setAutoPrintConfig,
+} from "../lib/printQueue/autoPrint/config";
+import {
+  printNodeConfigured,
+  listPrinters,
+} from "../lib/printQueue/autoPrint/printNode";
+import {
+  startAutoPrintRun,
+  getPrintRun,
+  listPrintRuns,
+  listPrintJobs,
+} from "../lib/printQueue/autoPrint/engine";
+import { db, pvImprintsTable } from "@workspace/db";
+import { isNotNull } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -327,6 +345,136 @@ router.get("/print-queue/status-jobs/:id", (req, res) => {
     .catch((err) => {
       req.log.error({ err }, "pq status job read failed");
       res.status(500).json({ error: "Failed to read job" });
+    });
+});
+
+/* ── Auto-print (PQ3a) ───────────────────────────────────────────────── */
+
+router.get("/print-queue/autoprint/config", (req, res) => {
+  getAutoPrintConfig()
+    .then((config) => res.json(config))
+    .catch((err) => {
+      req.log.error({ err }, "autoprint config read failed");
+      res.status(500).json({ error: "Failed to read config" });
+    });
+});
+
+router.put("/print-queue/autoprint/config", (req, res) => {
+  const parsed = UpdateAutoPrintConfigBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid config" });
+    return;
+  }
+  setAutoPrintConfig(parsed.data)
+    .then((config) => res.json(config))
+    .catch((err) => {
+      req.log.error({ err }, "autoprint config save failed");
+      res.status(500).json({ error: "Failed to save config" });
+    });
+});
+
+router.get("/print-queue/autoprint/printers", (req, res) => {
+  if (!printNodeConfigured()) {
+    res.json({ configured: false, printers: [] });
+    return;
+  }
+  listPrinters()
+    .then((printers) => res.json({ configured: true, printers }))
+    .catch((err) => {
+      req.log.error({ err }, "printnode printer list failed");
+      res.status(502).json({ error: "PrintNode request failed" });
+    });
+});
+
+router.get("/print-queue/autoprint/categories", (req, res) => {
+  db
+    .selectDistinct({ typeOfWork: pvImprintsTable.typeOfWork })
+    .from(pvImprintsTable)
+    .where(isNotNull(pvImprintsTable.typeOfWork))
+    .then((rows) => {
+      const categories = [
+        ...new Set(
+          rows
+            .map((r) => (r.typeOfWork ?? "").trim())
+            .filter((c) => c.length > 0),
+        ),
+      ].sort((a, b) => a.localeCompare(b));
+      res.json({ categories });
+    })
+    .catch((err) => {
+      req.log.error({ err }, "imprint category list failed");
+      res.status(500).json({ error: "Failed to list categories" });
+    });
+});
+
+router.post("/print-queue/autoprint/run", (req, res) => {
+  const parsed = StartAutoPrintRunBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request" });
+    return;
+  }
+  startAutoPrintRun(
+    "manual",
+    { dryRun: parsed.data.dryRun ?? undefined },
+    req.log,
+  )
+    .then((result) => {
+      if (result.status === "conflict") {
+        res.status(409).json({ error: "An auto-print run is already in progress" });
+        return;
+      }
+      if (result.status === "invalid") {
+        res.status(400).json({ error: result.message });
+        return;
+      }
+      res.status(202).json(result.run);
+    })
+    .catch((err) => {
+      req.log.error({ err }, "autoprint run start failed");
+      res.status(500).json({ error: "Failed to start run" });
+    });
+});
+
+router.get("/print-queue/autoprint/runs", (req, res) => {
+  const limit = Number(req.query.limit) || 10;
+  listPrintRuns(limit)
+    .then((runs) => res.json({ runs }))
+    .catch((err) => {
+      req.log.error({ err }, "autoprint run list failed");
+      res.status(500).json({ error: "Failed to list runs" });
+    });
+});
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+router.get("/print-queue/autoprint/runs/:id", (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    res.status(404).json({ error: "Run not found" });
+    return;
+  }
+  getPrintRun(req.params.id)
+    .then((run) => {
+      if (!run) {
+        res.status(404).json({ error: "Run not found" });
+        return;
+      }
+      res.json(run);
+    })
+    .catch((err) => {
+      req.log.error({ err }, "autoprint run read failed");
+      res.status(500).json({ error: "Failed to read run" });
+    });
+});
+
+router.get("/print-queue/autoprint/jobs", (req, res) => {
+  const runId = typeof req.query.runId === "string" ? req.query.runId : undefined;
+  const limit = Number(req.query.limit) || 50;
+  listPrintJobs({ runId, limit })
+    .then((jobs) => res.json({ jobs }))
+    .catch((err) => {
+      req.log.error({ err }, "autoprint job list failed");
+      res.status(500).json({ error: "Failed to list jobs" });
     });
 });
 

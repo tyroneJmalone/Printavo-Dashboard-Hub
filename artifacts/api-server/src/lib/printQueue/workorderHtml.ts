@@ -44,7 +44,7 @@ export interface WorkorderFragment {
   error: string | null;
 }
 
-function isAllowedWorkorderUrl(url: string): boolean {
+export function isAllowedWorkorderUrl(url: string): boolean {
   try {
     const u = new URL(url);
     if (u.protocol !== "https:") return false;

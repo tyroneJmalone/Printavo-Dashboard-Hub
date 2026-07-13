@@ -12,6 +12,7 @@ import PoLog from "./pages/PoLog";
 import StatusRules from "./pages/StatusRules";
 import PrintQueue from "./pages/PrintQueue";
 import PrintQueueRules from "./pages/PrintQueueRules";
+import AutoPrint from "./pages/AutoPrint";
 import PriceCalculator from "./pages/PriceCalculator";
 import Settings from "./pages/Settings";
 
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/status-rules" component={StatusRules} />
       <Route path="/print-queue" component={PrintQueue} />
       <Route path="/print-queue-rules" component={PrintQueueRules} />
+      <Route path="/auto-print" component={AutoPrint} />
       <Route path="/price-calculator" component={PriceCalculator} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />

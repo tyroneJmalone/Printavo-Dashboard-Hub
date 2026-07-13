@@ -1331,6 +1331,7 @@ export const PqStatusJobTrigger = {
   manual: 'manual',
   ask: 'ask',
   auto: 'auto',
+  autoprint: 'autoprint',
 } as const;
 
 export type PqStatusJobStatus = typeof PqStatusJobStatus[keyof typeof PqStatusJobStatus];
@@ -1388,6 +1389,174 @@ export interface StartPqStatusJobRequest {
      * @maxItems 500
      */
   lines: PqJobLineInput[];
+}
+
+export interface AutoPrintCategoryMapping {
+  /** @minLength 1 */
+  category: string;
+  /** @minLength 1 */
+  statusId: string;
+  statusName: string;
+}
+
+/**
+ * Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.
+ */
+export interface AutoPrintConfig {
+  enabled: boolean;
+  /**
+     * @minimum 1
+     * @maximum 24
+     */
+  scheduleHours: number;
+  sourceStatusIds: string[];
+  /** @nullable */
+  errorStatusId: string | null;
+  /** @nullable */
+  errorStatusName: string | null;
+  /** @nullable */
+  printerId: string | null;
+  /** @nullable */
+  printerName: string | null;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  copies: number;
+  dryRun: boolean;
+  categoryMappings: AutoPrintCategoryMapping[];
+}
+
+export interface AutoPrintPrinter {
+  id: number;
+  name: string;
+  state: string;
+  /** @nullable */
+  computerName: string | null;
+  /** @nullable */
+  computerState: string | null;
+}
+
+export interface AutoPrintPrintersResponse {
+  configured: boolean;
+  printers: AutoPrintPrinter[];
+}
+
+export interface AutoPrintCategoriesResponse {
+  categories: string[];
+}
+
+export interface StartAutoPrintRunRequest {
+  /**
+     * Overrides the config dryRun flag for this run only; null/omitted uses the config value.
+     * @nullable
+     */
+  dryRun: boolean | null;
+}
+
+export interface AutoPrintRunCounts {
+  candidates: number;
+  alreadyPrinted: number;
+  detailPending: number;
+  deferred: number;
+  printed: number;
+  failed: number;
+  dryRun: number;
+}
+
+export type AutoPrintRunTrigger = typeof AutoPrintRunTrigger[keyof typeof AutoPrintRunTrigger];
+
+
+export const AutoPrintRunTrigger = {
+  scheduled: 'scheduled',
+  manual: 'manual',
+} as const;
+
+export type AutoPrintRunStatus = typeof AutoPrintRunStatus[keyof typeof AutoPrintRunStatus];
+
+
+export const AutoPrintRunStatus = {
+  running: 'running',
+  success: 'success',
+  failed: 'failed',
+  interrupted: 'interrupted',
+} as const;
+
+/**
+ * status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run).
+ */
+export interface AutoPrintRun {
+  id: string;
+  trigger: AutoPrintRunTrigger;
+  dryRun: boolean;
+  status: AutoPrintRunStatus;
+  startedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+  counts: AutoPrintRunCounts;
+  /** @nullable */
+  error: string | null;
+  /**
+     * Id of the status-change job started after printing (poll /print-queue/status-jobs/{id}).
+     * @nullable
+     */
+  advanceJobId: string | null;
+  /** @nullable */
+  advanceSkipped: string | null;
+  createdAt: string;
+}
+
+export interface AutoPrintRunsResponse {
+  runs: AutoPrintRun[];
+}
+
+export type AutoPrintJobStatus = typeof AutoPrintJobStatus[keyof typeof AutoPrintJobStatus];
+
+
+export const AutoPrintJobStatus = {
+  pending: 'pending',
+  printed: 'printed',
+  failed: 'failed',
+  dry_run: 'dry_run',
+  skipped: 'skipped',
+} as const;
+
+/**
+ * status: pending | printed | failed | dry_run | skipped. Printed rows are the dedup source — an order matching by printavoOrderId OR visualId never auto-prints twice.
+ */
+export interface AutoPrintJob {
+  id: string;
+  runId: string;
+  orderId: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  nickname: string | null;
+  docType: string;
+  /** @nullable */
+  sourceStatusId: string | null;
+  /** @nullable */
+  sourceStatusName: string | null;
+  /** @nullable */
+  targetStatusId: string | null;
+  /** @nullable */
+  targetStatusName: string | null;
+  /** @nullable */
+  printnodeJobId: string | null;
+  /** @nullable */
+  printerName: string | null;
+  copies: number;
+  status: AutoPrintJobStatus;
+  /** @nullable */
+  errorMessage: string | null;
+  isReprint: boolean;
+  /** @nullable */
+  printedAt: string | null;
+  createdAt: string;
+}
+
+export interface AutoPrintJobsResponse {
+  jobs: AutoPrintJob[];
 }
 
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
@@ -1850,6 +2019,23 @@ export type ListPqStatusJobsParams = {
 /**
  * @minimum 1
  * @maximum 20
+ */
+limit?: number;
+};
+
+export type ListAutoPrintRunsParams = {
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type ListAutoPrintJobsParams = {
+runId?: string;
+/**
+ * @minimum 1
+ * @maximum 200
  */
 limit?: number;
 };

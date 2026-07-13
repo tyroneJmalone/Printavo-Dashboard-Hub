@@ -1488,6 +1488,156 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/autoprint/config:
+    get:
+      operationId: getAutoPrintConfig
+      tags: [printQueue]
+      summary: Auto-print configuration (defaults enabled=false, dryRun=true)
+      responses:
+        "200":
+          description: Config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintConfig"
+    put:
+      operationId: updateAutoPrintConfig
+      tags: [printQueue]
+      summary: Replace the auto-print configuration (server normalizes invalid fields to safe defaults)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoPrintConfig"
+      responses:
+        "200":
+          description: Saved config (normalized)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintConfig"
+  /print-queue/autoprint/printers:
+    get:
+      operationId: listAutoPrintPrinters
+      tags: [printQueue]
+      summary: PrintNode printers on the account (configured=false when the API key is missing)
+      responses:
+        "200":
+          description: Printers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintPrintersResponse"
+        "502":
+          description: PrintNode API error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/autoprint/categories:
+    get:
+      operationId: listImprintCategories
+      tags: [printQueue]
+      summary: Distinct typeOfWork categories seen in synced imprints (for the mapping editor)
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintCategoriesResponse"
+  /print-queue/autoprint/run:
+    post:
+      operationId: startAutoPrintRun
+      tags: [printQueue]
+      summary: Start an auto-print run now (one at a time; dryRun in the body overrides the config flag)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartAutoPrintRunRequest"
+      responses:
+        "202":
+          description: Run started — poll GET /print-queue/autoprint/runs/{id}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintRun"
+        "400":
+          description: Invalid request (no source statuses, no printer for a real run, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Another run is already in progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/autoprint/runs:
+    get:
+      operationId: listAutoPrintRuns
+      tags: [printQueue]
+      summary: Recent auto-print runs, newest first
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        "200":
+          description: Runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintRunsResponse"
+  /print-queue/autoprint/runs/{id}:
+    get:
+      operationId: getAutoPrintRun
+      tags: [printQueue]
+      summary: Poll one auto-print run
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintRun"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/autoprint/jobs:
+    get:
+      operationId: listAutoPrintJobs
+      tags: [printQueue]
+      summary: Per-order print history (the dedup source), newest first
+      parameters:
+        - name: runId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200 }
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintJobsResponse"
 components:
   parameters:
     OrderTypeParam:
@@ -2761,7 +2911,7 @@ components:
       description: "status: running | success | failed | interrupted (server restarted mid-job — unfinished lines are retryable)."
       properties:
         id: { type: string }
-        trigger: { type: string, enum: [manual, ask, auto] }
+        trigger: { type: string, enum: [manual, ask, auto, autoprint] }
         status: { type: string, enum: [running, success, failed, interrupted] }
         startedAt: { type: string }
         finishedAt: { type: ["string", "null"] }
@@ -2799,3 +2949,177 @@ components:
           items:
             $ref: "#/components/schemas/PqJobLineInput"
       required: [trigger, lines]
+    AutoPrintCategoryMapping:
+      type: object
+      properties:
+        category: { type: string, minLength: 1 }
+        statusId: { type: string, minLength: 1 }
+        statusName: { type: string }
+      required: [category, statusId, statusName]
+    AutoPrintConfig:
+      type: object
+      description: Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.
+      properties:
+        enabled: { type: boolean }
+        scheduleHours: { type: integer, minimum: 1, maximum: 24 }
+        sourceStatusIds:
+          type: array
+          items: { type: string }
+        errorStatusId: { type: ["string", "null"] }
+        errorStatusName: { type: ["string", "null"] }
+        printerId: { type: ["string", "null"] }
+        printerName: { type: ["string", "null"] }
+        copies: { type: integer, minimum: 1, maximum: 10 }
+        dryRun: { type: boolean }
+        categoryMappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintCategoryMapping"
+      required:
+        [
+          enabled,
+          scheduleHours,
+          sourceStatusIds,
+          errorStatusId,
+          errorStatusName,
+          printerId,
+          printerName,
+          copies,
+          dryRun,
+          categoryMappings,
+        ]
+    AutoPrintPrinter:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        state: { type: string }
+        computerName: { type: ["string", "null"] }
+        computerState: { type: ["string", "null"] }
+      required: [id, name, state, computerName, computerState]
+    AutoPrintPrintersResponse:
+      type: object
+      properties:
+        configured: { type: boolean }
+        printers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintPrinter"
+      required: [configured, printers]
+    AutoPrintCategoriesResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          items: { type: string }
+      required: [categories]
+    StartAutoPrintRunRequest:
+      type: object
+      properties:
+        dryRun:
+          type: ["boolean", "null"]
+          description: Overrides the config dryRun flag for this run only; null/omitted uses the config value.
+      required: [dryRun]
+    AutoPrintRunCounts:
+      type: object
+      properties:
+        candidates: { type: integer }
+        alreadyPrinted: { type: integer }
+        detailPending: { type: integer }
+        deferred: { type: integer }
+        printed: { type: integer }
+        failed: { type: integer }
+        dryRun: { type: integer }
+      required:
+        [candidates, alreadyPrinted, detailPending, deferred, printed, failed, dryRun]
+    AutoPrintRun:
+      type: object
+      description: "status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run)."
+      properties:
+        id: { type: string }
+        trigger: { type: string, enum: [scheduled, manual] }
+        dryRun: { type: boolean }
+        status: { type: string, enum: [running, success, failed, interrupted] }
+        startedAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+        counts:
+          $ref: "#/components/schemas/AutoPrintRunCounts"
+        error: { type: ["string", "null"] }
+        advanceJobId:
+          type: ["string", "null"]
+          description: Id of the status-change job started after printing (poll /print-queue/status-jobs/{id}).
+        advanceSkipped: { type: ["string", "null"] }
+        createdAt: { type: string }
+      required:
+        [
+          id,
+          trigger,
+          dryRun,
+          status,
+          startedAt,
+          finishedAt,
+          counts,
+          error,
+          advanceJobId,
+          advanceSkipped,
+          createdAt,
+        ]
+    AutoPrintRunsResponse:
+      type: object
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintRun"
+      required: [runs]
+    AutoPrintJob:
+      type: object
+      description: "status: pending | printed | failed | dry_run | skipped. Printed rows are the dedup source — an order matching by printavoOrderId OR visualId never auto-prints twice."
+      properties:
+        id: { type: string }
+        runId: { type: string }
+        orderId: { type: string }
+        visualId: { type: ["integer", "null"] }
+        nickname: { type: ["string", "null"] }
+        docType: { type: string }
+        sourceStatusId: { type: ["string", "null"] }
+        sourceStatusName: { type: ["string", "null"] }
+        targetStatusId: { type: ["string", "null"] }
+        targetStatusName: { type: ["string", "null"] }
+        printnodeJobId: { type: ["string", "null"] }
+        printerName: { type: ["string", "null"] }
+        copies: { type: integer }
+        status: { type: string, enum: [pending, printed, failed, dry_run, skipped] }
+        errorMessage: { type: ["string", "null"] }
+        isReprint: { type: boolean }
+        printedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+      required:
+        [
+          id,
+          runId,
+          orderId,
+          visualId,
+          nickname,
+          docType,
+          sourceStatusId,
+          sourceStatusName,
+          targetStatusId,
+          targetStatusName,
+          printnodeJobId,
+          printerName,
+          copies,
+          status,
+          errorMessage,
+          isReprint,
+          printedAt,
+          createdAt,
+        ]
+    AutoPrintJobsResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintJob"
+      required: [jobs]

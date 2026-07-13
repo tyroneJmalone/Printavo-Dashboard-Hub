@@ -142,7 +142,7 @@ export type StartPqJobResult =
   | { status: "not_configured" };
 
 export async function startPqStatusJob(
-  trigger: "manual" | "ask" | "auto",
+  trigger: "manual" | "ask" | "auto" | "autoprint",
   lineInputs: PqJobLineInput[],
   log: Logger,
 ): Promise<StartPqJobResult> {

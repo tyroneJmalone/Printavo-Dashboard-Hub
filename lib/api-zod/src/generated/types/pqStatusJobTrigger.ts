@@ -13,4 +13,5 @@ export const PqStatusJobTrigger = {
   manual: 'manual',
   ask: 'ask',
   auto: 'auto',
+  autoprint: 'autoprint',
 } as const;
