@@ -21,7 +21,43 @@ import {
 } from "lucide-react";
 
 const STATUS_STORAGE_KEY = "printQueue.statusIds";
+const EXCLUDE_ATTACHMENTS_KEY = "printQueue.excludeAttachments";
 const MAX_PRINT_BATCH = 50;
+
+/** Quick status presets carried over from the original bulk-print app. */
+const PRESETS: { label: string; statusNames: string[] }[] = [
+  {
+    label: "Sepsy Purchasing",
+    statusNames: [
+      "Seps.io -  👕➗🧢 PARTIALLY ORDERED",
+      "Seps.io - 👕🧢 ORDERED",
+    ],
+  },
+  {
+    label: "Merch",
+    statusNames: [
+      "👕🧢 MERCH - PRINT Waiting 4 Blanks",
+      "👕🧢 MERCH - EMB Waiting 4 Blanks",
+      "👕🧢 MERCH - HEAT Waiting 4 Blanks",
+      "👕🧢 MERCH - MIXED DECO Waiting 4 Blanks",
+      "MERCH -B/O Waiting 4 Blanks",
+    ],
+  },
+];
+
+/** Whitespace-insensitive compare — status names have stray double spaces. */
+function normName(name: string): string {
+  return name.replace(/\s+/g, " ").trim();
+}
+
+function loadExcludeAttachments(): boolean {
+  try {
+    const raw = localStorage.getItem(EXCLUDE_ATTACHMENTS_KEY);
+    return raw == null ? true : raw === "true";
+  } catch {
+    return true;
+  }
+}
 
 function loadSavedStatusIds(): string[] {
   try {
@@ -66,6 +102,7 @@ function StatusPicker({
   onChange: (ids: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,10 +118,19 @@ function StatusPicker({
     onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
   };
 
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return statuses;
+    return statuses.filter((s) => s.name.toLowerCase().includes(q));
+  }, [statuses, search]);
+
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          setSearch("");
+        }}
         className="flex items-center gap-2 px-3 py-2 rounded-md bg-[#0f172a] border border-slate-700 text-[13px] text-slate-200 hover:border-slate-500 transition-colors"
         data-testid="button-status-picker"
       >
@@ -96,26 +142,44 @@ function StatusPicker({
         <ChevronDown size={14} className="text-slate-400" />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 w-80 max-h-80 overflow-y-auto rounded-md bg-[#0f172a] border border-slate-700 shadow-xl custom-scrollbar">
-          {statuses.map((s) => (
-            <label
-              key={s.id}
-              className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-slate-200 hover:bg-slate-800 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={selected.includes(s.id)}
-                onChange={() => toggle(s.id)}
-                className="accent-[#059669]"
-                data-testid={`checkbox-status-${s.id}`}
-              />
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: s.color || "#475569" }}
-              />
-              <span className="truncate">{s.name}</span>
-            </label>
-          ))}
+        <div className="absolute z-30 mt-1 w-80 rounded-md bg-[#0f172a] border border-slate-700 shadow-xl">
+          <div className="p-2 border-b border-slate-800">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search statuses…"
+              className="w-full px-2.5 py-1.5 rounded bg-[#020617] border border-slate-700 text-[13px] text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-[#059669]"
+              data-testid="input-status-search"
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto custom-scrollbar">
+            {visible.length === 0 ? (
+              <div className="px-3 py-4 text-center text-[12px] text-slate-500">
+                No statuses match.
+              </div>
+            ) : (
+              visible.map((s) => (
+                <label
+                  key={s.id}
+                  className="flex items-center gap-2.5 px-3 py-2 text-[13px] text-slate-200 hover:bg-slate-800 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(s.id)}
+                    onChange={() => toggle(s.id)}
+                    className="accent-[#059669]"
+                    data-testid={`checkbox-status-${s.id}`}
+                  />
+                  <span
+                    className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: s.color || "#475569" }}
+                  />
+                  <span className="truncate">{s.name}</span>
+                </label>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -137,6 +201,17 @@ function DocLinksDialog({
   skippedQuotes: number;
   onClose: () => void;
 }) {
+  const [popupsBlocked, setPopupsBlocked] = useState(false);
+
+  const openAll = () => {
+    let opened = 0;
+    for (const o of orders) {
+      const w = window.open(printavoDocUrl(o.printavoId, doc), "_blank");
+      if (w) opened++;
+    }
+    setPopupsBlocked(opened < orders.length);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
@@ -151,7 +226,7 @@ function DocLinksDialog({
         </div>
         <div className="px-5 py-3 text-[12px] text-slate-400 border-b border-slate-800">
           These Printavo pages need your logged-in browser session, so they open as
-          separate tabs — click each link below.
+          separate tabs — use Open All or click each link below.
           {skippedQuotes > 0 && (
             <span className="text-amber-400">
               {" "}
@@ -159,6 +234,23 @@ function DocLinksDialog({
             </span>
           )}
         </div>
+        {orders.length > 0 && (
+          <div className="px-5 py-3 border-b border-slate-800">
+            <button
+              onClick={openAll}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-[#059669] text-white text-[13px] font-semibold hover:bg-[#047857] transition-colors"
+              data-testid="button-open-all-docs"
+            >
+              <ExternalLink size={13} /> Open All ({orders.length})
+            </button>
+            {popupsBlocked && (
+              <p className="mt-2 text-[12px] text-amber-400">
+                Pop-ups blocked — allow pop-ups for this site in your browser's address
+                bar, then click Open All again. Or use the links below.
+              </p>
+            )}
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-2">
           {orders.length === 0 ? (
             <div className="px-2 py-6 text-center text-[13px] text-slate-500">
@@ -194,10 +286,15 @@ export default function PrintQueue() {
   const [dateFilter, setDateFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [docDialog, setDocDialog] = useState<"packing_slip" | "box_labels" | null>(null);
+  const [excludeAttachments, setExcludeAttachments] = useState<boolean>(loadExcludeAttachments);
 
   useEffect(() => {
     localStorage.setItem(STATUS_STORAGE_KEY, JSON.stringify(statusIds));
   }, [statusIds]);
+
+  useEffect(() => {
+    localStorage.setItem(EXCLUDE_ATTACHMENTS_KEY, String(excludeAttachments));
+  }, [excludeAttachments]);
 
   const { data: statusData } = useListPrintavoStatuses({
     query: { queryKey: getListPrintavoStatusesQueryKey(), staleTime: 5 * 60_000 },
@@ -270,13 +367,13 @@ export default function PrintQueue() {
     [selectedOrders],
   );
 
-  const printWorkorders = () => {
-    const withWo = selectedOrders.filter((o) => o.hasWorkorder);
-    const skipped = selectedOrders.length - withWo.length;
+  const printWorkorders = (source: PrintQueueOrder[]) => {
+    const withWo = source.filter((o) => o.hasWorkorder);
+    const skipped = source.length - withWo.length;
     if (withWo.length === 0) {
       toast({
         title: "Nothing to print",
-        description: "None of the selected orders have a workorder page.",
+        description: "None of these orders have a workorder page.",
         variant: "destructive",
       });
       return;
@@ -291,6 +388,7 @@ export default function PrintQueue() {
     }
     const url = getGetCombinedWorkordersHtmlUrl({
       ids: withWo.map((o) => o.printavoId).join(","),
+      ...(excludeAttachments ? { excludeAttachments: true } : {}),
     });
     // Synchronous window.open on click — popup-blocker-safe.
     window.open(url, "_blank");
@@ -301,6 +399,35 @@ export default function PrintQueue() {
       });
     }
   };
+
+  const applyPreset = (preset: (typeof PRESETS)[number]) => {
+    const wanted = new Set(preset.statusNames.map(normName));
+    const ids = statuses.filter((s) => wanted.has(normName(s.name))).map((s) => s.id);
+    if (ids.length === 0) {
+      toast({
+        title: "No matching statuses",
+        description: `None of the "${preset.label}" statuses exist in Printavo anymore.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setStatusIds(ids);
+    setSelected(new Set());
+    if (ids.length < preset.statusNames.length) {
+      toast({
+        title: `${preset.statusNames.length - ids.length} status(es) not found`,
+        description: "They may have been renamed in Printavo.",
+      });
+    }
+  };
+
+  const selectedStatuses = useMemo(
+    () =>
+      statusIds
+        .map((id) => statuses.find((s) => s.id === id))
+        .filter((s): s is (typeof statuses)[number] => s != null),
+    [statusIds, statuses],
+  );
 
   return (
     <AppShell>
@@ -318,8 +445,19 @@ export default function PrintQueue() {
         </div>
 
         {/* Controls */}
-        <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
           <StatusPicker statuses={statuses} selected={statusIds} onChange={setStatusIds} />
+          <span className="text-[11px] uppercase tracking-wider text-slate-500">Presets:</span>
+          {PRESETS.map((p) => (
+            <button
+              key={p.label}
+              onClick={() => applyPreset(p)}
+              className="px-2.5 py-1.5 rounded-md border border-slate-700 text-[12px] text-slate-300 hover:text-white hover:border-slate-500 transition-colors"
+              data-testid={`button-preset-${p.label.toLowerCase().replace(/\s+/g, "-")}`}
+            >
+              {p.label}
+            </button>
+          ))}
           <input
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
@@ -337,13 +475,31 @@ export default function PrintQueue() {
             Refresh
           </button>
           <div className="flex-1" />
+          <label className="flex items-center gap-1.5 text-[12px] text-slate-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={excludeAttachments}
+              onChange={(e) => setExcludeAttachments(e.target.checked)}
+              className="accent-[#059669]"
+              data-testid="checkbox-exclude-attachments"
+            />
+            Exclude attachments
+          </label>
           <button
-            onClick={printWorkorders}
+            onClick={() => printWorkorders(selectedOrders)}
             disabled={selected.size === 0}
             className="flex items-center gap-2 px-4 py-2 rounded-md bg-[#059669] text-white text-[13px] font-semibold hover:bg-[#047857] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             data-testid="button-print-workorders"
           >
             <Printer size={14} /> Print Workorders ({selected.size})
+          </button>
+          <button
+            onClick={() => printWorkorders(filtered)}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-2 px-3 py-2 rounded-md border border-slate-700 text-[13px] text-slate-200 hover:border-slate-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            data-testid="button-print-all-workorders"
+          >
+            <Printer size={14} /> Print All ({filtered.filter((o) => o.hasWorkorder).length})
           </button>
           <button
             onClick={() => setDocDialog("packing_slip")}
@@ -362,6 +518,37 @@ export default function PrintQueue() {
             <Package size={14} /> Box Labels
           </button>
         </div>
+
+        {/* Selected status badges */}
+        {selectedStatuses.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-4" data-testid="selected-statuses-list">
+            {selectedStatuses.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setStatusIds(statusIds.filter((id) => id !== s.id))}
+                className="flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-[12px] text-slate-200 hover:border-slate-500 transition-colors"
+                title="Remove status"
+                data-testid={`badge-status-${s.id}`}
+              >
+                <span
+                  className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: s.color || "#475569" }}
+                />
+                <span className="max-w-[220px] truncate">{s.name}</span>
+                <X size={11} className="text-slate-400" />
+              </button>
+            ))}
+            {selectedStatuses.length > 1 && (
+              <button
+                onClick={() => setStatusIds([])}
+                className="px-2 py-1 text-[12px] text-slate-500 hover:text-slate-300 transition-colors"
+                data-testid="button-clear-statuses"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Table */}
         <div className="rounded-lg bg-[#0f172a] border border-slate-800 overflow-hidden">

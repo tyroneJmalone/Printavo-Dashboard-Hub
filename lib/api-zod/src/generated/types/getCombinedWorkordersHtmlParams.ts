@@ -11,4 +11,8 @@ export type GetCombinedWorkordersHtmlParams = {
  * Comma-separated Printavo order ids (max 50)
  */
 ids: string;
+/**
+ * Hide attachment/mockup pages from the printout
+ */
+excludeAttachments?: boolean;
 };

@@ -1218,6 +1218,11 @@ paths:
           required: true
           description: Comma-separated Printavo order ids (max 50)
           schema: { type: string }
+        - name: excludeAttachments
+          in: query
+          required: false
+          description: Hide attachment/mockup pages from the printout
+          schema: { type: boolean }
       responses:
         "200":
           description: Printable HTML document

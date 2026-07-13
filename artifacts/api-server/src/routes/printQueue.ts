@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { listPrintQueueOrders } from "../lib/printQueue/orders";
 import {
@@ -35,17 +36,20 @@ router.get("/print-queue/workorders/html", (req, res) => {
     res.status(400).json({ error: `Maximum ${MAX_ORDERS} orders per batch` });
     return;
   }
-  buildCombinedWorkordersHtml(ids, req.log)
+  const excludeAttachments =
+    req.query.excludeAttachments === "true" || req.query.excludeAttachments === "1";
+  // Nonce-based CSP: only OUR page-controls script runs; scripts embedded in
+  // the fetched Printavo pages (analytics beacons etc.) stay blocked.
+  const nonce = randomBytes(16).toString("base64");
+  buildCombinedWorkordersHtml(ids, req.log, { nonce, excludeAttachments })
     .then((html) => {
       if (html == null) {
         res.status(404).json({ error: "No matching orders" });
         return;
       }
-      // Workorder pages are static print documents — block their scripts
-      // (analytics beacons etc.) from running same-origin with the Hub API.
       res.setHeader(
         "Content-Security-Policy",
-        "script-src 'none'; frame-ancestors 'self'",
+        `script-src 'nonce-${nonce}'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'`,
       );
       res.type("html").send(html);
     })

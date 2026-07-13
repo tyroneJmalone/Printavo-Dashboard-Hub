@@ -1875,7 +1875,8 @@ export const ListPrintQueueOrdersResponse = zod.object({
  * @summary Combined printable HTML of the selected orders' public workorder pages
  */
 export const GetCombinedWorkordersHtmlQueryParams = zod.object({
-  "ids": zod.coerce.string().describe('Comma-separated Printavo order ids (max 50)')
+  "ids": zod.coerce.string().describe('Comma-separated Printavo order ids (max 50)'),
+  "excludeAttachments": zod.coerce.boolean().optional().describe('Hide attachment\/mockup pages from the printout')
 })
 
 export const GetCombinedWorkordersHtmlResponse = zod.unknown()
