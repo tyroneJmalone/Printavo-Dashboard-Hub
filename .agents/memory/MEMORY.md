@@ -2,7 +2,7 @@
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [Tailwind v4 arbitrary values](tailwind-v4-arbitrary-values.md) — commas stay literal in v4: grid-cols-[400px,1fr] silently no-ops; use underscores (300px_1fr); verify layout visually.
 - [Printavo WAF rendering](printavo-waf-rendering.md) — headless Printavo page loads 403 after the first goto per browser session; fresh incognito context per render fixes it, delays don't.
-- [Printavo test-order safety](printavo-test-order-safety.md) — real-write tests use order #18371 ONLY; #19004 is banned (status changes emailed the customer); status changes = customer-visible.
+- [Printavo test-order safety](printavo-test-order-safety.md) — real-write tests use order #22251 ("TEST DO NOT ORDER") ONLY; #19004 banned (status changes emailed the customer); status changes = customer-visible.
 - [Printavo status-name matching](printavo-status-name-matching.md) — status names carry stray double spaces/emoji; match whitespace-normalized names at runtime, never hardcode ids.
 - [Reference sync daily watermark](reference-sync-daily-watermark.md) — new fields on reference queries (statuses etc.) don't backfill until the daily refresh; delete the entity_watermarks row to force it.
 - [Catalog search requirements](catalog-search-requirements.md) — tabled but returning: must be a key-authed read-only API usable by Tyler's OTHER app, with product images.
