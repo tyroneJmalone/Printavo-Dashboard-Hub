@@ -71,35 +71,52 @@ function num(value: string | null): number | null {
 const ATTEMPT_TIMEOUTS_MS = [15_000, 25_000];
 
 /**
- * Build the submitPO SOAP envelope. Kept as a standalone pure function so the
+ * Build a PO SOAP envelope for submitPO or getPreSubmitInfo (same arg
+ * structure per the live WSDL). Kept as a standalone pure function so the
  * dry-run path can render a preview without a client/network. Credentials are
  * injected here and only here — they are NEVER part of the persisted payload.
  *
- * Field structure per the SanMar PO Integration Guide v24.3 (poNum ≤ 12 chars,
- * shipTo ≤ 28, shipAddress1/attention ≤ 35, shipCity ≤ 28, shipState 2-letter,
- * one <webServicePoDetailList> per line). Validate against PO_TEST_ENDPOINT
- * before any live submission.
+ * CRITICAL — element order: SanMar's JAX-WS parser unmarshals xs:sequence
+ * types positionally. Out-of-order (or misplaced) elements silently parse as
+ * null and the service throws "SOAP fault: java.lang.NullPointerException"
+ * (this exact failure happened on the first live submit, 2026-07-13). The
+ * orders below are copied verbatim from the live WSDL
+ * (SanMarPOServicePort?wsdl):
+ *   webServicePO (arg0): attention, internalMessage, notes, poNum,
+ *     poSenderId, residence, department, shipAddress1, shipAddress2,
+ *     shipCity, shipEmail, shipMethod, shipState, shipTo, shipZip,
+ *     webServicePoDetailList*
+ *   webServicePODetail: color, errorOccured, inventoryKey, message, poId,
+ *     quantity, size, sizeIndex, style, whseNo
+ *   webServiceUser (arg1): sanMarCustomerNumber, sanMarUserName,
+ *     sanMarUserPassword, senderId, senderPassword
+ * Credentials go in arg1 (webServiceUser), NOT inside arg0.
+ *
+ * Field limits per the SanMar PO Integration Guide v24.3 (poNum ≤ 12 chars,
+ * shipTo ≤ 28, shipAddress1/attention ≤ 35, shipCity ≤ 28, shipState
+ * 2-letter).
  */
 export function buildSanMarPoEnvelope(
   creds: SanMarCredentials,
   input: SanMarPoInput,
+  operation: "submitPO" | "getPreSubmitInfo" = "submitPO",
 ): string {
   const details = input.lines
     .map(
       (l) => `
         <webServicePoDetailList>
-          <style>${xmlEscape(l.style)}</style>
-          <color>${xmlEscape(l.color)}</color>
-          <size>${xmlEscape(l.size)}</size>${
-            l.sizeIndex != null
-              ? `\n          <sizeIndex>${l.sizeIndex}</sizeIndex>`
-              : ""
-          }${
+          <color>${xmlEscape(l.color)}</color>${
             l.inventoryKey
               ? `\n          <inventoryKey>${xmlEscape(l.inventoryKey)}</inventoryKey>`
               : ""
           }
           <quantity>${l.quantity}</quantity>
+          <size>${xmlEscape(l.size)}</size>${
+            l.sizeIndex != null
+              ? `\n          <sizeIndex>${l.sizeIndex}</sizeIndex>`
+              : ""
+          }
+          <style>${xmlEscape(l.style)}</style>
           <whseNo>${l.whseNo}</whseNo>
         </webServicePoDetailList>`,
     )
@@ -108,33 +125,35 @@ export function buildSanMarPoEnvelope(
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:web="${PO_NS}">
   <soapenv:Header/>
   <soapenv:Body>
-    <web:submitPO>
-      <arg0>
-        <sanMarCustomerNumber>${xmlEscape(creds.customerNumber)}</sanMarCustomerNumber>
-        <sanMarUserName>${xmlEscape(creds.username)}</sanMarUserName>
-        <sanMarUserPassword>${xmlEscape(creds.password)}</sanMarUserPassword>
-        <poNum>${xmlEscape(input.poNumber)}</poNum>${
-          input.attention
-            ? `\n        <attention>${xmlEscape(input.attention)}</attention>`
-            : ""
-        }${input.notes ? `\n        <notes>${xmlEscape(input.notes)}</notes>` : ""}
-        <shipTo>${xmlEscape(input.shipTo)}</shipTo>
+    <web:${operation}>
+      <arg0>${
+        input.attention
+          ? `\n        <attention>${xmlEscape(input.attention)}</attention>`
+          : ""
+      }${input.notes ? `\n        <notes>${xmlEscape(input.notes)}</notes>` : ""}
+        <poNum>${xmlEscape(input.poNumber)}</poNum>
+        <residence>${input.residential ? "Y" : "N"}</residence>
         <shipAddress1>${xmlEscape(input.shipAddress1)}</shipAddress1>${
           input.shipAddress2
             ? `\n        <shipAddress2>${xmlEscape(input.shipAddress2)}</shipAddress2>`
             : ""
         }
-        <shipCity>${xmlEscape(input.shipCity)}</shipCity>
-        <shipState>${xmlEscape(input.shipState)}</shipState>
-        <shipZip>${xmlEscape(input.shipZip)}</shipZip>
-        <shipMethod>${xmlEscape(input.shipMethod)}</shipMethod>${
+        <shipCity>${xmlEscape(input.shipCity)}</shipCity>${
           input.shipEmail
             ? `\n        <shipEmail>${xmlEscape(input.shipEmail)}</shipEmail>`
             : ""
         }
-        <residence>${input.residential ? "Y" : "N"}</residence>${details}
+        <shipMethod>${xmlEscape(input.shipMethod)}</shipMethod>
+        <shipState>${xmlEscape(input.shipState)}</shipState>
+        <shipTo>${xmlEscape(input.shipTo)}</shipTo>
+        <shipZip>${xmlEscape(input.shipZip)}</shipZip>${details}
       </arg0>
-    </web:submitPO>
+      <arg1>
+        <sanMarCustomerNumber>${xmlEscape(creds.customerNumber)}</sanMarCustomerNumber>
+        <sanMarUserName>${xmlEscape(creds.username)}</sanMarUserName>
+        <sanMarUserPassword>${xmlEscape(creds.password)}</sanMarUserPassword>
+      </arg1>
+    </web:${operation}>
   </soapenv:Body>
 </soapenv:Envelope>`;
 }
@@ -319,6 +338,30 @@ export class SanMarClient {
     const fault = text.match(/<faultstring>([^<]*)<\/faultstring>/);
     if (fault) throw new SanMarApiError(`SanMar SOAP fault: ${xmlDecode(fault[1])}`, "fault");
     if (!res.ok) throw new SanMarApiError(`SanMar HTTP ${res.status}`, "http", res.status);
+    const rawMessage =
+      text.match(/<message>([\s\S]*?)<\/message>/)?.[1] ??
+      text.match(/<return>([\s\S]*?)<\/return>/)?.[1] ??
+      "";
+    const message = xmlDecode(rawMessage.trim());
+    const errOccurred = text
+      .match(/<errorOccur?red>([^<]*)<\/errorOccur?red>/i)?.[1]
+      ?.toLowerCase();
+    const success =
+      errOccurred != null
+        ? errOccurred !== "true"
+        : /success/i.test(message) && !/error/i.test(message);
+    return { success, message: message || "(no message returned)", raw: text };
+  }
+
+  /**
+   * Validate a PO against SanMar WITHOUT placing an order (SOAP
+   * getPreSubmitInfo — same arg0/arg1 shape as submitPO per the WSDL).
+   * Read-only, so unlike submitPO it is safe to call repeatedly. Use it to
+   * verify envelope structure/eligibility before a live submit.
+   */
+  async getPreSubmitInfo(input: SanMarPoInput): Promise<SanMarPoResult> {
+    const body = buildSanMarPoEnvelope(this.creds, input, "getPreSubmitInfo");
+    const text = await this.soapCall(PO_PROD_ENDPOINT, body);
     const rawMessage =
       text.match(/<message>([\s\S]*?)<\/message>/)?.[1] ??
       text.match(/<return>([\s\S]*?)<\/return>/)?.[1] ??

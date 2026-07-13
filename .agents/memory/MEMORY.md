@@ -1,4 +1,5 @@
 - [Vendor submit runs off the snapshot](vendor-submit-snapshot.md) — any per-line field needed at SanMar/S&S submit time must persist end-to-end, not cart-only.
+- [SanMar SOAP envelope ordering](sanmar-soap-envelope.md) — strict WSDL sequence order + creds in arg1 or the PO service NPEs; verify via getPreSubmitInfo (no order placed).
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [Tailwind v4 arbitrary values](tailwind-v4-arbitrary-values.md) — commas stay literal in v4: grid-cols-[400px,1fr] silently no-ops; use underscores (300px_1fr); verify layout visually.
 - [Printavo WAF rendering](printavo-waf-rendering.md) — headless Printavo page loads 403 after the first goto per browser session; fresh incognito context per render fixes it, delays don't.
