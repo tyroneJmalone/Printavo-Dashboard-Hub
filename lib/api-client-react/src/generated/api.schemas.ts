@@ -1083,6 +1083,313 @@ export interface UpsertDecorationMatrixRequest {
   data: DecorationMatrixData;
 }
 
+/**
+ * @nullable
+ */
+export type PqStatusRuleDecoGroup = typeof PqStatusRuleDecoGroup[keyof typeof PqStatusRuleDecoGroup] | null;
+
+
+export const PqStatusRuleDecoGroup = {
+  print: 'print',
+  heat: 'heat',
+  embroidery: 'embroidery',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PqStatusRuleDueComparator = typeof PqStatusRuleDueComparator[keyof typeof PqStatusRuleDueComparator] | null;
+
+
+export const PqStatusRuleDueComparator = {
+  more_than: 'more_than',
+  at_most: 'at_most',
+} as const;
+
+export type PqStatusRuleMode = typeof PqStatusRuleMode[keyof typeof PqStatusRuleMode];
+
+
+export const PqStatusRuleMode = {
+  off: 'off',
+  ask: 'ask',
+  auto: 'auto',
+} as const;
+
+/**
+ * Print Queue rule (separate from purchasing). First enabled rule by ascending priority wins. sourceStatusIds empty = any source status. targetStatusId/Name null = explicit no-change rule. mode: off = manual preset only, ask = confirm after print (default), auto = applies after print. Due window counts business days from now to the customer due date.
+ */
+export interface PqStatusRule {
+  id: string;
+  priority: number;
+  enabled: boolean;
+  /** @nullable */
+  name: string | null;
+  sourceStatusIds: string[];
+  /** @nullable */
+  decoGroup: PqStatusRuleDecoGroup;
+  specialMixedDeco: boolean;
+  /** @nullable */
+  dueComparator: PqStatusRuleDueComparator;
+  /** @nullable */
+  dueBusinessDays: number | null;
+  /** @nullable */
+  targetStatusId: string | null;
+  /** @nullable */
+  targetStatusName: string | null;
+  mode: PqStatusRuleMode;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PqStatusRulesResponse {
+  rules: PqStatusRule[];
+}
+
+/**
+ * @nullable
+ */
+export type CreatePqStatusRuleRequestDecoGroup = typeof CreatePqStatusRuleRequestDecoGroup[keyof typeof CreatePqStatusRuleRequestDecoGroup] | null;
+
+
+export const CreatePqStatusRuleRequestDecoGroup = {
+  print: 'print',
+  heat: 'heat',
+  embroidery: 'embroidery',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CreatePqStatusRuleRequestDueComparator = typeof CreatePqStatusRuleRequestDueComparator[keyof typeof CreatePqStatusRuleRequestDueComparator] | null;
+
+
+export const CreatePqStatusRuleRequestDueComparator = {
+  more_than: 'more_than',
+  at_most: 'at_most',
+} as const;
+
+export type CreatePqStatusRuleRequestMode = typeof CreatePqStatusRuleRequestMode[keyof typeof CreatePqStatusRuleRequestMode];
+
+
+export const CreatePqStatusRuleRequestMode = {
+  off: 'off',
+  ask: 'ask',
+  auto: 'auto',
+} as const;
+
+export interface CreatePqStatusRuleRequest {
+  priority?: number;
+  enabled?: boolean;
+  /** @nullable */
+  name?: string | null;
+  sourceStatusIds?: string[];
+  /** @nullable */
+  decoGroup?: CreatePqStatusRuleRequestDecoGroup;
+  specialMixedDeco?: boolean;
+  /** @nullable */
+  dueComparator?: CreatePqStatusRuleRequestDueComparator;
+  /** @nullable */
+  dueBusinessDays?: number | null;
+  /** @nullable */
+  targetStatusId?: string | null;
+  mode?: CreatePqStatusRuleRequestMode;
+}
+
+/**
+ * @nullable
+ */
+export type UpdatePqStatusRuleRequestDecoGroup = typeof UpdatePqStatusRuleRequestDecoGroup[keyof typeof UpdatePqStatusRuleRequestDecoGroup] | null;
+
+
+export const UpdatePqStatusRuleRequestDecoGroup = {
+  print: 'print',
+  heat: 'heat',
+  embroidery: 'embroidery',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdatePqStatusRuleRequestDueComparator = typeof UpdatePqStatusRuleRequestDueComparator[keyof typeof UpdatePqStatusRuleRequestDueComparator] | null;
+
+
+export const UpdatePqStatusRuleRequestDueComparator = {
+  more_than: 'more_than',
+  at_most: 'at_most',
+} as const;
+
+export type UpdatePqStatusRuleRequestMode = typeof UpdatePqStatusRuleRequestMode[keyof typeof UpdatePqStatusRuleRequestMode];
+
+
+export const UpdatePqStatusRuleRequestMode = {
+  off: 'off',
+  ask: 'ask',
+  auto: 'auto',
+} as const;
+
+export interface UpdatePqStatusRuleRequest {
+  priority?: number;
+  enabled?: boolean;
+  /** @nullable */
+  name?: string | null;
+  sourceStatusIds?: string[];
+  /** @nullable */
+  decoGroup?: UpdatePqStatusRuleRequestDecoGroup;
+  specialMixedDeco?: boolean;
+  /** @nullable */
+  dueComparator?: UpdatePqStatusRuleRequestDueComparator;
+  /** @nullable */
+  dueBusinessDays?: number | null;
+  /** @nullable */
+  targetStatusId?: string | null;
+  mode?: UpdatePqStatusRuleRequestMode;
+}
+
+export interface PqAutomationSetting {
+  enabled: boolean;
+}
+
+export type PqRuleMatchItemMode = typeof PqRuleMatchItemMode[keyof typeof PqRuleMatchItemMode];
+
+
+export const PqRuleMatchItemMode = {
+  off: 'off',
+  ask: 'ask',
+  auto: 'auto',
+} as const;
+
+export interface PqRuleMatchItem {
+  orderId: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  customerCompany: string | null;
+  fromStatusId: string;
+  /** @nullable */
+  fromStatusName: string | null;
+  targetStatusId: string;
+  targetStatusName: string;
+  ruleId: string;
+  /** @nullable */
+  ruleName: string | null;
+  mode: PqRuleMatchItemMode;
+}
+
+export interface PqEvaluateAndRunRequest {
+  /**
+     * @minItems 1
+     * @maxItems 200
+     */
+  orderIds: string[];
+}
+
+export interface PqEvaluateAndRunResponse {
+  automationEnabled: boolean;
+  /** @nullable */
+  autoJobId: string | null;
+  autoCount: number;
+  askItems: PqRuleMatchItem[];
+  noChangeCount: number;
+  alreadyInTargetCount: number;
+  unmatchedCount: number;
+}
+
+export type PqJobLineStatus = typeof PqJobLineStatus[keyof typeof PqJobLineStatus];
+
+
+export const PqJobLineStatus = {
+  pending: 'pending',
+  done: 'done',
+  failed: 'failed',
+  stale: 'stale',
+  skipped: 'skipped',
+} as const;
+
+export interface PqJobLine {
+  orderId: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  fromStatusId: string | null;
+  /** @nullable */
+  fromStatusName: string | null;
+  targetStatusId: string;
+  targetStatusName: string;
+  status: PqJobLineStatus;
+  /** @nullable */
+  error: string | null;
+}
+
+export type PqStatusJobTrigger = typeof PqStatusJobTrigger[keyof typeof PqStatusJobTrigger];
+
+
+export const PqStatusJobTrigger = {
+  manual: 'manual',
+  ask: 'ask',
+  auto: 'auto',
+} as const;
+
+export type PqStatusJobStatus = typeof PqStatusJobStatus[keyof typeof PqStatusJobStatus];
+
+
+export const PqStatusJobStatus = {
+  running: 'running',
+  success: 'success',
+  failed: 'failed',
+  interrupted: 'interrupted',
+} as const;
+
+/**
+ * status: running | success | failed | interrupted (server restarted mid-job — unfinished lines are retryable).
+ */
+export interface PqStatusJob {
+  id: string;
+  trigger: PqStatusJobTrigger;
+  status: PqStatusJobStatus;
+  startedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+  lines: PqJobLine[];
+  createdAt: string;
+}
+
+export interface PqStatusJobsResponse {
+  jobs: PqStatusJob[];
+}
+
+export interface PqJobLineInput {
+  /** @minLength 1 */
+  orderId: string;
+  /** @minLength 1 */
+  targetStatusId: string;
+  /**
+     * Stale guard — the status the user confirmed FROM; if the order moved since, that line is skipped as stale.
+     * @nullable
+     */
+  expectedStatusId: string | null;
+}
+
+export type StartPqStatusJobRequestTrigger = typeof StartPqStatusJobRequestTrigger[keyof typeof StartPqStatusJobRequestTrigger];
+
+
+export const StartPqStatusJobRequestTrigger = {
+  manual: 'manual',
+  ask: 'ask',
+} as const;
+
+export interface StartPqStatusJobRequest {
+  trigger: StartPqStatusJobRequestTrigger;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  lines: PqJobLineInput[];
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -1537,5 +1844,13 @@ ids: string;
  * Hide attachment/mockup pages from the printout
  */
 excludeAttachments?: boolean;
+};
+
+export type ListPqStatusJobsParams = {
+/**
+ * @minimum 1
+ * @maximum 20
+ */
+limit?: number;
 };
 

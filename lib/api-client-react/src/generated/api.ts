@@ -26,6 +26,7 @@ import type {
   BreakdownReport,
   ChangeEventItem,
   CreatePoFileRequest,
+  CreatePqStatusRuleRequest,
   CreateStatusRuleRequest,
   DecorationMatricesResponse,
   DecorationMatrix,
@@ -44,6 +45,7 @@ import type {
   GetStyleNumberBreakdownParams,
   HealthStatus,
   ListChangeEventsParams,
+  ListPqStatusJobsParams,
   ListPrintQueueOrdersParams,
   ListStatusSuggestionsParams,
   NeedsOrderingResult,
@@ -53,6 +55,13 @@ import type {
   PoFile,
   PoFileList,
   PollResult,
+  PqAutomationSetting,
+  PqEvaluateAndRunRequest,
+  PqEvaluateAndRunResponse,
+  PqStatusJob,
+  PqStatusJobsResponse,
+  PqStatusRule,
+  PqStatusRulesResponse,
   PrintQueueOrdersResponse,
   PrintavoStatusesResponse,
   ProbeResult,
@@ -60,6 +69,7 @@ import type {
   ReorderStatusRulesRequest,
   ReportFilterOptions,
   SeedStartResult,
+  StartPqStatusJobRequest,
   StatusRule,
   StatusRulesResponse,
   StatusSuggestion,
@@ -67,6 +77,7 @@ import type {
   SubmitPoToVendorRequest,
   SyncStatus,
   UpdatePoFileRequest,
+  UpdatePqStatusRuleRequest,
   UpdateStatusRuleRequest,
   UpsertDecorationMatrixRequest,
   VendorInventoryRequest,
@@ -3817,6 +3828,813 @@ export function useGetCombinedWorkordersHtml<TData = Awaited<ReturnType<typeof g
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCombinedWorkordersHtmlQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPqStatusRulesUrl = () => {
+
+
+
+
+  return `/api/print-queue/rules`
+}
+
+/**
+ * @summary Print Queue status rules ordered by priority (first match wins; separate from purchasing rules)
+ */
+export const listPqStatusRules = async ( options?: RequestInit): Promise<PqStatusRulesResponse> => {
+
+  return customFetch<PqStatusRulesResponse>(getListPqStatusRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPqStatusRulesQueryKey = () => {
+    return [
+    `/api/print-queue/rules`
+    ] as const;
+    }
+
+
+export const getListPqStatusRulesQueryOptions = <TData = Awaited<ReturnType<typeof listPqStatusRules>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPqStatusRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPqStatusRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPqStatusRules>>> = ({ signal }) => listPqStatusRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPqStatusRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPqStatusRulesQueryResult = NonNullable<Awaited<ReturnType<typeof listPqStatusRules>>>
+export type ListPqStatusRulesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Print Queue status rules ordered by priority (first match wins; separate from purchasing rules)
+ */
+
+export function useListPqStatusRules<TData = Awaited<ReturnType<typeof listPqStatusRules>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPqStatusRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPqStatusRulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePqStatusRuleUrl = () => {
+
+
+
+
+  return `/api/print-queue/rules`
+}
+
+/**
+ * @summary Create a Print Queue status rule (targetStatusId null = explicit "no change")
+ */
+export const createPqStatusRule = async (createPqStatusRuleRequest: CreatePqStatusRuleRequest, options?: RequestInit): Promise<PqStatusRule> => {
+
+  return customFetch<PqStatusRule>(getCreatePqStatusRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPqStatusRuleRequest)
+  }
+);}
+
+
+
+
+export const getCreatePqStatusRuleMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPqStatusRule>>, TError,{data: BodyType<CreatePqStatusRuleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPqStatusRule>>, TError,{data: BodyType<CreatePqStatusRuleRequest>}, TContext> => {
+
+const mutationKey = ['createPqStatusRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPqStatusRule>>, {data: BodyType<CreatePqStatusRuleRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPqStatusRule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePqStatusRuleMutationResult = NonNullable<Awaited<ReturnType<typeof createPqStatusRule>>>
+    export type CreatePqStatusRuleMutationBody = BodyType<CreatePqStatusRuleRequest>
+    export type CreatePqStatusRuleMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a Print Queue status rule (targetStatusId null = explicit "no change")
+ */
+export const useCreatePqStatusRule = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPqStatusRule>>, TError,{data: BodyType<CreatePqStatusRuleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPqStatusRule>>,
+        TError,
+        {data: BodyType<CreatePqStatusRuleRequest>},
+        TContext
+      > => {
+      return useMutation(getCreatePqStatusRuleMutationOptions(options));
+    }
+
+export const getUpdatePqStatusRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/print-queue/rules/${id}`
+}
+
+/**
+ * @summary Update a Print Queue status rule (any subset of fields)
+ */
+export const updatePqStatusRule = async (id: string,
+    updatePqStatusRuleRequest: UpdatePqStatusRuleRequest, options?: RequestInit): Promise<PqStatusRule> => {
+
+  return customFetch<PqStatusRule>(getUpdatePqStatusRuleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updatePqStatusRuleRequest)
+  }
+);}
+
+
+
+
+export const getUpdatePqStatusRuleMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePqStatusRule>>, TError,{id: string;data: BodyType<UpdatePqStatusRuleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePqStatusRule>>, TError,{id: string;data: BodyType<UpdatePqStatusRuleRequest>}, TContext> => {
+
+const mutationKey = ['updatePqStatusRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePqStatusRule>>, {id: string;data: BodyType<UpdatePqStatusRuleRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePqStatusRule(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePqStatusRuleMutationResult = NonNullable<Awaited<ReturnType<typeof updatePqStatusRule>>>
+    export type UpdatePqStatusRuleMutationBody = BodyType<UpdatePqStatusRuleRequest>
+    export type UpdatePqStatusRuleMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a Print Queue status rule (any subset of fields)
+ */
+export const useUpdatePqStatusRule = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePqStatusRule>>, TError,{id: string;data: BodyType<UpdatePqStatusRuleRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePqStatusRule>>,
+        TError,
+        {id: string;data: BodyType<UpdatePqStatusRuleRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdatePqStatusRuleMutationOptions(options));
+    }
+
+export const getDeletePqStatusRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/print-queue/rules/${id}`
+}
+
+/**
+ * @summary Delete a Print Queue status rule
+ */
+export const deletePqStatusRule = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeletePqStatusRuleUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeletePqStatusRuleMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePqStatusRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePqStatusRule>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deletePqStatusRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePqStatusRule>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePqStatusRule(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePqStatusRuleMutationResult = NonNullable<Awaited<ReturnType<typeof deletePqStatusRule>>>
+
+    export type DeletePqStatusRuleMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a Print Queue status rule
+ */
+export const useDeletePqStatusRule = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePqStatusRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePqStatusRule>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeletePqStatusRuleMutationOptions(options));
+    }
+
+export const getReorderPqStatusRulesUrl = () => {
+
+
+
+
+  return `/api/print-queue/rules/reorder`
+}
+
+/**
+ * @summary Atomically renumber Print Queue rule priorities to match the given order
+ */
+export const reorderPqStatusRules = async (reorderStatusRulesRequest: ReorderStatusRulesRequest, options?: RequestInit): Promise<PqStatusRulesResponse> => {
+
+  return customFetch<PqStatusRulesResponse>(getReorderPqStatusRulesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reorderStatusRulesRequest)
+  }
+);}
+
+
+
+
+export const getReorderPqStatusRulesMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderPqStatusRules>>, TError,{data: BodyType<ReorderStatusRulesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reorderPqStatusRules>>, TError,{data: BodyType<ReorderStatusRulesRequest>}, TContext> => {
+
+const mutationKey = ['reorderPqStatusRules'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reorderPqStatusRules>>, {data: BodyType<ReorderStatusRulesRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reorderPqStatusRules(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReorderPqStatusRulesMutationResult = NonNullable<Awaited<ReturnType<typeof reorderPqStatusRules>>>
+    export type ReorderPqStatusRulesMutationBody = BodyType<ReorderStatusRulesRequest>
+    export type ReorderPqStatusRulesMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Atomically renumber Print Queue rule priorities to match the given order
+ */
+export const useReorderPqStatusRules = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderPqStatusRules>>, TError,{data: BodyType<ReorderStatusRulesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reorderPqStatusRules>>,
+        TError,
+        {data: BodyType<ReorderStatusRulesRequest>},
+        TContext
+      > => {
+      return useMutation(getReorderPqStatusRulesMutationOptions(options));
+    }
+
+export const getGetPqAutomationUrl = () => {
+
+
+
+
+  return `/api/print-queue/automation`
+}
+
+/**
+ * @summary Master switch for all Print Queue after-print automation (default off)
+ */
+export const getPqAutomation = async ( options?: RequestInit): Promise<PqAutomationSetting> => {
+
+  return customFetch<PqAutomationSetting>(getGetPqAutomationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPqAutomationQueryKey = () => {
+    return [
+    `/api/print-queue/automation`
+    ] as const;
+    }
+
+
+export const getGetPqAutomationQueryOptions = <TData = Awaited<ReturnType<typeof getPqAutomation>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPqAutomation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPqAutomationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPqAutomation>>> = ({ signal }) => getPqAutomation({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPqAutomation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPqAutomationQueryResult = NonNullable<Awaited<ReturnType<typeof getPqAutomation>>>
+export type GetPqAutomationQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Master switch for all Print Queue after-print automation (default off)
+ */
+
+export function useGetPqAutomation<TData = Awaited<ReturnType<typeof getPqAutomation>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPqAutomation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPqAutomationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetPqAutomationUrl = () => {
+
+
+
+
+  return `/api/print-queue/automation`
+}
+
+/**
+ * @summary Enable/disable all Print Queue after-print automation (manual presets keep working)
+ */
+export const setPqAutomation = async (pqAutomationSetting: PqAutomationSetting, options?: RequestInit): Promise<PqAutomationSetting> => {
+
+  return customFetch<PqAutomationSetting>(getSetPqAutomationUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pqAutomationSetting)
+  }
+);}
+
+
+
+
+export const getSetPqAutomationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPqAutomation>>, TError,{data: BodyType<PqAutomationSetting>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setPqAutomation>>, TError,{data: BodyType<PqAutomationSetting>}, TContext> => {
+
+const mutationKey = ['setPqAutomation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setPqAutomation>>, {data: BodyType<PqAutomationSetting>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setPqAutomation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetPqAutomationMutationResult = NonNullable<Awaited<ReturnType<typeof setPqAutomation>>>
+    export type SetPqAutomationMutationBody = BodyType<PqAutomationSetting>
+    export type SetPqAutomationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Enable/disable all Print Queue after-print automation (manual presets keep working)
+ */
+export const useSetPqAutomation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPqAutomation>>, TError,{data: BodyType<PqAutomationSetting>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setPqAutomation>>,
+        TError,
+        {data: BodyType<PqAutomationSetting>},
+        TContext
+      > => {
+      return useMutation(getSetPqAutomationMutationOptions(options));
+    }
+
+export const getEvaluatePqRulesAndRunUrl = () => {
+
+
+
+
+  return `/api/print-queue/rules/evaluate-and-run`
+}
+
+/**
+ * Enforces the master automation switch server-side — when it is off nothing is evaluated and nothing runs. Auto matches are started as a background status job in the SAME call so a closed browser tab cannot strand them; ask matches are returned for an ephemeral confirm panel (confirmed items go to POST /print-queue/status-jobs with a per-order stale guard).
+ * @summary Evaluate Print Queue rules for just-printed orders; auto-mode matches start a job server-side, ask-mode matches are returned for confirmation
+ */
+export const evaluatePqRulesAndRun = async (pqEvaluateAndRunRequest: PqEvaluateAndRunRequest, options?: RequestInit): Promise<PqEvaluateAndRunResponse> => {
+
+  return customFetch<PqEvaluateAndRunResponse>(getEvaluatePqRulesAndRunUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pqEvaluateAndRunRequest)
+  }
+);}
+
+
+
+
+export const getEvaluatePqRulesAndRunMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof evaluatePqRulesAndRun>>, TError,{data: BodyType<PqEvaluateAndRunRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof evaluatePqRulesAndRun>>, TError,{data: BodyType<PqEvaluateAndRunRequest>}, TContext> => {
+
+const mutationKey = ['evaluatePqRulesAndRun'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof evaluatePqRulesAndRun>>, {data: BodyType<PqEvaluateAndRunRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  evaluatePqRulesAndRun(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EvaluatePqRulesAndRunMutationResult = NonNullable<Awaited<ReturnType<typeof evaluatePqRulesAndRun>>>
+    export type EvaluatePqRulesAndRunMutationBody = BodyType<PqEvaluateAndRunRequest>
+    export type EvaluatePqRulesAndRunMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Evaluate Print Queue rules for just-printed orders; auto-mode matches start a job server-side, ask-mode matches are returned for confirmation
+ */
+export const useEvaluatePqRulesAndRun = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof evaluatePqRulesAndRun>>, TError,{data: BodyType<PqEvaluateAndRunRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof evaluatePqRulesAndRun>>,
+        TError,
+        {data: BodyType<PqEvaluateAndRunRequest>},
+        TContext
+      > => {
+      return useMutation(getEvaluatePqRulesAndRunMutationOptions(options));
+    }
+
+export const getListPqStatusJobsUrl = (params?: ListPqStatusJobsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/print-queue/status-jobs?${stringifiedParams}` : `/api/print-queue/status-jobs`
+}
+
+/**
+ * @summary Recent Print Queue status-change jobs, newest first (interrupted jobs surface as retryable)
+ */
+export const listPqStatusJobs = async (params?: ListPqStatusJobsParams, options?: RequestInit): Promise<PqStatusJobsResponse> => {
+
+  return customFetch<PqStatusJobsResponse>(getListPqStatusJobsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPqStatusJobsQueryKey = (params?: ListPqStatusJobsParams,) => {
+    return [
+    `/api/print-queue/status-jobs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPqStatusJobsQueryOptions = <TData = Awaited<ReturnType<typeof listPqStatusJobs>>, TError = ErrorType<unknown>>(params?: ListPqStatusJobsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPqStatusJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPqStatusJobsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPqStatusJobs>>> = ({ signal }) => listPqStatusJobs(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPqStatusJobs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPqStatusJobsQueryResult = NonNullable<Awaited<ReturnType<typeof listPqStatusJobs>>>
+export type ListPqStatusJobsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Recent Print Queue status-change jobs, newest first (interrupted jobs surface as retryable)
+ */
+
+export function useListPqStatusJobs<TData = Awaited<ReturnType<typeof listPqStatusJobs>>, TError = ErrorType<unknown>>(
+ params?: ListPqStatusJobsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPqStatusJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPqStatusJobsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartPqStatusJobUrl = () => {
+
+
+
+
+  return `/api/print-queue/status-jobs`
+}
+
+/**
+ * @summary Start a background bulk status-change job (one at a time; per-order stale guard; writes via the throttled gateway)
+ */
+export const startPqStatusJob = async (startPqStatusJobRequest: StartPqStatusJobRequest, options?: RequestInit): Promise<PqStatusJob> => {
+
+  return customFetch<PqStatusJob>(getStartPqStatusJobUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(startPqStatusJobRequest)
+  }
+);}
+
+
+
+
+export const getStartPqStatusJobMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startPqStatusJob>>, TError,{data: BodyType<StartPqStatusJobRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startPqStatusJob>>, TError,{data: BodyType<StartPqStatusJobRequest>}, TContext> => {
+
+const mutationKey = ['startPqStatusJob'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startPqStatusJob>>, {data: BodyType<StartPqStatusJobRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  startPqStatusJob(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartPqStatusJobMutationResult = NonNullable<Awaited<ReturnType<typeof startPqStatusJob>>>
+    export type StartPqStatusJobMutationBody = BodyType<StartPqStatusJobRequest>
+    export type StartPqStatusJobMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Start a background bulk status-change job (one at a time; per-order stale guard; writes via the throttled gateway)
+ */
+export const useStartPqStatusJob = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startPqStatusJob>>, TError,{data: BodyType<StartPqStatusJobRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startPqStatusJob>>,
+        TError,
+        {data: BodyType<StartPqStatusJobRequest>},
+        TContext
+      > => {
+      return useMutation(getStartPqStatusJobMutationOptions(options));
+    }
+
+export const getGetPqStatusJobUrl = (id: string,) => {
+
+
+
+
+  return `/api/print-queue/status-jobs/${id}`
+}
+
+/**
+ * @summary Poll a status-change job's per-order progress
+ */
+export const getPqStatusJob = async (id: string, options?: RequestInit): Promise<PqStatusJob> => {
+
+  return customFetch<PqStatusJob>(getGetPqStatusJobUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPqStatusJobQueryKey = (id: string,) => {
+    return [
+    `/api/print-queue/status-jobs/${id}`
+    ] as const;
+    }
+
+
+export const getGetPqStatusJobQueryOptions = <TData = Awaited<ReturnType<typeof getPqStatusJob>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPqStatusJob>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPqStatusJobQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPqStatusJob>>> = ({ signal }) => getPqStatusJob(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPqStatusJob>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPqStatusJobQueryResult = NonNullable<Awaited<ReturnType<typeof getPqStatusJob>>>
+export type GetPqStatusJobQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Poll a status-change job's per-order progress
+ */
+
+export function useGetPqStatusJob<TData = Awaited<ReturnType<typeof getPqStatusJob>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPqStatusJob>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPqStatusJobQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

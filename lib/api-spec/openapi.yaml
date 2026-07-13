@@ -1241,6 +1241,253 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/rules:
+    get:
+      operationId: listPqStatusRules
+      tags: [printQueue]
+      summary: Print Queue status rules ordered by priority (first match wins; separate from purchasing rules)
+      responses:
+        "200":
+          description: Rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqStatusRulesResponse"
+    post:
+      operationId: createPqStatusRule
+      tags: [printQueue]
+      summary: Create a Print Queue status rule (targetStatusId null = explicit "no change")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePqStatusRuleRequest"
+      responses:
+        "201":
+          description: Created rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqStatusRule"
+        "400":
+          description: Invalid rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/rules/{id}:
+    patch:
+      operationId: updatePqStatusRule
+      tags: [printQueue]
+      summary: Update a Print Queue status rule (any subset of fields)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePqStatusRuleRequest"
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqStatusRule"
+        "400":
+          description: Invalid rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePqStatusRule
+      tags: [printQueue]
+      summary: Delete a Print Queue status rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/rules/reorder:
+    post:
+      operationId: reorderPqStatusRules
+      tags: [printQueue]
+      summary: Atomically renumber Print Queue rule priorities to match the given order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderStatusRulesRequest"
+      responses:
+        "200":
+          description: Rules in their new order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqStatusRulesResponse"
+        "400":
+          description: Stale or invalid id list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/automation:
+    get:
+      operationId: getPqAutomation
+      tags: [printQueue]
+      summary: Master switch for all Print Queue after-print automation (default off)
+      responses:
+        "200":
+          description: Current setting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqAutomationSetting"
+    put:
+      operationId: setPqAutomation
+      tags: [printQueue]
+      summary: Enable/disable all Print Queue after-print automation (manual presets keep working)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PqAutomationSetting"
+      responses:
+        "200":
+          description: Saved setting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqAutomationSetting"
+  /print-queue/rules/evaluate-and-run:
+    post:
+      operationId: evaluatePqRulesAndRun
+      tags: [printQueue]
+      summary: Evaluate Print Queue rules for just-printed orders; auto-mode matches start a job server-side, ask-mode matches are returned for confirmation
+      description: >
+        Enforces the master automation switch server-side — when it is off
+        nothing is evaluated and nothing runs. Auto matches are started as a
+        background status job in the SAME call so a closed browser tab cannot
+        strand them; ask matches are returned for an ephemeral confirm panel
+        (confirmed items go to POST /print-queue/status-jobs with a per-order
+        stale guard).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PqEvaluateAndRunRequest"
+      responses:
+        "200":
+          description: Evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqEvaluateAndRunResponse"
+        "400":
+          description: Missing / too many order ids
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/status-jobs:
+    get:
+      operationId: listPqStatusJobs
+      tags: [printQueue]
+      summary: Recent Print Queue status-change jobs, newest first (interrupted jobs surface as retryable)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 20 }
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqStatusJobsResponse"
+    post:
+      operationId: startPqStatusJob
+      tags: [printQueue]
+      summary: Start a background bulk status-change job (one at a time; per-order stale guard; writes via the throttled gateway)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartPqStatusJobRequest"
+      responses:
+        "202":
+          description: Job started — poll GET /print-queue/status-jobs/{id}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqStatusJob"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Another status job is already running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Printavo credentials not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/status-jobs/{id}:
+    get:
+      operationId: getPqStatusJob
+      tags: [printQueue]
+      summary: Poll a status-change job's per-order progress
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PqStatusJob"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   parameters:
     OrderTypeParam:
@@ -2333,3 +2580,222 @@ components:
         data:
           $ref: "#/components/schemas/DecorationMatrixData"
       required: [data]
+    PqStatusRule:
+      type: object
+      description: "Print Queue rule (separate from purchasing). First enabled rule by ascending priority wins. sourceStatusIds empty = any source status. targetStatusId/Name null = explicit no-change rule. mode: off = manual preset only, ask = confirm after print (default), auto = applies after print. Due window counts business days from now to the customer due date."
+      properties:
+        id: { type: string }
+        priority: { type: integer }
+        enabled: { type: boolean }
+        name: { type: ["string", "null"] }
+        sourceStatusIds:
+          type: array
+          items: { type: string }
+        decoGroup:
+          type: ["string", "null"]
+          enum: [print, heat, embroidery, null]
+        specialMixedDeco: { type: boolean }
+        dueComparator:
+          type: ["string", "null"]
+          enum: [more_than, at_most, null]
+        dueBusinessDays: { type: ["integer", "null"] }
+        targetStatusId: { type: ["string", "null"] }
+        targetStatusName: { type: ["string", "null"] }
+        mode: { type: string, enum: [off, ask, auto] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required:
+        [
+          id,
+          priority,
+          enabled,
+          name,
+          sourceStatusIds,
+          decoGroup,
+          specialMixedDeco,
+          dueComparator,
+          dueBusinessDays,
+          targetStatusId,
+          targetStatusName,
+          mode,
+          createdAt,
+          updatedAt,
+        ]
+    PqStatusRulesResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/PqStatusRule"
+      required: [rules]
+    CreatePqStatusRuleRequest:
+      type: object
+      properties:
+        priority: { type: integer }
+        enabled: { type: boolean }
+        name: { type: ["string", "null"] }
+        sourceStatusIds:
+          type: array
+          items: { type: string }
+        decoGroup:
+          type: ["string", "null"]
+          enum: [print, heat, embroidery, null]
+        specialMixedDeco: { type: boolean }
+        dueComparator:
+          type: ["string", "null"]
+          enum: [more_than, at_most, null]
+        dueBusinessDays: { type: ["integer", "null"] }
+        targetStatusId: { type: ["string", "null"] }
+        mode: { type: string, enum: [off, ask, auto] }
+    UpdatePqStatusRuleRequest:
+      type: object
+      properties:
+        priority: { type: integer }
+        enabled: { type: boolean }
+        name: { type: ["string", "null"] }
+        sourceStatusIds:
+          type: array
+          items: { type: string }
+        decoGroup:
+          type: ["string", "null"]
+          enum: [print, heat, embroidery, null]
+        specialMixedDeco: { type: boolean }
+        dueComparator:
+          type: ["string", "null"]
+          enum: [more_than, at_most, null]
+        dueBusinessDays: { type: ["integer", "null"] }
+        targetStatusId: { type: ["string", "null"] }
+        mode: { type: string, enum: [off, ask, auto] }
+    PqAutomationSetting:
+      type: object
+      properties:
+        enabled: { type: boolean }
+      required: [enabled]
+    PqRuleMatchItem:
+      type: object
+      properties:
+        orderId: { type: string }
+        visualId: { type: ["integer", "null"] }
+        nickname: { type: ["string", "null"] }
+        customerCompany: { type: ["string", "null"] }
+        fromStatusId: { type: string }
+        fromStatusName: { type: ["string", "null"] }
+        targetStatusId: { type: string }
+        targetStatusName: { type: string }
+        ruleId: { type: string }
+        ruleName: { type: ["string", "null"] }
+        mode: { type: string, enum: [off, ask, auto] }
+      required:
+        [
+          orderId,
+          visualId,
+          nickname,
+          customerCompany,
+          fromStatusId,
+          fromStatusName,
+          targetStatusId,
+          targetStatusName,
+          ruleId,
+          ruleName,
+          mode,
+        ]
+    PqEvaluateAndRunRequest:
+      type: object
+      properties:
+        orderIds:
+          type: array
+          items: { type: string }
+          minItems: 1
+          maxItems: 200
+      required: [orderIds]
+    PqEvaluateAndRunResponse:
+      type: object
+      properties:
+        automationEnabled: { type: boolean }
+        autoJobId: { type: ["string", "null"] }
+        autoCount: { type: integer }
+        askItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/PqRuleMatchItem"
+        noChangeCount: { type: integer }
+        alreadyInTargetCount: { type: integer }
+        unmatchedCount: { type: integer }
+      required:
+        [
+          automationEnabled,
+          autoJobId,
+          autoCount,
+          askItems,
+          noChangeCount,
+          alreadyInTargetCount,
+          unmatchedCount,
+        ]
+    PqJobLine:
+      type: object
+      properties:
+        orderId: { type: string }
+        visualId: { type: ["integer", "null"] }
+        nickname: { type: ["string", "null"] }
+        fromStatusId: { type: ["string", "null"] }
+        fromStatusName: { type: ["string", "null"] }
+        targetStatusId: { type: string }
+        targetStatusName: { type: string }
+        status: { type: string, enum: [pending, done, failed, stale, skipped] }
+        error: { type: ["string", "null"] }
+      required:
+        [
+          orderId,
+          visualId,
+          nickname,
+          fromStatusId,
+          fromStatusName,
+          targetStatusId,
+          targetStatusName,
+          status,
+          error,
+        ]
+    PqStatusJob:
+      type: object
+      description: "status: running | success | failed | interrupted (server restarted mid-job — unfinished lines are retryable)."
+      properties:
+        id: { type: string }
+        trigger: { type: string, enum: [manual, ask, auto] }
+        status: { type: string, enum: [running, success, failed, interrupted] }
+        startedAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/PqJobLine"
+        createdAt: { type: string }
+      required: [id, trigger, status, startedAt, finishedAt, lines, createdAt]
+    PqStatusJobsResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/PqStatusJob"
+      required: [jobs]
+    PqJobLineInput:
+      type: object
+      properties:
+        orderId: { type: string, minLength: 1 }
+        targetStatusId: { type: string, minLength: 1 }
+        expectedStatusId:
+          type: ["string", "null"]
+          description: Stale guard — the status the user confirmed FROM; if the order moved since, that line is skipped as stale.
+      required: [orderId, targetStatusId, expectedStatusId]
+    StartPqStatusJobRequest:
+      type: object
+      properties:
+        trigger: { type: string, enum: [manual, ask] }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/PqJobLineInput"
+      required: [trigger, lines]

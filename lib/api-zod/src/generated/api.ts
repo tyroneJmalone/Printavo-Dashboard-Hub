@@ -1882,3 +1882,294 @@ export const GetCombinedWorkordersHtmlQueryParams = zod.object({
 export const GetCombinedWorkordersHtmlResponse = zod.unknown()
 
 
+/**
+ * @summary Print Queue status rules ordered by priority (first match wins; separate from purchasing rules)
+ */
+export const ListPqStatusRulesResponse = zod.object({
+  "rules": zod.array(zod.object({
+  "id": zod.string(),
+  "priority": zod.number(),
+  "enabled": zod.boolean(),
+  "name": zod.string().nullable(),
+  "sourceStatusIds": zod.array(zod.string()),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullable(),
+  "specialMixedDeco": zod.boolean(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().nullable(),
+  "targetStatusId": zod.string().nullable(),
+  "targetStatusName": zod.string().nullable(),
+  "mode": zod.enum(['off', 'ask', 'auto']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).describe('Print Queue rule (separate from purchasing). First enabled rule by ascending priority wins. sourceStatusIds empty = any source status. targetStatusId\/Name null = explicit no-change rule. mode: off = manual preset only, ask = confirm after print (default), auto = applies after print. Due window counts business days from now to the customer due date.'))
+})
+
+
+/**
+ * @summary Create a Print Queue status rule (targetStatusId null = explicit "no change")
+ */
+export const CreatePqStatusRuleBody = zod.object({
+  "priority": zod.number().optional(),
+  "enabled": zod.boolean().optional(),
+  "name": zod.string().nullish(),
+  "sourceStatusIds": zod.array(zod.string()).optional(),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullish(),
+  "specialMixedDeco": zod.boolean().optional(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullish(),
+  "dueBusinessDays": zod.number().nullish(),
+  "targetStatusId": zod.string().nullish(),
+  "mode": zod.enum(['off', 'ask', 'auto']).optional()
+})
+
+export const CreatePqStatusRuleResponse = zod.object({
+  "id": zod.string(),
+  "priority": zod.number(),
+  "enabled": zod.boolean(),
+  "name": zod.string().nullable(),
+  "sourceStatusIds": zod.array(zod.string()),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullable(),
+  "specialMixedDeco": zod.boolean(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().nullable(),
+  "targetStatusId": zod.string().nullable(),
+  "targetStatusName": zod.string().nullable(),
+  "mode": zod.enum(['off', 'ask', 'auto']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).describe('Print Queue rule (separate from purchasing). First enabled rule by ascending priority wins. sourceStatusIds empty = any source status. targetStatusId\/Name null = explicit no-change rule. mode: off = manual preset only, ask = confirm after print (default), auto = applies after print. Due window counts business days from now to the customer due date.')
+
+
+/**
+ * @summary Update a Print Queue status rule (any subset of fields)
+ */
+export const UpdatePqStatusRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdatePqStatusRuleBody = zod.object({
+  "priority": zod.number().optional(),
+  "enabled": zod.boolean().optional(),
+  "name": zod.string().nullish(),
+  "sourceStatusIds": zod.array(zod.string()).optional(),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullish(),
+  "specialMixedDeco": zod.boolean().optional(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullish(),
+  "dueBusinessDays": zod.number().nullish(),
+  "targetStatusId": zod.string().nullish(),
+  "mode": zod.enum(['off', 'ask', 'auto']).optional()
+})
+
+export const UpdatePqStatusRuleResponse = zod.object({
+  "id": zod.string(),
+  "priority": zod.number(),
+  "enabled": zod.boolean(),
+  "name": zod.string().nullable(),
+  "sourceStatusIds": zod.array(zod.string()),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullable(),
+  "specialMixedDeco": zod.boolean(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().nullable(),
+  "targetStatusId": zod.string().nullable(),
+  "targetStatusName": zod.string().nullable(),
+  "mode": zod.enum(['off', 'ask', 'auto']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).describe('Print Queue rule (separate from purchasing). First enabled rule by ascending priority wins. sourceStatusIds empty = any source status. targetStatusId\/Name null = explicit no-change rule. mode: off = manual preset only, ask = confirm after print (default), auto = applies after print. Due window counts business days from now to the customer due date.')
+
+
+/**
+ * @summary Delete a Print Queue status rule
+ */
+export const DeletePqStatusRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeletePqStatusRuleResponse = zod.void()
+
+
+/**
+ * @summary Atomically renumber Print Queue rule priorities to match the given order
+ */
+
+
+
+export const ReorderPqStatusRulesBody = zod.object({
+  "orderedIds": zod.array(zod.string()).min(1)
+})
+
+export const ReorderPqStatusRulesResponse = zod.object({
+  "rules": zod.array(zod.object({
+  "id": zod.string(),
+  "priority": zod.number(),
+  "enabled": zod.boolean(),
+  "name": zod.string().nullable(),
+  "sourceStatusIds": zod.array(zod.string()),
+  "decoGroup": zod.union([zod.literal('print'),zod.literal('heat'),zod.literal('embroidery'),zod.literal(null)]).nullable(),
+  "specialMixedDeco": zod.boolean(),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().nullable(),
+  "targetStatusId": zod.string().nullable(),
+  "targetStatusName": zod.string().nullable(),
+  "mode": zod.enum(['off', 'ask', 'auto']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).describe('Print Queue rule (separate from purchasing). First enabled rule by ascending priority wins. sourceStatusIds empty = any source status. targetStatusId\/Name null = explicit no-change rule. mode: off = manual preset only, ask = confirm after print (default), auto = applies after print. Due window counts business days from now to the customer due date.'))
+})
+
+
+/**
+ * @summary Master switch for all Print Queue after-print automation (default off)
+ */
+export const GetPqAutomationResponse = zod.object({
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Enable/disable all Print Queue after-print automation (manual presets keep working)
+ */
+export const SetPqAutomationBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const SetPqAutomationResponse = zod.object({
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * Enforces the master automation switch server-side — when it is off nothing is evaluated and nothing runs. Auto matches are started as a background status job in the SAME call so a closed browser tab cannot strand them; ask matches are returned for an ephemeral confirm panel (confirmed items go to POST /print-queue/status-jobs with a per-order stale guard).
+ * @summary Evaluate Print Queue rules for just-printed orders; auto-mode matches start a job server-side, ask-mode matches are returned for confirmation
+ */
+export const evaluatePqRulesAndRunBodyOrderIdsMax = 200;
+
+
+
+export const EvaluatePqRulesAndRunBody = zod.object({
+  "orderIds": zod.array(zod.string()).min(1).max(evaluatePqRulesAndRunBodyOrderIdsMax)
+})
+
+export const EvaluatePqRulesAndRunResponse = zod.object({
+  "automationEnabled": zod.boolean(),
+  "autoJobId": zod.string().nullable(),
+  "autoCount": zod.number(),
+  "askItems": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "customerCompany": zod.string().nullable(),
+  "fromStatusId": zod.string(),
+  "fromStatusName": zod.string().nullable(),
+  "targetStatusId": zod.string(),
+  "targetStatusName": zod.string(),
+  "ruleId": zod.string(),
+  "ruleName": zod.string().nullable(),
+  "mode": zod.enum(['off', 'ask', 'auto'])
+})),
+  "noChangeCount": zod.number(),
+  "alreadyInTargetCount": zod.number(),
+  "unmatchedCount": zod.number()
+})
+
+
+/**
+ * @summary Recent Print Queue status-change jobs, newest first (interrupted jobs surface as retryable)
+ */
+export const listPqStatusJobsQueryLimitMax = 20;
+
+
+
+export const ListPqStatusJobsQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listPqStatusJobsQueryLimitMax).optional()
+})
+
+export const ListPqStatusJobsResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "id": zod.string(),
+  "trigger": zod.enum(['manual', 'ask', 'auto']),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "fromStatusId": zod.string().nullable(),
+  "fromStatusName": zod.string().nullable(),
+  "targetStatusId": zod.string(),
+  "targetStatusName": zod.string(),
+  "status": zod.enum(['pending', 'done', 'failed', 'stale', 'skipped']),
+  "error": zod.string().nullable()
+})),
+  "createdAt": zod.string()
+}).describe('status: running | success | failed | interrupted (server restarted mid-job — unfinished lines are retryable).'))
+})
+
+
+/**
+ * @summary Start a background bulk status-change job (one at a time; per-order stale guard; writes via the throttled gateway)
+ */
+
+
+export const startPqStatusJobBodyLinesMax = 500;
+
+
+
+export const StartPqStatusJobBody = zod.object({
+  "trigger": zod.enum(['manual', 'ask']),
+  "lines": zod.array(zod.object({
+  "orderId": zod.string().min(1),
+  "targetStatusId": zod.string().min(1),
+  "expectedStatusId": zod.string().nullable().describe('Stale guard — the status the user confirmed FROM; if the order moved since, that line is skipped as stale.')
+})).min(1).max(startPqStatusJobBodyLinesMax)
+})
+
+export const StartPqStatusJobResponse = zod.object({
+  "id": zod.string(),
+  "trigger": zod.enum(['manual', 'ask', 'auto']),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "fromStatusId": zod.string().nullable(),
+  "fromStatusName": zod.string().nullable(),
+  "targetStatusId": zod.string(),
+  "targetStatusName": zod.string(),
+  "status": zod.enum(['pending', 'done', 'failed', 'stale', 'skipped']),
+  "error": zod.string().nullable()
+})),
+  "createdAt": zod.string()
+}).describe('status: running | success | failed | interrupted (server restarted mid-job — unfinished lines are retryable).')
+
+
+/**
+ * @summary Poll a status-change job's per-order progress
+ */
+export const GetPqStatusJobParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetPqStatusJobResponse = zod.object({
+  "id": zod.string(),
+  "trigger": zod.enum(['manual', 'ask', 'auto']),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "lines": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "fromStatusId": zod.string().nullable(),
+  "fromStatusName": zod.string().nullable(),
+  "targetStatusId": zod.string(),
+  "targetStatusName": zod.string(),
+  "status": zod.enum(['pending', 'done', 'failed', 'stale', 'skipped']),
+  "error": zod.string().nullable()
+})),
+  "createdAt": zod.string()
+}).describe('status: running | success | failed | interrupted (server restarted mid-job — unfinished lines are retryable).')
+
+

@@ -356,14 +356,14 @@ export interface EvalCandidate {
   poDate: Date;
 }
 
-interface OrderComposition {
+export interface OrderComposition {
   groups: Set<DecoGroup>;
   mixed: boolean;
   needOrderingCount: number;
   orderedCount: number;
 }
 
-function composeOrder(
+export function composeOrder(
   lines: { categoryName: string | null; productStatus: string | null; items: number }[],
 ): OrderComposition {
   const groups = new Set<DecoGroup>();
@@ -384,8 +384,20 @@ function composeOrder(
   return { groups, mixed: mixedLine || groups.size > 1, needOrderingCount, orderedCount };
 }
 
-function ruleMatches(
-  rule: PoStatusRule,
+/**
+ * Structural rule shape shared by po_status_rules and pq_status_rules —
+ * the deco + due-window matching semantics are identical for both engines
+ * (PQ2 reuses this; source-status matching is PQ-specific and lives there).
+ */
+export interface DecoDueRuleShape {
+  specialMixedDeco: boolean;
+  decoGroup: string | null;
+  dueComparator: string | null;
+  dueBusinessDays: number | null;
+}
+
+export function ruleMatches(
+  rule: DecoDueRuleShape,
   comp: OrderComposition,
   businessDaysOut: number | null,
 ): boolean {

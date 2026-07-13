@@ -6,7 +6,16 @@ import {
   useListPrintQueueOrders,
   getListPrintQueueOrdersQueryKey,
   getGetCombinedWorkordersHtmlUrl,
+  useListPqStatusRules,
+  getListPqStatusRulesQueryKey,
+  useEvaluatePqRulesAndRun,
+  useStartPqStatusJob,
+  useGetPqStatusJob,
+  getGetPqStatusJobQueryKey,
   type PrintQueueOrder,
+  type PqStatusRule,
+  type PqRuleMatchItem,
+  type PqStatusJob,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -18,6 +27,9 @@ import {
   ExternalLink,
   X,
   RefreshCw,
+  Zap,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 
 const STATUS_STORAGE_KEY = "printQueue.statusIds";
@@ -88,6 +100,296 @@ function fmtMoney(total: string | null): string {
 
 function printavoDocUrl(printavoId: string, doc: "packing_slip" | "box_labels"): string {
   return `https://www.printavo.com/invoices/${printavoId}/${doc}`;
+}
+
+function apiError(err: unknown): string | undefined {
+  return err && typeof err === "object" && "data" in err
+    ? (err as { data?: { error?: string } }).data?.error
+    : undefined;
+}
+
+/* ── Bulk status change dialog ───────────────────────────────────────── */
+
+function BulkStatusDialog({
+  orders,
+  statuses,
+  ruleChips,
+  pending,
+  onApply,
+  onClose,
+}: {
+  orders: PrintQueueOrder[];
+  statuses: { id: string; name: string; color?: string | null }[];
+  ruleChips: PqStatusRule[];
+  pending: boolean;
+  onApply: (targetStatusId: string) => void;
+  onClose: () => void;
+}) {
+  const [target, setTarget] = useState("");
+  const targetName = statuses.find((s) => s.id === target)?.name;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="w-full max-w-lg max-h-[80vh] flex flex-col rounded-lg bg-[#0f172a] border border-slate-700 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <h3 className="text-sm font-semibold text-white">
+            Change status — {orders.length} order{orders.length === 1 ? "" : "s"}
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white" data-testid="button-close-bulk-dialog">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="px-5 py-4 space-y-4 overflow-y-auto custom-scrollbar">
+          {ruleChips.length > 0 && (
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">
+                Quick picks (from Queue Rules)
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {ruleChips.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => setTarget(r.targetStatusId!)}
+                    className={`px-2.5 py-1.5 rounded-md border text-[12px] transition-colors ${
+                      target === r.targetStatusId
+                        ? "border-[#059669] bg-[#059669]/10 text-[#10b981]"
+                        : "border-slate-700 text-slate-300 hover:border-slate-500"
+                    }`}
+                    data-testid={`chip-rule-${r.id}`}
+                  >
+                    {r.name ?? r.targetStatusName}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <label className="flex flex-col gap-1.5 text-[11px] uppercase tracking-wider text-slate-500">
+            Move to Printavo status
+            <select
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              className="bg-slate-800 border border-slate-700 text-slate-200 text-[13px] rounded-lg px-2.5 py-2 focus:outline-none focus:border-[#059669] normal-case tracking-normal"
+              data-testid="select-bulk-target"
+            >
+              <option value="">— pick a status —</option>
+              {statuses.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="max-h-44 overflow-y-auto custom-scrollbar rounded-md border border-slate-800 divide-y divide-slate-800/60">
+            {orders.map((o) => (
+              <div key={o.printavoId} className="px-3 py-1.5 text-[12px] flex items-center gap-2">
+                <span className="font-semibold text-slate-200">#{o.visualId}</span>
+                <span className="truncate text-slate-400 flex-1">{o.nickname ?? ""}</span>
+                <span className="text-slate-500 truncate max-w-[160px]">{o.statusName ?? "—"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="px-5 py-4 border-t border-slate-800 flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-3 py-2 rounded-md border border-slate-700 text-[13px] text-slate-300 hover:border-slate-500 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => target && onApply(target)}
+            disabled={!target || pending}
+            className="flex items-center gap-2 px-4 py-2 rounded-md bg-[#059669] text-white text-[13px] font-semibold hover:bg-[#047857] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            data-testid="button-apply-bulk-status"
+          >
+            {pending && <Loader2 size={13} className="animate-spin" />}
+            Move {orders.length} to {targetName ?? "…"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Post-print "ask first" confirmation panel ───────────────────────── */
+
+function AskPanel({
+  items,
+  pending,
+  jobRunning,
+  onApply,
+  onClose,
+}: {
+  items: PqRuleMatchItem[];
+  pending: boolean;
+  jobRunning: boolean;
+  onApply: (chosen: PqRuleMatchItem[]) => void;
+  onClose: () => void;
+}) {
+  const [checked, setChecked] = useState<Set<string>>(
+    () => new Set(items.map((i) => i.orderId)),
+  );
+  const toggle = (id: string) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const chosen = items.filter((i) => checked.has(i.orderId));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div
+        className="w-full max-w-xl max-h-[80vh] flex flex-col rounded-lg bg-[#0f172a] border border-slate-700 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Zap size={15} className="text-[#10b981]" /> Move printed orders?
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white" data-testid="button-close-ask-panel">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="px-5 py-3 text-[12px] text-slate-400 border-b border-slate-800">
+          Your Queue Rules matched these printed orders. Uncheck any you want to
+          leave alone, then apply.
+        </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-800/60">
+          {items.map((i) => (
+            <label
+              key={i.orderId}
+              className="flex items-center gap-2.5 px-5 py-2.5 text-[13px] hover:bg-slate-800/50 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={checked.has(i.orderId)}
+                onChange={() => toggle(i.orderId)}
+                className="accent-[#059669]"
+                data-testid={`checkbox-ask-${i.visualId ?? i.orderId}`}
+              />
+              <span className="font-semibold text-slate-200">
+                #{i.visualId ?? "?"}
+              </span>
+              <span className="truncate text-slate-400 flex-1">{i.nickname ?? ""}</span>
+              <span className="text-slate-500 truncate max-w-[140px]">
+                {i.fromStatusName ?? "—"}
+              </span>
+              <span className="text-slate-500">→</span>
+              <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-[#059669]/10 border border-[#059669]/25 text-[#10b981] truncate max-w-[160px]">
+                {i.targetStatusName}
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="px-5 py-4 border-t border-slate-800 flex items-center justify-end gap-2">
+          {jobRunning && (
+            <span className="mr-auto text-[11px] text-slate-500">
+              Waiting for the current job to finish…
+            </span>
+          )}
+          <button
+            onClick={onClose}
+            className="px-3 py-2 rounded-md border border-slate-700 text-[13px] text-slate-300 hover:border-slate-500 transition-colors"
+            data-testid="button-skip-ask"
+          >
+            Don't move anything
+          </button>
+          <button
+            onClick={() => onApply(chosen)}
+            disabled={chosen.length === 0 || pending || jobRunning}
+            className="flex items-center gap-2 px-4 py-2 rounded-md bg-[#059669] text-white text-[13px] font-semibold hover:bg-[#047857] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            data-testid="button-apply-ask"
+          >
+            {pending && <Loader2 size={13} className="animate-spin" />}
+            Move {chosen.length} order{chosen.length === 1 ? "" : "s"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Status job progress card ────────────────────────────────────────── */
+
+function jobCounts(job: PqStatusJob) {
+  const c = { done: 0, failed: 0, stale: 0, skipped: 0, pending: 0 };
+  for (const l of job.lines) c[l.status] = (c[l.status] ?? 0) + 1;
+  return c;
+}
+
+function JobProgressCard({ job, onDismiss }: { job: PqStatusJob; onDismiss: () => void }) {
+  const c = jobCounts(job);
+  const total = job.lines.length;
+  const processed = total - c.pending;
+  const running = job.status === "running";
+  const clean = job.status === "success" && c.failed === 0 && c.stale === 0;
+
+  return (
+    <div
+      className="fixed bottom-4 right-4 z-40 w-80 rounded-lg bg-[#0f172a] border border-slate-700 shadow-2xl"
+      data-testid="card-job-progress"
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+        <div className="flex items-center gap-2 text-[13px] font-semibold text-white">
+          {running ? (
+            <Loader2 size={14} className="animate-spin text-[#10b981]" />
+          ) : clean ? (
+            <CheckCircle2 size={14} className="text-[#10b981]" />
+          ) : (
+            <AlertTriangle size={14} className="text-amber-400" />
+          )}
+          {running
+            ? `Moving orders… ${processed}/${total}`
+            : job.status === "interrupted"
+              ? "Status change interrupted"
+              : clean
+                ? "Status change complete"
+                : "Status change finished"}
+        </div>
+        {!running && (
+          <button onClick={onDismiss} className="text-slate-400 hover:text-white" data-testid="button-dismiss-job">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+      <div className="px-4 py-3 text-[12px] text-slate-400 space-y-1">
+        <div>
+          {c.done} moved
+          {c.failed > 0 && <span className="text-red-400"> · {c.failed} failed</span>}
+          {c.stale > 0 && (
+            <span className="text-amber-400"> · {c.stale} skipped (status changed since)</span>
+          )}
+          {c.skipped > 0 && <span> · {c.skipped} already there</span>}
+          {running && c.pending > 0 && <span> · {c.pending} to go</span>}
+        </div>
+        {job.status === "interrupted" && (
+          <div className="text-amber-400">
+            The server restarted mid-run — unfinished orders were not changed.
+          </div>
+        )}
+        {(c.failed > 0 || c.stale > 0) && (
+          <div className="max-h-28 overflow-y-auto custom-scrollbar space-y-0.5 pt-1">
+            {job.lines
+              .filter((l) => l.status === "failed" || l.status === "stale")
+              .map((l) => (
+                <div key={l.orderId} className="text-[11px]">
+                  <span className="font-semibold text-slate-300">#{l.visualId ?? "?"}</span>{" "}
+                  <span className={l.status === "failed" ? "text-red-400" : "text-amber-400"}>
+                    {l.status === "failed" ? (l.error ?? "failed") : "moved by someone else"}
+                  </span>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ── Status multi-select ─────────────────────────────────────────────── */
@@ -287,6 +589,9 @@ export default function PrintQueue() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [docDialog, setDocDialog] = useState<"packing_slip" | "box_labels" | null>(null);
   const [excludeAttachments, setExcludeAttachments] = useState<boolean>(loadExcludeAttachments);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [askItems, setAskItems] = useState<PqRuleMatchItem[] | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem(STATUS_STORAGE_KEY, JSON.stringify(statusIds));
@@ -367,6 +672,103 @@ export default function PrintQueue() {
     [selectedOrders],
   );
 
+  /* — Queue Rules integration (PQ2) — */
+
+  const { data: rulesData } = useListPqStatusRules({
+    query: { queryKey: getListPqStatusRulesQueryKey(), staleTime: 60_000 },
+  });
+  const ruleChips = useMemo(
+    () => (rulesData?.rules ?? []).filter((r) => r.enabled && r.targetStatusId),
+    [rulesData],
+  );
+
+  const startJob = useStartPqStatusJob({
+    mutation: {
+      onSuccess: (job) => {
+        setActiveJobId(job.id);
+        setBulkOpen(false);
+        setAskItems(null);
+        setSelected(new Set());
+      },
+      onError: (err) => {
+        toast({
+          title: "Could not start status change",
+          description: apiError(err) ?? "Start failed",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const evaluateRun = useEvaluatePqRulesAndRun({
+    mutation: {
+      onSuccess: (res) => {
+        if (!res.automationEnabled) return;
+        if (res.autoJobId) {
+          setActiveJobId(res.autoJobId);
+          toast({
+            title: `Moving ${res.autoCount} order${res.autoCount === 1 ? "" : "s"} automatically`,
+            description: "Progress shows in the corner card.",
+          });
+        }
+        if (res.askItems.length > 0) setAskItems(res.askItems);
+      },
+      onError: () => {
+        toast({
+          title: "Status rules could not run",
+          description: "The workorders printed fine, but the post-print rule check failed.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  // Poll the active job while it runs; refresh the order list when it ends.
+  const { data: jobData } = useGetPqStatusJob(activeJobId ?? "", {
+    query: {
+      queryKey: getGetPqStatusJobQueryKey(activeJobId ?? ""),
+      enabled: activeJobId != null,
+      refetchInterval: (query) =>
+        query.state.data?.status === "running" ? 1500 : false,
+    },
+  });
+  const refreshedJobRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!jobData || jobData.status === "running") return;
+    if (refreshedJobRef.current === jobData.id) return;
+    refreshedJobRef.current = jobData.id;
+    if (statusIds.length > 0) refetch();
+  }, [jobData, statusIds.length, refetch]);
+
+  const startBulkChange = (targetStatusId: string) => {
+    if (startJob.isPending) return;
+    startJob.mutate({
+      data: {
+        trigger: "manual",
+        lines: selectedOrders.map((o) => ({
+          orderId: o.printavoId,
+          targetStatusId,
+          // Stale guard — skip the line if the order moved since this screen loaded.
+          expectedStatusId: o.statusId ?? null,
+        })),
+      },
+    });
+  };
+
+  const applyAskItems = (chosen: PqRuleMatchItem[]) => {
+    if (startJob.isPending || chosen.length === 0) return;
+    startJob.mutate({
+      data: {
+        trigger: "ask",
+        lines: chosen.map((i) => ({
+          orderId: i.orderId,
+          targetStatusId: i.targetStatusId,
+          expectedStatusId: i.fromStatusId,
+        })),
+      },
+    });
+  };
+
   const printWorkorders = (source: PrintQueueOrder[]) => {
     const withWo = source.filter((o) => o.hasWorkorder);
     const skipped = source.length - withWo.length;
@@ -398,6 +800,9 @@ export default function PrintQueue() {
         description: "They have no workorder page in Printavo.",
       });
     }
+    // Post-print hook: evaluate Queue Rules for what was printed. The server
+    // enforces the automation kill switch — when off this is a cheap no-op.
+    evaluateRun.mutate({ data: { orderIds: withWo.map((o) => o.printavoId) } });
   };
 
   const applyPreset = (preset: (typeof PRESETS)[number]) => {
@@ -516,6 +921,14 @@ export default function PrintQueue() {
             data-testid="button-box-labels"
           >
             <Package size={14} /> Box Labels
+          </button>
+          <button
+            onClick={() => setBulkOpen(true)}
+            disabled={selected.size === 0 || startJob.isPending}
+            className="flex items-center gap-2 px-3 py-2 rounded-md border border-slate-700 text-[13px] text-slate-200 hover:border-slate-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            data-testid="button-change-status"
+          >
+            <Zap size={14} /> Change Status
           </button>
         </div>
 
@@ -670,6 +1083,32 @@ export default function PrintQueue() {
           skippedQuotes={selectedOrders.length - selectedInvoices.length}
           onClose={() => setDocDialog(null)}
         />
+      )}
+
+      {bulkOpen && selectedOrders.length > 0 && (
+        <BulkStatusDialog
+          orders={selectedOrders}
+          statuses={statuses}
+          ruleChips={ruleChips}
+          pending={startJob.isPending}
+          onApply={startBulkChange}
+          onClose={() => setBulkOpen(false)}
+        />
+      )}
+
+      {askItems && askItems.length > 0 && (
+        <AskPanel
+          key={askItems.map((i) => i.orderId).join(",")}
+          items={askItems}
+          pending={startJob.isPending}
+          jobRunning={jobData?.status === "running"}
+          onApply={applyAskItems}
+          onClose={() => setAskItems(null)}
+        />
+      )}
+
+      {activeJobId && jobData && (
+        <JobProgressCard job={jobData} onDismiss={() => setActiveJobId(null)} />
       )}
     </AppShell>
   );

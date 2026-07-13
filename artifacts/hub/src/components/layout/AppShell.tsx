@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { LastSynced } from "@/components/LastSynced";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2 } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -51,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
     heading: "Production",
     items: [
       { id: "print", label: "Print Queue", href: "/print-queue", icon: Printer },
+      { id: "pqrules", label: "Queue Rules", href: "/print-queue-rules", icon: Zap },
       { id: "colors", label: "Color Library", icon: Palette, disabled: true },
     ],
   },
