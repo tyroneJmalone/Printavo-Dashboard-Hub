@@ -703,7 +703,19 @@ export default function PrintQueue() {
   const evaluateRun = useEvaluatePqRulesAndRun({
     mutation: {
       onSuccess: (res) => {
-        if (!res.automationEnabled) return;
+        if (!res.automationEnabled) {
+          const hasLiveRules = (rulesData?.rules ?? []).some(
+            (r) => r.enabled && (r.mode === "ask" || r.mode === "auto"),
+          );
+          if (hasLiveRules) {
+            toast({
+              title: "Queue Rules didn't run — automation is off",
+              description:
+                "Turn on the master switch on the Queue Rules page to get post-print prompts.",
+            });
+          }
+          return;
+        }
         if (res.autoJobId) {
           setActiveJobId(res.autoJobId);
           toast({
