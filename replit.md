@@ -52,6 +52,7 @@ Unified internal hub for Mint Printworks that consolidates 11 separate Printavo-
 
 - **Build one step at a time, testing as we go** (Tyler, July 8, 2026): start with the foundation and verify each phase works before moving to the next — no big-bang builds.
 - **Module isolation is a hard requirement**: individual functional pieces (Reports, Ordering, Mint Bucks, Print Queue, Color Library, Breezy, Shipping, Backup, Portal) must be tunable/iterable independently without breaking the others.
+- **Test order is #18371 ONLY** (Tyler, July 13, 2026): do NOT test with order #19004 anymore — Printavo automations fired customer emails when its status changed. Any real-write testing uses #18371 exclusively; if a different order is ever needed, ask Tyler first. Note: #18371 is currently outside the local sync window (pv_orders covers ~#18907+), so it may need special handling before it can be used end-to-end.
 
 ## Gotchas
 
