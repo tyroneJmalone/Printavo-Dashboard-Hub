@@ -8,4 +8,6 @@ export type {
   SSShippingAddress,
   SSOrderInput,
   SSOrderResult,
+  SSOrderInfo,
+  SSOrderLookupResult,
 } from "./client";

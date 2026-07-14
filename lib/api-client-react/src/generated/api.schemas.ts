@@ -703,6 +703,21 @@ export interface VendorSubmitPreview {
   lines: VendorSubmitPreviewLine[];
 }
 
+export interface VendorTrackingEntry {
+  /**
+     * Vendor's own order/sales-order number the package belongs to.
+     * @nullable
+     */
+  orderNumber: string | null;
+  /** @nullable */
+  carrier: string | null;
+  trackingNumber: string;
+  /** @nullable */
+  shipMethod: string | null;
+  /** @nullable */
+  shipmentDate: string | null;
+}
+
 export interface VendorOrder {
   id: string;
   poFileId: string;
@@ -715,14 +730,66 @@ export interface VendorOrder {
   vendorOrderNumbers: string[];
   /** @nullable */
   vendorStatus: string | null;
+  tracking: VendorTrackingEntry[];
   /** @nullable */
   error: string | null;
   /** @nullable */
   submittedAt: string | null;
   /** @nullable */
   lastStatusCheckAt: string | null;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface VendorOrdersListResponse {
+  orders: VendorOrder[];
+}
+
+/**
+ * reconciled = an unknown order the vendor confirmed, now marked submitted. no_vendor_record = unknown order the vendor has no record of (stays unknown — may be lag).
+ */
+export type VendorOrderRefreshResultOutcome = typeof VendorOrderRefreshResultOutcome[keyof typeof VendorOrderRefreshResultOutcome];
+
+
+export const VendorOrderRefreshResultOutcome = {
+  refreshed: 'refreshed',
+  reconciled: 'reconciled',
+  no_vendor_record: 'no_vendor_record',
+  not_refreshable: 'not_refreshable',
+  not_found: 'not_found',
+  not_configured: 'not_configured',
+  error: 'error',
+} as const;
+
+export interface VendorOrderRefreshResult {
+  /** reconciled = an unknown order the vendor confirmed, now marked submitted. no_vendor_record = unknown order the vendor has no record of (stays unknown — may be lag). */
+  outcome: VendorOrderRefreshResultOutcome;
+  vendorOrder: VendorOrder | null;
+  /** @nullable */
+  message: string | null;
+}
+
+export interface VendorOrderRefreshAllResult {
+  checked: number;
+  refreshed: number;
+  reconciled: number;
+  noRecord: number;
+  errors: number;
+  results: VendorOrderRefreshResult[];
+}
+
+export interface MarkVendorOrderFailedRequest {
+  /**
+     * Admin PIN (ADMIN_PIN secret) — releasing the anti-double-order lock is admin-only.
+     * @minLength 1
+     */
+  adminPin: string;
+  /**
+     * Optional note recorded on the order (e.g. "SanMar phone support confirmed no order exists").
+     * @nullable
+     */
+  note?: string | null;
 }
 
 export type VendorSubmitResultOutcome = typeof VendorSubmitResultOutcome[keyof typeof VendorSubmitResultOutcome];
@@ -1632,6 +1699,10 @@ export type ListChangeEventsParams = {
 limit?: number;
 entityType?: string;
 eventType?: string;
+};
+
+export type ListVendorOrdersParams = {
+poFileId?: string;
 };
 
 export type ListStatusSuggestionsParams = {

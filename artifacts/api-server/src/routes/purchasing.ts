@@ -9,6 +9,7 @@ import {
   SubmitPoToVendorBody,
   AdminUnlockPoFileBody,
   VendorSubmitBody,
+  MarkVendorOrderFailedBody,
   SetVendorShipToBody,
   CreateStatusRuleBody,
   UpdateStatusRuleBody,
@@ -31,7 +32,12 @@ import {
   type PoFileLineItem,
   type PoMutationResult,
 } from "../lib/purchasing/poFiles";
-import { submitVendorOrder } from "../lib/purchasing/vendorSubmit";
+import { submitVendorOrder, listVendorOrders } from "../lib/purchasing/vendorSubmit";
+import {
+  refreshVendorOrderStatus,
+  refreshActiveVendorOrders,
+  markVendorOrderFailed,
+} from "../lib/purchasing/vendorTracking";
 import {
   getVendorShipTo,
   setVendorShipTo,
@@ -485,6 +491,127 @@ router.post("/purchasing/po-files/:id/vendor-submit", (req, res) => {
     .catch((err) => {
       req.log.error({ err }, "vendor-submit failed");
       res.status(500).json({ error: "Failed to submit vendor order" });
+    });
+});
+
+router.get("/purchasing/vendor-orders", (req, res) => {
+  const poFileId =
+    typeof req.query.poFileId === "string" && req.query.poFileId ? req.query.poFileId : undefined;
+  listVendorOrders(poFileId)
+    .then((orders) => res.json({ orders }))
+    .catch((err) => {
+      req.log.error({ err }, "list vendor orders failed");
+      res.status(500).json({ error: "Failed to load vendor orders" });
+    });
+});
+
+/**
+ * Read-only vendor status/tracking refresh. Reconcile is asymmetric BY DESIGN:
+ * unknown→submitted is automatic when the vendor confirms (guard stays locked),
+ * unknown→failed only ever happens via the PIN-gated mark-failed route below.
+ */
+router.post("/purchasing/vendor-orders/refresh-active", (req, res) => {
+  refreshActiveVendorOrders()
+    .then((result) => {
+      req.log.info(
+        {
+          checked: result.checked,
+          refreshed: result.refreshed,
+          reconciled: result.reconciled,
+          noRecord: result.noRecord,
+          errors: result.errors,
+        },
+        "vendor-orders refresh-active",
+      );
+      res.json(result);
+    })
+    .catch((err) => {
+      req.log.error({ err }, "refresh-active failed");
+      res.status(500).json({ error: "Failed to refresh vendor orders" });
+    });
+});
+
+router.post("/purchasing/vendor-orders/:id/refresh", (req, res) => {
+  refreshVendorOrderStatus(req.params.id)
+    .then((result) => {
+      if (result.outcome === "not_found") {
+        res.status(404).json({ error: "Vendor order not found" });
+        return;
+      }
+      req.log.info(
+        { vendorOrderId: req.params.id, outcome: result.outcome },
+        "vendor-order refresh",
+      );
+      res.json(result);
+    })
+    .catch((err) => {
+      req.log.error({ err, vendorOrderId: req.params.id }, "vendor-order refresh failed");
+      res.status(500).json({ error: "Failed to refresh vendor order" });
+    });
+});
+
+/**
+ * Manually resolve an UNKNOWN order as failed — releases the anti-double-order
+ * lock, so it's PIN-gated with the same lockout as the other admin actions.
+ */
+router.post("/purchasing/vendor-orders/:id/mark-failed", (req, res) => {
+  const parsed = MarkVendorOrderFailedBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid mark-failed payload" });
+    return;
+  }
+  if (!process.env.ADMIN_PIN) {
+    res.status(403).json({
+      error: "Admin PIN isn't set up yet — add the ADMIN_PIN secret first.",
+    });
+    return;
+  }
+  if (Date.now() < pinLockedUntil) {
+    const mins = Math.ceil((pinLockedUntil - Date.now()) / 60_000);
+    res.status(429).json({
+      error: `Too many wrong PIN attempts — try again in ${mins} minute${mins === 1 ? "" : "s"}.`,
+    });
+    return;
+  }
+  if (!adminPinMatches(parsed.data.adminPin)) {
+    pinFailures += 1;
+    if (pinFailures >= PIN_MAX_FAILURES) {
+      pinLockedUntil = Date.now() + PIN_LOCKOUT_MS;
+      pinFailures = 0;
+      req.log.warn(
+        { vendorOrderId: req.params.id },
+        "vendor-order mark-failed: too many wrong PINs — locked out 15 min",
+      );
+    } else {
+      req.log.warn(
+        { vendorOrderId: req.params.id },
+        "vendor-order mark-failed rejected: wrong PIN",
+      );
+    }
+    res.status(403).json({ error: "Incorrect admin PIN" });
+    return;
+  }
+  pinFailures = 0;
+  pinLockedUntil = 0;
+  markVendorOrderFailed(req.params.id, parsed.data.note ?? null)
+    .then((result) => {
+      if (result.outcome === "not_found") {
+        res.status(404).json({ error: "Vendor order not found" });
+        return;
+      }
+      if (result.outcome === "not_refreshable") {
+        res.status(409).json({ error: result.message ?? "Order is not in unknown status" });
+        return;
+      }
+      req.log.info(
+        { vendorOrderId: req.params.id },
+        "vendor-order manually marked failed (lock released)",
+      );
+      res.json(result);
+    })
+    .catch((err) => {
+      req.log.error({ err, vendorOrderId: req.params.id }, "mark-failed failed");
+      res.status(500).json({ error: "Failed to mark vendor order failed" });
     });
 });
 

@@ -4,6 +4,8 @@ import type {
   SanMarInventoryResult,
   SanMarPoInput,
   SanMarPoResult,
+  SanMarOrderStatusResult,
+  SanMarShipmentResult,
 } from "./types";
 
 const PRODUCT_INFO_ENDPOINT =
@@ -21,6 +23,22 @@ const PO_TEST_ENDPOINT =
 const PO_NS = INVENTORY_NS;
 /** One shot only — a submit is never retried (see submitPO). */
 const SUBMIT_TIMEOUT_MS = 30_000;
+
+/**
+ * PromoStandards read-only services (order status + shipment/tracking).
+ * Verified live 2026-07-13 against a real order: id = SanMar USERNAME (not
+ * account number), queryType 1 = lookup by PO number.
+ */
+const PS_ORDER_STATUS_ENDPOINT =
+  "https://ws.sanmar.com:8080/promostandards/OrderStatusServiceBinding";
+const PS_OSN_ENDPOINT =
+  "https://ws.sanmar.com:8080/promostandards/OrderShipmentNotificationServiceBinding";
+const PS_ORDER_STATUS_NS =
+  "http://www.promostandards.org/WSDL/OrderStatusService/1.0.0/";
+const PS_OSN_NS =
+  "http://www.promostandards.org/WSDL/OrderShipmentNotificationService/1.0.0/";
+/** OSN declares wsVersion/id/password in a SharedObjects schema — required. */
+const PS_OSN_SHARED_NS = `${PS_OSN_NS}SharedObjects/`;
 
 export class SanMarApiError extends Error {
   constructor(
@@ -161,7 +179,12 @@ export function buildSanMarPoEnvelope(
 export class SanMarClient {
   constructor(private readonly creds: SanMarCredentials) {}
 
-  private async soapCall(endpoint: string, body: string): Promise<string> {
+  private async soapCall(
+    endpoint: string,
+    body: string,
+    /** SanMar's own services accept '""'; PromoStandards requires the real action. */
+    soapAction = '""',
+  ): Promise<string> {
     let text: string | null = null;
     let status = 0;
     let ok = false;
@@ -170,7 +193,7 @@ export class SanMarClient {
       try {
         const res = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: '""' },
+          headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: soapAction },
           body,
           signal: AbortSignal.timeout(timeoutMs),
         });
@@ -375,5 +398,132 @@ export class SanMarClient {
         ? errOccurred !== "true"
         : /success/i.test(message) && !/error/i.test(message);
     return { success, message: message || "(no message returned)", raw: text };
+  }
+
+  /**
+   * Order status by PO number (PromoStandards getOrderStatusDetails, 1.0.0).
+   * READ-ONLY and safe to retry. found=false when SanMar has no record of the
+   * PO (which can be lag right after submission — never treat it as proof the
+   * order doesn't exist).
+   */
+  async getOrderStatus(poNumber: string): Promise<SanMarOrderStatusResult> {
+    const body = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="${PS_ORDER_STATUS_NS}">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <ns:GetOrderStatusDetailsRequest>
+      <ns:wsVersion>1.0.0</ns:wsVersion>
+      <ns:id>${xmlEscape(this.creds.username)}</ns:id>
+      <ns:password>${xmlEscape(this.creds.password)}</ns:password>
+      <ns:queryType>1</ns:queryType>
+      <ns:referenceNumber>${xmlEscape(poNumber)}</ns:referenceNumber>
+    </ns:GetOrderStatusDetailsRequest>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+    const text = await this.soapCall(
+      PS_ORDER_STATUS_ENDPOINT,
+      body,
+      "getOrderStatusDetails",
+    );
+    throwOnPromoStandardsError(text, "order status");
+    const pick = (block: string, tag: string): string | null => {
+      const m = block.match(
+        new RegExp(`<(?:\\w+:)?${tag}>([\\s\\S]*?)</(?:\\w+:)?${tag}>`),
+      );
+      return m ? xmlDecode(m[1].trim()) || null : null;
+    };
+    const detailBlocks =
+      text.match(
+        /<(?:\w+:)?OrderStatusDetail>[\s\S]*?<\/(?:\w+:)?OrderStatusDetail>/g,
+      ) ?? [];
+    const details = detailBlocks.map((b) => ({
+      factoryOrderNumber: pick(b, "factoryOrderNumber"),
+      statusName: pick(b, "statusName"),
+      expectedShipDate: pick(b, "expectedShipDate"),
+    }));
+    return { found: details.length > 0, details };
+  }
+
+  /**
+   * Shipment notification / tracking by PO number (PromoStandards
+   * getOrderShipmentNotification, 1.0.0). READ-ONLY and safe to retry.
+   * found=false until SanMar generates a shipment (typically at ship time).
+   */
+  async getShipmentNotification(poNumber: string): Promise<SanMarShipmentResult> {
+    const body = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="${PS_OSN_NS}" xmlns:sh="${PS_OSN_SHARED_NS}">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <ns:GetOrderShipmentNotificationRequest>
+      <sh:wsVersion>1.0.0</sh:wsVersion>
+      <sh:id>${xmlEscape(this.creds.username)}</sh:id>
+      <sh:password>${xmlEscape(this.creds.password)}</sh:password>
+      <ns:queryType>1</ns:queryType>
+      <ns:referenceNumber>${xmlEscape(poNumber)}</ns:referenceNumber>
+    </ns:GetOrderShipmentNotificationRequest>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+    const text = await this.soapCall(
+      PS_OSN_ENDPOINT,
+      body,
+      "getOrderShipmentNotification",
+    );
+    throwOnPromoStandardsError(text, "shipment notification");
+    const pick = (block: string, tag: string): string | null => {
+      const m = block.match(
+        new RegExp(`<(?:\\w+:)?${tag}>([\\s\\S]*?)</(?:\\w+:)?${tag}>`),
+      );
+      return m ? xmlDecode(m[1].trim()) || null : null;
+    };
+    const notif = text.match(
+      /<(?:\w+:)?OrderShipmentNotification>[\s\S]*?<\/(?:\w+:)?OrderShipmentNotification>/,
+    )?.[0];
+    if (!notif) return { found: false, complete: null, packages: [] };
+    const completeRaw = pick(notif, "complete");
+    const packages: SanMarShipmentResult["packages"] = [];
+    const salesOrders =
+      notif.match(/<(?:\w+:)?SalesOrder>[\s\S]*?<\/(?:\w+:)?SalesOrder>/g) ?? [];
+    for (const so of salesOrders) {
+      const orderNumber = pick(so, "salesOrderNumber");
+      const pkgBlocks =
+        so.match(/<(?:\w+:)?Package>[\s\S]*?<\/(?:\w+:)?Package>/g) ?? [];
+      for (const pkg of pkgBlocks) {
+        packages.push({
+          orderNumber,
+          carrier: pick(pkg, "carrier"),
+          trackingNumber: pick(pkg, "trackingNumber"),
+          shipMethod: pick(pkg, "shipmentMethod"),
+          shipmentDate: pick(pkg, "shipmentDate"),
+        });
+      }
+    }
+    return {
+      found: true,
+      complete: completeRaw == null ? null : completeRaw === "true",
+      packages,
+    };
+  }
+}
+
+/**
+ * PromoStandards services report problems via ServiceMessageArray (severity
+ * Error/Warning), not SanMar's errorOccured flag — surface Errors as thrown
+ * SanMarApiError so callers never mistake an error response for "not found".
+ */
+function throwOnPromoStandardsError(text: string, label: string): void {
+  const messages =
+    text.match(/<(?:\w+:)?ServiceMessage>[\s\S]*?<\/(?:\w+:)?ServiceMessage>/g) ?? [];
+  for (const m of messages) {
+    const severity =
+      m.match(/<(?:\w+:)?severity>([^<]*)<\/(?:\w+:)?severity>/)?.[1] ?? "";
+    if (!/error/i.test(severity)) continue;
+    const desc =
+      m.match(/<(?:\w+:)?description>([\s\S]*?)<\/(?:\w+:)?description>/)?.[1] ??
+      "unknown error";
+    const kind = /authenticat|password|credential/i.test(desc) ? "auth" : "http";
+    throw new SanMarApiError(
+      `SanMar ${label} error: ${xmlDecode(desc.trim())}`,
+      kind,
+    );
   }
 }

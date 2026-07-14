@@ -72,6 +72,23 @@ export interface SSOrderResult {
   raw: unknown;
 }
 
+/** One order returned by GET /orders/{poNumber} (status/tracking lookup). */
+export interface SSOrderInfo {
+  orderNumber: string | null;
+  /** e.g. "In Progress", "Shipped", "Cancelled" — S&S's own wording. */
+  orderStatus: string | null;
+  trackingNumber: string | null;
+  shippingCarrier: string | null;
+  shippingMethod: string | null;
+  shipDate: string | null;
+}
+
+export interface SSOrderLookupResult {
+  /** false = S&S has no record for this PO number (can be lag — not proof). */
+  found: boolean;
+  orders: SSOrderInfo[];
+}
+
 /** Our canonical ship-method codes → S&S shippingMethod codes. */
 export const SS_SHIP_METHODS: Record<string, string> = {
   GROUND: "1",
@@ -162,6 +179,38 @@ export class SSClient {
           : [],
       }))
       .filter((p) => p.sku.length > 0);
+  }
+
+  /**
+   * Status/tracking lookup by PO number (GET /orders/{poNumber}). READ-ONLY
+   * and safe to retry. Returns found=false on an empty array — that can be
+   * vendor lag right after submission, never proof the order doesn't exist.
+   * Field names parsed defensively (not yet validated against a real S&S
+   * order — none has been placed as of 2026-07-13).
+   */
+  async getOrders(poNumber: string): Promise<SSOrderLookupResult> {
+    const raw = await this.get<unknown>(
+      `/orders/${encodeURIComponent(poNumber)}?lines=false`,
+    );
+    const arr = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+    const str = (o: Record<string, unknown>, ...keys: string[]): string | null => {
+      for (const k of keys) {
+        const v = o[k];
+        if (v != null && String(v).trim() !== "") return String(v).trim();
+      }
+      return null;
+    };
+    const orders = arr
+      .filter((o): o is Record<string, unknown> => typeof o === "object" && o !== null)
+      .map((o) => ({
+        orderNumber: str(o, "orderNumber", "OrderNumber"),
+        orderStatus: str(o, "orderStatus", "OrderStatus"),
+        trackingNumber: str(o, "trackingNumber", "TrackingNumber"),
+        shippingCarrier: str(o, "shippingCarrier", "ShippingCarrier"),
+        shippingMethod: str(o, "shippingMethod", "ShippingMethod"),
+        shipDate: str(o, "shipDate", "ShipDate", "shippingDate"),
+      }));
+    return { found: orders.length > 0, orders };
   }
 
   /**

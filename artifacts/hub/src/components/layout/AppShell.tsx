@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { LastSynced } from "@/components/LastSynced";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -44,6 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "reorder", label: "Reorder Scan", icon: Scan, disabled: true },
       { id: "vendor", label: "Vendor Orders", href: "/vendor-orders", icon: Truck },
       { id: "polog", label: "PO Log", href: "/po-log", icon: ClipboardList },
+      { id: "tracking", label: "Order Tracking", href: "/tracking", icon: PackageSearch },
       { id: "statusrules", label: "Status Rules", href: "/status-rules", icon: Wand2 },
     ],
   },

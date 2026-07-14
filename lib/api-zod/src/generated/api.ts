@@ -882,9 +882,174 @@ export const VendorSubmitResponse = zod.object({
   "shipMethod": zod.string().nullable(),
   "vendorOrderNumbers": zod.array(zod.string()),
   "vendorStatus": zod.string().nullable(),
+  "tracking": zod.array(zod.object({
+  "orderNumber": zod.string().nullable().describe('Vendor\'s own order\/sales-order number the package belongs to.'),
+  "carrier": zod.string().nullable(),
+  "trackingNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "shipmentDate": zod.string().nullable()
+})),
   "error": zod.string().nullable(),
   "submittedAt": zod.string().nullable(),
   "lastStatusCheckAt": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "message": zod.string().nullable()
+})
+
+
+/**
+ * @summary List electronic vendor order submissions (newest first), including vendor status and tracking numbers from the latest refresh.
+ */
+export const ListVendorOrdersQueryParams = zod.object({
+  "poFileId": zod.coerce.string().optional()
+})
+
+export const ListVendorOrdersResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "id": zod.string(),
+  "poFileId": zod.string(),
+  "vendor": zod.string(),
+  "mode": zod.string(),
+  "status": zod.string(),
+  "poNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "vendorOrderNumbers": zod.array(zod.string()),
+  "vendorStatus": zod.string().nullable(),
+  "tracking": zod.array(zod.object({
+  "orderNumber": zod.string().nullable().describe('Vendor\'s own order\/sales-order number the package belongs to.'),
+  "carrier": zod.string().nullable(),
+  "trackingNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "shipmentDate": zod.string().nullable()
+})),
+  "error": zod.string().nullable(),
+  "submittedAt": zod.string().nullable(),
+  "lastStatusCheckAt": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Refresh vendor status/tracking for every active live order (submitted or unknown, not archived). Read-only against the vendors; runs sequentially. Unknown orders the vendor confirms are auto-reconciled to submitted.
+ */
+export const RefreshActiveVendorOrdersResponse = zod.object({
+  "checked": zod.number(),
+  "refreshed": zod.number(),
+  "reconciled": zod.number(),
+  "noRecord": zod.number(),
+  "errors": zod.number(),
+  "results": zod.array(zod.object({
+  "outcome": zod.enum(['refreshed', 'reconciled', 'no_vendor_record', 'not_refreshable', 'not_found', 'not_configured', 'error']).describe('reconciled = an unknown order the vendor confirmed, now marked submitted. no_vendor_record = unknown order the vendor has no record of (stays unknown — may be lag).'),
+  "vendorOrder": zod.union([zod.object({
+  "id": zod.string(),
+  "poFileId": zod.string(),
+  "vendor": zod.string(),
+  "mode": zod.string(),
+  "status": zod.string(),
+  "poNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "vendorOrderNumbers": zod.array(zod.string()),
+  "vendorStatus": zod.string().nullable(),
+  "tracking": zod.array(zod.object({
+  "orderNumber": zod.string().nullable().describe('Vendor\'s own order\/sales-order number the package belongs to.'),
+  "carrier": zod.string().nullable(),
+  "trackingNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "shipmentDate": zod.string().nullable()
+})),
+  "error": zod.string().nullable(),
+  "submittedAt": zod.string().nullable(),
+  "lastStatusCheckAt": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "message": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Refresh vendor status/tracking for one live order (read-only vendor lookup). An unknown order the vendor confirms is auto-reconciled to submitted; an unknown order the vendor has no record of stays unknown (never auto-failed).
+ */
+export const RefreshVendorOrderParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RefreshVendorOrderResponse = zod.object({
+  "outcome": zod.enum(['refreshed', 'reconciled', 'no_vendor_record', 'not_refreshable', 'not_found', 'not_configured', 'error']).describe('reconciled = an unknown order the vendor confirmed, now marked submitted. no_vendor_record = unknown order the vendor has no record of (stays unknown — may be lag).'),
+  "vendorOrder": zod.union([zod.object({
+  "id": zod.string(),
+  "poFileId": zod.string(),
+  "vendor": zod.string(),
+  "mode": zod.string(),
+  "status": zod.string(),
+  "poNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "vendorOrderNumbers": zod.array(zod.string()),
+  "vendorStatus": zod.string().nullable(),
+  "tracking": zod.array(zod.object({
+  "orderNumber": zod.string().nullable().describe('Vendor\'s own order\/sales-order number the package belongs to.'),
+  "carrier": zod.string().nullable(),
+  "trackingNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "shipmentDate": zod.string().nullable()
+})),
+  "error": zod.string().nullable(),
+  "submittedAt": zod.string().nullable(),
+  "lastStatusCheckAt": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "message": zod.string().nullable()
+})
+
+
+/**
+ * @summary Admin-only — manually resolve an UNKNOWN order as failed, releasing the anti-double-order lock so the PO can be submitted again. Requires the admin PIN. Only allowed for unknown orders; never automated because a wrong call can cause a duplicate order.
+ */
+export const MarkVendorOrderFailedParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+
+
+export const MarkVendorOrderFailedBody = zod.object({
+  "adminPin": zod.string().min(1).describe('Admin PIN (ADMIN_PIN secret) — releasing the anti-double-order lock is admin-only.'),
+  "note": zod.string().nullish().describe('Optional note recorded on the order (e.g. \"SanMar phone support confirmed no order exists\").')
+})
+
+export const MarkVendorOrderFailedResponse = zod.object({
+  "outcome": zod.enum(['refreshed', 'reconciled', 'no_vendor_record', 'not_refreshable', 'not_found', 'not_configured', 'error']).describe('reconciled = an unknown order the vendor confirmed, now marked submitted. no_vendor_record = unknown order the vendor has no record of (stays unknown — may be lag).'),
+  "vendorOrder": zod.union([zod.object({
+  "id": zod.string(),
+  "poFileId": zod.string(),
+  "vendor": zod.string(),
+  "mode": zod.string(),
+  "status": zod.string(),
+  "poNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "vendorOrderNumbers": zod.array(zod.string()),
+  "vendorStatus": zod.string().nullable(),
+  "tracking": zod.array(zod.object({
+  "orderNumber": zod.string().nullable().describe('Vendor\'s own order\/sales-order number the package belongs to.'),
+  "carrier": zod.string().nullable(),
+  "trackingNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "shipmentDate": zod.string().nullable()
+})),
+  "error": zod.string().nullable(),
+  "submittedAt": zod.string().nullable(),
+  "lastStatusCheckAt": zod.string().nullable(),
+  "archived": zod.boolean(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }),zod.null()]),

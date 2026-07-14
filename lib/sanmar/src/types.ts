@@ -77,6 +77,38 @@ export interface SanMarPoResult {
   raw: string;
 }
 
+/** One status line from PromoStandards getOrderStatusDetails. */
+export interface SanMarOrderStatusDetail {
+  /** SanMar's internal sales-order number for this PO. */
+  factoryOrderNumber: string | null;
+  statusName: string | null;
+  expectedShipDate: string | null;
+}
+
+export interface SanMarOrderStatusResult {
+  /** false = SanMar has no record of this PO number. */
+  found: boolean;
+  details: SanMarOrderStatusDetail[];
+}
+
+/** One shipped package from PromoStandards getOrderShipmentNotification. */
+export interface SanMarShipmentPackage {
+  /** SanMar sales-order number the package belongs to. */
+  orderNumber: string | null;
+  carrier: string | null;
+  trackingNumber: string | null;
+  shipMethod: string | null;
+  shipmentDate: string | null;
+}
+
+export interface SanMarShipmentResult {
+  /** false = no shipment notification exists (yet) for this PO number. */
+  found: boolean;
+  /** All shipments for the PO are complete (null when not reported). */
+  complete: boolean | null;
+  packages: SanMarShipmentPackage[];
+}
+
 /** Our canonical ship-method codes → SanMar carrier strings. */
 export const SANMAR_SHIP_METHODS: Record<string, string> = {
   GROUND: "UPS",

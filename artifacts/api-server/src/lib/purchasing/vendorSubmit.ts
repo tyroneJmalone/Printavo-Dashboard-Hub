@@ -79,6 +79,16 @@ export interface VendorSubmitPreview {
   lines: VendorSubmitPreviewLine[];
 }
 
+/** One tracking number persisted on a vendor_orders row (tracking jsonb). */
+export interface VendorTrackingEntry {
+  /** Vendor's own order/sales-order number the package belongs to. */
+  orderNumber: string | null;
+  carrier: string | null;
+  trackingNumber: string;
+  shipMethod: string | null;
+  shipmentDate: string | null;
+}
+
 export interface VendorOrderDto {
   id: string;
   poFileId: string;
@@ -89,9 +99,11 @@ export interface VendorOrderDto {
   shipMethod: string | null;
   vendorOrderNumbers: string[];
   vendorStatus: string | null;
+  tracking: VendorTrackingEntry[];
   error: string | null;
   submittedAt: string | null;
   lastStatusCheckAt: string | null;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,7 +122,7 @@ export interface VendorSubmitResult {
 /** In-process single-flight guard — no two concurrent sends for one PO. */
 const inFlight = new Set<string>();
 
-class VendorNotConfigured extends Error {}
+export class VendorNotConfigured extends Error {}
 
 function isUniqueViolation(err: unknown): boolean {
   let e: unknown = err;
@@ -129,7 +141,7 @@ function truncate(s: string, max = 6000): string {
   return s.length > max ? `${s.slice(0, max)}…[truncated]` : s;
 }
 
-function toVendorOrderDto(row: VendorOrder): VendorOrderDto {
+export function toVendorOrderDto(row: VendorOrder): VendorOrderDto {
   return {
     id: row.id,
     poFileId: row.poFileId,
@@ -140,15 +152,17 @@ function toVendorOrderDto(row: VendorOrder): VendorOrderDto {
     shipMethod: row.shipMethod,
     vendorOrderNumbers: (row.vendorOrderNumbers as string[] | null) ?? [],
     vendorStatus: row.vendorStatus,
+    tracking: (row.tracking as VendorTrackingEntry[] | null) ?? [],
     error: row.error,
     submittedAt: row.submittedAt?.toISOString() ?? null,
     lastStatusCheckAt: row.lastStatusCheckAt?.toISOString() ?? null,
+    archived: row.archived,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
 }
 
-function sanMarClient(): SanMarClient {
+export function sanMarClient(): SanMarClient {
   const customerNumber = process.env.SANMAR_ACCOUNT_NUMBER;
   const username = process.env.SANMAR_USERNAME;
   const password = process.env.SANMAR_PASSWORD;
@@ -158,7 +172,7 @@ function sanMarClient(): SanMarClient {
   return new SanMarClient({ customerNumber, username, password });
 }
 
-function ssClient(): SSClient {
+export function ssClient(): SSClient {
   const accountNumber = process.env.SS_ACCOUNT_NUMBER;
   const apiKey = process.env.SS_API_KEY;
   if (!accountNumber || !apiKey) {

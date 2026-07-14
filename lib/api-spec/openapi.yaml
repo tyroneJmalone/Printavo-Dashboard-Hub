@@ -445,6 +445,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/vendor-orders:
+    get:
+      operationId: listVendorOrders
+      tags: [purchasing]
+      summary: List electronic vendor order submissions (newest first), including vendor status and tracking numbers from the latest refresh.
+      parameters:
+        - name: poFileId
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Vendor order rows.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorOrdersListResponse"
+  /purchasing/vendor-orders/refresh-active:
+    post:
+      operationId: refreshActiveVendorOrders
+      tags: [purchasing]
+      summary: Refresh vendor status/tracking for every active live order (submitted or unknown, not archived). Read-only against the vendors; runs sequentially. Unknown orders the vendor confirms are auto-reconciled to submitted.
+      responses:
+        "200":
+          description: Per-order refresh results plus counts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorOrderRefreshAllResult"
+  /purchasing/vendor-orders/{id}/refresh:
+    post:
+      operationId: refreshVendorOrder
+      tags: [purchasing]
+      summary: Refresh vendor status/tracking for one live order (read-only vendor lookup). An unknown order the vendor confirms is auto-reconciled to submitted; an unknown order the vendor has no record of stays unknown (never auto-failed).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Refresh result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorOrderRefreshResult"
+        "404":
+          description: Vendor order not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/vendor-orders/{id}/mark-failed:
+    post:
+      operationId: markVendorOrderFailed
+      tags: [purchasing]
+      summary: Admin-only — manually resolve an UNKNOWN order as failed, releasing the anti-double-order lock so the PO can be submitted again. Requires the admin PIN. Only allowed for unknown orders; never automated because a wrong call can cause a duplicate order.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkVendorOrderFailedRequest"
+      responses:
+        "200":
+          description: The order was marked failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorOrderRefreshResult"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin PIN incorrect, or the admin PIN isn't set up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Vendor order not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Order is not in unknown status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many wrong PIN attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /purchasing/settings/ship-to:
     get:
       operationId: getVendorShipTo
@@ -2370,6 +2475,17 @@ components:
           items:
             $ref: "#/components/schemas/VendorSubmitPreviewLine"
       required: [vendor, poNumber, shipTo, shipMethod, shipMethodVendorCode, totalQuantity, totalCost, lineCount, lines]
+    VendorTrackingEntry:
+      type: object
+      properties:
+        orderNumber:
+          type: ["string", "null"]
+          description: Vendor's own order/sales-order number the package belongs to.
+        carrier: { type: ["string", "null"] }
+        trackingNumber: { type: string }
+        shipMethod: { type: ["string", "null"] }
+        shipmentDate: { type: ["string", "null"] }
+      required: [orderNumber, carrier, trackingNumber, shipMethod, shipmentDate]
     VendorOrder:
       type: object
       properties:
@@ -2384,12 +2500,62 @@ components:
           type: array
           items: { type: string }
         vendorStatus: { type: ["string", "null"] }
+        tracking:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorTrackingEntry"
         error: { type: ["string", "null"] }
         submittedAt: { type: ["string", "null"] }
         lastStatusCheckAt: { type: ["string", "null"] }
+        archived: { type: boolean }
         createdAt: { type: string }
         updatedAt: { type: string }
-      required: [id, poFileId, vendor, mode, status, poNumber, shipMethod, vendorOrderNumbers, vendorStatus, error, submittedAt, lastStatusCheckAt, createdAt, updatedAt]
+      required: [id, poFileId, vendor, mode, status, poNumber, shipMethod, vendorOrderNumbers, vendorStatus, tracking, error, submittedAt, lastStatusCheckAt, archived, createdAt, updatedAt]
+    VendorOrdersListResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorOrder"
+      required: [orders]
+    VendorOrderRefreshResult:
+      type: object
+      properties:
+        outcome:
+          type: string
+          enum: [refreshed, reconciled, no_vendor_record, not_refreshable, not_found, not_configured, error]
+          description: reconciled = an unknown order the vendor confirmed, now marked submitted. no_vendor_record = unknown order the vendor has no record of (stays unknown — may be lag).
+        vendorOrder:
+          anyOf:
+            - $ref: "#/components/schemas/VendorOrder"
+            - type: "null"
+        message: { type: ["string", "null"] }
+      required: [outcome, vendorOrder, message]
+    VendorOrderRefreshAllResult:
+      type: object
+      properties:
+        checked: { type: number }
+        refreshed: { type: number }
+        reconciled: { type: number }
+        noRecord: { type: number }
+        errors: { type: number }
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/VendorOrderRefreshResult"
+      required: [checked, refreshed, reconciled, noRecord, errors, results]
+    MarkVendorOrderFailedRequest:
+      type: object
+      properties:
+        adminPin:
+          type: string
+          minLength: 1
+          description: Admin PIN (ADMIN_PIN secret) — releasing the anti-double-order lock is admin-only.
+        note:
+          type: ["string", "null"]
+          description: Optional note recorded on the order (e.g. "SanMar phone support confirmed no order exists").
+      required: [adminPin]
     VendorSubmitResult:
       type: object
       properties:

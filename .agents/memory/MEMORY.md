@@ -2,6 +2,7 @@
 - [SanMar SOAP envelope ordering](sanmar-soap-envelope.md) — strict WSDL sequence order + creds in arg1 or the PO service NPEs; verify via getPreSubmitInfo (no order placed).
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [Tailwind v4 arbitrary values](tailwind-v4-arbitrary-values.md) — commas stay literal in v4: grid-cols-[400px,1fr] silently no-ops; use underscores (300px_1fr); verify layout visually.
+- [Orval schema naming](orval-schema-naming.md) — request-body component schemas must be ...Request, never ...Body (collides with orval's generated <OperationId>Body zod export).
 - [Printavo WAF rendering](printavo-waf-rendering.md) — headless Printavo page loads 403 after the first goto per browser session; fresh incognito context per render fixes it, delays don't.
 - [Printavo test-order safety](printavo-test-order-safety.md) — real-write tests use order #22251 ("TEST DO NOT ORDER") ONLY; #19004 banned (status changes emailed the customer); status changes = customer-visible.
 - [Printavo status-name matching](printavo-status-name-matching.md) — status names carry stray double spaces/emoji; match whitespace-normalized names at runtime, never hardcode ids.

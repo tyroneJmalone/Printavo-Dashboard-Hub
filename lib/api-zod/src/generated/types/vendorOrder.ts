@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { VendorTrackingEntry } from './vendorTrackingEntry';
 
 export interface VendorOrder {
   id: string;
@@ -18,12 +19,14 @@ export interface VendorOrder {
   vendorOrderNumbers: string[];
   /** @nullable */
   vendorStatus: string | null;
+  tracking: VendorTrackingEntry[];
   /** @nullable */
   error: string | null;
   /** @nullable */
   submittedAt: string | null;
   /** @nullable */
   lastStatusCheckAt: string | null;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -9,6 +9,7 @@ import Orders from "./pages/Orders";
 import Payments from "./pages/Payments";
 import VendorOrders from "./pages/VendorOrders";
 import PoLog from "./pages/PoLog";
+import VendorTracking from "./pages/VendorTracking";
 import StatusRules from "./pages/StatusRules";
 import PrintQueue from "./pages/PrintQueue";
 import PrintQueueRules from "./pages/PrintQueueRules";
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/payments" component={Payments} />
       <Route path="/vendor-orders" component={VendorOrders} />
       <Route path="/po-log" component={PoLog} />
+      <Route path="/tracking" component={VendorTracking} />
       <Route path="/status-rules" component={StatusRules} />
       <Route path="/print-queue" component={PrintQueue} />
       <Route path="/print-queue-rules" component={PrintQueueRules} />

@@ -7,4 +7,8 @@ export type {
   SanMarPoLine,
   SanMarPoInput,
   SanMarPoResult,
+  SanMarOrderStatusDetail,
+  SanMarOrderStatusResult,
+  SanMarShipmentPackage,
+  SanMarShipmentResult,
 } from "./types";

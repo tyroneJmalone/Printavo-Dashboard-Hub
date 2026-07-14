@@ -56,6 +56,8 @@ import type {
   ListPqStatusJobsParams,
   ListPrintQueueOrdersParams,
   ListStatusSuggestionsParams,
+  ListVendorOrdersParams,
+  MarkVendorOrderFailedRequest,
   NeedsOrderingResult,
   OrdersReport,
   PaymentsReport,
@@ -93,6 +95,9 @@ import type {
   VendorInventoryResult,
   VendorLookupRequest,
   VendorLookupResult,
+  VendorOrderRefreshAllResult,
+  VendorOrderRefreshResult,
+  VendorOrdersListResponse,
   VendorShipTo,
   VendorShipToResponse,
   VendorSubmitRequest,
@@ -1450,6 +1455,301 @@ export const useVendorSubmit = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getVendorSubmitMutationOptions(options));
+    }
+
+export const getListVendorOrdersUrl = (params?: ListVendorOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/purchasing/vendor-orders?${stringifiedParams}` : `/api/purchasing/vendor-orders`
+}
+
+/**
+ * @summary List electronic vendor order submissions (newest first), including vendor status and tracking numbers from the latest refresh.
+ */
+export const listVendorOrders = async (params?: ListVendorOrdersParams, options?: RequestInit): Promise<VendorOrdersListResponse> => {
+
+  return customFetch<VendorOrdersListResponse>(getListVendorOrdersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListVendorOrdersQueryKey = (params?: ListVendorOrdersParams,) => {
+    return [
+    `/api/purchasing/vendor-orders`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListVendorOrdersQueryOptions = <TData = Awaited<ReturnType<typeof listVendorOrders>>, TError = ErrorType<unknown>>(params?: ListVendorOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listVendorOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListVendorOrdersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listVendorOrders>>> = ({ signal }) => listVendorOrders(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listVendorOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListVendorOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof listVendorOrders>>>
+export type ListVendorOrdersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List electronic vendor order submissions (newest first), including vendor status and tracking numbers from the latest refresh.
+ */
+
+export function useListVendorOrders<TData = Awaited<ReturnType<typeof listVendorOrders>>, TError = ErrorType<unknown>>(
+ params?: ListVendorOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listVendorOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListVendorOrdersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRefreshActiveVendorOrdersUrl = () => {
+
+
+
+
+  return `/api/purchasing/vendor-orders/refresh-active`
+}
+
+/**
+ * @summary Refresh vendor status/tracking for every active live order (submitted or unknown, not archived). Read-only against the vendors; runs sequentially. Unknown orders the vendor confirms are auto-reconciled to submitted.
+ */
+export const refreshActiveVendorOrders = async ( options?: RequestInit): Promise<VendorOrderRefreshAllResult> => {
+
+  return customFetch<VendorOrderRefreshAllResult>(getRefreshActiveVendorOrdersUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRefreshActiveVendorOrdersMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshActiveVendorOrders>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshActiveVendorOrders>>, TError,void, TContext> => {
+
+const mutationKey = ['refreshActiveVendorOrders'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshActiveVendorOrders>>, void> = () => {
+
+
+          return  refreshActiveVendorOrders(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshActiveVendorOrdersMutationResult = NonNullable<Awaited<ReturnType<typeof refreshActiveVendorOrders>>>
+
+    export type RefreshActiveVendorOrdersMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Refresh vendor status/tracking for every active live order (submitted or unknown, not archived). Read-only against the vendors; runs sequentially. Unknown orders the vendor confirms are auto-reconciled to submitted.
+ */
+export const useRefreshActiveVendorOrders = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshActiveVendorOrders>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshActiveVendorOrders>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRefreshActiveVendorOrdersMutationOptions(options));
+    }
+
+export const getRefreshVendorOrderUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/vendor-orders/${id}/refresh`
+}
+
+/**
+ * @summary Refresh vendor status/tracking for one live order (read-only vendor lookup). An unknown order the vendor confirms is auto-reconciled to submitted; an unknown order the vendor has no record of stays unknown (never auto-failed).
+ */
+export const refreshVendorOrder = async (id: string, options?: RequestInit): Promise<VendorOrderRefreshResult> => {
+
+  return customFetch<VendorOrderRefreshResult>(getRefreshVendorOrderUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRefreshVendorOrderMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshVendorOrder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshVendorOrder>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['refreshVendorOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshVendorOrder>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  refreshVendorOrder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshVendorOrderMutationResult = NonNullable<Awaited<ReturnType<typeof refreshVendorOrder>>>
+
+    export type RefreshVendorOrderMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Refresh vendor status/tracking for one live order (read-only vendor lookup). An unknown order the vendor confirms is auto-reconciled to submitted; an unknown order the vendor has no record of stays unknown (never auto-failed).
+ */
+export const useRefreshVendorOrder = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshVendorOrder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshVendorOrder>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRefreshVendorOrderMutationOptions(options));
+    }
+
+export const getMarkVendorOrderFailedUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/vendor-orders/${id}/mark-failed`
+}
+
+/**
+ * @summary Admin-only — manually resolve an UNKNOWN order as failed, releasing the anti-double-order lock so the PO can be submitted again. Requires the admin PIN. Only allowed for unknown orders; never automated because a wrong call can cause a duplicate order.
+ */
+export const markVendorOrderFailed = async (id: string,
+    markVendorOrderFailedRequest: MarkVendorOrderFailedRequest, options?: RequestInit): Promise<VendorOrderRefreshResult> => {
+
+  return customFetch<VendorOrderRefreshResult>(getMarkVendorOrderFailedUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(markVendorOrderFailedRequest)
+  }
+);}
+
+
+
+
+export const getMarkVendorOrderFailedMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markVendorOrderFailed>>, TError,{id: string;data: BodyType<MarkVendorOrderFailedRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markVendorOrderFailed>>, TError,{id: string;data: BodyType<MarkVendorOrderFailedRequest>}, TContext> => {
+
+const mutationKey = ['markVendorOrderFailed'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markVendorOrderFailed>>, {id: string;data: BodyType<MarkVendorOrderFailedRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  markVendorOrderFailed(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkVendorOrderFailedMutationResult = NonNullable<Awaited<ReturnType<typeof markVendorOrderFailed>>>
+    export type MarkVendorOrderFailedMutationBody = BodyType<MarkVendorOrderFailedRequest>
+    export type MarkVendorOrderFailedMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Admin-only — manually resolve an UNKNOWN order as failed, releasing the anti-double-order lock so the PO can be submitted again. Requires the admin PIN. Only allowed for unknown orders; never automated because a wrong call can cause a duplicate order.
+ */
+export const useMarkVendorOrderFailed = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markVendorOrderFailed>>, TError,{id: string;data: BodyType<MarkVendorOrderFailedRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markVendorOrderFailed>>,
+        TError,
+        {id: string;data: BodyType<MarkVendorOrderFailedRequest>},
+        TContext
+      > => {
+      return useMutation(getMarkVendorOrderFailedMutationOptions(options));
     }
 
 export const getGetVendorShipToUrl = () => {
