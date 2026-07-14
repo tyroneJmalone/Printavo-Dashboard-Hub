@@ -130,7 +130,7 @@ async function runSeed(
     for (const entity of SEED_ENTITIES) {
       await seedEntity(runId, entity, cutoff, logger);
     }
-    for (const entity of ["invoices", "quotes", "reference_daily"]) {
+    for (const entity of ["invoices", "quotes", "reference_daily", "list_daily"]) {
       await setWatermark(entity, runStartedAt);
     }
     const counts = await tableCounts();

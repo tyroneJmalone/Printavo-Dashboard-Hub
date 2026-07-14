@@ -10,6 +10,8 @@ import {
   type StatusesPage,
   type CustomersPage,
   type ContactsPage,
+  type PvOrderNode,
+  type Connection,
 } from "@workspace/printavo";
 import { getPrintavoClient, printavoConfigured } from "../printavoGateway";
 import {
@@ -56,6 +58,21 @@ const DAILY_REFRESH_MS = 24 * 60 * 60 * 1000;
 const SWEEP_PAGES_SCHEDULED = 10;
 const SWEEP_PAGES_MANUAL = 50;
 
+/**
+ * List-crawl early stop. VISUAL_ID desc is the recency proxy (Printavo
+ * has no UPDATED_AT sort), so new orders always surface at the top; the
+ * crawl may stop once it has covered a floor of newest pages AND seen K
+ * consecutive pages with zero changes. Floors chosen from change_events
+ * telemetry (July 2026): ~97% of status changes land within the newest
+ * ~400 invoices / ~150 quotes. Deeper edits (old order edited, old
+ * quote converted) are caught by the once-a-day FULL list crawl
+ * (list_daily watermark, scheduled polls only), so worst-case staleness
+ * for deep edits is ~24h.
+ */
+const LIST_FLOOR_PAGES_INVOICES = 16;
+const LIST_FLOOR_PAGES_QUOTES = 6;
+const LIST_STOP_UNCHANGED_PAGES = 3;
+
 export { isPollActive } from "./runState";
 
 interface Agg {
@@ -81,6 +98,92 @@ export interface PollResultInfo {
   ran: boolean;
   message: string;
   stats: Record<string, unknown> | null;
+}
+
+interface ListEarlyStop {
+  floorPages: number;
+  stopAfterUnchangedPages: number;
+}
+
+interface ListCrawlResult {
+  agg: Agg;
+  pages: number;
+  earlyStopped: boolean;
+}
+
+/**
+ * Crawl one order list (invoices or quotes, VISUAL_ID desc) to the seed
+ * cutoff, hash-diffing each order. With `earlyStop` set, the crawl may
+ * stop early once BOTH (a) `floorPages` pages have been covered and
+ * (b) the last `stopAfterUnchangedPages` pages contained zero changed
+ * orders. Pass `earlyStop: null` for the daily full-depth crawl.
+ */
+async function crawlOrderList(
+  kind: "invoices" | "quotes",
+  cutoff: Date,
+  opts: UpsertOpts,
+  changedOrders: Array<{ id: string; kind: "invoices" | "quotes" }>,
+  earlyStop: ListEarlyStop | null,
+): Promise<ListCrawlResult> {
+  const client = getPrintavoClient();
+  const agg = newAgg();
+  let cursor: string | null = null;
+  let reachedCutoff = false;
+  let pages = 0;
+  let consecutiveUnchangedPages = 0;
+  let earlyStopped = false;
+
+  for (;;) {
+    let page: Connection<PvOrderNode>;
+    if (kind === "invoices") {
+      const data: InvoicesPage = await client.query<InvoicesPage>(
+        invoicesPageQuery({ after: cursor }),
+      );
+      page = data.invoices;
+    } else {
+      const data: QuotesPage = await client.query<QuotesPage>(
+        quotesPageQuery({ after: cursor }),
+      );
+      page = data.quotes;
+    }
+    pages += 1;
+
+    let pageHadChange = false;
+    for (const node of page.nodes) {
+      const createdAt = dateOrNull(node.timestamps?.createdAt);
+      if (createdAt && createdAt < cutoff) {
+        reachedCutoff = true;
+        break;
+      }
+      const result = await upsertOrder(
+        node,
+        kind === "invoices" ? "invoice" : "quote",
+        opts,
+      );
+      addOutcome(agg, result);
+      if (result.outcome !== "unchanged") {
+        pageHadChange = true;
+        changedOrders.push({ id: node.id, kind });
+      }
+    }
+
+    if (reachedCutoff || !page.pageInfo.hasNextPage) break;
+    if (earlyStop) {
+      consecutiveUnchangedPages = pageHadChange
+        ? 0
+        : consecutiveUnchangedPages + 1;
+      if (
+        pages >= earlyStop.floorPages &&
+        consecutiveUnchangedPages >= earlyStop.stopAfterUnchangedPages
+      ) {
+        earlyStopped = true;
+        break;
+      }
+    }
+    cursor = page.pageInfo.endCursor;
+  }
+
+  return { agg, pages, earlyStopped };
 }
 
 export async function runIncrementalPoll(
@@ -133,119 +236,138 @@ export async function runIncrementalPoll(
 
     run = await createRun("incremental");
     const runStart = run.startedAt;
+    const isScheduled = trigger === "scheduler";
     const cutoff = new Date(runStart);
     cutoff.setMonth(cutoff.getMonth() - SEED_MONTHS);
-    const client = getPrintavoClient();
     const opts: UpsertOpts = { emitEvents: true, syncRunId: run.id };
 
     const changedOrders: Array<{ id: string; kind: "invoices" | "quotes" }> =
       [];
 
-    const invoiceAgg = newAgg();
-    let cursor: string | null = null;
-    let reachedCutoff = false;
-    for (;;) {
-      const data: InvoicesPage = await client.query<InvoicesPage>(
-        invoicesPageQuery({ after: cursor }),
-      );
-      for (const node of data.invoices.nodes) {
-        const createdAt = dateOrNull(node.timestamps?.createdAt);
-        if (createdAt && createdAt < cutoff) {
-          reachedCutoff = true;
-          break;
-        }
-        const result = await upsertOrder(node, "invoice", opts);
-        addOutcome(invoiceAgg, result);
-        if (result.outcome !== "unchanged") {
-          changedOrders.push({ id: node.id, kind: "invoices" });
-        }
-      }
-      if (reachedCutoff || !data.invoices.pageInfo.hasNextPage) break;
-      cursor = data.invoices.pageInfo.endCursor;
-    }
-
-    const quoteAgg = newAgg();
-    cursor = null;
-    reachedCutoff = false;
-    for (;;) {
-      const data: QuotesPage = await client.query<QuotesPage>(
-        quotesPageQuery({ after: cursor }),
-      );
-      for (const node of data.quotes.nodes) {
-        const createdAt = dateOrNull(node.timestamps?.createdAt);
-        if (createdAt && createdAt < cutoff) {
-          reachedCutoff = true;
-          break;
-        }
-        const result = await upsertOrder(node, "quote", opts);
-        addOutcome(quoteAgg, result);
-        if (result.outcome !== "unchanged") {
-          changedOrders.push({ id: node.id, kind: "quotes" });
-        }
-      }
-      if (reachedCutoff || !data.quotes.pageInfo.hasNextPage) break;
-      cursor = data.quotes.pageInfo.endCursor;
-    }
-
-    // Order detail (line items / imprints): refetch for orders whose
-    // list-level hash changed this poll; once a day do a FULL detail
-    // re-crawl to catch child edits that never bump the order's
-    // updatedAt. Skipped until the detail backfill has completed once
-    // (architect ruling: nightly re-crawl runs INSIDE the poll cycle,
-    // never on a separate timer).
+    // Detail phase setup. All once-a-day full crawls are gated on
+    // isScheduled so a manual "Sync now" NEVER pays a daily-crawl cost
+    // (the ~16-min full detail re-crawl would otherwise land on
+    // whoever clicks the button at the wrong time). Skipped until the
+    // detail backfill has completed once (architect ruling: nightly
+    // re-crawl runs INSIDE the poll cycle, never on a separate timer).
     let detailAgg: DetailAgg | null = null;
     let sweepAgg: SweepAgg | null = null;
+    const refreshedOrderIds = new Set<string>();
     const detailsWm = await getWatermark("details");
+    let detailRecrawlDue = false;
     if (detailsWm) {
       detailAgg = newDetailAgg();
-      const detailsDailyWm = await getWatermark("details_daily");
-      const recrawlDue =
-        !detailsDailyWm ||
-        runStart.getTime() - detailsDailyWm.getTime() > DAILY_REFRESH_MS;
-      if (recrawlDue) {
-        await crawlDetailEntity("invoices", cutoff, detailAgg, logger);
-        await crawlDetailEntity("quotes", cutoff, detailAgg, logger);
-        await setWatermark("details_daily", runStart);
-      } else {
-        // Product-status sweep: line item productStatus edits never bump
-        // the order's updatedAt, so the list-hash crawl above misses them.
-        // Diff a slim status-only crawl against the DB and refresh the
-        // disagreeing orders alongside the hash-changed ones.
+      if (isScheduled) {
+        const detailsDailyWm = await getWatermark("details_daily");
+        detailRecrawlDue =
+          !detailsDailyWm ||
+          runStart.getTime() - detailsDailyWm.getTime() > DAILY_REFRESH_MS;
+      }
+      if (!detailRecrawlDue) {
+        // Product-status sweep FIRST: line item productStatus edits never
+        // bump the order's updatedAt, so the list-hash crawl misses them.
+        // Running the sweep + mismatch refreshes before the list crawls
+        // means the Vendor Orders queue is fresh within the first ~40s of
+        // a manual sync instead of after the full crawl.
         const sweep = await sweepProductStatuses(
           trigger === "manual" ? SWEEP_PAGES_MANUAL : SWEEP_PAGES_SCHEDULED,
           cutoff,
           logger,
         );
         sweepAgg = sweep.agg;
-        const toRefresh = new Map<string, "invoices" | "quotes">();
-        for (const { id, kind } of changedOrders) toRefresh.set(id, kind);
         for (const id of sweep.mismatchedOrderIds) {
-          if (!toRefresh.has(id)) toRefresh.set(id, "invoices");
+          // force: the sweep proved DB != API for this order, so bypass
+          // the detail-hash short-circuit (a drifted DB row with a
+          // matching hash would otherwise never be repaired).
+          const outcome = await refreshOrderDetail(id, "invoices", detailAgg, logger, {
+            force: true,
+          });
+          // A brand-new order isn't in pv_orders yet (missing_order):
+          // leave it out of the dedupe set so the post-crawl refresh
+          // loop picks it up after the list crawl creates the row.
+          if (outcome !== "missing_order") {
+            refreshedOrderIds.add(id);
+          }
         }
-        for (const [id, kind] of toRefresh) {
+      }
+    }
+
+    // List crawls: early-stop (floor + K unchanged pages) on every poll
+    // except the once-a-day full-depth crawl (scheduled polls only),
+    // which catches deep edits to old orders.
+    const listDailyWm = await getWatermark("list_daily");
+    const listFullDue =
+      isScheduled &&
+      (!listDailyWm ||
+        runStart.getTime() - listDailyWm.getTime() > DAILY_REFRESH_MS);
+    const invoiceCrawl = await crawlOrderList(
+      "invoices",
+      cutoff,
+      opts,
+      changedOrders,
+      listFullDue
+        ? null
+        : {
+            floorPages: LIST_FLOOR_PAGES_INVOICES,
+            stopAfterUnchangedPages: LIST_STOP_UNCHANGED_PAGES,
+          },
+    );
+    const quoteCrawl = await crawlOrderList(
+      "quotes",
+      cutoff,
+      opts,
+      changedOrders,
+      listFullDue
+        ? null
+        : {
+            floorPages: LIST_FLOOR_PAGES_QUOTES,
+            stopAfterUnchangedPages: LIST_STOP_UNCHANGED_PAGES,
+          },
+    );
+    const invoiceAgg = invoiceCrawl.agg;
+    const quoteAgg = quoteCrawl.agg;
+
+    // Order detail (line items / imprints): refetch for orders whose
+    // list-level hash changed this poll (sweep-mismatched orders were
+    // already refreshed above); once a day (scheduled only) do a FULL
+    // detail re-crawl to catch child edits that never bump the order's
+    // updatedAt.
+    if (detailsWm && detailAgg) {
+      if (detailRecrawlDue) {
+        await crawlDetailEntity("invoices", cutoff, detailAgg, logger);
+        await crawlDetailEntity("quotes", cutoff, detailAgg, logger);
+        await setWatermark("details_daily", runStart);
+      } else {
+        for (const { id, kind } of changedOrders) {
+          if (refreshedOrderIds.has(id)) continue;
           await refreshOrderDetail(id, kind, detailAgg, logger);
+          refreshedOrderIds.add(id);
         }
       }
       await setWatermark("details", runStart);
     }
 
     let referenceAgg: Agg | null = null;
-    const refWm = await getWatermark("reference_daily");
-    if (!refWm || runStart.getTime() - refWm.getTime() > DAILY_REFRESH_MS) {
-      referenceAgg = await refreshReferenceEntities(opts, logger);
-      await setWatermark("reference_daily", runStart);
+    if (isScheduled) {
+      const refWm = await getWatermark("reference_daily");
+      if (!refWm || runStart.getTime() - refWm.getTime() > DAILY_REFRESH_MS) {
+        referenceAgg = await refreshReferenceEntities(opts, logger);
+        await setWatermark("reference_daily", runStart);
+      }
     }
 
-    // Payments: early-stop crawl each poll; once a day do a FULL crawl to
-    // catch backdated transaction-date edits deep in the list. Skipped
-    // entirely until the payments seed has run (no watermark yet).
+    // Payments: early-stop crawl each poll; once a day (scheduled only)
+    // do a FULL crawl to catch backdated transaction-date edits deep in
+    // the list. Skipped entirely until the payments seed has run (no
+    // watermark yet).
     let paymentsAgg: PaymentsAgg | null = null;
     const paymentsWm = await getWatermark("payments");
     if (paymentsWm) {
       const paymentsDailyWm = await getWatermark("payments_daily");
       const fullCrawlDue =
-        !paymentsDailyWm ||
-        runStart.getTime() - paymentsDailyWm.getTime() > DAILY_REFRESH_MS;
+        isScheduled &&
+        (!paymentsDailyWm ||
+          runStart.getTime() - paymentsDailyWm.getTime() > DAILY_REFRESH_MS);
       paymentsAgg = await crawlTransactions(opts, {
         stopOnUnchangedPage: !fullCrawlDue,
         logger,
@@ -256,13 +378,25 @@ export async function runIncrementalPoll(
       }
     }
 
+    if (listFullDue) {
+      await setWatermark("list_daily", runStart);
+    }
     await setWatermark("invoices", runStart);
     await setWatermark("quotes", runStart);
 
     const stats: Record<string, unknown> = {
       trigger,
-      invoices: invoiceAgg,
-      quotes: quoteAgg,
+      invoices: {
+        ...invoiceAgg,
+        pages: invoiceCrawl.pages,
+        earlyStopped: invoiceCrawl.earlyStopped,
+      },
+      quotes: {
+        ...quoteAgg,
+        pages: quoteCrawl.pages,
+        earlyStopped: quoteCrawl.earlyStopped,
+      },
+      listFullCrawl: listFullDue,
       ...(referenceAgg ? { reference: referenceAgg } : {}),
       ...(paymentsAgg ? { payments: paymentsAgg } : {}),
       ...(detailAgg ? { details: detailAgg } : {}),

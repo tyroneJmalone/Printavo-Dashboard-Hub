@@ -96,6 +96,7 @@ export async function applyOrderDetail(
   kind: OrderKind,
   agg: DetailAgg,
   logger: Logger,
+  opts?: { force?: boolean },
 ): Promise<DetailOutcome> {
   agg.seen += 1;
 
@@ -137,8 +138,12 @@ export async function applyOrderDetail(
     }
   }
 
+  // Sweep-triggered refreshes pass force: the sweep has already proven
+  // the DB rows disagree with the API, so the stored hash cannot be
+  // trusted as evidence the rows are current (a drifted row with a
+  // matching hash would otherwise be re-flagged and skipped forever).
   const hash = detailHashOf(node);
-  if (order.detailContentHash === hash) {
+  if (!opts?.force && order.detailContentHash === hash) {
     await db
       .update(pvOrdersTable)
       .set({ detailSyncedAt: new Date() })
@@ -223,6 +228,7 @@ export async function refreshOrderDetail(
   kind: OrderKind,
   agg: DetailAgg,
   logger: Logger,
+  opts?: { force?: boolean },
 ): Promise<DetailOutcome> {
   const singleKind = kind === "invoices" ? "invoice" : "quote";
   const client = getPrintavoClient();
@@ -235,7 +241,7 @@ export async function refreshOrderDetail(
     agg.missingOrder += 1;
     return "missing_order";
   }
-  return applyOrderDetail(node, kind, agg, logger);
+  return applyOrderDetail(node, kind, agg, logger, opts);
 }
 
 /**
