@@ -4,6 +4,7 @@ import {
   text,
   integer,
   boolean,
+  jsonb,
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
@@ -41,6 +42,12 @@ export const poStatusRulesTable = pgTable(
     /** 'more_than' | 'at_most'; NULL (with dueBusinessDays NULL) = no date condition. */
     dueComparator: text("due_comparator"),
     dueBusinessDays: integer("due_business_days"),
+    /**
+     * string[] of keywords ("Deadline", "Due", ...); rule matches when the
+     * order nickname contains ANY of them (case-insensitive, whole-word).
+     * NULL = no nickname condition. ANDs with deco + due conditions.
+     */
+    nicknameKeywords: jsonb("nickname_keywords"),
     /** Printavo status id + name snapshot (pv_statuses at save time). */
     targetStatusId: text("target_status_id").notNull(),
     targetStatusName: text("target_status_name").notNull(),

@@ -18,6 +18,8 @@ export interface UpdateStatusRuleRequest {
   dueComparator?: UpdateStatusRuleRequestDueComparator;
   /** @nullable */
   dueBusinessDays?: number | null;
+  /** @nullable */
+  nicknameKeywords?: string[] | null;
   /** @minLength 1 */
   targetStatusId?: string;
 }

@@ -49,6 +49,16 @@ function ruleDue(r: StatusRule): string {
     : `due within ${r.dueBusinessDays} business day${r.dueBusinessDays === 1 ? "" : "s"}`;
 }
 
+function ruleConditions(r: StatusRule): string {
+  const parts = [ruleDue(r)];
+  if (r.nicknameKeywords && r.nicknameKeywords.length > 0) {
+    parts.push(
+      `nickname contains ${r.nicknameKeywords.map((w) => `“${w}”`).join(" or ")}`,
+    );
+  }
+  return parts.join(" · ");
+}
+
 function apiError(err: unknown): string | undefined {
   return err && typeof err === "object" && "data" in err
     ? (err as { data?: { error?: string } }).data?.error
@@ -82,6 +92,9 @@ function RuleEditor({
     rule?.dueBusinessDays != null ? String(rule.dueBusinessDays) : "5",
   );
   const [targetStatusId, setTargetStatusId] = useState(rule?.targetStatusId ?? "");
+  const [keywords, setKeywords] = useState(
+    rule?.nicknameKeywords?.join(", ") ?? "",
+  );
 
   const onDone = () => {
     queryClient.invalidateQueries({ queryKey: getListStatusRulesQueryKey() });
@@ -110,11 +123,16 @@ function RuleEditor({
       });
       return;
     }
+    const words = keywords
+      .split(",")
+      .map((w) => w.trim())
+      .filter(Boolean);
     const body = {
       decoGroup: deco === "mixed" || deco === "any" ? null : deco,
       specialMixedDeco: deco === "mixed",
       dueComparator: due === "none" ? null : due,
       dueBusinessDays: due === "none" ? null : Math.max(0, Number(days) || 0),
+      nicknameKeywords: words.length > 0 ? words : null,
       targetStatusId,
     };
     if (rule) update.mutate({ id: rule.id, data: body });
@@ -165,6 +183,16 @@ function RuleEditor({
           />
         </label>
       )}
+      <label className="flex flex-col gap-1 text-[11px] text-slate-400 font-semibold">
+        Nickname contains (optional, comma-separated)
+        <input
+          type="text"
+          value={keywords}
+          onChange={(e) => setKeywords(e.target.value)}
+          placeholder="e.g. Deadline, Due"
+          className={`${selectCls} w-56`}
+        />
+      </label>
       <label className="flex flex-col gap-1 text-[11px] text-slate-400 font-semibold">
         Move to Printavo status
         <select
@@ -341,7 +369,9 @@ export default function StatusRules() {
                         <div className="text-sm text-slate-200 font-medium">
                           {ruleWhen(r)}
                         </div>
-                        <div className="text-[11px] text-slate-500">{ruleDue(r)}</div>
+                        <div className="text-[11px] text-slate-500">
+                          {ruleConditions(r)}
+                        </div>
                       </div>
                       <span className="text-xs text-slate-500">→</span>
                       <span className="px-2 py-1 rounded text-[11px] font-semibold bg-[#059669]/10 border border-[#059669]/25 text-[#10b981]">
@@ -403,7 +433,12 @@ export default function StatusRules() {
             Day, New Year's Eve). The due window counts from the PO push to the
             order's <span className="text-slate-400">customer</span> due date.
             Only screen print, heat press, and embroidery lines determine an
-            order's decoration type — contract and fee lines are ignored.
+            order's decoration type — contract and fee lines are ignored. A
+            nickname condition matches whole words in the order's nickname,
+            ignoring capitalization — any one of the listed words counts
+            (&ldquo;Due&rdquo; matches &ldquo;DUE 5/12&rdquo; but not
+            &ldquo;overdue&rdquo;), and it combines with the decoration and
+            due-date conditions on the same rule.
           </div>
         </div>
       </div>

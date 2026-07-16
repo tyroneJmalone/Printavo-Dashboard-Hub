@@ -9,7 +9,7 @@ import type { StatusRuleDecoGroup } from './statusRuleDecoGroup';
 import type { StatusRuleDueComparator } from './statusRuleDueComparator';
 
 /**
- * First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null/false = catch-all. Due window counts business days from the PO push to the customer due date.
+ * First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null/false = catch-all. Due window counts business days from the PO push to the customer due date. nicknameKeywords (optional) requires the order nickname to contain at least one of the keywords (case-insensitive whole-word match); it ANDs with the other conditions.
  */
 export interface StatusRule {
   id: string;
@@ -22,6 +22,8 @@ export interface StatusRule {
   dueComparator: StatusRuleDueComparator;
   /** @nullable */
   dueBusinessDays: number | null;
+  /** @nullable */
+  nicknameKeywords: string[] | null;
   targetStatusId: string;
   targetStatusName: string;
   createdAt: string;

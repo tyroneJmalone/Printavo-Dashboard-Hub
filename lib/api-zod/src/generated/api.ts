@@ -1295,11 +1295,12 @@ export const ListStatusRulesResponse = zod.object({
   "specialMixedDeco": zod.boolean(),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
   "dueBusinessDays": zod.number().nullable(),
+  "nicknameKeywords": zod.array(zod.string()).nullable(),
   "targetStatusId": zod.string(),
   "targetStatusName": zod.string(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
-}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date.'))
+}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date. nicknameKeywords (optional) requires the order nickname to contain at least one of the keywords (case-insensitive whole-word match); it ANDs with the other conditions.'))
 })
 
 
@@ -1316,6 +1317,7 @@ export const CreateStatusRuleBody = zod.object({
   "specialMixedDeco": zod.boolean().optional(),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullish(),
   "dueBusinessDays": zod.number().nullish(),
+  "nicknameKeywords": zod.array(zod.string()).nullish(),
   "targetStatusId": zod.string().min(1)
 })
 
@@ -1327,11 +1329,12 @@ export const CreateStatusRuleResponse = zod.object({
   "specialMixedDeco": zod.boolean(),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
   "dueBusinessDays": zod.number().nullable(),
+  "nicknameKeywords": zod.array(zod.string()).nullable(),
   "targetStatusId": zod.string(),
   "targetStatusName": zod.string(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
-}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date.')
+}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date. nicknameKeywords (optional) requires the order nickname to contain at least one of the keywords (case-insensitive whole-word match); it ANDs with the other conditions.')
 
 
 /**
@@ -1351,6 +1354,7 @@ export const UpdateStatusRuleBody = zod.object({
   "specialMixedDeco": zod.boolean().optional(),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullish(),
   "dueBusinessDays": zod.number().nullish(),
+  "nicknameKeywords": zod.array(zod.string()).nullish(),
   "targetStatusId": zod.string().min(1).optional()
 })
 
@@ -1362,11 +1366,12 @@ export const UpdateStatusRuleResponse = zod.object({
   "specialMixedDeco": zod.boolean(),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
   "dueBusinessDays": zod.number().nullable(),
+  "nicknameKeywords": zod.array(zod.string()).nullable(),
   "targetStatusId": zod.string(),
   "targetStatusName": zod.string(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
-}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date.')
+}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date. nicknameKeywords (optional) requires the order nickname to contain at least one of the keywords (case-insensitive whole-word match); it ANDs with the other conditions.')
 
 
 /**
@@ -1398,11 +1403,12 @@ export const ReorderStatusRulesResponse = zod.object({
   "specialMixedDeco": zod.boolean(),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
   "dueBusinessDays": zod.number().nullable(),
+  "nicknameKeywords": zod.array(zod.string()).nullable(),
   "targetStatusId": zod.string(),
   "targetStatusName": zod.string(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
-}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date.'))
+}).describe('First enabled rule by ascending priority wins. decoGroup matches when it is the ONLY decoration group on the order; specialMixedDeco matches 2+ groups (or a Mixed Decoration line); both null\/false = catch-all. Due window counts business days from the PO push to the customer due date. nicknameKeywords (optional) requires the order nickname to contain at least one of the keywords (case-insensitive whole-word match); it ANDs with the other conditions.'))
 })
 
 

@@ -67,10 +67,18 @@ export interface StatusRuleDto {
   specialMixedDeco: boolean;
   dueComparator: "more_than" | "at_most" | null;
   dueBusinessDays: number | null;
+  nicknameKeywords: string[] | null;
   targetStatusId: string;
   targetStatusName: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/** jsonb → string[] | null (defensive: rows written by hand could be anything). */
+function keywordsFromDb(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  const words = raw.filter((w): w is string => typeof w === "string" && w.trim() !== "");
+  return words.length > 0 ? words : null;
 }
 
 export interface StatusSuggestionDto {
@@ -104,6 +112,7 @@ function toRuleDto(r: PoStatusRule): StatusRuleDto {
     specialMixedDeco: r.specialMixedDeco,
     dueComparator: (r.dueComparator as "more_than" | "at_most" | null) ?? null,
     dueBusinessDays: r.dueBusinessDays,
+    nicknameKeywords: keywordsFromDb(r.nicknameKeywords),
     targetStatusId: r.targetStatusId,
     targetStatusName: r.targetStatusName,
     createdAt: r.createdAt.toISOString(),
@@ -144,7 +153,39 @@ export interface StatusRuleInput {
   specialMixedDeco?: boolean;
   dueComparator?: "more_than" | "at_most" | null;
   dueBusinessDays?: number | null;
+  nicknameKeywords?: string[] | null;
   targetStatusId?: string;
+}
+
+const MAX_NICKNAME_KEYWORDS = 20;
+const MAX_KEYWORD_LENGTH = 60;
+
+type KeywordsResult = { ok: true; keywords: string[] | null } | { ok: false; message: string };
+
+/**
+ * Normalize a keyword list from the editor: trim, drop empties, dedupe
+ * case-insensitively (display case = first occurrence). Empty list → null
+ * (no nickname condition).
+ */
+function normalizeKeywords(raw: string[] | null | undefined): KeywordsResult {
+  if (raw == null) return { ok: true, keywords: null };
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const w of raw) {
+    const word = w.trim();
+    if (!word) continue;
+    if (word.length > MAX_KEYWORD_LENGTH) {
+      return { ok: false, message: `Nickname keywords must be ${MAX_KEYWORD_LENGTH} characters or fewer` };
+    }
+    const key = word.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(word);
+  }
+  if (out.length > MAX_NICKNAME_KEYWORDS) {
+    return { ok: false, message: `At most ${MAX_NICKNAME_KEYWORDS} nickname keywords per rule` };
+  }
+  return { ok: true, keywords: out.length > 0 ? out : null };
 }
 
 export type RuleMutationResult =
@@ -201,6 +242,8 @@ export async function createStatusRule(
   };
   const invalid = validateRuleShape(shape);
   if (invalid) return { status: "invalid", message: invalid };
+  const kw = normalizeKeywords(input.nicknameKeywords);
+  if (!kw.ok) return { status: "invalid", message: kw.message };
   const statusName = await snapshotStatusName(input.targetStatusId);
   if (!statusName) {
     return { status: "invalid", message: "Unknown Printavo status" };
@@ -221,6 +264,7 @@ export async function createStatusRule(
       specialMixedDeco: shape.specialMixedDeco,
       dueComparator: shape.dueComparator,
       dueBusinessDays: shape.dueBusinessDays,
+      nicknameKeywords: kw.keywords,
       targetStatusId: input.targetStatusId,
       targetStatusName: statusName,
     })
@@ -251,6 +295,13 @@ export async function updateStatusRule(
   const invalid = validateRuleShape(next);
   if (invalid) return { status: "invalid", message: invalid };
 
+  let nicknameKeywords = keywordsFromDb(existing.nicknameKeywords);
+  if (input.nicknameKeywords !== undefined) {
+    const kw = normalizeKeywords(input.nicknameKeywords);
+    if (!kw.ok) return { status: "invalid", message: kw.message };
+    nicknameKeywords = kw.keywords;
+  }
+
   let targetStatusId = existing.targetStatusId;
   let targetStatusName = existing.targetStatusName;
   if (input.targetStatusId && input.targetStatusId !== existing.targetStatusId) {
@@ -269,6 +320,7 @@ export async function updateStatusRule(
       specialMixedDeco: next.specialMixedDeco,
       dueComparator: next.dueComparator,
       dueBusinessDays: next.dueBusinessDays,
+      nicknameKeywords,
       targetStatusId,
       targetStatusName,
       updatedAt: new Date(),
@@ -388,18 +440,36 @@ export function composeOrder(
  * Structural rule shape shared by po_status_rules and pq_status_rules —
  * the deco + due-window matching semantics are identical for both engines
  * (PQ2 reuses this; source-status matching is PQ-specific and lives there).
+ * nicknameKeywords is purchasing-only; PQ rules simply don't carry it, so
+ * the condition is skipped there.
  */
 export interface DecoDueRuleShape {
   specialMixedDeco: boolean;
   decoGroup: string | null;
   dueComparator: string | null;
   dueBusinessDays: number | null;
+  nicknameKeywords?: unknown;
+}
+
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Case-insensitive WHOLE-WORD containment: "Due" matches "Due 5/12" and
+ * "HARD DUE DATE" but not "overdue" — substring matching would silently
+ * fire rules on unrelated nicknames.
+ */
+export function nicknameHasKeyword(nickname: string | null, keywords: string[]): boolean {
+  if (!nickname) return false;
+  return keywords.some((kw) =>
+    new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(kw)}([^\\p{L}\\p{N}]|$)`, "iu").test(nickname),
+  );
 }
 
 export function ruleMatches(
   rule: DecoDueRuleShape,
   comp: OrderComposition,
   businessDaysOut: number | null,
+  nickname: string | null = null,
 ): boolean {
   if (rule.specialMixedDeco) {
     if (!comp.mixed) return false;
@@ -418,6 +488,8 @@ export function ruleMatches(
       return false;
     }
   }
+  const keywords = keywordsFromDb(rule.nicknameKeywords);
+  if (keywords && !nicknameHasKeyword(nickname, keywords)) return false;
   return true;
 }
 
@@ -482,7 +554,9 @@ export async function evaluateStatusRules(
     const businessDaysOut = order.customerDueAt
       ? businessDaysUntilDue(cand.poDate, order.customerDueAt)
       : null;
-    const matched = rules.find((r) => ruleMatches(r, comp, businessDaysOut));
+    const matched = rules.find((r) =>
+      ruleMatches(r, comp, businessDaysOut, order.nickname),
+    );
     if (!matched) continue;
 
     if (matched.targetStatusId === order.statusId) {
