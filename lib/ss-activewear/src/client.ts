@@ -1,5 +1,53 @@
 const BASE_URL = "https://api.ssactivewear.com/v2";
 
+/**
+ * S&S order endpoints don't return a bare array of orders as the docs imply —
+ * a real POST /orders response (first live order, 2026-07-16) came wrapped as
+ * `{ orders: [...], lineErrors: [...] }`. Normalize wrapper / bare array /
+ * single object to an array of order records.
+ */
+function unwrapOrders(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw != null && typeof raw === "object") {
+    const orders = (raw as { orders?: unknown }).orders;
+    if (Array.isArray(orders)) return orders;
+    return [raw];
+  }
+  return [];
+}
+
+/**
+ * Summarize the wrapper's lineErrors array (shape not fully documented —
+ * parsed defensively). Returns null when there are no line errors.
+ */
+function summarizeLineErrors(raw: unknown): string | null {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const lineErrors = (raw as { lineErrors?: unknown }).lineErrors;
+  if (!Array.isArray(lineErrors) || lineErrors.length === 0) return null;
+  const parts = lineErrors.slice(0, 10).map((e) => {
+    if (e == null) return "unknown line error";
+    if (typeof e === "string") return e;
+    if (typeof e === "object") {
+      const o = e as Record<string, unknown>;
+      const msg = ["message", "error", "errorMessage", "description"]
+        .map((k) => o[k])
+        .find((v) => typeof v === "string" && v.trim() !== "");
+      const ident = ["identifier", "sku", "lineNumber"]
+        .map((k) => o[k])
+        .find((v) => v != null && String(v).trim() !== "");
+      if (msg) return ident != null ? `${String(ident)}: ${String(msg)}` : String(msg);
+      try {
+        return JSON.stringify(e).slice(0, 200);
+      } catch {
+        return "unparseable line error";
+      }
+    }
+    return String(e);
+  });
+  const more = lineErrors.length > 10 ? ` (+${lineErrors.length - 10} more)` : "";
+  return `${lineErrors.length} line error(s): ${parts.join("; ")}${more}`;
+}
+
 export interface SSCredentials {
   accountNumber: string;
   apiKey: string;
@@ -69,6 +117,8 @@ export interface SSOrderInput {
 export interface SSOrderResult {
   /** S&S order numbers — one order can split across warehouses → several. */
   orderNumbers: string[];
+  /** Human-readable summary of the wrapper's lineErrors array (null if none). */
+  lineErrorSummary: string | null;
   raw: unknown;
 }
 
@@ -185,14 +235,14 @@ export class SSClient {
    * Status/tracking lookup by PO number (GET /orders/{poNumber}). READ-ONLY
    * and safe to retry. Returns found=false on an empty array — that can be
    * vendor lag right after submission, never proof the order doesn't exist.
-   * Field names parsed defensively (not yet validated against a real S&S
-   * order — none has been placed as of 2026-07-13).
+   * Field names match the real submit response observed 2026-07-16
+   * (camelCase: orderNumber/orderStatus/trackingNumber/...).
    */
   async getOrders(poNumber: string): Promise<SSOrderLookupResult> {
     const raw = await this.get<unknown>(
       `/orders/${encodeURIComponent(poNumber)}?lines=false`,
     );
-    const arr = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+    const arr = unwrapOrders(raw);
     const str = (o: Record<string, unknown>, ...keys: string[]): string | null => {
       for (const k of keys) {
         const v = o[k];
@@ -209,7 +259,11 @@ export class SSClient {
         shippingCarrier: str(o, "shippingCarrier", "ShippingCarrier"),
         shippingMethod: str(o, "shippingMethod", "ShippingMethod"),
         shipDate: str(o, "shipDate", "ShipDate", "shippingDate"),
-      }));
+      }))
+      // Only entries with a real order number or status count — a stray
+      // non-order object (e.g. {"message": ...} via the [raw] fallback) must
+      // NOT flip found=true: found feeds the unknown→submitted auto-reconcile.
+      .filter((o) => o.orderNumber !== null || o.orderStatus !== null);
     return { found: orders.length > 0, orders };
   }
 
@@ -276,7 +330,7 @@ export class SSClient {
           : `S&S HTTP ${res.status}`;
       throw new SSApiError(msg, res.status);
     }
-    const orders = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+    const orders = unwrapOrders(raw);
     const orderNumbers = orders
       .map((o) =>
         o && typeof o === "object" && "orderNumber" in o
@@ -284,6 +338,6 @@ export class SSClient {
           : null,
       )
       .filter((n): n is string => !!n && n !== "null" && n !== "undefined");
-    return { orderNumbers, raw };
+    return { orderNumbers, lineErrorSummary: summarizeLineErrors(raw), raw };
   }
 }

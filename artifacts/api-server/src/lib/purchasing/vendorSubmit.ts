@@ -591,7 +591,8 @@ export async function submitVendorOrder(
         const updated = await updateOrder(order.id, {
           status: "unknown",
           error:
-            "S&S accepted the request but returned no order number — verify with S&S before resubmitting.",
+            "S&S accepted the request but returned no order number — verify with S&S before resubmitting." +
+            (res.lineErrorSummary ? ` S&S reported ${res.lineErrorSummary}` : ""),
           rawResponse: (res.raw as object) ?? null,
         });
         return result("unknown", {
