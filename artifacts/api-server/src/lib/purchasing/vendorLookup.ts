@@ -302,16 +302,18 @@ function styleCandidates(styleTokens: string[], textTokens: string[]): string[] 
 
 /**
  * Degraded last-resort candidates: Printavo item numbers often carry a
- * suffix the vendor's catalog doesn't ("7610N" — S&S lists the Next Level
- * boxy tee as plain "7610"). Tried ONLY after every normal candidate
- * fails, and a hit is NEVER labeled "exact" — the closest-match cue must
- * fire so the user confirms it's the same garment before ordering.
+ * prefix or suffix the vendor's catalog doesn't ("7610N" — S&S lists the
+ * Next Level boxy tee as plain "7610"; "NL6211" — S&S lists the CVC long
+ * sleeve as plain "6211"). Strip the letters and keep the digit core.
+ * Tried ONLY after every normal candidate fails, and a hit is NEVER
+ * labeled "exact" — the closest-match cue must fire so the user confirms
+ * it's the same garment before ordering.
  */
 function strippedStyleCandidates(styleTokens: string[]): string[] {
   const out: string[] = [];
   for (const t of styleTokens) {
-    const m = /^(\d{2,})[a-z]+$/.exec(t);
-    if (m) out.push(m[1]!);
+    const m = /^([a-z]*)(\d{2,})([a-z]*)$/.exec(t);
+    if (m && (m[1]!.length > 0 || m[3]!.length > 0)) out.push(m[2]!);
   }
   return Array.from(new Set(out)).filter((t) => !styleTokens.includes(t));
 }
