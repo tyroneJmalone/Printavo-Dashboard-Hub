@@ -1,9 +1,9 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { LastSynced } from "@/components/LastSynced";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -74,8 +74,36 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+const COLLAPSED_GROUPS_KEY = "hub.nav.collapsedGroups";
+
+function loadCollapsedGroups(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_GROUPS_KEY);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, boolean>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsedGroups);
+
+  const toggleGroup = (heading: string) => {
+    setCollapsedGroups((prev) => {
+      const next = { ...prev, [heading]: !prev[heading] };
+      try {
+        localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage unavailable — collapse state just won't persist
+      }
+      return next;
+    });
+  };
   const { data: needsOrdering } = useGetNeedsOrdering({
     query: { queryKey: getGetNeedsOrderingQueryKey(), staleTime: 60_000 },
   });
@@ -103,11 +131,28 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto custom-scrollbar">
-          {NAV_GROUPS.map((group, gi) => (
+          {NAV_GROUPS.map((group, gi) => {
+            const isCollapsed = group.heading ? !!collapsedGroups[group.heading] : false;
+            const hasActive = group.items.some((item) => item.href && location === item.href);
+            return (
             <div key={gi}>
               {group.heading && (
-                <div className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">{group.heading}</div>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.heading!)}
+                  className={`w-full flex items-center justify-between px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors group ${
+                    isCollapsed && hasActive ? "text-[#10b981]" : "text-slate-500 hover:text-slate-300"
+                  }`}
+                  aria-expanded={!isCollapsed}
+                >
+                  <span>{group.heading}</span>
+                  <ChevronDown
+                    size={12}
+                    className={`opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-all ${isCollapsed ? "-rotate-90 opacity-60" : ""}`}
+                  />
+                </button>
               )}
+              {!isCollapsed && (
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = item.href && location === item.href;
@@ -142,8 +187,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                   );
                 })}
               </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="px-3 py-2 border-t border-slate-800">
