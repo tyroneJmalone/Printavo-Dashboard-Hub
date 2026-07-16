@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import {
   useVendorLookup,
-  useVendorInventory,
+  vendorLookup,
   useCreatePoFile,
   useAppendPoLineItems,
   useListPoFiles,
@@ -19,6 +19,10 @@ import {
   type CartItem,
   type CartVendor,
 } from "@/stores/poCart";
+import {
+  applyLookupColor,
+  fetchMatchedInventory,
+} from "./cartVendorActions";
 import { Link } from "wouter";
 import {
   X,
@@ -65,28 +69,60 @@ function itemTotals(item: CartItem): { qty: number; cost: number; costed: boolea
   return { qty, cost, costed };
 }
 
-function CartItemCard({ item }: { item: CartItem }) {
+function CartItemCard({
+  item,
+  lookupResult,
+  onLookupResult,
+}: {
+  item: CartItem;
+  lookupResult: VendorLookupResult | null;
+  onLookupResult: (res: VendorLookupResult | null) => void;
+}) {
   const removeItem = usePoCart((s) => s.removeItem);
   const setVendor = usePoCart((s) => s.setVendor);
   const setStyleNumber = usePoCart((s) => s.setStyleNumber);
   const setSizeQty = usePoCart((s) => s.setSizeQty);
   const setManualCost = usePoCart((s) => s.setManualCost);
-  const applyVendorData = usePoCart((s) => s.applyVendorData);
   const matchSizeToVendor = usePoCart((s) => s.matchSizeToVendor);
-  const applyInventory = usePoCart((s) => s.applyInventory);
   const setWarehouse = usePoCart((s) => s.setWarehouse);
   const { toast } = useToast();
 
-  const [lookupResult, setLookupResult] = useState<VendorLookupResult | null>(null);
+  const [invPending, setInvPending] = useState(false);
   const [manualCostInput, setManualCostInput] = useState("");
   // Printavo's style number sometimes differs from the vendor's (e.g. "1000C"
   // in Printavo vs "1000" at S&S) — let the user correct it before lookup.
   const [styleInput, setStyleInput] = useState(item.styleNumber);
 
+  // Check warehouse stock for the sizes this line actually matched, with a
+  // busy indicator. Shared helper reads live cart state so it works after
+  // both the initial color match AND a manual per-size remap.
+  async function refetchInventory(res: VendorLookupResult, colorName: string) {
+    const vendor = item.vendor;
+    if (vendor !== "sanmar" && vendor !== "ss") return;
+    setInvPending(true);
+    try {
+      await fetchMatchedInventory(item.key, vendor, res, colorName);
+    } catch {
+      toast({
+        title: "Warehouse stock check failed",
+        description:
+          "You can still save the PO without a warehouse — or re-pick the color to retry.",
+        variant: "destructive",
+      });
+    } finally {
+      setInvPending(false);
+    }
+  }
+
+  function applyColor(res: VendorLookupResult, colorName: string) {
+    if (!applyLookupColor(item.key, res, colorName)) return;
+    void refetchInventory(res, colorName);
+  }
+
   const lookup = useVendorLookup({
     mutation: {
       onSuccess: (res) => {
-        setLookupResult(res);
+        onLookupResult(res);
         if (!res.found) {
           toast({
             title: `Style ${res.styleQueried} not found at ${VENDOR_LABELS[item.vendor as CartVendor] ?? res.vendor}`,
@@ -114,76 +150,6 @@ function CartItemCard({ item }: { item: CartItem }) {
       },
     },
   });
-
-  const inventoryFetch = useVendorInventory({
-    mutation: {
-      onSuccess: (res) => {
-        // Ignore stale responses if the user has since changed the color.
-        const current = usePoCart.getState().items.find((i) => i.key === item.key);
-        if (!current || current.vendorCatalogColor !== res.catalogColor) return;
-        applyInventory(
-          item.key,
-          res.sizes.map((s) => ({
-            size: s.size,
-            found: s.found,
-            warehouses: s.warehouses,
-          })),
-        );
-      },
-      onError: () => {
-        toast({
-          title: "Warehouse stock check failed",
-          description:
-            "You can still save the PO without a warehouse — or re-pick the color to retry.",
-          variant: "destructive",
-        });
-      },
-    },
-  });
-
-  // Check warehouse stock for the vendor size labels this line actually matched
-  // (SanMar rejects Printavo labels). Reads live cart state so it works after
-  // both the initial color match AND a manual per-size remap of a combined size.
-  function refetchMatchedInventory(res: VendorLookupResult, colorName: string) {
-    const vendor = item.vendor;
-    if (vendor !== "sanmar" && vendor !== "ss") return;
-    const current = usePoCart.getState().items.find((i) => i.key === item.key);
-    if (!current) return;
-    const vendorSizes = [
-      ...new Set(
-        current.sizes.map((s) => s.vendorSize).filter((v): v is string => v !== null),
-      ),
-    ].slice(0, 20);
-    if (vendorSizes.length === 0) return;
-    inventoryFetch.mutate({
-      data: {
-        vendor,
-        style: res.styleQueried,
-        // Pin stock to the SAME product the lookup priced — a re-search by style
-        // number alone can hit another brand's identical number.
-        styleId: res.styleId,
-        catalogColor: colorName,
-        sizes: vendorSizes,
-      },
-    });
-  }
-
-  function applyColor(res: VendorLookupResult, colorName: string) {
-    const color = res.colors.find((c) => c.colorName === colorName);
-    if (!color) return;
-    applyVendorData(item.key, {
-      vendorCatalogColor: color.colorName,
-      vendorStyleId: res.styleId,
-      sizes: color.sizes.map((s) => ({
-        size: s.size,
-        unitCost: s.salePrice ?? s.cost,
-        sku: s.sku,
-        inventoryKey: s.inventoryKey,
-        sizeIndex: s.sizeIndex,
-      })),
-    });
-    refetchMatchedInventory(res, color.colorName);
-  }
 
   const totals = itemTotals(item);
   const canLookup = item.vendor === "sanmar" || item.vendor === "ss";
@@ -251,7 +217,7 @@ function CartItemCard({ item }: { item: CartItem }) {
         <select
           value={item.vendor ?? ""}
           onChange={(e) => {
-            setLookupResult(null);
+            onLookupResult(null);
             setVendor(item.key, e.target.value as CartVendor);
           }}
           className="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 flex-shrink-0"
@@ -277,7 +243,7 @@ function CartItemCard({ item }: { item: CartItem }) {
               onClick={() => {
                 const style = styleInput.trim();
                 if (!style) return;
-                setLookupResult(null);
+                onLookupResult(null);
                 if (style !== item.styleNumber) setStyleNumber(item.key, style);
                 lookup.mutate({
                   data: {
@@ -426,7 +392,7 @@ function CartItemCard({ item }: { item: CartItem }) {
                         sizeIndex: vs.sizeIndex,
                       });
                       if (lookupResult && item.vendorCatalogColor)
-                        refetchMatchedInventory(lookupResult, item.vendorCatalogColor);
+                        void refetchInventory(lookupResult, item.vendorCatalogColor);
                     }}
                     aria-label={`Vendor size for ${s.size}`}
                     className="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-[11px] text-slate-200"
@@ -458,7 +424,7 @@ function CartItemCard({ item }: { item: CartItem }) {
         </div>
       )}
 
-      {inventoryFetch.isPending && (
+      {invPending && (
         <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
           <Loader2 size={12} className="animate-spin" />
           Checking warehouse stock…
@@ -533,6 +499,7 @@ function CartItemCard({ item }: { item: CartItem }) {
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const items = usePoCart((s) => s.items);
   const removeItem = usePoCart((s) => s.removeItem);
+  const setVendorAll = usePoCart((s) => s.setVendorAll);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -541,12 +508,150 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [saving, setSaving] = useState(false);
   // Per-vendor save target: "new" (default) or an existing PO id to append to.
   const [targets, setTargets] = useState<Record<string, string>>({});
+  // Lookup results live here (not in each card) so the cart-wide "Get pricing"
+  // can populate them and the cards' color/size dropdowns still work.
+  const [lookupResults, setLookupResults] = useState<Record<string, VendorLookupResult>>({});
+  // Non-null while bulk pricing runs.
+  const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
 
   const createPo = useCreatePoFile();
   const appendLines = useAppendPoLineItems();
   const { data: poData } = useListPoFiles();
 
   if (!open) return null;
+
+  const setItemLookup = (key: string, res: VendorLookupResult | null) =>
+    setLookupResults((prev) => {
+      const next = { ...prev };
+      if (res) next[key] = res;
+      else delete next[key];
+      return next;
+    });
+
+  function handleVendorAll(vendor: CartVendor) {
+    // Lookup results for items switching vendors are stale — drop them.
+    // (Items already on this vendor keep their results and pricing.)
+    const changed = items.filter((i) => i.vendor !== vendor).map((i) => i.key);
+    setVendorAll(vendor);
+    if (changed.length > 0)
+      setLookupResults((prev) => {
+        const next = { ...prev };
+        for (const k of changed) delete next[k];
+        return next;
+      });
+  }
+
+  /** Price one line: lookup → auto-apply on EXACT Printavo color match →
+   *  stock check. Anything less than an exact color match is left for the
+   *  card's manual color picker — never guess a color. */
+  async function priceOneItem(i: CartItem): Promise<{ priced: boolean; note: string | null }> {
+    const vendor = i.vendor as "sanmar" | "ss";
+    let res: VendorLookupResult;
+    try {
+      res = await vendorLookup({
+        vendor,
+        style: i.styleNumber,
+        // Printavo brand/description disambiguate when brands share a style
+        // number (Gildan 5000 vs Bayside 5000).
+        brandHint: i.brand,
+        descriptionHint: i.description,
+      });
+    } catch {
+      return { priced: false, note: `${i.styleNumber}: lookup failed` };
+    }
+    setItemLookup(i.key, res);
+    if (!res.found) {
+      return { priced: false, note: `${i.styleNumber}: not found at ${VENDOR_LABELS[vendor]}` };
+    }
+    const printavoColor = (i.color ?? "").trim().toLowerCase();
+    const exact = res.colors.find(
+      (c) => c.colorName.trim().toLowerCase() === printavoColor,
+    );
+    if (!exact) {
+      return { priced: false, note: `${i.styleNumber}: pick the vendor color` };
+    }
+    // The lookup can take 15s+ (SanMar SOAP). If the line's vendor or style
+    // changed mid-flight, this result is for the WRONG product — never apply.
+    const live = usePoCart.getState().items.find((x) => x.key === i.key);
+    if (!live || live.vendor !== vendor || live.styleNumber !== i.styleNumber) {
+      return { priced: false, note: live ? `${i.styleNumber}: changed during pricing — re-run` : null };
+    }
+    applyLookupColor(i.key, res, exact.colorName);
+    let stockFailed = false;
+    try {
+      await fetchMatchedInventory(i.key, vendor, res, exact.colorName);
+    } catch {
+      // Non-fatal — the card still lets Tyler save or re-pick the color to retry.
+      stockFailed = true;
+    }
+    const cur = usePoCart.getState().items.find((x) => x.key === i.key);
+    const unpriced = cur?.sizes.filter((s) => s.qty > 0 && s.unitCost === null) ?? [];
+    const flags: string[] = [];
+    if (unpriced.length > 0) {
+      flags.push(
+        `map size${unpriced.length === 1 ? "" : "s"} ${unpriced.map((s) => s.size).join(", ")}`,
+      );
+    }
+    if (res.matchType === "closest") {
+      flags.push(`closest match (${res.styleName ?? res.styleQueried}) — double-check`);
+    }
+    if (stockFailed) {
+      flags.push("stock check failed — no warehouse picked");
+    }
+    return { priced: true, note: flags.length > 0 ? `${i.styleNumber}: ${flags.join("; ")}` : null };
+  }
+
+  async function handlePriceAll() {
+    // Skip lines already fully priced — re-running would clobber hand-mapped
+    // sizes and hand-picked warehouses.
+    const eligible = items.filter(
+      (i) =>
+        (i.vendor === "sanmar" || i.vendor === "ss") &&
+        !(i.resolved && itemTotals(i).costed),
+    );
+    const noVendor = items.filter((i) => !i.vendor).length;
+    if (eligible.length === 0) {
+      toast({
+        title: "Nothing to price",
+        description:
+          noVendor > 0
+            ? `${noVendor} item${noVendor === 1 ? " has" : "s have"} no vendor yet — set a vendor first.`
+            : "Every vendor item already has pricing.",
+      });
+      return;
+    }
+    setBulk({ done: 0, total: eligible.length });
+    let priced = 0;
+    const attention: string[] = [];
+    // Two at a time: fast for S&S, gentle on SanMar's slow SOAP lookups.
+    const queue = [...eligible];
+    const worker = async () => {
+      for (;;) {
+        const next = queue.shift();
+        if (!next) return;
+        const r = await priceOneItem(next);
+        if (r.priced) priced++;
+        if (r.note) attention.push(r.note);
+        setBulk((b) => (b ? { ...b, done: b.done + 1 } : b));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(2, queue.length) }, () => worker()));
+    setBulk(null);
+    const skipped =
+      noVendor > 0 ? ` · ${noVendor} item${noVendor === 1 ? "" : "s"} with no vendor skipped` : "";
+    if (attention.length === 0) {
+      toast({
+        title: `Priced ${priced} item${priced === 1 ? "" : "s"}`,
+        description: `All colors matched automatically.${skipped}`,
+      });
+    } else {
+      toast({
+        title: `Priced ${priced} of ${eligible.length} — review needed`,
+        description: attention.join(" · ") + skipped,
+        variant: priced < eligible.length ? "destructive" : undefined,
+      });
+    }
+  }
 
   const openPosForVendor = (vendor: CartVendor): PoFile[] =>
     (poData?.poFiles ?? []).filter((p) => p.vendorName === vendor && !p.locked);
@@ -688,6 +793,38 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </button>
         </div>
 
+        {items.length > 0 && (
+          <div className="flex-shrink-0 px-4 pt-3 flex items-center gap-2">
+            <select
+              value=""
+              onChange={(e) => {
+                const v = e.target.value as CartVendor | "";
+                if (v) handleVendorAll(v);
+              }}
+              disabled={bulk !== null}
+              aria-label="Set vendor for all items"
+              className="bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 flex-shrink-0 disabled:opacity-50"
+            >
+              <option value="">Vendor for all…</option>
+              <option value="sanmar">SanMar</option>
+              <option value="ss">S&amp;S Activewear</option>
+              <option value="manual">Manual cost</option>
+            </select>
+            <button
+              onClick={handlePriceAll}
+              disabled={bulk !== null}
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
+            >
+              {bulk ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Search size={12} />
+              )}
+              {bulk ? `Pricing ${bulk.done}/${bulk.total}…` : "Get pricing — all items"}
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
           {items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-500">
@@ -696,7 +833,14 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <div className="text-xs mt-1">Add line items from the list.</div>
             </div>
           ) : (
-            items.map((item) => <CartItemCard key={item.key} item={item} />)
+            items.map((item) => (
+              <CartItemCard
+                key={item.key}
+                item={item}
+                lookupResult={lookupResults[item.key] ?? null}
+                onLookupResult={(res) => setItemLookup(item.key, res)}
+              />
+            ))
           )}
         </div>
 
@@ -765,7 +909,12 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSave}
-                disabled={!allReady || (needsPoNumber && poNumber.trim().length === 0) || saving}
+                disabled={
+                  !allReady ||
+                  (needsPoNumber && poNumber.trim().length === 0) ||
+                  saving ||
+                  bulk !== null
+                }
                 className="flex-1 flex items-center justify-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg bg-[#059669] text-white hover:bg-[#047857] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}

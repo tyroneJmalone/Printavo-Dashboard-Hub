@@ -281,6 +281,9 @@ interface PoCartState {
   removeItem: (key: string) => void;
   clear: () => void;
   setVendor: (key: string, vendor: CartVendor) => void;
+  /** Set every cart item to one vendor. Items ALREADY on that vendor keep
+   *  their pricing/resolution — only items switching vendors are reset. */
+  setVendorAll: (vendor: CartVendor) => void;
   setStyleNumber: (key: string, styleNumber: string) => void;
   setSizeQty: (key: string, size: string, qty: number) => void;
   setManualCost: (key: string, cost: number) => void;
@@ -315,6 +318,28 @@ interface PoCartState {
   setWarehouse: (key: string, code: string | null, name: string | null) => void;
 }
 
+/** Switching vendor invalidates any prior resolution. */
+function withVendor(i: CartItem, vendor: CartVendor): CartItem {
+  return {
+    ...i,
+    vendor,
+    resolved: false,
+    vendorCatalogColor: null,
+    vendorStyleId: null,
+    inventory: null,
+    warehouseCode: null,
+    warehouseName: null,
+    warehouseManual: false,
+    sizes: i.sizes.map((sz) => ({
+      ...sz,
+      unitCost: null,
+      sku: null,
+      inventoryKey: null,
+      sizeIndex: null,
+    })),
+  };
+}
+
 export const usePoCart = create<PoCartState>((set) => ({
   items: [],
 
@@ -332,29 +357,13 @@ export const usePoCart = create<PoCartState>((set) => ({
 
   setVendor: (key, vendor) =>
     set((s) => ({
-      items: s.items.map((i) =>
-        i.key === key
-          ? {
-              ...i,
-              vendor,
-              // switching vendor invalidates any prior resolution
-              resolved: false,
-              vendorCatalogColor: null,
-              vendorStyleId: null,
-              inventory: null,
-              warehouseCode: null,
-              warehouseName: null,
-              warehouseManual: false,
-              sizes: i.sizes.map((sz) => ({
-                ...sz,
-                unitCost: null,
-                sku: null,
-                inventoryKey: null,
-                sizeIndex: null,
-              })),
-            }
-          : i,
-      ),
+      items: s.items.map((i) => (i.key === key ? withVendor(i, vendor) : i)),
+    })),
+
+  setVendorAll: (vendor) =>
+    set((s) => ({
+      // Items already on this vendor keep their pricing — don't wipe work.
+      items: s.items.map((i) => (i.vendor === vendor ? i : withVendor(i, vendor))),
     })),
 
   setStyleNumber: (key, styleNumber) =>
