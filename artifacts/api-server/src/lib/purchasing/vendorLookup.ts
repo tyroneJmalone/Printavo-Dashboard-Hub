@@ -300,6 +300,22 @@ function styleCandidates(styleTokens: string[], textTokens: string[]): string[] 
   return Array.from(new Set(out));
 }
 
+/**
+ * Degraded last-resort candidates: Printavo item numbers often carry a
+ * suffix the vendor's catalog doesn't ("7610N" — S&S lists the Next Level
+ * boxy tee as plain "7610"). Tried ONLY after every normal candidate
+ * fails, and a hit is NEVER labeled "exact" — the closest-match cue must
+ * fire so the user confirms it's the same garment before ordering.
+ */
+function strippedStyleCandidates(styleTokens: string[]): string[] {
+  const out: string[] = [];
+  for (const t of styleTokens) {
+    const m = /^(\d{2,})[a-z]+$/.exec(t);
+    if (m) out.push(m[1]!);
+  }
+  return Array.from(new Set(out)).filter((t) => !styleTokens.includes(t));
+}
+
 async function lookupSanMar(query: string): Promise<VendorLookupResult> {
   const client = getSanMarClient();
   const { styleTokens, textTokens } = parseQuery(query);
@@ -310,6 +326,7 @@ async function lookupSanMar(query: string): Promise<VendorLookupResult> {
   // way partial queries can land). SOAP is slow, so cap the retries.
   let entries = await client.getProductInfo(query);
   let viaFullQuery = entries.length > 0;
+  let viaStripped = false;
   if (entries.length === 0) {
     for (const t of styleCandidates(styleTokens, textTokens).slice(0, MAX_CANDIDATE_TRIES)) {
       if (normText(t) === normText(query)) continue; // same as the direct try
@@ -317,13 +334,27 @@ async function lookupSanMar(query: string): Promise<VendorLookupResult> {
       if (entries.length > 0) break;
     }
   }
+  if (entries.length === 0) {
+    // Last resort: suffix-stripped numbers ("7610N" → "7610"). Always
+    // reported as closest — never exact — so the double-check cue fires.
+    for (const t of strippedStyleCandidates(styleTokens).slice(0, MAX_CANDIDATE_TRIES)) {
+      entries = await client.getProductInfo(t.toUpperCase());
+      if (entries.length > 0) {
+        viaStripped = true;
+        break;
+      }
+    }
+  }
   const first = entries[0];
   const colors = sanMarToColors(entries);
   // Token-based match counts as exact only when the remaining words agree
   // with what SanMar returned ("port company pc54" → Port & Company PC54);
   // otherwise flag it so the user double-checks ("gildan pc54" → closest).
+  // Suffix-stripped hits are never exact — the style number the user typed
+  // is NOT the one being ordered.
   const exact =
     entries.length > 0 &&
+    !viaStripped &&
     (viaFullQuery ||
       textTokensMatch(textTokens, first?.brandName ?? null, first?.productTitle ?? null));
   return {
@@ -423,10 +454,26 @@ async function lookupSS(
       if (styles.length > 0) break;
     }
   }
+  const stripped = strippedStyleCandidates(styleTokens);
+  let viaStripped = false;
+  if (styles.length === 0) {
+    // Last resort: suffix-stripped numbers ("7610N" → S&S's "7610").
+    // Always reported as closest — never exact — so the user double-checks.
+    for (const t of stripped.slice(0, MAX_CANDIDATE_TRIES)) {
+      styles = await client.searchStyles(t);
+      if (styles.length > 0) {
+        viaStripped = true;
+        break;
+      }
+    }
+  }
   let chosen: (typeof styles)[number] | undefined;
   let best = -1;
+  // Stripped tokens join the partial-containment scoring so "7610" still
+  // outranks unrelated title-word matches when the search fans out.
+  const scoringStyleTokens = [...styleTokens, ...stripped];
   for (const s of styles) {
-    const score = scoreSSCandidate(s, style, hints, candidates, styleTokens, textTokens);
+    const score = scoreSSCandidate(s, style, hints, candidates, scoringStyleTokens, textTokens);
     // Strict > keeps the first result on ties (S&S's own relevance order).
     if (score > best) {
       best = score;
@@ -456,9 +503,10 @@ async function lookupSS(
   // = exact because "sport tek" matches the Sport-Tek brand). Partial
   // digits-only hits stay "closest" so the user double-checks.
   const exact =
-    chosen.styleName.toLowerCase() === style.toLowerCase() ||
-    (candidates.includes(normText(chosen.styleName)) &&
-      textTokensMatch(textTokens, chosen.brandName, chosen.title));
+    !viaStripped &&
+    (chosen.styleName.toLowerCase() === style.toLowerCase() ||
+      (candidates.includes(normText(chosen.styleName)) &&
+        textTokensMatch(textTokens, chosen.brandName, chosen.title)));
   const products = await client.getProducts(chosen.styleID);
   return {
     found: products.length > 0,
