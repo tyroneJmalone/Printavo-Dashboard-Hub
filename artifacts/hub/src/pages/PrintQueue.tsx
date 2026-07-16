@@ -6,6 +6,8 @@ import {
   useListPrintQueueOrders,
   getListPrintQueueOrdersQueryKey,
   getGetCombinedWorkordersHtmlUrl,
+  getGetCombinedPackingSlipsHtmlUrl,
+  getGetCombinedBoxLabelsHtmlUrl,
   useListPqStatusRules,
   getListPqStatusRulesQueryKey,
   useEvaluatePqRulesAndRun,
@@ -505,6 +507,17 @@ function DocLinksDialog({
 }) {
   const [popupsBlocked, setPopupsBlocked] = useState(false);
 
+  const printCombined = () => {
+    const ids = orders.map((o) => o.printavoId).join(",");
+    const url =
+      doc === "packing_slip"
+        ? getGetCombinedPackingSlipsHtmlUrl({ ids })
+        : getGetCombinedBoxLabelsHtmlUrl({ ids });
+    // Synchronous window.open on click — popup-blocker-safe.
+    const w = window.open(url, "_blank");
+    if (!w) setPopupsBlocked(true);
+  };
+
   const openAll = () => {
     let opened = 0;
     for (const o of orders) {
@@ -527,8 +540,8 @@ function DocLinksDialog({
           </button>
         </div>
         <div className="px-5 py-3 text-[12px] text-slate-400 border-b border-slate-800">
-          These Printavo pages need your logged-in browser session, so they open as
-          separate tabs — use Open All or click each link below.
+          One combined document rendered from your synced data — no Printavo
+          login needed. Page break between orders.
           {skippedQuotes > 0 && (
             <span className="text-amber-400">
               {" "}
@@ -539,16 +552,23 @@ function DocLinksDialog({
         {orders.length > 0 && (
           <div className="px-5 py-3 border-b border-slate-800">
             <button
-              onClick={openAll}
+              onClick={printCombined}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-[#059669] text-white text-[13px] font-semibold hover:bg-[#047857] transition-colors"
+              data-testid="button-print-combined-docs"
+            >
+              <Printer size={13} /> Print Combined ({orders.length})
+            </button>
+            <button
+              onClick={openAll}
+              className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-slate-700 text-slate-300 text-[13px] font-medium hover:bg-slate-800 transition-colors"
               data-testid="button-open-all-docs"
             >
-              <ExternalLink size={13} /> Open All ({orders.length})
+              <ExternalLink size={13} /> Open in Printavo instead ({orders.length})
             </button>
             {popupsBlocked && (
               <p className="mt-2 text-[12px] text-amber-400">
                 Pop-ups blocked — allow pop-ups for this site in your browser's address
-                bar, then click Open All again. Or use the links below.
+                bar, then try again. Or use the links below.
               </p>
             )}
           </div>

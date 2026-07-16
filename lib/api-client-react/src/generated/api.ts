@@ -40,6 +40,8 @@ import type {
   EvaluateStatusRulesResponse,
   GetBrandBreakdownParams,
   GetColorBreakdownParams,
+  GetCombinedBoxLabelsHtmlParams,
+  GetCombinedPackingSlipsHtmlParams,
   GetCombinedWorkordersHtmlParams,
   GetImprintsByTierParams,
   GetOrderQuantityBreakdownParams,
@@ -4137,6 +4139,176 @@ export function useGetCombinedWorkordersHtml<TData = Awaited<ReturnType<typeof g
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCombinedWorkordersHtmlQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCombinedPackingSlipsHtmlUrl = (params: GetCombinedPackingSlipsHtmlParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/print-queue/packing-slips/html?${stringifiedParams}` : `/api/print-queue/packing-slips/html`
+}
+
+/**
+ * Renders one packing slip per invoice (quotes are silently skipped) entirely from the local pv_* tables — never a Printavo fetch. One HTML document with a page break between orders. Open in a popup and print.
+ * @summary Combined printable packing slips rendered locally from the sync snapshot
+ */
+export const getCombinedPackingSlipsHtml = async (params: GetCombinedPackingSlipsHtmlParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getGetCombinedPackingSlipsHtmlUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCombinedPackingSlipsHtmlQueryKey = (params?: GetCombinedPackingSlipsHtmlParams,) => {
+    return [
+    `/api/print-queue/packing-slips/html`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCombinedPackingSlipsHtmlQueryOptions = <TData = Awaited<ReturnType<typeof getCombinedPackingSlipsHtml>>, TError = ErrorType<ErrorResponse>>(params: GetCombinedPackingSlipsHtmlParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCombinedPackingSlipsHtml>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCombinedPackingSlipsHtmlQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCombinedPackingSlipsHtml>>> = ({ signal }) => getCombinedPackingSlipsHtml(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCombinedPackingSlipsHtml>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCombinedPackingSlipsHtmlQueryResult = NonNullable<Awaited<ReturnType<typeof getCombinedPackingSlipsHtml>>>
+export type GetCombinedPackingSlipsHtmlQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Combined printable packing slips rendered locally from the sync snapshot
+ */
+
+export function useGetCombinedPackingSlipsHtml<TData = Awaited<ReturnType<typeof getCombinedPackingSlipsHtml>>, TError = ErrorType<ErrorResponse>>(
+ params: GetCombinedPackingSlipsHtmlParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCombinedPackingSlipsHtml>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCombinedPackingSlipsHtmlQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCombinedBoxLabelsHtmlUrl = (params: GetCombinedBoxLabelsHtmlParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/print-queue/box-labels/html?${stringifiedParams}` : `/api/print-queue/box-labels/html`
+}
+
+/**
+ * Two half-page 5.5in labels per letter sheet. Default is one label per line-item group (minimum one per order); perOrder overrides with a uniform count. Invoices only — quotes are silently skipped. Rendered entirely from the local pv_* tables.
+ * @summary Combined printable box labels rendered locally from the sync snapshot
+ */
+export const getCombinedBoxLabelsHtml = async (params: GetCombinedBoxLabelsHtmlParams, options?: RequestInit): Promise<string> => {
+
+  return customFetch<string>(getGetCombinedBoxLabelsHtmlUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCombinedBoxLabelsHtmlQueryKey = (params?: GetCombinedBoxLabelsHtmlParams,) => {
+    return [
+    `/api/print-queue/box-labels/html`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCombinedBoxLabelsHtmlQueryOptions = <TData = Awaited<ReturnType<typeof getCombinedBoxLabelsHtml>>, TError = ErrorType<ErrorResponse>>(params: GetCombinedBoxLabelsHtmlParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCombinedBoxLabelsHtml>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCombinedBoxLabelsHtmlQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCombinedBoxLabelsHtml>>> = ({ signal }) => getCombinedBoxLabelsHtml(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCombinedBoxLabelsHtml>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCombinedBoxLabelsHtmlQueryResult = NonNullable<Awaited<ReturnType<typeof getCombinedBoxLabelsHtml>>>
+export type GetCombinedBoxLabelsHtmlQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Combined printable box labels rendered locally from the sync snapshot
+ */
+
+export function useGetCombinedBoxLabelsHtml<TData = Awaited<ReturnType<typeof getCombinedBoxLabelsHtml>>, TError = ErrorType<ErrorResponse>>(
+ params: GetCombinedBoxLabelsHtmlParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCombinedBoxLabelsHtml>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCombinedBoxLabelsHtmlQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

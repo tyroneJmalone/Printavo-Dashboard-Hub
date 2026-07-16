@@ -35,6 +35,18 @@ export interface PvContactRef {
   customer: PvCustomerRef | null;
 }
 
+export interface PvAddress {
+  customerName: string | null;
+  companyName: string | null;
+  address1: string | null;
+  address2: string | null;
+  city: string | null;
+  state: string | null;
+  stateIso: string | null;
+  zipCode: string | null;
+  country: string | null;
+}
+
 export interface PvOrderNode {
   id: string;
   visualId: number;
@@ -54,10 +66,14 @@ export interface PvOrderNode {
   workorderUrl: string | null;
   customerNote: string | null;
   productionNote: string | null;
+  visualPoNumber: string | null;
   tags: string[] | null;
   status: PvStatusRef | null;
   owner: PvOwnerRef | null;
   contact: PvContactRef | null;
+  shippingAddress: PvAddress | null;
+  billingAddress: PvAddress | null;
+  deliveryMethod: { name: string | null } | null;
   timestamps: PvTimestamps;
 }
 

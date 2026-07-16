@@ -51,6 +51,8 @@ export * from './excludeParamParameter';
 export * from './gatewayStats';
 export * from './getBrandBreakdownParams';
 export * from './getColorBreakdownParams';
+export * from './getCombinedBoxLabelsHtmlParams';
+export * from './getCombinedPackingSlipsHtmlParams';
 export * from './getCombinedWorkordersHtmlParams';
 export * from './getImprintsByTierParams';
 export * from './getOrderQuantityBreakdownParams';

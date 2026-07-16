@@ -2054,6 +2054,33 @@ export const GetCombinedWorkordersHtmlResponse = zod.unknown()
 
 
 /**
+ * Renders one packing slip per invoice (quotes are silently skipped) entirely from the local pv_* tables — never a Printavo fetch. One HTML document with a page break between orders. Open in a popup and print.
+ * @summary Combined printable packing slips rendered locally from the sync snapshot
+ */
+export const GetCombinedPackingSlipsHtmlQueryParams = zod.object({
+  "ids": zod.coerce.string().describe('Comma-separated Printavo order ids (max 50)')
+})
+
+export const GetCombinedPackingSlipsHtmlResponse = zod.unknown()
+
+
+/**
+ * Two half-page 5.5in labels per letter sheet. Default is one label per line-item group (minimum one per order); perOrder overrides with a uniform count. Invoices only — quotes are silently skipped. Rendered entirely from the local pv_* tables.
+ * @summary Combined printable box labels rendered locally from the sync snapshot
+ */
+export const getCombinedBoxLabelsHtmlQueryPerOrderMax = 20;
+
+
+
+export const GetCombinedBoxLabelsHtmlQueryParams = zod.object({
+  "ids": zod.coerce.string().describe('Comma-separated Printavo order ids (max 50)'),
+  "perOrder": zod.coerce.number().min(1).max(getCombinedBoxLabelsHtmlQueryPerOrderMax).optional().describe('Fixed label count per order (1-20); omit for one per line-item group')
+})
+
+export const GetCombinedBoxLabelsHtmlResponse = zod.unknown()
+
+
+/**
  * @summary Print Queue status rules ordered by priority (first match wins; separate from purchasing rules)
  */
 export const ListPqStatusRulesResponse = zod.object({

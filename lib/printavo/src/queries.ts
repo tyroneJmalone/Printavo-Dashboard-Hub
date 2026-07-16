@@ -21,6 +21,18 @@ function afterArg(after: string | null | undefined): string {
   return after ? `, after: ${lit(after)}` : "";
 }
 
+const ADDRESS_FIELDS = `
+  customerName
+  companyName
+  address1
+  address2
+  city
+  state
+  stateIso
+  zipCode
+  country
+`;
+
 const ORDER_NODE_FIELDS = `
   id
   visualId
@@ -37,10 +49,14 @@ const ORDER_NODE_FIELDS = `
   workorderUrl
   customerNote
   productionNote
+  visualPoNumber
   tags
   status { id name }
   owner { id email }
   contact { id fullName email customer { id companyName } }
+  shippingAddress { ${ADDRESS_FIELDS} }
+  billingAddress { ${ADDRESS_FIELDS} }
+  deliveryMethod { name }
   timestamps { createdAt updatedAt }
 `;
 

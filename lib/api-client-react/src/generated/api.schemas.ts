@@ -2092,6 +2092,26 @@ ids: string;
 excludeAttachments?: boolean;
 };
 
+export type GetCombinedPackingSlipsHtmlParams = {
+/**
+ * Comma-separated Printavo order ids (max 50)
+ */
+ids: string;
+};
+
+export type GetCombinedBoxLabelsHtmlParams = {
+/**
+ * Comma-separated Printavo order ids (max 50)
+ */
+ids: string;
+/**
+ * Fixed label count per order (1-20); omit for one per line-item group
+ * @minimum 1
+ * @maximum 20
+ */
+perOrder?: number;
+};
+
 export type ListPqStatusJobsParams = {
 /**
  * @minimum 1

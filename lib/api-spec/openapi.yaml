@@ -1346,6 +1346,78 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/packing-slips/html:
+    get:
+      operationId: getCombinedPackingSlipsHtml
+      tags: [printQueue]
+      summary: Combined printable packing slips rendered locally from the sync snapshot
+      description: >
+        Renders one packing slip per invoice (quotes are silently skipped)
+        entirely from the local pv_* tables — never a Printavo fetch. One HTML
+        document with a page break between orders. Open in a popup and print.
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: Comma-separated Printavo order ids (max 50)
+          schema: { type: string }
+      responses:
+        "200":
+          description: Printable HTML document
+          content:
+            text/html:
+              schema: { type: string }
+        "400":
+          description: Missing ids / over the 50-order cap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: None of the ids matched a synced invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/box-labels/html:
+    get:
+      operationId: getCombinedBoxLabelsHtml
+      tags: [printQueue]
+      summary: Combined printable box labels rendered locally from the sync snapshot
+      description: >
+        Two half-page 5.5in labels per letter sheet. Default is one label per
+        line-item group (minimum one per order); perOrder overrides with a
+        uniform count. Invoices only — quotes are silently skipped. Rendered
+        entirely from the local pv_* tables.
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: Comma-separated Printavo order ids (max 50)
+          schema: { type: string }
+        - name: perOrder
+          in: query
+          required: false
+          description: Fixed label count per order (1-20); omit for one per line-item group
+          schema: { type: integer, minimum: 1, maximum: 20 }
+      responses:
+        "200":
+          description: Printable HTML document
+          content:
+            text/html:
+              schema: { type: string }
+        "400":
+          description: Missing ids / over the 50-order cap / bad perOrder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: None of the ids matched a synced invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /print-queue/rules:
     get:
       operationId: listPqStatusRules

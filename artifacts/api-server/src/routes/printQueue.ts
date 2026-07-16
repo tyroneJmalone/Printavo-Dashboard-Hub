@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import {
   CreatePqStatusRuleBody,
   UpdatePqStatusRuleBody,
@@ -15,6 +15,15 @@ import {
   buildCombinedWorkordersHtml,
   MAX_ORDERS,
 } from "../lib/printQueue/workorderHtml";
+import {
+  loadShippingDocOrders,
+  MAX_SHIPPING_DOC_ORDERS,
+} from "../lib/printQueue/shippingDocs";
+import { renderCombinedPackingSlipsHtml } from "../lib/printQueue/packingSlipHtml";
+import {
+  renderCombinedBoxLabelsHtml,
+  MAX_LABELS_PER_ORDER,
+} from "../lib/printQueue/boxLabelHtml";
 import {
   getPqAutomationEnabled,
   setPqAutomationEnabled,
@@ -100,6 +109,84 @@ router.get("/print-queue/workorders/html", (req, res) => {
     .catch((err) => {
       req.log.error({ err }, "combined workorder HTML failed");
       res.status(500).json({ error: "Failed to build workorder document" });
+    });
+});
+
+/* ── Shipping documents rendered from the local sync (PQ3b) ──────────── */
+
+/** Shared ids parsing: dedup, cap, 400 on empty/oversized. Returns null after responding. */
+function parseDocIds(req: Request, res: Response): string[] | null {
+  const raw = typeof req.query.ids === "string" ? req.query.ids : "";
+  const ids = [...new Set(raw.split(",").map((s) => s.trim()).filter(Boolean))];
+  if (ids.length === 0) {
+    res.status(400).json({ error: "ids is required" });
+    return null;
+  }
+  if (ids.length > MAX_SHIPPING_DOC_ORDERS) {
+    res
+      .status(400)
+      .json({ error: `Maximum ${MAX_SHIPPING_DOC_ORDERS} orders per batch` });
+    return null;
+  }
+  return ids;
+}
+
+function sendShippingDoc(res: Response, nonce: string, html: string): void {
+  res.setHeader(
+    "Content-Security-Policy",
+    `script-src 'nonce-${nonce}'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'`,
+  );
+  res.type("html").send(html);
+}
+
+router.get("/print-queue/packing-slips/html", (req, res) => {
+  const ids = parseDocIds(req, res);
+  if (!ids) return;
+  const nonce = randomBytes(16).toString("base64");
+  loadShippingDocOrders(ids)
+    .then((orders) => {
+      if (orders.length === 0) {
+        res.status(404).json({ error: "No matching invoices" });
+        return;
+      }
+      sendShippingDoc(res, nonce, renderCombinedPackingSlipsHtml(orders, nonce));
+    })
+    .catch((err) => {
+      req.log.error({ err }, "packing slips HTML failed");
+      res.status(500).json({ error: "Failed to build packing slips" });
+    });
+});
+
+router.get("/print-queue/box-labels/html", (req, res) => {
+  const ids = parseDocIds(req, res);
+  if (!ids) return;
+  let perOrder: number | null = null;
+  if (typeof req.query.perOrder === "string" && req.query.perOrder !== "") {
+    const n = Number(req.query.perOrder);
+    if (!Number.isInteger(n) || n < 1 || n > MAX_LABELS_PER_ORDER) {
+      res
+        .status(400)
+        .json({ error: `perOrder must be 1-${MAX_LABELS_PER_ORDER}` });
+      return;
+    }
+    perOrder = n;
+  }
+  const nonce = randomBytes(16).toString("base64");
+  loadShippingDocOrders(ids)
+    .then((orders) => {
+      if (orders.length === 0) {
+        res.status(404).json({ error: "No matching invoices" });
+        return;
+      }
+      sendShippingDoc(
+        res,
+        nonce,
+        renderCombinedBoxLabelsHtml(orders, nonce, perOrder),
+      );
+    })
+    .catch((err) => {
+      req.log.error({ err }, "box labels HTML failed");
+      res.status(500).json({ error: "Failed to build box labels" });
     });
 });
 
