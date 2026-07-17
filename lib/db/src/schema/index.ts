@@ -39,3 +39,4 @@ export * from "./poStatusSuggestions";
 export * from "./decorationMatrices";
 export * from "./syncCheckpoints";
 export * from "./entityWatermarks";
+export * from "./staffUsers";

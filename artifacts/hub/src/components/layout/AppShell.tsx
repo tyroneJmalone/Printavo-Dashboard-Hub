@@ -1,9 +1,11 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useClerk } from "@clerk/react";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { LastSynced } from "@/components/LastSynced";
+import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -87,6 +89,38 @@ function loadCollapsedGroups(): Record<string, boolean> {
   } catch {
     return {};
   }
+}
+
+function StaffChip() {
+  const { email, role } = useStaff();
+  const { signOut } = useClerk();
+  const initials = email.slice(0, 2).toUpperCase();
+
+  return (
+    <div className="px-4 py-4 border-t border-slate-800 bg-slate-900/50">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-700 shadow-inner flex-shrink-0">
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold text-slate-200 capitalize">
+            {role}
+          </div>
+          <div className="text-[10px] text-slate-500 font-mono mt-0.5 truncate" title={email}>
+            {email}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => signOut()}
+          title="Sign out"
+          className="p-1.5 rounded-md text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition-colors flex-shrink-0"
+        >
+          <LogOut size={14} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -208,15 +242,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
-        <div className="px-4 py-4 border-t border-slate-800 bg-slate-900/50">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300 border border-slate-700 shadow-inner">MP</div>
-            <div>
-              <div className="text-xs font-semibold text-slate-200">Shop Manager</div>
-              <div className="text-[10px] text-slate-500 font-mono mt-0.5">admin@mintprint</div>
-            </div>
-          </div>
-        </div>
+        <StaffChip />
       </aside>
 
       {/* Main content */}

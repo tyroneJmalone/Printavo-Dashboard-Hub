@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Staff authentication / session
   - name: sync
     description: Printavo sync engine
   - name: printavo
@@ -32,6 +34,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/me:
+    get:
+      operationId: getAuthMe
+      tags: [auth]
+      summary: Current staff session
+      description: Returns the signed-in staff member's email and role
+      responses:
+        "200":
+          description: Signed-in staff member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMe"
+        "401":
+          description: No session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Signed in but not on the staff allowlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthForbidden"
   /sync/status:
     get:
       operationId: getSyncStatus
@@ -1924,6 +1951,18 @@ components:
       description: "||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)"
       schema: { type: string }
   schemas:
+    AuthMe:
+      type: object
+      properties:
+        email: { type: string }
+        role: { type: string, enum: [admin, staff] }
+      required: [email, role]
+    AuthForbidden:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string }
+      required: [error]
     HealthStatus:
       type: object
       properties:

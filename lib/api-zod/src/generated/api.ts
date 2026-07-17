@@ -18,6 +18,16 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Returns the signed-in staff member's email and role
+ * @summary Current staff session
+ */
+export const GetAuthMeResponse = zod.object({
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'staff'])
+})
+
+
+/**
  * Local record counts, seed/poll run info, watermarks, scheduler and gateway stats
  * @summary Sync engine status
  */

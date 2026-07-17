@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   VendorLookupBody,
@@ -22,7 +22,6 @@ import {
   createPoFile,
   listPoFiles,
   getPoFile,
-  getPoFileByHtmlToken,
   updatePoFile,
   appendPoFileLineItems,
   unlockPoFile,
@@ -658,32 +657,9 @@ router.delete("/purchasing/po-files/:id", (req, res) => {
     });
 });
 
-/**
- * PUBLIC (unauthenticated) PO HTML by secret token — the URL handed to
- * Printavo's productionFileCreate. The token is a 64-char hex secret,
- * regenerated on every push; this must stay the ONLY public endpoint.
- * The optional trailing :filename segment is ignored — it only makes
- * Printavo name the attached file after the PO number.
- */
-const servePublicPoHtml = (
-  req: Request<{ token: string; filename?: string }>,
-  res: Response,
-) => {
-  getPoFileByHtmlToken(req.params.token)
-    .then((po) => {
-      if (!po) {
-        res.status(404).send("Not found");
-        return;
-      }
-      res.type("html").send(renderPoHtml(po));
-    })
-    .catch((err) => {
-      req.log.error({ err }, "public PO render failed");
-      res.status(500).send("Render failed");
-    });
-};
-router.get("/purchasing/po-html/:token", servePublicPoHtml);
-router.get("/purchasing/po-html/:token/:filename", servePublicPoHtml);
+/* PO HTML by secret token moved to purchasingPublic.ts — it must stay
+ * unauthenticated (Printavo fetches it server-to-server) and is mounted
+ * BEFORE requireStaff in routes/index.ts. */
 
 /* ── Status rules engine (P3d) ───────────────────────────────────────── */
 

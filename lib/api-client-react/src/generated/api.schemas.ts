@@ -5,6 +5,24 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AuthMeRole = typeof AuthMeRole[keyof typeof AuthMeRole];
+
+
+export const AuthMeRole = {
+  admin: 'admin',
+  staff: 'staff',
+} as const;
+
+export interface AuthMe {
+  email: string;
+  role: AuthMeRole;
+}
+
+export interface AuthForbidden {
+  error: string;
+  code?: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/sync/scheduler";
 import { startAutoPrintScheduler } from "./lib/printQueue/autoPrint/scheduler";
+import { bootstrapStaffAdmin } from "./lib/auth/bootstrap";
 
 const rawPort = process.env["PORT"];
 
@@ -24,6 +25,9 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  bootstrapStaffAdmin(logger).catch((err) =>
+    logger.error({ err }, "staff admin bootstrap failed"),
+  );
   startScheduler(logger);
   startAutoPrintScheduler(logger);
 });
