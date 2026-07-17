@@ -28,6 +28,105 @@ export const GetAuthMeResponse = zod.object({
 
 
 /**
+ * @summary List the staff allowlist (admin only)
+ */
+export const ListStaffResponse = zod.object({
+  "staff": zod.array(zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'staff']),
+  "addedByEmail": zod.string().nullable(),
+  "linked": zod.boolean().describe('Whether this person has signed in at least once in this environment'),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Add a staff member to the allowlist (admin only)
+ */
+export const addStaffBodyEmailMin = 3;
+export const addStaffBodyEmailMax = 254;
+
+
+
+export const AddStaffBody = zod.object({
+  "email": zod.string().min(addStaffBodyEmailMin).max(addStaffBodyEmailMax),
+  "role": zod.enum(['admin', 'staff'])
+})
+
+export const AddStaffResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'staff']),
+  "addedByEmail": zod.string().nullable(),
+  "linked": zod.boolean().describe('Whether this person has signed in at least once in this environment'),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Change a staff member's role (admin only)
+ */
+export const UpdateStaffRoleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateStaffRoleBody = zod.object({
+  "role": zod.enum(['admin', 'staff'])
+})
+
+export const UpdateStaffRoleResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'staff']),
+  "addedByEmail": zod.string().nullable(),
+  "linked": zod.boolean().describe('Whether this person has signed in at least once in this environment'),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Remove a staff member from the allowlist (admin only)
+ */
+export const RemoveStaffParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RemoveStaffResponse = zod.void()
+
+
+/**
+ * @summary Whether the admin PIN is configured and where it lives (admin only)
+ */
+export const GetAdminPinStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "source": zod.enum(['database', 'secret']).nullable().describe('Where the active PIN lives — app database or the ADMIN_PIN secret fallback')
+})
+
+
+/**
+ * @summary Change the admin PIN (admin only; current PIN required once one exists)
+ */
+export const setAdminPinBodyCurrentPinMax = 64;
+
+export const setAdminPinBodyNewPinMin = 4;
+export const setAdminPinBodyNewPinMax = 12;
+
+
+
+export const SetAdminPinBody = zod.object({
+  "currentPin": zod.string().max(setAdminPinBodyCurrentPinMax).optional(),
+  "newPin": zod.string().min(setAdminPinBodyNewPinMin).max(setAdminPinBodyNewPinMax)
+})
+
+export const SetAdminPinResponse = zod.object({
+  "configured": zod.boolean(),
+  "source": zod.enum(['database', 'secret']).nullable().describe('Where the active PIN lives — app database or the ADMIN_PIN secret fallback')
+})
+
+
+/**
  * Local record counts, seed/poll run info, watermarks, scheduler and gateway stats
  * @summary Sync engine status
  */

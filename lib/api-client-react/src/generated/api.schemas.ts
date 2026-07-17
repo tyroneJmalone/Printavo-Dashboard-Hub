@@ -23,6 +23,84 @@ export interface AuthForbidden {
   code?: string;
 }
 
+export type StaffMemberRole = typeof StaffMemberRole[keyof typeof StaffMemberRole];
+
+
+export const StaffMemberRole = {
+  admin: 'admin',
+  staff: 'staff',
+} as const;
+
+export interface StaffMember {
+  id: string;
+  email: string;
+  role: StaffMemberRole;
+  addedByEmail: string | null;
+  /** Whether this person has signed in at least once in this environment */
+  linked: boolean;
+  createdAt: string;
+}
+
+export interface StaffListResponse {
+  staff: StaffMember[];
+}
+
+export type AddStaffRequestRole = typeof AddStaffRequestRole[keyof typeof AddStaffRequestRole];
+
+
+export const AddStaffRequestRole = {
+  admin: 'admin',
+  staff: 'staff',
+} as const;
+
+export interface AddStaffRequest {
+  /**
+     * @minLength 3
+     * @maxLength 254
+     */
+  email: string;
+  role: AddStaffRequestRole;
+}
+
+export type UpdateStaffRoleRequestRole = typeof UpdateStaffRoleRequestRole[keyof typeof UpdateStaffRoleRequestRole];
+
+
+export const UpdateStaffRoleRequestRole = {
+  admin: 'admin',
+  staff: 'staff',
+} as const;
+
+export interface UpdateStaffRoleRequest {
+  role: UpdateStaffRoleRequestRole;
+}
+
+/**
+ * Where the active PIN lives — app database or the ADMIN_PIN secret fallback
+ */
+export type AdminPinStatusSource = typeof AdminPinStatusSource[keyof typeof AdminPinStatusSource] | null;
+
+
+export const AdminPinStatusSource = {
+  database: 'database',
+  secret: 'secret',
+} as const;
+
+export interface AdminPinStatus {
+  configured: boolean;
+  /** Where the active PIN lives — app database or the ADMIN_PIN secret fallback */
+  source: AdminPinStatusSource;
+}
+
+export interface SetAdminPinRequest {
+  /** @maxLength 64 */
+  currentPin?: string;
+  /**
+     * @minLength 4
+     * @maxLength 12
+     */
+  newPin: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

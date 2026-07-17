@@ -59,6 +59,155 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthForbidden"
+  /auth/staff:
+    get:
+      operationId: listStaff
+      tags: [auth]
+      summary: List the staff allowlist (admin only)
+      responses:
+        "200":
+          description: All staff rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffListResponse"
+        "403":
+          description: Not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: addStaff
+      tags: [auth]
+      summary: Add a staff member to the allowlist (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddStaffRequest"
+      responses:
+        "201":
+          description: Created staff row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffMember"
+        "400":
+          description: Invalid email or role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email is already on the staff list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/staff/{id}:
+    patch:
+      operationId: updateStaffRole
+      tags: [auth]
+      summary: Change a staff member's role (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStaffRoleRequest"
+      responses:
+        "200":
+          description: Updated staff row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffMember"
+        "404":
+          description: Staff member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Blocked — would leave the app without an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: removeStaff
+      tags: [auth]
+      summary: Remove a staff member from the allowlist (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: Staff member not found
+        "409":
+          description: Blocked — you can't remove yourself or the last admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/admin-pin:
+    get:
+      operationId: getAdminPinStatus
+      tags: [auth]
+      summary: Whether the admin PIN is configured and where it lives (admin only)
+      responses:
+        "200":
+          description: PIN status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPinStatus"
+    put:
+      operationId: setAdminPin
+      tags: [auth]
+      summary: Change the admin PIN (admin only; current PIN required once one exists)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetAdminPinRequest"
+      responses:
+        "200":
+          description: PIN updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPinStatus"
+        "400":
+          description: Invalid new PIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Wrong current PIN
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Locked out after too many wrong PIN attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /sync/status:
     get:
       operationId: getSyncStatus
@@ -1963,6 +2112,53 @@ components:
         error: { type: string }
         code: { type: string }
       required: [error]
+    StaffMember:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [admin, staff] }
+        addedByEmail: { type: string, nullable: true }
+        linked:
+          type: boolean
+          description: Whether this person has signed in at least once in this environment
+        createdAt: { type: string }
+      required: [id, email, role, addedByEmail, linked, createdAt]
+    StaffListResponse:
+      type: object
+      properties:
+        staff:
+          type: array
+          items:
+            $ref: "#/components/schemas/StaffMember"
+      required: [staff]
+    AddStaffRequest:
+      type: object
+      properties:
+        email: { type: string, minLength: 3, maxLength: 254 }
+        role: { type: string, enum: [admin, staff] }
+      required: [email, role]
+    UpdateStaffRoleRequest:
+      type: object
+      properties:
+        role: { type: string, enum: [admin, staff] }
+      required: [role]
+    AdminPinStatus:
+      type: object
+      properties:
+        configured: { type: boolean }
+        source:
+          type: string
+          enum: [database, secret]
+          nullable: true
+          description: Where the active PIN lives — app database or the ADMIN_PIN secret fallback
+      required: [configured, source]
+    SetAdminPinRequest:
+      type: object
+      properties:
+        currentPin: { type: string, maxLength: 64 }
+        newPin: { type: string, minLength: 4, maxLength: 12 }
+      required: [newPin]
     HealthStatus:
       type: object
       properties:

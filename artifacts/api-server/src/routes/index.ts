@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import purchasingPublicRouter from "./purchasingPublic";
 import { requireStaff } from "../middlewares/requireStaff";
 import authRouter from "./auth";
+import staffRouter from "./staff";
 import syncRouter from "./sync";
 import printavoRouter from "./printavo";
 import reportsRouter from "./reports";
@@ -23,6 +24,7 @@ router.use(purchasingPublicRouter);
 // ── Staff-only ───────────────────────────────────────────────────────
 router.use(requireStaff);
 router.use(authRouter);
+router.use(staffRouter); // admin-only routes — requireAdmin per route inside
 router.use(syncRouter);
 router.use(printavoRouter);
 router.use(reportsRouter);

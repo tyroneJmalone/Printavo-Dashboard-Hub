@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './addStaffRequest';
+export * from './addStaffRequestRole';
+export * from './adminPinStatus';
+export * from './adminPinStatusSource';
 export * from './adminUnlockPoFileRequest';
 export * from './appendPoLineItemsRequest';
 export * from './applyStatusSuggestionError';
@@ -139,7 +143,11 @@ export * from './reportStats';
 export * from './schedulerState';
 export * from './searchParamParameter';
 export * from './seedStartResult';
+export * from './setAdminPinRequest';
 export * from './sizeCount';
+export * from './staffListResponse';
+export * from './staffMember';
+export * from './staffMemberRole';
 export * from './startAutoPrintRunRequest';
 export * from './startPqStatusJobRequest';
 export * from './startPqStatusJobRequestTrigger';
@@ -162,6 +170,8 @@ export * from './updatePqStatusRuleRequest';
 export * from './updatePqStatusRuleRequestDecoGroup';
 export * from './updatePqStatusRuleRequestDueComparator';
 export * from './updatePqStatusRuleRequestMode';
+export * from './updateStaffRoleRequest';
+export * from './updateStaffRoleRequestRole';
 export * from './updateStatusRuleRequest';
 export * from './updateStatusRuleRequestDecoGroup';
 export * from './updateStatusRuleRequestDueComparator';

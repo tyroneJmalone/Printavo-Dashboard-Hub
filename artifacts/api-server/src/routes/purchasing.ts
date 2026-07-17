@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { requireValidAdminPin } from "../lib/auth/adminPin";
 import {
   VendorLookupBody,
   VendorInventoryBody,
@@ -325,62 +325,21 @@ router.post("/purchasing/po-files/:id/unlock", (req, res) => {
     });
 });
 
-/** Constant-time PIN check against the ADMIN_PIN secret. */
-function adminPinMatches(pin: string): boolean {
-  const expected = process.env.ADMIN_PIN;
-  if (!expected) return false;
-  const a = createHash("sha256").update(pin).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
-}
-
-/**
- * Brute-force friction for the admin PIN: after 5 wrong attempts, further
- * tries are rejected for 15 minutes (process-wide — this is an internal
- * single-user app). Reset on success or restart.
- */
-const PIN_MAX_FAILURES = 5;
-const PIN_LOCKOUT_MS = 15 * 60 * 1000;
-let pinFailures = 0;
-let pinLockedUntil = 0;
-
-router.post("/purchasing/po-files/:id/admin-unlock", (req, res) => {
+router.post("/purchasing/po-files/:id/admin-unlock", async (req, res) => {
   if (rejectIfPushActive(req.params.id, res)) return;
   const parsed = AdminUnlockPoFileBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid admin unlock payload" });
     return;
   }
-  if (!process.env.ADMIN_PIN) {
-    res.status(403).json({
-      error: "Admin PIN isn't set up yet — add the ADMIN_PIN secret first.",
-    });
-    return;
-  }
-  if (Date.now() < pinLockedUntil) {
-    const mins = Math.ceil((pinLockedUntil - Date.now()) / 60_000);
-    res.status(429).json({
-      error: `Too many wrong PIN attempts — try again in ${mins} minute${mins === 1 ? "" : "s"}.`,
-    });
-    return;
-  }
-  if (!adminPinMatches(parsed.data.adminPin)) {
-    pinFailures += 1;
-    if (pinFailures >= PIN_MAX_FAILURES) {
-      pinLockedUntil = Date.now() + PIN_LOCKOUT_MS;
-      pinFailures = 0;
-      req.log.warn(
-        { poFileId: req.params.id },
-        "admin unlock: too many wrong PINs — locked out 15 min",
-      );
-    } else {
-      req.log.warn({ poFileId: req.params.id }, "admin unlock rejected: wrong PIN");
-    }
-    res.status(403).json({ error: "Incorrect admin PIN" });
-    return;
-  }
-  pinFailures = 0;
-  pinLockedUntil = 0;
+  const pinOk = await requireValidAdminPin(
+    req,
+    res,
+    parsed.data.adminPin,
+    "admin unlock",
+    { poFileId: req.params.id },
+  );
+  if (!pinOk) return;
   adminUnlockVendorPoFile(req.params.id)
     .then((result) => {
       switch (result.status) {
@@ -418,7 +377,7 @@ router.post("/purchasing/po-files/:id/admin-unlock", (req, res) => {
  * The orchestrator (submitVendorOrder) enforces eligibility + single-active-
  * order idempotency and records the attempt.
  */
-router.post("/purchasing/po-files/:id/vendor-submit", (req, res) => {
+router.post("/purchasing/po-files/:id/vendor-submit", async (req, res) => {
   const parsed = VendorSubmitBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid vendor-submit payload" });
@@ -431,37 +390,14 @@ router.post("/purchasing/po-files/:id/vendor-submit", (req, res) => {
   const effectiveMode = submitEnabled ? requestedMode : "dry_run";
 
   if (effectiveMode !== "dry_run") {
-    if (!process.env.ADMIN_PIN) {
-      res.status(403).json({
-        error: "Admin PIN isn't set up yet — add the ADMIN_PIN secret first.",
-      });
-      return;
-    }
-    if (Date.now() < pinLockedUntil) {
-      const mins = Math.ceil((pinLockedUntil - Date.now()) / 60_000);
-      res.status(429).json({
-        error: `Too many wrong PIN attempts — try again in ${mins} minute${mins === 1 ? "" : "s"}.`,
-      });
-      return;
-    }
-    const pin = parsed.data.adminPin ?? "";
-    if (!pin || !adminPinMatches(pin)) {
-      pinFailures += 1;
-      if (pinFailures >= PIN_MAX_FAILURES) {
-        pinLockedUntil = Date.now() + PIN_LOCKOUT_MS;
-        pinFailures = 0;
-        req.log.warn(
-          { poFileId: req.params.id },
-          "vendor-submit: too many wrong PINs — locked out 15 min",
-        );
-      } else {
-        req.log.warn({ poFileId: req.params.id }, "vendor-submit rejected: wrong PIN");
-      }
-      res.status(403).json({ error: "Incorrect admin PIN" });
-      return;
-    }
-    pinFailures = 0;
-    pinLockedUntil = 0;
+    const pinOk = await requireValidAdminPin(
+      req,
+      res,
+      parsed.data.adminPin ?? undefined,
+      "vendor-submit",
+      { poFileId: req.params.id },
+    );
+    if (!pinOk) return;
   }
 
   submitVendorOrder(req.params.id, effectiveMode)
@@ -553,45 +489,20 @@ router.post("/purchasing/vendor-orders/:id/refresh", (req, res) => {
  * Manually resolve an UNKNOWN order as failed — releases the anti-double-order
  * lock, so it's PIN-gated with the same lockout as the other admin actions.
  */
-router.post("/purchasing/vendor-orders/:id/mark-failed", (req, res) => {
+router.post("/purchasing/vendor-orders/:id/mark-failed", async (req, res) => {
   const parsed = MarkVendorOrderFailedBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid mark-failed payload" });
     return;
   }
-  if (!process.env.ADMIN_PIN) {
-    res.status(403).json({
-      error: "Admin PIN isn't set up yet — add the ADMIN_PIN secret first.",
-    });
-    return;
-  }
-  if (Date.now() < pinLockedUntil) {
-    const mins = Math.ceil((pinLockedUntil - Date.now()) / 60_000);
-    res.status(429).json({
-      error: `Too many wrong PIN attempts — try again in ${mins} minute${mins === 1 ? "" : "s"}.`,
-    });
-    return;
-  }
-  if (!adminPinMatches(parsed.data.adminPin)) {
-    pinFailures += 1;
-    if (pinFailures >= PIN_MAX_FAILURES) {
-      pinLockedUntil = Date.now() + PIN_LOCKOUT_MS;
-      pinFailures = 0;
-      req.log.warn(
-        { vendorOrderId: req.params.id },
-        "vendor-order mark-failed: too many wrong PINs — locked out 15 min",
-      );
-    } else {
-      req.log.warn(
-        { vendorOrderId: req.params.id },
-        "vendor-order mark-failed rejected: wrong PIN",
-      );
-    }
-    res.status(403).json({ error: "Incorrect admin PIN" });
-    return;
-  }
-  pinFailures = 0;
-  pinLockedUntil = 0;
+  const pinOk = await requireValidAdminPin(
+    req,
+    res,
+    parsed.data.adminPin,
+    "vendor-order mark-failed",
+    { vendorOrderId: req.params.id },
+  );
+  if (!pinOk) return;
   markVendorOrderFailed(req.params.id, parsed.data.note ?? null)
     .then((result) => {
       if (result.outcome === "not_found") {

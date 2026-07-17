@@ -9,6 +9,9 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useStaff } from "@/components/auth/StaffGate";
+import { StaffAccessCard } from "@/components/settings/StaffAccessCard";
+import { AdminPinCard } from "@/components/settings/AdminPinCard";
 import { Settings as SettingsIcon, Loader2, Truck, Save } from "lucide-react";
 
 function apiError(err: unknown): string | undefined {
@@ -70,6 +73,7 @@ const labelCls =
 
 export default function Settings() {
   const { toast } = useToast();
+  const me = useStaff();
   const queryClient = useQueryClient();
   const { data, isLoading } = useGetVendorShipTo({
     query: { queryKey: getGetVendorShipToQueryKey() },
@@ -150,6 +154,12 @@ export default function Settings() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          {me.role === "admin" && (
+            <div className="max-w-2xl flex flex-col gap-6 mb-6">
+              <StaffAccessCard />
+              <AdminPinCard />
+            </div>
+          )}
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 size={22} className="animate-spin text-slate-500" />
