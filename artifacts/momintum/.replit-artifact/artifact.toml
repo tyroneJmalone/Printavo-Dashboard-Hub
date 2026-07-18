@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/momintum/"
+title = "moMINTum"
+version = "1.0.0"
+id = "artifacts/momintum"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/momintum/" ]
+localPort = 22589
+
+[services.development]
+run = "pnpm --filter @workspace/momintum run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/momintum", "run", "build" ]
+publicDir = "artifacts/momintum/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22589"
+BASE_PATH = "/momintum/"

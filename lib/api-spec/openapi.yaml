@@ -1991,6 +1991,672 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AutoPrintJobsResponse"
+
+  # ── moMINTum (shared live DB with standalone app) — merged from its spec ──
+  /momintum/lists:
+    get:
+      operationId: listLists
+      tags: [lists]
+      summary: List all lists
+      parameters:
+        - name: ownerId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of lists
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/List"
+    post:
+      operationId: createList
+      tags: [lists]
+      summary: Create a list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+
+  /momintum/lists/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      operationId: updateList
+      tags: [lists]
+      summary: Update a list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/List"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteList
+      tags: [lists]
+      summary: Delete a list
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /momintum/tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks
+      parameters:
+        - name: listId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: completed
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: deleted
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: assigneeId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [manual, dueDate, priority, title, createdAt]
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /momintum/tasks/bulk-update:
+    post:
+      operationId: bulkUpdateTasks
+      tags: [tasks]
+      summary: Update multiple tasks at once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkUpdateTasksInput"
+      responses:
+        "200":
+          description: Updated tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+
+  /momintum/tasks/bulk-delete:
+    post:
+      operationId: bulkDeleteTasks
+      tags: [tasks]
+      summary: Delete multiple tasks at once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkDeleteTasksInput"
+      responses:
+        "204":
+          description: Deleted
+
+  /momintum/tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: Get a task
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /momintum/tasks/{id}/comments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: listComments
+      tags: [comments]
+      summary: List comments for a task
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+    post:
+      operationId: createComment
+      tags: [comments]
+      summary: Add a comment to a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+
+  /momintum/tasks/{id}/duplicate:
+    post:
+      operationId: duplicateTask
+      tags: [tasks]
+      summary: Duplicate a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "201":
+          description: Duplicated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /momintum/tasks/{id}/restore:
+    post:
+      operationId: restoreTask
+      tags: [tasks]
+      summary: Restore a soft-deleted task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Restored task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+
+  /momintum/tasks/{id}/subtasks:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: listSubtasks
+      tags: [subtasks]
+      summary: List subtasks for a task
+      responses:
+        "200":
+          description: List of subtasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subtask"
+    post:
+      operationId: createSubtask
+      tags: [subtasks]
+      summary: Add a subtask to a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubtaskInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subtask"
+
+  /momintum/subtasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      operationId: updateSubtask
+      tags: [subtasks]
+      summary: Update a subtask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubtaskUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subtask"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteSubtask
+      tags: [subtasks]
+      summary: Delete a subtask
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /momintum/members:
+    get:
+      operationId: listMembers
+      tags: [members]
+      summary: List team members
+      responses:
+        "200":
+          description: List of members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Member"
+    post:
+      operationId: createMember
+      tags: [members]
+      summary: Create a team member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+
+  /momintum/members/me:
+    get:
+      operationId: getCurrentMember
+      tags: [members]
+      summary: Get (or JIT-provision) the member linked to the signed-in Clerk user
+      responses:
+        "200":
+          description: Current member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "401":
+          description: Unauthorized
+
+  /momintum/mentions:
+    get:
+      operationId: listMentions
+      tags: [comments]
+      summary: List comments that mention a given member
+      parameters:
+        - name: memberId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of comments mentioning the member
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+
+  /momintum/members/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      operationId: updateMember
+      tags: [members]
+      summary: Update a team member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteMember
+      tags: [members]
+      summary: Delete a team member (admin only)
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+
+  /momintum/teams:
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: List all teams with their member ids
+      responses:
+        "200":
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Create a team (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "403":
+          description: Forbidden
+
+  /momintum/teams/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      operationId: updateTeam
+      tags: [teams]
+      summary: Update a team (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteTeam
+      tags: [teams]
+      summary: Delete a team (admin only)
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+
+  /momintum/teams/{id}/members/{memberId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: memberId
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      operationId: addTeamMember
+      tags: [teams]
+      summary: Add a member to a team (admin only)
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [teamId, memberIds]
+                properties:
+                  teamId: { type: integer }
+                  memberIds:
+                    type: array
+                    items: { type: integer }
+        "403":
+          description: Forbidden
+    delete:
+      operationId: removeTeamMember
+      tags: [teams]
+      summary: Remove a member from a team (admin only)
+      responses:
+        "204":
+          description: Removed
+        "403":
+          description: Forbidden
+
+  /momintum/quotes:
+    get:
+      operationId: listQuotes
+      tags: [quotes]
+      summary: List all banner quotes
+      responses:
+        "200":
+          description: List of quotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quote"
+    post:
+      operationId: createQuote
+      tags: [quotes]
+      summary: Add a new banner quote (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+        "403":
+          description: Forbidden
+
+  /momintum/quotes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    delete:
+      operationId: deleteQuote
+      tags: [quotes]
+      summary: Remove a banner quote (admin only)
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+
+  /momintum/dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary counts
+      parameters:
+        - name: assigneeId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
   parameters:
     OrderTypeParam:
@@ -3606,3 +4272,281 @@ components:
           items:
             $ref: "#/components/schemas/AutoPrintJob"
       required: [jobs]
+
+    # ── moMINTum schemas (merged from standalone spec, names verbatim) ──
+    List:
+      type: object
+      required: [id, name, color, ownerId, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        color: { type: string }
+        ownerId: { type: ["integer", "null"] }
+        teamId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    ListInput:
+      type: object
+      required: [name, color]
+      properties:
+        name: { type: string, minLength: 1 }
+        color: { type: string, minLength: 1 }
+        ownerId: { type: ["integer", "null"] }
+        teamId: { type: ["integer", "null"] }
+
+    ListUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        color: { type: string, minLength: 1 }
+        ownerId: { type: ["integer", "null"] }
+        teamId: { type: ["integer", "null"] }
+
+    Team:
+      type: object
+      required: [id, name, color, memberIds, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        color: { type: string }
+        memberIds:
+          type: array
+          items: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    TeamInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        color: { type: string }
+
+    TeamUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        color: { type: string }
+
+    Member:
+      type: object
+      required: [id, name, email, color, isAdmin, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        color: { type: string }
+        isAdmin: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    MemberInput:
+      type: object
+      required: [name, email, color]
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string, minLength: 1 }
+        color: { type: string, minLength: 1 }
+        isAdmin: { type: boolean }
+
+    MemberUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string, minLength: 1 }
+        color: { type: string, minLength: 1 }
+        isAdmin: { type: boolean }
+
+    Quote:
+      type: object
+      required: [id, text, createdAt]
+      properties:
+        id: { type: integer }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    QuoteInput:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1 }
+
+    Task:
+      type: object
+      required:
+        [
+          id,
+          title,
+          notes,
+          listId,
+          assigneeId,
+          createdById,
+          priority,
+          dueDate,
+          completed,
+          completedAt,
+          tags,
+          sortOrder,
+          recurrence,
+          recurringParentId,
+          deletedAt,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        notes: { type: ["string", "null"] }
+        listId: { type: ["integer", "null"] }
+        assigneeId: { type: ["integer", "null"] }
+        createdById: { type: ["integer", "null"] }
+        priority:
+          type: string
+          enum: [none, low, medium, high]
+        dueDate: { type: ["string", "null"], format: date-time }
+        completed: { type: boolean }
+        completedAt: { type: ["string", "null"], format: date-time }
+        tags:
+          type: array
+          items: { type: string }
+        sortOrder: { type: number }
+        recurrence:
+          type: ["string", "null"]
+          enum: [daily, weekly, monthly, yearly, null]
+        recurringParentId: { type: ["integer", "null"] }
+        deletedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    TaskInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1 }
+        notes: { type: string }
+        listId: { type: ["integer", "null"] }
+        assigneeId: { type: ["integer", "null"] }
+        createdById: { type: ["integer", "null"] }
+        priority:
+          type: string
+          enum: [none, low, medium, high]
+        dueDate: { type: ["string", "null"], format: date-time }
+        tags:
+          type: array
+          items: { type: string }
+        recurrence:
+          type: ["string", "null"]
+          enum: [daily, weekly, monthly, yearly, null]
+
+    TaskUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        notes: { type: ["string", "null"] }
+        listId: { type: ["integer", "null"] }
+        assigneeId: { type: ["integer", "null"] }
+        priority:
+          type: string
+          enum: [none, low, medium, high]
+        dueDate: { type: ["string", "null"], format: date-time }
+        completed: { type: boolean }
+        tags:
+          type: array
+          items: { type: string }
+        sortOrder: { type: number }
+        recurrence:
+          type: ["string", "null"]
+          enum: [daily, weekly, monthly, yearly, null]
+
+    BulkUpdateTasksInput:
+      type: object
+      required: [ids, data]
+      properties:
+        ids:
+          type: array
+          items: { type: integer }
+          minItems: 1
+        data:
+          type: object
+          properties:
+            listId: { type: ["integer", "null"] }
+            assigneeId: { type: ["integer", "null"] }
+            priority:
+              type: string
+              enum: [none, low, medium, high]
+            dueDate: { type: ["string", "null"], format: date-time }
+            completed: { type: boolean }
+
+    BulkDeleteTasksInput:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items: { type: integer }
+          minItems: 1
+
+    Comment:
+      type: object
+      required: [id, taskId, authorId, body, mentionedMemberIds, createdAt]
+      properties:
+        id: { type: integer }
+        taskId: { type: integer }
+        authorId: { type: ["integer", "null"] }
+        body: { type: string }
+        mentionedMemberIds:
+          type: array
+          items: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    CommentInput:
+      type: object
+      required: [body]
+      properties:
+        authorId: { type: ["integer", "null"] }
+        body: { type: string, minLength: 1 }
+        mentionedMemberIds:
+          type: array
+          items: { type: integer }
+
+    Subtask:
+      type: object
+      required: [id, taskId, title, completed, sortOrder, createdAt]
+      properties:
+        id: { type: integer }
+        taskId: { type: integer }
+        assigneeId: { type: ["integer", "null"] }
+        title: { type: string }
+        completed: { type: boolean }
+        sortOrder: { type: number }
+        createdAt: { type: string, format: date-time }
+
+    SubtaskInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1 }
+        assigneeId: { type: ["integer", "null"] }
+
+    SubtaskUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        completed: { type: boolean }
+        sortOrder: { type: number }
+        assigneeId: { type: ["integer", "null"] }
+
+    DashboardSummary:
+      type: object
+      required:
+        [
+          overdueCount,
+          todayCount,
+          upcomingCount,
+          completedTodayCount,
+          totalActiveCount,
+        ]
+      properties:
+        overdueCount: { type: integer }
+        todayCount: { type: integer }
+        upcomingCount: { type: integer }
+        completedTodayCount: { type: integer }
+        totalActiveCount: { type: integer }

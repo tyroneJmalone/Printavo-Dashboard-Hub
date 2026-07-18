@@ -13,6 +13,9 @@
       "path": "../../lib/db"
     },
     {
+      "path": "../../lib/momintum-db"
+    },
+    {
       "path": "../../lib/api-zod"
     }
   ]

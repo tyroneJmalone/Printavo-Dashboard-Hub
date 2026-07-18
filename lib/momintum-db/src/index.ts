@@ -38,4 +38,17 @@ export function momintumDb(): MomintumDb {
   return _db;
 }
 
+/**
+ * Lazy proxy so route modules can `import { db }` verbatim (mirroring the
+ * standalone app) without opening a connection at import time. The real
+ * drizzle instance is created on first property access.
+ */
+export const db: MomintumDb = new Proxy({} as MomintumDb, {
+  get(_target, prop) {
+    const real = momintumDb() as unknown as Record<string | symbol, unknown>;
+    const value = real[prop];
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
+
 export * from "./schema";

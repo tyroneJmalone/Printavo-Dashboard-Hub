@@ -2718,3 +2718,728 @@ export const ListAutoPrintJobsResponse = zod.object({
 })
 
 
+/**
+ * @summary List all lists
+ */
+export const ListListsQueryParams = zod.object({
+  "ownerId": zod.coerce.number().optional()
+})
+
+export const ListListsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "ownerId": zod.number().nullable(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListListsResponse = zod.array(ListListsResponseItem)
+
+
+/**
+ * @summary Create a list
+ */
+
+
+
+
+export const CreateListBody = zod.object({
+  "name": zod.string().min(1),
+  "color": zod.string().min(1),
+  "ownerId": zod.number().nullish(),
+  "teamId": zod.number().nullish()
+})
+
+export const CreateListResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "ownerId": zod.number().nullable(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a list
+ */
+export const UpdateListParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateListBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "color": zod.string().min(1).optional(),
+  "ownerId": zod.number().nullish(),
+  "teamId": zod.number().nullish()
+})
+
+export const UpdateListResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "ownerId": zod.number().nullable(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a list
+ */
+export const DeleteListParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteListResponse = zod.void()
+
+
+/**
+ * @summary List tasks
+ */
+export const ListTasksQueryParams = zod.object({
+  "listId": zod.coerce.number().optional(),
+  "completed": zod.coerce.boolean().optional(),
+  "deleted": zod.coerce.boolean().optional(),
+  "assigneeId": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "sortBy": zod.enum(['manual', 'dueDate', 'priority', 'title', 'createdAt']).optional()
+})
+
+export const ListTasksResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "notes": zod.string().nullable(),
+  "listId": zod.number().nullable(),
+  "assigneeId": zod.number().nullable(),
+  "createdById": zod.number().nullable(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "tags": zod.array(zod.string()),
+  "sortOrder": zod.number(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
+  "recurringParentId": zod.number().nullable(),
+  "deletedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListTasksResponse = zod.array(ListTasksResponseItem)
+
+
+/**
+ * @summary Create a task
+ */
+
+
+
+export const CreateTaskBody = zod.object({
+  "title": zod.string().min(1),
+  "notes": zod.string().optional(),
+  "listId": zod.number().nullish(),
+  "assigneeId": zod.number().nullish(),
+  "createdById": zod.number().nullish(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "tags": zod.array(zod.string()).optional(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullish()
+})
+
+export const CreateTaskResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "notes": zod.string().nullable(),
+  "listId": zod.number().nullable(),
+  "assigneeId": zod.number().nullable(),
+  "createdById": zod.number().nullable(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "tags": zod.array(zod.string()),
+  "sortOrder": zod.number(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
+  "recurringParentId": zod.number().nullable(),
+  "deletedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update multiple tasks at once
+ */
+
+
+
+export const BulkUpdateTasksBody = zod.object({
+  "ids": zod.array(zod.number()).min(1),
+  "data": zod.object({
+  "listId": zod.number().nullish(),
+  "assigneeId": zod.number().nullish(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "completed": zod.boolean().optional()
+})
+})
+
+export const BulkUpdateTasksResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "notes": zod.string().nullable(),
+  "listId": zod.number().nullable(),
+  "assigneeId": zod.number().nullable(),
+  "createdById": zod.number().nullable(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "tags": zod.array(zod.string()),
+  "sortOrder": zod.number(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
+  "recurringParentId": zod.number().nullable(),
+  "deletedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const BulkUpdateTasksResponse = zod.array(BulkUpdateTasksResponseItem)
+
+
+/**
+ * @summary Delete multiple tasks at once
+ */
+
+
+
+export const BulkDeleteTasksBody = zod.object({
+  "ids": zod.array(zod.number()).min(1)
+})
+
+export const BulkDeleteTasksResponse = zod.void()
+
+
+/**
+ * @summary Get a task
+ */
+export const GetTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetTaskResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "notes": zod.string().nullable(),
+  "listId": zod.number().nullable(),
+  "assigneeId": zod.number().nullable(),
+  "createdById": zod.number().nullable(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "tags": zod.array(zod.string()),
+  "sortOrder": zod.number(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
+  "recurringParentId": zod.number().nullable(),
+  "deletedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a task
+ */
+export const UpdateTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateTaskBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "notes": zod.string().nullish(),
+  "listId": zod.number().nullish(),
+  "assigneeId": zod.number().nullish(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "completed": zod.boolean().optional(),
+  "tags": zod.array(zod.string()).optional(),
+  "sortOrder": zod.number().optional(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullish()
+})
+
+export const UpdateTaskResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "notes": zod.string().nullable(),
+  "listId": zod.number().nullable(),
+  "assigneeId": zod.number().nullable(),
+  "createdById": zod.number().nullable(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "tags": zod.array(zod.string()),
+  "sortOrder": zod.number(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
+  "recurringParentId": zod.number().nullable(),
+  "deletedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a task
+ */
+export const DeleteTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteTaskResponse = zod.void()
+
+
+/**
+ * @summary List comments for a task
+ */
+export const ListCommentsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListCommentsResponseItem = zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "authorId": zod.number().nullable(),
+  "body": zod.string(),
+  "mentionedMemberIds": zod.array(zod.number()),
+  "createdAt": zod.coerce.date()
+})
+export const ListCommentsResponse = zod.array(ListCommentsResponseItem)
+
+
+/**
+ * @summary Add a comment to a task
+ */
+export const CreateCommentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const CreateCommentBody = zod.object({
+  "authorId": zod.number().nullish(),
+  "body": zod.string().min(1),
+  "mentionedMemberIds": zod.array(zod.number()).optional()
+})
+
+export const CreateCommentResponse = zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "authorId": zod.number().nullable(),
+  "body": zod.string(),
+  "mentionedMemberIds": zod.array(zod.number()),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Duplicate a task
+ */
+export const DuplicateTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DuplicateTaskResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "notes": zod.string().nullable(),
+  "listId": zod.number().nullable(),
+  "assigneeId": zod.number().nullable(),
+  "createdById": zod.number().nullable(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "tags": zod.array(zod.string()),
+  "sortOrder": zod.number(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
+  "recurringParentId": zod.number().nullable(),
+  "deletedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Restore a soft-deleted task
+ */
+export const RestoreTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RestoreTaskResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "notes": zod.string().nullable(),
+  "listId": zod.number().nullable(),
+  "assigneeId": zod.number().nullable(),
+  "createdById": zod.number().nullable(),
+  "priority": zod.enum(['none', 'low', 'medium', 'high']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "tags": zod.array(zod.string()),
+  "sortOrder": zod.number(),
+  "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
+  "recurringParentId": zod.number().nullable(),
+  "deletedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List subtasks for a task
+ */
+export const ListSubtasksParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListSubtasksResponseItem = zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "assigneeId": zod.number().nullish(),
+  "title": zod.string(),
+  "completed": zod.boolean(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+export const ListSubtasksResponse = zod.array(ListSubtasksResponseItem)
+
+
+/**
+ * @summary Add a subtask to a task
+ */
+export const CreateSubtaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const CreateSubtaskBody = zod.object({
+  "title": zod.string().min(1),
+  "assigneeId": zod.number().nullish()
+})
+
+export const CreateSubtaskResponse = zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "assigneeId": zod.number().nullish(),
+  "title": zod.string(),
+  "completed": zod.boolean(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a subtask
+ */
+export const UpdateSubtaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateSubtaskBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "completed": zod.boolean().optional(),
+  "sortOrder": zod.number().optional(),
+  "assigneeId": zod.number().nullish()
+})
+
+export const UpdateSubtaskResponse = zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "assigneeId": zod.number().nullish(),
+  "title": zod.string(),
+  "completed": zod.boolean(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a subtask
+ */
+export const DeleteSubtaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteSubtaskResponse = zod.void()
+
+
+/**
+ * @summary List team members
+ */
+export const ListMembersResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "color": zod.string(),
+  "isAdmin": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMembersResponse = zod.array(ListMembersResponseItem)
+
+
+/**
+ * @summary Create a team member
+ */
+
+
+
+
+
+export const CreateMemberBody = zod.object({
+  "name": zod.string().min(1),
+  "email": zod.string().min(1),
+  "color": zod.string().min(1),
+  "isAdmin": zod.boolean().optional()
+})
+
+export const CreateMemberResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "color": zod.string(),
+  "isAdmin": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get (or JIT-provision) the member linked to the signed-in Clerk user
+ */
+export const GetCurrentMemberResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "color": zod.string(),
+  "isAdmin": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List comments that mention a given member
+ */
+export const ListMentionsQueryParams = zod.object({
+  "memberId": zod.coerce.number()
+})
+
+export const ListMentionsResponseItem = zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "authorId": zod.number().nullable(),
+  "body": zod.string(),
+  "mentionedMemberIds": zod.array(zod.number()),
+  "createdAt": zod.coerce.date()
+})
+export const ListMentionsResponse = zod.array(ListMentionsResponseItem)
+
+
+/**
+ * @summary Update a team member
+ */
+export const UpdateMemberParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+
+export const UpdateMemberBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "email": zod.string().min(1).optional(),
+  "color": zod.string().min(1).optional(),
+  "isAdmin": zod.boolean().optional()
+})
+
+export const UpdateMemberResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "color": zod.string(),
+  "isAdmin": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a team member (admin only)
+ */
+export const DeleteMemberParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteMemberResponse = zod.void()
+
+
+/**
+ * @summary List all teams with their member ids
+ */
+export const ListTeamsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "memberIds": zod.array(zod.number()),
+  "createdAt": zod.coerce.date()
+})
+export const ListTeamsResponse = zod.array(ListTeamsResponseItem)
+
+
+/**
+ * @summary Create a team (admin only)
+ */
+
+
+
+export const CreateTeamBody = zod.object({
+  "name": zod.string().min(1),
+  "color": zod.string().optional()
+})
+
+export const CreateTeamResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "memberIds": zod.array(zod.number()),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a team (admin only)
+ */
+export const UpdateTeamParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateTeamBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "color": zod.string().optional()
+})
+
+export const UpdateTeamResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "memberIds": zod.array(zod.number()),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a team (admin only)
+ */
+export const DeleteTeamParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteTeamResponse = zod.void()
+
+
+/**
+ * @summary Add a member to a team (admin only)
+ */
+export const AddTeamMemberParams = zod.object({
+  "id": zod.coerce.number(),
+  "memberId": zod.coerce.number()
+})
+
+export const AddTeamMemberResponse = zod.object({
+  "teamId": zod.number(),
+  "memberIds": zod.array(zod.number())
+})
+
+
+/**
+ * @summary Remove a member from a team (admin only)
+ */
+export const RemoveTeamMemberParams = zod.object({
+  "id": zod.coerce.number(),
+  "memberId": zod.coerce.number()
+})
+
+export const RemoveTeamMemberResponse = zod.void()
+
+
+/**
+ * @summary List all banner quotes
+ */
+export const ListQuotesResponseItem = zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
+
+
+/**
+ * @summary Add a new banner quote (admin only)
+ */
+
+
+
+export const CreateQuoteBody = zod.object({
+  "text": zod.string().min(1)
+})
+
+export const CreateQuoteResponse = zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a banner quote (admin only)
+ */
+export const DeleteQuoteParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteQuoteResponse = zod.void()
+
+
+/**
+ * @summary Get dashboard summary counts
+ */
+export const GetDashboardSummaryQueryParams = zod.object({
+  "assigneeId": zod.coerce.number().optional()
+})
+
+export const GetDashboardSummaryResponse = zod.object({
+  "overdueCount": zod.number(),
+  "todayCount": zod.number(),
+  "upcomingCount": zod.number(),
+  "completedTodayCount": zod.number(),
+  "totalActiveCount": zod.number()
+})
+
+

@@ -5,7 +5,7 @@ import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api
 import { LastSynced } from "@/components/LastSynced";
 import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -14,6 +14,8 @@ interface NavItem {
   icon: React.ComponentType<any>;
   badge?: string;
   disabled?: boolean;
+  /** Plain <a> navigation to another artifact (full page load, no wouter). */
+  external?: boolean;
 }
 
 interface NavGroup {
@@ -62,6 +64,10 @@ const NAV_GROUPS: NavGroup[] = [
   {
     heading: "Quoting",
     items: [{ id: "quote", label: "Price Calculator", href: "/price-calculator", icon: Calculator }],
+  },
+  {
+    heading: "Team",
+    items: [{ id: "momintum", label: "Tasks (moMINTum)", href: "/momintum/", icon: ListChecks, external: true }],
   },
   {
     heading: "Shipping",
@@ -212,6 +218,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
                   if (item.disabled || !item.href) {
                     return <div key={item.id}>{content}</div>;
+                  }
+
+                  if (item.external) {
+                    return (
+                      <a key={item.id} href={item.href} className="block">
+                        {content}
+                      </a>
+                    );
                   }
 
                   return (

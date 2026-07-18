@@ -1,4 +1,5 @@
 - [Vendor submit runs off the snapshot](vendor-submit-snapshot.md) — any per-line field needed at SanMar/S&S submit time must persist end-to-end, not cart-only.
+- [moMINTum shared live DB rules](momintum-shared-db.md) — email-only identity, never write members.clerk_user_id from hub, JIT-create needs advisory lock (raced once in prod).
 - [SanMar SOAP envelope ordering](sanmar-soap-envelope.md) — strict WSDL sequence order + creds in arg1 or the PO service NPEs; verify via getPreSubmitInfo (no order placed).
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [S&S order response wrapper](ss-order-response-wrapper.md) — S&S order endpoints return { orders, lineErrors } wrapper, not a bare array; camelCase fields; parse via unwrap helper.

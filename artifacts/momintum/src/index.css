@@ -1,0 +1,154 @@
+@layer theme, base, clerk, components, utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@clerk/themes/shadcn.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --color-brand-purple: #9e4a95;
+  --color-brand-teal: #2baeae;
+  --color-brand-slate: #546290;
+  --color-brand-lilac: #d5c3ff;
+  --color-brand-coral: #ec6b4d;
+
+  --font-sans: "Manrope", sans-serif;
+  --font-display: "Caveat", cursive;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 96 30% 98%;
+  --foreground: 140 15% 10%;
+  --border: 96 20% 90%;
+  --input: 96 20% 90%;
+  --ring: 96 49% 45%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 140 15% 10%;
+  --card-border: 96 15% 93%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 140 15% 10%;
+  --popover-border: 96 20% 90%;
+
+  --primary: 96 49% 45%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 96 20% 92%;
+  --secondary-foreground: 140 25% 20%;
+
+  --muted: 96 12% 95%;
+  --muted-foreground: 140 10% 42%;
+
+  --accent: 96 40% 90%;
+  --accent-foreground: 96 55% 26%;
+
+  --destructive: 11 81% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --sidebar: 140 20% 12%;
+  --sidebar-foreground: 96 15% 92%;
+  --sidebar-border: 140 20% 18%;
+  --sidebar-primary: 96 49% 50%;
+  --sidebar-primary-foreground: 140 30% 8%;
+  --sidebar-accent: 140 20% 20%;
+  --sidebar-accent-foreground: 96 49% 70%;
+  --sidebar-ring: 96 49% 50%;
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 140 20% 7%;
+  --foreground: 96 15% 94%;
+  --border: 140 20% 17%;
+  --input: 140 20% 17%;
+  --ring: 96 49% 50%;
+
+  --card: 140 22% 10%;
+  --card-foreground: 96 15% 94%;
+  --card-border: 140 18% 15%;
+
+  --popover: 140 22% 10%;
+  --popover-foreground: 96 15% 94%;
+  --popover-border: 140 20% 17%;
+
+  --primary: 96 49% 50%;
+  --primary-foreground: 140 30% 8%;
+
+  --secondary: 140 18% 16%;
+  --secondary-foreground: 96 15% 85%;
+
+  --muted: 140 18% 13%;
+  --muted-foreground: 96 10% 62%;
+
+  --accent: 140 25% 18%;
+  --accent-foreground: 96 49% 68%;
+
+  --destructive: 11 60% 35%;
+  --destructive-foreground: 0 0% 100%;
+
+  --sidebar: 140 25% 6%;
+  --sidebar-foreground: 96 15% 88%;
+  --sidebar-border: 140 20% 13%;
+  --sidebar-primary: 96 49% 50%;
+  --sidebar-primary-foreground: 140 30% 8%;
+  --sidebar-accent: 140 25% 14%;
+  --sidebar-accent-foreground: 96 49% 70%;
+  --sidebar-ring: 96 49% 50%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}

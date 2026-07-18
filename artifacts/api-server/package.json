@@ -14,6 +14,7 @@
     "@clerk/shared": "^4.25.4",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "@workspace/momintum-db": "workspace:*",
     "@workspace/printavo": "workspace:*",
     "@workspace/sanmar": "workspace:*",
     "@workspace/ss-activewear": "workspace:*",

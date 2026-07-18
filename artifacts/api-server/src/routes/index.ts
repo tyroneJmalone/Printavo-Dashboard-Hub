@@ -11,6 +11,8 @@ import reportsValidatorRouter from "./reportsValidator";
 import purchasingRouter from "./purchasing";
 import pricingRouter from "./pricing";
 import printQueueRouter from "./printQueue";
+import { isMomintumConfigured } from "@workspace/momintum-db";
+import momintumRouter from "../momintum";
 
 const router: IRouter = Router();
 
@@ -32,5 +34,12 @@ router.use(reportsValidatorRouter);
 router.use(purchasingRouter);
 router.use(pricingRouter);
 router.use(printQueueRouter);
+
+// moMINTum task management — shared LIVE database with the standalone app.
+// Only mounted when MOMINTUM_DATABASE_URL is set (removing the secret is the
+// kill switch).
+if (isMomintumConfigured()) {
+  router.use("/momintum", momintumRouter);
+}
 
 export default router;

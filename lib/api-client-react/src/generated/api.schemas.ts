@@ -1728,6 +1728,319 @@ export interface AutoPrintJobsResponse {
   jobs: AutoPrintJob[];
 }
 
+export interface List {
+  id: number;
+  name: string;
+  color: string;
+  /** @nullable */
+  ownerId: number | null;
+  /** @nullable */
+  teamId?: number | null;
+  createdAt: string;
+}
+
+export interface ListInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  color: string;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  teamId?: number | null;
+}
+
+export interface ListUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  color?: string;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  teamId?: number | null;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  color: string;
+  memberIds: number[];
+  createdAt: string;
+}
+
+export interface TeamInput {
+  /** @minLength 1 */
+  name: string;
+  color?: string;
+}
+
+export interface TeamUpdate {
+  /** @minLength 1 */
+  name?: string;
+  color?: string;
+}
+
+export interface Member {
+  id: number;
+  name: string;
+  email: string;
+  color: string;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
+export interface MemberInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  email: string;
+  /** @minLength 1 */
+  color: string;
+  isAdmin?: boolean;
+}
+
+export interface MemberUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  email?: string;
+  /** @minLength 1 */
+  color?: string;
+  isAdmin?: boolean;
+}
+
+export interface Quote {
+  id: number;
+  text: string;
+  createdAt: string;
+}
+
+export interface QuoteInput {
+  /** @minLength 1 */
+  text: string;
+}
+
+export type TaskPriority = typeof TaskPriority[keyof typeof TaskPriority];
+
+
+export const TaskPriority = {
+  none: 'none',
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+/**
+ * @nullable
+ */
+export type TaskRecurrence = typeof TaskRecurrence[keyof typeof TaskRecurrence] | null;
+
+
+export const TaskRecurrence = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  yearly: 'yearly',
+} as const;
+
+export interface Task {
+  id: number;
+  title: string;
+  /** @nullable */
+  notes: string | null;
+  /** @nullable */
+  listId: number | null;
+  /** @nullable */
+  assigneeId: number | null;
+  /** @nullable */
+  createdById: number | null;
+  priority: TaskPriority;
+  /** @nullable */
+  dueDate: string | null;
+  completed: boolean;
+  /** @nullable */
+  completedAt: string | null;
+  tags: string[];
+  sortOrder: number;
+  /** @nullable */
+  recurrence: TaskRecurrence;
+  /** @nullable */
+  recurringParentId: number | null;
+  /** @nullable */
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TaskInputPriority = typeof TaskInputPriority[keyof typeof TaskInputPriority];
+
+
+export const TaskInputPriority = {
+  none: 'none',
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+/**
+ * @nullable
+ */
+export type TaskInputRecurrence = typeof TaskInputRecurrence[keyof typeof TaskInputRecurrence] | null;
+
+
+export const TaskInputRecurrence = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  yearly: 'yearly',
+} as const;
+
+export interface TaskInput {
+  /** @minLength 1 */
+  title: string;
+  notes?: string;
+  /** @nullable */
+  listId?: number | null;
+  /** @nullable */
+  assigneeId?: number | null;
+  /** @nullable */
+  createdById?: number | null;
+  priority?: TaskInputPriority;
+  /** @nullable */
+  dueDate?: string | null;
+  tags?: string[];
+  /** @nullable */
+  recurrence?: TaskInputRecurrence;
+}
+
+export type TaskUpdatePriority = typeof TaskUpdatePriority[keyof typeof TaskUpdatePriority];
+
+
+export const TaskUpdatePriority = {
+  none: 'none',
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+/**
+ * @nullable
+ */
+export type TaskUpdateRecurrence = typeof TaskUpdateRecurrence[keyof typeof TaskUpdateRecurrence] | null;
+
+
+export const TaskUpdateRecurrence = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  yearly: 'yearly',
+} as const;
+
+export interface TaskUpdate {
+  /** @minLength 1 */
+  title?: string;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  listId?: number | null;
+  /** @nullable */
+  assigneeId?: number | null;
+  priority?: TaskUpdatePriority;
+  /** @nullable */
+  dueDate?: string | null;
+  completed?: boolean;
+  tags?: string[];
+  sortOrder?: number;
+  /** @nullable */
+  recurrence?: TaskUpdateRecurrence;
+}
+
+export type BulkUpdateTasksInputDataPriority = typeof BulkUpdateTasksInputDataPriority[keyof typeof BulkUpdateTasksInputDataPriority];
+
+
+export const BulkUpdateTasksInputDataPriority = {
+  none: 'none',
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+export type BulkUpdateTasksInputData = {
+  /** @nullable */
+  listId?: number | null;
+  /** @nullable */
+  assigneeId?: number | null;
+  priority?: BulkUpdateTasksInputDataPriority;
+  /** @nullable */
+  dueDate?: string | null;
+  completed?: boolean;
+};
+
+export interface BulkUpdateTasksInput {
+  /** @minItems 1 */
+  ids: number[];
+  data: BulkUpdateTasksInputData;
+}
+
+export interface BulkDeleteTasksInput {
+  /** @minItems 1 */
+  ids: number[];
+}
+
+export interface Comment {
+  id: number;
+  taskId: number;
+  /** @nullable */
+  authorId: number | null;
+  body: string;
+  mentionedMemberIds: number[];
+  createdAt: string;
+}
+
+export interface CommentInput {
+  /** @nullable */
+  authorId?: number | null;
+  /** @minLength 1 */
+  body: string;
+  mentionedMemberIds?: number[];
+}
+
+export interface Subtask {
+  id: number;
+  taskId: number;
+  /** @nullable */
+  assigneeId?: number | null;
+  title: string;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface SubtaskInput {
+  /** @minLength 1 */
+  title: string;
+  /** @nullable */
+  assigneeId?: number | null;
+}
+
+export interface SubtaskUpdate {
+  /** @minLength 1 */
+  title?: string;
+  completed?: boolean;
+  sortOrder?: number;
+  /** @nullable */
+  assigneeId?: number | null;
+}
+
+export interface DashboardSummary {
+  overdueCount: number;
+  todayCount: number;
+  upcomingCount: number;
+  completedTodayCount: number;
+  totalActiveCount: number;
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -2231,5 +2544,42 @@ runId?: string;
  * @maximum 200
  */
 limit?: number;
+};
+
+export type ListListsParams = {
+ownerId?: number;
+};
+
+export type ListTasksParams = {
+listId?: number;
+completed?: boolean;
+deleted?: boolean;
+assigneeId?: number;
+search?: string;
+sortBy?: ListTasksSortBy;
+};
+
+export type ListTasksSortBy = typeof ListTasksSortBy[keyof typeof ListTasksSortBy];
+
+
+export const ListTasksSortBy = {
+  manual: 'manual',
+  dueDate: 'dueDate',
+  priority: 'priority',
+  title: 'title',
+  createdAt: 'createdAt',
+} as const;
+
+export type ListMentionsParams = {
+memberId: number;
+};
+
+export type AddTeamMember201 = {
+  teamId: number;
+  memberIds: number[];
+};
+
+export type GetDashboardSummaryParams = {
+assigneeId?: number;
 };
 
