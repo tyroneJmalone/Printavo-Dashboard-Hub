@@ -12,3 +12,4 @@
 - [Printavo status-name matching](printavo-status-name-matching.md) — status names carry stray double spaces/emoji; match whitespace-normalized names at runtime, never hardcode ids.
 - [Reference sync daily watermark](reference-sync-daily-watermark.md) — new fields on reference queries (statuses etc.) don't backfill until the daily refresh; delete the entity_watermarks row to force it.
 - [Catalog search requirements](catalog-search-requirements.md) — tabled but returning: must be a key-authed read-only API usable by Tyler's OTHER app, with product images.
+- [Shipping rate estimator](printavo-shipping-estimator.md) — ported into Hub with 2 intentional backend deviations (not drift); paste parser: first line = street1 by design.

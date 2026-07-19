@@ -4,10 +4,14 @@ description: Dual-source USPS/UPS rate quoting, weight calculator constants, pre
 ---
 
 # What it does
-Internal rate-quoting tool: staff enter destination + package, get side-by-side USPS/UPS rates from TWO sources (ShipStation vs EasyPost) with price diff and transit time. Stateless — no DB, no auth, no Printavo, no label purchase.
+Internal rate-quoting tool: staff enter destination + package, get side-by-side USPS/UPS rates from TWO sources (ShipStation vs EasyPost) with price diff and transit time. Stateless — no DB, no Printavo, no label purchase.
 
-# NOT the monorepo template
-Older client/server/shared single-app layout (Express + Vite, wouter, zod in shared/schema.ts) — needs restructuring to port into Hub, unlike Breezy/PO Builder/Mint Bucks.
+# PORTED into Hub 2026-07-19 (architect PASS)
+Lives at hub /rate-estimator + api-server /shipping/rates + /shipping/carriers behind requireStaff. Two INTENTIONAL deviations from the original backend (do not mistake for drift when diffing): clearTimeout moved to finally (original leaked timer on error); getEasyPostClient() moved inside try (missing key degrades to errors[] entry instead of 500). Original SourceResultsPanel/RateCard/CarrierSection were dead code (live UI only used ComparisonTable) — deliberately not ported.
+Paste parser treats FIRST line as street1 by design ("Street on first line" helper text) — a pasted recipient-name line lands in street1; matches original exactly, not a bug.
+
+# NOT the monorepo template (original repo)
+Older client/server/shared single-app layout (Express + Vite, wouter, zod in shared/schema.ts) — was restructured during the port.
 
 # ShipStation client (REST v1)
 - `POST https://ssapi.shipstation.com/shipments/getrates`, Basic auth base64(SHIPSTATION_API_KEY:SHIPSTATION_API_SECRET), 10s AbortController timeout.
