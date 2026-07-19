@@ -12,3 +12,9 @@ id = "Y0PG3VFvOR639daF8l3fw"
 uri = "file://exports/printavo-hub-plan-status.pdf"
 type = "pdf"
 title = "Printavo Hub — Project Plan & Status (July 18)"
+
+[[outputs]]
+id = "cCumyYl_kqaOCcaajAS8j"
+uri = "file://handoffs/standalone-momintum-list-groups.md"
+type = "text"
+title = "Handoff: List Groups for the standalone moMINTum app"
