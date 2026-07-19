@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import listsRouter from "./lists";
+import listGroupsRouter from "./listGroups";
 import tasksRouter from "./tasks";
 import membersRouter from "./members";
 import commentsRouter from "./comments";
@@ -24,6 +25,7 @@ import feedbackRouter from "./feedback";
 const router: IRouter = Router();
 
 router.use(listsRouter);
+router.use(listGroupsRouter);
 router.use(tasksRouter);
 router.use(membersRouter);
 router.use(commentsRouter);

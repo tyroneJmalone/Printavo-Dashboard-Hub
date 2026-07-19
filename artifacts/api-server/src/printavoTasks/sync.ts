@@ -5,6 +5,8 @@ import {
   listsTable,
   teamsTable,
   membersTable,
+  listGroupsTable,
+  listGroupMembershipsTable,
   type Member,
 } from "@workspace/momintum-db";
 import {
@@ -146,10 +148,38 @@ export async function ensurePrintavoGroup(): Promise<{
       return created.id;
     };
 
-    return {
-      assignedListId: await ensureList(ASSIGNED_LIST_NAME, ASSIGNED_LIST_COLOR),
-      generalListId: await ensureList(GENERAL_LIST_NAME, GENERAL_LIST_COLOR),
-    };
+    const assignedListId = await ensureList(
+      ASSIGNED_LIST_NAME,
+      ASSIGNED_LIST_COLOR,
+    );
+    const generalListId = await ensureList(GENERAL_LIST_NAME, GENERAL_LIST_COLOR);
+
+    // Nest both lists under a "Printavo" sidebar group (JIT, same lock).
+    // Memberships are seeded ONLY when the group is first created — if Tyler
+    // later ungroups or moves these lists, the sync must not undo that.
+    const [existingGroup] = await tx
+      .select()
+      .from(listGroupsTable)
+      .where(eq(listGroupsTable.name, TEAM_NAME))
+      .orderBy(asc(listGroupsTable.id))
+      .limit(1);
+    if (!existingGroup) {
+      const [group] = await tx
+        .insert(listGroupsTable)
+        .values({ name: TEAM_NAME, color: TEAM_COLOR })
+        .returning();
+      if (group) {
+        await tx
+          .insert(listGroupMembershipsTable)
+          .values([
+            { listId: assignedListId, groupId: group.id },
+            { listId: generalListId, groupId: group.id },
+          ])
+          .onConflictDoNothing();
+      }
+    }
+
+    return { assignedListId, generalListId };
   });
 }
 
@@ -192,7 +222,7 @@ async function buildMemberEmailMap(): Promise<Map<string, Member>> {
   return map;
 }
 
-async function fetchAllOpenPvTasks(): Promise<PvTaskNode[]> {
+export async function fetchAllOpenPvTasks(): Promise<PvTaskNode[]> {
   const client = getPrintavoClient();
   const all: PvTaskNode[] = [];
   let after: string | null = null;
@@ -220,29 +250,44 @@ interface DesiredMirror {
   createIfMissing: boolean;
 }
 
-/** Tyler's routing spec (July 2026). */
+/** Tyler's routing spec (rev. 2026-07-19): ANY task with an assignee goes to
+ *  "Assigned to Me" (falls back to General when the email doesn't match a
+ *  moMINTum member); unassigned tasks go to General. Order-tied tasks without
+ *  an assignee are never created fresh (mirror-only if a link exists). */
 export function routePvTask(t: PvTaskNode): DesiredMirror {
   const email = t.assignedTo?.email?.trim().toLowerCase() || null;
-  if (!t.taskable) {
-    // Standalone "calendar" task → General (assignee still recorded so it
-    // shows on that person's Assigned-to-me view).
-    return {
-      listKind: "general",
-      title: t.name,
-      assigneeEmail: email,
-      createIfMissing: true,
-    };
-  }
-  const suffix =
-    t.taskable.__typename === "Customer"
+  const suffix = !t.taskable
+    ? ""
+    : t.taskable.__typename === "Customer"
       ? " (customer task)"
       : ` (INV #${t.taskable.visualId ?? "?"})`;
   return {
-    listKind: "assigned",
+    listKind: email ? "assigned" : "general",
     title: `${t.name}${suffix}`,
     assigneeEmail: email,
-    createIfMissing: email !== null,
+    createIfMissing: t.taskable ? email !== null : true,
   };
+}
+
+/** Notes for a freshly created twin — includes the staff-facing Printavo URL
+ *  for order/customer-tied tasks. Notes are user-owned after creation; the
+ *  sync never overwrites them. */
+export function buildTwinNotes(t: PvTaskNode): string {
+  const lines = [`Synced from Printavo (task #${t.id})`];
+  if (t.taskable) {
+    if (t.taskable.__typename === "Customer") {
+      lines.push(
+        `Customer: https://www.printavo.com/customers/${t.taskable.id}`,
+      );
+    } else {
+      // Quotes and invoices are the same order record in Printavo's UI —
+      // both live under /invoices/{internal id}.
+      lines.push(
+        `${t.taskable.__typename} #${t.taskable.visualId ?? "?"}: https://www.printavo.com/invoices/${t.taskable.id}`,
+      );
+    }
+  }
+  return lines.join("\n");
 }
 
 // ── The cycle ────────────────────────────────────────────────────────────
@@ -336,7 +381,7 @@ export async function runSyncCycle(
             .insert(tasksTable)
             .values({
               title: desired.title,
-              notes: `Synced from Printavo (task #${pv.id})`,
+              notes: buildTwinNotes(pv),
               listId,
               assigneeId,
               dueDate,

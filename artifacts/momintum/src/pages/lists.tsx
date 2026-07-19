@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link } from "wouter";
 import {
   useListLists, useListTasks, useCreateList, useListTeams,
-  getListListsQueryKey,
+  useListListGroups, useCreateListGroup, useDeleteListGroup,
+  getListListsQueryKey, getListListGroupsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ListChecks, Lock, Globe, Users as UsersIcon } from "lucide-react";
+import { Plus, ListChecks, Lock, Globe, Users as UsersIcon, Folder, FolderPlus, X } from "lucide-react";
 import { useCurrentUser } from "@/lib/current-user";
 
 const COLORS = ["#6DBE45", "#A64C96", "#2FADA8", "#5B6B99", "#C9B3DE", "#EF6F4E"];
@@ -26,13 +27,51 @@ export function Lists() {
   const { data: lists, isLoading } = useListLists();
   const { data: tasks } = useListTasks({ completed: false });
   const { data: teams } = useListTeams();
+  const { data: listGroups } = useListListGroups();
   const createList = useCreateList();
+  const createListGroup = useCreateListGroup();
+  const deleteListGroup = useDeleteListGroup();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [visibility, setVisibility] = useState<"shared" | "personal" | `team-${number}`>("shared");
+  const [groupSel, setGroupSel] = useState<string>("none");
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [groupName, setGroupName] = useState("");
 
   const teamsById = new Map((teams || []).map((t) => [t.id, t]));
+  const sortedGroups = (listGroups || [])
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+
+  const handleCreateGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupName.trim()) return;
+    const color = COLORS[(listGroups?.length || 0) % COLORS.length];
+    createListGroup.mutate(
+      { data: { name: groupName.trim(), color } },
+      {
+        onSuccess: () => {
+          setGroupName("");
+          setGroupOpen(false);
+          queryClient.invalidateQueries({ queryKey: getListListGroupsQueryKey() });
+        },
+      },
+    );
+  };
+
+  const handleDeleteGroup = (groupId: number, groupLabel: string) => {
+    if (!window.confirm(`Delete group "${groupLabel}"? Lists inside it are kept and just become ungrouped.`)) return;
+    deleteListGroup.mutate(
+      { id: groupId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListListGroupsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListListsQueryKey() });
+        },
+      },
+    );
+  };
 
   if (isLoading) return <div>Loading...</div>;
 
@@ -53,12 +92,14 @@ export function Lists() {
           color,
           ownerId: visibility === "personal" ? currentUser?.id ?? null : null,
           teamId: teamId ?? null,
+          groupId: groupSel === "none" ? null : Number(groupSel),
         },
       },
       {
         onSuccess: () => {
           setName("");
           setVisibility("shared");
+          setGroupSel("none");
           setOpen(false);
           queryClient.invalidateQueries({ queryKey: getListListsQueryKey() });
         },
@@ -70,6 +111,30 @@ export function Lists() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Lists</h1>
+        <div className="flex items-center gap-2">
+        <Dialog open={groupOpen} onOpenChange={setGroupOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline">
+              <FolderPlus className="w-4 h-4 mr-1" /> New Group
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create a list group</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateGroup} className="space-y-3">
+              <Input placeholder="Group name" value={groupName} onChange={(e) => setGroupName(e.target.value)} />
+              <p className="text-xs text-muted-foreground">
+                Groups act like folders in the sidebar — nest related lists under them.
+              </p>
+              <DialogFooter>
+                <Button type="submit" disabled={createListGroup.isPending}>
+                  Create
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
@@ -103,6 +168,26 @@ export function Lists() {
                   ))}
                 </SelectContent>
               </Select>
+              {sortedGroups.length > 0 && (
+                <Select value={groupSel} onValueChange={setGroupSel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Group (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="text-muted-foreground">No group</span>
+                    </SelectItem>
+                    {sortedGroups.map((g) => (
+                      <SelectItem key={g.id} value={String(g.id)}>
+                        <span className="flex items-center gap-2">
+                          <Folder className="w-3.5 h-3.5" style={{ color: g.color }} />
+                          {g.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <DialogFooter>
                 <Button type="submit" disabled={createList.isPending}>
                   Create
@@ -111,7 +196,32 @@ export function Lists() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {sortedGroups.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {sortedGroups.map((g) => (
+            <span
+              key={g.id}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium border"
+              style={{ backgroundColor: `${g.color}15`, color: g.color, borderColor: `${g.color}40` }}
+            >
+              <Folder className="w-3 h-3" />
+              {g.name}
+              <button
+                type="button"
+                onClick={() => handleDeleteGroup(g.id, g.name)}
+                className="hover:opacity-60 transition-opacity"
+                title={`Delete group ${g.name}`}
+                aria-label={`Delete group ${g.name}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {visibleLists.length === 0 && (
         <p className="text-muted-foreground text-sm">No lists yet. Create one to get started.</p>

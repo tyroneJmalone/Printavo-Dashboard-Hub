@@ -83,6 +83,9 @@ import type {
   ListChangeEventsParams,
   ListCreditsParams,
   ListCustomersParams,
+  ListGroup,
+  ListGroupInput,
+  ListGroupUpdate,
   ListInput,
   ListListsParams,
   ListMentionsParams,
@@ -6631,6 +6634,294 @@ export const useDeleteList = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteListMutationOptions(options));
+    }
+
+export const getListListGroupsUrl = () => {
+
+
+
+
+  return `/api/momintum/list-groups`
+}
+
+/**
+ * @summary List all list groups
+ */
+export const listListGroups = async ( options?: RequestInit): Promise<ListGroup[]> => {
+
+  return customFetch<ListGroup[]>(getListListGroupsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListListGroupsQueryKey = () => {
+    return [
+    `/api/momintum/list-groups`
+    ] as const;
+    }
+
+
+export const getListListGroupsQueryOptions = <TData = Awaited<ReturnType<typeof listListGroups>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listListGroups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListListGroupsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listListGroups>>> = ({ signal }) => listListGroups({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listListGroups>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListListGroupsQueryResult = NonNullable<Awaited<ReturnType<typeof listListGroups>>>
+export type ListListGroupsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all list groups
+ */
+
+export function useListListGroups<TData = Awaited<ReturnType<typeof listListGroups>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listListGroups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListListGroupsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateListGroupUrl = () => {
+
+
+
+
+  return `/api/momintum/list-groups`
+}
+
+/**
+ * @summary Create a list group
+ */
+export const createListGroup = async (listGroupInput: ListGroupInput, options?: RequestInit): Promise<ListGroup> => {
+
+  return customFetch<ListGroup>(getCreateListGroupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(listGroupInput)
+  }
+);}
+
+
+
+
+export const getCreateListGroupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createListGroup>>, TError,{data: BodyType<ListGroupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createListGroup>>, TError,{data: BodyType<ListGroupInput>}, TContext> => {
+
+const mutationKey = ['createListGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createListGroup>>, {data: BodyType<ListGroupInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createListGroup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateListGroupMutationResult = NonNullable<Awaited<ReturnType<typeof createListGroup>>>
+    export type CreateListGroupMutationBody = BodyType<ListGroupInput>
+    export type CreateListGroupMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a list group
+ */
+export const useCreateListGroup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createListGroup>>, TError,{data: BodyType<ListGroupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createListGroup>>,
+        TError,
+        {data: BodyType<ListGroupInput>},
+        TContext
+      > => {
+      return useMutation(getCreateListGroupMutationOptions(options));
+    }
+
+export const getUpdateListGroupUrl = (id: number,) => {
+
+
+
+
+  return `/api/momintum/list-groups/${id}`
+}
+
+/**
+ * @summary Update a list group
+ */
+export const updateListGroup = async (id: number,
+    listGroupUpdate: ListGroupUpdate, options?: RequestInit): Promise<ListGroup> => {
+
+  return customFetch<ListGroup>(getUpdateListGroupUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(listGroupUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateListGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateListGroup>>, TError,{id: number;data: BodyType<ListGroupUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateListGroup>>, TError,{id: number;data: BodyType<ListGroupUpdate>}, TContext> => {
+
+const mutationKey = ['updateListGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateListGroup>>, {id: number;data: BodyType<ListGroupUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateListGroup(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateListGroupMutationResult = NonNullable<Awaited<ReturnType<typeof updateListGroup>>>
+    export type UpdateListGroupMutationBody = BodyType<ListGroupUpdate>
+    export type UpdateListGroupMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a list group
+ */
+export const useUpdateListGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateListGroup>>, TError,{id: number;data: BodyType<ListGroupUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateListGroup>>,
+        TError,
+        {id: number;data: BodyType<ListGroupUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateListGroupMutationOptions(options));
+    }
+
+export const getDeleteListGroupUrl = (id: number,) => {
+
+
+
+
+  return `/api/momintum/list-groups/${id}`
+}
+
+/**
+ * @summary Delete a list group (lists inside become ungrouped)
+ */
+export const deleteListGroup = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteListGroupUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteListGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteListGroup>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteListGroup>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteListGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteListGroup>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteListGroup(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteListGroupMutationResult = NonNullable<Awaited<ReturnType<typeof deleteListGroup>>>
+
+    export type DeleteListGroupMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a list group (lists inside become ungrouped)
+ */
+export const useDeleteListGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteListGroup>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteListGroup>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteListGroupMutationOptions(options));
     }
 
 export const getListTasksUrl = (params?: ListTasksParams,) => {

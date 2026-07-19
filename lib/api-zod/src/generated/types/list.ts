@@ -14,5 +14,7 @@ export interface List {
   ownerId: number | null;
   /** @nullable */
   teamId?: number | null;
+  /** @nullable */
+  groupId: number | null;
   createdAt: Date;
 }

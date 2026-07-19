@@ -15,4 +15,6 @@ export interface ListUpdate {
   ownerId?: number | null;
   /** @nullable */
   teamId?: number | null;
+  /** @nullable */
+  groupId?: number | null;
 }

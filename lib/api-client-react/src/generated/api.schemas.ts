@@ -1736,6 +1736,8 @@ export interface List {
   ownerId: number | null;
   /** @nullable */
   teamId?: number | null;
+  /** @nullable */
+  groupId: number | null;
   createdAt: string;
 }
 
@@ -1748,6 +1750,8 @@ export interface ListInput {
   ownerId?: number | null;
   /** @nullable */
   teamId?: number | null;
+  /** @nullable */
+  groupId?: number | null;
 }
 
 export interface ListUpdate {
@@ -1759,6 +1763,32 @@ export interface ListUpdate {
   ownerId?: number | null;
   /** @nullable */
   teamId?: number | null;
+  /** @nullable */
+  groupId?: number | null;
+}
+
+export interface ListGroup {
+  id: number;
+  name: string;
+  color: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ListGroupInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  color?: string;
+  sortOrder?: number;
+}
+
+export interface ListGroupUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  color?: string;
+  sortOrder?: number;
 }
 
 export interface Team {

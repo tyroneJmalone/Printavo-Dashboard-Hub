@@ -2731,6 +2731,7 @@ export const ListListsResponseItem = zod.object({
   "color": zod.string(),
   "ownerId": zod.number().nullable(),
   "teamId": zod.number().nullish(),
+  "groupId": zod.number().nullable(),
   "createdAt": zod.coerce.date()
 })
 export const ListListsResponse = zod.array(ListListsResponseItem)
@@ -2747,7 +2748,8 @@ export const CreateListBody = zod.object({
   "name": zod.string().min(1),
   "color": zod.string().min(1),
   "ownerId": zod.number().nullish(),
-  "teamId": zod.number().nullish()
+  "teamId": zod.number().nullish(),
+  "groupId": zod.number().nullish()
 })
 
 export const CreateListResponse = zod.object({
@@ -2756,6 +2758,7 @@ export const CreateListResponse = zod.object({
   "color": zod.string(),
   "ownerId": zod.number().nullable(),
   "teamId": zod.number().nullish(),
+  "groupId": zod.number().nullable(),
   "createdAt": zod.coerce.date()
 })
 
@@ -2775,7 +2778,8 @@ export const UpdateListBody = zod.object({
   "name": zod.string().min(1).optional(),
   "color": zod.string().min(1).optional(),
   "ownerId": zod.number().nullish(),
-  "teamId": zod.number().nullish()
+  "teamId": zod.number().nullish(),
+  "groupId": zod.number().nullish()
 })
 
 export const UpdateListResponse = zod.object({
@@ -2784,6 +2788,7 @@ export const UpdateListResponse = zod.object({
   "color": zod.string(),
   "ownerId": zod.number().nullable(),
   "teamId": zod.number().nullish(),
+  "groupId": zod.number().nullable(),
   "createdAt": zod.coerce.date()
 })
 
@@ -2796,6 +2801,77 @@ export const DeleteListParams = zod.object({
 })
 
 export const DeleteListResponse = zod.void()
+
+
+/**
+ * @summary List all list groups
+ */
+export const ListListGroupsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+export const ListListGroupsResponse = zod.array(ListListGroupsResponseItem)
+
+
+/**
+ * @summary Create a list group
+ */
+
+
+
+
+export const CreateListGroupBody = zod.object({
+  "name": zod.string().min(1),
+  "color": zod.string().min(1).optional(),
+  "sortOrder": zod.number().optional()
+})
+
+export const CreateListGroupResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a list group
+ */
+export const UpdateListGroupParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateListGroupBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "color": zod.string().min(1).optional(),
+  "sortOrder": zod.number().optional()
+})
+
+export const UpdateListGroupResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "color": zod.string(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a list group (lists inside become ungrouped)
+ */
+export const DeleteListGroupParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteListGroupResponse = zod.void()
 
 
 /**

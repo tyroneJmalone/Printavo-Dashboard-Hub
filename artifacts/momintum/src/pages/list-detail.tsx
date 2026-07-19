@@ -5,6 +5,7 @@ import {
   useListTasks,
   useDeleteList,
   useUpdateList,
+  useListListGroups,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListListsQueryKey, getListTasksQueryKey } from "@workspace/api-client-react";
@@ -14,7 +15,14 @@ import { SortSelect, sortTasksLocally, type SortByOption } from "@/components/ta
 import { CreateTask } from "@/components/tasks/create-task";
 import { BulkActionBar } from "@/components/tasks/bulk-action-bar";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trash2, ListChecks, Globe, Lock } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Trash2, ListChecks, Globe, Lock, Folder } from "lucide-react";
 import { useLocation } from "wouter";
 import { useCurrentUser } from "@/lib/current-user";
 import { useTaskSelection } from "@/hooks/use-task-selection";
@@ -23,6 +31,7 @@ export function ListDetail() {
   const { id } = useParams<{ id: string }>();
   const listId = Number(id);
   const { data: lists, isLoading: listsLoading } = useListLists();
+  const { data: listGroups } = useListListGroups();
   const { data: tasks, isLoading: tasksLoading } = useListTasks({ listId });
   const deleteList = useDeleteList();
   const updateList = useUpdateList();
@@ -80,6 +89,21 @@ export function ListDetail() {
     );
   };
 
+  const sortedGroups = (listGroups || [])
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+
+  const handleGroupChange = (value: string) => {
+    updateList.mutate(
+      { id: listId, data: { groupId: value === "none" ? null : Number(value) } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListListsQueryKey() });
+        },
+      },
+    );
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Link href="/lists" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
@@ -104,6 +128,30 @@ export function ListDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {sortedGroups.length > 0 && (
+            <Select
+              value={list.groupId != null ? String(list.groupId) : "none"}
+              onValueChange={handleGroupChange}
+            >
+              <SelectTrigger className="h-8 w-[150px] text-xs" aria-label="List group">
+                <Folder className="w-3.5 h-3.5 mr-1.5 shrink-0 opacity-60" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-muted-foreground">No group</span>
+                </SelectItem>
+                {sortedGroups.map((g) => (
+                  <SelectItem key={g.id} value={String(g.id)}>
+                    <span className="flex items-center gap-2">
+                      <Folder className="w-3.5 h-3.5" style={{ color: g.color }} />
+                      {g.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {canShare && (
             <Button
               variant="outline"

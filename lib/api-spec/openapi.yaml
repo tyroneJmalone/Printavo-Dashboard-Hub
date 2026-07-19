@@ -2071,6 +2071,74 @@ paths:
         "404":
           description: Not found
 
+  /momintum/list-groups:
+    get:
+      operationId: listListGroups
+      tags: [lists]
+      summary: List all list groups
+      responses:
+        "200":
+          description: List of list groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ListGroup"
+    post:
+      operationId: createListGroup
+      tags: [lists]
+      summary: Create a list group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListGroupInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListGroup"
+
+  /momintum/list-groups/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      operationId: updateListGroup
+      tags: [lists]
+      summary: Update a list group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListGroupUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListGroup"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteListGroup
+      tags: [lists]
+      summary: Delete a list group (lists inside become ungrouped)
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
   /momintum/tasks:
     get:
       operationId: listTasks
@@ -5186,13 +5254,14 @@ components:
     # ── moMINTum schemas (merged from standalone spec, names verbatim) ──
     List:
       type: object
-      required: [id, name, color, ownerId, createdAt]
+      required: [id, name, color, ownerId, groupId, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
         color: { type: string }
         ownerId: { type: ["integer", "null"] }
         teamId: { type: ["integer", "null"] }
+        groupId: { type: ["integer", "null"] }
         createdAt: { type: string, format: date-time }
 
     ListInput:
@@ -5203,6 +5272,7 @@ components:
         color: { type: string, minLength: 1 }
         ownerId: { type: ["integer", "null"] }
         teamId: { type: ["integer", "null"] }
+        groupId: { type: ["integer", "null"] }
 
     ListUpdate:
       type: object
@@ -5211,6 +5281,32 @@ components:
         color: { type: string, minLength: 1 }
         ownerId: { type: ["integer", "null"] }
         teamId: { type: ["integer", "null"] }
+        groupId: { type: ["integer", "null"] }
+
+    ListGroup:
+      type: object
+      required: [id, name, color, sortOrder, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        color: { type: string }
+        sortOrder: { type: number }
+        createdAt: { type: string, format: date-time }
+
+    ListGroupInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        color: { type: string, minLength: 1 }
+        sortOrder: { type: number }
+
+    ListGroupUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        color: { type: string, minLength: 1 }
+        sortOrder: { type: number }
 
     Team:
       type: object

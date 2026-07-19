@@ -4,11 +4,13 @@ import {
   Calendar, CalendarDays, Inbox, ListChecks, CheckSquare,
   Users, Menu, Moon, Sun, LogOut, AtSign, Search, ChevronRight,
   LayoutList, UserCheck, GripVertical, Lock, Globe, MessageSquarePlus, ArrowLeft,
+  Folder, FolderOpen,
 } from "lucide-react";
 import {
   useGetDashboardSummary,
   useListMentions,
   useListLists,
+  useListListGroups,
   useListTeams,
   useUpdateTask,
   getListTasksQueryKey,
@@ -45,6 +47,18 @@ import { CSS } from "@dnd-kit/utilities";
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const LISTS_EXPANDED_KEY = "momintum-sidebar-lists-expanded";
 const NAV_ORDER_KEY = "momintum-sidebar-nav-order";
+const GROUPS_COLLAPSED_KEY = "momintum-sidebar-groups-collapsed";
+
+function readCollapsedGroups(): number[] {
+  try {
+    const raw = localStorage.getItem(GROUPS_COLLAPSED_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((n) => typeof n === "number") : [];
+  } catch {
+    return [];
+  }
+}
 
 const NAV_ITEM_DEFS = [
   { href: "/today", label: "Today", icon: Calendar, expandable: false },
@@ -165,10 +179,22 @@ export function AppLayout({ children }: { children: ReactNode }) {
   );
   const [navOrder, setNavOrder] = useState<string[]>(readNavOrder);
   const [dropTargetListId, setDropTargetListId] = useState<number | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<number[]>(readCollapsedGroups);
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
   const { data: lists } = useListLists();
+  const { data: listGroups } = useListListGroups();
   const { data: teams } = useListTeams();
+
+  const toggleGroupCollapsed = (groupId: number) => {
+    setCollapsedGroups((prev) => {
+      const next = prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId];
+      try { localStorage.setItem(GROUPS_COLLAPSED_KEY, JSON.stringify(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
 
   const visibleLists = (lists || []).filter(
     (list) => !list.ownerId || list.ownerId === currentUser?.id || currentUser?.isAdmin,
@@ -322,12 +348,49 @@ export function AppLayout({ children }: { children: ReactNode }) {
                       );
                     };
 
+                    const sortedGroups = (listGroups || [])
+                      .slice()
+                      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+                    const groupIds = new Set(sortedGroups.map((g) => g.id));
+                    // Lists pointing at a deleted/not-yet-loaded group render
+                    // as ungrouped rather than vanishing.
+                    const myUngrouped = myLists.filter(
+                      (l) => l.groupId == null || !groupIds.has(l.groupId),
+                    );
+
                     return (
                       <div className="mt-1 ml-7 pl-3 border-l border-sidebar-border flex flex-col gap-0.5">
                         {visibleLists.length === 0 && (
                           <span className="text-xs text-sidebar-foreground/50 px-2 py-1">No lists yet</span>
                         )}
-                        {myLists.map(renderListLink)}
+                        {sortedGroups.map((group) => {
+                          const groupLists = myLists.filter((l) => l.groupId === group.id);
+                          const collapsed = collapsedGroups.includes(group.id);
+                          const GroupIcon = collapsed ? Folder : FolderOpen;
+                          return (
+                            <div key={`group-${group.id}`}>
+                              <button
+                                type="button"
+                                onClick={() => toggleGroupCollapsed(group.id)}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-sidebar-foreground/80"
+                              >
+                                <GroupIcon className="w-3.5 h-3.5 shrink-0" style={{ color: group.color }} />
+                                <span className="truncate flex-1 min-w-0 text-left">{group.name}</span>
+                                <ChevronRight className={cn("w-3 h-3 shrink-0 opacity-50 transition-transform", !collapsed && "rotate-90")} />
+                              </button>
+                              {!collapsed && (
+                                <div className="ml-3 pl-2 border-l border-sidebar-border flex flex-col gap-0.5">
+                                  {groupLists.length === 0 ? (
+                                    <span className="text-xs text-sidebar-foreground/40 px-2 py-1">Empty</span>
+                                  ) : (
+                                    groupLists.map(renderListLink)
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {myUngrouped.map(renderListLink)}
                         {othersPrivateLists.length > 0 && (
                           <>
                             <div className="flex items-center gap-1 px-2 pt-2 pb-0.5">
