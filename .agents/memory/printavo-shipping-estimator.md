@@ -8,7 +8,7 @@ Internal rate-quoting tool: staff enter destination + package, get side-by-side 
 
 # PORTED into Hub 2026-07-19 (architect PASS)
 Lives at hub /rate-estimator + api-server /shipping/rates + /shipping/carriers behind requireStaff. Two INTENTIONAL deviations from the original backend (do not mistake for drift when diffing): clearTimeout moved to finally (original leaked timer on error); getEasyPostClient() moved inside try (missing key degrades to errors[] entry instead of 500). Original SourceResultsPanel/RateCard/CarrierSection were dead code (live UI only used ComparisonTable) — deliberately not ported.
-Paste parser treats FIRST line as street1 by design ("Street on first line" helper text) — a pasted recipient-name line lands in street1; matches original exactly, not a bug.
+Paste parser DELIBERATELY diverges from original (Tyler asked for a smarter one 2026-07-19): filters name/company/phone/email/country lines, handles single-line pastes, no-comma "City ST 12345", full state names, ZIP+4, zip-on-own-line. Anchor = bottom-up city/state/zip scan; street1 = first line matching STREET_LINE (leading number / PO Box / RR|HC); lines after street1 → street2; no street-like line → original first-line fallback. Gotcha fixed once: ZIP-shaped lines must be exempt from the phone-line filter or "90210-1234" on its own line gets deleted. Unit battery in-session (24 cases) — re-run mentally when touching regexes.
 
 # NOT the monorepo template (original repo)
 Older client/server/shared single-app layout (Express + Vite, wouter, zod in shared/schema.ts) — was restructured during the port.

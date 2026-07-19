@@ -42,29 +42,110 @@ US_STATES.forEach((s) => {
   STATE_NAME_TO_CODE[s.code.toLowerCase()] = s.code;
 });
 
+const STATE_KEYS_BY_LENGTH = Object.keys(STATE_NAME_TO_CODE).sort((a, b) => b.length - a.length);
+
+const COUNTRY_LINE = /^(usa?|u\.s\.a?\.?|united states( of america)?)\.?$/i;
+const PHONE_LINE = /^(tel|phone|ph|mobile|cell|fax)?[:.\s]*[+(]?[\d\s().\-+]{7,}(\s*(x|ext\.?)\s*\d+)?$/i;
+const ZIP_ONLY_LINE = /^\d{5}(?:-\d{4})?$/;
+const STREET_LINE = /^\d+[a-zA-Z]?([-/]\d+[a-zA-Z]?)?\s+\S|^p\.?\s*o\.?\s*box\b|^post office box\b|^(rr|hc)\s*\d+\b/i;
+
+/** Try to read "City, ST 12345" / "City ST 12345" / "City, State Name 12345" from one line. */
+function matchCityStateZip(
+  line: string
+): { city: string; state: string; postalCode: string } | null {
+  const m = line.match(/^(.+?)[\s,]+(\d{5}(?:-\d{4})?)$/);
+  if (!m) return null;
+  const postalCode = m[2];
+  let rest = m[1].trim().replace(/[.,]+$/, "").trim();
+
+  for (const key of STATE_KEYS_BY_LENGTH) {
+    const lower = rest.toLowerCase();
+    if (lower === key) return null; // state with no city
+    if (lower.endsWith(" " + key) || lower.endsWith("," + key) || lower.endsWith(", " + key)) {
+      const city = rest
+        .slice(0, rest.length - key.length)
+        .replace(/[\s,]+$/, "")
+        .trim();
+      if (!city) return null;
+      return { city, state: STATE_NAME_TO_CODE[key], postalCode };
+    }
+  }
+  return null;
+}
+
+/**
+ * Parse a pasted address block into fields. Tolerates common variations:
+ * - recipient name and/or company lines before the street
+ * - phone, email, and country ("USA", "United States") lines
+ * - "City, ST 12345", "City ST 12345", "City, State Name 12345", ZIP+4
+ * - ZIP on its own line after "City, ST"
+ * - single-line addresses ("9355 Burton Way, Beverly Hills, CA 90210")
+ * - apt/suite on its own line (goes to street2)
+ */
 export function parseBlockAddress(
   text: string
 ): { street1: string; street2: string; city: string; state: string; postalCode: string } | null {
-  const lines = text.trim().split(/\n/).map((l) => l.trim()).filter(Boolean);
+  let lines = text
+    .trim()
+    .split(/\n/)
+    .map((l) => l.trim().replace(/^[-•*]\s*/, ""))
+    .filter(Boolean)
+    .filter((l) => !COUNTRY_LINE.test(l))
+    .filter((l) => !l.includes("@"))
+    .filter((l) => ZIP_ONLY_LINE.test(l) || !PHONE_LINE.test(l));
+  if (lines.length === 0) return null;
+
+  // Single-line paste: break on commas so "street, city, ST zip" works.
+  if (lines.length === 1) {
+    lines = lines[0].split(",").map((p) => p.trim()).filter(Boolean);
+    if (lines.length < 2) return null;
+    // Re-attach state/zip fragments to the city ("Beverly Hills" + "CA 90210").
+    while (lines.length > 2 && !matchCityStateZip(lines[lines.length - 1])) {
+      const tail = lines.pop() as string;
+      lines[lines.length - 1] = `${lines[lines.length - 1]}, ${tail}`;
+    }
+    if (lines.length >= 2) {
+      const merged = `${lines[lines.length - 2]}, ${lines[lines.length - 1]}`;
+      if (!matchCityStateZip(lines[lines.length - 1]) && matchCityStateZip(merged)) {
+        lines.splice(lines.length - 2, 2, merged);
+      }
+    }
+  }
+
+  // ZIP on its own line: merge it into the previous line.
+  if (lines.length >= 2 && ZIP_ONLY_LINE.test(lines[lines.length - 1])) {
+    const zip = lines.pop() as string;
+    lines[lines.length - 1] = `${lines[lines.length - 1]} ${zip}`;
+  }
+
   if (lines.length < 2) return null;
 
-  const cityStateLine = lines[lines.length - 1];
+  // Find the city/state/zip line, scanning from the bottom.
+  let cityIdx = -1;
+  let cityStateZip: { city: string; state: string; postalCode: string } | null = null;
+  for (let i = lines.length - 1; i >= 1; i--) {
+    const parsed = matchCityStateZip(lines[i]);
+    if (parsed) {
+      cityIdx = i;
+      cityStateZip = parsed;
+      break;
+    }
+  }
+  if (!cityStateZip || cityIdx < 1) return null;
 
-  const csMatch = cityStateLine.match(/^(.+?),\s*([A-Za-z\s]+?)\s+(\d{5}(?:-\d{4})?)$/);
-  if (!csMatch) return null;
+  const candidates = lines.slice(0, cityIdx);
 
-  const rawCity = csMatch[1].trim();
-  const rawState = csMatch[2].trim();
-  const postalCode = csMatch[3].trim();
+  // First line that looks like a street address; lines before it are name/company.
+  let streetIdx = candidates.findIndex((l) => STREET_LINE.test(l));
+  if (streetIdx === -1) {
+    // No numeric street found — fall back to original behavior (first line = street).
+    streetIdx = 0;
+  }
 
-  const stateCode = STATE_NAME_TO_CODE[rawState.toLowerCase()];
-  if (!stateCode) return null;
+  const street1 = candidates[streetIdx];
+  const street2 = candidates.slice(streetIdx + 1).join(", ");
 
-  const addressLines = lines.slice(0, -1);
-  const street1 = addressLines[0] || "";
-  const street2 = addressLines.length > 1 ? addressLines.slice(1).join(", ") : "";
-
-  return { street1, street2, city: rawCity, state: stateCode, postalCode };
+  return { street1, street2, ...cityStateZip };
 }
 
 export const ITEM_WEIGHTS_OZ: Record<string, number> = {

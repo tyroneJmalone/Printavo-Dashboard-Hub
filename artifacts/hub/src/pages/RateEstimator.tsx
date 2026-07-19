@@ -145,7 +145,7 @@ export default function RateEstimator() {
     const parsed = parseBlockAddress(pasteText);
     if (!parsed) {
       setParseError(
-        "Couldn't parse that address. Try a format like:\n3029 North Belfast Avenue\nAugusta, Maine 04330"
+        "Couldn't parse that address. Make sure it includes a street, city, state, and ZIP — e.g.:\nJohn Smith\n3029 North Belfast Avenue\nAugusta, Maine 04330"
       );
       return;
     }
@@ -297,7 +297,8 @@ export default function RateEstimator() {
                           className={`${inputCls} font-mono resize-none`}
                         />
                         <p className="text-[10px] text-slate-500 mt-1">
-                          Street on first line, City, State ZIP on last line
+                          Any common format works — names, company, phone, and country lines are
+                          detected and skipped automatically
                         </p>
                       </div>
                       {parseError && (
