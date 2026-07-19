@@ -29,6 +29,18 @@ import PriceCalculator from "./pages/PriceCalculator";
 import LabelSorter from "./pages/LabelSorter";
 import RateEstimator from "./pages/RateEstimator";
 import Settings from "./pages/Settings";
+import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
+import { Customers as MintBucksCustomers } from "./pages/mintbucks/Customers";
+import { CustomerDetail as MintBucksCustomerDetail } from "./pages/mintbucks/CustomerDetail";
+import { Credits as MintBucksCredits } from "./pages/mintbucks/Credits";
+import { IssueCredit as MintBucksIssueCredit } from "./pages/mintbucks/IssueCredit";
+import { CreditDetail as MintBucksCreditDetail } from "./pages/mintbucks/CreditDetail";
+import { Redemptions as MintBucksRedemptions } from "./pages/mintbucks/Redemptions";
+import { Reports as MintBucksReports } from "./pages/mintbucks/Reports";
+import { Rewards as MintBucksRewards } from "./pages/mintbucks/Rewards";
+import { Settings as MintBucksSettings } from "./pages/mintbucks/Settings";
+import { CertificateHistory as MintBucksCertificateHistory } from "./pages/mintbucks/CertificateHistory";
+import { CheckCredit as MintBucksCheckCredit } from "./pages/mintbucks/CheckCredit";
 
 const queryClient = new QueryClient();
 
@@ -176,6 +188,19 @@ function HubRoutes() {
       <Route path="/label-sorter" component={LabelSorter} />
       <Route path="/rate-estimator" component={RateEstimator} />
       <Route path="/settings" component={Settings} />
+      <Route path="/mintbucks" component={MintBucksDashboard} />
+      <Route path="/mintbucks/customers" component={MintBucksCustomers} />
+      <Route path="/mintbucks/customers/:id" component={MintBucksCustomerDetail} />
+      <Route path="/mintbucks/credits/new" component={MintBucksIssueCredit} />
+      <Route path="/mintbucks/credits/:id" component={MintBucksCreditDetail} />
+      <Route path="/mintbucks/credits" component={MintBucksCredits} />
+      <Route path="/mintbucks/redemptions" component={MintBucksRedemptions} />
+      <Route path="/mintbucks/rewards" component={MintBucksRewards} />
+      <Route path="/mintbucks/reports/certificates" component={MintBucksCertificateHistory} />
+      <Route path="/mintbucks/reports" component={MintBucksReports} />
+      <Route path="/mintbucks/settings" component={MintBucksSettings} />
+      <Route path="/mintbucks/check/:code" component={MintBucksCheckCredit} />
+      <Route path="/mintbucks/check" component={MintBucksCheckCredit} />
       <Route component={NotFound} />
     </Switch>
   );

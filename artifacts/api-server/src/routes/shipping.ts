@@ -258,9 +258,9 @@ router.get("/shipping/carriers", async (_req, res) => {
       return res.status(response.status).json({ error: "Failed to fetch carriers" });
     }
     const carriers = await response.json();
-    res.json(carriers);
+    return res.json(carriers);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -302,10 +302,10 @@ router.post("/shipping/rates", async (req, res) => {
 
     await Promise.all(promises);
 
-    res.json(response);
+    return res.json(response);
   } catch (error: any) {
     console.error("Rate estimation error:", error);
-    res.status(500).json({ error: error.message || "Failed to fetch rates" });
+    return res.status(500).json({ error: error.message || "Failed to fetch rates" });
   }
 });
 

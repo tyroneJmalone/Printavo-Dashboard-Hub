@@ -2783,6 +2783,790 @@ paths:
               schema:
                 $ref: "#/components/schemas/ShippingError"
 
+  # ============ Mint Bucks (shared LIVE standalone DB — see replit.md) ============
+  /mintbucks/customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List all customers
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: hasCredit
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create a new customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /mintbucks/customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      summary: Get customer by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      summary: Delete customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+
+  /mintbucks/customers/{id}/credits:
+    get:
+      operationId: getCustomerCredits
+      tags: [customers]
+      summary: Get all credits for a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Customer credits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Credit"
+
+  # ── Credits ────────────────────────────────────────────────────────────────
+  /mintbucks/credits:
+    get:
+      operationId: listCredits
+      tags: [credits]
+      summary: List credits
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: customerId
+          in: query
+          schema: { type: string }
+        - name: expiringDays
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of credits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Credit"
+    post:
+      operationId: issueCredit
+      tags: [credits]
+      summary: Issue Mint Bucks to a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditInput"
+      responses:
+        "201":
+          description: Issued credit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Credit"
+
+  /mintbucks/credits/{id}:
+    get:
+      operationId: getCredit
+      tags: [credits]
+      summary: Get credit by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Credit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Credit"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCredit
+      tags: [credits]
+      summary: Update credit (status, expiry, note)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditUpdate"
+      responses:
+        "200":
+          description: Updated credit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Credit"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteCredit
+      tags: [credits]
+      summary: Cancel / delete a credit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+
+  /mintbucks/credits/{id}/redeem:
+    post:
+      operationId: redeemCredit
+      tags: [credits]
+      summary: Record a full or partial redemption
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedemptionInput"
+      responses:
+        "200":
+          description: Redemption result with updated credit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedemptionResult"
+        "400":
+          description: Invalid redemption (e.g. insufficient balance)
+        "404":
+          description: Credit not found
+
+  /mintbucks/credits/{id}/remind:
+    post:
+      operationId: sendCreditReminder
+      tags: [credits]
+      summary: Send email reminder to customer about available credit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Reminder sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResult"
+        "404":
+          description: Credit not found
+
+  /mintbucks/credits/check/{code}:
+    get:
+      operationId: checkCreditByCode
+      tags: [credits]
+      summary: Public balance check by credit code (no auth required)
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Credit balance info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditCheckResult"
+        "404":
+          description: Credit not found
+
+  /mintbucks/credits/{id}/qr:
+    get:
+      operationId: getCreditQr
+      tags: [credits]
+      summary: Get QR code PNG for a credit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: QR code PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+
+  /mintbucks/credits/{id}/certificate:
+    get:
+      operationId: getCreditCertificate
+      tags: [credits]
+      summary: Download branded PDF certificate for a credit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: PDF certificate
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # ── Redemptions ────────────────────────────────────────────────────────────
+  /mintbucks/redemptions:
+    get:
+      operationId: listRedemptions
+      tags: [redemptions]
+      summary: List all redemptions
+      parameters:
+        - name: customerId
+          in: query
+          schema: { type: string }
+        - name: creditId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: List of redemptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Redemption"
+
+  /mintbucks/redemptions/{id}:
+    get:
+      operationId: getRedemption
+      tags: [redemptions]
+      summary: Get redemption by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Redemption
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Redemption"
+        "404":
+          description: Not found
+
+  # ── Reports ────────────────────────────────────────────────────────────────
+  /mintbucks/reports/summary:
+    get:
+      operationId: getReportSummary
+      tags: [reports]
+      summary: Dashboard summary stats
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportSummary"
+
+  /mintbucks/reports/credits-over-time:
+    get:
+      operationId: getCreditsOverTime
+      tags: [reports]
+      summary: Credits issued and redeemed per month
+      parameters:
+        - name: months
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Time series data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CreditTimePoint"
+
+  /mintbucks/reports/top-customers:
+    get:
+      operationId: getTopCustomers
+      tags: [reports]
+      summary: Top customers by credits received
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Top customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerCreditStat"
+
+  /mintbucks/reports/expiring-soon:
+    get:
+      operationId: getExpiringSoon
+      tags: [reports]
+      summary: Credits expiring within N days
+      parameters:
+        - name: days
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Expiring credits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Credit"
+
+  # ── Settings ────────────────────────────────────────────────────────────────
+  /mintbucks/settings/printavo:
+    get:
+      operationId: getSettingsPrintavo
+      tags: [settings]
+      summary: Get Printavo integration settings
+      responses:
+        "200":
+          description: Current settings (API key is masked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoSettings"
+    put:
+      operationId: updateSettingsPrintavo
+      tags: [settings]
+      summary: Update Printavo integration settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrintavoSettingsInput"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoSettings"
+
+  # ── Printavo ─────────────────────────────────────────────────────────────────
+  /mintbucks/printavo/test:
+    post:
+      operationId: testPrintavoConnection
+      tags: [printavo]
+      summary: Test Printavo API connection
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrintavoTestInput"
+      responses:
+        "200":
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoConnectionResult"
+
+  /mintbucks/printavo/sync-customers:
+    post:
+      operationId: syncPrintavoCustomers
+      tags: [printavo]
+      summary: Pull customers from Printavo and upsert into local table
+      responses:
+        "200":
+          description: Sync summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoSyncResult"
+        "400":
+          description: Printavo not configured
+
+  /mintbucks/printavo/poll:
+    post:
+      operationId: triggerPrintavoPoll
+      tags: [printavo]
+      summary: Manually trigger a Printavo order poll
+      responses:
+        "200":
+          description: Poll result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResult"
+
+  /mintbucks/printavo/order/{orderNumber}:
+    get:
+      operationId: lookupPrintavoOrder
+      tags: [printavo]
+      summary: Fetch a Printavo order by order number for reference
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Order summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoOrderSummary"
+        "404":
+          description: Order not found
+
+  /mintbucks/printavo/notification-log:
+    get:
+      operationId: getNotificationLog
+      tags: [printavo]
+      summary: List automated Printavo credit notifications sent
+      responses:
+        "200":
+          description: Notification log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationLogItem"
+
+  /mintbucks/reports/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [reports]
+      summary: Recent activity feed (credits + redemptions)
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  # ── Rewards ──────────────────────────────────────────────────────────────────
+  /mintbucks/rewards/settings:
+    get:
+      operationId: getRewardsSettings
+      tags: [rewards]
+      summary: Get rewards engine configuration
+      responses:
+        "200":
+          description: Current rewards configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardsSettings"
+    put:
+      operationId: updateRewardsSettings
+      tags: [rewards]
+      summary: Update rewards engine configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RewardsSettingsInput"
+      responses:
+        "200":
+          description: Updated configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardsSettings"
+
+  /mintbucks/rewards/summary:
+    get:
+      operationId: getRewardsSummary
+      tags: [rewards]
+      summary: Rewards engine status and annual budget usage
+      responses:
+        "200":
+          description: Rewards summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardsSummary"
+
+  /mintbucks/rewards/rules:
+    get:
+      operationId: listRewardRules
+      tags: [rewards]
+      summary: List reward rules
+      responses:
+        "200":
+          description: Reward rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RewardRule"
+    post:
+      operationId: createRewardRule
+      tags: [rewards]
+      summary: Create a reward rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RewardRuleInput"
+      responses:
+        "201":
+          description: Created rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardRule"
+        "400":
+          description: Invalid rule
+
+  /mintbucks/rewards/rules/{id}:
+    patch:
+      operationId: updateRewardRule
+      tags: [rewards]
+      summary: Update a reward rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RewardRuleUpdate"
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardRule"
+        "400":
+          description: Invalid rule
+        "404":
+          description: Rule not found
+    delete:
+      operationId: deleteRewardRule
+      tags: [rewards]
+      summary: Delete a reward rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Rule not found
+
+  /mintbucks/rewards/awards:
+    get:
+      operationId: listRewardAwards
+      tags: [rewards]
+      summary: List reward awards (optionally filtered by status)
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Reward awards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RewardAward"
+
+  /mintbucks/rewards/awards/{id}/approve:
+    post:
+      operationId: approveRewardAward
+      tags: [rewards]
+      summary: Approve a pending award and issue its credit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Approval result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResult"
+        "400":
+          description: Award cannot be approved
+        "404":
+          description: Award not found
+
+  /mintbucks/rewards/awards/{id}/reject:
+    post:
+      operationId: rejectRewardAward
+      tags: [rewards]
+      summary: Reject a pending award
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Rejection result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResult"
+        "404":
+          description: Award not found
+
+  /mintbucks/rewards/scan:
+    post:
+      operationId: triggerRewardsScan
+      tags: [rewards]
+      summary: Manually run a rewards evaluation pass
+      responses:
+        "200":
+          description: Scan result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardsScanResult"
+        "400":
+          description: Printavo not configured
+
+  /mintbucks/rewards/pipeline:
+    get:
+      operationId: getRewardsPipeline
+      tags: [rewards]
+      summary: Preview potential Mint Bucks for unpaid/in-pipeline invoices
+      responses:
+        "200":
+          description: Pipeline preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardsPipelineResult"
+        "400":
+          description: Printavo not configured
+        "502":
+          description: Failed to fetch from Printavo
+
 components:
   parameters:
     OrderTypeParam:
@@ -4841,3 +5625,671 @@ components:
       required: [error]
       properties:
         error: { type: string }
+
+    # ============ Mint Bucks schemas ============
+    Customer:
+      type: object
+      required: [id, name, email, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        companyName:
+          type: ["string", "null"]
+        outstandingBalance:
+          type: number
+        totalIssued:
+          type: number
+        totalRedeemed:
+          type: number
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    CustomerInput:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        companyName:
+          type: string
+
+    CustomerUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        phone:
+          type: ["string", "null"]
+        companyName:
+          type: ["string", "null"]
+
+    Credit:
+      type: object
+      required: [id, customerId, customerName, code, amount, amountRemaining, status, issuedAt, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+        customerCompany:
+          type: ["string", "null"]
+        code:
+          type: string
+        amount:
+          type: number
+        amountRemaining:
+          type: number
+        status:
+          type: string
+          enum: [active, partially_redeemed, redeemed, expired, cancelled]
+        note:
+          type: ["string", "null"]
+        expiresAt:
+          type: ["string", "null"]
+        issuedAt:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        sourceOrderVisualId:
+          type: ["string", "null"]
+        sourceOrderNickname:
+          type: ["string", "null"]
+        sourceRuleName:
+          type: ["string", "null"]
+
+    CreditInput:
+      type: object
+      required: [customerId, amount]
+      properties:
+        customerId:
+          type: integer
+        amount:
+          type: number
+          minimum: 0.01
+        note:
+          type: string
+        expiresAt:
+          type: string
+
+    CreditUpdate:
+      type: object
+      properties:
+        note:
+          type: string
+        expiresAt:
+          type: string
+        status:
+          type: string
+          enum: [active, expired, cancelled]
+
+    RedemptionInput:
+      type: object
+      required: [amountApplied]
+      properties:
+        amountApplied:
+          type: number
+          minimum: 0.01
+        invoiceRef:
+          type: string
+        note:
+          type: string
+
+    Redemption:
+      type: object
+      required: [id, creditId, customerId, customerName, amountApplied, redeemedAt, createdAt]
+      properties:
+        id:
+          type: integer
+        creditId:
+          type: integer
+        creditCode:
+          type: string
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        customerCompany:
+          type: ["string", "null"]
+        amountApplied:
+          type: number
+        invoiceRef:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+        redeemedAt:
+          type: string
+        createdAt:
+          type: string
+        sourceOrderVisualId:
+          type: ["string", "null"]
+        sourceOrderNickname:
+          type: ["string", "null"]
+
+    RedemptionResult:
+      type: object
+      required: [redemption, credit]
+      properties:
+        redemption:
+          $ref: "#/components/schemas/Redemption"
+        credit:
+          $ref: "#/components/schemas/Credit"
+
+    MessageResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    ReportSummary:
+      type: object
+      required: [totalIssued, totalOutstanding, totalRedeemed, totalCustomers, activeCredits, redemptionsThisMonth, issuedThisMonth, redemptionRate]
+      properties:
+        totalIssued:
+          type: number
+        totalOutstanding:
+          type: number
+        totalRedeemed:
+          type: number
+        totalCustomers:
+          type: integer
+        activeCredits:
+          type: integer
+        redemptionsThisMonth:
+          type: number
+        issuedThisMonth:
+          type: number
+        redemptionRate:
+          type: number
+
+    CreditTimePoint:
+      type: object
+      required: [month, issued, redeemed]
+      properties:
+        month:
+          type: string
+        issued:
+          type: number
+        redeemed:
+          type: number
+
+    CustomerCreditStat:
+      type: object
+      required: [customerId, customerName, customerEmail, totalIssued, totalRedeemed, outstandingBalance, creditCount]
+      properties:
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+        customerCompany:
+          type: ["string", "null"]
+        totalIssued:
+          type: number
+        totalRedeemed:
+          type: number
+        outstandingBalance:
+          type: number
+        creditCount:
+          type: integer
+
+    ActivityItem:
+      type: object
+      required: [id, type, customerId, customerName, amount, occurredAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [issued, redeemed, expired, cancelled]
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        creditCode:
+          type: string
+        amount:
+          type: number
+        invoiceRef:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+        occurredAt:
+          type: string
+
+    PrintavoSettings:
+      type: object
+      required: [apiKeyConfigured, enabled, pollingIntervalMinutes]
+      properties:
+        apiKeyConfigured:
+          type: boolean
+        email:
+          type: ["string", "null"]
+        shopUrl:
+          type: ["string", "null"]
+        enabled:
+          type: boolean
+        pollingIntervalMinutes:
+          type: integer
+
+    PrintavoTestInput:
+      type: object
+      properties:
+        apiKey:
+          type: string
+        email:
+          type: string
+
+    PrintavoSettingsInput:
+      type: object
+      properties:
+        apiKey:
+          type: string
+        email:
+          type: string
+        shopUrl:
+          type: string
+        enabled:
+          type: boolean
+        pollingIntervalMinutes:
+          type: integer
+
+    PrintavoConnectionResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+
+    PrintavoSyncResult:
+      type: object
+      required: [created, matched, skipped, total]
+      properties:
+        created:
+          type: integer
+        matched:
+          type: integer
+        skipped:
+          type: integer
+        total:
+          type: integer
+
+    PrintavoOrderSummary:
+      type: object
+      required: [id, visualId, createdAt]
+      properties:
+        id:
+          type: string
+        visualId:
+          type: string
+        orderId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        total:
+          type: ["number", "null"]
+        customerName:
+          type: ["string", "null"]
+        customerEmail:
+          type: ["string", "null"]
+
+    CreditCheckResult:
+      type: object
+      required: [code, status, amount, amountRemaining, issuedAt]
+      properties:
+        code:
+          type: string
+        status:
+          type: string
+          enum: [active, partially_redeemed, redeemed, expired, cancelled]
+        amount:
+          type: number
+        amountRemaining:
+          type: number
+        issuedAt:
+          type: string
+        expiresAt:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+
+    NotificationLogItem:
+      type: object
+      required: [id, customerId, printavoOrderId, amountAvailable, deliveryStatus, sentAt]
+      properties:
+        id:
+          type: integer
+        customerId:
+          type: integer
+        customerName:
+          type: ["string", "null"]
+        customerEmail:
+          type: ["string", "null"]
+        customerCompany:
+          type: ["string", "null"]
+        printavoOrderId:
+          type: string
+        printavoOrderNumber:
+          type: ["string", "null"]
+        amountAvailable:
+          type: number
+        deliveryStatus:
+          type: string
+          enum: [sent, failed]
+        sentAt:
+          type: string
+
+    RewardTier:
+      type: object
+      required: [minAmount, rewardAmount]
+      properties:
+        minAmount:
+          type: number
+        rewardAmount:
+          type: number
+
+    RewardParams:
+      type: object
+      properties:
+        flatAmount:
+          type: number
+        percent:
+          type: number
+        tiers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RewardTier"
+
+    RewardConditions:
+      type: object
+      properties:
+        tagAny:
+          type: array
+          items:
+            type: string
+        statusNameAny:
+          type: array
+          items:
+            type: string
+        totalMin:
+          type: number
+        totalMax:
+          type: number
+        invoiceDateFrom:
+          type: string
+        invoiceDateTo:
+          type: string
+        productionDateFrom:
+          type: string
+        productionDateTo:
+          type: string
+        paidDateFrom:
+          type: string
+        paidDateTo:
+          type: string
+
+    RewardRule:
+      type: object
+      required: [id, name, enabled, rewardType, rewardParams, conditions, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        enabled:
+          type: boolean
+        rewardType:
+          type: string
+          enum: [flat, percent_paid, percent_total, tiered]
+        rewardParams:
+          $ref: "#/components/schemas/RewardParams"
+        conditions:
+          $ref: "#/components/schemas/RewardConditions"
+        startsAt:
+          type: ["string", "null"]
+        endsAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    RewardRuleInput:
+      type: object
+      required: [name, rewardType, rewardParams]
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        rewardType:
+          type: string
+          enum: [flat, percent_paid, percent_total, tiered]
+        rewardParams:
+          $ref: "#/components/schemas/RewardParams"
+        conditions:
+          $ref: "#/components/schemas/RewardConditions"
+        startsAt:
+          type: ["string", "null"]
+        endsAt:
+          type: ["string", "null"]
+
+    RewardRuleUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        rewardType:
+          type: string
+          enum: [flat, percent_paid, percent_total, tiered]
+        rewardParams:
+          $ref: "#/components/schemas/RewardParams"
+        conditions:
+          $ref: "#/components/schemas/RewardConditions"
+        startsAt:
+          type: ["string", "null"]
+        endsAt:
+          type: ["string", "null"]
+
+    RewardAward:
+      type: object
+      required: [id, ruleId, customerId, printavoInvoiceId, amount, status, awardedAt]
+      properties:
+        id:
+          type: integer
+        ruleId:
+          type: integer
+        ruleName:
+          type: ["string", "null"]
+        customerId:
+          type: integer
+        customerName:
+          type: ["string", "null"]
+        customerEmail:
+          type: ["string", "null"]
+        customerCompany:
+          type: ["string", "null"]
+        printavoInvoiceId:
+          type: string
+        printavoVisualId:
+          type: ["string", "null"]
+        nickname:
+          type: ["string", "null"]
+          description: Invoice nickname/job name from Printavo, captured when the award was created.
+        invoiceTotal:
+          type: ["number", "null"]
+          description: Total order value of the invoice, captured when the award was created.
+        amount:
+          type: number
+        datePaid:
+          type: ["string", "null"]
+          description: Date (YYYY-MM-DD) the invoice was last paid, captured when the award was created.
+        status:
+          type: string
+          enum: [processing, pending, issued, rejected]
+        creditId:
+          type: ["integer", "null"]
+        note:
+          type: ["string", "null"]
+        awardedAt:
+          type: string
+        issuedAt:
+          type: ["string", "null"]
+
+    RewardsSettings:
+      type: object
+      required: [enabled, mode, expiryMonths, startDate, lookbackDays, timezone]
+      properties:
+        enabled:
+          type: boolean
+        mode:
+          type: string
+          enum: [auto, approve]
+        annualLimit:
+          type: ["number", "null"]
+        expiryMonths:
+          type: integer
+        startDate:
+          type: string
+        lookbackDays:
+          type: integer
+        timezone:
+          type: string
+
+    RewardsSettingsInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        mode:
+          type: string
+          enum: [auto, approve]
+        annualLimit:
+          type: ["number", "null"]
+        expiryMonths:
+          type: integer
+        startDate:
+          type: string
+        lookbackDays:
+          type: integer
+        timezone:
+          type: string
+
+    RewardsSummary:
+      type: object
+      required: [enabled, mode, annualAwarded, pendingCount, issuedCount]
+      properties:
+        enabled:
+          type: boolean
+        mode:
+          type: string
+          enum: [auto, approve]
+        annualLimit:
+          type: ["number", "null"]
+        annualAwarded:
+          type: number
+        pendingCount:
+          type: integer
+        issuedCount:
+          type: integer
+        lastScanAt:
+          type: ["string", "null"]
+
+    RewardsScanResult:
+      type: object
+      required: [scanned, issued, pending, skippedNoCustomer, limitReached, removedStale]
+      properties:
+        scanned:
+          type: integer
+        issued:
+          type: integer
+        pending:
+          type: integer
+        skippedNoCustomer:
+          type: integer
+        limitReached:
+          type: boolean
+        removedStale:
+          type: integer
+
+    RewardsPipelineItem:
+      type: object
+      required: [printavoInvoiceId, printavoVisualId, customerName, customerEmail, customerLinked, ruleId, ruleName, potentialAmount, createdAt, stage]
+      properties:
+        printavoInvoiceId:
+          type: string
+        printavoVisualId:
+          type: string
+        stage:
+          type: string
+          enum: [quote, invoice]
+        nickname:
+          type: ["string", "null"]
+          description: Order nickname (job title) from Printavo.
+        datePaid:
+          type: ["string", "null"]
+          description: Date (YYYY-MM-DD) of the most recent payment, null if none.
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+        customerCompany:
+          type: ["string", "null"]
+        customerLinked:
+          type: boolean
+        total:
+          type: ["number", "null"]
+        amountPaid:
+          type: ["number", "null"]
+        ruleId:
+          type: integer
+        ruleName:
+          type: string
+        potentialAmount:
+          type: number
+        createdAt:
+          type: string
+
+    RewardsPipelineResult:
+      type: object
+      required: [items, totalPotential, fetchedAt]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RewardsPipelineItem"
+        totalPotential:
+          type: number
+        fetchedAt:
+          type: string

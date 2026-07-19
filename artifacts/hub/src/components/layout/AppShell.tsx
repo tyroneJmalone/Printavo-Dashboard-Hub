@@ -5,7 +5,7 @@ import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api
 import { LastSynced } from "@/components/LastSynced";
 import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -74,6 +74,19 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "rates", label: "Rate Estimator", href: "/rate-estimator", icon: Package },
       { id: "sorter", label: "Label Sorter", href: "/label-sorter", icon: FileText },
+    ],
+  },
+  {
+    heading: "Mint Bucks",
+    items: [
+      { id: "mb-dashboard", label: "MB Dashboard", href: "/mintbucks", icon: BadgeDollarSign },
+      { id: "mb-customers", label: "Customers", href: "/mintbucks/customers", icon: Users },
+      { id: "mb-credits", label: "Credits", href: "/mintbucks/credits", icon: CreditCard },
+      { id: "mb-redemptions", label: "Redemptions", href: "/mintbucks/redemptions", icon: Gift },
+      { id: "mb-rewards", label: "Rewards", href: "/mintbucks/rewards", icon: Award },
+      { id: "mb-reports", label: "Reports", href: "/mintbucks/reports", icon: BarChart3 },
+      { id: "mb-check", label: "Check Credit", href: "/mintbucks/check", icon: QrCode },
+      { id: "mb-settings", label: "MB Settings", href: "/mintbucks/settings", icon: SlidersHorizontal },
     ],
   },
   {

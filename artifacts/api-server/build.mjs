@@ -3,12 +3,29 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+
+// pdfkit reads its built-in font metric (.afm) files from `<bundle dir>/data`
+// at runtime via fs, so esbuild's bundling leaves them behind. Missing AFM
+// files break Mint Bucks certificate generation at runtime (500), so fail the
+// build loudly instead of silently shipping a broken bundle.
+async function copyPdfkitData(distDir) {
+  const pdfkitEntry = globalThis.require.resolve("pdfkit");
+  // .../pdfkit/js/pdfkit.js -> .../pdfkit/js/data
+  const dataDir = path.resolve(path.dirname(pdfkitEntry), "data");
+  await cp(dataDir, path.resolve(distDir, "data"), { recursive: true });
+}
+
+// Mint Bucks certificate/email assets (logo) read from dist/assets at runtime.
+async function copyMintbucksAssets(distDir) {
+  const assetsDir = path.resolve(artifactDir, "src/mintbucks/assets");
+  await cp(assetsDir, path.resolve(distDir, "assets"), { recursive: true });
+}
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
@@ -118,6 +135,9 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  await copyPdfkitData(distDir);
+  await copyMintbucksAssets(distDir);
 }
 
 buildAll().catch((err) => {

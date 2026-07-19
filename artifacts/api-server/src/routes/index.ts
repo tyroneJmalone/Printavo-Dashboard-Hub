@@ -15,6 +15,8 @@ import sorterRouter from "./sorter";
 import shippingRouter from "./shipping";
 import { isMomintumConfigured } from "@workspace/momintum-db";
 import momintumRouter from "../momintum";
+import { isMintbucksConfigured } from "@workspace/mintbucks-db";
+import mintbucksRouter from "../mintbucks/routes";
 
 const router: IRouter = Router();
 
@@ -44,6 +46,13 @@ router.use(shippingRouter);
 // kill switch).
 if (isMomintumConfigured()) {
   router.use("/momintum", momintumRouter);
+}
+
+// Mint Bucks store credit — shared LIVE database with the standalone app.
+// Only mounted when MINTBUCKS_DATABASE_URL is set (removing the secret is the
+// kill switch). Poller stays dormant unless MINTBUCKS_POLLER_ENABLED=true.
+if (isMintbucksConfigured()) {
+  router.use("/mintbucks", mintbucksRouter);
 }
 
 export default router;

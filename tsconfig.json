@@ -10,6 +10,9 @@
       "path": "./lib/momintum-db"
     },
     {
+      "path": "./lib/mintbucks-db"
+    },
+    {
       "path": "./lib/printavo"
     },
     {

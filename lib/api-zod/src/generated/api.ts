@@ -3581,3 +3581,964 @@ export const ShippingListCarriersResponseItem = zod.record(zod.string(), zod.unk
 export const ShippingListCarriersResponse = zod.array(ShippingListCarriersResponseItem)
 
 
+/**
+ * @summary List all customers
+ */
+export const ListCustomersQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "hasCredit": zod.coerce.string().optional()
+})
+
+export const ListCustomersResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "outstandingBalance": zod.number().optional(),
+  "totalIssued": zod.number().optional(),
+  "totalRedeemed": zod.number().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
+
+
+/**
+ * @summary Create a new customer
+ */
+
+
+
+export const CreateCustomerBody = zod.object({
+  "name": zod.string().min(1),
+  "email": zod.string().email(),
+  "phone": zod.string().optional(),
+  "companyName": zod.string().optional()
+})
+
+export const CreateCustomerResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "outstandingBalance": zod.number().optional(),
+  "totalIssued": zod.number().optional(),
+  "totalRedeemed": zod.number().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Get customer by ID
+ */
+export const GetCustomerParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCustomerResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "outstandingBalance": zod.number().optional(),
+  "totalIssued": zod.number().optional(),
+  "totalRedeemed": zod.number().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Update customer
+ */
+export const UpdateCustomerParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateCustomerBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "email": zod.string().email().optional(),
+  "phone": zod.string().nullish(),
+  "companyName": zod.string().nullish()
+})
+
+export const UpdateCustomerResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "phone": zod.string().nullish(),
+  "companyName": zod.string().nullish(),
+  "outstandingBalance": zod.number().optional(),
+  "totalIssued": zod.number().optional(),
+  "totalRedeemed": zod.number().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete customer
+ */
+export const DeleteCustomerParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteCustomerResponse = zod.void()
+
+
+/**
+ * @summary Get all credits for a customer
+ */
+export const GetCustomerCreditsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCustomerCreditsResponseItem = zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().optional(),
+  "customerCompany": zod.string().nullish(),
+  "code": zod.string(),
+  "amount": zod.number(),
+  "amountRemaining": zod.number(),
+  "status": zod.enum(['active', 'partially_redeemed', 'redeemed', 'expired', 'cancelled']),
+  "note": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "issuedAt": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish(),
+  "sourceRuleName": zod.string().nullish()
+})
+export const GetCustomerCreditsResponse = zod.array(GetCustomerCreditsResponseItem)
+
+
+/**
+ * @summary List credits
+ */
+export const ListCreditsQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "customerId": zod.coerce.string().optional(),
+  "expiringDays": zod.coerce.string().optional()
+})
+
+export const ListCreditsResponseItem = zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().optional(),
+  "customerCompany": zod.string().nullish(),
+  "code": zod.string(),
+  "amount": zod.number(),
+  "amountRemaining": zod.number(),
+  "status": zod.enum(['active', 'partially_redeemed', 'redeemed', 'expired', 'cancelled']),
+  "note": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "issuedAt": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish(),
+  "sourceRuleName": zod.string().nullish()
+})
+export const ListCreditsResponse = zod.array(ListCreditsResponseItem)
+
+
+/**
+ * @summary Issue Mint Bucks to a customer
+ */
+export const issueCreditBodyAmountMin = 0.01;
+
+
+
+export const IssueCreditBody = zod.object({
+  "customerId": zod.number(),
+  "amount": zod.number().min(issueCreditBodyAmountMin),
+  "note": zod.string().optional(),
+  "expiresAt": zod.string().optional()
+})
+
+export const IssueCreditResponse = zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().optional(),
+  "customerCompany": zod.string().nullish(),
+  "code": zod.string(),
+  "amount": zod.number(),
+  "amountRemaining": zod.number(),
+  "status": zod.enum(['active', 'partially_redeemed', 'redeemed', 'expired', 'cancelled']),
+  "note": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "issuedAt": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish(),
+  "sourceRuleName": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get credit by ID
+ */
+export const GetCreditParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCreditResponse = zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().optional(),
+  "customerCompany": zod.string().nullish(),
+  "code": zod.string(),
+  "amount": zod.number(),
+  "amountRemaining": zod.number(),
+  "status": zod.enum(['active', 'partially_redeemed', 'redeemed', 'expired', 'cancelled']),
+  "note": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "issuedAt": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish(),
+  "sourceRuleName": zod.string().nullish()
+})
+
+
+/**
+ * @summary Update credit (status, expiry, note)
+ */
+export const UpdateCreditParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateCreditBody = zod.object({
+  "note": zod.string().optional(),
+  "expiresAt": zod.string().optional(),
+  "status": zod.enum(['active', 'expired', 'cancelled']).optional()
+})
+
+export const UpdateCreditResponse = zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().optional(),
+  "customerCompany": zod.string().nullish(),
+  "code": zod.string(),
+  "amount": zod.number(),
+  "amountRemaining": zod.number(),
+  "status": zod.enum(['active', 'partially_redeemed', 'redeemed', 'expired', 'cancelled']),
+  "note": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "issuedAt": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish(),
+  "sourceRuleName": zod.string().nullish()
+})
+
+
+/**
+ * @summary Cancel / delete a credit
+ */
+export const DeleteCreditParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteCreditResponse = zod.void()
+
+
+/**
+ * @summary Record a full or partial redemption
+ */
+export const RedeemCreditParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const redeemCreditBodyAmountAppliedMin = 0.01;
+
+
+
+export const RedeemCreditBody = zod.object({
+  "amountApplied": zod.number().min(redeemCreditBodyAmountAppliedMin),
+  "invoiceRef": zod.string().optional(),
+  "note": zod.string().optional()
+})
+
+export const RedeemCreditResponse = zod.object({
+  "redemption": zod.object({
+  "id": zod.number(),
+  "creditId": zod.number(),
+  "creditCode": zod.string().optional(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerCompany": zod.string().nullish(),
+  "amountApplied": zod.number(),
+  "invoiceRef": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "redeemedAt": zod.string(),
+  "createdAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish()
+}),
+  "credit": zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().optional(),
+  "customerCompany": zod.string().nullish(),
+  "code": zod.string(),
+  "amount": zod.number(),
+  "amountRemaining": zod.number(),
+  "status": zod.enum(['active', 'partially_redeemed', 'redeemed', 'expired', 'cancelled']),
+  "note": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "issuedAt": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish(),
+  "sourceRuleName": zod.string().nullish()
+})
+})
+
+
+/**
+ * @summary Send email reminder to customer about available credit
+ */
+export const SendCreditReminderParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SendCreditReminderResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Public balance check by credit code (no auth required)
+ */
+export const CheckCreditByCodeParams = zod.object({
+  "code": zod.coerce.string()
+})
+
+export const CheckCreditByCodeResponse = zod.object({
+  "code": zod.string(),
+  "status": zod.enum(['active', 'partially_redeemed', 'redeemed', 'expired', 'cancelled']),
+  "amount": zod.number(),
+  "amountRemaining": zod.number(),
+  "issuedAt": zod.string(),
+  "expiresAt": zod.string().nullish(),
+  "note": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get QR code PNG for a credit
+ */
+export const GetCreditQrParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCreditQrResponse = zod.unknown()
+
+
+/**
+ * @summary Download branded PDF certificate for a credit
+ */
+export const GetCreditCertificateParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCreditCertificateResponse = zod.unknown()
+
+
+/**
+ * @summary List all redemptions
+ */
+export const ListRedemptionsQueryParams = zod.object({
+  "customerId": zod.coerce.string().optional(),
+  "creditId": zod.coerce.string().optional()
+})
+
+export const ListRedemptionsResponseItem = zod.object({
+  "id": zod.number(),
+  "creditId": zod.number(),
+  "creditCode": zod.string().optional(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerCompany": zod.string().nullish(),
+  "amountApplied": zod.number(),
+  "invoiceRef": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "redeemedAt": zod.string(),
+  "createdAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish()
+})
+export const ListRedemptionsResponse = zod.array(ListRedemptionsResponseItem)
+
+
+/**
+ * @summary Get redemption by ID
+ */
+export const GetRedemptionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetRedemptionResponse = zod.object({
+  "id": zod.number(),
+  "creditId": zod.number(),
+  "creditCode": zod.string().optional(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerCompany": zod.string().nullish(),
+  "amountApplied": zod.number(),
+  "invoiceRef": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "redeemedAt": zod.string(),
+  "createdAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish()
+})
+
+
+/**
+ * @summary Dashboard summary stats
+ */
+export const GetReportSummaryResponse = zod.object({
+  "totalIssued": zod.number(),
+  "totalOutstanding": zod.number(),
+  "totalRedeemed": zod.number(),
+  "totalCustomers": zod.number(),
+  "activeCredits": zod.number(),
+  "redemptionsThisMonth": zod.number(),
+  "issuedThisMonth": zod.number(),
+  "redemptionRate": zod.number()
+})
+
+
+/**
+ * @summary Credits issued and redeemed per month
+ */
+export const GetCreditsOverTimeQueryParams = zod.object({
+  "months": zod.coerce.string().optional()
+})
+
+export const GetCreditsOverTimeResponseItem = zod.object({
+  "month": zod.string(),
+  "issued": zod.number(),
+  "redeemed": zod.number()
+})
+export const GetCreditsOverTimeResponse = zod.array(GetCreditsOverTimeResponseItem)
+
+
+/**
+ * @summary Top customers by credits received
+ */
+export const GetTopCustomersQueryParams = zod.object({
+  "limit": zod.coerce.string().optional()
+})
+
+export const GetTopCustomersResponseItem = zod.object({
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string(),
+  "customerCompany": zod.string().nullish(),
+  "totalIssued": zod.number(),
+  "totalRedeemed": zod.number(),
+  "outstandingBalance": zod.number(),
+  "creditCount": zod.number()
+})
+export const GetTopCustomersResponse = zod.array(GetTopCustomersResponseItem)
+
+
+/**
+ * @summary Credits expiring within N days
+ */
+export const GetExpiringSoonQueryParams = zod.object({
+  "days": zod.coerce.string().optional()
+})
+
+export const GetExpiringSoonResponseItem = zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().optional(),
+  "customerCompany": zod.string().nullish(),
+  "code": zod.string(),
+  "amount": zod.number(),
+  "amountRemaining": zod.number(),
+  "status": zod.enum(['active', 'partially_redeemed', 'redeemed', 'expired', 'cancelled']),
+  "note": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "issuedAt": zod.string(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "sourceOrderVisualId": zod.string().nullish(),
+  "sourceOrderNickname": zod.string().nullish(),
+  "sourceRuleName": zod.string().nullish()
+})
+export const GetExpiringSoonResponse = zod.array(GetExpiringSoonResponseItem)
+
+
+/**
+ * @summary Get Printavo integration settings
+ */
+export const GetSettingsPrintavoResponse = zod.object({
+  "apiKeyConfigured": zod.boolean(),
+  "email": zod.string().nullish(),
+  "shopUrl": zod.string().nullish(),
+  "enabled": zod.boolean(),
+  "pollingIntervalMinutes": zod.number()
+})
+
+
+/**
+ * @summary Update Printavo integration settings
+ */
+export const UpdateSettingsPrintavoBody = zod.object({
+  "apiKey": zod.string().optional(),
+  "email": zod.string().optional(),
+  "shopUrl": zod.string().optional(),
+  "enabled": zod.boolean().optional(),
+  "pollingIntervalMinutes": zod.number().optional()
+})
+
+export const UpdateSettingsPrintavoResponse = zod.object({
+  "apiKeyConfigured": zod.boolean(),
+  "email": zod.string().nullish(),
+  "shopUrl": zod.string().nullish(),
+  "enabled": zod.boolean(),
+  "pollingIntervalMinutes": zod.number()
+})
+
+
+/**
+ * @summary Test Printavo API connection
+ */
+export const TestPrintavoConnectionBody = zod.object({
+  "apiKey": zod.string().optional(),
+  "email": zod.string().optional()
+})
+
+export const TestPrintavoConnectionResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Pull customers from Printavo and upsert into local table
+ */
+export const SyncPrintavoCustomersResponse = zod.object({
+  "created": zod.number(),
+  "matched": zod.number(),
+  "skipped": zod.number(),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Manually trigger a Printavo order poll
+ */
+export const TriggerPrintavoPollResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Fetch a Printavo order by order number for reference
+ */
+export const LookupPrintavoOrderParams = zod.object({
+  "orderNumber": zod.coerce.string()
+})
+
+export const LookupPrintavoOrderResponse = zod.object({
+  "id": zod.string(),
+  "visualId": zod.string(),
+  "orderId": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "total": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish()
+})
+
+
+/**
+ * @summary List automated Printavo credit notifications sent
+ */
+export const GetNotificationLogResponseItem = zod.object({
+  "id": zod.number(),
+  "customerId": zod.number(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
+  "customerCompany": zod.string().nullish(),
+  "printavoOrderId": zod.string(),
+  "printavoOrderNumber": zod.string().nullish(),
+  "amountAvailable": zod.number(),
+  "deliveryStatus": zod.enum(['sent', 'failed']),
+  "sentAt": zod.string()
+})
+export const GetNotificationLogResponse = zod.array(GetNotificationLogResponseItem)
+
+
+/**
+ * @summary Recent activity feed (credits + redemptions)
+ */
+export const GetRecentActivityQueryParams = zod.object({
+  "limit": zod.coerce.string().optional()
+})
+
+export const GetRecentActivityResponseItem = zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['issued', 'redeemed', 'expired', 'cancelled']),
+  "customerId": zod.number(),
+  "customerName": zod.string(),
+  "creditCode": zod.string().optional(),
+  "amount": zod.number(),
+  "invoiceRef": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "occurredAt": zod.string()
+})
+export const GetRecentActivityResponse = zod.array(GetRecentActivityResponseItem)
+
+
+/**
+ * @summary Get rewards engine configuration
+ */
+export const GetRewardsSettingsResponse = zod.object({
+  "enabled": zod.boolean(),
+  "mode": zod.enum(['auto', 'approve']),
+  "annualLimit": zod.number().nullish(),
+  "expiryMonths": zod.number(),
+  "startDate": zod.string(),
+  "lookbackDays": zod.number(),
+  "timezone": zod.string()
+})
+
+
+/**
+ * @summary Update rewards engine configuration
+ */
+export const UpdateRewardsSettingsBody = zod.object({
+  "enabled": zod.boolean().optional(),
+  "mode": zod.enum(['auto', 'approve']).optional(),
+  "annualLimit": zod.number().nullish(),
+  "expiryMonths": zod.number().optional(),
+  "startDate": zod.string().optional(),
+  "lookbackDays": zod.number().optional(),
+  "timezone": zod.string().optional()
+})
+
+export const UpdateRewardsSettingsResponse = zod.object({
+  "enabled": zod.boolean(),
+  "mode": zod.enum(['auto', 'approve']),
+  "annualLimit": zod.number().nullish(),
+  "expiryMonths": zod.number(),
+  "startDate": zod.string(),
+  "lookbackDays": zod.number(),
+  "timezone": zod.string()
+})
+
+
+/**
+ * @summary Rewards engine status and annual budget usage
+ */
+export const GetRewardsSummaryResponse = zod.object({
+  "enabled": zod.boolean(),
+  "mode": zod.enum(['auto', 'approve']),
+  "annualLimit": zod.number().nullish(),
+  "annualAwarded": zod.number(),
+  "pendingCount": zod.number(),
+  "issuedCount": zod.number(),
+  "lastScanAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary List reward rules
+ */
+export const ListRewardRulesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "rewardType": zod.enum(['flat', 'percent_paid', 'percent_total', 'tiered']),
+  "rewardParams": zod.object({
+  "flatAmount": zod.number().optional(),
+  "percent": zod.number().optional(),
+  "tiers": zod.array(zod.object({
+  "minAmount": zod.number(),
+  "rewardAmount": zod.number()
+})).optional()
+}),
+  "conditions": zod.object({
+  "tagAny": zod.array(zod.string()).optional(),
+  "statusNameAny": zod.array(zod.string()).optional(),
+  "totalMin": zod.number().optional(),
+  "totalMax": zod.number().optional(),
+  "invoiceDateFrom": zod.string().optional(),
+  "invoiceDateTo": zod.string().optional(),
+  "productionDateFrom": zod.string().optional(),
+  "productionDateTo": zod.string().optional(),
+  "paidDateFrom": zod.string().optional(),
+  "paidDateTo": zod.string().optional()
+}),
+  "startsAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListRewardRulesResponse = zod.array(ListRewardRulesResponseItem)
+
+
+/**
+ * @summary Create a reward rule
+ */
+export const CreateRewardRuleBody = zod.object({
+  "name": zod.string(),
+  "enabled": zod.boolean().optional(),
+  "rewardType": zod.enum(['flat', 'percent_paid', 'percent_total', 'tiered']),
+  "rewardParams": zod.object({
+  "flatAmount": zod.number().optional(),
+  "percent": zod.number().optional(),
+  "tiers": zod.array(zod.object({
+  "minAmount": zod.number(),
+  "rewardAmount": zod.number()
+})).optional()
+}),
+  "conditions": zod.object({
+  "tagAny": zod.array(zod.string()).optional(),
+  "statusNameAny": zod.array(zod.string()).optional(),
+  "totalMin": zod.number().optional(),
+  "totalMax": zod.number().optional(),
+  "invoiceDateFrom": zod.string().optional(),
+  "invoiceDateTo": zod.string().optional(),
+  "productionDateFrom": zod.string().optional(),
+  "productionDateTo": zod.string().optional(),
+  "paidDateFrom": zod.string().optional(),
+  "paidDateTo": zod.string().optional()
+}).optional(),
+  "startsAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish()
+})
+
+export const CreateRewardRuleResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "rewardType": zod.enum(['flat', 'percent_paid', 'percent_total', 'tiered']),
+  "rewardParams": zod.object({
+  "flatAmount": zod.number().optional(),
+  "percent": zod.number().optional(),
+  "tiers": zod.array(zod.object({
+  "minAmount": zod.number(),
+  "rewardAmount": zod.number()
+})).optional()
+}),
+  "conditions": zod.object({
+  "tagAny": zod.array(zod.string()).optional(),
+  "statusNameAny": zod.array(zod.string()).optional(),
+  "totalMin": zod.number().optional(),
+  "totalMax": zod.number().optional(),
+  "invoiceDateFrom": zod.string().optional(),
+  "invoiceDateTo": zod.string().optional(),
+  "productionDateFrom": zod.string().optional(),
+  "productionDateTo": zod.string().optional(),
+  "paidDateFrom": zod.string().optional(),
+  "paidDateTo": zod.string().optional()
+}),
+  "startsAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Update a reward rule
+ */
+export const UpdateRewardRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateRewardRuleBody = zod.object({
+  "name": zod.string().optional(),
+  "enabled": zod.boolean().optional(),
+  "rewardType": zod.enum(['flat', 'percent_paid', 'percent_total', 'tiered']).optional(),
+  "rewardParams": zod.object({
+  "flatAmount": zod.number().optional(),
+  "percent": zod.number().optional(),
+  "tiers": zod.array(zod.object({
+  "minAmount": zod.number(),
+  "rewardAmount": zod.number()
+})).optional()
+}).optional(),
+  "conditions": zod.object({
+  "tagAny": zod.array(zod.string()).optional(),
+  "statusNameAny": zod.array(zod.string()).optional(),
+  "totalMin": zod.number().optional(),
+  "totalMax": zod.number().optional(),
+  "invoiceDateFrom": zod.string().optional(),
+  "invoiceDateTo": zod.string().optional(),
+  "productionDateFrom": zod.string().optional(),
+  "productionDateTo": zod.string().optional(),
+  "paidDateFrom": zod.string().optional(),
+  "paidDateTo": zod.string().optional()
+}).optional(),
+  "startsAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish()
+})
+
+export const UpdateRewardRuleResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "rewardType": zod.enum(['flat', 'percent_paid', 'percent_total', 'tiered']),
+  "rewardParams": zod.object({
+  "flatAmount": zod.number().optional(),
+  "percent": zod.number().optional(),
+  "tiers": zod.array(zod.object({
+  "minAmount": zod.number(),
+  "rewardAmount": zod.number()
+})).optional()
+}),
+  "conditions": zod.object({
+  "tagAny": zod.array(zod.string()).optional(),
+  "statusNameAny": zod.array(zod.string()).optional(),
+  "totalMin": zod.number().optional(),
+  "totalMax": zod.number().optional(),
+  "invoiceDateFrom": zod.string().optional(),
+  "invoiceDateTo": zod.string().optional(),
+  "productionDateFrom": zod.string().optional(),
+  "productionDateTo": zod.string().optional(),
+  "paidDateFrom": zod.string().optional(),
+  "paidDateTo": zod.string().optional()
+}),
+  "startsAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a reward rule
+ */
+export const DeleteRewardRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteRewardRuleResponse = zod.void()
+
+
+/**
+ * @summary List reward awards (optionally filtered by status)
+ */
+export const ListRewardAwardsQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "limit": zod.coerce.string().optional()
+})
+
+export const ListRewardAwardsResponseItem = zod.object({
+  "id": zod.number(),
+  "ruleId": zod.number(),
+  "ruleName": zod.string().nullish(),
+  "customerId": zod.number(),
+  "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
+  "customerCompany": zod.string().nullish(),
+  "printavoInvoiceId": zod.string(),
+  "printavoVisualId": zod.string().nullish(),
+  "nickname": zod.string().nullish().describe('Invoice nickname\/job name from Printavo, captured when the award was created.'),
+  "invoiceTotal": zod.number().nullish().describe('Total order value of the invoice, captured when the award was created.'),
+  "amount": zod.number(),
+  "datePaid": zod.string().nullish().describe('Date (YYYY-MM-DD) the invoice was last paid, captured when the award was created.'),
+  "status": zod.enum(['processing', 'pending', 'issued', 'rejected']),
+  "creditId": zod.number().nullish(),
+  "note": zod.string().nullish(),
+  "awardedAt": zod.string(),
+  "issuedAt": zod.string().nullish()
+})
+export const ListRewardAwardsResponse = zod.array(ListRewardAwardsResponseItem)
+
+
+/**
+ * @summary Approve a pending award and issue its credit
+ */
+export const ApproveRewardAwardParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ApproveRewardAwardResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Reject a pending award
+ */
+export const RejectRewardAwardParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RejectRewardAwardResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Manually run a rewards evaluation pass
+ */
+export const TriggerRewardsScanResponse = zod.object({
+  "scanned": zod.number(),
+  "issued": zod.number(),
+  "pending": zod.number(),
+  "skippedNoCustomer": zod.number(),
+  "limitReached": zod.boolean(),
+  "removedStale": zod.number()
+})
+
+
+/**
+ * @summary Preview potential Mint Bucks for unpaid/in-pipeline invoices
+ */
+export const GetRewardsPipelineResponse = zod.object({
+  "items": zod.array(zod.object({
+  "printavoInvoiceId": zod.string(),
+  "printavoVisualId": zod.string(),
+  "stage": zod.enum(['quote', 'invoice']),
+  "nickname": zod.string().nullish().describe('Order nickname (job title) from Printavo.'),
+  "datePaid": zod.string().nullish().describe('Date (YYYY-MM-DD) of the most recent payment, null if none.'),
+  "customerName": zod.string(),
+  "customerEmail": zod.string(),
+  "customerCompany": zod.string().nullish(),
+  "customerLinked": zod.boolean(),
+  "total": zod.number().nullish(),
+  "amountPaid": zod.number().nullish(),
+  "ruleId": zod.number(),
+  "ruleName": zod.string(),
+  "potentialAmount": zod.number(),
+  "createdAt": zod.string()
+})),
+  "totalPotential": zod.number(),
+  "fetchedAt": zod.string()
+})
+
+

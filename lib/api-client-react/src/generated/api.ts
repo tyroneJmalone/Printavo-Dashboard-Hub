@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActivityItem,
   AddStaffRequest,
   AddTeamMember201,
   AdminPinStatus,
@@ -43,6 +44,15 @@ import type {
   CreatePoFileRequest,
   CreatePqStatusRuleRequest,
   CreateStatusRuleRequest,
+  Credit,
+  CreditCheckResult,
+  CreditInput,
+  CreditTimePoint,
+  CreditUpdate,
+  Customer,
+  CustomerCreditStat,
+  CustomerInput,
+  CustomerUpdate,
   DashboardSummary,
   DecorationMatricesResponse,
   DecorationMatrix,
@@ -53,25 +63,33 @@ import type {
   GetCombinedBoxLabelsHtmlParams,
   GetCombinedPackingSlipsHtmlParams,
   GetCombinedWorkordersHtmlParams,
+  GetCreditsOverTimeParams,
   GetDashboardSummaryParams,
+  GetExpiringSoonParams,
   GetImprintsByTierParams,
   GetOrderQuantityBreakdownParams,
   GetOrdersReportParams,
   GetPaymentsReportParams,
   GetPaymentsStatsParams,
   GetPricingMatrixBreakdownParams,
+  GetRecentActivityParams,
   GetStatusBreakdownParams,
   GetStyleNumberBreakdownParams,
+  GetTopCustomersParams,
   HealthStatus,
   List,
   ListAutoPrintJobsParams,
   ListAutoPrintRunsParams,
   ListChangeEventsParams,
+  ListCreditsParams,
+  ListCustomersParams,
   ListInput,
   ListListsParams,
   ListMentionsParams,
   ListPqStatusJobsParams,
   ListPrintQueueOrdersParams,
+  ListRedemptionsParams,
+  ListRewardAwardsParams,
   ListStatusSuggestionsParams,
   ListTasksParams,
   ListUpdate,
@@ -80,7 +98,9 @@ import type {
   Member,
   MemberInput,
   MemberUpdate,
+  MessageResult,
   NeedsOrderingResult,
+  NotificationLogItem,
   OrdersReport,
   PaymentsReport,
   PaymentsStats,
@@ -95,15 +115,34 @@ import type {
   PqStatusRule,
   PqStatusRulesResponse,
   PrintQueueOrdersResponse,
+  PrintavoConnectionResult,
+  PrintavoOrderSummary,
+  PrintavoSettings,
+  PrintavoSettingsInput,
   PrintavoStatusesResponse,
+  PrintavoSyncResult,
+  PrintavoTestInput,
   ProbeResult,
   PushStartResponse,
   Quote,
   QuoteInput,
   RateRequest,
   RateResponse,
+  Redemption,
+  RedemptionInput,
+  RedemptionResult,
   ReorderStatusRulesRequest,
   ReportFilterOptions,
+  ReportSummary,
+  RewardAward,
+  RewardRule,
+  RewardRuleInput,
+  RewardRuleUpdate,
+  RewardsPipelineResult,
+  RewardsScanResult,
+  RewardsSettings,
+  RewardsSettingsInput,
+  RewardsSummary,
   SeedStartResult,
   SetAdminPinRequest,
   ShippingError,
@@ -9158,6 +9197,3167 @@ export function useShippingListCarriers<TData = Awaited<ReturnType<typeof shippi
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getShippingListCarriersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCustomersUrl = (params?: ListCustomersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mintbucks/customers?${stringifiedParams}` : `/api/mintbucks/customers`
+}
+
+/**
+ * @summary List all customers
+ */
+export const listCustomers = async (params?: ListCustomersParams, options?: RequestInit): Promise<Customer[]> => {
+
+  return customFetch<Customer[]>(getListCustomersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCustomersQueryKey = (params?: ListCustomersParams,) => {
+    return [
+    `/api/mintbucks/customers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCustomersQueryOptions = <TData = Awaited<ReturnType<typeof listCustomers>>, TError = ErrorType<unknown>>(params?: ListCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCustomersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCustomers>>> = ({ signal }) => listCustomers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCustomers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCustomersQueryResult = NonNullable<Awaited<ReturnType<typeof listCustomers>>>
+export type ListCustomersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all customers
+ */
+
+export function useListCustomers<TData = Awaited<ReturnType<typeof listCustomers>>, TError = ErrorType<unknown>>(
+ params?: ListCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCustomersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCustomerUrl = () => {
+
+
+
+
+  return `/api/mintbucks/customers`
+}
+
+/**
+ * @summary Create a new customer
+ */
+export const createCustomer = async (customerInput: CustomerInput, options?: RequestInit): Promise<Customer> => {
+
+  return customFetch<Customer>(getCreateCustomerUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(customerInput)
+  }
+);}
+
+
+
+
+export const getCreateCustomerMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomer>>, TError,{data: BodyType<CustomerInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCustomer>>, TError,{data: BodyType<CustomerInput>}, TContext> => {
+
+const mutationKey = ['createCustomer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCustomer>>, {data: BodyType<CustomerInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCustomer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof createCustomer>>>
+    export type CreateCustomerMutationBody = BodyType<CustomerInput>
+    export type CreateCustomerMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a new customer
+ */
+export const useCreateCustomer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomer>>, TError,{data: BodyType<CustomerInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCustomer>>,
+        TError,
+        {data: BodyType<CustomerInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCustomerMutationOptions(options));
+    }
+
+export const getGetCustomerUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/customers/${id}`
+}
+
+/**
+ * @summary Get customer by ID
+ */
+export const getCustomer = async (id: number, options?: RequestInit): Promise<Customer> => {
+
+  return customFetch<Customer>(getGetCustomerUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerQueryKey = (id: number,) => {
+    return [
+    `/api/mintbucks/customers/${id}`
+    ] as const;
+    }
+
+
+export const getGetCustomerQueryOptions = <TData = Awaited<ReturnType<typeof getCustomer>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomer>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomer>>> = ({ signal }) => getCustomer(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomer>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomer>>>
+export type GetCustomerQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get customer by ID
+ */
+
+export function useGetCustomer<TData = Awaited<ReturnType<typeof getCustomer>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomer>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCustomerUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/customers/${id}`
+}
+
+/**
+ * @summary Update customer
+ */
+export const updateCustomer = async (id: number,
+    customerUpdate: CustomerUpdate, options?: RequestInit): Promise<Customer> => {
+
+  return customFetch<Customer>(getUpdateCustomerUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(customerUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateCustomerMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCustomer>>, TError,{id: number;data: BodyType<CustomerUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCustomer>>, TError,{id: number;data: BodyType<CustomerUpdate>}, TContext> => {
+
+const mutationKey = ['updateCustomer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCustomer>>, {id: number;data: BodyType<CustomerUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCustomer(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof updateCustomer>>>
+    export type UpdateCustomerMutationBody = BodyType<CustomerUpdate>
+    export type UpdateCustomerMutationError = ErrorType<void>
+
+    /**
+ * @summary Update customer
+ */
+export const useUpdateCustomer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCustomer>>, TError,{id: number;data: BodyType<CustomerUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCustomer>>,
+        TError,
+        {id: number;data: BodyType<CustomerUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCustomerMutationOptions(options));
+    }
+
+export const getDeleteCustomerUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/customers/${id}`
+}
+
+/**
+ * @summary Delete customer
+ */
+export const deleteCustomer = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCustomerUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCustomerMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteCustomer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCustomer>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCustomer(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCustomer>>>
+
+    export type DeleteCustomerMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete customer
+ */
+export const useDeleteCustomer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCustomer>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCustomerMutationOptions(options));
+    }
+
+export const getGetCustomerCreditsUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/customers/${id}/credits`
+}
+
+/**
+ * @summary Get all credits for a customer
+ */
+export const getCustomerCredits = async (id: number, options?: RequestInit): Promise<Credit[]> => {
+
+  return customFetch<Credit[]>(getGetCustomerCreditsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerCreditsQueryKey = (id: number,) => {
+    return [
+    `/api/mintbucks/customers/${id}/credits`
+    ] as const;
+    }
+
+
+export const getGetCustomerCreditsQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerCredits>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerCredits>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerCreditsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerCredits>>> = ({ signal }) => getCustomerCredits(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerCredits>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerCreditsQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerCredits>>>
+export type GetCustomerCreditsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get all credits for a customer
+ */
+
+export function useGetCustomerCredits<TData = Awaited<ReturnType<typeof getCustomerCredits>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerCredits>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerCreditsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCreditsUrl = (params?: ListCreditsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mintbucks/credits?${stringifiedParams}` : `/api/mintbucks/credits`
+}
+
+/**
+ * @summary List credits
+ */
+export const listCredits = async (params?: ListCreditsParams, options?: RequestInit): Promise<Credit[]> => {
+
+  return customFetch<Credit[]>(getListCreditsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCreditsQueryKey = (params?: ListCreditsParams,) => {
+    return [
+    `/api/mintbucks/credits`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCreditsQueryOptions = <TData = Awaited<ReturnType<typeof listCredits>>, TError = ErrorType<unknown>>(params?: ListCreditsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCredits>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCreditsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCredits>>> = ({ signal }) => listCredits(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCredits>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCreditsQueryResult = NonNullable<Awaited<ReturnType<typeof listCredits>>>
+export type ListCreditsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List credits
+ */
+
+export function useListCredits<TData = Awaited<ReturnType<typeof listCredits>>, TError = ErrorType<unknown>>(
+ params?: ListCreditsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCredits>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCreditsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getIssueCreditUrl = () => {
+
+
+
+
+  return `/api/mintbucks/credits`
+}
+
+/**
+ * @summary Issue Mint Bucks to a customer
+ */
+export const issueCredit = async (creditInput: CreditInput, options?: RequestInit): Promise<Credit> => {
+
+  return customFetch<Credit>(getIssueCreditUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(creditInput)
+  }
+);}
+
+
+
+
+export const getIssueCreditMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueCredit>>, TError,{data: BodyType<CreditInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof issueCredit>>, TError,{data: BodyType<CreditInput>}, TContext> => {
+
+const mutationKey = ['issueCredit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof issueCredit>>, {data: BodyType<CreditInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  issueCredit(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IssueCreditMutationResult = NonNullable<Awaited<ReturnType<typeof issueCredit>>>
+    export type IssueCreditMutationBody = BodyType<CreditInput>
+    export type IssueCreditMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Issue Mint Bucks to a customer
+ */
+export const useIssueCredit = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueCredit>>, TError,{data: BodyType<CreditInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof issueCredit>>,
+        TError,
+        {data: BodyType<CreditInput>},
+        TContext
+      > => {
+      return useMutation(getIssueCreditMutationOptions(options));
+    }
+
+export const getGetCreditUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/credits/${id}`
+}
+
+/**
+ * @summary Get credit by ID
+ */
+export const getCredit = async (id: number, options?: RequestInit): Promise<Credit> => {
+
+  return customFetch<Credit>(getGetCreditUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditQueryKey = (id: number,) => {
+    return [
+    `/api/mintbucks/credits/${id}`
+    ] as const;
+    }
+
+
+export const getGetCreditQueryOptions = <TData = Awaited<ReturnType<typeof getCredit>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCredit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCredit>>> = ({ signal }) => getCredit(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCredit>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditQueryResult = NonNullable<Awaited<ReturnType<typeof getCredit>>>
+export type GetCreditQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get credit by ID
+ */
+
+export function useGetCredit<TData = Awaited<ReturnType<typeof getCredit>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCredit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCreditUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/credits/${id}`
+}
+
+/**
+ * @summary Update credit (status, expiry, note)
+ */
+export const updateCredit = async (id: number,
+    creditUpdate: CreditUpdate, options?: RequestInit): Promise<Credit> => {
+
+  return customFetch<Credit>(getUpdateCreditUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(creditUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateCreditMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCredit>>, TError,{id: number;data: BodyType<CreditUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCredit>>, TError,{id: number;data: BodyType<CreditUpdate>}, TContext> => {
+
+const mutationKey = ['updateCredit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCredit>>, {id: number;data: BodyType<CreditUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCredit(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCreditMutationResult = NonNullable<Awaited<ReturnType<typeof updateCredit>>>
+    export type UpdateCreditMutationBody = BodyType<CreditUpdate>
+    export type UpdateCreditMutationError = ErrorType<void>
+
+    /**
+ * @summary Update credit (status, expiry, note)
+ */
+export const useUpdateCredit = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCredit>>, TError,{id: number;data: BodyType<CreditUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCredit>>,
+        TError,
+        {id: number;data: BodyType<CreditUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCreditMutationOptions(options));
+    }
+
+export const getDeleteCreditUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/credits/${id}`
+}
+
+/**
+ * @summary Cancel / delete a credit
+ */
+export const deleteCredit = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCreditUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCreditMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCredit>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCredit>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteCredit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCredit>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCredit(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCreditMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCredit>>>
+
+    export type DeleteCreditMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Cancel / delete a credit
+ */
+export const useDeleteCredit = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCredit>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCredit>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteCreditMutationOptions(options));
+    }
+
+export const getRedeemCreditUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/credits/${id}/redeem`
+}
+
+/**
+ * @summary Record a full or partial redemption
+ */
+export const redeemCredit = async (id: number,
+    redemptionInput: RedemptionInput, options?: RequestInit): Promise<RedemptionResult> => {
+
+  return customFetch<RedemptionResult>(getRedeemCreditUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(redemptionInput)
+  }
+);}
+
+
+
+
+export const getRedeemCreditMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof redeemCredit>>, TError,{id: number;data: BodyType<RedemptionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof redeemCredit>>, TError,{id: number;data: BodyType<RedemptionInput>}, TContext> => {
+
+const mutationKey = ['redeemCredit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof redeemCredit>>, {id: number;data: BodyType<RedemptionInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  redeemCredit(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RedeemCreditMutationResult = NonNullable<Awaited<ReturnType<typeof redeemCredit>>>
+    export type RedeemCreditMutationBody = BodyType<RedemptionInput>
+    export type RedeemCreditMutationError = ErrorType<void>
+
+    /**
+ * @summary Record a full or partial redemption
+ */
+export const useRedeemCredit = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof redeemCredit>>, TError,{id: number;data: BodyType<RedemptionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof redeemCredit>>,
+        TError,
+        {id: number;data: BodyType<RedemptionInput>},
+        TContext
+      > => {
+      return useMutation(getRedeemCreditMutationOptions(options));
+    }
+
+export const getSendCreditReminderUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/credits/${id}/remind`
+}
+
+/**
+ * @summary Send email reminder to customer about available credit
+ */
+export const sendCreditReminder = async (id: number, options?: RequestInit): Promise<MessageResult> => {
+
+  return customFetch<MessageResult>(getSendCreditReminderUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSendCreditReminderMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendCreditReminder>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendCreditReminder>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['sendCreditReminder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendCreditReminder>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  sendCreditReminder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendCreditReminderMutationResult = NonNullable<Awaited<ReturnType<typeof sendCreditReminder>>>
+
+    export type SendCreditReminderMutationError = ErrorType<void>
+
+    /**
+ * @summary Send email reminder to customer about available credit
+ */
+export const useSendCreditReminder = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendCreditReminder>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendCreditReminder>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getSendCreditReminderMutationOptions(options));
+    }
+
+export const getCheckCreditByCodeUrl = (code: string,) => {
+
+
+
+
+  return `/api/mintbucks/credits/check/${code}`
+}
+
+/**
+ * @summary Public balance check by credit code (no auth required)
+ */
+export const checkCreditByCode = async (code: string, options?: RequestInit): Promise<CreditCheckResult> => {
+
+  return customFetch<CreditCheckResult>(getCheckCreditByCodeUrl(code),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckCreditByCodeQueryKey = (code: string,) => {
+    return [
+    `/api/mintbucks/credits/check/${code}`
+    ] as const;
+    }
+
+
+export const getCheckCreditByCodeQueryOptions = <TData = Awaited<ReturnType<typeof checkCreditByCode>>, TError = ErrorType<void>>(code: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof checkCreditByCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCheckCreditByCodeQueryKey(code);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof checkCreditByCode>>> = ({ signal }) => checkCreditByCode(code, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: code !== null && code !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof checkCreditByCode>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CheckCreditByCodeQueryResult = NonNullable<Awaited<ReturnType<typeof checkCreditByCode>>>
+export type CheckCreditByCodeQueryError = ErrorType<void>
+
+
+/**
+ * @summary Public balance check by credit code (no auth required)
+ */
+
+export function useCheckCreditByCode<TData = Awaited<ReturnType<typeof checkCreditByCode>>, TError = ErrorType<void>>(
+ code: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof checkCreditByCode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCheckCreditByCodeQueryOptions(code,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCreditQrUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/credits/${id}/qr`
+}
+
+/**
+ * @summary Get QR code PNG for a credit
+ */
+export const getCreditQr = async (id: number, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetCreditQrUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditQrQueryKey = (id: number,) => {
+    return [
+    `/api/mintbucks/credits/${id}/qr`
+    ] as const;
+    }
+
+
+export const getGetCreditQrQueryOptions = <TData = Awaited<ReturnType<typeof getCreditQr>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditQr>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditQrQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditQr>>> = ({ signal }) => getCreditQr(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditQr>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditQrQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditQr>>>
+export type GetCreditQrQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get QR code PNG for a credit
+ */
+
+export function useGetCreditQr<TData = Awaited<ReturnType<typeof getCreditQr>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditQr>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditQrQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCreditCertificateUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/credits/${id}/certificate`
+}
+
+/**
+ * @summary Download branded PDF certificate for a credit
+ */
+export const getCreditCertificate = async (id: number, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetCreditCertificateUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditCertificateQueryKey = (id: number,) => {
+    return [
+    `/api/mintbucks/credits/${id}/certificate`
+    ] as const;
+    }
+
+
+export const getGetCreditCertificateQueryOptions = <TData = Awaited<ReturnType<typeof getCreditCertificate>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditCertificate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditCertificateQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditCertificate>>> = ({ signal }) => getCreditCertificate(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditCertificate>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditCertificateQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditCertificate>>>
+export type GetCreditCertificateQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Download branded PDF certificate for a credit
+ */
+
+export function useGetCreditCertificate<TData = Awaited<ReturnType<typeof getCreditCertificate>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditCertificate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditCertificateQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListRedemptionsUrl = (params?: ListRedemptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mintbucks/redemptions?${stringifiedParams}` : `/api/mintbucks/redemptions`
+}
+
+/**
+ * @summary List all redemptions
+ */
+export const listRedemptions = async (params?: ListRedemptionsParams, options?: RequestInit): Promise<Redemption[]> => {
+
+  return customFetch<Redemption[]>(getListRedemptionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRedemptionsQueryKey = (params?: ListRedemptionsParams,) => {
+    return [
+    `/api/mintbucks/redemptions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListRedemptionsQueryOptions = <TData = Awaited<ReturnType<typeof listRedemptions>>, TError = ErrorType<unknown>>(params?: ListRedemptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRedemptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRedemptionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRedemptions>>> = ({ signal }) => listRedemptions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRedemptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRedemptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listRedemptions>>>
+export type ListRedemptionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all redemptions
+ */
+
+export function useListRedemptions<TData = Awaited<ReturnType<typeof listRedemptions>>, TError = ErrorType<unknown>>(
+ params?: ListRedemptionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRedemptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRedemptionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRedemptionUrl = (id: number,) => {
+
+
+
+
+  return `/api/mintbucks/redemptions/${id}`
+}
+
+/**
+ * @summary Get redemption by ID
+ */
+export const getRedemption = async (id: number, options?: RequestInit): Promise<Redemption> => {
+
+  return customFetch<Redemption>(getGetRedemptionUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRedemptionQueryKey = (id: number,) => {
+    return [
+    `/api/mintbucks/redemptions/${id}`
+    ] as const;
+    }
+
+
+export const getGetRedemptionQueryOptions = <TData = Awaited<ReturnType<typeof getRedemption>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRedemption>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRedemptionQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRedemption>>> = ({ signal }) => getRedemption(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRedemption>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRedemptionQueryResult = NonNullable<Awaited<ReturnType<typeof getRedemption>>>
+export type GetRedemptionQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get redemption by ID
+ */
+
+export function useGetRedemption<TData = Awaited<ReturnType<typeof getRedemption>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRedemption>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRedemptionQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetReportSummaryUrl = () => {
+
+
+
+
+  return `/api/mintbucks/reports/summary`
+}
+
+/**
+ * @summary Dashboard summary stats
+ */
+export const getReportSummary = async ( options?: RequestInit): Promise<ReportSummary> => {
+
+  return customFetch<ReportSummary>(getGetReportSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReportSummaryQueryKey = () => {
+    return [
+    `/api/mintbucks/reports/summary`
+    ] as const;
+    }
+
+
+export const getGetReportSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getReportSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReportSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReportSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReportSummary>>> = ({ signal }) => getReportSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReportSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReportSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getReportSummary>>>
+export type GetReportSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Dashboard summary stats
+ */
+
+export function useGetReportSummary<TData = Awaited<ReturnType<typeof getReportSummary>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReportSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReportSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCreditsOverTimeUrl = (params?: GetCreditsOverTimeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mintbucks/reports/credits-over-time?${stringifiedParams}` : `/api/mintbucks/reports/credits-over-time`
+}
+
+/**
+ * @summary Credits issued and redeemed per month
+ */
+export const getCreditsOverTime = async (params?: GetCreditsOverTimeParams, options?: RequestInit): Promise<CreditTimePoint[]> => {
+
+  return customFetch<CreditTimePoint[]>(getGetCreditsOverTimeUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCreditsOverTimeQueryKey = (params?: GetCreditsOverTimeParams,) => {
+    return [
+    `/api/mintbucks/reports/credits-over-time`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCreditsOverTimeQueryOptions = <TData = Awaited<ReturnType<typeof getCreditsOverTime>>, TError = ErrorType<unknown>>(params?: GetCreditsOverTimeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditsOverTime>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCreditsOverTimeQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCreditsOverTime>>> = ({ signal }) => getCreditsOverTime(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCreditsOverTime>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCreditsOverTimeQueryResult = NonNullable<Awaited<ReturnType<typeof getCreditsOverTime>>>
+export type GetCreditsOverTimeQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Credits issued and redeemed per month
+ */
+
+export function useGetCreditsOverTime<TData = Awaited<ReturnType<typeof getCreditsOverTime>>, TError = ErrorType<unknown>>(
+ params?: GetCreditsOverTimeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCreditsOverTime>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCreditsOverTimeQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTopCustomersUrl = (params?: GetTopCustomersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mintbucks/reports/top-customers?${stringifiedParams}` : `/api/mintbucks/reports/top-customers`
+}
+
+/**
+ * @summary Top customers by credits received
+ */
+export const getTopCustomers = async (params?: GetTopCustomersParams, options?: RequestInit): Promise<CustomerCreditStat[]> => {
+
+  return customFetch<CustomerCreditStat[]>(getGetTopCustomersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTopCustomersQueryKey = (params?: GetTopCustomersParams,) => {
+    return [
+    `/api/mintbucks/reports/top-customers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTopCustomersQueryOptions = <TData = Awaited<ReturnType<typeof getTopCustomers>>, TError = ErrorType<unknown>>(params?: GetTopCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTopCustomersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTopCustomers>>> = ({ signal }) => getTopCustomers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTopCustomers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTopCustomersQueryResult = NonNullable<Awaited<ReturnType<typeof getTopCustomers>>>
+export type GetTopCustomersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Top customers by credits received
+ */
+
+export function useGetTopCustomers<TData = Awaited<ReturnType<typeof getTopCustomers>>, TError = ErrorType<unknown>>(
+ params?: GetTopCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTopCustomersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetExpiringSoonUrl = (params?: GetExpiringSoonParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mintbucks/reports/expiring-soon?${stringifiedParams}` : `/api/mintbucks/reports/expiring-soon`
+}
+
+/**
+ * @summary Credits expiring within N days
+ */
+export const getExpiringSoon = async (params?: GetExpiringSoonParams, options?: RequestInit): Promise<Credit[]> => {
+
+  return customFetch<Credit[]>(getGetExpiringSoonUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetExpiringSoonQueryKey = (params?: GetExpiringSoonParams,) => {
+    return [
+    `/api/mintbucks/reports/expiring-soon`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetExpiringSoonQueryOptions = <TData = Awaited<ReturnType<typeof getExpiringSoon>>, TError = ErrorType<unknown>>(params?: GetExpiringSoonParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpiringSoon>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetExpiringSoonQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getExpiringSoon>>> = ({ signal }) => getExpiringSoon(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getExpiringSoon>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetExpiringSoonQueryResult = NonNullable<Awaited<ReturnType<typeof getExpiringSoon>>>
+export type GetExpiringSoonQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Credits expiring within N days
+ */
+
+export function useGetExpiringSoon<TData = Awaited<ReturnType<typeof getExpiringSoon>>, TError = ErrorType<unknown>>(
+ params?: GetExpiringSoonParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExpiringSoon>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetExpiringSoonQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSettingsPrintavoUrl = () => {
+
+
+
+
+  return `/api/mintbucks/settings/printavo`
+}
+
+/**
+ * @summary Get Printavo integration settings
+ */
+export const getSettingsPrintavo = async ( options?: RequestInit): Promise<PrintavoSettings> => {
+
+  return customFetch<PrintavoSettings>(getGetSettingsPrintavoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSettingsPrintavoQueryKey = () => {
+    return [
+    `/api/mintbucks/settings/printavo`
+    ] as const;
+    }
+
+
+export const getGetSettingsPrintavoQueryOptions = <TData = Awaited<ReturnType<typeof getSettingsPrintavo>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSettingsPrintavo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSettingsPrintavoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSettingsPrintavo>>> = ({ signal }) => getSettingsPrintavo({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSettingsPrintavo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSettingsPrintavoQueryResult = NonNullable<Awaited<ReturnType<typeof getSettingsPrintavo>>>
+export type GetSettingsPrintavoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get Printavo integration settings
+ */
+
+export function useGetSettingsPrintavo<TData = Awaited<ReturnType<typeof getSettingsPrintavo>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSettingsPrintavo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSettingsPrintavoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSettingsPrintavoUrl = () => {
+
+
+
+
+  return `/api/mintbucks/settings/printavo`
+}
+
+/**
+ * @summary Update Printavo integration settings
+ */
+export const updateSettingsPrintavo = async (printavoSettingsInput: PrintavoSettingsInput, options?: RequestInit): Promise<PrintavoSettings> => {
+
+  return customFetch<PrintavoSettings>(getUpdateSettingsPrintavoUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(printavoSettingsInput)
+  }
+);}
+
+
+
+
+export const getUpdateSettingsPrintavoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSettingsPrintavo>>, TError,{data: BodyType<PrintavoSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSettingsPrintavo>>, TError,{data: BodyType<PrintavoSettingsInput>}, TContext> => {
+
+const mutationKey = ['updateSettingsPrintavo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSettingsPrintavo>>, {data: BodyType<PrintavoSettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateSettingsPrintavo(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSettingsPrintavoMutationResult = NonNullable<Awaited<ReturnType<typeof updateSettingsPrintavo>>>
+    export type UpdateSettingsPrintavoMutationBody = BodyType<PrintavoSettingsInput>
+    export type UpdateSettingsPrintavoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update Printavo integration settings
+ */
+export const useUpdateSettingsPrintavo = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSettingsPrintavo>>, TError,{data: BodyType<PrintavoSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSettingsPrintavo>>,
+        TError,
+        {data: BodyType<PrintavoSettingsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateSettingsPrintavoMutationOptions(options));
+    }
+
+export const getTestPrintavoConnectionUrl = () => {
+
+
+
+
+  return `/api/mintbucks/printavo/test`
+}
+
+/**
+ * @summary Test Printavo API connection
+ */
+export const testPrintavoConnection = async (printavoTestInput?: PrintavoTestInput, options?: RequestInit): Promise<PrintavoConnectionResult> => {
+
+  return customFetch<PrintavoConnectionResult>(getTestPrintavoConnectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(printavoTestInput)
+  }
+);}
+
+
+
+
+export const getTestPrintavoConnectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testPrintavoConnection>>, TError,{data?: BodyType<PrintavoTestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof testPrintavoConnection>>, TError,{data?: BodyType<PrintavoTestInput>}, TContext> => {
+
+const mutationKey = ['testPrintavoConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof testPrintavoConnection>>, {data?: BodyType<PrintavoTestInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  testPrintavoConnection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TestPrintavoConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof testPrintavoConnection>>>
+    export type TestPrintavoConnectionMutationBody = BodyType<PrintavoTestInput> | undefined
+    export type TestPrintavoConnectionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Test Printavo API connection
+ */
+export const useTestPrintavoConnection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testPrintavoConnection>>, TError,{data?: BodyType<PrintavoTestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof testPrintavoConnection>>,
+        TError,
+        {data?: BodyType<PrintavoTestInput>},
+        TContext
+      > => {
+      return useMutation(getTestPrintavoConnectionMutationOptions(options));
+    }
+
+export const getSyncPrintavoCustomersUrl = () => {
+
+
+
+
+  return `/api/mintbucks/printavo/sync-customers`
+}
+
+/**
+ * @summary Pull customers from Printavo and upsert into local table
+ */
+export const syncPrintavoCustomers = async ( options?: RequestInit): Promise<PrintavoSyncResult> => {
+
+  return customFetch<PrintavoSyncResult>(getSyncPrintavoCustomersUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncPrintavoCustomersMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncPrintavoCustomers>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncPrintavoCustomers>>, TError,void, TContext> => {
+
+const mutationKey = ['syncPrintavoCustomers'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncPrintavoCustomers>>, void> = () => {
+
+
+          return  syncPrintavoCustomers(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncPrintavoCustomersMutationResult = NonNullable<Awaited<ReturnType<typeof syncPrintavoCustomers>>>
+
+    export type SyncPrintavoCustomersMutationError = ErrorType<void>
+
+    /**
+ * @summary Pull customers from Printavo and upsert into local table
+ */
+export const useSyncPrintavoCustomers = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncPrintavoCustomers>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncPrintavoCustomers>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSyncPrintavoCustomersMutationOptions(options));
+    }
+
+export const getTriggerPrintavoPollUrl = () => {
+
+
+
+
+  return `/api/mintbucks/printavo/poll`
+}
+
+/**
+ * @summary Manually trigger a Printavo order poll
+ */
+export const triggerPrintavoPoll = async ( options?: RequestInit): Promise<MessageResult> => {
+
+  return customFetch<MessageResult>(getTriggerPrintavoPollUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTriggerPrintavoPollMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerPrintavoPoll>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerPrintavoPoll>>, TError,void, TContext> => {
+
+const mutationKey = ['triggerPrintavoPoll'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerPrintavoPoll>>, void> = () => {
+
+
+          return  triggerPrintavoPoll(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerPrintavoPollMutationResult = NonNullable<Awaited<ReturnType<typeof triggerPrintavoPoll>>>
+
+    export type TriggerPrintavoPollMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Manually trigger a Printavo order poll
+ */
+export const useTriggerPrintavoPoll = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerPrintavoPoll>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerPrintavoPoll>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTriggerPrintavoPollMutationOptions(options));
+    }
+
+export const getLookupPrintavoOrderUrl = (orderNumber: string,) => {
+
+
+
+
+  return `/api/mintbucks/printavo/order/${orderNumber}`
+}
+
+/**
+ * @summary Fetch a Printavo order by order number for reference
+ */
+export const lookupPrintavoOrder = async (orderNumber: string, options?: RequestInit): Promise<PrintavoOrderSummary> => {
+
+  return customFetch<PrintavoOrderSummary>(getLookupPrintavoOrderUrl(orderNumber),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLookupPrintavoOrderQueryKey = (orderNumber: string,) => {
+    return [
+    `/api/mintbucks/printavo/order/${orderNumber}`
+    ] as const;
+    }
+
+
+export const getLookupPrintavoOrderQueryOptions = <TData = Awaited<ReturnType<typeof lookupPrintavoOrder>>, TError = ErrorType<void>>(orderNumber: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof lookupPrintavoOrder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLookupPrintavoOrderQueryKey(orderNumber);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lookupPrintavoOrder>>> = ({ signal }) => lookupPrintavoOrder(orderNumber, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderNumber !== null && orderNumber !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lookupPrintavoOrder>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type LookupPrintavoOrderQueryResult = NonNullable<Awaited<ReturnType<typeof lookupPrintavoOrder>>>
+export type LookupPrintavoOrderQueryError = ErrorType<void>
+
+
+/**
+ * @summary Fetch a Printavo order by order number for reference
+ */
+
+export function useLookupPrintavoOrder<TData = Awaited<ReturnType<typeof lookupPrintavoOrder>>, TError = ErrorType<void>>(
+ orderNumber: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof lookupPrintavoOrder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getLookupPrintavoOrderQueryOptions(orderNumber,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetNotificationLogUrl = () => {
+
+
+
+
+  return `/api/mintbucks/printavo/notification-log`
+}
+
+/**
+ * @summary List automated Printavo credit notifications sent
+ */
+export const getNotificationLog = async ( options?: RequestInit): Promise<NotificationLogItem[]> => {
+
+  return customFetch<NotificationLogItem[]>(getGetNotificationLogUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNotificationLogQueryKey = () => {
+    return [
+    `/api/mintbucks/printavo/notification-log`
+    ] as const;
+    }
+
+
+export const getGetNotificationLogQueryOptions = <TData = Awaited<ReturnType<typeof getNotificationLog>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotificationLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNotificationLogQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNotificationLog>>> = ({ signal }) => getNotificationLog({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNotificationLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNotificationLogQueryResult = NonNullable<Awaited<ReturnType<typeof getNotificationLog>>>
+export type GetNotificationLogQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List automated Printavo credit notifications sent
+ */
+
+export function useGetNotificationLog<TData = Awaited<ReturnType<typeof getNotificationLog>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNotificationLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNotificationLogQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRecentActivityUrl = (params?: GetRecentActivityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mintbucks/reports/activity?${stringifiedParams}` : `/api/mintbucks/reports/activity`
+}
+
+/**
+ * @summary Recent activity feed (credits + redemptions)
+ */
+export const getRecentActivity = async (params?: GetRecentActivityParams, options?: RequestInit): Promise<ActivityItem[]> => {
+
+  return customFetch<ActivityItem[]>(getGetRecentActivityUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRecentActivityQueryKey = (params?: GetRecentActivityParams,) => {
+    return [
+    `/api/mintbucks/reports/activity`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetRecentActivityQueryOptions = <TData = Awaited<ReturnType<typeof getRecentActivity>>, TError = ErrorType<unknown>>(params?: GetRecentActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecentActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRecentActivityQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecentActivity>>> = ({ signal }) => getRecentActivity(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRecentActivity>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRecentActivityQueryResult = NonNullable<Awaited<ReturnType<typeof getRecentActivity>>>
+export type GetRecentActivityQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Recent activity feed (credits + redemptions)
+ */
+
+export function useGetRecentActivity<TData = Awaited<ReturnType<typeof getRecentActivity>>, TError = ErrorType<unknown>>(
+ params?: GetRecentActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecentActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRecentActivityQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRewardsSettingsUrl = () => {
+
+
+
+
+  return `/api/mintbucks/rewards/settings`
+}
+
+/**
+ * @summary Get rewards engine configuration
+ */
+export const getRewardsSettings = async ( options?: RequestInit): Promise<RewardsSettings> => {
+
+  return customFetch<RewardsSettings>(getGetRewardsSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRewardsSettingsQueryKey = () => {
+    return [
+    `/api/mintbucks/rewards/settings`
+    ] as const;
+    }
+
+
+export const getGetRewardsSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getRewardsSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRewardsSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRewardsSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRewardsSettings>>> = ({ signal }) => getRewardsSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRewardsSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRewardsSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getRewardsSettings>>>
+export type GetRewardsSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get rewards engine configuration
+ */
+
+export function useGetRewardsSettings<TData = Awaited<ReturnType<typeof getRewardsSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRewardsSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRewardsSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateRewardsSettingsUrl = () => {
+
+
+
+
+  return `/api/mintbucks/rewards/settings`
+}
+
+/**
+ * @summary Update rewards engine configuration
+ */
+export const updateRewardsSettings = async (rewardsSettingsInput: RewardsSettingsInput, options?: RequestInit): Promise<RewardsSettings> => {
+
+  return customFetch<RewardsSettings>(getUpdateRewardsSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(rewardsSettingsInput)
+  }
+);}
+
+
+
+
+export const getUpdateRewardsSettingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRewardsSettings>>, TError,{data: BodyType<RewardsSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRewardsSettings>>, TError,{data: BodyType<RewardsSettingsInput>}, TContext> => {
+
+const mutationKey = ['updateRewardsSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRewardsSettings>>, {data: BodyType<RewardsSettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateRewardsSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRewardsSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateRewardsSettings>>>
+    export type UpdateRewardsSettingsMutationBody = BodyType<RewardsSettingsInput>
+    export type UpdateRewardsSettingsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update rewards engine configuration
+ */
+export const useUpdateRewardsSettings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRewardsSettings>>, TError,{data: BodyType<RewardsSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateRewardsSettings>>,
+        TError,
+        {data: BodyType<RewardsSettingsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateRewardsSettingsMutationOptions(options));
+    }
+
+export const getGetRewardsSummaryUrl = () => {
+
+
+
+
+  return `/api/mintbucks/rewards/summary`
+}
+
+/**
+ * @summary Rewards engine status and annual budget usage
+ */
+export const getRewardsSummary = async ( options?: RequestInit): Promise<RewardsSummary> => {
+
+  return customFetch<RewardsSummary>(getGetRewardsSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRewardsSummaryQueryKey = () => {
+    return [
+    `/api/mintbucks/rewards/summary`
+    ] as const;
+    }
+
+
+export const getGetRewardsSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getRewardsSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRewardsSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRewardsSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRewardsSummary>>> = ({ signal }) => getRewardsSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRewardsSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRewardsSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getRewardsSummary>>>
+export type GetRewardsSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Rewards engine status and annual budget usage
+ */
+
+export function useGetRewardsSummary<TData = Awaited<ReturnType<typeof getRewardsSummary>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRewardsSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRewardsSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListRewardRulesUrl = () => {
+
+
+
+
+  return `/api/mintbucks/rewards/rules`
+}
+
+/**
+ * @summary List reward rules
+ */
+export const listRewardRules = async ( options?: RequestInit): Promise<RewardRule[]> => {
+
+  return customFetch<RewardRule[]>(getListRewardRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRewardRulesQueryKey = () => {
+    return [
+    `/api/mintbucks/rewards/rules`
+    ] as const;
+    }
+
+
+export const getListRewardRulesQueryOptions = <TData = Awaited<ReturnType<typeof listRewardRules>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRewardRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRewardRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRewardRules>>> = ({ signal }) => listRewardRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRewardRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRewardRulesQueryResult = NonNullable<Awaited<ReturnType<typeof listRewardRules>>>
+export type ListRewardRulesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List reward rules
+ */
+
+export function useListRewardRules<TData = Awaited<ReturnType<typeof listRewardRules>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRewardRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRewardRulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateRewardRuleUrl = () => {
+
+
+
+
+  return `/api/mintbucks/rewards/rules`
+}
+
+/**
+ * @summary Create a reward rule
+ */
+export const createRewardRule = async (rewardRuleInput: RewardRuleInput, options?: RequestInit): Promise<RewardRule> => {
+
+  return customFetch<RewardRule>(getCreateRewardRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(rewardRuleInput)
+  }
+);}
+
+
+
+
+export const getCreateRewardRuleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRewardRule>>, TError,{data: BodyType<RewardRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRewardRule>>, TError,{data: BodyType<RewardRuleInput>}, TContext> => {
+
+const mutationKey = ['createRewardRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRewardRule>>, {data: BodyType<RewardRuleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createRewardRule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRewardRuleMutationResult = NonNullable<Awaited<ReturnType<typeof createRewardRule>>>
+    export type CreateRewardRuleMutationBody = BodyType<RewardRuleInput>
+    export type CreateRewardRuleMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a reward rule
+ */
+export const useCreateRewardRule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRewardRule>>, TError,{data: BodyType<RewardRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createRewardRule>>,
+        TError,
+        {data: BodyType<RewardRuleInput>},
+        TContext
+      > => {
+      return useMutation(getCreateRewardRuleMutationOptions(options));
+    }
+
+export const getUpdateRewardRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/mintbucks/rewards/rules/${id}`
+}
+
+/**
+ * @summary Update a reward rule
+ */
+export const updateRewardRule = async (id: string,
+    rewardRuleUpdate: RewardRuleUpdate, options?: RequestInit): Promise<RewardRule> => {
+
+  return customFetch<RewardRule>(getUpdateRewardRuleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(rewardRuleUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateRewardRuleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRewardRule>>, TError,{id: string;data: BodyType<RewardRuleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRewardRule>>, TError,{id: string;data: BodyType<RewardRuleUpdate>}, TContext> => {
+
+const mutationKey = ['updateRewardRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRewardRule>>, {id: string;data: BodyType<RewardRuleUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateRewardRule(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRewardRuleMutationResult = NonNullable<Awaited<ReturnType<typeof updateRewardRule>>>
+    export type UpdateRewardRuleMutationBody = BodyType<RewardRuleUpdate>
+    export type UpdateRewardRuleMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a reward rule
+ */
+export const useUpdateRewardRule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRewardRule>>, TError,{id: string;data: BodyType<RewardRuleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateRewardRule>>,
+        TError,
+        {id: string;data: BodyType<RewardRuleUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateRewardRuleMutationOptions(options));
+    }
+
+export const getDeleteRewardRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/mintbucks/rewards/rules/${id}`
+}
+
+/**
+ * @summary Delete a reward rule
+ */
+export const deleteRewardRule = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteRewardRuleUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteRewardRuleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRewardRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteRewardRule>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteRewardRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteRewardRule>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteRewardRule(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteRewardRuleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteRewardRule>>>
+
+    export type DeleteRewardRuleMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a reward rule
+ */
+export const useDeleteRewardRule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRewardRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteRewardRule>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteRewardRuleMutationOptions(options));
+    }
+
+export const getListRewardAwardsUrl = (params?: ListRewardAwardsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mintbucks/rewards/awards?${stringifiedParams}` : `/api/mintbucks/rewards/awards`
+}
+
+/**
+ * @summary List reward awards (optionally filtered by status)
+ */
+export const listRewardAwards = async (params?: ListRewardAwardsParams, options?: RequestInit): Promise<RewardAward[]> => {
+
+  return customFetch<RewardAward[]>(getListRewardAwardsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRewardAwardsQueryKey = (params?: ListRewardAwardsParams,) => {
+    return [
+    `/api/mintbucks/rewards/awards`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListRewardAwardsQueryOptions = <TData = Awaited<ReturnType<typeof listRewardAwards>>, TError = ErrorType<unknown>>(params?: ListRewardAwardsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRewardAwards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRewardAwardsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRewardAwards>>> = ({ signal }) => listRewardAwards(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRewardAwards>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRewardAwardsQueryResult = NonNullable<Awaited<ReturnType<typeof listRewardAwards>>>
+export type ListRewardAwardsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List reward awards (optionally filtered by status)
+ */
+
+export function useListRewardAwards<TData = Awaited<ReturnType<typeof listRewardAwards>>, TError = ErrorType<unknown>>(
+ params?: ListRewardAwardsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRewardAwards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRewardAwardsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveRewardAwardUrl = (id: string,) => {
+
+
+
+
+  return `/api/mintbucks/rewards/awards/${id}/approve`
+}
+
+/**
+ * @summary Approve a pending award and issue its credit
+ */
+export const approveRewardAward = async (id: string, options?: RequestInit): Promise<MessageResult> => {
+
+  return customFetch<MessageResult>(getApproveRewardAwardUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getApproveRewardAwardMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveRewardAward>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveRewardAward>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['approveRewardAward'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveRewardAward>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  approveRewardAward(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveRewardAwardMutationResult = NonNullable<Awaited<ReturnType<typeof approveRewardAward>>>
+
+    export type ApproveRewardAwardMutationError = ErrorType<void>
+
+    /**
+ * @summary Approve a pending award and issue its credit
+ */
+export const useApproveRewardAward = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveRewardAward>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveRewardAward>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getApproveRewardAwardMutationOptions(options));
+    }
+
+export const getRejectRewardAwardUrl = (id: string,) => {
+
+
+
+
+  return `/api/mintbucks/rewards/awards/${id}/reject`
+}
+
+/**
+ * @summary Reject a pending award
+ */
+export const rejectRewardAward = async (id: string, options?: RequestInit): Promise<MessageResult> => {
+
+  return customFetch<MessageResult>(getRejectRewardAwardUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRejectRewardAwardMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectRewardAward>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectRewardAward>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['rejectRewardAward'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectRewardAward>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  rejectRewardAward(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectRewardAwardMutationResult = NonNullable<Awaited<ReturnType<typeof rejectRewardAward>>>
+
+    export type RejectRewardAwardMutationError = ErrorType<void>
+
+    /**
+ * @summary Reject a pending award
+ */
+export const useRejectRewardAward = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectRewardAward>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectRewardAward>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRejectRewardAwardMutationOptions(options));
+    }
+
+export const getTriggerRewardsScanUrl = () => {
+
+
+
+
+  return `/api/mintbucks/rewards/scan`
+}
+
+/**
+ * @summary Manually run a rewards evaluation pass
+ */
+export const triggerRewardsScan = async ( options?: RequestInit): Promise<RewardsScanResult> => {
+
+  return customFetch<RewardsScanResult>(getTriggerRewardsScanUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTriggerRewardsScanMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerRewardsScan>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerRewardsScan>>, TError,void, TContext> => {
+
+const mutationKey = ['triggerRewardsScan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerRewardsScan>>, void> = () => {
+
+
+          return  triggerRewardsScan(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerRewardsScanMutationResult = NonNullable<Awaited<ReturnType<typeof triggerRewardsScan>>>
+
+    export type TriggerRewardsScanMutationError = ErrorType<void>
+
+    /**
+ * @summary Manually run a rewards evaluation pass
+ */
+export const useTriggerRewardsScan = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerRewardsScan>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerRewardsScan>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTriggerRewardsScanMutationOptions(options));
+    }
+
+export const getGetRewardsPipelineUrl = () => {
+
+
+
+
+  return `/api/mintbucks/rewards/pipeline`
+}
+
+/**
+ * @summary Preview potential Mint Bucks for unpaid/in-pipeline invoices
+ */
+export const getRewardsPipeline = async ( options?: RequestInit): Promise<RewardsPipelineResult> => {
+
+  return customFetch<RewardsPipelineResult>(getGetRewardsPipelineUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRewardsPipelineQueryKey = () => {
+    return [
+    `/api/mintbucks/rewards/pipeline`
+    ] as const;
+    }
+
+
+export const getGetRewardsPipelineQueryOptions = <TData = Awaited<ReturnType<typeof getRewardsPipeline>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRewardsPipeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRewardsPipelineQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRewardsPipeline>>> = ({ signal }) => getRewardsPipeline({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRewardsPipeline>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRewardsPipelineQueryResult = NonNullable<Awaited<ReturnType<typeof getRewardsPipeline>>>
+export type GetRewardsPipelineQueryError = ErrorType<void>
+
+
+/**
+ * @summary Preview potential Mint Bucks for unpaid/in-pipeline invoices
+ */
+
+export function useGetRewardsPipeline<TData = Awaited<ReturnType<typeof getRewardsPipeline>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRewardsPipeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRewardsPipelineQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

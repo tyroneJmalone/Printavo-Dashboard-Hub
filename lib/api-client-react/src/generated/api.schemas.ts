@@ -2170,6 +2170,541 @@ export interface ShippingError {
   error: string;
 }
 
+export interface Customer {
+  id: number;
+  name: string;
+  email: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  companyName?: string | null;
+  outstandingBalance?: number;
+  totalIssued?: number;
+  totalRedeemed?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerInput {
+  /** @minLength 1 */
+  name: string;
+  email: string;
+  phone?: string;
+  companyName?: string;
+}
+
+export interface CustomerUpdate {
+  /** @minLength 1 */
+  name?: string;
+  email?: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  companyName?: string | null;
+}
+
+export type CreditStatus = typeof CreditStatus[keyof typeof CreditStatus];
+
+
+export const CreditStatus = {
+  active: 'active',
+  partially_redeemed: 'partially_redeemed',
+  redeemed: 'redeemed',
+  expired: 'expired',
+  cancelled: 'cancelled',
+} as const;
+
+export interface Credit {
+  id: number;
+  customerId: number;
+  customerName: string;
+  customerEmail?: string;
+  /** @nullable */
+  customerCompany?: string | null;
+  code: string;
+  amount: number;
+  amountRemaining: number;
+  status: CreditStatus;
+  /** @nullable */
+  note?: string | null;
+  /** @nullable */
+  expiresAt?: string | null;
+  issuedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  sourceOrderVisualId?: string | null;
+  /** @nullable */
+  sourceOrderNickname?: string | null;
+  /** @nullable */
+  sourceRuleName?: string | null;
+}
+
+export interface CreditInput {
+  customerId: number;
+  /** @minimum 0.01 */
+  amount: number;
+  note?: string;
+  expiresAt?: string;
+}
+
+export type CreditUpdateStatus = typeof CreditUpdateStatus[keyof typeof CreditUpdateStatus];
+
+
+export const CreditUpdateStatus = {
+  active: 'active',
+  expired: 'expired',
+  cancelled: 'cancelled',
+} as const;
+
+export interface CreditUpdate {
+  note?: string;
+  expiresAt?: string;
+  status?: CreditUpdateStatus;
+}
+
+export interface RedemptionInput {
+  /** @minimum 0.01 */
+  amountApplied: number;
+  invoiceRef?: string;
+  note?: string;
+}
+
+export interface Redemption {
+  id: number;
+  creditId: number;
+  creditCode?: string;
+  customerId: number;
+  customerName: string;
+  /** @nullable */
+  customerCompany?: string | null;
+  amountApplied: number;
+  /** @nullable */
+  invoiceRef?: string | null;
+  /** @nullable */
+  note?: string | null;
+  redeemedAt: string;
+  createdAt: string;
+  /** @nullable */
+  sourceOrderVisualId?: string | null;
+  /** @nullable */
+  sourceOrderNickname?: string | null;
+}
+
+export interface RedemptionResult {
+  redemption: Redemption;
+  credit: Credit;
+}
+
+export interface MessageResult {
+  success: boolean;
+  message: string;
+}
+
+export interface ReportSummary {
+  totalIssued: number;
+  totalOutstanding: number;
+  totalRedeemed: number;
+  totalCustomers: number;
+  activeCredits: number;
+  redemptionsThisMonth: number;
+  issuedThisMonth: number;
+  redemptionRate: number;
+}
+
+export interface CreditTimePoint {
+  month: string;
+  issued: number;
+  redeemed: number;
+}
+
+export interface CustomerCreditStat {
+  customerId: number;
+  customerName: string;
+  customerEmail: string;
+  /** @nullable */
+  customerCompany?: string | null;
+  totalIssued: number;
+  totalRedeemed: number;
+  outstandingBalance: number;
+  creditCount: number;
+}
+
+export type ActivityItemType = typeof ActivityItemType[keyof typeof ActivityItemType];
+
+
+export const ActivityItemType = {
+  issued: 'issued',
+  redeemed: 'redeemed',
+  expired: 'expired',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ActivityItem {
+  id: string;
+  type: ActivityItemType;
+  customerId: number;
+  customerName: string;
+  creditCode?: string;
+  amount: number;
+  /** @nullable */
+  invoiceRef?: string | null;
+  /** @nullable */
+  note?: string | null;
+  occurredAt: string;
+}
+
+export interface PrintavoSettings {
+  apiKeyConfigured: boolean;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  shopUrl?: string | null;
+  enabled: boolean;
+  pollingIntervalMinutes: number;
+}
+
+export interface PrintavoTestInput {
+  apiKey?: string;
+  email?: string;
+}
+
+export interface PrintavoSettingsInput {
+  apiKey?: string;
+  email?: string;
+  shopUrl?: string;
+  enabled?: boolean;
+  pollingIntervalMinutes?: number;
+}
+
+export interface PrintavoConnectionResult {
+  success: boolean;
+  message: string;
+}
+
+export interface PrintavoSyncResult {
+  created: number;
+  matched: number;
+  skipped: number;
+  total: number;
+}
+
+export interface PrintavoOrderSummary {
+  id: string;
+  visualId: string;
+  /** @nullable */
+  orderId?: string | null;
+  createdAt: string;
+  /** @nullable */
+  total?: number | null;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  customerEmail?: string | null;
+}
+
+export type CreditCheckResultStatus = typeof CreditCheckResultStatus[keyof typeof CreditCheckResultStatus];
+
+
+export const CreditCheckResultStatus = {
+  active: 'active',
+  partially_redeemed: 'partially_redeemed',
+  redeemed: 'redeemed',
+  expired: 'expired',
+  cancelled: 'cancelled',
+} as const;
+
+export interface CreditCheckResult {
+  code: string;
+  status: CreditCheckResultStatus;
+  amount: number;
+  amountRemaining: number;
+  issuedAt: string;
+  /** @nullable */
+  expiresAt?: string | null;
+  /** @nullable */
+  note?: string | null;
+}
+
+export type NotificationLogItemDeliveryStatus = typeof NotificationLogItemDeliveryStatus[keyof typeof NotificationLogItemDeliveryStatus];
+
+
+export const NotificationLogItemDeliveryStatus = {
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
+export interface NotificationLogItem {
+  id: number;
+  customerId: number;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
+  customerCompany?: string | null;
+  printavoOrderId: string;
+  /** @nullable */
+  printavoOrderNumber?: string | null;
+  amountAvailable: number;
+  deliveryStatus: NotificationLogItemDeliveryStatus;
+  sentAt: string;
+}
+
+export interface RewardTier {
+  minAmount: number;
+  rewardAmount: number;
+}
+
+export interface RewardParams {
+  flatAmount?: number;
+  percent?: number;
+  tiers?: RewardTier[];
+}
+
+export interface RewardConditions {
+  tagAny?: string[];
+  statusNameAny?: string[];
+  totalMin?: number;
+  totalMax?: number;
+  invoiceDateFrom?: string;
+  invoiceDateTo?: string;
+  productionDateFrom?: string;
+  productionDateTo?: string;
+  paidDateFrom?: string;
+  paidDateTo?: string;
+}
+
+export type RewardRuleRewardType = typeof RewardRuleRewardType[keyof typeof RewardRuleRewardType];
+
+
+export const RewardRuleRewardType = {
+  flat: 'flat',
+  percent_paid: 'percent_paid',
+  percent_total: 'percent_total',
+  tiered: 'tiered',
+} as const;
+
+export interface RewardRule {
+  id: number;
+  name: string;
+  enabled: boolean;
+  rewardType: RewardRuleRewardType;
+  rewardParams: RewardParams;
+  conditions: RewardConditions;
+  /** @nullable */
+  startsAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RewardRuleInputRewardType = typeof RewardRuleInputRewardType[keyof typeof RewardRuleInputRewardType];
+
+
+export const RewardRuleInputRewardType = {
+  flat: 'flat',
+  percent_paid: 'percent_paid',
+  percent_total: 'percent_total',
+  tiered: 'tiered',
+} as const;
+
+export interface RewardRuleInput {
+  name: string;
+  enabled?: boolean;
+  rewardType: RewardRuleInputRewardType;
+  rewardParams: RewardParams;
+  conditions?: RewardConditions;
+  /** @nullable */
+  startsAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+}
+
+export type RewardRuleUpdateRewardType = typeof RewardRuleUpdateRewardType[keyof typeof RewardRuleUpdateRewardType];
+
+
+export const RewardRuleUpdateRewardType = {
+  flat: 'flat',
+  percent_paid: 'percent_paid',
+  percent_total: 'percent_total',
+  tiered: 'tiered',
+} as const;
+
+export interface RewardRuleUpdate {
+  name?: string;
+  enabled?: boolean;
+  rewardType?: RewardRuleUpdateRewardType;
+  rewardParams?: RewardParams;
+  conditions?: RewardConditions;
+  /** @nullable */
+  startsAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+}
+
+export type RewardAwardStatus = typeof RewardAwardStatus[keyof typeof RewardAwardStatus];
+
+
+export const RewardAwardStatus = {
+  processing: 'processing',
+  pending: 'pending',
+  issued: 'issued',
+  rejected: 'rejected',
+} as const;
+
+export interface RewardAward {
+  id: number;
+  ruleId: number;
+  /** @nullable */
+  ruleName?: string | null;
+  customerId: number;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
+  customerCompany?: string | null;
+  printavoInvoiceId: string;
+  /** @nullable */
+  printavoVisualId?: string | null;
+  /**
+     * Invoice nickname/job name from Printavo, captured when the award was created.
+     * @nullable
+     */
+  nickname?: string | null;
+  /**
+     * Total order value of the invoice, captured when the award was created.
+     * @nullable
+     */
+  invoiceTotal?: number | null;
+  amount: number;
+  /**
+     * Date (YYYY-MM-DD) the invoice was last paid, captured when the award was created.
+     * @nullable
+     */
+  datePaid?: string | null;
+  status: RewardAwardStatus;
+  /** @nullable */
+  creditId?: number | null;
+  /** @nullable */
+  note?: string | null;
+  awardedAt: string;
+  /** @nullable */
+  issuedAt?: string | null;
+}
+
+export type RewardsSettingsMode = typeof RewardsSettingsMode[keyof typeof RewardsSettingsMode];
+
+
+export const RewardsSettingsMode = {
+  auto: 'auto',
+  approve: 'approve',
+} as const;
+
+export interface RewardsSettings {
+  enabled: boolean;
+  mode: RewardsSettingsMode;
+  /** @nullable */
+  annualLimit?: number | null;
+  expiryMonths: number;
+  startDate: string;
+  lookbackDays: number;
+  timezone: string;
+}
+
+export type RewardsSettingsInputMode = typeof RewardsSettingsInputMode[keyof typeof RewardsSettingsInputMode];
+
+
+export const RewardsSettingsInputMode = {
+  auto: 'auto',
+  approve: 'approve',
+} as const;
+
+export interface RewardsSettingsInput {
+  enabled?: boolean;
+  mode?: RewardsSettingsInputMode;
+  /** @nullable */
+  annualLimit?: number | null;
+  expiryMonths?: number;
+  startDate?: string;
+  lookbackDays?: number;
+  timezone?: string;
+}
+
+export type RewardsSummaryMode = typeof RewardsSummaryMode[keyof typeof RewardsSummaryMode];
+
+
+export const RewardsSummaryMode = {
+  auto: 'auto',
+  approve: 'approve',
+} as const;
+
+export interface RewardsSummary {
+  enabled: boolean;
+  mode: RewardsSummaryMode;
+  /** @nullable */
+  annualLimit?: number | null;
+  annualAwarded: number;
+  pendingCount: number;
+  issuedCount: number;
+  /** @nullable */
+  lastScanAt?: string | null;
+}
+
+export interface RewardsScanResult {
+  scanned: number;
+  issued: number;
+  pending: number;
+  skippedNoCustomer: number;
+  limitReached: boolean;
+  removedStale: number;
+}
+
+export type RewardsPipelineItemStage = typeof RewardsPipelineItemStage[keyof typeof RewardsPipelineItemStage];
+
+
+export const RewardsPipelineItemStage = {
+  quote: 'quote',
+  invoice: 'invoice',
+} as const;
+
+export interface RewardsPipelineItem {
+  printavoInvoiceId: string;
+  printavoVisualId: string;
+  stage: RewardsPipelineItemStage;
+  /**
+     * Order nickname (job title) from Printavo.
+     * @nullable
+     */
+  nickname?: string | null;
+  /**
+     * Date (YYYY-MM-DD) of the most recent payment, null if none.
+     * @nullable
+     */
+  datePaid?: string | null;
+  customerName: string;
+  customerEmail: string;
+  /** @nullable */
+  customerCompany?: string | null;
+  customerLinked: boolean;
+  /** @nullable */
+  total?: number | null;
+  /** @nullable */
+  amountPaid?: number | null;
+  ruleId: number;
+  ruleName: string;
+  potentialAmount: number;
+  createdAt: string;
+}
+
+export interface RewardsPipelineResult {
+  items: RewardsPipelineItem[];
+  totalPotential: number;
+  fetchedAt: string;
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -2713,4 +3248,41 @@ assigneeId?: number;
 };
 
 export type ShippingListCarriers200Item = { [key: string]: unknown };
+
+export type ListCustomersParams = {
+search?: string;
+hasCredit?: string;
+};
+
+export type ListCreditsParams = {
+status?: string;
+customerId?: string;
+expiringDays?: string;
+};
+
+export type ListRedemptionsParams = {
+customerId?: string;
+creditId?: string;
+};
+
+export type GetCreditsOverTimeParams = {
+months?: string;
+};
+
+export type GetTopCustomersParams = {
+limit?: string;
+};
+
+export type GetExpiringSoonParams = {
+days?: string;
+};
+
+export type GetRecentActivityParams = {
+limit?: string;
+};
+
+export type ListRewardAwardsParams = {
+status?: string;
+limit?: string;
+};
 

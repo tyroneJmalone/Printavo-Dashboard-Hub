@@ -3,6 +3,8 @@ import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/sync/scheduler";
 import { startAutoPrintScheduler } from "./lib/printQueue/autoPrint/scheduler";
 import { bootstrapStaffAdmin } from "./lib/auth/bootstrap";
+import { isMintbucksConfigured } from "@workspace/mintbucks-db";
+import { startPoller as startMintbucksPoller } from "./mintbucks/lib/poller";
 
 const rawPort = process.env["PORT"];
 
@@ -30,4 +32,11 @@ app.listen(port, (err) => {
   );
   startScheduler(logger);
   startAutoPrintScheduler(logger);
+  // Mint Bucks poller: dormant unless MINTBUCKS_POLLER_ENABLED=true (phased
+  // ownership handoff — the standalone app keeps polling until Tyler flips it).
+  if (isMintbucksConfigured()) {
+    startMintbucksPoller().catch((err) =>
+      logger.error({ err }, "Mint Bucks poller failed to start"),
+    );
+  }
 });

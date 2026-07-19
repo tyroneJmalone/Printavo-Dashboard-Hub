@@ -1,0 +1,282 @@
+import { db } from "../db";
+import { creditsTable, customersTable, notificationLogTable } from "@workspace/mintbucks-db";
+import { eq, and, inArray, lt } from "drizzle-orm";
+import { logger } from "./logger";
+import { getPrintavoConfig, getSetting, setSetting, isPrintavoEnabled, isRewardsEnabled, getPollingIntervalMinutes } from "./settings";
+import { fetchRecentOrders } from "./printavo";
+import { sendPrintavoNotificationEmail } from "./email";
+import { runRewardsScan, type RewardsScanResult } from "./rewards";
+
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let isPolling = false;
+let isScanning = false;
+
+export async function runPoll(): Promise<void> {
+  const config = await getPrintavoConfig();
+  if (!config) {
+    logger.debug("Printavo not configured — skipping poll");
+    return;
+  }
+
+  // Sweep stale "pending" claims left behind if the server died between claiming
+  // a notification slot and resolving it. Without this, that (customer, order)
+  // pair would be blocked forever (the unique claim always conflicts) and would
+  // surface as a permanent "pending" row. A normal send resolves in seconds, so
+  // anything older than a few minutes is stale and safe to release for retry.
+  const STALE_PENDING_MS = 10 * 60 * 1000;
+  const swept = await db
+    .delete(notificationLogTable)
+    .where(
+      and(
+        eq(notificationLogTable.deliveryStatus, "pending"),
+        lt(notificationLogTable.createdAt, new Date(Date.now() - STALE_PENDING_MS))
+      )
+    )
+    .returning({ id: notificationLogTable.id });
+  if (swept.length) {
+    logger.warn({ count: swept.length }, "Released stale pending notification claims for retry");
+  }
+
+  const lastPollAt = await getSetting("printavo_last_poll_at") ?? new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  logger.info({ lastPollAt }, "Printavo poll starting");
+
+  const now = new Date().toISOString();
+
+  let orders;
+  try {
+    orders = await fetchRecentOrders(config, lastPollAt);
+  } catch (err) {
+    logger.error({ err }, "Printavo poll: failed to fetch orders — cursor not advanced, will retry next poll");
+    return;
+  }
+
+  logger.info({ count: orders.length }, "Printavo poll: orders fetched");
+
+  // Track the earliest creation time of orders whose email delivery failed.
+  // The cursor is advanced only up to (but not including) that timestamp so
+  // failed orders are retried on the next poll.
+  let minFailedOrderTimeMs: number | null = null;
+
+  for (const order of orders) {
+    try {
+      const customerEmail = order.customer?.email;
+      if (!customerEmail) continue;
+
+      const [localCustomer] = await db
+        .select()
+        .from(customersTable)
+        .where(eq(customersTable.email, customerEmail.toLowerCase()));
+
+      if (!localCustomer) continue;
+
+      const credits = await db
+        .select()
+        .from(creditsTable)
+        .where(
+          and(
+            eq(creditsTable.customerId, localCustomer.id),
+            inArray(creditsTable.status, ["active", "partially_redeemed"])
+          )
+        );
+
+      if (credits.length === 0) continue;
+
+      const totalOutstanding = credits.reduce(
+        (s, c) => s + parseFloat(c.amountRemaining as unknown as string),
+        0
+      );
+
+      // Atomically claim the notification slot before sending.
+      // Insert with status "pending"; ON CONFLICT DO NOTHING means a concurrent
+      // poll that already claimed this (customer, order) pair returns 0 rows.
+      // This eliminates the check-then-act race condition.
+      const claimed = await db
+        .insert(notificationLogTable)
+        .values({
+          customerId: localCustomer.id,
+          printavoOrderId: order.id,
+          printavoOrderNumber: order.visualId,
+          amountAvailable: totalOutstanding.toFixed(2),
+          deliveryStatus: "pending",
+        })
+        .onConflictDoNothing()
+        .returning({ id: notificationLogTable.id });
+
+      if (!claimed.length) {
+        logger.debug({ orderId: order.id }, "Notification already claimed by concurrent poll — skipping");
+        continue;
+      }
+
+      const logId = claimed[0].id;
+
+      const delivered = await sendPrintavoNotificationEmail({
+        customerName: localCustomer.name,
+        customerEmail: localCustomer.email,
+        creditCodes: credits.map(c => c.code),
+        totalOutstanding,
+        orderNumber: order.visualId,
+        orderTotal: order.total ?? undefined,
+      });
+
+      if (delivered) {
+        await db
+          .update(notificationLogTable)
+          .set({ deliveryStatus: "sent" })
+          .where(eq(notificationLogTable.id, logId));
+
+        logger.info(
+          { customerId: localCustomer.id, orderId: order.id, totalOutstanding },
+          "Printavo notification sent and logged"
+        );
+      } else {
+        // Delete the pending row so the next poll can retry for this order.
+        await db
+          .delete(notificationLogTable)
+          .where(eq(notificationLogTable.id, logId));
+
+        logger.warn(
+          { customerId: localCustomer.id, orderId: order.id },
+          "Notification email failed — slot released, will retry on next poll"
+        );
+
+        const orderTimeMs = new Date(order.createdAt).getTime();
+        if (minFailedOrderTimeMs === null || orderTimeMs < minFailedOrderTimeMs) {
+          minFailedOrderTimeMs = orderTimeMs;
+        }
+      }
+    } catch (err) {
+      logger.error({ err, orderId: order.id }, "Printavo poll: error processing order");
+    }
+  }
+
+  // Advance cursor: stop just before the oldest failed order so it is retried.
+  // If all orders were handled (or none needed notification), advance to `now`.
+  const advanceTo = minFailedOrderTimeMs !== null
+    ? new Date(minFailedOrderTimeMs - 1).toISOString()
+    : now;
+
+  await setSetting("printavo_last_poll_at", advanceTo);
+  logger.info({ advanceTo }, "Printavo poll complete");
+}
+
+// Rewards evaluation pass. Runs in the same tick as the notification poll but
+// with its own single-flight guard and error boundary so a failure in one never
+// affects the other. Gated by the rewards master switch.
+//
+// Single-flight with one trailing re-run: a scan pages the whole lookback
+// window out of Printavo (throttled, ~15-20s), and the UI auto-triggers a scan
+// after every rule save/toggle/delete. Callers that arrive while a scan is
+// running must NOT just piggyback on it — the running scan loaded the rules
+// before their edit — so they coalesce onto ONE follow-up scan that starts
+// fresh (re-reading rules) after the current one finishes.
+let inflightScan: Promise<RewardsScanResult | null> | null = null;
+let trailingScan: Promise<RewardsScanResult | null> | null = null;
+
+export async function runRewardsPoll(): Promise<RewardsScanResult | null> {
+  if (inflightScan) {
+    trailingScan ??= inflightScan
+      .catch(() => null)
+      .then(() => {
+        trailingScan = null; // requests arriving during the re-run get their own follow-up
+        return runRewardsPoll();
+      });
+    return trailingScan;
+  }
+
+  inflightScan = (async () => {
+    const config = await getPrintavoConfig();
+    if (!config) {
+      logger.debug("Printavo not configured — skipping rewards scan");
+      return null;
+    }
+    return runRewardsScan(config);
+  })().finally(() => {
+    inflightScan = null;
+  });
+  return inflightScan;
+}
+
+// HUB ADAPTATION: the standalone Mint Bucks app currently owns the poller
+// (its printavo_enabled/rewards_enabled settings drive it). The hub's copy of
+// the poller stays dormant until MINTBUCKS_POLLER_ENABLED=true is set, which
+// happens only when ownership is deliberately flipped (standalone off → hub on).
+// Manual scan/poll buttons are unaffected — they call runPoll/runRewardsPoll
+// directly.
+export function isHubPollerEnabled(): boolean {
+  return process.env.MINTBUCKS_POLLER_ENABLED === "true";
+}
+
+export async function startPoller(): Promise<void> {
+  if (!isHubPollerEnabled()) {
+    logger.info("Hub poller is disabled (MINTBUCKS_POLLER_ENABLED != true) — not starting");
+    return;
+  }
+  stopPoller();
+
+  const [printavoEnabled, rewardsEnabled] = await Promise.all([
+    isPrintavoEnabled(),
+    isRewardsEnabled(),
+  ]);
+
+  if (!printavoEnabled && !rewardsEnabled) {
+    logger.info("Automation disabled — poller not started");
+    return;
+  }
+
+  const intervalMinutes = await getPollingIntervalMinutes();
+  const intervalMs = intervalMinutes * 60 * 1000;
+
+  logger.info({ intervalMinutes, printavoEnabled, rewardsEnabled }, "Starting poller");
+
+  pollTimer = setInterval(() => {
+    void tick();
+  }, intervalMs);
+}
+
+// A single interval tick runs the notification poll and the rewards scan
+// independently. Each re-checks its own enabled flag (so toggling a switch takes
+// effect without restarting the timer) and each has its own overlap guard.
+async function tick(): Promise<void> {
+  const [printavoEnabled, rewardsEnabled] = await Promise.all([
+    isPrintavoEnabled(),
+    isRewardsEnabled(),
+  ]);
+
+  if (printavoEnabled) {
+    if (isPolling) {
+      logger.warn("Previous poll still running — skipping this tick to prevent overlap");
+    } else {
+      isPolling = true;
+      try {
+        await runPoll();
+      } catch (err) {
+        logger.error({ err }, "Printavo poll error");
+      } finally {
+        isPolling = false;
+      }
+    }
+  }
+
+  if (rewardsEnabled) {
+    if (isScanning) {
+      logger.warn("Previous rewards scan still running — skipping this tick to prevent overlap");
+    } else {
+      isScanning = true;
+      try {
+        await runRewardsPoll();
+      } catch (err) {
+        logger.error({ err }, "Rewards scan error");
+      } finally {
+        isScanning = false;
+      }
+    }
+  }
+}
+
+export function stopPoller(): void {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+    logger.info("Printavo poller stopped");
+  }
+}

@@ -4,6 +4,7 @@
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [S&S order response wrapper](ss-order-response-wrapper.md) — S&S order endpoints return { orders, lineErrors } wrapper, not a bare array; camelCase fields; parse via unwrap helper.
 - [Tailwind v4 arbitrary values](tailwind-v4-arbitrary-values.md) — commas stay literal in v4: grid-cols-[400px,1fr] silently no-ops; use underscores (300px_1fr); verify layout visually.
+- [Mint Bucks shared live-DB coupling](mintbucks-shared-live-db.md) — shared settings/ledgers dual-control both apps; test-mode emails swallow real ones; never round-trip write-blocked fields in forms.
 - [Deleted-upstream orders never backfill](sync-deleted-upstream-orders.md) — new query fields self-backfill via hash change, but rows deleted in Printavo stay stale forever; handle absent fields gracefully.
 - [Printavo sync freshness model](printavo-sync-freshness.md) — sweep-first poll order, daily work is scheduler-only, and sweep-proven drift must force-write past the detail-hash short-circuit.
 - [Orval schema naming](orval-schema-naming.md) — request-body component schemas must be ...Request, never ...Body (collides with orval's generated <OperationId>Body zod export).
