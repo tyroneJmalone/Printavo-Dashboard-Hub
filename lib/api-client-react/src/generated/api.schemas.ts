@@ -2041,6 +2041,47 @@ export interface DashboardSummary {
   totalActiveCount: number;
 }
 
+/**
+ * Processing preset
+ */
+export type SorterProcessInputPreset = typeof SorterProcessInputPreset[keyof typeof SorterProcessInputPreset];
+
+
+export const SorterProcessInputPreset = {
+  combine_labels: 'combine_labels',
+  sort_slips: 'sort_slips',
+  sort_slips_name: 'sort_slips_name',
+  sort_slips_custom: 'sort_slips_custom',
+  sort_slips_custom_first: 'sort_slips_custom_first',
+  sort_labels: 'sort_labels',
+  sort_both: 'sort_both',
+  match_labels: 'match_labels',
+  custom_sort: 'custom_sort',
+} as const;
+
+export interface SorterProcessInput {
+  /** Processing preset */
+  preset: SorterProcessInputPreset;
+  /** JSON array of sort field names used when preset is custom_sort. Available fields: last_name, first_name, style, size, color, custom_field, delivery_method, location, sort_number, order_number, order_date */
+  sort_fields?: string;
+}
+
+export interface SorterOutputFile {
+  key: string;
+  filename: string;
+  label: string;
+  mime: string;
+}
+
+export interface SorterProcessResult {
+  jobId: string;
+  outputs: SorterOutputFile[];
+}
+
+export interface SorterError {
+  error: string;
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 

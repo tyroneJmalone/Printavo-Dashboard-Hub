@@ -20,6 +20,8 @@ tags:
     description: Purchasing / vendor orders module
   - name: printQueue
     description: Production print queue (workorders / packing slips / box labels)
+  - name: sorter
+    description: Packing slip / shipping label PDF sorter
 paths:
   /healthz:
     get:
@@ -2657,6 +2659,69 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
 
+  /sorter/process:
+    post:
+      operationId: sorterProcessFiles
+      tags: [sorter]
+      summary: Process packing slips and shipping labels
+      description: Upload PDF files (multipart/form-data) with a preset; returns a job ID and output file list
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SorterProcessInput"
+      responses:
+        "200":
+          description: Processing complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SorterProcessResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SorterError"
+        "500":
+          description: Processing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SorterError"
+
+  /sorter/jobs/{jobId}/files/{key}:
+    get:
+      operationId: sorterDownloadFile
+      tags: [sorter]
+      summary: Download a processed sorter output file
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Binary file content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Job or file not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SorterError"
+
 components:
   parameters:
     OrderTypeParam:
@@ -4550,3 +4615,52 @@ components:
         upcomingCount: { type: integer }
         completedTodayCount: { type: integer }
         totalActiveCount: { type: integer }
+
+    SorterProcessInput:
+      type: object
+      required:
+        - preset
+      properties:
+        preset:
+          type: string
+          enum:
+            [
+              combine_labels,
+              sort_slips,
+              sort_slips_name,
+              sort_slips_custom,
+              sort_slips_custom_first,
+              sort_labels,
+              sort_both,
+              match_labels,
+              custom_sort,
+            ]
+          description: Processing preset
+        sort_fields:
+          type: string
+          description: "JSON array of sort field names used when preset is custom_sort. Available fields: last_name, first_name, style, size, color, custom_field, delivery_method, location, sort_number, order_number, order_date"
+
+    SorterOutputFile:
+      type: object
+      required: [key, filename, label, mime]
+      properties:
+        key: { type: string }
+        filename: { type: string }
+        label: { type: string }
+        mime: { type: string }
+
+    SorterProcessResult:
+      type: object
+      required: [jobId, outputs]
+      properties:
+        jobId: { type: string }
+        outputs:
+          type: array
+          items:
+            $ref: "#/components/schemas/SorterOutputFile"
+
+    SorterError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }

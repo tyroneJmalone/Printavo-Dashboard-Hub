@@ -104,6 +104,9 @@ import type {
   ReportFilterOptions,
   SeedStartResult,
   SetAdminPinRequest,
+  SorterError,
+  SorterProcessInput,
+  SorterProcessResult,
   StaffListResponse,
   StaffMember,
   StartAutoPrintRunRequest,
@@ -8846,6 +8849,164 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardSummaryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSorterProcessFilesUrl = () => {
+
+
+
+
+  return `/api/sorter/process`
+}
+
+/**
+ * Upload PDF files (multipart/form-data) with a preset; returns a job ID and output file list
+ * @summary Process packing slips and shipping labels
+ */
+export const sorterProcessFiles = async (sorterProcessInput: SorterProcessInput, options?: RequestInit): Promise<SorterProcessResult> => {
+    const formData = new FormData();
+formData.append(`preset`, sorterProcessInput.preset);
+if(sorterProcessInput.sort_fields !== undefined) {
+ formData.append(`sort_fields`, sorterProcessInput.sort_fields);
+ }
+
+  return customFetch<SorterProcessResult>(getSorterProcessFilesUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+export const getSorterProcessFilesMutationOptions = <TError = ErrorType<SorterError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sorterProcessFiles>>, TError,{data: BodyType<SorterProcessInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sorterProcessFiles>>, TError,{data: BodyType<SorterProcessInput>}, TContext> => {
+
+const mutationKey = ['sorterProcessFiles'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sorterProcessFiles>>, {data: BodyType<SorterProcessInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sorterProcessFiles(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SorterProcessFilesMutationResult = NonNullable<Awaited<ReturnType<typeof sorterProcessFiles>>>
+    export type SorterProcessFilesMutationBody = BodyType<SorterProcessInput>
+    export type SorterProcessFilesMutationError = ErrorType<SorterError>
+
+    /**
+ * @summary Process packing slips and shipping labels
+ */
+export const useSorterProcessFiles = <TError = ErrorType<SorterError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sorterProcessFiles>>, TError,{data: BodyType<SorterProcessInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sorterProcessFiles>>,
+        TError,
+        {data: BodyType<SorterProcessInput>},
+        TContext
+      > => {
+      return useMutation(getSorterProcessFilesMutationOptions(options));
+    }
+
+export const getSorterDownloadFileUrl = (jobId: string,
+    key: string,) => {
+
+
+
+
+  return `/api/sorter/jobs/${jobId}/files/${key}`
+}
+
+/**
+ * @summary Download a processed sorter output file
+ */
+export const sorterDownloadFile = async (jobId: string,
+    key: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getSorterDownloadFileUrl(jobId,key),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSorterDownloadFileQueryKey = (jobId: string,
+    key: string,) => {
+    return [
+    `/api/sorter/jobs/${jobId}/files/${key}`
+    ] as const;
+    }
+
+
+export const getSorterDownloadFileQueryOptions = <TData = Awaited<ReturnType<typeof sorterDownloadFile>>, TError = ErrorType<SorterError>>(jobId: string,
+    key: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sorterDownloadFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSorterDownloadFileQueryKey(jobId,key);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sorterDownloadFile>>> = ({ signal }) => sorterDownloadFile(jobId,key, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jobId !== null && jobId !== undefined && key !== null && key !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sorterDownloadFile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SorterDownloadFileQueryResult = NonNullable<Awaited<ReturnType<typeof sorterDownloadFile>>>
+export type SorterDownloadFileQueryError = ErrorType<SorterError>
+
+
+/**
+ * @summary Download a processed sorter output file
+ */
+
+export function useSorterDownloadFile<TData = Awaited<ReturnType<typeof sorterDownloadFile>>, TError = ErrorType<SorterError>>(
+ jobId: string,
+    key: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof sorterDownloadFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSorterDownloadFileQueryOptions(jobId,key,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

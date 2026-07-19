@@ -73,7 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
     heading: "Shipping",
     items: [
       { id: "rates", label: "Rate Estimator", icon: Package, disabled: true },
-      { id: "sorter", label: "Label Sorter", icon: FileText, disabled: true },
+      { id: "sorter", label: "Label Sorter", href: "/label-sorter", icon: FileText },
     ],
   },
   {

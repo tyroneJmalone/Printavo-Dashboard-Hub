@@ -3443,3 +3443,34 @@ export const GetDashboardSummaryResponse = zod.object({
 })
 
 
+/**
+ * Upload PDF files (multipart/form-data) with a preset; returns a job ID and output file list
+ * @summary Process packing slips and shipping labels
+ */
+export const SorterProcessFilesBody = zod.object({
+  "preset": zod.enum(['combine_labels', 'sort_slips', 'sort_slips_name', 'sort_slips_custom', 'sort_slips_custom_first', 'sort_labels', 'sort_both', 'match_labels', 'custom_sort']).describe('Processing preset'),
+  "sort_fields": zod.string().optional().describe('JSON array of sort field names used when preset is custom_sort. Available fields: last_name, first_name, style, size, color, custom_field, delivery_method, location, sort_number, order_number, order_date')
+})
+
+export const SorterProcessFilesResponse = zod.object({
+  "jobId": zod.string(),
+  "outputs": zod.array(zod.object({
+  "key": zod.string(),
+  "filename": zod.string(),
+  "label": zod.string(),
+  "mime": zod.string()
+}))
+})
+
+
+/**
+ * @summary Download a processed sorter output file
+ */
+export const SorterDownloadFileParams = zod.object({
+  "jobId": zod.coerce.string(),
+  "key": zod.coerce.string()
+})
+
+export const SorterDownloadFileResponse = zod.unknown()
+
+
