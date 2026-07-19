@@ -2082,6 +2082,94 @@ export interface SorterError {
   error: string;
 }
 
+export interface ShippingAddress {
+  /** @minLength 1 */
+  street1: string;
+  street2?: string;
+  /** @minLength 1 */
+  city: string;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     */
+  state: string;
+  /** @minLength 5 */
+  postalCode: string;
+  country?: string;
+}
+
+export type ShippingPackageWeightUnit = typeof ShippingPackageWeightUnit[keyof typeof ShippingPackageWeightUnit];
+
+
+export const ShippingPackageWeightUnit = {
+  pounds: 'pounds',
+  ounces: 'ounces',
+} as const;
+
+export interface ShippingPackage {
+  presetId?: string;
+  /** @minimum 0.1 */
+  length: number;
+  /** @minimum 0.1 */
+  width: number;
+  /** @minimum 0.1 */
+  height: number;
+  /** @minimum 0.1 */
+  weight: number;
+  weightUnit?: ShippingPackageWeightUnit;
+}
+
+export type RateRequestSource = typeof RateRequestSource[keyof typeof RateRequestSource];
+
+
+export const RateRequestSource = {
+  shipstation: 'shipstation',
+  easypost: 'easypost',
+  both: 'both',
+} as const;
+
+export interface RateRequest {
+  shipTo: ShippingAddress;
+  package: ShippingPackage;
+  source?: RateRequestSource;
+}
+
+export type ShippingRateSource = typeof ShippingRateSource[keyof typeof ShippingRateSource];
+
+
+export const ShippingRateSource = {
+  shipstation: 'shipstation',
+  easypost: 'easypost',
+} as const;
+
+export interface ShippingRate {
+  carrierCode: string;
+  carrierName: string;
+  serviceCode: string;
+  serviceName: string;
+  shipmentCost: number;
+  otherCost: number;
+  totalCost: number;
+  transitDays?: number | null;
+  deliveryDate?: string | null;
+  source: ShippingRateSource;
+}
+
+export interface SourceRates {
+  uspsRates: ShippingRate[];
+  upsRates: ShippingRate[];
+  errors: string[];
+}
+
+export interface RateResponse {
+  shipstation?: SourceRates;
+  easypost?: SourceRates;
+}
+
+export interface ShippingError {
+  error: string;
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -2623,4 +2711,6 @@ export type AddTeamMember201 = {
 export type GetDashboardSummaryParams = {
 assigneeId?: number;
 };
+
+export type ShippingListCarriers200Item = { [key: string]: unknown };
 

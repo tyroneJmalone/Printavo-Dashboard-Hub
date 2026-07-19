@@ -27,6 +27,7 @@ import PrintQueueRules from "./pages/PrintQueueRules";
 import AutoPrint from "./pages/AutoPrint";
 import PriceCalculator from "./pages/PriceCalculator";
 import LabelSorter from "./pages/LabelSorter";
+import RateEstimator from "./pages/RateEstimator";
 import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
@@ -173,6 +174,7 @@ function HubRoutes() {
       <Route path="/auto-print" component={AutoPrint} />
       <Route path="/price-calculator" component={PriceCalculator} />
       <Route path="/label-sorter" component={LabelSorter} />
+      <Route path="/rate-estimator" component={RateEstimator} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

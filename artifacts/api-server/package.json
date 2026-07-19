@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/express": "^2.1.42",
     "@clerk/shared": "^4.25.4",
+    "@easypost/api": "^8.9.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/momintum-db": "workspace:*",

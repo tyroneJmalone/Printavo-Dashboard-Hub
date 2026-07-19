@@ -100,10 +100,14 @@ import type {
   PushStartResponse,
   Quote,
   QuoteInput,
+  RateRequest,
+  RateResponse,
   ReorderStatusRulesRequest,
   ReportFilterOptions,
   SeedStartResult,
   SetAdminPinRequest,
+  ShippingError,
+  ShippingListCarriers200Item,
   SorterError,
   SorterProcessInput,
   SorterProcessResult,
@@ -9007,6 +9011,153 @@ export function useSorterDownloadFile<TData = Awaited<ReturnType<typeof sorterDo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getSorterDownloadFileQueryOptions(jobId,key,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getShippingGetRatesUrl = () => {
+
+
+
+
+  return `/api/shipping/rates`
+}
+
+/**
+ * @summary Get live shipping rates from ShipStation and/or EasyPost
+ */
+export const shippingGetRates = async (rateRequest: RateRequest, options?: RequestInit): Promise<RateResponse> => {
+
+  return customFetch<RateResponse>(getShippingGetRatesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(rateRequest)
+  }
+);}
+
+
+
+
+export const getShippingGetRatesMutationOptions = <TError = ErrorType<ShippingError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shippingGetRates>>, TError,{data: BodyType<RateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof shippingGetRates>>, TError,{data: BodyType<RateRequest>}, TContext> => {
+
+const mutationKey = ['shippingGetRates'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof shippingGetRates>>, {data: BodyType<RateRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  shippingGetRates(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ShippingGetRatesMutationResult = NonNullable<Awaited<ReturnType<typeof shippingGetRates>>>
+    export type ShippingGetRatesMutationBody = BodyType<RateRequest>
+    export type ShippingGetRatesMutationError = ErrorType<ShippingError>
+
+    /**
+ * @summary Get live shipping rates from ShipStation and/or EasyPost
+ */
+export const useShippingGetRates = <TError = ErrorType<ShippingError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof shippingGetRates>>, TError,{data: BodyType<RateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof shippingGetRates>>,
+        TError,
+        {data: BodyType<RateRequest>},
+        TContext
+      > => {
+      return useMutation(getShippingGetRatesMutationOptions(options));
+    }
+
+export const getShippingListCarriersUrl = () => {
+
+
+
+
+  return `/api/shipping/carriers`
+}
+
+/**
+ * @summary List carriers configured in ShipStation (diagnostics)
+ */
+export const shippingListCarriers = async ( options?: RequestInit): Promise<ShippingListCarriers200Item[]> => {
+
+  return customFetch<ShippingListCarriers200Item[]>(getShippingListCarriersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getShippingListCarriersQueryKey = () => {
+    return [
+    `/api/shipping/carriers`
+    ] as const;
+    }
+
+
+export const getShippingListCarriersQueryOptions = <TData = Awaited<ReturnType<typeof shippingListCarriers>>, TError = ErrorType<ShippingError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof shippingListCarriers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getShippingListCarriersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof shippingListCarriers>>> = ({ signal }) => shippingListCarriers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof shippingListCarriers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ShippingListCarriersQueryResult = NonNullable<Awaited<ReturnType<typeof shippingListCarriers>>>
+export type ShippingListCarriersQueryError = ErrorType<ShippingError>
+
+
+/**
+ * @summary List carriers configured in ShipStation (diagnostics)
+ */
+
+export function useShippingListCarriers<TData = Awaited<ReturnType<typeof shippingListCarriers>>, TError = ErrorType<ShippingError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof shippingListCarriers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getShippingListCarriersQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

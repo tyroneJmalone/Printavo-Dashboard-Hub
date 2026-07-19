@@ -22,6 +22,8 @@ tags:
     description: Production print queue (workorders / packing slips / box labels)
   - name: sorter
     description: Packing slip / shipping label PDF sorter
+  - name: shipping
+    description: Shipping rate estimator (ShipStation + EasyPost)
 paths:
   /healthz:
     get:
@@ -2722,6 +2724,65 @@ paths:
               schema:
                 $ref: "#/components/schemas/SorterError"
 
+  /shipping/rates:
+    post:
+      operationId: shippingGetRates
+      tags: [shipping]
+      summary: Get live shipping rates from ShipStation and/or EasyPost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateRequest"
+      responses:
+        "200":
+          description: Rates grouped by source and carrier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShippingError"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShippingError"
+        "500":
+          description: Rate fetch error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShippingError"
+
+  /shipping/carriers:
+    get:
+      operationId: shippingListCarriers
+      tags: [shipping]
+      summary: List carriers configured in ShipStation (diagnostics)
+      responses:
+        "200":
+          description: Carrier list from ShipStation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "500":
+          description: Carrier fetch error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShippingError"
+
 components:
   parameters:
     OrderTypeParam:
@@ -4660,6 +4721,122 @@ components:
             $ref: "#/components/schemas/SorterOutputFile"
 
     SorterError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    ShippingAddress:
+      type: object
+      required: [street1, city, state, postalCode]
+      properties:
+        street1:
+          type: string
+          minLength: 1
+        street2:
+          type: string
+        city:
+          type: string
+          minLength: 1
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+        postalCode:
+          type: string
+          minLength: 5
+        country:
+          type: string
+          default: US
+
+    ShippingPackage:
+      type: object
+      required: [length, width, height, weight]
+      properties:
+        presetId:
+          type: string
+        length:
+          type: number
+          minimum: 0.1
+        width:
+          type: number
+          minimum: 0.1
+        height:
+          type: number
+          minimum: 0.1
+        weight:
+          type: number
+          minimum: 0.1
+        weightUnit:
+          type: string
+          enum: [pounds, ounces]
+          default: pounds
+
+    RateRequest:
+      type: object
+      required: [shipTo, package]
+      properties:
+        shipTo:
+          $ref: "#/components/schemas/ShippingAddress"
+        package:
+          $ref: "#/components/schemas/ShippingPackage"
+        source:
+          type: string
+          enum: [shipstation, easypost, both]
+          default: shipstation
+
+    ShippingRate:
+      type: object
+      required:
+        [
+          carrierCode,
+          carrierName,
+          serviceCode,
+          serviceName,
+          shipmentCost,
+          otherCost,
+          totalCost,
+          source,
+        ]
+      properties:
+        carrierCode: { type: string }
+        carrierName: { type: string }
+        serviceCode: { type: string }
+        serviceName: { type: string }
+        shipmentCost: { type: number }
+        otherCost: { type: number }
+        totalCost: { type: number }
+        transitDays: { type: number, nullable: true }
+        deliveryDate: { type: string, nullable: true }
+        source:
+          type: string
+          enum: [shipstation, easypost]
+
+    SourceRates:
+      type: object
+      required: [uspsRates, upsRates, errors]
+      properties:
+        uspsRates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShippingRate"
+        upsRates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShippingRate"
+        errors:
+          type: array
+          items: { type: string }
+
+    RateResponse:
+      type: object
+      properties:
+        shipstation:
+          $ref: "#/components/schemas/SourceRates"
+        easypost:
+          $ref: "#/components/schemas/SourceRates"
+
+    ShippingError:
       type: object
       required: [error]
       properties:

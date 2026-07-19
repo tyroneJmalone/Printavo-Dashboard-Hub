@@ -3474,3 +3474,110 @@ export const SorterDownloadFileParams = zod.object({
 export const SorterDownloadFileResponse = zod.unknown()
 
 
+/**
+ * @summary Get live shipping rates from ShipStation and/or EasyPost
+ */
+
+
+export const shippingGetRatesBodyShipToStateMin = 2;
+export const shippingGetRatesBodyShipToStateMax = 2;
+
+export const shippingGetRatesBodyShipToPostalCodeMin = 5;
+
+export const shippingGetRatesBodyShipToCountryDefault = `US`;
+export const shippingGetRatesBodyPackageLengthMin = 0.1;
+
+export const shippingGetRatesBodyPackageWidthMin = 0.1;
+
+export const shippingGetRatesBodyPackageHeightMin = 0.1;
+
+export const shippingGetRatesBodyPackageWeightMin = 0.1;
+
+export const shippingGetRatesBodyPackageWeightUnitDefault = `pounds`;
+export const shippingGetRatesBodySourceDefault = `shipstation`;
+
+export const ShippingGetRatesBody = zod.object({
+  "shipTo": zod.object({
+  "street1": zod.string().min(1),
+  "street2": zod.string().optional(),
+  "city": zod.string().min(1),
+  "state": zod.string().min(shippingGetRatesBodyShipToStateMin).max(shippingGetRatesBodyShipToStateMax),
+  "postalCode": zod.string().min(shippingGetRatesBodyShipToPostalCodeMin),
+  "country": zod.string().default(shippingGetRatesBodyShipToCountryDefault)
+}),
+  "package": zod.object({
+  "presetId": zod.string().optional(),
+  "length": zod.number().min(shippingGetRatesBodyPackageLengthMin),
+  "width": zod.number().min(shippingGetRatesBodyPackageWidthMin),
+  "height": zod.number().min(shippingGetRatesBodyPackageHeightMin),
+  "weight": zod.number().min(shippingGetRatesBodyPackageWeightMin),
+  "weightUnit": zod.enum(['pounds', 'ounces']).default(shippingGetRatesBodyPackageWeightUnitDefault)
+}),
+  "source": zod.enum(['shipstation', 'easypost', 'both']).default(shippingGetRatesBodySourceDefault)
+})
+
+export const ShippingGetRatesResponse = zod.object({
+  "shipstation": zod.object({
+  "uspsRates": zod.array(zod.object({
+  "carrierCode": zod.string(),
+  "carrierName": zod.string(),
+  "serviceCode": zod.string(),
+  "serviceName": zod.string(),
+  "shipmentCost": zod.number(),
+  "otherCost": zod.number(),
+  "totalCost": zod.number(),
+  "transitDays": zod.number().nullish(),
+  "deliveryDate": zod.string().nullish(),
+  "source": zod.enum(['shipstation', 'easypost'])
+})),
+  "upsRates": zod.array(zod.object({
+  "carrierCode": zod.string(),
+  "carrierName": zod.string(),
+  "serviceCode": zod.string(),
+  "serviceName": zod.string(),
+  "shipmentCost": zod.number(),
+  "otherCost": zod.number(),
+  "totalCost": zod.number(),
+  "transitDays": zod.number().nullish(),
+  "deliveryDate": zod.string().nullish(),
+  "source": zod.enum(['shipstation', 'easypost'])
+})),
+  "errors": zod.array(zod.string())
+}).optional(),
+  "easypost": zod.object({
+  "uspsRates": zod.array(zod.object({
+  "carrierCode": zod.string(),
+  "carrierName": zod.string(),
+  "serviceCode": zod.string(),
+  "serviceName": zod.string(),
+  "shipmentCost": zod.number(),
+  "otherCost": zod.number(),
+  "totalCost": zod.number(),
+  "transitDays": zod.number().nullish(),
+  "deliveryDate": zod.string().nullish(),
+  "source": zod.enum(['shipstation', 'easypost'])
+})),
+  "upsRates": zod.array(zod.object({
+  "carrierCode": zod.string(),
+  "carrierName": zod.string(),
+  "serviceCode": zod.string(),
+  "serviceName": zod.string(),
+  "shipmentCost": zod.number(),
+  "otherCost": zod.number(),
+  "totalCost": zod.number(),
+  "transitDays": zod.number().nullish(),
+  "deliveryDate": zod.string().nullish(),
+  "source": zod.enum(['shipstation', 'easypost'])
+})),
+  "errors": zod.array(zod.string())
+}).optional()
+})
+
+
+/**
+ * @summary List carriers configured in ShipStation (diagnostics)
+ */
+export const ShippingListCarriersResponseItem = zod.record(zod.string(), zod.unknown())
+export const ShippingListCarriersResponse = zod.array(ShippingListCarriersResponseItem)
+
+
