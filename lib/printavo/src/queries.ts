@@ -427,3 +427,102 @@ export function transactionsPageQuery(after?: string | null): string {
     }
   }`;
 }
+
+/*
+ * ── Tasks ────────────────────────────────────────────────────────────────
+ * Verified via live introspection + live test (July 2026):
+ * - tasks(first, after, assigneeId, completed, dueAfter, dueBefore, sortOn,
+ *   sortDescending); NO updatedAfter filter → sync = full open-task re-scan.
+ * - taskable: Customer | Invoice | Quote; null = standalone "calendar" task.
+ * - taskUpdate has MERGE semantics: sending only { completed } preserves
+ *   name/dueAt/assignedTo (live-verified on a throwaway task).
+ * - taskDelete returns DeletedID and requires a selection set.
+ */
+
+const TASK_NODE_FIELDS = `
+  id
+  name
+  dueAt
+  completed
+  completedAt
+  assignedTo { id name email }
+  taskable {
+    __typename
+    ... on Invoice { id visualId }
+    ... on Quote { id visualId }
+    ... on Customer { id }
+  }
+  timestamps { createdAt updatedAt }
+`;
+
+export function tasksPageQuery(args: {
+  after?: string | null;
+  completed?: boolean;
+} = {}): string {
+  const completedArg =
+    args.completed !== undefined ? `, completed: ${args.completed}` : "";
+  return `query {
+    tasks(first: ${PAGE_SIZE}${afterArg(args.after)}${completedArg}) {
+      nodes { ${TASK_NODE_FIELDS} }
+      ${PAGE_INFO}
+    }
+  }`;
+}
+
+export function taskDetailQuery(taskId: string): string {
+  return `query {
+    task(id: ${lit(taskId)}) { ${TASK_NODE_FIELDS} }
+  }`;
+}
+
+export interface TaskWriteInput {
+  name?: string;
+  /** ISO8601 timestamp or null semantics not supported — omit to keep. */
+  dueAt?: string;
+  completed?: boolean;
+  /** Printavo User.id — omit to keep, set to assign. */
+  assignedToId?: string;
+}
+
+function taskInputParts(input: TaskWriteInput): string {
+  const parts: string[] = [];
+  if (input.name !== undefined) parts.push(`name: ${lit(input.name)}`);
+  if (input.dueAt !== undefined) parts.push(`dueAt: ${lit(input.dueAt)}`);
+  if (input.completed !== undefined) parts.push(`completed: ${input.completed}`);
+  if (input.assignedToId !== undefined) {
+    parts.push(`assignedTo: { id: ${lit(input.assignedToId)} }`);
+  }
+  return parts.join(", ");
+}
+
+/** Creates a STANDALONE (calendar) task — no taskable on purpose. */
+export function taskCreateMutation(input: TaskWriteInput & { name: string }): string {
+  return `mutation {
+    taskCreate(input: { ${taskInputParts(input)} }) { ${TASK_NODE_FIELDS} }
+  }`;
+}
+
+/** MERGE semantics: only the provided fields change (live-verified). */
+export function taskUpdateMutation(taskId: string, input: TaskWriteInput): string {
+  return `mutation {
+    taskUpdate(id: ${lit(taskId)}, input: { ${taskInputParts(input)} }) { ${TASK_NODE_FIELDS} }
+  }`;
+}
+
+export function taskDeleteMutation(taskId: string): string {
+  return `mutation {
+    taskDelete(id: ${lit(taskId)}) { id }
+  }`;
+}
+
+/** Account users, for mapping assignee emails → Printavo user IDs. */
+export function accountUsersQuery(after?: string | null): string {
+  return `query {
+    account {
+      users(first: ${PAGE_SIZE}${afterArg(after)}) {
+        nodes { id name email }
+        ${PAGE_INFO}
+      }
+    }
+  }`;
+}

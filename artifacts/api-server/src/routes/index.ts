@@ -17,6 +17,8 @@ import { isMomintumConfigured } from "@workspace/momintum-db";
 import momintumRouter from "../momintum";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
 import mintbucksRouter from "../mintbucks/routes";
+import { printavoConfigured } from "../lib/printavoGateway";
+import printavoTasksRouter from "../printavoTasks/routes";
 
 const router: IRouter = Router();
 
@@ -53,6 +55,13 @@ if (isMomintumConfigured()) {
 // kill switch). Poller stays dormant unless MINTBUCKS_POLLER_ENABLED=true.
 if (isMintbucksConfigured()) {
   router.use("/mintbucks", mintbucksRouter);
+}
+
+// Printavo ⇄ moMINTum task sync — needs both the moMINTum DB and Printavo
+// credentials. Admin-gated inside; manual trigger only until the interval
+// poller phase ships.
+if (isMomintumConfigured() && printavoConfigured()) {
+  router.use("/printavo-tasks", printavoTasksRouter);
 }
 
 export default router;
