@@ -8,22 +8,38 @@ import {
   listGroupsTable,
   listGroupMembershipsTable,
   type Member,
+  type Task,
 } from "@workspace/momintum-db";
 import {
   db as hubDb,
   printavoTaskLinksTable,
   type PrintavoTaskLink,
 } from "@workspace/db";
-import { tasksPageQuery } from "@workspace/printavo";
+import {
+  tasksPageQuery,
+  taskDetailQuery,
+  taskUpdateMutation,
+  PrintavoApiError,
+} from "@workspace/printavo";
 import { getPrintavoClient } from "../lib/printavoGateway";
+import { setTaskCompletion } from "../momintum/taskCompletion";
 
 /**
  * Printavo ⇄ moMINTum task sync engine.
  *
- * PHASE 2 SCOPE (current): one-way IMPORT — Printavo → moMINTum. Creates and
- * content-updates moMINTum twins for open Printavo tasks. Never writes to
- * Printavo. Two-way completion, vanished-task probes and send-to-Printavo
- * come in later phases.
+ * PHASE 3 SCOPE (current): import (Printavo → moMINTum, one-way content
+ * mirror) + TWO-WAY COMPLETION. Completion reconciliation is a boolean 3-way
+ * compare per link — moMINTum state vs Printavo state vs last-synced baseline.
+ * Exactly one side can differ from the baseline (a both-changed boolean always
+ * converges to agreement), so the side that changed wins and is mirrored to
+ * the other. Completing a twin pushes `taskUpdate {completed:true}` to
+ * Printavo (merge semantics, live-verified: other fields survive).
+ *
+ * Links whose Printavo task vanished from the open scan are PROBED
+ * individually (capped per cycle to protect the shared rate limit):
+ * completed in Printavo → complete the twin; deleted in Printavo → soft-delete
+ * the twin + drop the link. Settled pairs (both sides completed) are never
+ * probed again. Send-to-Printavo (creating Printavo tasks) is a later phase.
  *
  * Ownership rules (see replit.md):
  * - moMINTum DB is the standalone app's LIVE prod DB — data-row writes only,
@@ -86,6 +102,20 @@ export interface SyncSummary {
   listMoved: number;
   skippedUnassignedOrderTasks: number;
   suppressedLinks: number;
+  /** Twins completed because their Printavo task completed. */
+  completedTwins: number;
+  /** Twins reopened because their Printavo task was reopened. */
+  reopenedTwins: number;
+  /** Printavo tasks completed because their twin was completed in moMINTum. */
+  completedInPrintavo: number;
+  /** Printavo tasks reopened because their twin was reopened in moMINTum. */
+  reopenedInPrintavo: number;
+  /** Individual task(id) probes for links missing from the open scan. */
+  probed: number;
+  /** Probe candidates deferred to the next cycle (per-cycle cap). */
+  probesDeferred: number;
+  /** Twins soft-deleted because the Printavo task was deleted. */
+  twinsDeletedFromPrintavoDelete: number;
   unmatchedAssigneeEmails: string[];
   errors: string[];
 }
@@ -290,6 +320,62 @@ export function buildTwinNotes(t: PvTaskNode): string {
   return lines.join("\n");
 }
 
+// ── Two-way completion ───────────────────────────────────────────────────
+
+/**
+ * Boolean 3-way completion reconcile for one link (moMINTum vs Printavo vs
+ * last-synced baseline). With a boolean, at most ONE side can disagree with
+ * the baseline while the pair disagrees with each other — that side changed,
+ * and its state is mirrored to the other side. Performs the side-writes but
+ * NOT the link-row update; returns the new baseline for the caller to persist.
+ */
+async function reconcileCompletion(opts: {
+  pvTaskId: string;
+  pvCompleted: boolean;
+  twin: Task;
+  link: PrintavoTaskLink;
+  dryRun: boolean;
+  summary: SyncSummary;
+}): Promise<boolean> {
+  const { pvTaskId, pvCompleted, twin, link, dryRun, summary } = opts;
+  if (twin.completed === pvCompleted) return pvCompleted;
+
+  if (twin.completed !== link.lastSyncedCompleted) {
+    // moMINTum changed → push to Printavo. taskUpdate has MERGE semantics
+    // (live-verified): sending only {completed} preserves all other fields.
+    if (!dryRun) {
+      await getPrintavoClient().query(
+        taskUpdateMutation(pvTaskId, { completed: twin.completed }),
+      );
+    }
+    if (twin.completed) summary.completedInPrintavo++;
+    else summary.reopenedInPrintavo++;
+    return twin.completed;
+  }
+
+  // Printavo changed → mirror to the twin via the shared completion helper
+  // (completedAt stamping + recurring respawn — never bypassed).
+  if (!dryRun) await setTaskCompletion(twin.id, pvCompleted);
+  if (pvCompleted) summary.completedTwins++;
+  else summary.reopenedTwins++;
+  return pvCompleted;
+}
+
+/**
+ * Conservative not-found detection for task(id) probes. Deleting a twin is
+ * destructive — only an EXPLICIT not-found may trigger it; any other error
+ * (network, rate limit, 5xx) is logged and retried next cycle.
+ * Live-verified 2026-07-19: querying a deleted task throws a GraphQL error
+ * "Task: Field id with value <id>: Not found" (data.task is NOT null).
+ */
+function isNotFoundError(err: PrintavoApiError): boolean {
+  return /not\s*found|does\s*not\s*exist|couldn'?t\s*find/i.test(err.message);
+}
+
+/** Per-cycle cap on individual task(id) probes — protects the account-wide
+ *  Printavo rate limit (10 req/5s, shared). Leftovers run next cycle. */
+const PROBE_CAP = 25;
+
 // ── The cycle ────────────────────────────────────────────────────────────
 
 export async function runSyncCycle(
@@ -313,6 +399,13 @@ export async function runSyncCycle(
     listMoved: 0,
     skippedUnassignedOrderTasks: 0,
     suppressedLinks: 0,
+    completedTwins: 0,
+    reopenedTwins: 0,
+    completedInPrintavo: 0,
+    reopenedInPrintavo: 0,
+    probed: 0,
+    probesDeferred: 0,
+    twinsDeletedFromPrintavoDelete: 0,
     unmatchedAssigneeEmails: [],
     errors: [],
   };
@@ -450,11 +543,24 @@ export async function runSyncCycle(
           if (listChanged) summary.listMoved++;
         }
 
+        // Two-way completion (open scan ⇒ pv.completed is false): a twin
+        // completed since the baseline pushes to Printavo; a twin that is
+        // completed WITH baseline=true means Printavo reopened → reopen twin.
+        const newCompletedBaseline = await reconcileCompletion({
+          pvTaskId: pv.id,
+          pvCompleted: pv.completed,
+          twin,
+          link,
+          dryRun,
+          summary,
+        });
+
         if (!dryRun) {
           await hubDb
             .update(printavoTaskLinksTable)
             .set({
               lastSeenAt: startedAt,
+              lastSyncedCompleted: newCompletedBaseline,
               ...(contentChanged
                 ? {
                     lastSyncedName: pv.name,
@@ -468,6 +574,86 @@ export async function runSyncCycle(
       } catch (err) {
         summary.errors.push(
           `task ${pv.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    // ── Vanished-task probes ─────────────────────────────────────────────
+    // Links whose Printavo task was NOT in the open scan: it was either
+    // completed or deleted in Printavo — only an individual task(id) probe
+    // can tell which. Settled pairs (both sides completed) are skipped
+    // forever; the per-cycle cap defers the rest to the next cycle.
+    const seenPvIds = new Set(pvTasks.map((t) => t.id));
+    const client = getPrintavoClient();
+    for (const link of links) {
+      if (link.suppressed || seenPvIds.has(link.printavoTaskId)) continue;
+      try {
+        const twin = mmById.get(link.momintumTaskId);
+        if (!twin || twin.deletedAt) {
+          // Twin (soft-)deleted in moMINTum → suppress, same as the open path.
+          if (!dryRun) {
+            await hubDb
+              .update(printavoTaskLinksTable)
+              .set({ suppressed: true })
+              .where(eq(printavoTaskLinksTable.id, link.id));
+          }
+          summary.suppressedLinks++;
+          continue;
+        }
+        if (link.lastSyncedCompleted && twin.completed) continue;
+        if (summary.probed >= PROBE_CAP) {
+          summary.probesDeferred++;
+          continue;
+        }
+        summary.probed++;
+
+        let pv: PvTaskNode | null;
+        try {
+          const data = await client.query<{ task: PvTaskNode | null }>(
+            taskDetailQuery(link.printavoTaskId),
+          );
+          pv = data.task;
+        } catch (err) {
+          if (err instanceof PrintavoApiError && isNotFoundError(err)) {
+            pv = null;
+          } else {
+            throw err; // transient — logged below, retried next cycle
+          }
+        }
+
+        if (!pv) {
+          // Deleted in Printavo → soft-delete the twin (restorable from the
+          // standalone app's trash) and drop the link.
+          if (!dryRun) {
+            await momintumDb
+              .update(tasksTable)
+              .set({ deletedAt: new Date() })
+              .where(eq(tasksTable.id, twin.id));
+            await hubDb
+              .delete(printavoTaskLinksTable)
+              .where(eq(printavoTaskLinksTable.id, link.id));
+          }
+          summary.twinsDeletedFromPrintavoDelete++;
+          continue;
+        }
+
+        const newBaseline = await reconcileCompletion({
+          pvTaskId: link.printavoTaskId,
+          pvCompleted: pv.completed,
+          twin,
+          link,
+          dryRun,
+          summary,
+        });
+        if (!dryRun && newBaseline !== link.lastSyncedCompleted) {
+          await hubDb
+            .update(printavoTaskLinksTable)
+            .set({ lastSyncedCompleted: newBaseline })
+            .where(eq(printavoTaskLinksTable.id, link.id));
+        }
+      } catch (err) {
+        summary.errors.push(
+          `probe ${link.printavoTaskId}: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }

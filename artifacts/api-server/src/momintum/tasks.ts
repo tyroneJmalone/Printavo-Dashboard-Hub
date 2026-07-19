@@ -13,6 +13,7 @@ import {
   DuplicateTaskParams,
 } from "@workspace/api-zod";
 import { requireAuth, getOrCreateCurrentMember } from "./auth";
+import { respawnIfRecurring } from "./taskCompletion";
 
 async function checkPrivateListAccess(
   listId: number | null | undefined,
@@ -220,28 +221,6 @@ router.get("/tasks/:id", async (req, res): Promise<void> => {
   res.json(task);
 });
 
-function getNextDueDate(
-  recurrence: string,
-  fromDate: Date,
-): Date {
-  const next = new Date(fromDate);
-  switch (recurrence) {
-    case "daily":
-      next.setDate(next.getDate() + 1);
-      break;
-    case "weekly":
-      next.setDate(next.getDate() + 7);
-      break;
-    case "monthly":
-      next.setMonth(next.getMonth() + 1);
-      break;
-    case "yearly":
-      next.setFullYear(next.getFullYear() + 1);
-      break;
-  }
-  return next;
-}
-
 router.post("/tasks/:id/duplicate", requireAuth, async (req, res): Promise<void> => {
   const params = DuplicateTaskParams.safeParse(req.params);
   if (!params.success) {
@@ -339,27 +318,8 @@ router.patch("/tasks/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  if (
-    parsed.data.completed === true &&
-    task.recurrence &&
-    task.recurrence !== "none"
-  ) {
-    const baseDate = task.dueDate ? new Date(task.dueDate) : new Date();
-    const nextDueDate = getNextDueDate(task.recurrence, baseDate);
-
-    await db.insert(tasksTable).values({
-      title: task.title,
-      notes: task.notes,
-      listId: task.listId,
-      assigneeId: task.assigneeId,
-      createdById: task.createdById,
-      priority: task.priority,
-      dueDate: nextDueDate,
-      tags: task.tags,
-      sortOrder: task.sortOrder,
-      recurrence: task.recurrence,
-      recurringParentId: task.recurringParentId ?? task.id,
-    });
+  if (parsed.data.completed === true) {
+    await respawnIfRecurring(task);
   }
 
   res.json(task);
