@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useCurrentUser } from "@/lib/current-user";
 import { QuoteBanner } from "@/components/layout/quote-banner";
+import { PrintavoSyncButton } from "@/components/printavo-sync-button";
 import { FeedbackButton } from "@/components/feedback/feedback-button";
 import logo from "@/assets/mint-logo.png";
 import {
@@ -415,6 +416,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {currentUser?.isAdmin && (
         <div className="px-3 pb-1 space-y-0.5">
+          <PrintavoSyncButton />
           <Link
             href="/feedback"
             className={cn(
