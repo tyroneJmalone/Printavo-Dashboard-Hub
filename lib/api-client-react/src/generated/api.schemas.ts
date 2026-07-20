@@ -1924,6 +1924,8 @@ export interface Task {
   recurringParentId: number | null;
   /** @nullable */
   deletedAt: string | null;
+  /** @nullable */
+  source?: string | null;
   createdAt: string;
   updatedAt: string;
 }

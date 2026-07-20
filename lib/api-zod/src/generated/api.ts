@@ -2902,6 +2902,7 @@ export const ListTasksResponseItem = zod.object({
   "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
+  "source": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -2942,6 +2943,7 @@ export const CreateTaskResponse = zod.object({
   "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
+  "source": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -2980,6 +2982,7 @@ export const BulkUpdateTasksResponseItem = zod.object({
   "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
+  "source": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -3022,6 +3025,7 @@ export const GetTaskResponse = zod.object({
   "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
+  "source": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -3066,6 +3070,7 @@ export const UpdateTaskResponse = zod.object({
   "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
+  "source": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -3148,6 +3153,7 @@ export const DuplicateTaskResponse = zod.object({
   "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
+  "source": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -3176,6 +3182,7 @@ export const RestoreTaskResponse = zod.object({
   "recurrence": zod.union([zod.literal('daily'),zod.literal('weekly'),zod.literal('monthly'),zod.literal('yearly'),zod.literal(null)]).nullable(),
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
+  "source": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })

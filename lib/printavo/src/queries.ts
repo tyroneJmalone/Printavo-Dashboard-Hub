@@ -448,8 +448,8 @@ const TASK_NODE_FIELDS = `
   assignedTo { id name email }
   taskable {
     __typename
-    ... on Invoice { id visualId }
-    ... on Quote { id visualId }
+    ... on Invoice { id visualId nickname contact { fullName customer { companyName } } }
+    ... on Quote { id visualId nickname contact { fullName customer { companyName } } }
     ... on Customer { id }
   }
   timestamps { createdAt updatedAt }

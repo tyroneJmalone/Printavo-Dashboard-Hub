@@ -5487,6 +5487,7 @@ components:
           enum: [daily, weekly, monthly, yearly, null]
         recurringParentId: { type: ["integer", "null"] }
         deletedAt: { type: ["string", "null"], format: date-time }
+        source: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 

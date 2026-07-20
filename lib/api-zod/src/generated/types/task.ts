@@ -33,6 +33,8 @@ export interface Task {
   recurringParentId: number | null;
   /** @nullable */
   deletedAt: Date | null;
+  /** @nullable */
+  source?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

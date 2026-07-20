@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { db, tasksTable, listsTable } from "@workspace/momintum-db";
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
+import { db, tasksTable, listsTable, teamsTable } from "@workspace/momintum-db";
+import { PRINTAVO_TEAM_NAME } from "../printavoTasks/sync";
 import {
   CreateTaskBody,
   ListTasksQueryParams,
@@ -73,6 +74,38 @@ router.get("/tasks", async (req, res): Promise<void> => {
 
   if (query.data.listId !== undefined) {
     conditions.push(eq(tasksTable.listId, query.data.listId));
+  } else {
+    // Printavo shared lists (General/Production under the "Printavo" team)
+    // are quarantined: their tasks appear ONLY when the list itself is
+    // opened (explicit listId filter). Keeps the 60+ synced order tasks out
+    // of Today/Upcoming/Week/Calendar/All/search views for everyone,
+    // admins included (Tyler-confirmed 2026-07-20).
+    const [printavoTeam] = await db
+      .select({ id: teamsTable.id })
+      .from(teamsTable)
+      .where(eq(teamsTable.name, PRINTAVO_TEAM_NAME))
+      .orderBy(asc(teamsTable.id))
+      .limit(1);
+    if (printavoTeam) {
+      const pvSharedLists = await db
+        .select({ id: listsTable.id })
+        .from(listsTable)
+        .where(
+          and(
+            eq(listsTable.teamId, printavoTeam.id),
+            isNull(listsTable.ownerId),
+          ),
+        );
+      const pvListIds = pvSharedLists.map((l) => l.id);
+      if (pvListIds.length > 0) {
+        conditions.push(
+          or(
+            isNull(tasksTable.listId),
+            notInArray(tasksTable.listId, pvListIds),
+          ),
+        );
+      }
+    }
   }
   if (query.data.deleted === true) {
     conditions.push(isNotNull(tasksTable.deletedAt));

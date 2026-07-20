@@ -58,7 +58,13 @@ export function Inbox() {
 
   if (isLoading) return <div>Loading...</div>;
 
-  const inboxTasks = sortTasksLocally(tasks?.filter(t => !t.listId) || [], sortBy, members);
+  // Synced Printavo tasks never belong in the inbox: private twins have no
+  // list on purpose (they're routed, not "unsorted") and would flood admins.
+  const inboxTasks = sortTasksLocally(
+    tasks?.filter((t) => !t.listId && t.source !== "printavo") || [],
+    sortBy,
+    members,
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

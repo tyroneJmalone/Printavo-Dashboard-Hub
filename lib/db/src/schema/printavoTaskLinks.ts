@@ -34,6 +34,13 @@ export const printavoTaskLinksTable = pgTable(
     lastSyncedDueAt: timestamp("last_synced_due_at", { withTimezone: true }),
     lastSyncedAssigneeEmail: text("last_synced_assignee_email"),
     /**
+     * Routing kind ("private" | "general" | "production") applied at the last
+     * sync. List placement is only re-applied when this kind (or the assignee)
+     * changes — NULL means "pre-routing-overhaul link": the next cycle
+     * migrates the twin to its new placement and stamps the baseline.
+     */
+    lastSyncedListKind: text("last_synced_list_kind"),
+    /**
      * True when the moMINTum twin was (soft-)deleted by a user: we stop
      * mirroring entirely and never touch the Printavo task again.
      */

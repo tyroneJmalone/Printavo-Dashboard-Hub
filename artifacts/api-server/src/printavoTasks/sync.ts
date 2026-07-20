@@ -44,17 +44,21 @@ import { setTaskCompletion } from "../momintum/taskCompletion";
  * Ownership rules (see replit.md):
  * - moMINTum DB is the standalone app's LIVE prod DB — data-row writes only,
  *   never schema changes, never members.clerk_user_id, no JIT member
- *   creation from sync (unmatched assignee emails route to General).
+ *   creation from sync (unmatched assignee emails route to the shared lists
+ *   as if unassigned).
  * - The link table lives in the HUB's own DB (@workspace/db).
  * - All Printavo traffic goes through the shared throttled gateway.
  */
 
-const TEAM_NAME = "Printavo";
-const ASSIGNED_LIST_NAME = "Assigned to Me";
+/** Shared with momintum/tasks.ts: identifies the Printavo team whose shared
+ *  lists are quarantined from date/overview task queries. */
+export const PRINTAVO_TEAM_NAME = "Printavo";
+const TEAM_NAME = PRINTAVO_TEAM_NAME;
 const GENERAL_LIST_NAME = "General";
+const PRODUCTION_LIST_NAME = "Production";
 const TEAM_COLOR = "#16a34a";
-const ASSIGNED_LIST_COLOR = "#16a34a";
 const GENERAL_LIST_COLOR = "#2baeae";
+const PRODUCTION_LIST_COLOR = "#f59e0b";
 const ENSURE_LOCK_KEY = "momintum:printavo-task-sync:ensure";
 
 // ── Printavo response shapes (fields per tasksPageQuery) ────────────────
@@ -65,10 +69,17 @@ interface PvUser {
   email: string | null;
 }
 
-interface PvTaskable {
+export interface PvTaskable {
   __typename: "Invoice" | "Quote" | "Customer";
   id: string;
   visualId?: number | string | null;
+  /** Invoice/Quote only (order nickname). */
+  nickname?: string | null;
+  /** Invoice/Quote only. */
+  contact?: {
+    fullName: string | null;
+    customer?: { companyName: string | null } | null;
+  } | null;
 }
 
 export interface PvTaskNode {
@@ -100,7 +111,8 @@ export interface SyncSummary {
   created: number;
   contentUpdated: number;
   listMoved: number;
-  skippedUnassignedOrderTasks: number;
+  /** Customer-tied tasks without a matched assignee — mirror-only, never created fresh. */
+  skippedCustomerTasks: number;
   suppressedLinks: number;
   /** Twins completed because their Printavo task completed. */
   completedTwins: number;
@@ -134,14 +146,20 @@ export function isSyncRunning(): boolean {
 // ── Building blocks ──────────────────────────────────────────────────────
 
 /**
- * JIT-ensure the "Printavo" team plus its two shared lists. Advisory-locked:
- * neither teams.name nor lists.name is unique in the standalone schema, so
- * concurrent ensures would create duplicates. Lists are created with
- * ownerId=null (shared → visible to everyone) and teamId set (badge only).
+ * JIT-ensure the "Printavo" team plus its two shared lists (General +
+ * Production). Advisory-locked: neither teams.name nor lists.name is unique
+ * in the standalone schema, so concurrent ensures would create duplicates.
+ * Lists are created with ownerId=null (shared → visible to everyone) and
+ * teamId set (badge only).
+ *
+ * Group memberships: when the GROUP is first created, all ensured lists are
+ * attached; when it already exists, only lists created in THIS call are
+ * attached. Pre-existing lists are never re-attached — if Tyler ungroups or
+ * moves them, the sync must not undo that.
  */
 export async function ensurePrintavoGroup(): Promise<{
-  assignedListId: number;
   generalListId: number;
+  productionListId: number;
 }> {
   return momintumDb.transaction(async (tx) => {
     await tx.execute(
@@ -162,31 +180,31 @@ export async function ensurePrintavoGroup(): Promise<{
     }
     if (!team) throw new Error("Failed to ensure Printavo team");
 
-    const ensureList = async (name: string, color: string): Promise<number> => {
+    const ensureList = async (
+      name: string,
+      color: string,
+    ): Promise<{ id: number; created: boolean }> => {
       const [existing] = await tx
         .select()
         .from(listsTable)
         .where(sql`${listsTable.name} = ${name} AND ${listsTable.teamId} = ${team.id} AND ${listsTable.ownerId} IS NULL`)
         .orderBy(asc(listsTable.id))
         .limit(1);
-      if (existing) return existing.id;
+      if (existing) return { id: existing.id, created: false };
       const [created] = await tx
         .insert(listsTable)
         .values({ name, color, teamId: team.id, ownerId: null })
         .returning();
       if (!created) throw new Error(`Failed to ensure list ${name}`);
-      return created.id;
+      return { id: created.id, created: true };
     };
 
-    const assignedListId = await ensureList(
-      ASSIGNED_LIST_NAME,
-      ASSIGNED_LIST_COLOR,
+    const general = await ensureList(GENERAL_LIST_NAME, GENERAL_LIST_COLOR);
+    const production = await ensureList(
+      PRODUCTION_LIST_NAME,
+      PRODUCTION_LIST_COLOR,
     );
-    const generalListId = await ensureList(GENERAL_LIST_NAME, GENERAL_LIST_COLOR);
 
-    // Nest both lists under a "Printavo" sidebar group (JIT, same lock).
-    // Memberships are seeded ONLY when the group is first created — if Tyler
-    // later ungroups or moves these lists, the sync must not undo that.
     const [existingGroup] = await tx
       .select()
       .from(listGroupsTable)
@@ -202,21 +220,34 @@ export async function ensurePrintavoGroup(): Promise<{
         await tx
           .insert(listGroupMembershipsTable)
           .values([
-            { listId: assignedListId, groupId: group.id },
-            { listId: generalListId, groupId: group.id },
+            { listId: general.id, groupId: group.id },
+            { listId: production.id, groupId: group.id },
           ])
+          .onConflictDoNothing();
+      }
+    } else {
+      const newlyCreated = [general, production].filter((l) => l.created);
+      if (newlyCreated.length > 0) {
+        await tx
+          .insert(listGroupMembershipsTable)
+          .values(
+            newlyCreated.map((l) => ({
+              listId: l.id,
+              groupId: existingGroup.id,
+            })),
+          )
           .onConflictDoNothing();
       }
     }
 
-    return { assignedListId, generalListId };
+    return { generalListId: general.id, productionListId: production.id };
   });
 }
 
 /** Read-only lookup for dry runs; sentinels when the group doesn't exist. */
 async function lookupPrintavoGroupReadOnly(): Promise<{
-  assignedListId: number;
   generalListId: number;
+  productionListId: number;
 }> {
   const [team] = await momintumDb
     .select()
@@ -224,17 +255,18 @@ async function lookupPrintavoGroupReadOnly(): Promise<{
     .where(eq(teamsTable.name, TEAM_NAME))
     .orderBy(asc(teamsTable.id))
     .limit(1);
-  if (!team) return { assignedListId: -1, generalListId: -2 };
+  if (!team) return { generalListId: -2, productionListId: -3 };
   const lists = await momintumDb
     .select()
     .from(listsTable)
     .where(eq(listsTable.teamId, team.id))
     .orderBy(asc(listsTable.id));
   return {
-    assignedListId:
-      lists.find((l) => l.name === ASSIGNED_LIST_NAME && !l.ownerId)?.id ?? -1,
     generalListId:
       lists.find((l) => l.name === GENERAL_LIST_NAME && !l.ownerId)?.id ?? -2,
+    productionListId:
+      lists.find((l) => l.name === PRODUCTION_LIST_NAME && !l.ownerId)?.id ??
+      -3,
   };
 }
 
@@ -270,32 +302,50 @@ export async function fetchAllOpenPvTasks(): Promise<PvTaskNode[]> {
   return all;
 }
 
+export type TwinListKind = "private" | "general" | "production";
+
 interface DesiredMirror {
-  /** Which list the twin belongs in. */
-  listKind: "assigned" | "general";
+  /** Where the twin belongs. "private" = listId NULL + assigneeId set —
+   *  visible only in the assignee's own views (and to admins). */
+  listKind: TwinListKind;
   title: string;
   assigneeEmail: string | null;
-  /** False for invoice/quote tasks with no assignee: mirror only if a link
-   *  already exists (they were assigned once), never create fresh. */
+  /** False for customer-tied tasks without a matched assignee: mirror only
+   *  if a link already exists, never create fresh. */
   createIfMissing: boolean;
 }
 
-/** Tyler's routing spec (rev. 2026-07-19): ANY task with an assignee goes to
- *  "Assigned to Me" (falls back to General when the email doesn't match a
- *  moMINTum member); unassigned tasks go to General. Order-tied tasks without
- *  an assignee are never created fresh (mirror-only if a link exists). */
-export function routePvTask(t: PvTaskNode): DesiredMirror {
+/** Tyler's routing spec (rev. 2026-07-20):
+ *  - assignee email matched to a moMINTum member → PRIVATE (no shared list),
+ *    whether or not the task is order-tied;
+ *  - no assignee (or unmatched email — never guess, never JIT-create members
+ *    from sync) + invoice/quote-tied → shared "Production" list;
+ *  - no assignee + not order-tied → shared "General" list;
+ *  - customer-tied tasks without a matched assignee keep the historical
+ *    mirror-only behavior (General, never created fresh) — zero open ones
+ *    exist as of this revision. */
+export function routePvTask(
+  t: PvTaskNode,
+  memberMatched: boolean,
+): DesiredMirror {
   const email = t.assignedTo?.email?.trim().toLowerCase() || null;
+  const orderTied =
+    t.taskable?.__typename === "Invoice" || t.taskable?.__typename === "Quote";
   const suffix = !t.taskable
     ? ""
     : t.taskable.__typename === "Customer"
       ? " (customer task)"
       : ` (INV #${t.taskable.visualId ?? "?"})`;
+  const listKind: TwinListKind =
+    email && memberMatched ? "private" : orderTied ? "production" : "general";
   return {
-    listKind: email ? "assigned" : "general",
+    listKind,
     title: `${t.name}${suffix}`,
     assigneeEmail: email,
-    createIfMissing: t.taskable ? email !== null : true,
+    createIfMissing:
+      t.taskable?.__typename === "Customer"
+        ? Boolean(email && memberMatched)
+        : true,
   };
 }
 
@@ -315,9 +365,23 @@ export function buildTwinNotes(t: PvTaskNode): string {
       lines.push(
         `${t.taskable.__typename} #${t.taskable.visualId ?? "?"}: https://www.printavo.com/invoices/${t.taskable.id}`,
       );
+      lines.push(...buildOrderInfoLines(t.taskable));
     }
   }
   return lines.join("\n");
+}
+
+/** Customer / company / order-nickname lines for invoice- and quote-tied
+ *  twins (blank fields skipped). Exported for the one-time notes backfill. */
+export function buildOrderInfoLines(taskable: PvTaskable): string[] {
+  const lines: string[] = [];
+  const contactName = taskable.contact?.fullName?.trim();
+  const company = taskable.contact?.customer?.companyName?.trim();
+  const nickname = taskable.nickname?.trim();
+  if (contactName) lines.push(`Customer: ${contactName}`);
+  if (company) lines.push(`Company: ${company}`);
+  if (nickname) lines.push(`Nickname: ${nickname}`);
+  return lines;
 }
 
 // ── Two-way completion ───────────────────────────────────────────────────
@@ -397,7 +461,7 @@ export async function runSyncCycle(
     created: 0,
     contentUpdated: 0,
     listMoved: 0,
-    skippedUnassignedOrderTasks: 0,
+    skippedCustomerTasks: 0,
     suppressedLinks: 0,
     completedTwins: 0,
     reopenedTwins: 0,
@@ -413,8 +477,8 @@ export async function runSyncCycle(
 
   try {
     // Dry run must not create the team/lists either — fall back to sentinel
-    // ids (-1/-2) when they don't exist yet; routing decisions still count.
-    const { assignedListId, generalListId } = dryRun
+    // ids (-2/-3) when they don't exist yet; routing decisions still count.
+    const { generalListId, productionListId } = dryRun
       ? await lookupPrintavoGroupReadOnly()
       : await ensurePrintavoGroup();
     const [pvTasks, memberMap] = await Promise.all([
@@ -447,25 +511,22 @@ export async function runSyncCycle(
         const link = linkByPvId.get(pv.id);
         if (link?.suppressed) continue;
 
-        const desired = routePvTask(pv);
-        const member = desired.assigneeEmail
-          ? memberMap.get(desired.assigneeEmail)
-          : undefined;
-        if (desired.assigneeEmail && !member) {
-          unmatched.add(desired.assigneeEmail);
-        }
-        // Unmatched assignee on an order task → General, unassigned (never
-        // guess; never JIT-create members from sync).
+        const email = pv.assignedTo?.email?.trim().toLowerCase() || null;
+        const member = email ? memberMap.get(email) : undefined;
+        if (email && !member) unmatched.add(email);
+        const desired = routePvTask(pv, Boolean(member));
         const listId =
-          desired.listKind === "assigned" && member
-            ? assignedListId
-            : generalListId;
+          desired.listKind === "private"
+            ? null
+            : desired.listKind === "production"
+              ? productionListId
+              : generalListId;
         const assigneeId = member?.id ?? null;
         const dueDate = pv.dueAt ? new Date(pv.dueAt) : null;
 
         if (!link) {
           if (!desired.createIfMissing) {
-            summary.skippedUnassignedOrderTasks++;
+            summary.skippedCustomerTasks++;
             continue;
           }
           if (dryRun) {
@@ -496,6 +557,7 @@ export async function runSyncCycle(
               lastSyncedName: pv.name,
               lastSyncedDueAt: dueDate,
               lastSyncedAssigneeEmail: desired.assigneeEmail,
+              lastSyncedListKind: desired.listKind,
               lastSeenAt: startedAt,
             });
           } catch (linkErr) {
@@ -523,13 +585,25 @@ export async function runSyncCycle(
           continue;
         }
 
+        const assigneeEmailChanged =
+          (link.lastSyncedAssigneeEmail ?? null) !==
+          (desired.assigneeEmail ?? null);
         const contentChanged =
           link.lastSyncedName !== pv.name ||
           (link.lastSyncedDueAt?.getTime() ?? null) !==
             (dueDate?.getTime() ?? null) ||
-          (link.lastSyncedAssigneeEmail ?? null) !==
-            (desired.assigneeEmail ?? null);
-        const listChanged = twin.listId !== listId;
+          assigneeEmailChanged;
+        // List placement is (re-)applied only when the ROUTING changed:
+        // kind changed, assignee changed (a Printavo reassignment A→B must
+        // re-home the task even though the kind stays "private"), or the
+        // NULL baseline (pre-overhaul link → one-time migration). Otherwise
+        // a user's manual re-listing wins — the sync must not yank a private
+        // task back out of a personal list every cycle.
+        const routingChanged =
+          link.lastSyncedListKind === null ||
+          link.lastSyncedListKind !== desired.listKind ||
+          assigneeEmailChanged;
+        const listChanged = routingChanged && twin.listId !== listId;
 
         if (link.origin === "printavo" && (contentChanged || listChanged)) {
           if (!dryRun) {
@@ -539,7 +613,14 @@ export async function runSyncCycle(
                 ...(contentChanged
                   ? { title: desired.title, dueDate, assigneeId }
                   : {}),
-                ...(listChanged ? { listId } : {}),
+                // assigneeId must ride along with every list move: a
+                // matched-status flip (member row added/removed for an
+                // unchanged email) changes routing WITHOUT changing the
+                // assignee email, so contentChanged stays false — without
+                // this, a production→private move would leave the twin
+                // list-less AND assignee-less (invisible), and the reverse
+                // would leave a stale assignee on a shared-list task.
+                ...(listChanged ? { listId, assigneeId } : {}),
               })
               .where(eq(tasksTable.id, twin.id));
           }
@@ -565,6 +646,9 @@ export async function runSyncCycle(
             .set({
               lastSeenAt: startedAt,
               lastSyncedCompleted: newCompletedBaseline,
+              ...(link.origin === "printavo"
+                ? { lastSyncedListKind: desired.listKind }
+                : {}),
               ...(contentChanged
                 ? {
                     lastSyncedName: pv.name,
