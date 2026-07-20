@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout/app-layout";
 import { CurrentUserProvider } from "@/lib/current-user";
 import { TaskDetailProvider } from "@/components/tasks/task-detail";
+import { PrintavoSyncGuardProvider } from "@/components/tasks/printavo-sync-guard";
 import { Today } from "@/pages/today";
 import { Upcoming } from "@/pages/upcoming";
 import { Inbox } from "@/pages/inbox";
@@ -126,6 +127,7 @@ function AuthenticatedApp() {
   return (
     <StaffGate>
     <CurrentUserProvider>
+      <PrintavoSyncGuardProvider>
       <TaskDetailProvider>
         <AppLayout>
           <Switch>
@@ -148,6 +150,7 @@ function AuthenticatedApp() {
           </Switch>
         </AppLayout>
       </TaskDetailProvider>
+      </PrintavoSyncGuardProvider>
     </CurrentUserProvider>
     </StaffGate>
   );

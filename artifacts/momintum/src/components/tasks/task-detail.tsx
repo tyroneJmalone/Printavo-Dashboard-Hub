@@ -45,6 +45,7 @@ import { Trash2, Send, Plus, X, Copy, UserCircle, ExternalLink, RefreshCw } from
 import { useToast } from "@/hooks/use-toast";
 import { getPrintavoOrderUrl } from "@/components/tasks/printavo-order-link";
 import { useCurrentUser } from "@/lib/current-user";
+import { usePrintavoSyncGuard, isGuardedEdit } from "@/components/tasks/printavo-sync-guard";
 import { TagsInput } from "@/components/tasks/tags-input";
 import { MentionInput } from "@/components/tasks/mention-input";
 import type { Member } from "@workspace/api-client-react";
@@ -187,9 +188,17 @@ function TaskDetail({ taskId, onClose }: TaskDetailProps) {
     deleteSubtask.mutate({ id: subtaskId }, { onSuccess: invalidateSubtasks });
   };
 
+  const confirmSyncGuard = usePrintavoSyncGuard();
+
   const patch = (data: Parameters<typeof updateTask.mutate>[0]["data"]) => {
     if (!taskId) return;
-    updateTask.mutate({ id: taskId, data }, { onSuccess: invalidate });
+    const run = () =>
+      updateTask.mutate({ id: taskId, data }, { onSuccess: invalidate });
+    if (task?.printavoLinked && isGuardedEdit(data)) {
+      confirmSyncGuard({ action: "edit", onConfirm: run });
+    } else {
+      run();
+    }
   };
 
   const handleSendToPrintavo = () => {
@@ -224,16 +233,22 @@ function TaskDetail({ taskId, onClose }: TaskDetailProps) {
 
   const handleDelete = () => {
     if (!taskId) return;
-    deleteTask.mutate(
-      { id: taskId },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-          onClose();
+    const run = () =>
+      deleteTask.mutate(
+        { id: taskId },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+            onClose();
+          },
         },
-      },
-    );
+      );
+    if (task?.printavoLinked) {
+      confirmSyncGuard({ action: "delete", onConfirm: run });
+    } else {
+      run();
+    }
   };
 
   const handleAddComment = () => {

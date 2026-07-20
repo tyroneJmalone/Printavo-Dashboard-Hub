@@ -2,6 +2,7 @@ import { Task } from "@workspace/api-client-react";
 import { useUpdateTask, useListMembers, getListTasksQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOpenTaskDetail } from "@/components/tasks/task-detail";
+import { usePrintavoSyncGuard } from "@/components/tasks/printavo-sync-guard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
@@ -25,17 +26,25 @@ export function WeekTaskChip({ task, selectionMode = false, selected = false, on
   const { data: members } = useListMembers();
   const assignee = members?.find((m) => m.id === task.assigneeId);
 
+  const confirmSyncGuard = usePrintavoSyncGuard();
+
   const toggleCompleted = (e: React.MouseEvent) => {
     e.stopPropagation();
-    updateTask.mutate(
-      { id: task.id, data: { completed: !task.completed } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    const run = () =>
+      updateTask.mutate(
+        { id: task.id, data: { completed: !task.completed } },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          },
         },
-      },
-    );
+      );
+    if (task.printavoLinked) {
+      confirmSyncGuard({ action: task.completed ? "reopen" : "complete", onConfirm: run });
+    } else {
+      run();
+    }
   };
 
   const handleClick = () => {

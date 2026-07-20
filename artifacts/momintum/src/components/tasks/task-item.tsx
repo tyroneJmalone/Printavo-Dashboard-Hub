@@ -11,6 +11,7 @@ import { getListTasksQueryKey, getGetDashboardSummaryQueryKey } from "@workspace
 import { useOpenTaskDetail } from "@/components/tasks/task-detail";
 import { QuickEditControls } from "@/components/tasks/quick-edit-controls";
 import { TaskTitleWithPrintavoLink } from "@/components/tasks/printavo-order-link";
+import { usePrintavoSyncGuard, isGuardedEdit } from "@/components/tasks/printavo-sync-guard";
 
 interface TaskItemProps {
   task: Task;
@@ -35,40 +36,60 @@ export function TaskItem({ task, selectionMode = false, selected = false, onTogg
   const creator = members?.find(m => m.id === task.createdById);
   const subtaskDoneCount = subtasks?.filter((s) => s.completed).length ?? 0;
 
+  const confirmSyncGuard = usePrintavoSyncGuard();
+
   const toggleCompleted = () => {
-    updateTask.mutate(
-      { id: task.id, data: { completed: !task.completed } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    const run = () =>
+      updateTask.mutate(
+        { id: task.id, data: { completed: !task.completed } },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          }
         }
-      }
-    );
+      );
+    if (task.printavoLinked) {
+      confirmSyncGuard({ action: task.completed ? "reopen" : "complete", onConfirm: run });
+    } else {
+      run();
+    }
   };
 
   const quickPatch = (data: Record<string, unknown>) => {
-    updateTask.mutate(
-      { id: task.id, data },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    const run = () =>
+      updateTask.mutate(
+        { id: task.id, data },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          }
         }
-      }
-    );
+      );
+    if (task.printavoLinked && isGuardedEdit(data)) {
+      confirmSyncGuard({ action: "edit", onConfirm: run });
+    } else {
+      run();
+    }
   };
 
   const handleDelete = () => {
-    deleteTask.mutate(
-      { id: task.id },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    const run = () =>
+      deleteTask.mutate(
+        { id: task.id },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          },
         },
-      },
-    );
+      );
+    if (task.printavoLinked) {
+      confirmSyncGuard({ action: "delete", onConfirm: run });
+    } else {
+      run();
+    }
   };
 
   const commitTitle = () => {

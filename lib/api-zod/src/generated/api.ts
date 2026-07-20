@@ -2903,6 +2903,7 @@ export const ListTasksResponseItem = zod.object({
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
   "source": zod.string().nullish(),
+  "printavoLinked": zod.boolean().optional().describe('True when an active (non-suppressed) Printavo sync link exists for this task — completing\/reopening it pushes to Printavo, deleting it permanently stops syncing.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -2944,6 +2945,7 @@ export const CreateTaskResponse = zod.object({
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
   "source": zod.string().nullish(),
+  "printavoLinked": zod.boolean().optional().describe('True when an active (non-suppressed) Printavo sync link exists for this task — completing\/reopening it pushes to Printavo, deleting it permanently stops syncing.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -2983,6 +2985,7 @@ export const BulkUpdateTasksResponseItem = zod.object({
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
   "source": zod.string().nullish(),
+  "printavoLinked": zod.boolean().optional().describe('True when an active (non-suppressed) Printavo sync link exists for this task — completing\/reopening it pushes to Printavo, deleting it permanently stops syncing.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -3026,6 +3029,7 @@ export const GetTaskResponse = zod.object({
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
   "source": zod.string().nullish(),
+  "printavoLinked": zod.boolean().optional().describe('True when an active (non-suppressed) Printavo sync link exists for this task — completing\/reopening it pushes to Printavo, deleting it permanently stops syncing.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -3071,6 +3075,7 @@ export const UpdateTaskResponse = zod.object({
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
   "source": zod.string().nullish(),
+  "printavoLinked": zod.boolean().optional().describe('True when an active (non-suppressed) Printavo sync link exists for this task — completing\/reopening it pushes to Printavo, deleting it permanently stops syncing.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -3154,6 +3159,7 @@ export const DuplicateTaskResponse = zod.object({
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
   "source": zod.string().nullish(),
+  "printavoLinked": zod.boolean().optional().describe('True when an active (non-suppressed) Printavo sync link exists for this task — completing\/reopening it pushes to Printavo, deleting it permanently stops syncing.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -3183,6 +3189,7 @@ export const RestoreTaskResponse = zod.object({
   "recurringParentId": zod.number().nullable(),
   "deletedAt": zod.coerce.date().nullable(),
   "source": zod.string().nullish(),
+  "printavoLinked": zod.boolean().optional().describe('True when an active (non-suppressed) Printavo sync link exists for this task — completing\/reopening it pushes to Printavo, deleting it permanently stops syncing.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })

@@ -3,9 +3,11 @@ import {
   useListLists,
   useBulkUpdateTasks,
   useBulkDeleteTasks,
+  type Task,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListTasksQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
+import { usePrintavoSyncGuard } from "@/components/tasks/printavo-sync-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,9 +29,25 @@ export function BulkActionBar({ selectedIds, onDone }: BulkActionBarProps) {
   const bulkUpdate = useBulkUpdateTasks();
   const bulkDelete = useBulkDeleteTasks();
   const queryClient = useQueryClient();
+  const confirmSyncGuard = usePrintavoSyncGuard();
   const [dueDate, setDueDate] = useState("");
 
   if (selectedIds.length === 0) return null;
+
+  // The bar only receives ids; look the tasks up across every cached task
+  // list to find which selected ones carry an active Printavo sync link.
+  const countSyncedSelected = (): number => {
+    const selected = new Set(selectedIds);
+    const linked = new Set<number>();
+    for (const [, data] of queryClient.getQueriesData<Task[]>({
+      queryKey: getListTasksQueryKey(),
+    })) {
+      for (const t of data ?? []) {
+        if (t.printavoLinked && selected.has(t.id)) linked.add(t.id);
+      }
+    }
+    return linked.size;
+  };
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
@@ -46,27 +64,48 @@ export function BulkActionBar({ selectedIds, onDone }: BulkActionBarProps) {
   const handleDateChange = (value: string) => {
     setDueDate(value);
     if (!value) return;
-    bulkUpdate.mutate(
-      { data: { ids: selectedIds, data: { dueDate: new Date(value).toISOString() } } },
-      { onSuccess: () => { invalidate(); onDone(); } },
-    );
+    const run = () =>
+      bulkUpdate.mutate(
+        { data: { ids: selectedIds, data: { dueDate: new Date(value).toISOString() } } },
+        { onSuccess: () => { invalidate(); onDone(); } },
+      );
+    const syncedCount = countSyncedSelected();
+    if (syncedCount > 0) {
+      confirmSyncGuard({ action: "edit", count: syncedCount, onConfirm: run });
+    } else {
+      run();
+    }
   };
 
   const handleComplete = () => {
-    bulkUpdate.mutate(
-      { data: { ids: selectedIds, data: { completed: true } } },
-      { onSuccess: () => { invalidate(); onDone(); } },
-    );
+    const run = () =>
+      bulkUpdate.mutate(
+        { data: { ids: selectedIds, data: { completed: true } } },
+        { onSuccess: () => { invalidate(); onDone(); } },
+      );
+    const syncedCount = countSyncedSelected();
+    if (syncedCount > 0) {
+      confirmSyncGuard({ action: "complete", count: syncedCount, onConfirm: run });
+    } else {
+      run();
+    }
   };
 
   const handleDelete = () => {
+    const run = () =>
+      bulkDelete.mutate(
+        { data: { ids: selectedIds } },
+        { onSuccess: () => { invalidate(); onDone(); } },
+      );
+    const syncedCount = countSyncedSelected();
+    if (syncedCount > 0) {
+      confirmSyncGuard({ action: "delete", count: syncedCount, onConfirm: run });
+      return;
+    }
     if (!confirm(`Delete ${selectedIds.length} task${selectedIds.length === 1 ? "" : "s"}? This cannot be undone.`)) {
       return;
     }
-    bulkDelete.mutate(
-      { data: { ids: selectedIds } },
-      { onSuccess: () => { invalidate(); onDone(); } },
-    );
+    run();
   };
 
   const busy = bulkUpdate.isPending || bulkDelete.isPending;

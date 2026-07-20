@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import { db, tasksTable, listsTable, teamsTable } from "@workspace/momintum-db";
+import { db as hubDb, printavoTaskLinksTable } from "@workspace/db";
 import { PRINTAVO_TEAM_NAME } from "../printavoTasks/sync";
 import {
   CreateTaskBody,
@@ -27,6 +28,20 @@ async function checkPrivateListAccess(
 }
 
 const router: IRouter = Router();
+
+/**
+ * Task ids with an ACTIVE (non-suppressed) Printavo sync link. Lives in the
+ * HUB DB (links are hub state), so it can't be joined in the momintum-DB
+ * query — fetched separately and merged. Used by the FE to gate
+ * complete/delete/edit behind a "this syncs to Printavo" confirmation.
+ */
+async function getPrintavoLinkedTaskIds(): Promise<Set<number>> {
+  const links = await hubDb
+    .select({ momintumTaskId: printavoTaskLinksTable.momintumTaskId })
+    .from(printavoTaskLinksTable)
+    .where(eq(printavoTaskLinksTable.suppressed, false));
+  return new Set(links.map((l) => l.momintumTaskId));
+}
 
 function coerceBooleanQueryParam(
   rawQuery: Record<string, unknown>,
@@ -154,7 +169,10 @@ router.get("/tasks", async (req, res): Promise<void> => {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(...orderBy);
 
-  res.json(tasks);
+  const linkedIds = await getPrintavoLinkedTaskIds();
+  res.json(
+    tasks.map((t) => ({ ...t, printavoLinked: linkedIds.has(t.id) })),
+  );
 });
 
 router.post("/tasks", requireAuth, async (req, res): Promise<void> => {
@@ -251,7 +269,18 @@ router.get("/tasks/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(task);
+  const [activeLink] = await hubDb
+    .select({ id: printavoTaskLinksTable.id })
+    .from(printavoTaskLinksTable)
+    .where(
+      and(
+        eq(printavoTaskLinksTable.momintumTaskId, task.id),
+        eq(printavoTaskLinksTable.suppressed, false),
+      ),
+    )
+    .limit(1);
+
+  res.json({ ...task, printavoLinked: !!activeLink });
 });
 
 router.post("/tasks/:id/duplicate", requireAuth, async (req, res): Promise<void> => {

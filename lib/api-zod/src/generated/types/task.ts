@@ -35,6 +35,8 @@ export interface Task {
   deletedAt: Date | null;
   /** @nullable */
   source?: string | null;
+  /** True when an active (non-suppressed) Printavo sync link exists for this task — completing/reopening it pushes to Printavo, deleting it permanently stops syncing. */
+  printavoLinked?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
