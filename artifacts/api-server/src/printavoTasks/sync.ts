@@ -417,11 +417,15 @@ export async function runSyncCycle(
     const { assignedListId, generalListId } = dryRun
       ? await lookupPrintavoGroupReadOnly()
       : await ensurePrintavoGroup();
-    const [pvTasks, memberMap, links] = await Promise.all([
+    const [pvTasks, memberMap] = await Promise.all([
       fetchAllOpenPvTasks(),
       buildMemberEmailMap(),
-      hubDb.select().from(printavoTaskLinksTable),
     ]);
+    // Links are read AFTER the (multi-second) Printavo scan on purpose: a
+    // send-to-Printavo that lands mid-scan is then still visible in the link
+    // map, shrinking the double-twin race window to ~ms. (The unique indexes
+    // + compensating deletes make the residual race self-healing anyway.)
+    const links = await hubDb.select().from(printavoTaskLinksTable);
     summary.scanned = pvTasks.length;
 
     const linkByPvId = new Map<string, PrintavoTaskLink>(

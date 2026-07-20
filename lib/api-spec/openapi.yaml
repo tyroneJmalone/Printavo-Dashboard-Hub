@@ -2364,6 +2364,52 @@ paths:
         "404":
           description: Not found
 
+  /momintum/tasks/{id}/printavo-link:
+    get:
+      operationId: getTaskPrintavoLink
+      tags: [tasks]
+      summary: Printavo link status for a moMINTum task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Link status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoLinkStatus"
+        "404":
+          description: Not found
+
+  /momintum/tasks/{id}/send-to-printavo:
+    post:
+      operationId: sendTaskToPrintavo
+      tags: [tasks]
+      summary: Create a standalone Printavo task from this moMINTum task and link the pair
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Created in Printavo and linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendToPrintavoResult"
+        "400":
+          description: Task not eligible (completed, recurring, or missing due date)
+        "404":
+          description: Not found
+        "409":
+          description: Already linked, previously linked, or a sync cycle is running
+        "503":
+          description: Printavo is not configured
+
   /momintum/tasks/{id}/subtasks:
     parameters:
       - name: id
@@ -3744,6 +3790,28 @@ components:
       description: "||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)"
       schema: { type: string }
   schemas:
+    PrintavoLinkStatus:
+      type: object
+      properties:
+        available:
+          type: boolean
+          description: Whether Printavo is configured on the server
+        linked: { type: boolean }
+        origin: { type: string, nullable: true, enum: [printavo, momintum, null] }
+        printavoTaskId: { type: string, nullable: true }
+        previouslyLinked:
+          type: boolean
+          description: A suppressed link exists (twin was deleted once) — re-send is blocked
+      required: [available, linked, origin, printavoTaskId, previouslyLinked]
+    SendToPrintavoResult:
+      type: object
+      properties:
+        printavoTaskId: { type: string }
+        matchedAssignee:
+          type: boolean
+          description: False when the task was created unassigned in Printavo
+        assigneeEmail: { type: string, nullable: true }
+      required: [printavoTaskId, matchedAssignee, assigneeEmail]
     AuthMe:
       type: object
       properties:

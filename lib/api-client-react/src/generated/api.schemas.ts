@@ -5,6 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type PrintavoLinkStatusOrigin = typeof PrintavoLinkStatusOrigin[keyof typeof PrintavoLinkStatusOrigin] | null;
+
+
+export const PrintavoLinkStatusOrigin = {
+  printavo: 'printavo',
+  momintum: 'momintum',
+} as const;
+
+export interface PrintavoLinkStatus {
+  /** Whether Printavo is configured on the server */
+  available: boolean;
+  linked: boolean;
+  origin: PrintavoLinkStatusOrigin;
+  printavoTaskId: string | null;
+  /** A suppressed link exists (twin was deleted once) — re-send is blocked */
+  previouslyLinked: boolean;
+}
+
+export interface SendToPrintavoResult {
+  printavoTaskId: string;
+  /** False when the task was created unassigned in Printavo */
+  matchedAssignee: boolean;
+  assigneeEmail: string | null;
+}
+
 export type AuthMeRole = typeof AuthMeRole[keyof typeof AuthMeRole];
 
 

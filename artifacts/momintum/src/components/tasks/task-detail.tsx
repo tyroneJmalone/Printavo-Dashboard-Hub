@@ -14,9 +14,13 @@ import {
   useCreateSubtask,
   useUpdateSubtask,
   useDeleteSubtask,
+  useGetTaskPrintavoLink,
+  useSendTaskToPrintavo,
   getListTasksQueryKey,
   getGetDashboardSummaryQueryKey,
   getListSubtasksQueryKey,
+  getGetTaskPrintavoLinkQueryKey,
+  ApiError,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -37,7 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Send, Plus, X, Copy, UserCircle, ExternalLink } from "lucide-react";
+import { Trash2, Send, Plus, X, Copy, UserCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { getPrintavoOrderUrl } from "@/components/tasks/printavo-order-link";
 import { useCurrentUser } from "@/lib/current-user";
 import { TagsInput } from "@/components/tasks/tags-input";
@@ -117,6 +122,11 @@ function TaskDetail({ taskId, onClose }: TaskDetailProps) {
   const updateSubtask = useUpdateSubtask();
   const deleteSubtask = useDeleteSubtask();
   const duplicateTask = useDuplicateTask();
+  const { toast } = useToast();
+  const { data: printavoLink } = useGetTaskPrintavoLink(taskId ?? 0, {
+    query: { enabled: !!taskId, queryKey: getGetTaskPrintavoLinkQueryKey(taskId ?? 0) },
+  });
+  const sendToPrintavo = useSendTaskToPrintavo();
   const [commentBody, setCommentBody] = useState("");
   const [subtaskTitle, setSubtaskTitle] = useState("");
   const [newSubtaskAssigneeId, setNewSubtaskAssigneeId] = useState<string>("none");
@@ -180,6 +190,36 @@ function TaskDetail({ taskId, onClose }: TaskDetailProps) {
   const patch = (data: Parameters<typeof updateTask.mutate>[0]["data"]) => {
     if (!taskId) return;
     updateTask.mutate({ id: taskId, data }, { onSuccess: invalidate });
+  };
+
+  const handleSendToPrintavo = () => {
+    if (!taskId) return;
+    sendToPrintavo.mutate(
+      { id: taskId },
+      {
+        onSuccess: (result) => {
+          queryClient.invalidateQueries({
+            queryKey: getGetTaskPrintavoLinkQueryKey(taskId),
+          });
+          toast({
+            title: "Sent to Printavo",
+            description: result.matchedAssignee
+              ? "Task created and assigned in Printavo."
+              : result.assigneeEmail
+                ? `Task created unassigned — no Printavo user matches ${result.assigneeEmail}.`
+                : "Task created unassigned in Printavo.",
+          });
+        },
+        onError: (err) => {
+          const data = err instanceof ApiError ? (err.data as { error?: string } | null) : null;
+          toast({
+            title: "Couldn't send to Printavo",
+            description: data?.error ?? (err instanceof Error ? err.message : "Something went wrong."),
+            variant: "destructive",
+          });
+        },
+      },
+    );
   };
 
   const handleDelete = () => {
@@ -268,16 +308,39 @@ function TaskDetail({ taskId, onClose }: TaskDetailProps) {
             </DialogHeader>
 
             <div className="space-y-4">
-              {getPrintavoOrderUrl(task.notes) && (
-                <a
-                  href={getPrintavoOrderUrl(task.notes)!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Open order in Printavo
-                </a>
+              {(printavoLink?.linked ||
+                (printavoLink?.available && !printavoLink.previouslyLinked && !task.completed) ||
+                getPrintavoOrderUrl(task.notes)) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {printavoLink?.linked ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <RefreshCw className="w-3 h-3 text-[#2baeae]" />
+                      Synced with Printavo
+                    </span>
+                  ) : printavoLink?.available && !printavoLink.previouslyLinked && !task.completed ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={handleSendToPrintavo}
+                      disabled={sendToPrintavo.isPending}
+                    >
+                      <Send className="w-3 h-3 mr-1.5" />
+                      {sendToPrintavo.isPending ? "Sending…" : "Send to Printavo"}
+                    </Button>
+                  ) : null}
+                  {getPrintavoOrderUrl(task.notes) && (
+                    <a
+                      href={getPrintavoOrderUrl(task.notes)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Open order in Printavo
+                    </a>
+                  )}
+                </div>
               )}
               <Textarea
                 placeholder="Add notes..."

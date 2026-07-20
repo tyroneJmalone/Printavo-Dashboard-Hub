@@ -3182,6 +3182,36 @@ export const RestoreTaskResponse = zod.object({
 
 
 /**
+ * @summary Printavo link status for a moMINTum task
+ */
+export const GetTaskPrintavoLinkParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetTaskPrintavoLinkResponse = zod.object({
+  "available": zod.boolean().describe('Whether Printavo is configured on the server'),
+  "linked": zod.boolean(),
+  "origin": zod.union([zod.literal('printavo'),zod.literal('momintum'),zod.literal(null)]).nullable(),
+  "printavoTaskId": zod.string().nullable(),
+  "previouslyLinked": zod.boolean().describe('A suppressed link exists (twin was deleted once) — re-send is blocked')
+})
+
+
+/**
+ * @summary Create a standalone Printavo task from this moMINTum task and link the pair
+ */
+export const SendTaskToPrintavoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SendTaskToPrintavoResponse = zod.object({
+  "printavoTaskId": zod.string(),
+  "matchedAssignee": zod.boolean().describe('False when the task was created unassigned in Printavo'),
+  "assigneeEmail": zod.string().nullable()
+})
+
+
+/**
  * @summary List subtasks for a task
  */
 export const ListSubtasksParams = zod.object({

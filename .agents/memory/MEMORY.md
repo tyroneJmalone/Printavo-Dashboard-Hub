@@ -4,6 +4,7 @@
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [S&S order response wrapper](ss-order-response-wrapper.md) — S&S order endpoints return { orders, lineErrors } wrapper, not a bare array; camelCase fields; parse via unwrap helper.
 - [Tailwind v4 arbitrary values](tailwind-v4-arbitrary-values.md) — commas stay literal in v4: grid-cols-[400px,1fr] silently no-ops; use underscores (300px_1fr); verify layout visually.
+- [Harness scripts](harness-scripts.md) — tsx is NOT installed and npx can't get it; esbuild-bundle one-off TS harnesses (build.mjs config + pino plugin), run with node.
 - [Hub-owned tables in live moMINTum DB](momintum-hub-owned-tables.md) — new hub state = separate additive tables w/ cascade FKs, never columns on standalone-owned tables; JIT seeding only on first create.
 - [Mint Bucks shared live-DB coupling](mintbucks-shared-live-db.md) — shared settings/ledgers dual-control both apps; test-mode emails swallow real ones; never round-trip write-blocked fields in forms.
 - [Deleted-upstream orders never backfill](sync-deleted-upstream-orders.md) — new query fields self-backfill via hash change, but rows deleted in Printavo stay stale forever; handle absent fields gracefully.

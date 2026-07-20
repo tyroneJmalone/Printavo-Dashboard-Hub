@@ -119,6 +119,7 @@ import type {
   PqStatusRulesResponse,
   PrintQueueOrdersResponse,
   PrintavoConnectionResult,
+  PrintavoLinkStatus,
   PrintavoOrderSummary,
   PrintavoSettings,
   PrintavoSettingsInput,
@@ -147,6 +148,7 @@ import type {
   RewardsSettingsInput,
   RewardsSummary,
   SeedStartResult,
+  SendToPrintavoResult,
   SetAdminPinRequest,
   ShippingError,
   ShippingListCarriers200Item,
@@ -7722,6 +7724,153 @@ export const useRestoreTask = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getRestoreTaskMutationOptions(options));
+    }
+
+export const getGetTaskPrintavoLinkUrl = (id: number,) => {
+
+
+
+
+  return `/api/momintum/tasks/${id}/printavo-link`
+}
+
+/**
+ * @summary Printavo link status for a moMINTum task
+ */
+export const getTaskPrintavoLink = async (id: number, options?: RequestInit): Promise<PrintavoLinkStatus> => {
+
+  return customFetch<PrintavoLinkStatus>(getGetTaskPrintavoLinkUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTaskPrintavoLinkQueryKey = (id: number,) => {
+    return [
+    `/api/momintum/tasks/${id}/printavo-link`
+    ] as const;
+    }
+
+
+export const getGetTaskPrintavoLinkQueryOptions = <TData = Awaited<ReturnType<typeof getTaskPrintavoLink>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskPrintavoLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTaskPrintavoLinkQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTaskPrintavoLink>>> = ({ signal }) => getTaskPrintavoLink(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTaskPrintavoLink>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTaskPrintavoLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getTaskPrintavoLink>>>
+export type GetTaskPrintavoLinkQueryError = ErrorType<void>
+
+
+/**
+ * @summary Printavo link status for a moMINTum task
+ */
+
+export function useGetTaskPrintavoLink<TData = Awaited<ReturnType<typeof getTaskPrintavoLink>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTaskPrintavoLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTaskPrintavoLinkQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSendTaskToPrintavoUrl = (id: number,) => {
+
+
+
+
+  return `/api/momintum/tasks/${id}/send-to-printavo`
+}
+
+/**
+ * @summary Create a standalone Printavo task from this moMINTum task and link the pair
+ */
+export const sendTaskToPrintavo = async (id: number, options?: RequestInit): Promise<SendToPrintavoResult> => {
+
+  return customFetch<SendToPrintavoResult>(getSendTaskToPrintavoUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSendTaskToPrintavoMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTaskToPrintavo>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendTaskToPrintavo>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['sendTaskToPrintavo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendTaskToPrintavo>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  sendTaskToPrintavo(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendTaskToPrintavoMutationResult = NonNullable<Awaited<ReturnType<typeof sendTaskToPrintavo>>>
+
+    export type SendTaskToPrintavoMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a standalone Printavo task from this moMINTum task and link the pair
+ */
+export const useSendTaskToPrintavo = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTaskToPrintavo>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendTaskToPrintavo>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getSendTaskToPrintavoMutationOptions(options));
     }
 
 export const getListSubtasksUrl = (id: number,) => {
