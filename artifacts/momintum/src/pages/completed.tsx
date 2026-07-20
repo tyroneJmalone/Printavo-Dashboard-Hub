@@ -4,6 +4,7 @@ import { getListTasksQueryKey } from "@workspace/api-client-react";
 import { TaskItem } from "@/components/tasks/task-item";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
+import { TaskTitleWithPrintavoLink } from "@/components/tasks/printavo-order-link";
 import { format } from "date-fns";
 
 function RestoreButton({ taskId }: { taskId: number }) {
@@ -95,7 +96,7 @@ export function Completed() {
                   <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-transparent hover:border-border hover:bg-muted/50 transition-all">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-muted-foreground line-through truncate">
-                        {task.title}
+                        <TaskTitleWithPrintavoLink title={task.title} notes={task.notes} />
                       </div>
                       {(task.deletedAt || task.listId) && (
                         <div className="text-xs text-muted-foreground/60 mt-0.5 flex items-center gap-3">

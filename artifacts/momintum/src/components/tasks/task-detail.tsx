@@ -37,7 +37,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Send, Plus, X, Copy, UserCircle } from "lucide-react";
+import { Trash2, Send, Plus, X, Copy, UserCircle, ExternalLink } from "lucide-react";
+import { getPrintavoOrderUrl } from "@/components/tasks/printavo-order-link";
 import { useCurrentUser } from "@/lib/current-user";
 import { TagsInput } from "@/components/tasks/tags-input";
 import { MentionInput } from "@/components/tasks/mention-input";
@@ -267,6 +268,17 @@ function TaskDetail({ taskId, onClose }: TaskDetailProps) {
             </DialogHeader>
 
             <div className="space-y-4">
+              {getPrintavoOrderUrl(task.notes) && (
+                <a
+                  href={getPrintavoOrderUrl(task.notes)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Open order in Printavo
+                </a>
+              )}
               <Textarea
                 placeholder="Add notes..."
                 defaultValue={task.notes ?? ""}

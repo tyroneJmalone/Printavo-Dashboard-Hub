@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getListTasksQueryKey, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useOpenTaskDetail } from "@/components/tasks/task-detail";
 import { QuickEditControls } from "@/components/tasks/quick-edit-controls";
+import { TaskTitleWithPrintavoLink } from "@/components/tasks/printavo-order-link";
 
 interface TaskItemProps {
   task: Task;
@@ -168,7 +169,7 @@ export function TaskItem({ task, selectionMode = false, selected = false, onTogg
                 setEditingTitle(true);
               }}
             >
-              {task.title}
+              <TaskTitleWithPrintavoLink title={task.title} notes={task.notes} />
             </div>
           )}
           {task.notes && (
