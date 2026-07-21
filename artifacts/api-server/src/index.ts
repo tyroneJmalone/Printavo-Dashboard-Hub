@@ -5,6 +5,7 @@ import { startAutoPrintScheduler } from "./lib/printQueue/autoPrint/scheduler";
 import { bootstrapStaffAdmin } from "./lib/auth/bootstrap";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
 import { startPoller as startMintbucksPoller } from "./mintbucks/lib/poller";
+import { startTaskSyncPoller } from "./printavoTasks/poller";
 
 const rawPort = process.env["PORT"];
 
@@ -39,4 +40,8 @@ app.listen(port, (err) => {
       logger.error({ err }, "Mint Bucks poller failed to start"),
     );
   }
+  // Printavo ⇄ moMINTum task-sync poller: dormant unless
+  // PRINTAVO_TASK_SYNC_ENABLED=true — and that flag must be true in at most
+  // ONE environment (dev vs deployment duplicate-twin hazard, see replit.md).
+  startTaskSyncPoller(logger);
 });

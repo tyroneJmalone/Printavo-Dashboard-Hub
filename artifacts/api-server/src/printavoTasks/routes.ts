@@ -3,13 +3,15 @@ import { sql } from "drizzle-orm";
 import { db as hubDb, printavoTaskLinksTable } from "@workspace/db";
 import { requireAdmin } from "../momintum/auth";
 import { getLastRunSummary, isSyncRunning, runSyncCycle } from "./sync";
+import { taskSyncPollerInfo } from "./poller";
 
 /**
  * Printavo task-sync control routes. Mounted at /api/printavo-tasks behind
  * requireStaff (see routes/index.ts); both routes below are additionally
  * admin-gated because a sync cycle writes to the LIVE moMINTum database.
  *
- * PHASE 2: manual trigger only — no interval poller yet.
+ * Interval poller (PT5) lives in ./poller.ts — dormant unless
+ * PRINTAVO_TASK_SYNC_ENABLED=true; manual sync-now works either way.
  */
 const router: IRouter = Router();
 
@@ -26,6 +28,7 @@ router.get("/status", requireAdmin, async (_req, res): Promise<void> => {
   res.json({
     running: isSyncRunning(),
     lastRun: getLastRunSummary(),
+    poller: taskSyncPollerInfo(),
     links: counts ?? { total: 0, suppressed: 0, fromPrintavo: 0, fromMomintum: 0 },
   });
 });
