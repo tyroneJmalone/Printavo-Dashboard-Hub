@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Printavo Hub — Project Plan &amp; Status</title>
+<style>
+  @page { size: Letter; margin: 0.42in 0.45in; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: #1a2332; font-size: 8.6px; line-height: 1.35; }
+  h1 { font-size: 17px; letter-spacing: -0.02em; }
+  .sub { color: #5b6b7d; font-size: 9.5px; margin-top: 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 7px 0 9px; padding: 5px 8px; background: #f2f5f9; border-radius: 5px; font-size: 8px; }
+  .legend span { white-space: nowrap; }
+  .cols { column-count: 2; column-gap: 16px; }
+  .section { break-inside: avoid; margin-bottom: 9px; }
+  .section h2 { font-size: 10.3px; border-bottom: 1.4px solid #1a2332; padding-bottom: 2px; margin-bottom: 4px; letter-spacing: 0.01em; }
+  .item { display: flex; gap: 6px; margin-bottom: 4.5px; break-inside: avoid; }
+  .badge { flex: 0 0 52px; font-weight: 700; font-size: 7.2px; letter-spacing: 0.03em; padding-top: 1px; white-space: nowrap; }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 3px; }
+  .done .dot, .done { color: #15803d; } .done .dot { background: #15803d; }
+  .test .dot, .test { color: #b45309; } .test .dot { background: #d97706; }
+  .next .dot, .next { color: #1d4ed8; } .next .dot { background: #2563eb; }
+  .tabled .dot, .tabled { color: #64748b; } .tabled .dot { background: #94a3b8; }
+  .backlog .dot, .backlog { color: #64748b; } .backlog .dot { background: #cbd5e1; }
+  .ready .dot, .ready { color: #7e22ce; } .ready .dot { background: #9333ea; }
+  .body { flex: 1; }
+  .body b { font-size: 8.8px; }
+  .body p { color: #47586b; margin-top: 1px; }
+  .new-tag { display: inline-block; background: #dcfce7; color: #15803d; font-size: 6.8px; font-weight: 700; padding: 0.5px 4px; border-radius: 3px; vertical-align: 1px; margin-left: 3px; letter-spacing: 0.04em; }
+  .punch { background: #fefce8; border: 1px solid #eab308; border-radius: 6px; padding: 7px 9px; margin-bottom: 9px; break-inside: avoid; }
+  .punch h2 { font-size: 10.3px; margin-bottom: 3px; color: #854d0e; }
+  .punch ol { margin-left: 14px; }
+  .punch li { margin-bottom: 2px; color: #47586b; }
+  .punch li b { color: #1a2332; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 12px; }
+  .grid3 .idea b { font-size: 8.4px; display: block; }
+  .grid3 .idea p { color: #5b6b7d; }
+  .rule { color: #b91c1c; font-weight: 700; }
+  .foot { margin-top: 7px; padding-top: 5px; border-top: 1px solid #d7dee7; color: #5b6b7d; font-size: 7.6px; }
+</style>
+</head>
+<body>
+
+<h1>Printavo Hub — Project Plan &amp; Status</h1>
+<div class="sub">Mint Printworks · July 21, 2026 · One consolidated internal platform replacing 11 separate Printavo-connected apps</div>
+
+<div class="legend">
+  <span class="done"><span class="dot"></span><b>DONE</b> built, tested, reviewed</span>
+  <span class="test"><span class="dot"></span><b>YOUR TEST</b> done, waiting on Tyler to validate</span>
+  <span class="next"><span class="dot"></span><b>NEXT UP</b> agreed, starting now</span>
+  <span class="tabled"><span class="dot"></span><b>TABLED</b> paused, will return</span>
+  <span class="backlog"><span class="dot"></span><b>BACKLOG</b> logged, not scheduled</span>
+  <span class="ready"><span class="dot"></span><b>READY</b> unblocked, your call</span>
+</div>
+
+<div class="punch">
+  <h2>Punch List — what's waiting on you</h2>
+  <ol>
+    <li><b>Print Queue (PQ1–PQ3b):</b> manual printing, bulk status + rules, auto-print, packing slips &amp; box labels — all built, none validated yet.</li>
+    <li><b>Mint Bucks:</b> click through the 12 pages vs the standalone app. Also still need the <b>MINTBUCKS_APP_URL</b> value from you (QR &amp; certificate links error until set).</li>
+    <li><b>Task sync:</b> auto-sync is now LIVE (every 5 min, dev only) — watch it for a few days; check routed tasks, completions flowing both ways, safeguard pop-ups.</li>
+    <li><b>Shipping tools:</b> try the Rate Estimator (needs its 3 API keys verified live) and the Label Sorter with a real slip + label batch.</li>
+    <li><b>Reports:</b> backend validated? Reports UI + your preset-reports list are still queued behind that.</li>
+    <li><b>Publish the Hub</b> whenever you give the word — no blockers remain.</li>
+  </ol>
+</div>
+
+<div class="cols">
+
+<div class="section">
+  <h2>Foundation — Sync, Backup &amp; Reports</h2>
+  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Printavo sync engine + speed overhaul</b><p>Everything mirrored to our database. Recent changes land within one 5-min tick; manual Sync Now ~70s; deep re-checks nightly.</p></div></div>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Order detail + payments history + Reports API</b><p>Backend done (2017→today payments, legacy Insights formulas). Reports UI + your preset-reports list still to come.</p></div></div>
+  <div class="item"><div class="badge next"><span class="dot"></span>NEXT UP</div><div class="body"><b>Complete Printavo backup + scheduled resync</b><p>Full archive of ALL data (beyond the 12-month sync window) on a schedule. You picked this Jul 21 — build starts now.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Vendor Orders / Purchasing — COMPLETE</h2>
+  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>P1–P4 — Scan, cart, PO builder, Printavo push, electronic vendor ordering + tracking</b><p>Needs-ordering scan, SanMar + S&amp;S live pricing, warehouse auto-pick, PO Log with locks, write-backs, status suggestions. Live orders proven with BOTH vendors. PIN gate, kill switch, double-order protection, tracking dashboard.</p></div></div>
+  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>July 14–16 refinements</b><p>Bulk vendor/pricing in cart, nickname-keyword status rules, PO Log description column, collapsible sidebar, S&amp;S response fix.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Price Calculator (Breezy Quote port) — COMPLETE</h2>
+  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>PC1–PC4 — Full calculator</b><p>Matrices (+CSV import), exact legacy math, 10-col breakdown, vendor price lookup with sale toggle &amp; smart search, PNG export.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Team &amp; Access</h2>
+  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Staff login &amp; roles</b><p>Google/email sign-in, staff allowlist, admin vs staff roles, staff management in Settings, admin PIN in app settings.</p></div></div>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>moMINTum task app inside the Hub</b><p>Full task manager at "Tasks (moMINTum)" — same live database as the standalone app. Staff-gated; one-click nav both ways. Invites, TickTick &amp; Missive stay in the standalone app.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Printavo ⇄ moMINTum Task Sync<span class="new-tag">NEW — built Jul 19–21</span></h2>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Two-way task sync — LIVE, auto-polling every 5 min</b><p>Printavo tasks mirror into moMINTum with smart routing: your-staff-assigned → private; order-tied unassigned → Production list; the rest → General. Completions flow BOTH ways; tasks deleted in Printavo clean up their twins; order links included in notes.</p></div></div>
+  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Safeguards &amp; polish</b><p>Confirmation pop-ups in the task app before completing/reopening/deleting/editing a Printavo-linked task (incl. bulk). Dashboard &amp; list counts fixed to exclude the mirrored Printavo pool. First auto-cycle verified clean (210 scanned, 9 created, 8 completions synced, 0 errors).</p><p class="rule">Rule: auto-sync flag lives in ONE environment only (currently dev) — never both, or tasks duplicate.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Mint Bucks — store credit<span class="new-tag">NEW — ported Jul 19</span></h2>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Full port — 12 pages, same live database</b><p>Dashboard, customers, credits, issue/detail, redemptions, rewards, reports, certificates, check credit, settings. Reward/order poller stays OFF in the Hub until you deliberately flip ownership from the standalone app. Emails redirect to you ([TEST→…]) until email mode goes live. Needs MINTBUCKS_APP_URL from you for QR/certificate links.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Print Queue (Workorder Manager port)</h2>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>PQ1 — Manual workorder printing</b><p>Status filters, presets, combined print preview with per-order exclude, attachments toggle, packing-slip links.</p></div></div>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>PQ2 — Bulk status change + queue rules</b><p>Safe bulk moves (stale-order guard), rules with off/ask/auto modes, kill switch (default off).</p></div></div>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>PQ3a — Auto-print to PrintNode</b><p>Scheduled printing of new workorders + auto status move by decoration type. Double-print protection verified. Safe state: off + dry-run. Test with order #22251 only.</p></div></div>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>PQ3b — Packing slips &amp; box labels</b><p>Rendered from our own data, no Printavo fetch. Zero-quantity placeholder lines are left off slips. Finishes the Print Queue module.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Shipping<span class="new-tag">NEW — ported Jul 18–19</span></h2>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Rate Estimator ("shipstimator")</b><p>USPS/UPS quotes from ShipStation + EasyPost side-by-side, weight calc, preset boxes. Ported from your repo, Hub-styled, at Shipping → Rate Estimator.</p></div></div>
+  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Slip / Label Sorter</b><p>Sorts packing slips Style→Color→Size→Order# and pairs the USPS label PDF 1:1, + match report. All 9 presets + custom sort builder. At Shipping → Label Sorter.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Tabled — Returning Later</h2>
+  <div class="item"><div class="badge tabled"><span class="dot"></span>TABLED</div><div class="body"><b>Cross-vendor catalog search</b><p>"Navy trucker hat" search across SanMar + S&amp;S with images; built as an API your other app can also use.</p></div></div>
+</div>
+
+<div class="section">
+  <h2>Going Live</h2>
+  <div class="item"><div class="badge ready"><span class="dot"></span>READY</div><div class="body"><b>Publish the Hub</b><p>No blockers. Task-sync auto-poll flag is dev-scoped, so publishing is safe — we deliberately move sync ownership later if wanted.</p></div></div>
+</div>
+
+</div>
+
+<div class="section" style="margin-top: 2px;">
+  <h2>Backlog &amp; Ideas — Logged, Not Scheduled</h2>
+  <div class="grid3">
+    <div class="idea"><b>Internal customer portal</b><p>Quick-access per customer: branding colors, popular styles, contacts, customer type.</p></div>
+    <div class="idea"><b>Color catalog / database</b><p>Hub-built color DB, reusable as the matching catalog for the Breezy app.</p></div>
+    <div class="idea"><b>Knowledge base — FAQ, SOPs, reference</b><p>Centralized internal docs, structured for AI &amp; platform integrations to use.</p></div>
+    <div class="idea"><b>External analytics hub</b><p>Fireflies, JustCall, Google Analytics/AdWords, Meta, RB2B, EmailAnalytics, ActivTrak, Constant Contact… roles in place for access tiers.</p></div>
+    <div class="idea"><b>Sales &amp; follow-up tools</b><p>Proactive follow-up reminders, receivables tracking, custom alerts (order value, customer type, new customer).</p></div>
+    <div class="idea"><b>Preset reports library</b><p>Batch of ready-made reports — working from your list.</p></div>
+    <div class="idea"><b>Maintenance &amp; sidework log</b><p>With scheduled reminders; may tie into moMINTum.</p></div>
+    <div class="idea"><b>Outgoing activity log</b><p>One audit trail of everything the Hub sends out — what, when, success.</p></div>
+    <div class="idea"><b>Missive messaging portal</b><p>Inbox / messaging inside the Hub via Missive's API.</p></div>
+    <div class="idea"><b>Public Reorder Portal</b><p>Customer-facing reordering, after internal modules settle.</p></div>
+  </div>
+</div>
+
+<div class="foot">
+  Since last report (Jul 18): Shipping tools ported (Rate Estimator + Label Sorter) · Mint Bucks fully ported · Printavo ⇄ moMINTum task sync built end-to-end and now auto-polling · count fixes · "Printavo tasks sync" moved out of backlog — shipped.
+  &nbsp;·&nbsp; <b>Testing rule in force: order #22251 only; #19004 never again.</b>
+</div>
+
+</body>
+</html>
