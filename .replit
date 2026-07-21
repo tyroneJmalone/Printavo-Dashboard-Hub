@@ -28,3 +28,4 @@ packages = ["glibcLocales"]
 
 [userenv.development]
 VENDOR_SUBMIT_ENABLED = "true"
+PRINTAVO_TASK_SYNC_ENABLED = "true"
