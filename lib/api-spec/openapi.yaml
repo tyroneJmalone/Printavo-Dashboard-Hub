@@ -5330,6 +5330,9 @@ components:
         ownerId: { type: ["integer", "null"] }
         teamId: { type: ["integer", "null"] }
         groupId: { type: ["integer", "null"] }
+        activeTaskCount:
+          type: integer
+          description: Count of open (not completed, not trashed) tasks in this list. Computed server-side so quarantined Printavo lists still show real counts. Present on GET /lists only.
         createdAt: { type: string, format: date-time }
 
     ListInput:

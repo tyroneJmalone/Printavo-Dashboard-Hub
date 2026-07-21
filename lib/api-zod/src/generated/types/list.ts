@@ -16,5 +16,7 @@ export interface List {
   teamId?: number | null;
   /** @nullable */
   groupId: number | null;
+  /** Count of open (not completed, not trashed) tasks in this list. Computed server-side so quarantined Printavo lists still show real counts. Present on GET /lists only. */
+  activeTaskCount?: number;
   createdAt: Date;
 }

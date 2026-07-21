@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { and, count, eq, isNotNull, isNull } from "drizzle-orm";
 import {
   db,
   listsTable,
   listGroupsTable,
   listGroupMembershipsTable,
+  tasksTable,
   type List,
 } from "@workspace/momintum-db";
 import {
@@ -55,7 +56,32 @@ router.get("/lists", async (_req, res): Promise<void> => {
     .select()
     .from(listsTable)
     .orderBy(listsTable.createdAt);
-  res.json(await withGroupIds(lists));
+
+  // Server-side per-list open-task counts. The FE can't derive these from
+  // GET /tasks because quarantined Printavo lists (General/Production) are
+  // excluded there — their cards would show 0 despite holding many tasks.
+  const counts = await db
+    .select({ listId: tasksTable.listId, activeTaskCount: count() })
+    .from(tasksTable)
+    .where(
+      and(
+        eq(tasksTable.completed, false),
+        isNull(tasksTable.deletedAt),
+        isNotNull(tasksTable.listId),
+      ),
+    )
+    .groupBy(tasksTable.listId);
+  const countByListId = new Map(
+    counts.map((c) => [c.listId, c.activeTaskCount]),
+  );
+
+  const withGroups = await withGroupIds(lists);
+  res.json(
+    withGroups.map((l) => ({
+      ...l,
+      activeTaskCount: countByListId.get(l.id) ?? 0,
+    })),
+  );
 });
 
 router.post("/lists", async (req, res): Promise<void> => {

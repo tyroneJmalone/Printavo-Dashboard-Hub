@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import {
-  useListLists, useListTasks, useCreateList, useListTeams,
+  useListLists, useCreateList, useListTeams,
   useListListGroups, useCreateListGroup, useDeleteListGroup,
   getListListsQueryKey, getListListGroupsQueryKey,
 } from "@workspace/api-client-react";
@@ -25,7 +25,6 @@ const COLORS = ["#6DBE45", "#A64C96", "#2FADA8", "#5B6B99", "#C9B3DE", "#EF6F4E"
 export function Lists() {
   const { currentUser } = useCurrentUser();
   const { data: lists, isLoading } = useListLists();
-  const { data: tasks } = useListTasks({ completed: false });
   const { data: teams } = useListTeams();
   const { data: listGroups } = useListListGroups();
   const createList = useCreateList();
@@ -236,7 +235,7 @@ export function Lists() {
           : [];
 
         const renderListCard = (list: (typeof visibleLists)[number]) => {
-          const activeCount = (tasks || []).filter((t) => t.listId === list.id).length;
+          const activeCount = list.activeTaskCount ?? 0;
           const isPersonal = !!list.ownerId;
           const team = list.teamId ? teamsById.get(list.teamId) : undefined;
           return (

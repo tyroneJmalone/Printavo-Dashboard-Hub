@@ -2732,6 +2732,7 @@ export const ListListsResponseItem = zod.object({
   "ownerId": zod.number().nullable(),
   "teamId": zod.number().nullish(),
   "groupId": zod.number().nullable(),
+  "activeTaskCount": zod.number().optional().describe('Count of open (not completed, not trashed) tasks in this list. Computed server-side so quarantined Printavo lists still show real counts. Present on GET \/lists only.'),
   "createdAt": zod.coerce.date()
 })
 export const ListListsResponse = zod.array(ListListsResponseItem)
@@ -2759,6 +2760,7 @@ export const CreateListResponse = zod.object({
   "ownerId": zod.number().nullable(),
   "teamId": zod.number().nullish(),
   "groupId": zod.number().nullable(),
+  "activeTaskCount": zod.number().optional().describe('Count of open (not completed, not trashed) tasks in this list. Computed server-side so quarantined Printavo lists still show real counts. Present on GET \/lists only.'),
   "createdAt": zod.coerce.date()
 })
 
@@ -2789,6 +2791,7 @@ export const UpdateListResponse = zod.object({
   "ownerId": zod.number().nullable(),
   "teamId": zod.number().nullish(),
   "groupId": zod.number().nullable(),
+  "activeTaskCount": zod.number().optional().describe('Count of open (not completed, not trashed) tasks in this list. Computed server-side so quarantined Printavo lists still show real counts. Present on GET \/lists only.'),
   "createdAt": zod.coerce.date()
 })
 

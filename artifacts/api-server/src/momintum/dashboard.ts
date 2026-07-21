@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { and, eq, gte, isNotNull, lt } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lt, notInArray, or, type SQL } from "drizzle-orm";
 import { db, tasksTable } from "@workspace/momintum-db";
 import { GetDashboardSummaryQueryParams } from "@workspace/api-zod";
+import { getPrintavoQuarantinedListIds } from "./tasks";
 
 const router: IRouter = Router();
 
@@ -21,7 +22,19 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const startOfTomorrow = new Date(startOfToday);
   startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
-  const activeConditions = [eq(tasksTable.completed, false)];
+  // Match the task-list views the dashboard links to: no trashed tasks, and
+  // no tasks quarantined in the Printavo shared lists (General/Production).
+  const baseConditions: SQL[] = [isNull(tasksTable.deletedAt)];
+  const pvListIds = await getPrintavoQuarantinedListIds();
+  if (pvListIds.length > 0) {
+    const quarantineFilter = or(
+      isNull(tasksTable.listId),
+      notInArray(tasksTable.listId, pvListIds),
+    );
+    if (quarantineFilter) baseConditions.push(quarantineFilter);
+  }
+
+  const activeConditions = [...baseConditions, eq(tasksTable.completed, false)];
   if (query.data.assigneeId !== undefined) {
     activeConditions.push(eq(tasksTable.assigneeId, query.data.assigneeId));
   }
@@ -50,6 +63,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   }
 
   const completedConditions = [
+    ...baseConditions,
     eq(tasksTable.completed, true),
     isNotNull(tasksTable.completedAt),
     gte(tasksTable.completedAt, startOfToday),

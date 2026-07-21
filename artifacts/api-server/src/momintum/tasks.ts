@@ -43,6 +43,32 @@ async function getPrintavoLinkedTaskIds(): Promise<Set<number>> {
   return new Set(links.map((l) => l.momintumTaskId));
 }
 
+/**
+ * Ids of the quarantined Printavo shared lists (General/Production under
+ * the "Printavo" team). Tasks in these lists are hidden from all cross-list
+ * views (Today/Upcoming/Week/Calendar/All/search) AND from dashboard
+ * counts — they surface only when the list itself is opened.
+ */
+export async function getPrintavoQuarantinedListIds(): Promise<number[]> {
+  const [printavoTeam] = await db
+    .select({ id: teamsTable.id })
+    .from(teamsTable)
+    .where(eq(teamsTable.name, PRINTAVO_TEAM_NAME))
+    .orderBy(asc(teamsTable.id))
+    .limit(1);
+  if (!printavoTeam) return [];
+  const pvSharedLists = await db
+    .select({ id: listsTable.id })
+    .from(listsTable)
+    .where(
+      and(
+        eq(listsTable.teamId, printavoTeam.id),
+        isNull(listsTable.ownerId),
+      ),
+    );
+  return pvSharedLists.map((l) => l.id);
+}
+
 function coerceBooleanQueryParam(
   rawQuery: Record<string, unknown>,
   key: string,
@@ -95,31 +121,14 @@ router.get("/tasks", async (req, res): Promise<void> => {
     // opened (explicit listId filter). Keeps the 60+ synced order tasks out
     // of Today/Upcoming/Week/Calendar/All/search views for everyone,
     // admins included (Tyler-confirmed 2026-07-20).
-    const [printavoTeam] = await db
-      .select({ id: teamsTable.id })
-      .from(teamsTable)
-      .where(eq(teamsTable.name, PRINTAVO_TEAM_NAME))
-      .orderBy(asc(teamsTable.id))
-      .limit(1);
-    if (printavoTeam) {
-      const pvSharedLists = await db
-        .select({ id: listsTable.id })
-        .from(listsTable)
-        .where(
-          and(
-            eq(listsTable.teamId, printavoTeam.id),
-            isNull(listsTable.ownerId),
-          ),
-        );
-      const pvListIds = pvSharedLists.map((l) => l.id);
-      if (pvListIds.length > 0) {
-        conditions.push(
-          or(
-            isNull(tasksTable.listId),
-            notInArray(tasksTable.listId, pvListIds),
-          ),
-        );
-      }
+    const pvListIds = await getPrintavoQuarantinedListIds();
+    if (pvListIds.length > 0) {
+      conditions.push(
+        or(
+          isNull(tasksTable.listId),
+          notInArray(tasksTable.listId, pvListIds),
+        ),
+      );
     }
   }
   if (query.data.deleted === true) {
