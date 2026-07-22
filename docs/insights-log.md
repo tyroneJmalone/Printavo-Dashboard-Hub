@@ -1,10 +1,16 @@
 # Insights & Ideas Log
 
-A curated, dated log of explanations, insights, and decisions from our build chats — the stuff worth coming back to. Newest entries at the top of each month. Say **"log that"** after any explanation you want captured, and new entries are also added automatically whenever a substantive insight comes up.
+A curated, dated log of explanations, insights, and decisions from our build chats — the stuff worth coming back to. This includes every **feasibility question** ("could we do X?", "is Y possible?") along with the answer and the reasoning — even when the answer was no or the idea was shelved. Newest entries at the top of each month. Say **"log that"** after any explanation you want captured, and new entries are also added automatically whenever a substantive insight comes up.
 
 ---
 
 ## July 2026
+
+### Jul 21 — Feasibility: can we export our full chat history verbatim? (No)
+Tyler asked whether the complete, word-for-word history of our build chats could be saved. Answer: no — past conversations aren't available for export; the assistant only carries condensed summaries of older sessions forward. **The workaround is this very log:** a curated record built from what's known of past chats plus everything captured automatically going forward. Feasibility questions and their answers (like this one) are logged here too, per Tyler's Jul 22 request.
+
+### Jul 21 — Feasibility: can a mobile app be built from the Replit iOS app? (Not from that session)
+Tyler asked about creating a mobile app while working from the Replit app on iOS. Answer: mobile-app artifacts can't be created from sessions started in the iOS app — it needs a regular (browser/desktop) session. The idea itself is fine; it's only the session type that blocks it.
 
 ### Jul 21 — Full backup = full history for every feature (the plan)
 The backup module's historical backfill lands in the **same database tables the Hub already reads** — not a separate vault of files (that's how the old standalone backup app worked). Once it runs, a 2019 order looks exactly like last week's order to Reports, order detail, search, and every future feature. Payments already go back to **December 2017** (18,635 transactions); orders currently cover the 12-month window (~3,500) and the backfill adds everything older (~15–19k more). Caveat: history means **records, not timelines** — we get every old order's final state, but not when its statuses changed along the way.
