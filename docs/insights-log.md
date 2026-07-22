@@ -6,6 +6,18 @@ A curated, dated log of explanations, insights, and decisions from our build cha
 
 ## July 2026
 
+### Jul 22 — Backup module phase 1: every order now carries a full-fidelity "extras" archive
+The sync now captures everything Printavo holds on an order beyond what the Hub displays: fees, expenses, approval requests, production files, custom addresses, thread/payment-request markers, mockup images, personalizations, price receipts, product catalog links, and purchase-order references. It's stored as one raw blob per order (portable for any future migration), refreshed automatically whenever an order changes, and backfilled ~100 orders per 5-minute sync cycle (the ~3,500-order backlog drains in a few hours). The order list itself also fetches every remaining cheap field now — discounts, sales tax, paid-in-full, public PDF link, packing slip link, payment terms.
+
+### Jul 22 — Printavo's 25k complexity cap, measured exactly
+The first version of the extras query came back "complexity 29,976 exceeds 25,000" — Printavo computes the cost from the query's page-size limits alone, not the actual data. Lowering the per-page limits (8 groups / 20 line items / 10 imprints / 5 mockups per item) brought it safely under; bigger orders simply take extra paged requests. Useful forever: the error message states the exact computed cost, so limits can be tuned precisely instead of by guesswork.
+
+### Jul 22 — The two "incomplete by design" orders are now stored complete
+Orders 20104 and 20714 (more than 20 line-item groups) previously hit Printavo's query cap and were stored partially. The sync now follows a group-by-group cursor past the cap: 20104 went from 26 to 32 stored line items, 20714 from 22 to 94. No orders are excluded from report spot-checks anymore.
+
+### Jul 22 — One-time "rebase wave" after widening the sync
+Because every order's fingerprint now includes the newly captured fields, the first sync after this change re-hashes all ~3,500 window orders: one long poll (~35–40 min) and ~3,500 cosmetic "updated" events that don't represent real edits. These get cleaned out of the change log by run ID afterward; real field-level events (status changes, due-date moves) are unaffected.
+
 ### Jul 21 — Feasibility: can we export our full chat history verbatim? (No)
 Tyler asked whether the complete, word-for-word history of our build chats could be saved. Answer: no — past conversations aren't available for export; the assistant only carries condensed summaries of older sessions forward. **The workaround is this very log:** a curated record built from what's known of past chats plus everything captured automatically going forward. Feasibility questions and their answers (like this one) are logged here too, per Tyler's Jul 22 request.
 
@@ -48,5 +60,5 @@ Printavo's API has no "give me what changed since X" filter and can't sort by up
 ### Jul 9–10 — Printavo renders timestamps in random timezones
 The same instant comes back in varying timezones between fetches. Every fetched record is normalized to UTC before hashing/storing — without this, the sync would log thousands of phantom "changes". This is a permanent rule: never hash a Printavo record without timestamp normalization.
 
-### Jul (mid) — Two orders are stored incomplete by design
+### Jul (mid) — Two orders are stored incomplete by design *(FIXED Jul 22 — see the group-cursor entry above; both orders are now stored complete)*
 Orders **20104** and **20714** have more than 25 line-item groups — beyond Printavo's query complexity cap even at generous limits — so their line items are partially stored. Exclude them from report spot-checks.

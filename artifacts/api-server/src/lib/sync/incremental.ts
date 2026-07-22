@@ -29,6 +29,7 @@ import {
   type DetailAgg,
 } from "./detail";
 import { sweepProductStatuses, type SweepAgg } from "./productStatusSweep";
+import { runExtrasDrip, type ExtrasAgg } from "./extras";
 import { dateOrNull } from "./differ";
 import { SEED_MONTHS } from "./seed";
 import {
@@ -72,6 +73,13 @@ const SWEEP_PAGES_MANUAL = 50;
 const LIST_FLOOR_PAGES_INVOICES = 16;
 const LIST_FLOOR_PAGES_QUOTES = 6;
 const LIST_STOP_UNCHANGED_PAGES = 3;
+
+/**
+ * Backup-module extras drip cap per scheduled poll. Each order costs
+ * ≥1 throttled API request (~0.62s), so 100 ≈ +65s per poll cycle —
+ * the initial ~3.5k-order backlog drains over ~3 hours of polls.
+ */
+const EXTRAS_PER_POLL = 100;
 
 export { isPollActive } from "./runState";
 
@@ -378,6 +386,14 @@ export async function runIncrementalPoll(
       }
     }
 
+    // Backup-module extras drip (scheduled polls only, keeps manual
+    // "Sync now" snappy): capture/refresh the per-order extras blob for
+    // orders flagged stale by the list crawl or never captured.
+    let extrasAgg: ExtrasAgg | null = null;
+    if (isScheduled) {
+      extrasAgg = await runExtrasDrip(EXTRAS_PER_POLL, logger);
+    }
+
     if (listFullDue) {
       await setWatermark("list_daily", runStart);
     }
@@ -401,6 +417,7 @@ export async function runIncrementalPoll(
       ...(paymentsAgg ? { payments: paymentsAgg } : {}),
       ...(detailAgg ? { details: detailAgg } : {}),
       ...(sweepAgg ? { productStatusSweep: sweepAgg } : {}),
+      ...(extrasAgg ? { extras: extrasAgg } : {}),
     };
     await completeRun(run.id, stats);
 

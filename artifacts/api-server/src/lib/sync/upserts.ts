@@ -107,6 +107,9 @@ export async function upsertOrder(
     printavoUpdatedAt: dateOrNull(node.timestamps?.updatedAt),
     data: node,
     contentHash: hash,
+    // Any list-level change may mean new/edited extras (fees, files,
+    // mockups, ...) — flag for the backup-module extras drip.
+    extrasStale: true,
     syncedAt: new Date(),
   };
 

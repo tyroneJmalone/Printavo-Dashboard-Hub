@@ -6,6 +6,7 @@ import {
   timestamp,
   date,
   jsonb,
+  boolean,
   index,
 } from "drizzle-orm/pg-core";
 
@@ -48,6 +49,14 @@ export const pvOrdersTable = pgTable(
     contentHash: text("content_hash").notNull(),
     detailContentHash: text("detail_content_hash"),
     detailSyncedAt: timestamp("detail_synced_at", { withTimezone: true }),
+    // Backup module: full-fidelity supplemental payload (fees, expenses,
+    // approvals, production files, mockups, ...) captured by a per-order
+    // extras query. Raw blob — no hot columns; refreshed by the extras
+    // drip whenever stale (order changed) or never captured.
+    extras: jsonb("extras"),
+    extrasContentHash: text("extras_content_hash"),
+    extrasSyncedAt: timestamp("extras_synced_at", { withTimezone: true }),
+    extrasStale: boolean("extras_stale").notNull().default(true),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

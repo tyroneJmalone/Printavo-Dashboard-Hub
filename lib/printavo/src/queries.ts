@@ -51,12 +51,28 @@ const ORDER_NODE_FIELDS = `
   productionNote
   visualPoNumber
   tags
+  createdAt
+  startAt
+  discount
+  discountAmount
+  discountAsPercentage
+  salesTax
+  salesTaxAmount
+  totalUntaxed
+  totalQuantity
+  paidInFull
+  merch
+  packingSlipUrl
+  publicPdf
+  publicHash
+  url
   status { id name }
   owner { id email }
   contact { id fullName email customer { id companyName } }
   shippingAddress { ${ADDRESS_FIELDS} }
   billingAddress { ${ADDRESS_FIELDS} }
-  deliveryMethod { name }
+  deliveryMethod { id name archived }
+  paymentTerm { id name days archived }
   timestamps { createdAt updatedAt }
 `;
 
@@ -167,8 +183,12 @@ function lineItemGroupsSelection(
   groupsFirst: number,
   lineItemsFirst: number,
   imprintsFirst: number,
+  opts?: { withGroupCursor?: boolean; after?: string | null },
 ): string {
-  return `lineItemGroups(first: ${groupsFirst}) {
+  const groupPageInfo = opts?.withGroupCursor
+    ? `pageInfo { hasNextPage endCursor }`
+    : `pageInfo { hasNextPage }`;
+  return `lineItemGroups(first: ${groupsFirst}${afterArg(opts?.after)}) {
     nodes {
       id
       position
@@ -181,7 +201,7 @@ function lineItemGroupsSelection(
         pageInfo { hasNextPage }
       }
     }
-    pageInfo { hasNextPage }
+    ${groupPageInfo}
   }`;
 }
 
@@ -224,7 +244,25 @@ export function singleOrderDetailQuery(
       visualId
       totalQuantity
       timestamps { createdAt updatedAt }
-      ${lineItemGroupsSelection(20, 40, 15)}
+      ${lineItemGroupsSelection(20, 40, 15, { withGroupCursor: true })}
+    }
+  }`;
+}
+
+/**
+ * Follow-up page of lineItemGroups for orders with more groups than the
+ * single-order query's first page (the >25-group truncation fix). Same
+ * generous nested limits; cursor continues from the previous page.
+ */
+export function orderGroupsPageQuery(
+  kind: "invoice" | "quote",
+  printavoId: string,
+  after: string,
+): string {
+  return `query {
+    ${kind}(id: ${lit(printavoId)}) {
+      id
+      ${lineItemGroupsSelection(10, 40, 15, { withGroupCursor: true, after })}
     }
   }`;
 }
@@ -521,6 +559,232 @@ export function accountUsersQuery(after?: string | null): string {
     account {
       users(first: ${PAGE_SIZE}${afterArg(after)}) {
         nodes { id name email }
+        ${PAGE_INFO}
+      }
+    }
+  }`;
+}
+
+/*
+ * ── Order extras (backup module, full-fidelity capture) ─────────────────
+ * Per-order supplemental query for everything the hot sync paths skip:
+ * fees, expenses, approval requests, production files, custom addresses,
+ * thread summary, payment request, plus line-item/imprint enrichment
+ * (mockups, personalizations, price receipts, product catalog refs, PO
+ * links). Stored as one raw blob in pv_orders.extras — no hot columns.
+ *
+ * Complexity budget: kept well under the 25k cap by modest first: limits;
+ * every connection carries pageInfo so callers can detect + follow
+ * overflow with the targeted page queries below.
+ */
+
+// Probed July 2026: 10/25/12/6 = complexity 29,976 > 25k cap; 8/20/10/5
+// lands safely under. Bigger orders just take extra cursor pages.
+export const EXTRAS_GROUPS_FIRST = 8;
+export const EXTRAS_LINE_ITEMS_FIRST = 20;
+export const EXTRAS_IMPRINTS_FIRST = 10;
+export const EXTRAS_MOCKUPS_FIRST = 5;
+export const EXTRAS_CONNECTION_FIRST = 25;
+
+const MOCKUP_FIELDS = `
+  id
+  fullImageUrl
+  thumbnailUrl
+  mimeType
+  displayThumbnail
+  timestamps { createdAt updatedAt }
+`;
+
+const EXTRAS_LINE_ITEM_FIELDS = `
+  id
+  position
+  markupPercentage
+  taxed
+  personalizations { id name personalization }
+  priceReceipt { defaultMarkupPercentage description price signature }
+  product {
+    id
+    brand
+    color
+    description
+    itemNumber
+    catalog { id name }
+  }
+  poLineItem {
+    id
+    purchaseOrder {
+      id
+      visualPoId
+      goodsStatus
+      note
+      vendor { id name company email accountNumber }
+    }
+  }
+  mockups(first: ${EXTRAS_MOCKUPS_FIRST}) {
+    nodes { ${MOCKUP_FIELDS} }
+    pageInfo { hasNextPage }
+  }
+`;
+
+const EXTRAS_IMPRINT_FIELDS = `
+  id
+  mockups(first: ${EXTRAS_MOCKUPS_FIRST}) {
+    nodes { ${MOCKUP_FIELDS} }
+    pageInfo { hasNextPage }
+  }
+`;
+
+const EXTRAS_ORDER_CONNECTIONS = `
+  fees(first: ${EXTRAS_CONNECTION_FIRST}) {
+    nodes {
+      id
+      amount
+      description
+      quantity
+      taxable
+      unitPrice
+      unitPriceAsPercentage
+      timestamps { createdAt updatedAt }
+    }
+    ${PAGE_INFO}
+  }
+  expenses(first: ${EXTRAS_CONNECTION_FIRST}) {
+    nodes {
+      id
+      name
+      amount
+      transactionAt
+      userGenerated
+      timestamps { createdAt updatedAt }
+    }
+    ${PAGE_INFO}
+  }
+  approvalRequests(first: ${EXTRAS_CONNECTION_FIRST}) {
+    nodes {
+      id
+      name
+      status
+      requester { id name email }
+      retractor { id name email }
+      response { name email reason respondedAt }
+      timestamps { createdAt updatedAt }
+    }
+    ${PAGE_INFO}
+  }
+  productionFiles(first: ${EXTRAS_CONNECTION_FIRST}) {
+    nodes {
+      id
+      name
+      fileUrl
+      mimeType
+      timestamps { createdAt updatedAt }
+    }
+    ${PAGE_INFO}
+  }
+  customAddresses(first: ${EXTRAS_CONNECTION_FIRST}) {
+    nodes {
+      id
+      name
+      customerName
+      companyName
+      address1
+      address2
+      city
+      state
+      stateIso
+      zipCode
+      country
+      countryIso
+      timestamps { createdAt updatedAt }
+    }
+    ${PAGE_INFO}
+  }
+  threadSummary { id unread }
+  paymentRequest {
+    id
+    amount
+    description
+    nickname
+    status
+    requestedAt
+    visualId
+  }
+  contractorProfile { id companyName email phone website logo }
+`;
+
+function extrasGroupsSelection(after?: string | null): string {
+  return `lineItemGroups(first: ${EXTRAS_GROUPS_FIRST}${afterArg(after)}) {
+    nodes {
+      id
+      lineItems(first: ${EXTRAS_LINE_ITEMS_FIRST}) {
+        nodes { ${EXTRAS_LINE_ITEM_FIELDS} }
+        pageInfo { hasNextPage }
+      }
+      imprints(first: ${EXTRAS_IMPRINTS_FIRST}) {
+        nodes { ${EXTRAS_IMPRINT_FIELDS} }
+        pageInfo { hasNextPage }
+      }
+    }
+    ${PAGE_INFO}
+  }`;
+}
+
+export function orderExtrasQuery(
+  kind: "invoice" | "quote",
+  printavoId: string,
+): string {
+  return `query {
+    ${kind}(id: ${lit(printavoId)}) {
+      id
+      visualId
+      ${EXTRAS_ORDER_CONNECTIONS}
+      ${extrasGroupsSelection()}
+    }
+  }`;
+}
+
+/** Follow-up page of extras lineItemGroups (orders with >10 groups). */
+export function orderExtrasGroupsPageQuery(
+  kind: "invoice" | "quote",
+  printavoId: string,
+  after: string,
+): string {
+  return `query {
+    ${kind}(id: ${lit(printavoId)}) {
+      id
+      ${extrasGroupsSelection(after)}
+    }
+  }`;
+}
+
+/**
+ * Follow-up page for an overflowed order-level extras connection
+ * (fees / expenses / approvalRequests / productionFiles / customAddresses
+ * beyond the first 25 — rare, but paged for correctness).
+ */
+export function orderExtrasConnectionPageQuery(
+  kind: "invoice" | "quote",
+  printavoId: string,
+  connection:
+    | "fees"
+    | "expenses"
+    | "approvalRequests"
+    | "productionFiles"
+    | "customAddresses",
+  after: string,
+): string {
+  const selections: Record<string, string> = {
+    fees: `id amount description quantity taxable unitPrice unitPriceAsPercentage timestamps { createdAt updatedAt }`,
+    expenses: `id name amount transactionAt userGenerated timestamps { createdAt updatedAt }`,
+    approvalRequests: `id name status requester { id name email } retractor { id name email } response { name email reason respondedAt } timestamps { createdAt updatedAt }`,
+    productionFiles: `id name fileUrl mimeType timestamps { createdAt updatedAt }`,
+    customAddresses: `id name customerName companyName address1 address2 city state stateIso zipCode country countryIso timestamps { createdAt updatedAt }`,
+  };
+  return `query {
+    ${kind}(id: ${lit(printavoId)}) {
+      id
+      ${connection}(first: ${EXTRAS_CONNECTION_FIRST}${afterArg(after)}) {
+        nodes { ${selections[connection]} }
         ${PAGE_INFO}
       }
     }

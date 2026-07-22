@@ -15,10 +15,12 @@ import { eq } from "drizzle-orm";
 import {
   orderDetailPageQuery,
   singleOrderDetailQuery,
+  orderGroupsPageQuery,
   type OrderKind,
   type InvoicesDetailPage,
   type QuotesDetailPage,
   type SingleOrderDetail,
+  type SingleOrderGroupsPage,
   type PvOrderDetailNode,
 } from "@workspace/printavo";
 import { getPrintavoClient, printavoConfigured } from "../printavoGateway";
@@ -129,9 +131,23 @@ export async function applyOrderDetail(
     }
     node = full;
     agg.toppedUp += 1;
+    // Orders with more groups than the single query's first page (>20):
+    // follow the group cursor until exhausted (backup-module fix for the
+    // known >25-group truncations).
+    let groupsPage = node.lineItemGroups.pageInfo;
+    while (groupsPage.hasNextPage && groupsPage.endCursor) {
+      const pageData = await client.query<SingleOrderGroupsPage>(
+        orderGroupsPageQuery(singleKind, node.id, groupsPage.endCursor),
+      );
+      const cont = pageData.invoice ?? pageData.quote ?? null;
+      if (!cont) break;
+      node.lineItemGroups.nodes.push(...cont.lineItemGroups.nodes);
+      groupsPage = cont.lineItemGroups.pageInfo;
+    }
+    node.lineItemGroups.pageInfo = { hasNextPage: groupsPage.hasNextPage };
     if (isTruncated(node)) {
-      // >25 groups / >50 line items / >25 imprints — store what we have
-      // but flag loudly; nothing in this account should hit this.
+      // >40 line items or >15 imprints within one group — store what we
+      // have but flag loudly; nothing in this account should hit this.
       agg.truncated += 1;
       logger.warn(
         { orderId: node.id, visualId: node.visualId },
@@ -139,6 +155,17 @@ export async function applyOrderDetail(
       );
     }
   }
+
+  // Hash compatibility: the single-order query now returns endCursor on
+  // the groups pageInfo (for group paging); strip it so hashes stay
+  // identical to the page-crawl path, which never requests it.
+  node = {
+    ...node,
+    lineItemGroups: {
+      ...node.lineItemGroups,
+      pageInfo: { hasNextPage: node.lineItemGroups.pageInfo.hasNextPage },
+    },
+  };
 
   // Sweep-triggered refreshes pass force: the sweep has already proven
   // the DB rows disagree with the API, so the stored hash cannot be
