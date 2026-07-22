@@ -293,6 +293,9 @@ export async function applyOrderExtras(
       extrasContentHash: hash,
       extrasSyncedAt: now,
       extrasStale: false,
+      // New/changed extras may carry new mockups/production files —
+      // hand the order to the file registrar (backup module B3).
+      filesStale: true,
     })
     .where(eq(pvOrdersTable.printavoId, orderId));
   agg.written += 1;

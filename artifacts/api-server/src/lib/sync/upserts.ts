@@ -114,6 +114,9 @@ export async function upsertOrder(
     // backfill backlog and cycled-back permanent failures.
     extrasStale: true,
     extrasAttemptedAt: null,
+    // Order content changed — re-scan for mirrorable files (and re-queue
+    // the public PDF, whose bytes change under a stable URL).
+    filesStale: true,
     syncedAt: new Date(),
   };
 

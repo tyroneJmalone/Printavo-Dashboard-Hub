@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/sync/scheduler";
+import { startFileMirror } from "./lib/sync/fileMirror";
 import { startAutoPrintScheduler } from "./lib/printQueue/autoPrint/scheduler";
 import { bootstrapStaffAdmin } from "./lib/auth/bootstrap";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
@@ -32,6 +33,7 @@ app.listen(port, (err) => {
     logger.error({ err }, "staff admin bootstrap failed"),
   );
   startScheduler(logger);
+  startFileMirror(logger);
   startAutoPrintScheduler(logger);
   // Mint Bucks poller: dormant unless MINTBUCKS_POLLER_ENABLED=true (phased
   // ownership handoff — the standalone app keeps polling until Tyler flips it).

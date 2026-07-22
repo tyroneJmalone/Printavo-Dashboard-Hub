@@ -60,6 +60,11 @@ export const pvOrdersTable = pgTable(
     /** Last extras drip attempt (success OR failure) — lets the drip cycle
      * permanently-failing orders to the back instead of starving on them. */
     extrasAttemptedAt: timestamp("extras_attempted_at", { withTimezone: true }),
+    /** Backup module (B3): true when the file registrar should (re)scan this
+     * order's data+extras for mirrorable files. Default true = one-time
+     * backfill over pre-existing rows; set true again on order change and
+     * on extras write. */
+    filesStale: boolean("files_stale").notNull().default(true),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
