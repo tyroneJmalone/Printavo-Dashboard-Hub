@@ -4,11 +4,13 @@ import { findRunningRun, failOrphanedRuns } from "./state";
 import { startOrResumeSeed } from "./seed";
 import { startOrResumeDetailBackfill } from "./detail";
 import { startOrResumePaymentsSeed } from "./payments";
+import { startOrResumeHistoryBackfill } from "./history";
 import { runIncrementalPoll } from "./incremental";
 import {
   isSeedActive,
   isDetailBackfillActive,
   isPaymentsSeedActive,
+  isHistoryBackfillActive,
 } from "./runState";
 
 export const POLL_INTERVAL_MINUTES = 5;
@@ -75,6 +77,7 @@ async function resumeInterruptedRuns(logger: Logger): Promise<void> {
   await resumeInterruptedSeed(logger);
   await resumeInterruptedDetailBackfill(logger);
   await resumeInterruptedPaymentsSeed(logger);
+  await resumeInterruptedHistoryBackfill(logger);
 }
 
 async function resumeInterruptedSeed(logger: Logger): Promise<void> {
@@ -122,5 +125,22 @@ async function resumeInterruptedPaymentsSeed(logger: Logger): Promise<void> {
     }
   } catch (err) {
     logger.error({ err }, "Failed to check for interrupted payments seed");
+  }
+}
+
+async function resumeInterruptedHistoryBackfill(logger: Logger): Promise<void> {
+  if (!printavoConfigured()) return;
+  if (isHistoryBackfillActive()) return;
+  try {
+    const running = await findRunningRun("history_backfill");
+    if (running) {
+      logger.info(
+        { runId: running.id },
+        "Found interrupted history backfill — resuming",
+      );
+      await startOrResumeHistoryBackfill(logger);
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to check for interrupted history backfill");
   }
 }

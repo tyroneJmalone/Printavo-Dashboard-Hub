@@ -435,6 +435,12 @@ export interface PvOrderExtrasBlob {
   imprints: Array<{ id: string; mockups: PvMockupNode[] }>;
   /** True if any nested connection still had more pages after paging. */
   truncated: boolean;
+  /**
+   * GraphQL error messages salvaged from a partial-data response
+   * (Printavo non-nullable-field bugs, e.g. deleted PO vendor). Present
+   * only when the blob was captured despite such errors.
+   */
+  partialErrors?: string[];
 }
 
 export interface SingleOrderGroupsPage {
@@ -444,6 +450,12 @@ export interface SingleOrderGroupsPage {
 
 export interface InvoicesPage {
   invoices: Connection<PvOrderNode>;
+}
+
+/** Response of orderTotalsQuery (history-backfill progress/verification). */
+export interface OrderTotals {
+  invoices: { totalNodes: number };
+  quotes: { totalNodes: number };
 }
 
 export interface QuotesPage {

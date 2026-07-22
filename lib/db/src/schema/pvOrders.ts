@@ -57,6 +57,9 @@ export const pvOrdersTable = pgTable(
     extrasContentHash: text("extras_content_hash"),
     extrasSyncedAt: timestamp("extras_synced_at", { withTimezone: true }),
     extrasStale: boolean("extras_stale").notNull().default(true),
+    /** Last extras drip attempt (success OR failure) — lets the drip cycle
+     * permanently-failing orders to the back instead of starving on them. */
+    extrasAttemptedAt: timestamp("extras_attempted_at", { withTimezone: true }),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

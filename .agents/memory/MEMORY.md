@@ -4,6 +4,8 @@
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [S&S order response wrapper](ss-order-response-wrapper.md) — S&S order endpoints return { orders, lineErrors } wrapper, not a bare array; camelCase fields; parse via unwrap helper.
 - [Tailwind v4 arbitrary values](tailwind-v4-arbitrary-values.md) — commas stay literal in v4: grid-cols-[400px,1fr] silently no-ops; use underscores (300px_1fr); verify layout visually.
+- [Printavo API error quirks](printavo-api-error-quirks.md) — salvage partial data on deleted-record "non-nullable" errors; retry "Timeout on X"; stamp attempts to avoid queue starvation.
+- [Printavo 10k pagination window](printavo-pagination-window.md) — lists cap at 10k rows/direction, totalNodes caps at 10k, boundary fakes hasNextPage:false; crawl both directions.
 - [Printavo sync invariants](printavo-sync-invariants.md) — complexity cap computed from query limits (error states exact cost); never hash cursors; widening hashed fields = one-time rebase wave; drip selects on stale flag only.
 - [Printavo sync routing invariants](printavo-sync-routing.md) — assigneeId must ride with every list move; shared-list quarantine convention; "Timeout on IDed.id" is transient, retry.
 - [Harness scripts](harness-scripts.md) — tsx is NOT installed and npx can't get it; esbuild-bundle one-off TS harnesses (build.mjs config + pino plugin), run with node.

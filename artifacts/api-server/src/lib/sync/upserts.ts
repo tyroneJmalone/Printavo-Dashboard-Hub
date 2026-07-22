@@ -108,8 +108,12 @@ export async function upsertOrder(
     data: node,
     contentHash: hash,
     // Any list-level change may mean new/edited extras (fees, files,
-    // mockups, ...) — flag for the backup-module extras drip.
+    // mockups, ...) — flag for the backup-module extras drip. Resetting
+    // extrasAttemptedAt puts changed orders back in the front
+    // (never-attempted, newest-first) tier of the drip, ahead of the
+    // backfill backlog and cycled-back permanent failures.
     extrasStale: true,
+    extrasAttemptedAt: null,
     syncedAt: new Date(),
   };
 

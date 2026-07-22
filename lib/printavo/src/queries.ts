@@ -80,11 +80,23 @@ const PAGE_INFO = `pageInfo { hasNextPage endCursor }`;
 
 export interface OrderPageArgs {
   after?: string | null;
+  /**
+   * VISUAL_ID sort direction. Default true (newest-first) — the
+   * incremental crawl's recency proxy. History backfill passes false
+   * to walk the archive oldest-first (verified live: ascending sort
+   * works; note visual ids are NOT date-ordered, e.g. invoice #1000
+   * was created in 2021).
+   */
+  sortDescending?: boolean;
+}
+
+function sortDescArg(sortDescending: boolean | undefined): string {
+  return sortDescending === false ? "false" : "true";
 }
 
 export function invoicesPageQuery(args: OrderPageArgs = {}): string {
   return `query {
-    invoices(first: ${PAGE_SIZE}${afterArg(args.after)}, sortOn: VISUAL_ID, sortDescending: true) {
+    invoices(first: ${PAGE_SIZE}${afterArg(args.after)}, sortOn: VISUAL_ID, sortDescending: ${sortDescArg(args.sortDescending)}) {
       nodes { ${ORDER_NODE_FIELDS} }
       ${PAGE_INFO}
     }
@@ -93,10 +105,21 @@ export function invoicesPageQuery(args: OrderPageArgs = {}): string {
 
 export function quotesPageQuery(args: OrderPageArgs = {}): string {
   return `query {
-    quotes(first: ${PAGE_SIZE}${afterArg(args.after)}, sortOn: VISUAL_ID, sortDescending: true) {
+    quotes(first: ${PAGE_SIZE}${afterArg(args.after)}, sortOn: VISUAL_ID, sortDescending: ${sortDescArg(args.sortDescending)}) {
       nodes { ${ORDER_NODE_FIELDS} }
       ${PAGE_INFO}
     }
+  }`;
+}
+
+/**
+ * Order-list totals: history-backfill progress denominator + final
+ * gap verification (DB row count vs Printavo's totalNodes).
+ */
+export function orderTotalsQuery(): string {
+  return `query {
+    invoices(first: 1) { totalNodes }
+    quotes(first: 1) { totalNodes }
   }`;
 }
 
@@ -215,9 +238,10 @@ export type OrderKind = "invoices" | "quotes";
 export function orderDetailPageQuery(
   kind: OrderKind,
   after?: string | null,
+  opts: { sortDescending?: boolean } = {},
 ): string {
   return `query {
-    ${kind}(first: ${DETAIL_PAGE_SIZE}${afterArg(after)}, sortOn: VISUAL_ID, sortDescending: true) {
+    ${kind}(first: ${DETAIL_PAGE_SIZE}${afterArg(after)}, sortOn: VISUAL_ID, sortDescending: ${sortDescArg(opts.sortDescending)}) {
       nodes {
         id
         visualId

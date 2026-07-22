@@ -30,6 +30,7 @@ import {
   isPollActive,
   isDetailBackfillActive,
   isPaymentsSeedActive,
+  isHistoryBackfillActive,
   setDetailBackfillActive,
 } from "./runState";
 import {
@@ -405,6 +406,13 @@ export async function startOrResumeDetailBackfill(
       started: false,
       syncRunId: null,
       message: "A payments seed is running — try again once it finishes",
+    };
+  }
+  if (isHistoryBackfillActive()) {
+    return {
+      started: false,
+      syncRunId: null,
+      message: "A history backfill is running — try again once it finishes",
     };
   }
   if (!printavoConfigured()) {

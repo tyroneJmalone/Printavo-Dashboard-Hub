@@ -18,6 +18,7 @@ import {
   isSeedActive,
   isPollActive,
   isDetailBackfillActive,
+  isHistoryBackfillActive,
   setSeedActive,
 } from "./runState";
 import {
@@ -75,6 +76,13 @@ export async function startOrResumeSeed(logger: Logger): Promise<SeedStart> {
       started: false,
       syncRunId: null,
       message: "A detail backfill is running — try again once it finishes",
+    };
+  }
+  if (isHistoryBackfillActive()) {
+    return {
+      started: false,
+      syncRunId: null,
+      message: "A history backfill is running — try again once it finishes",
     };
   }
   if (!printavoConfigured()) {

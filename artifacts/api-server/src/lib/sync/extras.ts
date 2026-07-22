@@ -1,7 +1,8 @@
 import type { Logger } from "pino";
 import { db, pvOrdersTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import {
+  PrintavoApiError,
   orderExtrasQuery,
   orderExtrasGroupsPageQuery,
   orderExtrasConnectionPageQuery,
@@ -87,6 +88,31 @@ async function drainConnection<T>(
 }
 
 /**
+ * Printavo's schema declares some fields non-nullable that CAN be null
+ * in practice (observed: PurchaseOrder.vendor after a vendor is
+ * deleted). Those responses carry partial data alongside the errors.
+ * Salvage the data when EVERY error is that shape, so one deleted
+ * vendor doesn't permanently block extras capture for a whole order.
+ */
+function salvagePartialData<T>(
+  err: unknown,
+): { data: T; messages: string[] } | null {
+  if (!(err instanceof PrintavoApiError)) return null;
+  const errors = err.graphqlErrors as Array<{ message?: string }> | undefined;
+  if (!errors?.length || err.partialData == null) return null;
+  const allNonNullableBugs = errors.every(
+    (e) =>
+      typeof e?.message === "string" &&
+      e.message.startsWith("Cannot return null for non-nullable field"),
+  );
+  if (!allNonNullableBugs) return null;
+  return {
+    data: err.partialData as T,
+    messages: errors.map((e) => e.message as string),
+  };
+}
+
+/**
  * Fetch and assemble the full extras blob for one order, following
  * pagination on line item groups and every order-level connection.
  * Returns null if the order no longer exists in Printavo.
@@ -96,9 +122,21 @@ export async function fetchExtrasBlob(
   orderId: string,
 ): Promise<PvOrderExtrasBlob | null> {
   const client = getPrintavoClient();
-  const data = await client.query<SingleOrderExtras>(
-    orderExtrasQuery(kind, orderId),
-  );
+  const partialErrors: string[] = [];
+  let data: SingleOrderExtras;
+  try {
+    data = await client.query<SingleOrderExtras>(
+      orderExtrasQuery(kind, orderId),
+    );
+  } catch (err) {
+    const salvaged = salvagePartialData<SingleOrderExtras>(err);
+    // Only proceed if the order node itself survived null propagation.
+    if (!salvaged || !(salvaged.data.invoice ?? salvaged.data.quote)) {
+      throw err;
+    }
+    partialErrors.push(...salvaged.messages);
+    data = salvaged.data;
+  }
   const node = data.invoice ?? data.quote ?? null;
   if (!node) return null;
 
@@ -106,9 +144,19 @@ export async function fetchExtrasBlob(
   const groups: PvExtrasGroupNode[] = [...node.lineItemGroups.nodes];
   let groupsPage = node.lineItemGroups.pageInfo;
   while (groupsPage.hasNextPage && groupsPage.endCursor) {
-    const pageData = await client.query<SingleOrderExtrasGroupsPage>(
-      orderExtrasGroupsPageQuery(kind, orderId, groupsPage.endCursor),
-    );
+    let pageData: SingleOrderExtrasGroupsPage;
+    try {
+      pageData = await client.query<SingleOrderExtrasGroupsPage>(
+        orderExtrasGroupsPageQuery(kind, orderId, groupsPage.endCursor),
+      );
+    } catch (err) {
+      const salvaged = salvagePartialData<SingleOrderExtrasGroupsPage>(err);
+      if (!salvaged || !(salvaged.data.invoice ?? salvaged.data.quote)) {
+        throw err;
+      }
+      partialErrors.push(...salvaged.messages);
+      pageData = salvaged.data;
+    }
     const cont = pageData.invoice ?? pageData.quote ?? null;
     if (!cont) break;
     groups.push(...cont.lineItemGroups.nodes);
@@ -121,6 +169,9 @@ export async function fetchExtrasBlob(
   const lineItems: PvOrderExtrasBlob["lineItems"] = [];
   const imprints: PvOrderExtrasBlob["imprints"] = [];
   for (const group of groups) {
+    // Null propagation from salvaged partial responses can null out
+    // individual groups/items — skip them; partialErrors records why.
+    if (!group || !group.lineItems || !group.imprints) continue;
     if (
       group.lineItems.pageInfo.hasNextPage ||
       group.imprints.pageInfo.hasNextPage
@@ -128,11 +179,13 @@ export async function fetchExtrasBlob(
       truncated = true;
     }
     for (const li of group.lineItems.nodes) {
+      if (!li || !li.mockups) continue;
       if (li.mockups.pageInfo.hasNextPage) truncated = true;
       const { mockups, ...rest } = li;
       lineItems.push({ ...rest, mockups: mockups.nodes });
     }
     for (const imp of group.imprints.nodes) {
+      if (!imp || !imp.mockups) continue;
       if (imp.mockups.pageInfo.hasNextPage) truncated = true;
       imprints.push({ id: imp.id, mockups: imp.mockups.nodes });
     }
@@ -176,6 +229,7 @@ export async function fetchExtrasBlob(
     lineItems,
     imprints,
     truncated,
+    ...(partialErrors.length > 0 ? { partialErrors } : {}),
   };
 }
 
@@ -267,10 +321,20 @@ export async function runExtrasDrip(
     // the missing_order path clears the flag while leaving extras NULL, and
     // matching on NULL would re-select those rows every cycle forever.
     .where(eq(pvOrdersTable.extrasStale, true))
-    .orderBy(desc(pvOrdersTable.visualId))
+    // Never-attempted orders first (newest first within that tier), then
+    // previously-attempted ones oldest-attempt-first — failing orders
+    // cycle to the back instead of starving the backlog at the front.
+    .orderBy(
+      sql`${pvOrdersTable.extrasAttemptedAt} ASC NULLS FIRST`,
+      desc(pvOrdersTable.visualId),
+    )
     .limit(limit);
 
   for (const candidate of candidates) {
+    await db
+      .update(pvOrdersTable)
+      .set({ extrasAttemptedAt: new Date() })
+      .where(eq(pvOrdersTable.printavoId, candidate.printavoId));
     try {
       await applyOrderExtras(
         candidate.printavoId,

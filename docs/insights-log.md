@@ -6,6 +6,21 @@ A curated, dated log of explanations, insights, and decisions from our build cha
 
 ## July 2026
 
+### Jul 22 — Printavo returns broken data for orders whose vendor was deleted (and we now salvage it)
+About 35 older orders can't be fetched cleanly: Printavo's own API errors out with "Cannot return null for non-nullable field PurchaseOrder.vendor" — the order references a purchase-order vendor that was later deleted, which Printavo's schema claims can never happen. The API still sends back everything else about the order alongside the error, so the sync now keeps that partial data (with a note recording exactly what was missing) instead of discarding the whole order. Strict safety rule: partial data is only accepted when *every* error is this exact "deleted-thing" shape — any other error still fails loudly.
+
+### Jul 22 — Those broken orders were silently starving the archive backfill
+Because the extras backfill always worked newest-first, the ~35 permanently-failing orders sat at the front of the queue and ate the entire 100-order batch every 5 minutes — the ~16k-order backlog behind them would never have drained. The queue now remembers when each order was last attempted: never-tried orders go first (newest first), and anything that failed cycles to the back instead of blocking the line. Orders that genuinely change still jump straight back to the front.
+
+### Jul 22 — Printavo sometimes times out internally and reports it as a data error
+The full-history run died mid-flight on "Timeout on IDed.id" — Printavo's server timing out internally but reporting it like a query problem. Since all our requests are read-only, the client now retries these up to three times with increasing waits (5s/15s/30s) before giving up, so a single hiccup can't kill an hours-long backfill run. The interrupted run was resumed from its checkpoint with nothing lost.
+
+### Jul 22 — Printavo has a hidden 10,000-row pagination window (and the backfill routes around it)
+Discovered while starting the full-history backfill: Printavo's order list silently refuses to page past row 10,000. The reported total caps at exactly 10,000 (the real invoice count is ~14–15k), asking for anything beyond row 10,000 returns a generic error, and the list quietly claims "no more pages" right at the boundary. With ~14–15k invoices, no single crawl direction can see them all. **The fix:** the backfill walks the list from both ends — oldest-first for the first 10,000, then newest-first down until it meets where the first pass stopped. The two passes together cover everything as long as the archive stays under 20,000 invoices (currently ~5k of headroom; if the shop ever crosses that, the middle would need a different access path — e.g. searching by order number).
+
+### Jul 22 — Order numbers are NOT in date order
+Invoice #1000 was created in 2021, while #4001 dates to Feb 2018. Printavo's visual order numbers were evidently renumbered or reused at some point, so "low number = old order" is unreliable. The backfill sorts by order number (the only stable sort Printavo offers) and simply crawls to the end of the list rather than stopping at a target date.
+
 ### Jul 22 — Backup module phase 1: every order now carries a full-fidelity "extras" archive
 The sync now captures everything Printavo holds on an order beyond what the Hub displays: fees, expenses, approval requests, production files, custom addresses, thread/payment-request markers, mockup images, personalizations, price receipts, product catalog links, and purchase-order references. It's stored as one raw blob per order (portable for any future migration), refreshed automatically whenever an order changes, and backfilled ~100 orders per 5-minute sync cycle (the ~3,500-order backlog drains in a few hours). The order list itself also fetches every remaining cheap field now — discounts, sales tax, paid-in-full, public PDF link, packing slip link, payment terms.
 

@@ -24,6 +24,7 @@ import {
   isPollActive,
   isDetailBackfillActive,
   isPaymentsSeedActive,
+  isHistoryBackfillActive,
   setPaymentsSeedActive,
 } from "./runState";
 import {
@@ -248,7 +249,7 @@ export async function startOrResumePaymentsSeed(
       message: "A payments seed is already running",
     };
   }
-  if (isSeedActive() || isDetailBackfillActive()) {
+  if (isSeedActive() || isDetailBackfillActive() || isHistoryBackfillActive()) {
     return {
       started: false,
       syncRunId: null,

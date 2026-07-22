@@ -8,6 +8,20 @@ export const MIN_INTERVAL_MS = 620;
 /** Cooldown before the single retry after a 429. */
 export const RETRY_AFTER_429_MS = 5200;
 
+/**
+ * Printavo sporadically returns transient server-side timeouts as GraphQL
+ * errors in an HTTP 200 (observed: "Timeout on IDed.id"). Queries are
+ * read-only, so re-sending is safe — retry with backoff instead of
+ * failing a whole sync run.
+ */
+export const GRAPHQL_TIMEOUT_RETRY_DELAYS_MS = [5_000, 15_000, 30_000];
+
+function isTransientTimeout(errors: Array<{ message?: string }>): boolean {
+  return errors.every(
+    (e) => typeof e.message === "string" && e.message.startsWith("Timeout on"),
+  );
+}
+
 /** Backoff schedule for transient network errors (ECONNRESET etc). */
 export const NETWORK_RETRY_DELAYS_MS = [2000, 6000];
 
@@ -31,6 +45,13 @@ export class PrintavoApiError extends Error {
     message: string,
     public readonly httpStatus?: number,
     public readonly graphqlErrors?: unknown[],
+    /**
+     * Partial `data` returned alongside GraphQL errors (HTTP 200).
+     * Printavo's schema declares some fields non-nullable that CAN be
+     * null in practice (e.g. PurchaseOrder.vendor after a vendor is
+     * deleted); callers that can tolerate the gap may salvage this.
+     */
+    public readonly partialData?: unknown,
   ) {
     super(message);
     this.name = "PrintavoApiError";
@@ -86,59 +107,73 @@ export class PrintavoClient {
     query: string,
     variables: Record<string, unknown>,
   ): Promise<T> {
-    let response = await this.postWithNetworkRetry(query, variables);
+    for (let timeoutAttempt = 0; ; timeoutAttempt++) {
+      let response = await this.postWithNetworkRetry(query, variables);
 
-    if (response.status === 429) {
-      this.last429At = new Date();
-      this.retryCount += 1;
-      await sleep(RETRY_AFTER_429_MS);
-      response = await this.postWithNetworkRetry(query, variables);
       if (response.status === 429) {
+        this.last429At = new Date();
+        this.retryCount += 1;
+        await sleep(RETRY_AFTER_429_MS);
+        response = await this.postWithNetworkRetry(query, variables);
+        if (response.status === 429) {
+          this.errorCount += 1;
+          throw new PrintavoApiError(
+            "Printavo rate limit hit twice in a row (429 after cooldown retry)",
+            429,
+          );
+        }
+      }
+
+      if (!response.ok) {
         this.errorCount += 1;
         throw new PrintavoApiError(
-          "Printavo rate limit hit twice in a row (429 after cooldown retry)",
-          429,
+          `Printavo HTTP ${response.status}: ${response.bodyText.slice(0, 500)}`,
+          response.status,
         );
       }
-    }
 
-    if (!response.ok) {
-      this.errorCount += 1;
-      throw new PrintavoApiError(
-        `Printavo HTTP ${response.status}: ${response.bodyText.slice(0, 500)}`,
-        response.status,
-      );
-    }
+      let body: GraphQLResponse<T>;
+      try {
+        body = JSON.parse(response.bodyText) as GraphQLResponse<T>;
+      } catch {
+        this.errorCount += 1;
+        throw new PrintavoApiError(
+          `Printavo returned invalid JSON: ${response.bodyText.slice(0, 200)}`,
+          response.status,
+        );
+      }
 
-    let body: GraphQLResponse<T>;
-    try {
-      body = JSON.parse(response.bodyText) as GraphQLResponse<T>;
-    } catch {
-      this.errorCount += 1;
-      throw new PrintavoApiError(
-        `Printavo returned invalid JSON: ${response.bodyText.slice(0, 200)}`,
-        response.status,
-      );
-    }
+      if (body.errors && body.errors.length > 0) {
+        if (
+          isTransientTimeout(body.errors) &&
+          timeoutAttempt < GRAPHQL_TIMEOUT_RETRY_DELAYS_MS.length
+        ) {
+          this.retryCount += 1;
+          await sleep(GRAPHQL_TIMEOUT_RETRY_DELAYS_MS[timeoutAttempt]);
+          continue;
+        }
+        this.errorCount += 1;
+        const messages = body.errors
+          .map((e) => e.message ?? JSON.stringify(e))
+          .join("; ");
+        throw new PrintavoApiError(
+          `Printavo GraphQL error: ${messages}`,
+          response.status,
+          body.errors,
+          body.data ?? undefined,
+        );
+      }
 
-    if (body.errors && body.errors.length > 0) {
-      this.errorCount += 1;
-      const messages = body.errors
-        .map((e) => e.message ?? JSON.stringify(e))
-        .join("; ");
-      throw new PrintavoApiError(
-        `Printavo GraphQL error: ${messages}`,
-        response.status,
-        body.errors,
-      );
-    }
+      if (body.data === undefined || body.data === null) {
+        this.errorCount += 1;
+        throw new PrintavoApiError(
+          "Printavo returned no data",
+          response.status,
+        );
+      }
 
-    if (body.data === undefined || body.data === null) {
-      this.errorCount += 1;
-      throw new PrintavoApiError("Printavo returned no data", response.status);
+      return body.data;
     }
-
-    return body.data;
   }
 
   /**

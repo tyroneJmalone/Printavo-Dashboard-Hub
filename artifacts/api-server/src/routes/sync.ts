@@ -16,6 +16,10 @@ import {
   startOrResumePaymentsSeed,
   isPaymentsSeedActive,
 } from "../lib/sync/payments";
+import {
+  startOrResumeHistoryBackfill,
+  isHistoryBackfillActive,
+} from "../lib/sync/history";
 import { runIncrementalPoll } from "../lib/sync/incremental";
 import { schedulerInfo } from "../lib/sync/scheduler";
 import type { SyncRun } from "@workspace/db";
@@ -37,25 +41,35 @@ function runInfo(run: SyncRun | null) {
 
 router.get("/sync/status", async (req, res) => {
   try {
-    const [counts, seed, incremental, detailBackfill, paymentsSeed, watermarks] =
-      await Promise.all([
-        tableCounts(),
-        latestRun("seed"),
-        latestRun("incremental"),
-        latestRun("detail_backfill"),
-        latestRun("payments_seed"),
-        listWatermarks(),
-      ]);
+    const [
+      counts,
+      seed,
+      incremental,
+      detailBackfill,
+      paymentsSeed,
+      historyBackfill,
+      watermarks,
+    ] = await Promise.all([
+      tableCounts(),
+      latestRun("seed"),
+      latestRun("incremental"),
+      latestRun("detail_backfill"),
+      latestRun("payments_seed"),
+      latestRun("history_backfill"),
+      listWatermarks(),
+    ]);
     res.json({
       configured: printavoConfigured(),
       seedActive: isSeedActive(),
       detailBackfillActive: isDetailBackfillActive(),
       paymentsSeedActive: isPaymentsSeedActive(),
+      historyBackfillActive: isHistoryBackfillActive(),
       counts,
       seed: runInfo(seed),
       lastIncremental: runInfo(incremental),
       detailBackfill: runInfo(detailBackfill),
       paymentsSeed: runInfo(paymentsSeed),
+      historyBackfill: runInfo(historyBackfill),
       watermarks: watermarks.map((w) => ({
         entity: w.entity,
         watermark: w.watermark.toISOString(),
@@ -140,6 +154,16 @@ router.post("/sync/payments-seed", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to start payments seed");
     res.status(500).json({ error: "Failed to start payments seed" });
+  }
+});
+
+router.post("/sync/history-backfill", async (req, res) => {
+  try {
+    const result = await startOrResumeHistoryBackfill(req.log);
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Failed to start history backfill");
+    res.status(500).json({ error: "Failed to start history backfill" });
   }
 });
 
