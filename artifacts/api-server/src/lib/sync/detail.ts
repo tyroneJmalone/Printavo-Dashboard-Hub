@@ -5,9 +5,11 @@ import {
   pvLineItemGroupsTable,
   pvLineItemsTable,
   pvImprintsTable,
+  changeEventsTable,
   type InsertPvLineItemGroup,
   type InsertPvLineItem,
   type InsertPvImprint,
+  type InsertChangeEvent,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
@@ -152,6 +154,24 @@ export async function applyOrderDetail(
     return "unchanged";
   }
 
+  // Line-item product status activity log (Needs Ordering / Ordered / ...):
+  // Printavo exposes no event timestamps or audit log for these changes,
+  // so we record the transition at OBSERVATION time whenever a detail
+  // rewrite lands a different status than what was stored. This is the
+  // single choke point for local product_status writes (delete+reinsert
+  // below), so it covers manual Printavo edits AND hub PO write-backs.
+  const previousStatuses = new Map(
+    (
+      await db
+        .select({
+          printavoId: pvLineItemsTable.printavoId,
+          productStatus: pvLineItemsTable.productStatus,
+        })
+        .from(pvLineItemsTable)
+        .where(eq(pvLineItemsTable.orderId, node.id))
+    ).map((r) => [r.printavoId, r.productStatus]),
+  );
+
   const groupRows: InsertPvLineItemGroup[] = [];
   const itemRows: InsertPvLineItem[] = [];
   const imprintRows: InsertPvImprint[] = [];
@@ -197,6 +217,26 @@ export async function applyOrderDetail(
     }
   }
 
+  const statusEvents: InsertChangeEvent[] = [];
+  for (const row of itemRows) {
+    if (!previousStatuses.has(row.printavoId)) continue;
+    const oldStatus = previousStatuses.get(row.printavoId) ?? null;
+    const newStatus = row.productStatus ?? null;
+    if (oldStatus !== newStatus) {
+      statusEvents.push({
+        entityType: "line_item",
+        entityId: row.printavoId,
+        visualId: node.visualId ?? null,
+        eventType: "status_change",
+        field: "productStatus",
+        oldValue: oldStatus,
+        newValue: newStatus,
+        occurredAt: now,
+        syncRunId: null,
+      });
+    }
+  }
+
   await db.transaction(async (tx) => {
     await tx
       .delete(pvLineItemGroupsTable)
@@ -209,6 +249,9 @@ export async function applyOrderDetail(
     }
     if (imprintRows.length > 0) {
       await tx.insert(pvImprintsTable).values(imprintRows);
+    }
+    if (statusEvents.length > 0) {
+      await tx.insert(changeEventsTable).values(statusEvents);
     }
     await tx
       .update(pvOrdersTable)

@@ -18,3 +18,9 @@ id = "cCumyYl_kqaOCcaajAS8j"
 uri = "file://handoffs/standalone-momintum-list-groups.md"
 type = "text"
 title = "Handoff: List Groups for the standalone moMINTum app"
+
+[[outputs]]
+id = "FSw69gTRq92Odc5P-tUT9"
+uri = "file://docs/insights-log.md"
+type = "text"
+title = "Insights & Ideas Log (seeded from past chats)"

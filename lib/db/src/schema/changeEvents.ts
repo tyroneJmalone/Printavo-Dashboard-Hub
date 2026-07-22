@@ -21,7 +21,7 @@ export const changeEventsTable = pgTable(
   "change_events",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    entityType: text("entity_type").notNull(), // order | customer | contact | status
+    entityType: text("entity_type").notNull(), // order | customer | contact | status | line_item
     entityId: text("entity_id").notNull(),
     visualId: integer("visual_id"),
     eventType: text("event_type").notNull(), // created | status_change | field_change | updated | converted
