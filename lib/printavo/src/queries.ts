@@ -814,3 +814,293 @@ export function orderExtrasConnectionPageQuery(
     }
   }`;
 }
+
+/*
+ * ── B4 backup entities (threads/messages, merch, inquiries, payment
+ *    requests, account reference data) ──────────────────────────────────
+ * All raw-blob captures. Introspected live July 2026:
+ * - threads → ThreadSummaryConnection ONLY (id, unread, regarding,
+ *   lastReceivedMessage); full messages require thread(id){messages}.
+ *   The list is ordered by lastReceivedMessage recency (verified across
+ *   pages), and lastReceivedMessage tracks INCOMING messages only.
+ * - merch orders have NO root list — only merchStore(id).orders.
+ * - PricingMatrixCell exposes NO price/quantity values (structural ids
+ *   only), so matrices are captured with columns but without cells.
+ */
+
+const THREAD_REGARDING = `
+  regarding {
+    __typename
+    ... on Invoice { id visualId }
+    ... on Quote { id visualId }
+  }
+`;
+
+export function threadsPageQuery(after?: string | null): string {
+  return `query {
+    threads(first: ${PAGE_SIZE}${afterArg(after)}) {
+      nodes {
+        id
+        unread
+        ${THREAD_REGARDING}
+        lastReceivedMessage {
+          __typename
+          ... on EmailMessage { id timestamps { createdAt } }
+          ... on TextMessage { id timestamps { createdAt } }
+        }
+      }
+      ${PAGE_INFO}
+    }
+  }`;
+}
+
+const MESSAGE_PARTICIPANT = `
+  __typename
+  ... on Contact { id fullName email }
+  ... on User { id name email }
+`;
+
+const MESSAGE_COMMON_FIELDS = `
+  id
+  from
+  to
+  incoming
+  status
+  text
+  sender { ${MESSAGE_PARTICIPANT} }
+  recipient { ${MESSAGE_PARTICIPANT} }
+  attachments(first: 25) {
+    nodes { filename url }
+    pageInfo { hasNextPage }
+  }
+  timestamps { createdAt updatedAt }
+`;
+
+/** One page of a thread's full messages (25/page, paged to exhaustion). */
+export function threadMessagesPageQuery(
+  threadId: string,
+  after?: string | null,
+): string {
+  return `query {
+    thread(id: ${lit(threadId)}) {
+      id
+      unread
+      messages(first: ${PAGE_SIZE}${afterArg(after)}) {
+        nodes {
+          __typename
+          ... on EmailMessage { ${MESSAGE_COMMON_FIELDS} subject cc bcc }
+          ... on TextMessage { ${MESSAGE_COMMON_FIELDS} }
+        }
+        ${PAGE_INFO}
+      }
+    }
+  }`;
+}
+
+export function inquiriesPageQuery(after?: string | null): string {
+  return `query {
+    inquiries(first: ${PAGE_SIZE}${afterArg(after)}) {
+      nodes {
+        id
+        name
+        email
+        phone
+        request
+        unread
+        timestamps { createdAt updatedAt }
+      }
+      ${PAGE_INFO}
+    }
+  }`;
+}
+
+/**
+ * Payment requests, newest-first. List page size 10 (not 25) — the two
+ * nested first:25 connections would otherwise risk the 25k complexity
+ * cap (probed OK live at 10/25/25, July 2026).
+ */
+export const PAYMENT_REQUESTS_PAGE_SIZE = 10;
+
+export function paymentRequestsPageQuery(
+  after?: string | null,
+  options?: { omitRequestedBy?: boolean },
+): string {
+  // Printavo declares PaymentRequest.requestedBy non-nullable, but it
+  // CAN be null in practice (requesting user deleted) — and the whole
+  // response data nulls out (verified live: no partial data survives).
+  // Callers retry the poisoned page without the field.
+  const requestedByField = options?.omitRequestedBy
+    ? ""
+    : "\n        requestedBy { id name email }";
+  return `query {
+    paymentRequests(first: ${PAYMENT_REQUESTS_PAGE_SIZE}${afterArg(after)}, sortDescending: true) {
+      nodes {
+        id
+        visualId
+        amount
+        description
+        nickname
+        status
+        requestedAt${requestedByField}
+        contact { id companyName }
+        requestedDetails(first: 25) {
+          nodes {
+            id
+            orderVisualId
+            requestedAmount
+            timestamps { createdAt updatedAt }
+          }
+          pageInfo { hasNextPage }
+        }
+        payments(first: 25) {
+          nodes {
+            id
+            amount
+            category
+            description
+            processing
+            source
+            transactionDate
+            timestamps { createdAt updatedAt }
+          }
+          pageInfo { hasNextPage }
+        }
+        timestamps { createdAt updatedAt }
+      }
+      ${PAGE_INFO}
+    }
+  }`;
+}
+
+export function merchStoresPageQuery(after?: string | null): string {
+  return `query {
+    merchStores(first: ${PAGE_SIZE}${afterArg(after)}) {
+      nodes {
+        id
+        name
+        status
+        closesAt
+        summary { itemsSold totalSales totalTax }
+        timestamps { createdAt updatedAt }
+      }
+      ${PAGE_INFO}
+    }
+  }`;
+}
+
+const MERCH_ADDRESS_FIELDS = `
+  id
+  name
+  phone
+  residential
+  address1
+  address2
+  city
+  state
+  stateIso
+  zipCode
+  country
+  countryIso
+`;
+
+/** One page of a merch store's orders (only reachable per-store). */
+export function merchStoreOrdersPageQuery(
+  storeId: string,
+  after?: string | null,
+): string {
+  return `query {
+    merchStore(id: ${lit(storeId)}) {
+      id
+      orders(first: ${PAGE_SIZE}${afterArg(after)}) {
+        nodes {
+          id
+          visualId
+          status
+          quantity
+          itemTotal
+          promoTotal
+          tax
+          total
+          completedAt
+          delivery { flatRate method total totalActual }
+          billingAddress { ${MERCH_ADDRESS_FIELDS} }
+          shippingAddress { ${MERCH_ADDRESS_FIELDS} }
+          timestamps { createdAt updatedAt }
+        }
+        ${PAGE_INFO}
+      }
+    }
+  }`;
+}
+
+/**
+ * Account-level reference connections, one query per kind. Kind keys
+ * double as pv_reference_blobs.kind values.
+ */
+export const REFERENCE_KINDS = [
+  "delivery_method",
+  "payment_term",
+  "user",
+  "pricing_matrix",
+  "email_template",
+  "type_of_work",
+  "category",
+  "preset_task_group",
+] as const;
+
+export type ReferenceKind = (typeof REFERENCE_KINDS)[number];
+
+const REFERENCE_SELECTIONS: Record<ReferenceKind, { field: string; selection: string }> = {
+  delivery_method: {
+    field: "deliveryMethods",
+    selection: `id name archived timestamps { createdAt updatedAt }`,
+  },
+  payment_term: {
+    field: "paymentTerms",
+    selection: `id name days archived inUse timestamps { createdAt updatedAt }`,
+  },
+  user: {
+    field: "users",
+    selection: `id name email phone timeZone timestamps { createdAt updatedAt }`,
+  },
+  pricing_matrix: {
+    field: "pricingMatrices",
+    selection: `id name typeOfWork { id name archived } columns { id columnName } timestamps { createdAt updatedAt }`,
+  },
+  email_template: {
+    field: "emailTemplates",
+    selection: `id name subject body timestamps { createdAt updatedAt }`,
+  },
+  type_of_work: {
+    field: "typesOfWork",
+    selection: `id name archived timestamps { createdAt updatedAt }`,
+  },
+  category: {
+    field: "categories",
+    selection: `id name timestamps { createdAt updatedAt }`,
+  },
+  preset_task_group: {
+    field: "presetTaskGroups",
+    selection: `id title presetTasks(first: 25) { nodes { id name position assignedTo { id name email } } pageInfo { hasNextPage } } timestamps { createdAt updatedAt }`,
+  },
+};
+
+/** The account connection field name for a reference kind (for response parsing). */
+export function referenceFieldFor(kind: ReferenceKind): string {
+  return REFERENCE_SELECTIONS[kind].field;
+}
+
+export function accountReferencePageQuery(
+  kind: ReferenceKind,
+  after?: string | null,
+): string {
+  const { field, selection } = REFERENCE_SELECTIONS[kind];
+  return `query {
+    account {
+      ${field}(first: ${PAGE_SIZE}${afterArg(after)}) {
+        nodes { ${selection} }
+        ${PAGE_INFO}
+      }
+    }
+  }`;
+}

@@ -30,6 +30,20 @@ import {
 } from "./detail";
 import { sweepProductStatuses, type SweepAgg } from "./productStatusSweep";
 import { runExtrasDrip, type ExtrasAgg } from "./extras";
+import { refreshReferenceBlobs, type ReferenceBlobsAgg } from "./referenceBlobs";
+import { crawlInquiries, type InquiriesAgg } from "./inquiries";
+import {
+  crawlPaymentRequests,
+  type PaymentRequestsAgg,
+} from "./paymentRequests";
+import { crawlMerch, type MerchAgg } from "./merch";
+import {
+  crawlThreadSummaries,
+  runMessagesDrip,
+  reflagAllThreadMessages,
+  type ThreadsAgg,
+  type MessagesDripAgg,
+} from "./threads";
 import { dateOrNull } from "./differ";
 import { SEED_MONTHS } from "./seed";
 import {
@@ -80,6 +94,20 @@ const LIST_STOP_UNCHANGED_PAGES = 3;
  * the initial ~3.5k-order backlog drains over ~3 hours of polls.
  */
 const EXTRAS_PER_POLL = 100;
+
+/**
+ * Backup module (B4d) thread budgets. Summary crawl early-stop: the
+ * threads list is ordered by lastReceivedMessage recency, so new
+ * incoming messages always surface on page 1; floor 2 pages + 2
+ * unchanged pages ≈ 4 requests per poll steady-state. The daily full
+ * crawl (~340 pages over all ~8.5k threads) catches anything deeper.
+ * Messages drip: 50 threads/poll ≈ +35s; the initial ~8.5k-thread
+ * backfill drains over ~14h of scheduled polls.
+ */
+const THREADS_FLOOR_PAGES = 2;
+const THREADS_STOP_UNCHANGED_PAGES = 2;
+const MESSAGES_PER_POLL = 50;
+const WEEKLY_REFRESH_MS = 7 * DAILY_REFRESH_MS;
 
 export { isPollActive } from "./runState";
 
@@ -356,10 +384,13 @@ export async function runIncrementalPoll(
     }
 
     let referenceAgg: Agg | null = null;
+    let referenceBlobsAgg: ReferenceBlobsAgg | null = null;
     if (isScheduled) {
       const refWm = await getWatermark("reference_daily");
       if (!refWm || runStart.getTime() - refWm.getTime() > DAILY_REFRESH_MS) {
         referenceAgg = await refreshReferenceEntities(opts, logger);
+        // B4a: account-level reference blobs ride the same daily sweep.
+        referenceBlobsAgg = await refreshReferenceBlobs(logger);
         await setWatermark("reference_daily", runStart);
       }
     }
@@ -394,9 +425,89 @@ export async function runIncrementalPoll(
       extrasAgg = await runExtrasDrip(EXTRAS_PER_POLL, logger);
     }
 
+    // The daily full-depth order crawl is already complete at this
+    // point — commit its watermark BEFORE the B4 block so a B4 failure
+    // can't void ~40 minutes of finished crawl work.
     if (listFullDue) {
       await setWatermark("list_daily", runStart);
     }
+
+    // Backup module B4 (scheduled polls only, keeps manual sync
+    // snappy): threads/messages, payment requests every poll with
+    // early stop; inquiries + merch daily.
+    let threadsAgg: ThreadsAgg | null = null;
+    let messagesAgg: MessagesDripAgg | null = null;
+    let paymentRequestsAgg: PaymentRequestsAgg | null = null;
+    let inquiriesAgg: InquiriesAgg | null = null;
+    let merchAgg: MerchAgg | null = null;
+    let threadsReflagged: number | null = null;
+    if (isScheduled) {
+      const threadsDailyWm = await getWatermark("threads_daily");
+      const threadsFullDue =
+        !threadsDailyWm ||
+        runStart.getTime() - threadsDailyWm.getTime() > DAILY_REFRESH_MS;
+      threadsAgg = await crawlThreadSummaries(
+        threadsFullDue
+          ? null
+          : {
+              floorPages: THREADS_FLOOR_PAGES,
+              stopAfterUnchangedPages: THREADS_STOP_UNCHANGED_PAGES,
+            },
+        logger,
+      );
+      if (threadsFullDue) {
+        await setWatermark("threads_daily", runStart);
+      }
+
+      // Weekly deep re-flag: lastReceivedMessage only tracks INCOMING
+      // messages, so outgoing-only threads never resurface in the
+      // summary crawl. Re-pull every thread's messages weekly.
+      const threadsDeepWm = await getWatermark("threads_deep");
+      if (
+        !threadsDeepWm ||
+        runStart.getTime() - threadsDeepWm.getTime() > WEEKLY_REFRESH_MS
+      ) {
+        threadsReflagged = await reflagAllThreadMessages();
+        await setWatermark("threads_deep", runStart);
+        logger.info(
+          { threadsReflagged },
+          "Weekly deep re-flag: all thread messages marked stale",
+        );
+      }
+
+      messagesAgg = await runMessagesDrip(MESSAGES_PER_POLL, logger);
+
+      const prDailyWm = await getWatermark("payment_requests_daily");
+      const prFullDue =
+        !prDailyWm ||
+        runStart.getTime() - prDailyWm.getTime() > DAILY_REFRESH_MS;
+      paymentRequestsAgg = await crawlPaymentRequests({
+        stopOnUnchangedPage: !prFullDue,
+        logger,
+      });
+      if (prFullDue) {
+        await setWatermark("payment_requests_daily", runStart);
+      }
+
+      const inquiriesWm = await getWatermark("inquiries_daily");
+      if (
+        !inquiriesWm ||
+        runStart.getTime() - inquiriesWm.getTime() > DAILY_REFRESH_MS
+      ) {
+        inquiriesAgg = await crawlInquiries(logger);
+        await setWatermark("inquiries_daily", runStart);
+      }
+
+      const merchWm = await getWatermark("merch_daily");
+      if (
+        !merchWm ||
+        runStart.getTime() - merchWm.getTime() > DAILY_REFRESH_MS
+      ) {
+        merchAgg = await crawlMerch(logger);
+        await setWatermark("merch_daily", runStart);
+      }
+    }
+
     await setWatermark("invoices", runStart);
     await setWatermark("quotes", runStart);
 
@@ -414,10 +525,17 @@ export async function runIncrementalPoll(
       },
       listFullCrawl: listFullDue,
       ...(referenceAgg ? { reference: referenceAgg } : {}),
+      ...(referenceBlobsAgg ? { referenceBlobs: referenceBlobsAgg } : {}),
       ...(paymentsAgg ? { payments: paymentsAgg } : {}),
       ...(detailAgg ? { details: detailAgg } : {}),
       ...(sweepAgg ? { productStatusSweep: sweepAgg } : {}),
       ...(extrasAgg ? { extras: extrasAgg } : {}),
+      ...(threadsAgg ? { threads: threadsAgg } : {}),
+      ...(messagesAgg ? { messages: messagesAgg } : {}),
+      ...(threadsReflagged !== null ? { threadsReflagged } : {}),
+      ...(paymentRequestsAgg ? { paymentRequests: paymentRequestsAgg } : {}),
+      ...(inquiriesAgg ? { inquiries: inquiriesAgg } : {}),
+      ...(merchAgg ? { merch: merchAgg } : {}),
     };
     await completeRun(run.id, stats);
 
