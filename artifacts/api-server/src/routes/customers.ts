@@ -376,6 +376,15 @@ router.get("/customers/:id", async (req, res) => {
     res.status(404).json({ error: "Customer not found" });
     return;
   }
+  // Optional order-history filters (stats/statuses/styles stay unfiltered).
+  const statusFilter =
+    typeof req.query.status === "string" && req.query.status.trim() !== ""
+      ? req.query.status.trim()
+      : null;
+  const orderQ =
+    typeof req.query.q === "string" && req.query.q.trim() !== ""
+      ? req.query.q.trim().replace(/^#/, "") // allow "#2521" style input
+      : null;
   try {
     const cr = await pool.query(
       `SELECT c.printavo_id,
@@ -415,21 +424,95 @@ router.get("/customers/:id", async (req, res) => {
     );
     const s = sr.rows[0];
 
-    // Most recent orders (both types, badge distinguishes) — newest first.
+    // Ordering behavior: quantities + top styles (invoice line items) and the
+    // status breakdown used by the order-history filter. All unfiltered.
+    const [qtyR, stylesR, statusesR] = await Promise.all([
+      pool.query(
+        `SELECT count(DISTINCT li.order_id)::int AS orders_with_items,
+                coalesce(sum(li.items), 0)::bigint AS total_items
+           FROM pv_line_items li
+           JOIN pv_orders o ON o.printavo_id = li.order_id
+          WHERE o.customer_id = $1 AND o.order_type = 'invoice'`,
+        [id],
+      ),
+      pool.query(
+        `SELECT nullif(li.brand, '') AS brand,
+                li.item_number,
+                count(DISTINCT li.order_id)::int AS order_count,
+                coalesce(sum(li.items), 0)::bigint AS total_qty
+           FROM pv_line_items li
+           JOIN pv_orders o ON o.printavo_id = li.order_id
+          WHERE o.customer_id = $1
+            AND o.order_type = 'invoice'
+            AND coalesce(li.item_number, '') <> ''
+          GROUP BY 1, 2
+          ORDER BY count(DISTINCT li.order_id) DESC, sum(li.items) DESC
+          LIMIT 6`,
+        [id],
+      ),
+      pool.query(
+        `SELECT status_name, count(*)::int AS n
+           FROM pv_orders
+          WHERE customer_id = $1
+            AND coalesce(status_name, '') <> ''
+          GROUP BY 1
+          ORDER BY 2 DESC, 1 ASC`,
+        [id],
+      ),
+    ]);
+
+    // Most recent orders (both types, badge distinguishes) — newest first,
+    // optionally filtered by status and/or nickname / order # keyword.
+    const oFilters = ["customer_id = $1"];
+    const oParams: unknown[] = [id];
+    if (statusFilter) {
+      oParams.push(statusFilter);
+      oFilters.push(`status_name = $${oParams.length}`);
+    }
+    if (orderQ) {
+      oParams.push(`%${escapeLike(orderQ)}%`);
+      oFilters.push(
+        `(nickname ILIKE $${oParams.length} OR visual_id::text ILIKE $${oParams.length})`,
+      );
+    }
     const or_ = await pool.query(
       `SELECT printavo_id, visual_id, order_type, nickname, status_name, total,
               coalesce(invoice_at::text, printavo_created_at::date::text) AS order_date,
               count(*) OVER ()::int AS total_rows
          FROM pv_orders
-        WHERE customer_id = $1
+        WHERE ${oFilters.join(" AND ")}
         ORDER BY coalesce(invoice_at, printavo_created_at::date) DESC NULLS LAST,
                  visual_id DESC
         LIMIT 100`,
-      [id],
+      oParams,
     );
 
     const invoiceCount = s.invoice_count as number;
     const lifetimeSpend = Number(s.lifetime_spend);
+
+    // Ordering cadence derived from the invoice span (JS-side, dates are
+    // already "YYYY-MM-DD" text). Needs at least 2 invoices to be meaningful.
+    const firstAt = s.first_order_at ? new Date(String(s.first_order_at)) : null;
+    const lastAt = s.last_order_at ? new Date(String(s.last_order_at)) : null;
+    let ordersPerMonth: number | null = null;
+    let avgDaysBetween: number | null = null;
+    if (firstAt && lastAt && invoiceCount > 1) {
+      const spanDays = Math.max(
+        1,
+        (lastAt.getTime() - firstAt.getTime()) / 86_400_000,
+      );
+      avgDaysBetween = spanDays / (invoiceCount - 1);
+      // Need at least ~a month of history for a per-month rate to be
+      // meaningful — otherwise 2 same-week invoices read as "8+/mo".
+      if (spanDays >= 30.44) {
+        ordersPerMonth = invoiceCount / (spanDays / 30.44);
+      }
+    }
+
+    const qty = qtyR.rows[0];
+    const ordersWithItems = qty.orders_with_items as number;
+    const totalItems = Number(qty.total_items);
+
     res.json({
       printavoId: c.printavo_id as string,
       displayName: c.display_name as string,
@@ -451,7 +534,21 @@ router.get("/customers/:id", async (req, res) => {
         outstanding: Number(s.outstanding),
         firstOrderAt: (s.first_order_at as string | null) ?? null,
         lastOrderAt: (s.last_order_at as string | null) ?? null,
+        ordersPerMonth,
+        avgDaysBetween,
+        avgOrderQty: ordersWithItems > 0 ? totalItems / ordersWithItems : null,
+        totalItems,
       },
+      topStyles: stylesR.rows.map((row) => ({
+        brand: (row.brand as string | null) ?? null,
+        itemNumber: row.item_number as string,
+        orderCount: row.order_count as number,
+        totalQty: Number(row.total_qty),
+      })),
+      statuses: statusesR.rows.map((row) => ({
+        name: row.status_name as string,
+        count: row.n as number,
+      })),
       ordersTotal:
         or_.rows.length > 0 ? (or_.rows[0].total_rows as number) : 0,
       orders: or_.rows.map((row) => ({

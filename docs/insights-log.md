@@ -105,3 +105,9 @@ Revenue = **invoices only** (order_type='invoice'), same as the existing reports
 
 ### Jul 23 — Directory search now looks inside order nicknames
 Searching "soccer" or "paving" finds customers whose ORDERS mention the word, not just their names — e.g. Bishop Guertin High School surfaces under "soccer" via its order history. Combined with the new "Select all N matching" button, categorizing a whole niche is now: search keyword → select all → assign. Note for the future: this scans every order nickname per search (no index); fine at ~19k orders, add a trigram index if it ever feels slow.
+
+### Jul 23 — orval name collision when an endpoint has both path AND query params
+Adding query params to getCustomerProfile (which already had a path param) made orval emit a zod schema `GetCustomerProfileParams` (path) and a TS type `GetCustomerProfileParams` (query) — the api-zod barrel's double `export *` then failed typecheck with TS2308. Fix lives in lib/api-zod/src/index.ts: explicitly re-export the zod schema under the bare name and alias the type. Any future endpoint with both param kinds will hit the same thing; same fix applies.
+
+### Jul 23 — customer profile now shows ordering behavior
+Order frequency (invoices/month over the customer's active span), average order quantity (pieces per invoice from line items), and top styles (e.g. Abbey Villa = Sport-Tek YST350 youth tees, 21 orders / 1,358 pcs) are computed live per profile view. Frequency is hidden for customers with under ~a month of history so 2 same-week invoices don't read as "8/mo".

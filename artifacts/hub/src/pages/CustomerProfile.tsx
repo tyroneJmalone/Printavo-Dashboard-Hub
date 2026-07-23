@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -12,6 +12,8 @@ import {
 } from "@workspace/api-client-react";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import {
   Select,
   SelectContent,
@@ -26,6 +28,8 @@ import {
   Mail,
   CalendarDays,
   Briefcase,
+  Search,
+  Shirt,
 } from "lucide-react";
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -45,8 +49,29 @@ export default function CustomerProfile() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const { data, isLoading, error } = useGetCustomerProfile(id, {
-    query: { queryKey: getGetCustomerProfileQueryKey(id), enabled: !!id },
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [qInput, setQInput] = useState("");
+  const [orderQ, setOrderQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setOrderQ(qInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [qInput]);
+
+  const params = useMemo(
+    () => ({
+      ...(statusFilter !== "all" ? { status: statusFilter } : {}),
+      ...(orderQ !== "" ? { q: orderQ } : {}),
+    }),
+    [statusFilter, orderQ],
+  );
+  const filtersActive = statusFilter !== "all" || orderQ !== "";
+
+  const { data, isLoading, error, isFetching } = useGetCustomerProfile(id, params, {
+    query: {
+      queryKey: getGetCustomerProfileQueryKey(id, params),
+      enabled: !!id,
+      placeholderData: keepPreviousData,
+    },
   });
   const { data: catData } = useListCustomerCategories({
     query: { queryKey: getListCustomerCategoriesQueryKey() },
@@ -177,7 +202,7 @@ export default function CustomerProfile() {
       </div>
 
       <div className="px-8 py-6 space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard label="Lifetime spend" value={formatMoney(s.lifetimeSpend)} sub="invoices only" />
           <StatCard label="This year" value={formatMoney(s.ytdSpend)} />
           <StatCard
@@ -186,6 +211,30 @@ export default function CustomerProfile() {
             sub={`${formatNumber(s.quoteCount)} quote${s.quoteCount === 1 ? "" : "s"}`}
           />
           <StatCard label="Avg invoice" value={formatMoney(s.avgOrder)} />
+          <StatCard
+            label="Order frequency"
+            value={
+              s.ordersPerMonth != null
+                ? `${s.ordersPerMonth >= 10 ? Math.round(s.ordersPerMonth) : s.ordersPerMonth.toFixed(1)} / mo`
+                : "—"
+            }
+            sub={
+              s.avgDaysBetween != null
+                ? `every ~${Math.round(s.avgDaysBetween)} days`
+                : undefined
+            }
+          />
+          <StatCard
+            label="Avg order qty"
+            value={
+              s.avgOrderQty != null ? `${formatNumber(Math.round(s.avgOrderQty))} pcs` : "—"
+            }
+            sub={
+              s.totalItems != null && s.totalItems > 0
+                ? `${formatNumber(s.totalItems)} pcs lifetime`
+                : undefined
+            }
+          />
           <StatCard label="Outstanding" value={formatMoney(s.outstanding)} />
           <StatCard
             label="First / last order"
@@ -194,13 +243,77 @@ export default function CustomerProfile() {
           />
         </div>
 
+        {data.topStyles.length > 0 ? (
+          <div>
+            <h2 className="text-sm font-semibold text-slate-200 mb-2 inline-flex items-center gap-1.5">
+              <Shirt size={14} className="text-slate-400" /> Common styles
+              <span className="text-xs font-normal text-slate-500">
+                by invoice count
+              </span>
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {data.topStyles.map((t) => (
+                <div
+                  key={`${t.brand ?? ""}|${t.itemNumber}`}
+                  className="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+                >
+                  <p className="text-sm font-semibold text-slate-200">
+                    {t.brand ? `${t.brand} ` : ""}
+                    <span className="text-emerald-400">{t.itemNumber}</span>
+                  </p>
+                  <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+                    {formatNumber(t.orderCount)} order
+                    {t.orderCount === 1 ? "" : "s"} · {formatNumber(t.totalQty)} pcs
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div>
-          <div className="flex items-baseline justify-between mb-2">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
             <h2 className="text-sm font-semibold text-slate-200">Order history</h2>
-            <span className="text-xs text-slate-500 tabular-nums">
-              {data.orders.length < data.ordersTotal
-                ? `Showing latest ${data.orders.length} of ${formatNumber(data.ordersTotal)}`
-                : `${formatNumber(data.ordersTotal)} order${data.ordersTotal === 1 ? "" : "s"}`}
+            <div className="relative">
+              <Search
+                size={13}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"
+              />
+              <Input
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
+                placeholder="Search nickname or order #…"
+                className="h-8 w-64 pl-8 text-sm"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-64 text-sm">
+                <SelectValue>
+                  {statusFilter === "all" ? "All statuses" : statusFilter}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                {data.statuses.map((st) => (
+                  <SelectItem key={st.name} value={st.name}>
+                    {st.name} ({formatNumber(st.count)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isFetching ? (
+              <Loader2 size={14} className="animate-spin text-slate-500" />
+            ) : null}
+            <span className="ml-auto text-xs text-slate-500 tabular-nums">
+              {filtersActive
+                ? `${formatNumber(data.ordersTotal)} matching order${data.ordersTotal === 1 ? "" : "s"}${
+                    data.orders.length < data.ordersTotal
+                      ? ` (showing latest ${data.orders.length})`
+                      : ""
+                  }`
+                : data.orders.length < data.ordersTotal
+                  ? `Showing latest ${data.orders.length} of ${formatNumber(data.ordersTotal)}`
+                  : `${formatNumber(data.ordersTotal)} order${data.ordersTotal === 1 ? "" : "s"}`}
             </span>
           </div>
           <div className="border border-slate-800 rounded-xl overflow-hidden">
@@ -219,14 +332,19 @@ export default function CustomerProfile() {
                 {data.orders.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
-                      No orders on record.
+                      {filtersActive
+                        ? "No orders match the current filters."
+                        : "No orders on record."}
                     </td>
                   </tr>
                 ) : (
                   data.orders.map((o) => (
                     <tr key={o.printavoId} className="hover:bg-slate-900/40">
                       <td className="px-4 py-2.5 font-medium text-slate-200 tabular-nums">
-                        #{o.visualId}
+                        <PrintavoOrderLink
+                          orderId={o.printavoId}
+                          visualId={o.visualId}
+                        />
                       </td>
                       <td className="px-4 py-2.5 text-slate-300 max-w-[320px] truncate">
                         {o.nickname ?? "—"}

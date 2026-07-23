@@ -15,4 +15,8 @@ export interface CustomerProfileStats {
   outstanding: number;
   firstOrderAt?: string | null;
   lastOrderAt?: string | null;
+  ordersPerMonth?: number | null;
+  avgDaysBetween?: number | null;
+  avgOrderQty?: number | null;
+  totalItems?: number;
 }

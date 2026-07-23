@@ -7,6 +7,8 @@
  */
 import type { CustomerProfileOrder } from './customerProfileOrder';
 import type { CustomerProfileStats } from './customerProfileStats';
+import type { CustomerProfileStatus } from './customerProfileStatus';
+import type { CustomerProfileTopStyle } from './customerProfileTopStyle';
 
 export interface CustomerProfileResponse {
   printavoId: string;
@@ -19,6 +21,8 @@ export interface CustomerProfileResponse {
   categoryId?: string | null;
   categoryName?: string | null;
   stats: CustomerProfileStats;
+  topStyles: CustomerProfileTopStyle[];
+  statuses: CustomerProfileStatus[];
   ordersTotal: number;
   orders: CustomerProfileOrder[];
 }

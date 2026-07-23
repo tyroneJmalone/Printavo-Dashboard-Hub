@@ -2869,6 +2869,22 @@ export interface CustomerProfileStats {
   outstanding: number;
   firstOrderAt?: string | null;
   lastOrderAt?: string | null;
+  ordersPerMonth?: number | null;
+  avgDaysBetween?: number | null;
+  avgOrderQty?: number | null;
+  totalItems?: number;
+}
+
+export interface CustomerProfileTopStyle {
+  brand?: string | null;
+  itemNumber: string;
+  orderCount: number;
+  totalQty: number;
+}
+
+export interface CustomerProfileStatus {
+  name: string;
+  count: number;
 }
 
 export interface CustomerProfileResponse {
@@ -2882,6 +2898,8 @@ export interface CustomerProfileResponse {
   categoryId?: string | null;
   categoryName?: string | null;
   stats: CustomerProfileStats;
+  topStyles: CustomerProfileTopStyle[];
+  statuses: CustomerProfileStatus[];
   ordersTotal: number;
   orders: CustomerProfileOrder[];
 }
@@ -3018,6 +3036,17 @@ export const GetNicheReportRange = {
   last12: 'last12',
   custom: 'custom',
 } as const;
+
+export type GetCustomerProfileParams = {
+/**
+ * Filter order history to an exact status name
+ */
+status?: string;
+/**
+ * Keyword filter on order nickname or order number
+ */
+q?: string;
+};
 
 export type ListVendorOrdersParams = {
 poFileId?: string;

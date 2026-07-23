@@ -73,6 +73,7 @@ import type {
   GetCombinedPackingSlipsHtmlParams,
   GetCombinedWorkordersHtmlParams,
   GetCreditsOverTimeParams,
+  GetCustomerProfileParams,
   GetDashboardSummaryParams,
   GetExpiringSoonParams,
   GetImprintsByTierParams,
@@ -1739,20 +1740,29 @@ export function useGetNicheReport<TData = Awaited<ReturnType<typeof getNicheRepo
 
 
 
-export const getGetCustomerProfileUrl = (id: string,) => {
+export const getGetCustomerProfileUrl = (id: string,
+    params?: GetCustomerProfileParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/customers/${id}`
+  return stringifiedParams.length > 0 ? `/api/customers/${id}?${stringifiedParams}` : `/api/customers/${id}`
 }
 
 /**
  * @summary Customer profile — contact info, category, spend stats, recent orders
  */
-export const getCustomerProfile = async (id: string, options?: RequestInit): Promise<CustomerProfileResponse> => {
+export const getCustomerProfile = async (id: string,
+    params?: GetCustomerProfileParams, options?: RequestInit): Promise<CustomerProfileResponse> => {
 
-  return customFetch<CustomerProfileResponse>(getGetCustomerProfileUrl(id),
+  return customFetch<CustomerProfileResponse>(getGetCustomerProfileUrl(id,params),
   {
     ...options,
     method: 'GET'
@@ -1765,23 +1775,25 @@ export const getCustomerProfile = async (id: string, options?: RequestInit): Pro
 
 
 
-export const getGetCustomerProfileQueryKey = (id: string,) => {
+export const getGetCustomerProfileQueryKey = (id: string,
+    params?: GetCustomerProfileParams,) => {
     return [
-    `/api/customers/${id}`
+    `/api/customers/${id}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetCustomerProfileQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerProfile>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetCustomerProfileQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerProfile>>, TError = ErrorType<ErrorResponse>>(id: string,
+    params?: GetCustomerProfileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetCustomerProfileQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerProfileQueryKey(id,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerProfile>>> = ({ signal }) => getCustomerProfile(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerProfile>>> = ({ signal }) => getCustomerProfile(id,params, { signal, ...requestOptions });
 
 
 
@@ -1799,11 +1811,12 @@ export type GetCustomerProfileQueryError = ErrorType<ErrorResponse>
  */
 
 export function useGetCustomerProfile<TData = Awaited<ReturnType<typeof getCustomerProfile>>, TError = ErrorType<ErrorResponse>>(
- id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ id: string,
+    params?: GetCustomerProfileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetCustomerProfileQueryOptions(id,options)
+  const queryOptions = getGetCustomerProfileQueryOptions(id,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

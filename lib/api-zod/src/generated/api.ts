@@ -411,6 +411,11 @@ export const GetCustomerProfileParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const GetCustomerProfileQueryParams = zod.object({
+  "status": zod.coerce.string().optional().describe('Filter order history to an exact status name'),
+  "q": zod.coerce.string().optional().describe('Keyword filter on order nickname or order number')
+})
+
 export const GetCustomerProfileResponse = zod.object({
   "printavoId": zod.string(),
   "displayName": zod.string(),
@@ -429,8 +434,22 @@ export const GetCustomerProfileResponse = zod.object({
   "avgOrder": zod.number(),
   "outstanding": zod.number(),
   "firstOrderAt": zod.string().nullish(),
-  "lastOrderAt": zod.string().nullish()
+  "lastOrderAt": zod.string().nullish(),
+  "ordersPerMonth": zod.number().nullish(),
+  "avgDaysBetween": zod.number().nullish(),
+  "avgOrderQty": zod.number().nullish(),
+  "totalItems": zod.number().optional()
 }),
+  "topStyles": zod.array(zod.object({
+  "brand": zod.string().nullish(),
+  "itemNumber": zod.string(),
+  "orderCount": zod.number(),
+  "totalQty": zod.number()
+})),
+  "statuses": zod.array(zod.object({
+  "name": zod.string(),
+  "count": zod.number()
+})),
   "ordersTotal": zod.number(),
   "orders": zod.array(zod.object({
   "printavoId": zod.string(),
