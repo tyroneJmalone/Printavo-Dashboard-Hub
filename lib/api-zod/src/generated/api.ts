@@ -285,6 +285,125 @@ export const DownloadBackupExportResponse = zod.unknown()
 
 
 /**
+ * @summary Customer directory with lifetime stats and category
+ */
+export const ListDirectoryCustomersQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "categoryId": zod.coerce.string().optional(),
+  "uncategorized": zod.enum(['true', 'false']).optional(),
+  "sort": zod.enum(['spend', 'name']).optional(),
+  "limit": zod.coerce.number().optional(),
+  "offset": zod.coerce.number().optional()
+})
+
+export const ListDirectoryCustomersResponse = zod.object({
+  "total": zod.number(),
+  "customers": zod.array(zod.object({
+  "printavoId": zod.string(),
+  "displayName": zod.string(),
+  "contactName": zod.string().nullish(),
+  "contactEmail": zod.string().nullish(),
+  "categoryId": zod.string().nullish(),
+  "lifetimeSpend": zod.number(),
+  "orderCount": zod.number(),
+  "lastOrderAt": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary All niche categories with assignment counts
+ */
+export const ListCustomerCategoriesResponse = zod.object({
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "sortOrder": zod.number(),
+  "assignedCount": zod.number().optional()
+}))
+})
+
+
+/**
+ * @summary Create a category (admin only)
+ */
+export const CreateCustomerCategoryBody = zod.object({
+  "name": zod.string()
+})
+
+export const CreateCustomerCategoryResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "sortOrder": zod.number(),
+  "assignedCount": zod.number().optional()
+})
+
+
+/**
+ * @summary Rename or (de)activate a category (admin only)
+ */
+export const UpdateCustomerCategoryParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateCustomerCategoryBody = zod.object({
+  "name": zod.string().optional(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateCustomerCategoryResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "active": zod.boolean(),
+  "sortOrder": zod.number(),
+  "assignedCount": zod.number().optional()
+})
+
+
+/**
+ * @summary Assign (or clear) a category for one or many customers
+ */
+export const AssignCustomerCategoryBody = zod.object({
+  "customerIds": zod.array(zod.string()),
+  "categoryId": zod.string().nullish()
+})
+
+export const AssignCustomerCategoryResponse = zod.object({
+  "assigned": zod.number()
+})
+
+
+/**
+ * Invoices only (quotes excluded), matching existing report semantics. Time range filters on invoice date.
+ * @summary Revenue / orders / customers grouped by niche category
+ */
+export const GetNicheReportQueryParams = zod.object({
+  "range": zod.enum(['all', 'ytd', 'last12', 'custom']).optional(),
+  "start": zod.coerce.string().optional(),
+  "end": zod.coerce.string().optional()
+})
+
+export const GetNicheReportResponse = zod.object({
+  "range": zod.string(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "coverage": zod.object({
+  "totalCustomers": zod.number(),
+  "categorized": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "categoryId": zod.string().nullish(),
+  "categoryName": zod.string(),
+  "revenue": zod.number(),
+  "orderCount": zod.number(),
+  "customerCount": zod.number()
+}))
+})
+
+
+/**
  * @summary One-request connectivity probe against Printavo
  */
 export const ProbePrintavoResponse = zod.object({

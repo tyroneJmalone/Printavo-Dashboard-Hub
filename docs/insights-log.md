@@ -95,3 +95,10 @@ The same instant comes back in varying timezones between fetches. Every fetched 
 
 ### Jul (mid) — Two orders are stored incomplete by design *(FIXED Jul 22 — see the group-cursor entry above; both orders are now stored complete)*
 Orders **20104** and **20714** have more than 25 line-item groups — beyond Printavo's query complexity cap even at generous limits — so their line items are partially stored. Exclude them from report spot-checks.
+
+### Jul 23 — Client 360 categories: two bugs worth remembering
+1) **Frontend cache keys must match the generated client exactly.** The directory page invalidated queries under the key prefix "/customers", but the generated API client keys everything under "/api/customers…". Nothing errored — the table just silently didn't refresh after assigning a category. Only the end-to-end browser test caught it. Rule: after a mutation, invalidate using the generated key helpers (or a prefix that provably matches them), never a hand-typed guess.
+2) **Sorting by spend needs a tiebreaker.** Thousands of customers tie at $0 lifetime spend, and Postgres gives no ordering guarantee among ties — so page 60 could show duplicated/skipped customers between visits. Every paginated ORDER BY now ends with the stable printavo_id.
+
+### Jul 23 — Niche report semantics locked in
+Revenue = **invoices only** (order_type='invoice'), same as the existing reports. Including quotes would inflate numbers ~40% (e.g. Abbey Villa $412k vs the real $280k). All-time invoice revenue ~$10.42M across 14.1k invoices; YTD ~$916k. Category deletion is deliberately impossible — categories deactivate instead, so historical report rows always resolve.

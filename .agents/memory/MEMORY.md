@@ -5,6 +5,7 @@
 - [Vendor pricing semantics](vendor-pricing-semantics.md) — SanMar regular cost = casePrice (NOT piecePrice — wrong twice before); S&S = piecePrice; combined-size "2/3X" labels; search quirks.
 - [S&S order response wrapper](ss-order-response-wrapper.md) — S&S order endpoints return { orders, lineErrors } wrapper, not a bare array; camelCase fields; parse via unwrap helper.
 - [Tailwind v4 arbitrary values](tailwind-v4-arbitrary-values.md) — commas stay literal in v4: grid-cols-[400px,1fr] silently no-ops; use underscores (300px_1fr); verify layout visually.
+- [Orval query-key invalidation](orval-query-key-invalidation.md) — generated keys start with "/api/…"; hand-typed prefixes like "/customers" silently no-op; use the generated key helpers.
 - [Streaming drain vs disconnect](streaming-drain-close.md) — every backpressure drain await in a streaming response must race res 'close', or client disconnects wedge in-flight guards forever.
 - [Printavo file mirroring](printavo-file-mirroring.md) — publicPdf/mockups/production files are no-auth; packing slips 401; PDFs regenerate per request (3-byte /CreationDate diff breaks naive checksums).
 - [Printavo API error quirks](printavo-api-error-quirks.md) — salvage partial data on deleted-record "non-nullable" errors; retry "Timeout on X"; stamp attempts to avoid queue starvation.

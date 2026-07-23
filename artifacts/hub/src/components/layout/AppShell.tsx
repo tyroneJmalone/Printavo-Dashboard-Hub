@@ -43,6 +43,13 @@ const NAV_GROUPS: NavGroup[] = [
     items: [{ id: "reorders", label: "Reorder Inbox", icon: Inbox, disabled: true }],
   },
   {
+    heading: "Clients",
+    items: [
+      { id: "customers", label: "Directory", href: "/customers", icon: Users },
+      { id: "niche-report", label: "Niche Report", href: "/customers/report", icon: BarChart3 },
+    ],
+  },
+  {
     heading: "Purchasing",
     items: [
       { id: "reorder", label: "Reorder Scan", icon: Scan, disabled: true },

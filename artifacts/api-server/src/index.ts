@@ -4,6 +4,7 @@ import { startScheduler } from "./lib/sync/scheduler";
 import { startFileMirror } from "./lib/sync/fileMirror";
 import { startAutoPrintScheduler } from "./lib/printQueue/autoPrint/scheduler";
 import { bootstrapStaffAdmin } from "./lib/auth/bootstrap";
+import { seedCustomerCategories } from "./lib/customers/seedCategories";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
 import { startPoller as startMintbucksPoller } from "./mintbucks/lib/poller";
 import { startTaskSyncPoller } from "./printavoTasks/poller";
@@ -31,6 +32,9 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
   bootstrapStaffAdmin(logger).catch((err) =>
     logger.error({ err }, "staff admin bootstrap failed"),
+  );
+  seedCustomerCategories(logger).catch((err) =>
+    logger.error({ err }, "customer category seed failed"),
   );
   startScheduler(logger);
   startFileMirror(logger);

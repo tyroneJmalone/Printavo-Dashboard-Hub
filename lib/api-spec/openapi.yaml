@@ -24,6 +24,8 @@ tags:
     description: Packing slip / shipping label PDF sorter
   - name: shipping
     description: Shipping rate estimator (ShipStation + EasyPost)
+  - name: clients
+    description: Client 360 — customer directory, niche categories, reporting
 paths:
   /healthz:
     get:
@@ -329,6 +331,152 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /customers:
+    get:
+      operationId: listDirectoryCustomers
+      tags: [clients]
+      summary: Customer directory with lifetime stats and category
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: categoryId
+          in: query
+          schema: { type: string }
+        - name: uncategorized
+          in: query
+          schema: { type: string, enum: ["true", "false"] }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [spend, name] }
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: offset
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Directory page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectoryCustomersResponse"
+  /customers/categories:
+    get:
+      operationId: listCustomerCategories
+      tags: [clients]
+      summary: All niche categories with assignment counts
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerCategoriesResponse"
+    post:
+      operationId: createCustomerCategory
+      tags: [clients]
+      summary: Create a category (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerCategoryInput"
+      responses:
+        "201":
+          description: Created category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerCategory"
+        "409":
+          description: Duplicate name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /customers/categories/{id}:
+    patch:
+      operationId: updateCustomerCategory
+      tags: [clients]
+      summary: Rename or (de)activate a category (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerCategoryUpdate"
+      responses:
+        "200":
+          description: Updated category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerCategory"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /customers/assign:
+    post:
+      operationId: assignCustomerCategory
+      tags: [clients]
+      summary: Assign (or clear) a category for one or many customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignCustomersBody"
+      responses:
+        "200":
+          description: Assignment result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [assigned]
+                properties:
+                  assigned:
+                    type: integer
+  /customers/report:
+    get:
+      operationId: getNicheReport
+      tags: [clients]
+      summary: Revenue / orders / customers grouped by niche category
+      description: Invoices only (quotes excluded), matching existing report semantics. Time range filters on invoice date.
+      parameters:
+        - name: range
+          in: query
+          schema: { type: string, enum: [all, ytd, last12, custom] }
+        - name: start
+          in: query
+          schema: { type: string }
+        - name: end
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Niche report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NicheReportResponse"
   /printavo/probe:
     get:
       operationId: probePrintavo
@@ -6558,3 +6706,131 @@ components:
           type: number
         fetchedAt:
           type: string
+
+    CustomerCategory:
+      type: object
+      required: [id, name, active, sortOrder]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        active:
+          type: boolean
+        sortOrder:
+          type: integer
+        assignedCount:
+          type: integer
+
+    CustomerCategoriesResponse:
+      type: object
+      required: [categories]
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerCategory"
+
+    CustomerCategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    CustomerCategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        active:
+          type: boolean
+
+    DirectoryCustomer:
+      type: object
+      required: [printavoId, displayName, lifetimeSpend, orderCount]
+      properties:
+        printavoId:
+          type: string
+        displayName:
+          type: string
+        contactName:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          nullable: true
+        lifetimeSpend:
+          type: number
+        orderCount:
+          type: integer
+        lastOrderAt:
+          type: string
+          nullable: true
+
+    DirectoryCustomersResponse:
+      type: object
+      required: [total, customers]
+      properties:
+        total:
+          type: integer
+        customers:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectoryCustomer"
+
+    AssignCustomersBody:
+      type: object
+      required: [customerIds]
+      properties:
+        customerIds:
+          type: array
+          items:
+            type: string
+        categoryId:
+          type: string
+          nullable: true
+
+    NicheReportRow:
+      type: object
+      required: [categoryName, revenue, orderCount, customerCount]
+      properties:
+        categoryId:
+          type: string
+          nullable: true
+        categoryName:
+          type: string
+        revenue:
+          type: number
+        orderCount:
+          type: integer
+        customerCount:
+          type: integer
+
+    NicheReportResponse:
+      type: object
+      required: [range, coverage, rows]
+      properties:
+        range:
+          type: string
+        startDate:
+          type: string
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        coverage:
+          type: object
+          required: [totalCustomers, categorized]
+          properties:
+            totalCustomers:
+              type: integer
+            categorized:
+              type: integer
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/NicheReportRow"

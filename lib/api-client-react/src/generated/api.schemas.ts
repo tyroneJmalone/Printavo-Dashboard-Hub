@@ -2800,6 +2800,69 @@ export interface RewardsPipelineResult {
   fetchedAt: string;
 }
 
+export interface CustomerCategory {
+  id: string;
+  name: string;
+  active: boolean;
+  sortOrder: number;
+  assignedCount?: number;
+}
+
+export interface CustomerCategoriesResponse {
+  categories: CustomerCategory[];
+}
+
+export interface CustomerCategoryInput {
+  name: string;
+}
+
+export interface CustomerCategoryUpdate {
+  name?: string;
+  active?: boolean;
+}
+
+export interface DirectoryCustomer {
+  printavoId: string;
+  displayName: string;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  categoryId?: string | null;
+  lifetimeSpend: number;
+  orderCount: number;
+  lastOrderAt?: string | null;
+}
+
+export interface DirectoryCustomersResponse {
+  total: number;
+  customers: DirectoryCustomer[];
+}
+
+export interface AssignCustomersBody {
+  customerIds: string[];
+  categoryId?: string | null;
+}
+
+export interface NicheReportRow {
+  categoryId?: string | null;
+  categoryName: string;
+  revenue: number;
+  orderCount: number;
+  customerCount: number;
+}
+
+export type NicheReportResponseCoverage = {
+  totalCustomers: number;
+  categorized: number;
+};
+
+export interface NicheReportResponse {
+  range: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  coverage: NicheReportResponseCoverage;
+  rows: NicheReportRow[];
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -2874,6 +2937,51 @@ limit?: number;
 entityType?: string;
 eventType?: string;
 };
+
+export type ListDirectoryCustomersParams = {
+search?: string;
+categoryId?: string;
+uncategorized?: ListDirectoryCustomersUncategorized;
+sort?: ListDirectoryCustomersSort;
+limit?: number;
+offset?: number;
+};
+
+export type ListDirectoryCustomersUncategorized = typeof ListDirectoryCustomersUncategorized[keyof typeof ListDirectoryCustomersUncategorized];
+
+
+export const ListDirectoryCustomersUncategorized = {
+  true: 'true',
+  false: 'false',
+} as const;
+
+export type ListDirectoryCustomersSort = typeof ListDirectoryCustomersSort[keyof typeof ListDirectoryCustomersSort];
+
+
+export const ListDirectoryCustomersSort = {
+  spend: 'spend',
+  name: 'name',
+} as const;
+
+export type AssignCustomerCategory200 = {
+  assigned: number;
+};
+
+export type GetNicheReportParams = {
+range?: GetNicheReportRange;
+start?: string;
+end?: string;
+};
+
+export type GetNicheReportRange = typeof GetNicheReportRange[keyof typeof GetNicheReportRange];
+
+
+export const GetNicheReportRange = {
+  all: 'all',
+  ytd: 'ytd',
+  last12: 'last12',
+  custom: 'custom',
+} as const;
 
 export type ListVendorOrdersParams = {
 poFileId?: string;

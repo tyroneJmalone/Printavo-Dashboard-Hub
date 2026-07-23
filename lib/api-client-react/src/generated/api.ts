@@ -27,6 +27,8 @@ import type {
   AdminUnlockPoFileRequest,
   AppendPoLineItemsRequest,
   ApplyStatusSuggestionError,
+  AssignCustomerCategory200,
+  AssignCustomersBody,
   AuthForbidden,
   AuthMe,
   AutoPrintCategoriesResponse,
@@ -51,12 +53,17 @@ import type {
   CreditTimePoint,
   CreditUpdate,
   Customer,
+  CustomerCategoriesResponse,
+  CustomerCategory,
+  CustomerCategoryInput,
+  CustomerCategoryUpdate,
   CustomerCreditStat,
   CustomerInput,
   CustomerUpdate,
   DashboardSummary,
   DecorationMatricesResponse,
   DecorationMatrix,
+  DirectoryCustomersResponse,
   ErrorResponse,
   EvaluateStatusRulesResponse,
   GetBrandBreakdownParams,
@@ -68,6 +75,7 @@ import type {
   GetDashboardSummaryParams,
   GetExpiringSoonParams,
   GetImprintsByTierParams,
+  GetNicheReportParams,
   GetOrderQuantityBreakdownParams,
   GetOrdersReportParams,
   GetPaymentsReportParams,
@@ -84,6 +92,7 @@ import type {
   ListChangeEventsParams,
   ListCreditsParams,
   ListCustomersParams,
+  ListDirectoryCustomersParams,
   ListGroup,
   ListGroupInput,
   ListGroupUpdate,
@@ -104,6 +113,7 @@ import type {
   MemberUpdate,
   MessageResult,
   NeedsOrderingResult,
+  NicheReportResponse,
   NotificationLogItem,
   OrdersReport,
   PaymentsReport,
@@ -1258,6 +1268,463 @@ export function useDownloadBackupExport<TData = Awaited<ReturnType<typeof downlo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getDownloadBackupExportQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListDirectoryCustomersUrl = (params?: ListDirectoryCustomersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers?${stringifiedParams}` : `/api/customers`
+}
+
+/**
+ * @summary Customer directory with lifetime stats and category
+ */
+export const listDirectoryCustomers = async (params?: ListDirectoryCustomersParams, options?: RequestInit): Promise<DirectoryCustomersResponse> => {
+
+  return customFetch<DirectoryCustomersResponse>(getListDirectoryCustomersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDirectoryCustomersQueryKey = (params?: ListDirectoryCustomersParams,) => {
+    return [
+    `/api/customers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListDirectoryCustomersQueryOptions = <TData = Awaited<ReturnType<typeof listDirectoryCustomers>>, TError = ErrorType<unknown>>(params?: ListDirectoryCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDirectoryCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDirectoryCustomersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDirectoryCustomers>>> = ({ signal }) => listDirectoryCustomers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDirectoryCustomers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDirectoryCustomersQueryResult = NonNullable<Awaited<ReturnType<typeof listDirectoryCustomers>>>
+export type ListDirectoryCustomersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Customer directory with lifetime stats and category
+ */
+
+export function useListDirectoryCustomers<TData = Awaited<ReturnType<typeof listDirectoryCustomers>>, TError = ErrorType<unknown>>(
+ params?: ListDirectoryCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDirectoryCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDirectoryCustomersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCustomerCategoriesUrl = () => {
+
+
+
+
+  return `/api/customers/categories`
+}
+
+/**
+ * @summary All niche categories with assignment counts
+ */
+export const listCustomerCategories = async ( options?: RequestInit): Promise<CustomerCategoriesResponse> => {
+
+  return customFetch<CustomerCategoriesResponse>(getListCustomerCategoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCustomerCategoriesQueryKey = () => {
+    return [
+    `/api/customers/categories`
+    ] as const;
+    }
+
+
+export const getListCustomerCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listCustomerCategories>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCustomerCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCustomerCategoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCustomerCategories>>> = ({ signal }) => listCustomerCategories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCustomerCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCustomerCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listCustomerCategories>>>
+export type ListCustomerCategoriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary All niche categories with assignment counts
+ */
+
+export function useListCustomerCategories<TData = Awaited<ReturnType<typeof listCustomerCategories>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCustomerCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCustomerCategoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCustomerCategoryUrl = () => {
+
+
+
+
+  return `/api/customers/categories`
+}
+
+/**
+ * @summary Create a category (admin only)
+ */
+export const createCustomerCategory = async (customerCategoryInput: CustomerCategoryInput, options?: RequestInit): Promise<CustomerCategory> => {
+
+  return customFetch<CustomerCategory>(getCreateCustomerCategoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(customerCategoryInput)
+  }
+);}
+
+
+
+
+export const getCreateCustomerCategoryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomerCategory>>, TError,{data: BodyType<CustomerCategoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCustomerCategory>>, TError,{data: BodyType<CustomerCategoryInput>}, TContext> => {
+
+const mutationKey = ['createCustomerCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCustomerCategory>>, {data: BodyType<CustomerCategoryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCustomerCategory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCustomerCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof createCustomerCategory>>>
+    export type CreateCustomerCategoryMutationBody = BodyType<CustomerCategoryInput>
+    export type CreateCustomerCategoryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a category (admin only)
+ */
+export const useCreateCustomerCategory = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomerCategory>>, TError,{data: BodyType<CustomerCategoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCustomerCategory>>,
+        TError,
+        {data: BodyType<CustomerCategoryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCustomerCategoryMutationOptions(options));
+    }
+
+export const getUpdateCustomerCategoryUrl = (id: string,) => {
+
+
+
+
+  return `/api/customers/categories/${id}`
+}
+
+/**
+ * @summary Rename or (de)activate a category (admin only)
+ */
+export const updateCustomerCategory = async (id: string,
+    customerCategoryUpdate: CustomerCategoryUpdate, options?: RequestInit): Promise<CustomerCategory> => {
+
+  return customFetch<CustomerCategory>(getUpdateCustomerCategoryUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(customerCategoryUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateCustomerCategoryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCustomerCategory>>, TError,{id: string;data: BodyType<CustomerCategoryUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCustomerCategory>>, TError,{id: string;data: BodyType<CustomerCategoryUpdate>}, TContext> => {
+
+const mutationKey = ['updateCustomerCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCustomerCategory>>, {id: string;data: BodyType<CustomerCategoryUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCustomerCategory(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCustomerCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof updateCustomerCategory>>>
+    export type UpdateCustomerCategoryMutationBody = BodyType<CustomerCategoryUpdate>
+    export type UpdateCustomerCategoryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Rename or (de)activate a category (admin only)
+ */
+export const useUpdateCustomerCategory = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCustomerCategory>>, TError,{id: string;data: BodyType<CustomerCategoryUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCustomerCategory>>,
+        TError,
+        {id: string;data: BodyType<CustomerCategoryUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCustomerCategoryMutationOptions(options));
+    }
+
+export const getAssignCustomerCategoryUrl = () => {
+
+
+
+
+  return `/api/customers/assign`
+}
+
+/**
+ * @summary Assign (or clear) a category for one or many customers
+ */
+export const assignCustomerCategory = async (assignCustomersBody: AssignCustomersBody, options?: RequestInit): Promise<AssignCustomerCategory200> => {
+
+  return customFetch<AssignCustomerCategory200>(getAssignCustomerCategoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(assignCustomersBody)
+  }
+);}
+
+
+
+
+export const getAssignCustomerCategoryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignCustomerCategory>>, TError,{data: BodyType<AssignCustomersBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assignCustomerCategory>>, TError,{data: BodyType<AssignCustomersBody>}, TContext> => {
+
+const mutationKey = ['assignCustomerCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assignCustomerCategory>>, {data: BodyType<AssignCustomersBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  assignCustomerCategory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssignCustomerCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof assignCustomerCategory>>>
+    export type AssignCustomerCategoryMutationBody = BodyType<AssignCustomersBody>
+    export type AssignCustomerCategoryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Assign (or clear) a category for one or many customers
+ */
+export const useAssignCustomerCategory = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assignCustomerCategory>>, TError,{data: BodyType<AssignCustomersBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assignCustomerCategory>>,
+        TError,
+        {data: BodyType<AssignCustomersBody>},
+        TContext
+      > => {
+      return useMutation(getAssignCustomerCategoryMutationOptions(options));
+    }
+
+export const getGetNicheReportUrl = (params?: GetNicheReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers/report?${stringifiedParams}` : `/api/customers/report`
+}
+
+/**
+ * Invoices only (quotes excluded), matching existing report semantics. Time range filters on invoice date.
+ * @summary Revenue / orders / customers grouped by niche category
+ */
+export const getNicheReport = async (params?: GetNicheReportParams, options?: RequestInit): Promise<NicheReportResponse> => {
+
+  return customFetch<NicheReportResponse>(getGetNicheReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNicheReportQueryKey = (params?: GetNicheReportParams,) => {
+    return [
+    `/api/customers/report`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetNicheReportQueryOptions = <TData = Awaited<ReturnType<typeof getNicheReport>>, TError = ErrorType<unknown>>(params?: GetNicheReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNicheReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNicheReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNicheReport>>> = ({ signal }) => getNicheReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNicheReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNicheReportQueryResult = NonNullable<Awaited<ReturnType<typeof getNicheReport>>>
+export type GetNicheReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Revenue / orders / customers grouped by niche category
+ */
+
+export function useGetNicheReport<TData = Awaited<ReturnType<typeof getNicheReport>>, TError = ErrorType<unknown>>(
+ params?: GetNicheReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNicheReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNicheReportQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

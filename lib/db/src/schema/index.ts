@@ -49,3 +49,5 @@ export * from "./pvMerchStores";
 export * from "./pvMerchOrders";
 export * from "./pvThreads";
 export * from "./pvMessages";
+export * from "./customerCategories";
+export * from "./customerMeta";
