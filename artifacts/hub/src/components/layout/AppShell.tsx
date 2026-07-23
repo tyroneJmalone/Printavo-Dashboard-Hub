@@ -91,7 +91,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: "Data",
-    items: [{ id: "backups", label: "Backups", icon: Shield, disabled: true }],
+    items: [{ id: "backups", label: "Backups", href: "/backups", icon: Shield }],
   },
 ];
 

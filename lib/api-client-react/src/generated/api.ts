@@ -35,6 +35,7 @@ import type {
   AutoPrintPrintersResponse,
   AutoPrintRun,
   AutoPrintRunsResponse,
+  BackupStatus,
   BreakdownReport,
   BulkDeleteTasksInput,
   BulkUpdateTasksInput,
@@ -1112,6 +1113,162 @@ export const useTriggerPoll = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getTriggerPollMutationOptions(options));
     }
+
+export const getGetBackupStatusUrl = () => {
+
+
+
+
+  return `/api/backup/status`
+}
+
+/**
+ * Per-table row counts and freshness, order-extras archive coverage, thread message backlog, file mirror progress, watermarks and last incremental run — everything the Backups dashboard shows.
+ * @summary Backup coverage status
+ */
+export const getBackupStatus = async ( options?: RequestInit): Promise<BackupStatus> => {
+
+  return customFetch<BackupStatus>(getGetBackupStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBackupStatusQueryKey = () => {
+    return [
+    `/api/backup/status`
+    ] as const;
+    }
+
+
+export const getGetBackupStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBackupStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBackupStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBackupStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBackupStatus>>> = ({ signal }) => getBackupStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBackupStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBackupStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBackupStatus>>>
+export type GetBackupStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Backup coverage status
+ */
+
+export function useGetBackupStatus<TData = Awaited<ReturnType<typeof getBackupStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBackupStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBackupStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDownloadBackupExportUrl = () => {
+
+
+
+
+  return `/api/backup/export`
+}
+
+/**
+ * Streams a ZIP containing manifest.json plus one NDJSON file per backup table (raw database rows including original Printavo API payloads). Mirrored binary files stay in object storage; pv_files.ndjson is their manifest. Admin only. Returns 409 if an export is already in progress.
+ * @summary Download full backup bundle (admin only)
+ */
+export const downloadBackupExport = async ( options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadBackupExportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadBackupExportQueryKey = () => {
+    return [
+    `/api/backup/export`
+    ] as const;
+    }
+
+
+export const getDownloadBackupExportQueryOptions = <TData = Awaited<ReturnType<typeof downloadBackupExport>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadBackupExport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadBackupExportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadBackupExport>>> = ({ signal }) => downloadBackupExport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadBackupExport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadBackupExportQueryResult = NonNullable<Awaited<ReturnType<typeof downloadBackupExport>>>
+export type DownloadBackupExportQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Download full backup bundle (admin only)
+ */
+
+export function useDownloadBackupExport<TData = Awaited<ReturnType<typeof downloadBackupExport>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadBackupExport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadBackupExportQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getProbePrintavoUrl = () => {
 

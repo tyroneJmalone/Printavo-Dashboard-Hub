@@ -195,6 +195,40 @@ export interface SyncStatus {
   gateway: GatewayStats | null;
 }
 
+export interface BackupTableStatus {
+  table: string;
+  rows: number;
+  /** @nullable */
+  lastActivityAt: string | null;
+}
+
+export interface BackupCoverage {
+  done: number;
+  total: number;
+}
+
+export interface BackupThreadsStatus {
+  messagesPending: number;
+  total: number;
+}
+
+export interface BackupFilesStatus {
+  status: string;
+  count: number;
+  bytes: number;
+}
+
+export interface BackupStatus {
+  tables: BackupTableStatus[];
+  extras: BackupCoverage;
+  threads: BackupThreadsStatus;
+  files: BackupFilesStatus[];
+  watermarks: WatermarkInfo[];
+  lastIncremental: SyncRunInfo | null;
+  scheduler: SchedulerState;
+  exportInFlight: boolean;
+}
+
 export interface ChangeEventItem {
   id: number;
   entityType: string;

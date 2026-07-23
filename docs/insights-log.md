@@ -6,6 +6,9 @@ A curated, dated log of explanations, insights, and decisions from our build cha
 
 ## July 2026
 
+### Jul 23 — The backup export is a download you can take anywhere (and one subtle bug caught in review)
+The Backups page now offers a one-click full export: a ZIP containing every backed-up table as plain newline-delimited JSON plus a manifest describing what's inside — currently ~61 MB, generated in under 20 seconds, readable by any tool without needing this app. Two design notes worth remembering: (1) the export streams straight from the database to the download, so only one export can run at a time — a second attempt while one is running is politely refused; (2) code review caught a subtle trap where **cancelling a download mid-stream would have permanently jammed the "one at a time" lock** until a server restart — fixed and verified by killing a download partway and immediately running a clean second export. Also: the export is a "rolling" copy, not a frozen instant — if the 5-minute sync writes while an export runs, counts can differ by a handful of rows, which is fine for backup purposes.
+
 ### Jul 22 — Weekly message rescan narrowed to 60-day-active threads (Tyler's call)
 The weekly deep rescan exists to catch replies **we** send (Printavo only signals incoming messages; a thread whose last word is ours never resurfaces on its own). Rescanning all ~8.5k threads took ~14 hours a week and pushed new-message pickup behind the backlog. Now it only rescans threads with a customer message in the last **60 days** (~286 threads today, drains in ~30 minutes). Accepted trade-off: a reply sent on a thread that's been quiet for 60+ days is only captured if the customer later writes back on that thread.
 

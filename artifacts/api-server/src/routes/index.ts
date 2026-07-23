@@ -5,6 +5,7 @@ import { requireStaff } from "../middlewares/requireStaff";
 import authRouter from "./auth";
 import staffRouter from "./staff";
 import syncRouter from "./sync";
+import backupRouter from "./backup";
 import printavoRouter from "./printavo";
 import reportsRouter from "./reports";
 import reportsValidatorRouter from "./reportsValidator";
@@ -34,6 +35,7 @@ router.use(requireStaff);
 router.use(authRouter);
 router.use(staffRouter); // admin-only routes — requireAdmin per route inside
 router.use(syncRouter);
+router.use(backupRouter); // /backup/export is admin-only (requireAdmin per route)
 router.use(printavoRouter);
 router.use(reportsRouter);
 router.use(reportsValidatorRouter);

@@ -29,6 +29,7 @@ import PriceCalculator from "./pages/PriceCalculator";
 import LabelSorter from "./pages/LabelSorter";
 import RateEstimator from "./pages/RateEstimator";
 import Settings from "./pages/Settings";
+import BackupDashboard from "./pages/BackupDashboard";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
 import { Customers as MintBucksCustomers } from "./pages/mintbucks/Customers";
 import { CustomerDetail as MintBucksCustomerDetail } from "./pages/mintbucks/CustomerDetail";
@@ -188,6 +189,7 @@ function HubRoutes() {
       <Route path="/label-sorter" component={LabelSorter} />
       <Route path="/rate-estimator" component={RateEstimator} />
       <Route path="/settings" component={Settings} />
+      <Route path="/backups" component={BackupDashboard} />
       <Route path="/mintbucks" component={MintBucksDashboard} />
       <Route path="/mintbucks/customers" component={MintBucksCustomers} />
       <Route path="/mintbucks/customers/:id" component={MintBucksCustomerDetail} />

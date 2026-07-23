@@ -288,6 +288,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PollResult"
+  /backup/status:
+    get:
+      operationId: getBackupStatus
+      tags: [backup]
+      summary: Backup coverage status
+      description: >-
+        Per-table row counts and freshness, order-extras archive coverage,
+        thread message backlog, file mirror progress, watermarks and last
+        incremental run — everything the Backups dashboard shows.
+      responses:
+        "200":
+          description: Current backup status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupStatus"
+  /backup/export:
+    get:
+      operationId: downloadBackupExport
+      tags: [backup]
+      summary: Download full backup bundle (admin only)
+      description: >-
+        Streams a ZIP containing manifest.json plus one NDJSON file per
+        backup table (raw database rows including original Printavo API
+        payloads). Mirrored binary files stay in object storage;
+        pv_files.ndjson is their manifest. Admin only. Returns 409 if an
+        export is already in progress.
+      responses:
+        "200":
+          description: ZIP archive
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "409":
+          description: An export is already in progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /printavo/probe:
     get:
       operationId: probePrintavo
@@ -3952,6 +3993,59 @@ components:
             - $ref: "#/components/schemas/GatewayStats"
             - type: "null"
       required: [configured, seedActive, counts, seed, lastIncremental, watermarks, scheduler, gateway]
+    BackupTableStatus:
+      type: object
+      properties:
+        table: { type: string }
+        rows: { type: integer }
+        lastActivityAt: { type: ["string", "null"] }
+      required: [table, rows, lastActivityAt]
+    BackupCoverage:
+      type: object
+      properties:
+        done: { type: integer }
+        total: { type: integer }
+      required: [done, total]
+    BackupThreadsStatus:
+      type: object
+      properties:
+        messagesPending: { type: integer }
+        total: { type: integer }
+      required: [messagesPending, total]
+    BackupFilesStatus:
+      type: object
+      properties:
+        status: { type: string }
+        count: { type: integer }
+        bytes: { type: number }
+      required: [status, count, bytes]
+    BackupStatus:
+      type: object
+      properties:
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupTableStatus"
+        extras:
+          $ref: "#/components/schemas/BackupCoverage"
+        threads:
+          $ref: "#/components/schemas/BackupThreadsStatus"
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/BackupFilesStatus"
+        watermarks:
+          type: array
+          items:
+            $ref: "#/components/schemas/WatermarkInfo"
+        lastIncremental:
+          anyOf:
+            - $ref: "#/components/schemas/SyncRunInfo"
+            - type: "null"
+        scheduler:
+          $ref: "#/components/schemas/SchedulerState"
+        exportInFlight: { type: boolean }
+      required: [tables, extras, threads, files, watermarks, lastIncremental, scheduler, exportInFlight]
     ChangeEventItem:
       type: object
       properties:

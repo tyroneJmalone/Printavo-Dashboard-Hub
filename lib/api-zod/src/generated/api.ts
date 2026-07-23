@@ -231,6 +231,60 @@ export const TriggerPollResponse = zod.object({
 
 
 /**
+ * Per-table row counts and freshness, order-extras archive coverage, thread message backlog, file mirror progress, watermarks and last incremental run — everything the Backups dashboard shows.
+ * @summary Backup coverage status
+ */
+export const GetBackupStatusResponse = zod.object({
+  "tables": zod.array(zod.object({
+  "table": zod.string(),
+  "rows": zod.number(),
+  "lastActivityAt": zod.string().nullable()
+})),
+  "extras": zod.object({
+  "done": zod.number(),
+  "total": zod.number()
+}),
+  "threads": zod.object({
+  "messagesPending": zod.number(),
+  "total": zod.number()
+}),
+  "files": zod.array(zod.object({
+  "status": zod.string(),
+  "count": zod.number(),
+  "bytes": zod.number()
+})),
+  "watermarks": zod.array(zod.object({
+  "entity": zod.string(),
+  "watermark": zod.string()
+})),
+  "lastIncremental": zod.union([zod.object({
+  "id": zod.number(),
+  "runType": zod.string(),
+  "status": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "stats": zod.record(zod.string(), zod.unknown()).nullable(),
+  "error": zod.string().nullable()
+}),zod.null()]),
+  "scheduler": zod.object({
+  "running": zod.boolean(),
+  "pollIntervalMinutes": zod.number(),
+  "lastPollAt": zod.string().nullable(),
+  "lastResult": zod.string().nullable(),
+  "lastError": zod.string().nullable()
+}),
+  "exportInFlight": zod.boolean()
+})
+
+
+/**
+ * Streams a ZIP containing manifest.json plus one NDJSON file per backup table (raw database rows including original Printavo API payloads). Mirrored binary files stay in object storage; pv_files.ndjson is their manifest. Admin only. Returns 409 if an export is already in progress.
+ * @summary Download full backup bundle (admin only)
+ */
+export const DownloadBackupExportResponse = zod.unknown()
+
+
+/**
  * @summary One-request connectivity probe against Printavo
  */
 export const ProbePrintavoResponse = zod.object({
