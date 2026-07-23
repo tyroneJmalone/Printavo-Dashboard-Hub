@@ -40,7 +40,7 @@ import { crawlMerch, type MerchAgg } from "./merch";
 import {
   crawlThreadSummaries,
   runMessagesDrip,
-  reflagAllThreadMessages,
+  reflagRecentThreadMessages,
   type ThreadsAgg,
   type MessagesDripAgg,
 } from "./threads";
@@ -108,6 +108,10 @@ const THREADS_FLOOR_PAGES = 2;
 const THREADS_STOP_UNCHANGED_PAGES = 2;
 const MESSAGES_PER_POLL = 50;
 const WEEKLY_REFRESH_MS = 7 * DAILY_REFRESH_MS;
+// Weekly deep re-flag scope: only threads with an incoming message in
+// the last N days (Tyler 2026-07-22 — full rescan of all ~8.5k threads
+// took ~14h/week; 60 days ≈ a few hundred threads, drains in <1h).
+const THREADS_DEEP_ACTIVE_DAYS = 60;
 
 export { isPollActive } from "./runState";
 
@@ -460,18 +464,22 @@ export async function runIncrementalPoll(
       }
 
       // Weekly deep re-flag: lastReceivedMessage only tracks INCOMING
-      // messages, so outgoing-only threads never resurface in the
-      // summary crawl. Re-pull every thread's messages weekly.
+      // messages, so outgoing-only replies never resurface in the
+      // summary crawl. Re-pull messages weekly for threads active in
+      // the last THREADS_DEEP_ACTIVE_DAYS (Tyler 2026-07-22: full
+      // rescan took ~14h; 60-day scope drains in well under an hour).
       const threadsDeepWm = await getWatermark("threads_deep");
       if (
         !threadsDeepWm ||
         runStart.getTime() - threadsDeepWm.getTime() > WEEKLY_REFRESH_MS
       ) {
-        threadsReflagged = await reflagAllThreadMessages();
+        threadsReflagged = await reflagRecentThreadMessages(
+          THREADS_DEEP_ACTIVE_DAYS,
+        );
         await setWatermark("threads_deep", runStart);
         logger.info(
           { threadsReflagged },
-          "Weekly deep re-flag: all thread messages marked stale",
+          "Weekly deep re-flag: recently-active thread messages marked stale",
         );
       }
 

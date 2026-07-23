@@ -290,13 +290,24 @@ export async function runMessagesDrip(
   return agg;
 }
 
-/** Weekly deep re-flag: marks ALL threads messages_stale so the drip
- * re-pulls every thread's messages — the safety net for outgoing-only
- * activity that lastReceivedMessage never surfaces. Returns count. */
-export async function reflagAllThreadMessages(): Promise<number> {
+/** Weekly deep re-flag: marks recently-active threads messages_stale
+ * so the drip re-pulls their messages — the safety net for outgoing
+ * replies that lastReceivedMessage never surfaces. Scoped to threads
+ * with an incoming message in the last `activeDays` days (Tyler,
+ * 2026-07-22: 60 days — a full 8,467-thread rescan took ~14h and
+ * pushed new-message pickup behind the backlog; 60-day scope covers
+ * replies on any live conversation in well under an hour). Trade-off
+ * accepted: a reply sent on a thread dormant >60 days is only captured
+ * if the customer later writes back on it. Returns count. */
+export async function reflagRecentThreadMessages(
+  activeDays: number,
+): Promise<number> {
   const rows = await db
     .update(pvThreadsTable)
     .set({ messagesStale: true })
+    .where(
+      sql`(${pvThreadsTable.data}->'lastReceivedMessage'->'timestamps'->>'createdAt')::timestamptz > now() - make_interval(days => ${activeDays})`,
+    )
     .returning({ id: pvThreadsTable.printavoId });
   return rows.length;
 }
