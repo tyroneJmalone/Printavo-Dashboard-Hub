@@ -336,6 +336,7 @@ paths:
       operationId: listDirectoryCustomers
       tags: [clients]
       summary: Customer directory with lifetime stats and category
+      description: search matches customer name, email, or keywords in their order nicknames (e.g. "soccer").
       parameters:
         - name: search
           in: query
@@ -477,6 +478,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NicheReportResponse"
+  /customers/{id}:
+    get:
+      operationId: getCustomerProfile
+      tags: [clients]
+      summary: Customer profile — contact info, category, spend stats, recent orders
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Customer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfileResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /printavo/probe:
     get:
       operationId: probePrintavo
@@ -6809,6 +6833,90 @@ components:
           type: integer
         customerCount:
           type: integer
+
+    CustomerProfileOrder:
+      type: object
+      required: [printavoId, visualId, orderType]
+      properties:
+        printavoId:
+          type: string
+        visualId:
+          type: integer
+        orderType:
+          type: string
+        nickname:
+          type: string
+          nullable: true
+        statusName:
+          type: string
+          nullable: true
+        total:
+          type: number
+          nullable: true
+        orderDate:
+          type: string
+          nullable: true
+
+    CustomerProfileStats:
+      type: object
+      required: [lifetimeSpend, ytdSpend, invoiceCount, quoteCount, avgOrder, outstanding]
+      properties:
+        lifetimeSpend:
+          type: number
+        ytdSpend:
+          type: number
+        invoiceCount:
+          type: integer
+        quoteCount:
+          type: integer
+        avgOrder:
+          type: number
+        outstanding:
+          type: number
+        firstOrderAt:
+          type: string
+          nullable: true
+        lastOrderAt:
+          type: string
+          nullable: true
+
+    CustomerProfileResponse:
+      type: object
+      required: [printavoId, displayName, stats, ordersTotal, orders]
+      properties:
+        printavoId:
+          type: string
+        displayName:
+          type: string
+        companyName:
+          type: string
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        contactEmail:
+          type: string
+          nullable: true
+        ownerEmail:
+          type: string
+          nullable: true
+        customerSince:
+          type: string
+          nullable: true
+        categoryId:
+          type: string
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        stats:
+          $ref: "#/components/schemas/CustomerProfileStats"
+        ordersTotal:
+          type: integer
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerProfileOrder"
 
     NicheReportResponse:
       type: object

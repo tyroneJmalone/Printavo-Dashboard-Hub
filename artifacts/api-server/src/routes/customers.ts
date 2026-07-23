@@ -21,6 +21,11 @@ const DISPLAY_NAME_SQL = `coalesce(nullif(c.company_name, ''), c.data->'primaryC
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Escape ILIKE wildcards so a literal % or _ in the search term stays literal. */
+function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+
 // ── Categories ───────────────────────────────────────────────────────
 
 router.get("/customers/categories", async (req, res) => {
@@ -144,15 +149,23 @@ router.get("/customers", async (req, res) => {
   }
   const uncategorized = req.query.uncategorized === "true";
   const sort = req.query.sort === "name" ? "name" : "spend";
-  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+  // Cap 500 = bulk-assign limit, so "select all matching" can fetch one page.
+  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
   const offset = Math.max(Number(req.query.offset) || 0, 0);
 
   const where: string[] = [];
   const params: unknown[] = [];
   if (search) {
-    params.push(`%${search}%`);
+    params.push(`%${escapeLike(search)}%`);
+    // Match the customer's name/email OR keywords in their order nicknames —
+    // lets staff find e.g. every customer who ordered "soccer" gear even when
+    // the company name doesn't contain the word.
     where.push(
-      `(${DISPLAY_NAME_SQL} ILIKE $${params.length} OR c.data->'primaryContact'->>'email' ILIKE $${params.length})`,
+      `(${DISPLAY_NAME_SQL} ILIKE $${params.length}
+        OR c.data->'primaryContact'->>'email' ILIKE $${params.length}
+        OR EXISTS (SELECT 1 FROM pv_orders om
+                    WHERE om.customer_id = c.printavo_id
+                      AND om.nickname ILIKE $${params.length}))`,
     );
   }
   if (uncategorized) {
@@ -349,6 +362,111 @@ router.get("/customers/report", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "niche report failed");
     res.status(500).json({ error: "Failed to build niche report" });
+  }
+});
+
+// ── Customer profile (CC2) ──────────────────────────────────────────
+// Declared LAST so the literal routes above (/customers/categories,
+// /customers/assign, /customers/report) always win over the :id param.
+
+router.get("/customers/:id", async (req, res) => {
+  const id = String(req.params.id);
+  // Printavo customer ids are numeric text — anything else is a 404, not a 500.
+  if (!/^\d+$/.test(id)) {
+    res.status(404).json({ error: "Customer not found" });
+    return;
+  }
+  try {
+    const cr = await pool.query(
+      `SELECT c.printavo_id,
+              ${DISPLAY_NAME_SQL} AS display_name,
+              nullif(c.company_name, '') AS company_name,
+              c.data->'primaryContact'->>'fullName' AS contact_name,
+              c.data->'primaryContact'->>'email' AS contact_email,
+              c.data->'owner'->>'email' AS owner_email,
+              c.data->'timestamps'->>'createdAt' AS customer_since,
+              cm.category_id,
+              cc.name AS category_name
+         FROM pv_customers c
+         LEFT JOIN customer_meta cm ON cm.printavo_customer_id = c.printavo_id
+         LEFT JOIN customer_categories cc ON cc.id = cm.category_id
+        WHERE c.printavo_id = $1`,
+      [id],
+    );
+    if (cr.rows.length === 0) {
+      res.status(404).json({ error: "Customer not found" });
+      return;
+    }
+    const c = cr.rows[0];
+
+    // Invoice-only stats (matching directory/report semantics) + quote count.
+    const sr = await pool.query(
+      `SELECT coalesce(sum(total) FILTER (WHERE order_type = 'invoice'), 0) AS lifetime_spend,
+              count(*) FILTER (WHERE order_type = 'invoice')::int AS invoice_count,
+              count(*) FILTER (WHERE order_type = 'quote')::int AS quote_count,
+              coalesce(sum(total) FILTER (WHERE order_type = 'invoice'
+                AND invoice_at >= date_trunc('year', current_date)), 0) AS ytd_spend,
+              coalesce(sum(amount_outstanding) FILTER (WHERE order_type = 'invoice'), 0) AS outstanding,
+              (min(invoice_at) FILTER (WHERE order_type = 'invoice'))::text AS first_order_at,
+              (max(invoice_at) FILTER (WHERE order_type = 'invoice'))::text AS last_order_at
+         FROM pv_orders
+        WHERE customer_id = $1`,
+      [id],
+    );
+    const s = sr.rows[0];
+
+    // Most recent orders (both types, badge distinguishes) — newest first.
+    const or_ = await pool.query(
+      `SELECT printavo_id, visual_id, order_type, nickname, status_name, total,
+              coalesce(invoice_at::text, printavo_created_at::date::text) AS order_date,
+              count(*) OVER ()::int AS total_rows
+         FROM pv_orders
+        WHERE customer_id = $1
+        ORDER BY coalesce(invoice_at, printavo_created_at::date) DESC NULLS LAST,
+                 visual_id DESC
+        LIMIT 100`,
+      [id],
+    );
+
+    const invoiceCount = s.invoice_count as number;
+    const lifetimeSpend = Number(s.lifetime_spend);
+    res.json({
+      printavoId: c.printavo_id as string,
+      displayName: c.display_name as string,
+      companyName: (c.company_name as string | null) ?? null,
+      contactName: (c.contact_name as string | null) ?? null,
+      contactEmail: (c.contact_email as string | null) ?? null,
+      ownerEmail: (c.owner_email as string | null) ?? null,
+      customerSince: c.customer_since
+        ? String(c.customer_since).slice(0, 10)
+        : null,
+      categoryId: (c.category_id as string | null) ?? null,
+      categoryName: (c.category_name as string | null) ?? null,
+      stats: {
+        lifetimeSpend,
+        ytdSpend: Number(s.ytd_spend),
+        invoiceCount,
+        quoteCount: s.quote_count as number,
+        avgOrder: invoiceCount > 0 ? lifetimeSpend / invoiceCount : 0,
+        outstanding: Number(s.outstanding),
+        firstOrderAt: (s.first_order_at as string | null) ?? null,
+        lastOrderAt: (s.last_order_at as string | null) ?? null,
+      },
+      ordersTotal:
+        or_.rows.length > 0 ? (or_.rows[0].total_rows as number) : 0,
+      orders: or_.rows.map((row) => ({
+        printavoId: row.printavo_id as string,
+        visualId: row.visual_id as number,
+        orderType: row.order_type as string,
+        nickname: (row.nickname as string | null) ?? null,
+        statusName: (row.status_name as string | null) ?? null,
+        total: row.total == null ? null : Number(row.total),
+        orderDate: (row.order_date as string | null) ?? null,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "customer profile failed");
+    res.status(500).json({ error: "Failed to load customer profile" });
   }
 });
 

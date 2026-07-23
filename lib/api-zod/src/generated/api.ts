@@ -285,6 +285,7 @@ export const DownloadBackupExportResponse = zod.unknown()
 
 
 /**
+ * search matches customer name, email, or keywords in their order nicknames (e.g. "soccer").
  * @summary Customer directory with lifetime stats and category
  */
 export const ListDirectoryCustomersQueryParams = zod.object({
@@ -399,6 +400,46 @@ export const GetNicheReportResponse = zod.object({
   "revenue": zod.number(),
   "orderCount": zod.number(),
   "customerCount": zod.number()
+}))
+})
+
+
+/**
+ * @summary Customer profile — contact info, category, spend stats, recent orders
+ */
+export const GetCustomerProfileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetCustomerProfileResponse = zod.object({
+  "printavoId": zod.string(),
+  "displayName": zod.string(),
+  "companyName": zod.string().nullish(),
+  "contactName": zod.string().nullish(),
+  "contactEmail": zod.string().nullish(),
+  "ownerEmail": zod.string().nullish(),
+  "customerSince": zod.string().nullish(),
+  "categoryId": zod.string().nullish(),
+  "categoryName": zod.string().nullish(),
+  "stats": zod.object({
+  "lifetimeSpend": zod.number(),
+  "ytdSpend": zod.number(),
+  "invoiceCount": zod.number(),
+  "quoteCount": zod.number(),
+  "avgOrder": zod.number(),
+  "outstanding": zod.number(),
+  "firstOrderAt": zod.string().nullish(),
+  "lastOrderAt": zod.string().nullish()
+}),
+  "ordersTotal": zod.number(),
+  "orders": zod.array(zod.object({
+  "printavoId": zod.string(),
+  "visualId": zod.number(),
+  "orderType": zod.string(),
+  "nickname": zod.string().nullish(),
+  "statusName": zod.string().nullish(),
+  "total": zod.number().nullish(),
+  "orderDate": zod.string().nullish()
 }))
 })
 

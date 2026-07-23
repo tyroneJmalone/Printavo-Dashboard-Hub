@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
 import { useStaff } from "@/components/auth/StaffGate";
@@ -6,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   useListDirectoryCustomers,
   getListDirectoryCustomersQueryKey,
+  listDirectoryCustomers,
   useListCustomerCategories,
   getListCustomerCategoriesQueryKey,
   useAssignCustomerCategory,
@@ -283,6 +285,33 @@ export default function CustomersDirectory() {
     });
   };
 
+  // "Select all N matching" — only when a search/filter narrows the list and
+  // everything fits in one bulk assignment (500 = API limit).
+  const [selectingAll, setSelectingAll] = useState(false);
+  const filterActive = Boolean(search) || filter !== "all";
+  const canSelectAllMatching =
+    filterActive && total > customers.length && total <= 500;
+
+  const selectAllMatching = async () => {
+    setSelectingAll(true);
+    try {
+      const r = await listDirectoryCustomers({
+        ...params,
+        limit: 500,
+        offset: 0,
+      });
+      setSelected(new Set(r.customers.map((c) => c.printavoId)));
+    } catch {
+      toast({
+        title: "Couldn't select all matches",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSelectingAll(false);
+    }
+  };
+
   return (
     <AppShell>
       <div className="sticky top-0 z-10 bg-[#020617]/80 backdrop-blur-md border-b border-slate-800 px-8 py-5 flex items-center justify-between gap-4">
@@ -304,8 +333,8 @@ export default function CustomersDirectory() {
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <Input
-            className="pl-8 w-64"
-            placeholder="Search name or email…"
+            className="pl-8 w-72"
+            placeholder="Search name, email, or order keyword…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
@@ -351,6 +380,20 @@ export default function CustomersDirectory() {
           ) : null}
           {formatNumber(total)} customer{total === 1 ? "" : "s"}
         </span>
+        {canSelectAllMatching && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selectingAll}
+            onClick={selectAllMatching}
+          >
+            {selectingAll ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <>Select all {formatNumber(total)} matching</>
+            )}
+          </Button>
+        )}
       </div>
 
       <div className="px-8 pb-28">
@@ -399,8 +442,13 @@ export default function CustomersDirectory() {
                         }
                       />
                     </td>
-                    <td className="px-4 py-2.5 font-medium text-slate-200 max-w-[260px] truncate">
-                      {c.displayName}
+                    <td className="px-4 py-2.5 font-medium max-w-[260px] truncate">
+                      <Link
+                        href={`/customers/${c.printavoId}`}
+                        className="text-slate-200 hover:text-[#10b981] hover:underline"
+                      >
+                        {c.displayName}
+                      </Link>
                     </td>
                     <td className="px-4 py-2.5 text-slate-400 max-w-[220px] truncate">
                       {c.contactName ?? "—"}

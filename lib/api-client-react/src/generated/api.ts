@@ -59,6 +59,7 @@ import type {
   CustomerCategoryUpdate,
   CustomerCreditStat,
   CustomerInput,
+  CustomerProfileResponse,
   CustomerUpdate,
   DashboardSummary,
   DecorationMatricesResponse,
@@ -1296,6 +1297,7 @@ export const getListDirectoryCustomersUrl = (params?: ListDirectoryCustomersPara
 }
 
 /**
+ * search matches customer name, email, or keywords in their order nicknames (e.g. "soccer").
  * @summary Customer directory with lifetime stats and category
  */
 export const listDirectoryCustomers = async (params?: ListDirectoryCustomersParams, options?: RequestInit): Promise<DirectoryCustomersResponse> => {
@@ -1725,6 +1727,83 @@ export function useGetNicheReport<TData = Awaited<ReturnType<typeof getNicheRepo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetNicheReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCustomerProfileUrl = (id: string,) => {
+
+
+
+
+  return `/api/customers/${id}`
+}
+
+/**
+ * @summary Customer profile — contact info, category, spend stats, recent orders
+ */
+export const getCustomerProfile = async (id: string, options?: RequestInit): Promise<CustomerProfileResponse> => {
+
+  return customFetch<CustomerProfileResponse>(getGetCustomerProfileUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerProfileQueryKey = (id: string,) => {
+    return [
+    `/api/customers/${id}`
+    ] as const;
+    }
+
+
+export const getGetCustomerProfileQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerProfile>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerProfileQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerProfile>>> = ({ signal }) => getCustomerProfile(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerProfile>>>
+export type GetCustomerProfileQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Customer profile — contact info, category, spend stats, recent orders
+ */
+
+export function useGetCustomerProfile<TData = Awaited<ReturnType<typeof getCustomerProfile>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerProfileQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

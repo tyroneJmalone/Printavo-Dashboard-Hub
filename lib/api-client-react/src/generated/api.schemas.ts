@@ -2850,6 +2850,42 @@ export interface NicheReportRow {
   customerCount: number;
 }
 
+export interface CustomerProfileOrder {
+  printavoId: string;
+  visualId: number;
+  orderType: string;
+  nickname?: string | null;
+  statusName?: string | null;
+  total?: number | null;
+  orderDate?: string | null;
+}
+
+export interface CustomerProfileStats {
+  lifetimeSpend: number;
+  ytdSpend: number;
+  invoiceCount: number;
+  quoteCount: number;
+  avgOrder: number;
+  outstanding: number;
+  firstOrderAt?: string | null;
+  lastOrderAt?: string | null;
+}
+
+export interface CustomerProfileResponse {
+  printavoId: string;
+  displayName: string;
+  companyName?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  ownerEmail?: string | null;
+  customerSince?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  stats: CustomerProfileStats;
+  ordersTotal: number;
+  orders: CustomerProfileOrder[];
+}
+
 export type NicheReportResponseCoverage = {
   totalCustomers: number;
   categorized: number;

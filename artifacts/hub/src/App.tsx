@@ -31,6 +31,7 @@ import RateEstimator from "./pages/RateEstimator";
 import Settings from "./pages/Settings";
 import BackupDashboard from "./pages/BackupDashboard";
 import CustomersDirectory from "./pages/CustomersDirectory";
+import CustomerProfile from "./pages/CustomerProfile";
 import NicheReport from "./pages/NicheReport";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
 import { Customers as MintBucksCustomers } from "./pages/mintbucks/Customers";
@@ -192,8 +193,9 @@ function HubRoutes() {
       <Route path="/rate-estimator" component={RateEstimator} />
       <Route path="/settings" component={Settings} />
       <Route path="/backups" component={BackupDashboard} />
-      {/* Keep /customers/report ABOVE any future /customers/:id param route */}
+      {/* Keep /customers/report ABOVE the /customers/:id param route */}
       <Route path="/customers/report" component={NicheReport} />
+      <Route path="/customers/:id" component={CustomerProfile} />
       <Route path="/customers" component={CustomersDirectory} />
       <Route path="/mintbucks" component={MintBucksDashboard} />
       <Route path="/mintbucks/customers" component={MintBucksCustomers} />

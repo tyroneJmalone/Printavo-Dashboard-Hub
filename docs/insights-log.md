@@ -102,3 +102,6 @@ Orders **20104** and **20714** have more than 25 line-item groups — beyond Pri
 
 ### Jul 23 — Niche report semantics locked in
 Revenue = **invoices only** (order_type='invoice'), same as the existing reports. Including quotes would inflate numbers ~40% (e.g. Abbey Villa $412k vs the real $280k). All-time invoice revenue ~$10.42M across 14.1k invoices; YTD ~$916k. Category deletion is deliberately impossible — categories deactivate instead, so historical report rows always resolve.
+
+### Jul 23 — Directory search now looks inside order nicknames
+Searching "soccer" or "paving" finds customers whose ORDERS mention the word, not just their names — e.g. Bishop Guertin High School surfaces under "soccer" via its order history. Combined with the new "Select all N matching" button, categorizing a whole niche is now: search keyword → select all → assign. Note for the future: this scans every order nickname per search (no index); fine at ~19k orders, add a trigram index if it ever feels slow.
