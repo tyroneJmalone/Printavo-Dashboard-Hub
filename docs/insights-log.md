@@ -111,3 +111,6 @@ Adding query params to getCustomerProfile (which already had a path param) made 
 
 ### Jul 23 — customer profile now shows ordering behavior
 Order frequency (invoices/month over the customer's active span), average order quantity (pieces per invoice from line items), and top styles (e.g. Abbey Villa = Sport-Tek YST350 youth tees, 21 orders / 1,358 pcs) are computed live per profile view. Frequency is hidden for customers with under ~a month of history so 2 same-week invoices don't read as "8/mo".
+
+### Jul 24 — Packing slips now look like Printavo's (and a date trap)
+Local packing slips are restyled as a near-clone of Printavo's public invoice/workorder template: amber "Packing Slip" pill, QR code that staff can scan to open the order in Printavo, logo + shop block, gray Created/Due box, billing & shipping columns, and per-group size-matrix tables (S/M/L/XL columns) instead of "S×2" text — still no prices or imprint details. Box labels just got the matching font. **Date trap worth remembering:** Printavo's created/due dates are calendar dates stored at UTC midnight; formatting them in Eastern time silently shifts every date back one day (June 19 → June 18). Any place that displays a Printavo date must format in UTC, not shop-local time.

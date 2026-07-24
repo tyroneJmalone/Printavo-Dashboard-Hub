@@ -98,7 +98,7 @@ export function renderCombinedBoxLabelsHtml(
 <title>Box Labels (${labels.length})</title>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a1f24; margin: 0; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #333; margin: 0; }
   .label { height: 5in; padding: 34px 44px; display: flex; flex-direction: column; justify-content: space-between; page-break-inside: avoid; }
   .label-top { display: flex; justify-content: space-between; align-items: flex-start; }
   .from { display: flex; align-items: center; gap: 12px; }

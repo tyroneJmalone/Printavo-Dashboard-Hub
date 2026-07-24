@@ -144,12 +144,16 @@ router.get("/print-queue/packing-slips/html", (req, res) => {
   if (!ids) return;
   const nonce = randomBytes(16).toString("base64");
   loadShippingDocOrders(ids)
-    .then((orders) => {
+    .then(async (orders) => {
       if (orders.length === 0) {
         res.status(404).json({ error: "No matching invoices" });
         return;
       }
-      sendShippingDoc(res, nonce, renderCombinedPackingSlipsHtml(orders, nonce));
+      sendShippingDoc(
+        res,
+        nonce,
+        await renderCombinedPackingSlipsHtml(orders, nonce),
+      );
     })
     .catch((err) => {
       req.log.error({ err }, "packing slips HTML failed");

@@ -34,13 +34,24 @@ export interface ShipToAddress {
   country: string | null;
 }
 
+export interface SizeCount {
+  /** Raw enum key like "size_s" (used for column matching). */
+  key: string;
+  /** Display label like "S". */
+  label: string;
+  count: number;
+}
+
 export interface ShippingDocLineItem {
+  categoryName: string | null;
   itemNumber: string | null;
   color: string | null;
   description: string | null;
   quantity: number;
   /** Human size breakdown entries like "S×2", enum-ordered. */
   sizeBreakdown: string[];
+  /** Structured per-size counts, enum-ordered (drives the size-matrix columns). */
+  sizeCounts: SizeCount[];
 }
 
 export interface ShippingDocGroup {
@@ -54,11 +65,14 @@ export interface ShippingDocOrder {
   visualId: number;
   nickname: string | null;
   contactName: string | null;
+  contactEmail: string | null;
   customerCompany: string | null;
+  createdAt: string | null;
   customerDueAt: string | null;
   visualPoNumber: string | null;
   deliveryMethod: string | null;
   shipTo: ShipToAddress | null;
+  billTo: ShipToAddress | null;
   groups: ShippingDocGroup[];
   totalQuantity: number;
 }
@@ -70,10 +84,9 @@ function sizeLabel(raw: string): string {
   return raw.replace(/^size_/, "").toUpperCase();
 }
 
-export function formatSizeBreakdown(
-  sizes: unknown,
-): { entries: string[]; total: number } {
-  if (!Array.isArray(sizes)) return { entries: [], total: 0 };
+/** Parse the raw sizes jsonb into structured, enum-ordered per-size counts. */
+export function parseSizeCounts(sizes: unknown): SizeCount[] {
+  if (!Array.isArray(sizes)) return [];
   const rows = sizes
     .filter(
       (s): s is { size: string; count: number } =>
@@ -89,20 +102,36 @@ export function formatSizeBreakdown(
     const bo = SIZE_ORDER.get(b.size) ?? Number.MAX_SAFE_INTEGER;
     return ao !== bo ? ao - bo : a.idx - b.idx;
   });
+  return rows.map((s) => ({
+    key: s.size,
+    label: sizeLabel(s.size),
+    count: s.count,
+  }));
+}
+
+export function formatSizeBreakdown(
+  sizes: unknown,
+): { entries: string[]; total: number } {
+  const counts = parseSizeCounts(sizes);
   return {
-    entries: rows.map((s) => `${sizeLabel(s.size)}\u00d7${s.count}`),
-    total: rows.reduce((sum, s) => sum + s.count, 0),
+    entries: counts.map((s) => `${s.label}\u00d7${s.count}`),
+    total: counts.reduce((sum, s) => sum + s.count, 0),
   };
 }
 
 interface OrderDataBlob {
   shippingAddress?: Partial<ShipToAddress> | null;
+  billingAddress?: Partial<ShipToAddress> | null;
   visualPoNumber?: unknown;
   deliveryMethod?: { name?: unknown } | null;
+  contact?: { email?: unknown } | null;
+  createdAt?: unknown;
 }
 
-function readShipTo(blob: OrderDataBlob | null): ShipToAddress | null {
-  const a = blob?.shippingAddress;
+function readAddress(
+  a: Partial<ShipToAddress> | null | undefined,
+  opts: { requireStreet: boolean },
+): ShipToAddress | null {
   if (a == null || typeof a !== "object") return null;
   const str = (v: unknown): string | null =>
     typeof v === "string" && v.trim().length > 0 ? v.trim() : null;
@@ -117,8 +146,12 @@ function readShipTo(blob: OrderDataBlob | null): ShipToAddress | null {
     zipCode: str(a.zipCode),
     country: str(a.country),
   };
-  // An address with no street line is not usable as a ship-to.
-  return addr.address1 ? addr : null;
+  // A ship-to with no street line is not usable; billing renders with
+  // whatever partial lines exist (matches Printavo's slip).
+  if (opts.requireStreet) return addr.address1 ? addr : null;
+  return addr.address1 || addr.city || addr.customerName || addr.companyName
+    ? addr
+    : null;
 }
 
 /**
@@ -159,6 +192,7 @@ export async function loadShippingDocOrders(
       .select({
         groupId: pvLineItemsTable.groupId,
         orderId: pvLineItemsTable.orderId,
+        categoryName: pvLineItemsTable.categoryName,
         itemNumber: pvLineItemsTable.itemNumber,
         color: pvLineItemsTable.color,
         description: pvLineItemsTable.description,
@@ -171,17 +205,20 @@ export async function loadShippingDocOrders(
 
   const linesByGroup = new Map<string, ShippingDocLineItem[]>();
   for (const row of lineRows) {
-    const breakdown = formatSizeBreakdown(row.sizes);
-    const quantity = row.items > 0 ? row.items : breakdown.total;
+    const sizeCounts = parseSizeCounts(row.sizes);
+    const sizesTotal = sizeCounts.reduce((sum, s) => sum + s.count, 0);
+    const quantity = row.items > 0 ? row.items : sizesTotal;
     // Zero-qty placeholder lines (no pieces, no size breakdown) are noise on
     // a shipping doc and invite warehouse miscounts — skip them.
-    if (quantity === 0 && breakdown.entries.length === 0) continue;
+    if (quantity === 0 && sizeCounts.length === 0) continue;
     const item: ShippingDocLineItem = {
+      categoryName: row.categoryName,
       itemNumber: row.itemNumber,
       color: row.color,
       description: row.description,
       quantity,
-      sizeBreakdown: breakdown.entries,
+      sizeBreakdown: sizeCounts.map((s) => `${s.label}\u00d7${s.count}`),
+      sizeCounts,
     };
     const list = linesByGroup.get(row.groupId);
     if (list) list.push(item);
@@ -221,12 +258,22 @@ export async function loadShippingDocOrders(
       );
       const poRaw = blob?.visualPoNumber;
       const dmRaw = blob?.deliveryMethod?.name;
+      const emailRaw = blob?.contact?.email;
+      const createdRaw = blob?.createdAt;
       return {
         printavoId: row.printavoId,
         visualId: row.visualId,
         nickname: row.nickname,
         contactName: row.contactName,
+        contactEmail:
+          typeof emailRaw === "string" && emailRaw.trim().length > 0
+            ? emailRaw.trim()
+            : null,
         customerCompany: row.customerCompany,
+        createdAt:
+          typeof createdRaw === "string" && createdRaw.trim().length > 0
+            ? createdRaw.trim()
+            : null,
         customerDueAt: row.customerDueAt
           ? row.customerDueAt.toISOString()
           : null,
@@ -238,7 +285,8 @@ export async function loadShippingDocOrders(
           typeof dmRaw === "string" && dmRaw.trim().length > 0
             ? dmRaw.trim()
             : null,
-        shipTo: readShipTo(blob),
+        shipTo: readAddress(blob?.shippingAddress, { requireStreet: true }),
+        billTo: readAddress(blob?.billingAddress, { requireStreet: false }),
         groups,
         totalQuantity,
       };
