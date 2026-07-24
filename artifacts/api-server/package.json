@@ -19,6 +19,7 @@
     "@types/archiver": "^8.0.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "@workspace/integrations-openai-ai-server": "workspace:*",
     "@workspace/mintbucks-db": "workspace:*",
     "@workspace/momintum-db": "workspace:*",
     "@workspace/printavo": "workspace:*",
