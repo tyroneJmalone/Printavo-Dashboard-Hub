@@ -27,6 +27,8 @@ import type {
   AdminUnlockPoFileRequest,
   AppendPoLineItemsRequest,
   ApplyStatusSuggestionError,
+  AskInsightsRequest,
+  AskInsightsResponse,
   AssignCustomerCategory200,
   AssignCustomersBody,
   AuthForbidden,
@@ -44,6 +46,7 @@ import type {
   ChangeEventItem,
   Comment,
   CommentInput,
+  CreateInsightsPresetRequest,
   CreatePoFileRequest,
   CreatePqStatusRuleRequest,
   CreateStatusRuleRequest,
@@ -88,6 +91,8 @@ import type {
   GetStyleNumberBreakdownParams,
   GetTopCustomersParams,
   HealthStatus,
+  InsightsPresetEnvelope,
+  InsightsPresetsResponse,
   List,
   ListAutoPrintJobsParams,
   ListAutoPrintRunsParams,
@@ -99,6 +104,7 @@ import type {
   ListGroupInput,
   ListGroupUpdate,
   ListInput,
+  ListInsightsPresetsParams,
   ListListsParams,
   ListMentionsParams,
   ListPqStatusJobsParams,
@@ -160,6 +166,7 @@ import type {
   RewardsSettings,
   RewardsSettingsInput,
   RewardsSummary,
+  RunInsightsPresetResponse,
   SeedStartResult,
   SendToPrintavoResult,
   SetAdminPinRequest,
@@ -187,6 +194,7 @@ import type {
   Team,
   TeamInput,
   TeamUpdate,
+  UpdateInsightsPresetRequest,
   UpdatePoFileRequest,
   UpdatePqStatusRuleRequest,
   UpdateStaffRoleRequest,
@@ -5079,6 +5087,371 @@ export function useGetReportFilterOptions<TData = Awaited<ReturnType<typeof getR
 
 
 
+
+export const getAskInsightsUrl = () => {
+
+
+
+
+  return `/api/insights/ask`
+}
+
+/**
+ * @summary Answer a natural-language question via guarded read-only SQL over local Printavo data
+ */
+export const askInsights = async (askInsightsRequest: AskInsightsRequest, options?: RequestInit): Promise<AskInsightsResponse> => {
+
+  return customFetch<AskInsightsResponse>(getAskInsightsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(askInsightsRequest)
+  }
+);}
+
+
+
+
+export const getAskInsightsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askInsights>>, TError,{data: BodyType<AskInsightsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof askInsights>>, TError,{data: BodyType<AskInsightsRequest>}, TContext> => {
+
+const mutationKey = ['askInsights'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof askInsights>>, {data: BodyType<AskInsightsRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  askInsights(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AskInsightsMutationResult = NonNullable<Awaited<ReturnType<typeof askInsights>>>
+    export type AskInsightsMutationBody = BodyType<AskInsightsRequest>
+    export type AskInsightsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Answer a natural-language question via guarded read-only SQL over local Printavo data
+ */
+export const useAskInsights = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askInsights>>, TError,{data: BodyType<AskInsightsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof askInsights>>,
+        TError,
+        {data: BodyType<AskInsightsRequest>},
+        TContext
+      > => {
+      return useMutation(getAskInsightsMutationOptions(options));
+    }
+
+export const getListInsightsPresetsUrl = (params?: ListInsightsPresetsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/insights/presets?${stringifiedParams}` : `/api/insights/presets`
+}
+
+/**
+ * @summary List saved Ask AI report presets
+ */
+export const listInsightsPresets = async (params?: ListInsightsPresetsParams, options?: RequestInit): Promise<InsightsPresetsResponse> => {
+
+  return customFetch<InsightsPresetsResponse>(getListInsightsPresetsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListInsightsPresetsQueryKey = (params?: ListInsightsPresetsParams,) => {
+    return [
+    `/api/insights/presets`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListInsightsPresetsQueryOptions = <TData = Awaited<ReturnType<typeof listInsightsPresets>>, TError = ErrorType<unknown>>(params?: ListInsightsPresetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInsightsPresets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListInsightsPresetsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listInsightsPresets>>> = ({ signal }) => listInsightsPresets(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listInsightsPresets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListInsightsPresetsQueryResult = NonNullable<Awaited<ReturnType<typeof listInsightsPresets>>>
+export type ListInsightsPresetsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List saved Ask AI report presets
+ */
+
+export function useListInsightsPresets<TData = Awaited<ReturnType<typeof listInsightsPresets>>, TError = ErrorType<unknown>>(
+ params?: ListInsightsPresetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInsightsPresets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListInsightsPresetsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateInsightsPresetUrl = () => {
+
+
+
+
+  return `/api/insights/presets`
+}
+
+/**
+ * @summary Save an answered question (with its SQL) as a reusable preset
+ */
+export const createInsightsPreset = async (createInsightsPresetRequest: CreateInsightsPresetRequest, options?: RequestInit): Promise<InsightsPresetEnvelope> => {
+
+  return customFetch<InsightsPresetEnvelope>(getCreateInsightsPresetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createInsightsPresetRequest)
+  }
+);}
+
+
+
+
+export const getCreateInsightsPresetMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInsightsPreset>>, TError,{data: BodyType<CreateInsightsPresetRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createInsightsPreset>>, TError,{data: BodyType<CreateInsightsPresetRequest>}, TContext> => {
+
+const mutationKey = ['createInsightsPreset'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createInsightsPreset>>, {data: BodyType<CreateInsightsPresetRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createInsightsPreset(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateInsightsPresetMutationResult = NonNullable<Awaited<ReturnType<typeof createInsightsPreset>>>
+    export type CreateInsightsPresetMutationBody = BodyType<CreateInsightsPresetRequest>
+    export type CreateInsightsPresetMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save an answered question (with its SQL) as a reusable preset
+ */
+export const useCreateInsightsPreset = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInsightsPreset>>, TError,{data: BodyType<CreateInsightsPresetRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createInsightsPreset>>,
+        TError,
+        {data: BodyType<CreateInsightsPresetRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateInsightsPresetMutationOptions(options));
+    }
+
+export const getUpdateInsightsPresetUrl = (id: string,) => {
+
+
+
+
+  return `/api/insights/presets/${id}`
+}
+
+/**
+ * @summary Rename or archive a preset
+ */
+export const updateInsightsPreset = async (id: string,
+    updateInsightsPresetRequest: UpdateInsightsPresetRequest, options?: RequestInit): Promise<InsightsPresetEnvelope> => {
+
+  return customFetch<InsightsPresetEnvelope>(getUpdateInsightsPresetUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateInsightsPresetRequest)
+  }
+);}
+
+
+
+
+export const getUpdateInsightsPresetMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateInsightsPreset>>, TError,{id: string;data: BodyType<UpdateInsightsPresetRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateInsightsPreset>>, TError,{id: string;data: BodyType<UpdateInsightsPresetRequest>}, TContext> => {
+
+const mutationKey = ['updateInsightsPreset'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateInsightsPreset>>, {id: string;data: BodyType<UpdateInsightsPresetRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateInsightsPreset(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateInsightsPresetMutationResult = NonNullable<Awaited<ReturnType<typeof updateInsightsPreset>>>
+    export type UpdateInsightsPresetMutationBody = BodyType<UpdateInsightsPresetRequest>
+    export type UpdateInsightsPresetMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Rename or archive a preset
+ */
+export const useUpdateInsightsPreset = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateInsightsPreset>>, TError,{id: string;data: BodyType<UpdateInsightsPresetRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateInsightsPreset>>,
+        TError,
+        {id: string;data: BodyType<UpdateInsightsPresetRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateInsightsPresetMutationOptions(options));
+    }
+
+export const getRunInsightsPresetUrl = (id: string,) => {
+
+
+
+
+  return `/api/insights/presets/${id}/run`
+}
+
+/**
+ * @summary Re-run a preset's stored SQL (deterministic, no AI call)
+ */
+export const runInsightsPreset = async (id: string, options?: RequestInit): Promise<RunInsightsPresetResponse> => {
+
+  return customFetch<RunInsightsPresetResponse>(getRunInsightsPresetUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRunInsightsPresetMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runInsightsPreset>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runInsightsPreset>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['runInsightsPreset'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runInsightsPreset>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  runInsightsPreset(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunInsightsPresetMutationResult = NonNullable<Awaited<ReturnType<typeof runInsightsPreset>>>
+
+    export type RunInsightsPresetMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Re-run a preset's stored SQL (deterministic, no AI call)
+ */
+export const useRunInsightsPreset = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runInsightsPreset>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runInsightsPreset>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRunInsightsPresetMutationOptions(options));
+    }
 
 export const getListDecorationMatricesUrl = () => {
 

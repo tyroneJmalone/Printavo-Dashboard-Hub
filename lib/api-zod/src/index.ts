@@ -7,3 +7,12 @@ export * from "./generated/types";
 // schema; the query-params type is re-exported under an aliased name.
 export { GetCustomerProfileParams } from "./generated/api";
 export type { GetCustomerProfileParams as GetCustomerProfileQueryParamsType } from "./generated/types";
+
+// Same orval allOf collision for the insights response schemas: zod schema
+// (./generated/api) and TS type (./generated/types) share the name. Bare
+// name = zod schema; the TS types get aliased re-exports.
+export { AskInsightsResponse, RunInsightsPresetResponse } from "./generated/api";
+export type {
+  AskInsightsResponse as AskInsightsResponseType,
+  RunInsightsPresetResponse as RunInsightsPresetResponseType,
+} from "./generated/types";

@@ -9,6 +9,7 @@ import backupRouter from "./backup";
 import printavoRouter from "./printavo";
 import reportsRouter from "./reports";
 import reportsValidatorRouter from "./reportsValidator";
+import insightsRouter from "./insights";
 import purchasingRouter from "./purchasing";
 import pricingRouter from "./pricing";
 import printQueueRouter from "./printQueue";
@@ -40,6 +41,7 @@ router.use(backupRouter); // /backup/export is admin-only (requireAdmin per rout
 router.use(printavoRouter);
 router.use(reportsRouter);
 router.use(reportsValidatorRouter);
+router.use(insightsRouter);
 router.use(purchasingRouter);
 router.use(pricingRouter);
 router.use(printQueueRouter);

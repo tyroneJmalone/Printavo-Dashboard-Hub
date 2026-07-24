@@ -26,6 +26,8 @@ tags:
     description: Shipping rate estimator (ShipStation + EasyPost)
   - name: clients
     description: Client 360 — customer directory, niche categories, reporting
+  - name: insights
+    description: Ask AI — natural-language questions over local Printavo data + saved presets
 paths:
   /healthz:
     get:
@@ -1631,6 +1633,134 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReportFilterOptions"
+  /insights/ask:
+    post:
+      operationId: askInsights
+      tags: [insights]
+      summary: Answer a natural-language question via guarded read-only SQL over local Printavo data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AskInsightsRequest"
+      responses:
+        "200":
+          description: Answer with the SQL used and result rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AskInsightsResponse"
+        "400":
+          description: Invalid question
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: AI could not produce a working query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /insights/presets:
+    get:
+      operationId: listInsightsPresets
+      tags: [insights]
+      summary: List saved Ask AI report presets
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: Presets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightsPresetsResponse"
+    post:
+      operationId: createInsightsPreset
+      tags: [insights]
+      summary: Save an answered question (with its SQL) as a reusable preset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInsightsPresetRequest"
+      responses:
+        "201":
+          description: Created preset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightsPresetEnvelope"
+        "400":
+          description: Invalid preset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /insights/presets/{id}:
+    patch:
+      operationId: updateInsightsPreset
+      tags: [insights]
+      summary: Rename or archive a preset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInsightsPresetRequest"
+      responses:
+        "200":
+          description: Updated preset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightsPresetEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /insights/presets/{id}/run:
+    post:
+      operationId: runInsightsPreset
+      tags: [insights]
+      summary: Re-run a preset's stored SQL (deterministic, no AI call)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Fresh results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunInsightsPresetResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Stored query failed (schema drift) — re-ask AI and save a fresh preset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /pricing/matrices:
     get:
       operationId: listDecorationMatrices
@@ -5145,6 +5275,95 @@ components:
           type: array
           items: { type: string }
       required: [statuses, brands, categories, colors, styleNumbers, tiers, paymentTypes]
+    AskInsightsRequest:
+      type: object
+      properties:
+        question:
+          type: string
+          minLength: 3
+          maxLength: 1000
+      required: [question]
+    InsightsQueryResult:
+      type: object
+      properties:
+        columns:
+          type: array
+          items: { type: string }
+        rows:
+          type: array
+          items:
+            type: array
+            items: {}
+        rowCount: { type: integer }
+        truncated: { type: boolean }
+      required: [columns, rows, rowCount, truncated]
+    AskInsightsResponse:
+      allOf:
+        - $ref: "#/components/schemas/InsightsQueryResult"
+        - type: object
+          properties:
+            question: { type: string }
+            answer: { type: string }
+            sql: { type: string }
+          required: [question, answer, sql]
+    InsightsPreset:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        question: { type: string }
+        sql: { type: string }
+        createdByEmail: { type: string, nullable: true }
+        archived: { type: boolean }
+        lastRunAt: { type: string, nullable: true }
+        createdAt: { type: string }
+      required: [id, name, question, sql, createdByEmail, archived, lastRunAt, createdAt]
+    InsightsPresetsResponse:
+      type: object
+      properties:
+        presets:
+          type: array
+          items:
+            $ref: "#/components/schemas/InsightsPreset"
+      required: [presets]
+    InsightsPresetEnvelope:
+      type: object
+      properties:
+        preset:
+          $ref: "#/components/schemas/InsightsPreset"
+      required: [preset]
+    CreateInsightsPresetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        question:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        sql:
+          type: string
+          minLength: 1
+      required: [name, question, sql]
+    UpdateInsightsPresetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        archived: { type: boolean }
+    RunInsightsPresetResponse:
+      allOf:
+        - $ref: "#/components/schemas/InsightsQueryResult"
+        - type: object
+          properties:
+            preset:
+              $ref: "#/components/schemas/InsightsPreset"
+            ranAt: { type: string }
+          required: [preset, ranAt]
     DecorationBreak:
       type: object
       description: A quantity price break within a matrix column. The highest break whose qty <= order qty wins.

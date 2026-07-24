@@ -35,7 +35,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "reports", label: "Reports", href: "/orders", icon: FileSpreadsheet },
       { id: "payments", label: "Payments", href: "/payments", icon: CreditCard },
-      { id: "ai", label: "Ask AI", icon: Sparkles, disabled: true },
+      { id: "ai", label: "Ask AI", href: "/ask", icon: Sparkles },
     ],
   },
   {

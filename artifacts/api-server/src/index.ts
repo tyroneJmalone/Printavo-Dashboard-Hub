@@ -5,6 +5,7 @@ import { startFileMirror } from "./lib/sync/fileMirror";
 import { startAutoPrintScheduler } from "./lib/printQueue/autoPrint/scheduler";
 import { bootstrapStaffAdmin } from "./lib/auth/bootstrap";
 import { seedCustomerCategories } from "./lib/customers/seedCategories";
+import { ensureInsightsRole } from "./lib/insights/guard";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
 import { startPoller as startMintbucksPoller } from "./mintbucks/lib/poller";
 import { startTaskSyncPoller } from "./printavoTasks/poller";
@@ -35,6 +36,9 @@ app.listen(port, (err) => {
   );
   seedCustomerCategories(logger).catch((err) =>
     logger.error({ err }, "customer category seed failed"),
+  );
+  ensureInsightsRole(logger).catch((err) =>
+    logger.error({ err }, "insights role setup failed"),
   );
   startScheduler(logger);
   startFileMirror(logger);

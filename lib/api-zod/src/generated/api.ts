@@ -2284,6 +2284,138 @@ export const GetReportFilterOptionsResponse = zod.object({
 
 
 /**
+ * @summary Answer a natural-language question via guarded read-only SQL over local Printavo data
+ */
+export const askInsightsBodyQuestionMin = 3;
+export const askInsightsBodyQuestionMax = 1000;
+
+
+
+export const AskInsightsBody = zod.object({
+  "question": zod.string().min(askInsightsBodyQuestionMin).max(askInsightsBodyQuestionMax)
+})
+
+export const AskInsightsResponse = zod.object({
+  "columns": zod.array(zod.string()),
+  "rows": zod.array(zod.array(zod.unknown())),
+  "rowCount": zod.number(),
+  "truncated": zod.boolean()
+}).and(zod.object({
+  "question": zod.string(),
+  "answer": zod.string(),
+  "sql": zod.string()
+}))
+
+
+/**
+ * @summary List saved Ask AI report presets
+ */
+export const ListInsightsPresetsQueryParams = zod.object({
+  "includeArchived": zod.coerce.boolean().optional()
+})
+
+export const ListInsightsPresetsResponse = zod.object({
+  "presets": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "question": zod.string(),
+  "sql": zod.string(),
+  "createdByEmail": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "lastRunAt": zod.string().nullable(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Save an answered question (with its SQL) as a reusable preset
+ */
+export const createInsightsPresetBodyNameMax = 120;
+
+export const createInsightsPresetBodyQuestionMax = 1000;
+
+
+
+
+export const CreateInsightsPresetBody = zod.object({
+  "name": zod.string().min(1).max(createInsightsPresetBodyNameMax),
+  "question": zod.string().min(1).max(createInsightsPresetBodyQuestionMax),
+  "sql": zod.string().min(1)
+})
+
+export const CreateInsightsPresetResponse = zod.object({
+  "preset": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "question": zod.string(),
+  "sql": zod.string(),
+  "createdByEmail": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "lastRunAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Rename or archive a preset
+ */
+export const UpdateInsightsPresetParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateInsightsPresetBodyNameMax = 120;
+
+
+
+export const UpdateInsightsPresetBody = zod.object({
+  "name": zod.string().min(1).max(updateInsightsPresetBodyNameMax).optional(),
+  "archived": zod.boolean().optional()
+})
+
+export const UpdateInsightsPresetResponse = zod.object({
+  "preset": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "question": zod.string(),
+  "sql": zod.string(),
+  "createdByEmail": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "lastRunAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Re-run a preset's stored SQL (deterministic, no AI call)
+ */
+export const RunInsightsPresetParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RunInsightsPresetResponse = zod.object({
+  "columns": zod.array(zod.string()),
+  "rows": zod.array(zod.array(zod.unknown())),
+  "rowCount": zod.number(),
+  "truncated": zod.boolean()
+}).and(zod.object({
+  "preset": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "question": zod.string(),
+  "sql": zod.string(),
+  "createdByEmail": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "lastRunAt": zod.string().nullable(),
+  "createdAt": zod.string()
+}),
+  "ranAt": zod.string()
+}))
+
+
+/**
  * @summary List all decoration pricing matrices (team-shared), newest first
  */
 export const ListDecorationMatricesResponse = zod.object({

@@ -33,6 +33,7 @@ import BackupDashboard from "./pages/BackupDashboard";
 import CustomersDirectory from "./pages/CustomersDirectory";
 import CustomerProfile from "./pages/CustomerProfile";
 import NicheReport from "./pages/NicheReport";
+import AskAI from "./pages/AskAI";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
 import { Customers as MintBucksCustomers } from "./pages/mintbucks/Customers";
 import { CustomerDetail as MintBucksCustomerDetail } from "./pages/mintbucks/CustomerDetail";
@@ -181,6 +182,7 @@ function HubRoutes() {
       <Route path="/" component={Dashboard} />
       <Route path="/orders" component={Orders} />
       <Route path="/payments" component={Payments} />
+      <Route path="/ask" component={AskAI} />
       <Route path="/vendor-orders" component={VendorOrders} />
       <Route path="/po-log" component={PoLog} />
       <Route path="/tracking" component={VendorTracking} />

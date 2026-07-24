@@ -1265,6 +1265,75 @@ export interface ReportFilterOptions {
   paymentTypes: string[];
 }
 
+export interface AskInsightsRequest {
+  /**
+     * @minLength 3
+     * @maxLength 1000
+     */
+  question: string;
+}
+
+export interface InsightsQueryResult {
+  columns: string[];
+  rows: unknown[][];
+  rowCount: number;
+  truncated: boolean;
+}
+
+export type AskInsightsResponse = InsightsQueryResult & {
+  question: string;
+  answer: string;
+  sql: string;
+};
+
+export interface InsightsPreset {
+  id: string;
+  name: string;
+  question: string;
+  sql: string;
+  createdByEmail: string | null;
+  archived: boolean;
+  lastRunAt: string | null;
+  createdAt: string;
+}
+
+export interface InsightsPresetsResponse {
+  presets: InsightsPreset[];
+}
+
+export interface InsightsPresetEnvelope {
+  preset: InsightsPreset;
+}
+
+export interface CreateInsightsPresetRequest {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  question: string;
+  /** @minLength 1 */
+  sql: string;
+}
+
+export interface UpdateInsightsPresetRequest {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  archived?: boolean;
+}
+
+export type RunInsightsPresetResponse = InsightsQueryResult & {
+  preset: InsightsPreset;
+  ranAt: string;
+};
+
 /**
  * A quantity price break within a matrix column. The highest break whose qty <= order qty wins.
  */
@@ -3413,6 +3482,10 @@ types?: string;
 export type GetPaymentsStatsParams = {
 start?: string;
 end?: string;
+};
+
+export type ListInsightsPresetsParams = {
+includeArchived?: boolean;
 };
 
 export type ListPrintQueueOrdersParams = {
