@@ -3,7 +3,11 @@ import { pool, db, chipplyStoresTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/requireStaff";
 import { storeJson } from "./chipply";
-import { countLinkedInvoices, notChipplySql } from "../lib/chipply/matching";
+import {
+  countLinkedInvoices,
+  notChipplySql,
+  chipplySql,
+} from "../lib/chipply/matching";
 
 /**
  * Client 360 — customer directory, niche categories, and niche reporting.
@@ -432,7 +436,8 @@ router.get("/customers/:id", async (req, res) => {
 
     // Ordering behavior: quantities + top styles (invoice line items) and the
     // status breakdown used by the order-history filter. All unfiltered.
-    const [qtyR, stylesR, statusesR] = await Promise.all([
+    const [qtyR, stylesR, statusesR, chipplyQtyR, chipplyStylesR] =
+      await Promise.all([
       pool.query(
         `SELECT count(DISTINCT li.order_id)::int AS orders_with_items,
                 coalesce(sum(li.items), 0)::bigint AS total_items
@@ -465,6 +470,38 @@ router.get("/customers/:id", async (req, res) => {
             AND coalesce(status_name, '') <> ''
           GROUP BY 1
           ORDER BY 2 DESC, 1 ASC`,
+        [id],
+      ),
+      // Chipply shell production — the flip side of the exclusions above.
+      // Same data, surfaced separately so it never mixes with Printavo stats.
+      pool.query(
+        `SELECT count(*)::int AS shell_invoices,
+                coalesce((SELECT sum(li.items)
+                            FROM pv_line_items li
+                            JOIN pv_orders o2 ON o2.printavo_id = li.order_id
+                           WHERE o2.customer_id = $1
+                             AND o2.order_type = 'invoice'
+                             AND ${chipplySql("o2.nickname")}), 0)::bigint AS total_items
+           FROM pv_orders
+          WHERE customer_id = $1
+            AND order_type = 'invoice'
+            AND ${chipplySql("nickname")}`,
+        [id],
+      ),
+      pool.query(
+        `SELECT nullif(li.brand, '') AS brand,
+                li.item_number,
+                count(DISTINCT li.order_id)::int AS order_count,
+                coalesce(sum(li.items), 0)::bigint AS total_qty
+           FROM pv_line_items li
+           JOIN pv_orders o ON o.printavo_id = li.order_id
+          WHERE o.customer_id = $1
+            AND o.order_type = 'invoice'
+            AND ${chipplySql("o.nickname")}
+            AND coalesce(li.item_number, '') <> ''
+          GROUP BY 1, 2
+          ORDER BY sum(li.items) DESC, count(DISTINCT li.order_id) DESC
+          LIMIT 6`,
         [id],
       ),
     ]);
@@ -576,6 +613,16 @@ router.get("/customers/:id", async (req, res) => {
         name: row.status_name as string,
         count: row.n as number,
       })),
+      chipplyProduction: {
+        invoiceCount: chipplyQtyR.rows[0].shell_invoices as number,
+        totalItems: Number(chipplyQtyR.rows[0].total_items),
+        topStyles: chipplyStylesR.rows.map((row) => ({
+          brand: (row.brand as string | null) ?? null,
+          itemNumber: row.item_number as string,
+          orderCount: row.order_count as number,
+          totalQty: Number(row.total_qty),
+        })),
+      },
       ordersTotal:
         or_.rows.length > 0 ? (or_.rows[0].total_rows as number) : 0,
       orders: or_.rows.map((row) => ({

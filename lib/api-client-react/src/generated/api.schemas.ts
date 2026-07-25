@@ -3254,6 +3254,17 @@ export interface CustomerProfileStatus {
   count: number;
 }
 
+/**
+ * Production stats derived from this customer's Chipply $0 shell invoices (excluded from Printavo behavior stats, surfaced separately here)
+ */
+export interface ChipplyProductionSummary {
+  /** Number of $0 shell invoices linked by the Chipply nickname prefix */
+  invoiceCount: number;
+  /** Total garment pieces across shell invoice line items */
+  totalItems: number;
+  topStyles: CustomerProfileTopStyle[];
+}
+
 export interface CustomerProfileResponse {
   printavoId: string;
   displayName: string;
@@ -3271,6 +3282,7 @@ export interface CustomerProfileResponse {
   orders: CustomerProfileOrder[];
   /** Chipply web stores assigned to this customer (Chipply dollars — kept separate from Printavo revenue) */
   chipplyStores: ChipplyStoreListItem[];
+  chipplyProduction: ChipplyProductionSummary;
 }
 
 export type NicheReportResponseCoverage = {

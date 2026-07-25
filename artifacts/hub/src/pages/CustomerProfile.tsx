@@ -273,7 +273,8 @@ export default function CustomerProfile() {
           </div>
         ) : null}
 
-        {data.chipplyStores.length > 0 ? (
+        {data.chipplyStores.length > 0 ||
+        data.chipplyProduction.invoiceCount > 0 ? (
           <div>
             <h2 className="text-sm font-semibold text-slate-200 mb-2 inline-flex items-center gap-1.5">
               <Store size={14} className="text-emerald-400" /> Chipply web stores
@@ -281,6 +282,7 @@ export default function CustomerProfile() {
                 separate from Printavo revenue
               </span>
             </h2>
+            {data.chipplyStores.length > 0 ? (
             <div className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -361,6 +363,44 @@ export default function CustomerProfile() {
                 </table>
               </div>
             </div>
+            ) : null}
+            {data.chipplyProduction.invoiceCount > 0 ? (
+              <div className="mt-3">
+                <p className="text-xs text-slate-400 mb-2">
+                  <span className="font-semibold text-emerald-400">
+                    Chipply production
+                  </span>{" "}
+                  · {formatNumber(data.chipplyProduction.invoiceCount)} shop
+                  invoice
+                  {data.chipplyProduction.invoiceCount === 1 ? "" : "s"} ·{" "}
+                  {formatNumber(data.chipplyProduction.totalItems)} pcs
+                  decorated — tracked here, excluded from the Printavo stats
+                  above
+                </p>
+                {data.chipplyProduction.topStyles.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {data.chipplyProduction.topStyles.map((t) => (
+                      <div
+                        key={`${t.brand ?? ""}|${t.itemNumber}`}
+                        className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-3 py-2"
+                      >
+                        <p className="text-sm font-semibold text-slate-200">
+                          {t.brand ? `${t.brand} ` : ""}
+                          <span className="text-emerald-400">
+                            {t.itemNumber}
+                          </span>
+                        </p>
+                        <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+                          {formatNumber(t.totalQty)} pcs ·{" "}
+                          {formatNumber(t.orderCount)} invoice
+                          {t.orderCount === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

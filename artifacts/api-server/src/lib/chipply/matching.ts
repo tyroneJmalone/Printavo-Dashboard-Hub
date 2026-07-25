@@ -34,6 +34,11 @@ export function notChipplySql(nicknameCol: string): string {
   return `(${nicknameCol} IS NULL OR ${nicknameCol} !~ '${PREFIX_SQL_PATTERN}')`;
 }
 
+/** Inverse of notChipplySql — matches ONLY Chipply shell invoices. */
+export function chipplySql(nicknameCol: string): string {
+  return `${nicknameCol} ~ '${PREFIX_SQL_PATTERN}'`;
+}
+
 /** Lowercase, collapse everything non-alphanumeric to single spaces. */
 export function normalizeName(s: string): string {
   return s

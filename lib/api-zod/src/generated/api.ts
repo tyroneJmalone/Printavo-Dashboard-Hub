@@ -502,7 +502,17 @@ export const GetCustomerProfileResponse = zod.object({
   "updatedAt": zod.string()
 }),
   "linkedInvoiceCount": zod.number()
-})).describe('Chipply web stores assigned to this customer (Chipply dollars — kept separate from Printavo revenue)')
+})).describe('Chipply web stores assigned to this customer (Chipply dollars — kept separate from Printavo revenue)'),
+  "chipplyProduction": zod.object({
+  "invoiceCount": zod.number().describe('Number of $0 shell invoices linked by the Chipply nickname prefix'),
+  "totalItems": zod.number().describe('Total garment pieces across shell invoice line items'),
+  "topStyles": zod.array(zod.object({
+  "brand": zod.string().nullish(),
+  "itemNumber": zod.string(),
+  "orderCount": zod.number(),
+  "totalQty": zod.number()
+}))
+}).describe('Production stats derived from this customer\'s Chipply $0 shell invoices (excluded from Printavo behavior stats, surfaced separately here)')
 })
 
 

@@ -53,6 +53,7 @@ export * from './chipplyLinkedInvoice';
 export * from './chipplyParsedEmail';
 export * from './chipplyParsedMarginRow';
 export * from './chipplyParsedSalesReport';
+export * from './chipplyProductionSummary';
 export * from './chipplyStore';
 export * from './chipplyStoreCandidate';
 export * from './chipplyStoreDetailResponse';
