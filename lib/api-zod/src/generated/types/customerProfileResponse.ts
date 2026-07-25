@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChipplyStoreListItem } from './chipplyStoreListItem';
 import type { CustomerProfileOrder } from './customerProfileOrder';
 import type { CustomerProfileStats } from './customerProfileStats';
 import type { CustomerProfileStatus } from './customerProfileStatus';
@@ -25,4 +26,6 @@ export interface CustomerProfileResponse {
   statuses: CustomerProfileStatus[];
   ordersTotal: number;
   orders: CustomerProfileOrder[];
+  /** Chipply web stores assigned to this customer (Chipply dollars — kept separate from Printavo revenue) */
+  chipplyStores: ChipplyStoreListItem[];
 }

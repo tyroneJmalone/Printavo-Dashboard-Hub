@@ -459,7 +459,50 @@ export const GetCustomerProfileResponse = zod.object({
   "statusName": zod.string().nullish(),
   "total": zod.number().nullish(),
   "orderDate": zod.string().nullish()
-}))
+})),
+  "chipplyStores": zod.array(zod.object({
+  "store": zod.object({
+  "id": zod.string(),
+  "eventId": zod.string().nullable(),
+  "storeName": zod.string(),
+  "orgContact": zod.string().nullable(),
+  "storeAdmin": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "numOrders": zod.number().nullable(),
+  "numProducts": zod.number().nullable(),
+  "totalDollars": zod.string().nullable(),
+  "fundraising": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "organizationName": zod.string().nullable(),
+  "openedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "orgFee": zod.string().nullable(),
+  "productCost": zod.string().nullable(),
+  "productPrice": zod.string().nullable(),
+  "processPrice": zod.string().nullable(),
+  "combinedPrice": zod.string().nullable(),
+  "optionFees": zod.string().nullable(),
+  "sizeUpcharges": zod.string().nullable(),
+  "tax": zod.string().nullable(),
+  "shipping": zod.string().nullable(),
+  "handlingFee": zod.string().nullable(),
+  "manualAdjustment": zod.string().nullable().describe('May be negative (a credit)'),
+  "orderTotal": zod.string().nullable().describe('Includes shipping\/handling\/tax — NOT the same as totalDollars (sell price)'),
+  "paymentCard": zod.string().nullable(),
+  "paymentKlarna": zod.string().nullable(),
+  "paymentEcert": zod.string().nullable(),
+  "paymentPo": zod.string().nullable(),
+  "paymentPromo": zod.string().nullable(),
+  "chipplyFee": zod.string().nullable(),
+  "ccProcessingFee": zod.string().nullable(),
+  "pvCustomerId": zod.string().nullable(),
+  "pvCustomerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "linkedInvoiceCount": zod.number()
+})).describe('Chipply web stores assigned to this customer (Chipply dollars — kept separate from Printavo revenue)')
 })
 
 
@@ -2458,6 +2501,28 @@ export const ParseChipplyEmailResponse = zod.object({
   "numProducts": zod.number().nullable(),
   "totalDollars": zod.string().nullable(),
   "fundraising": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "organizationName": zod.string().nullable(),
+  "openedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "orgFee": zod.string().nullable(),
+  "productCost": zod.string().nullable(),
+  "productPrice": zod.string().nullable(),
+  "processPrice": zod.string().nullable(),
+  "combinedPrice": zod.string().nullable(),
+  "optionFees": zod.string().nullable(),
+  "sizeUpcharges": zod.string().nullable(),
+  "tax": zod.string().nullable(),
+  "shipping": zod.string().nullable(),
+  "handlingFee": zod.string().nullable(),
+  "manualAdjustment": zod.string().nullable().describe('May be negative (a credit)'),
+  "orderTotal": zod.string().nullable().describe('Includes shipping\/handling\/tax — NOT the same as totalDollars (sell price)'),
+  "paymentCard": zod.string().nullable(),
+  "paymentKlarna": zod.string().nullable(),
+  "paymentEcert": zod.string().nullable(),
+  "paymentPo": zod.string().nullable(),
+  "paymentPromo": zod.string().nullable(),
+  "chipplyFee": zod.string().nullable(),
+  "ccProcessingFee": zod.string().nullable(),
   "pvCustomerId": zod.string().nullable(),
   "pvCustomerCompany": zod.string().nullable(),
   "notes": zod.string().nullable(),
@@ -2465,6 +2530,111 @@ export const ParseChipplyEmailResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }).nullable().describe('Already-imported store matching this email (by event id or normalized name), if any.')
+})
+
+
+/**
+ * @summary Parse an uploaded Chipply CSV export (SalesReport or Margin Report) — no write
+ */
+export const parseChipplyFileBodyFileTextMin = 10;
+export const parseChipplyFileBodyFileTextMax = 200000;
+
+
+
+export const ParseChipplyFileBody = zod.object({
+  "fileText": zod.string().min(parseChipplyFileBodyFileTextMin).max(parseChipplyFileBodyFileTextMax).describe('Raw text of the uploaded CSV (read client-side)')
+})
+
+export const ParseChipplyFileResponse = zod.object({
+  "kind": zod.enum(['sales_report', 'margin_report']),
+  "salesReport": zod.object({
+  "storeName": zod.string().nullable(),
+  "eventId": zod.string().nullable(),
+  "openedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "closedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "salesperson": zod.string().nullable(),
+  "organizationName": zod.string().nullable(),
+  "orgFee": zod.number().nullable(),
+  "productCost": zod.number().nullable(),
+  "productPrice": zod.number().nullable(),
+  "processPrice": zod.number().nullable(),
+  "combinedPrice": zod.number().nullable(),
+  "optionFees": zod.number().nullable(),
+  "sizeUpcharges": zod.number().nullable(),
+  "fundraising": zod.number().nullable(),
+  "tax": zod.number().nullable(),
+  "shipping": zod.number().nullable(),
+  "handlingFee": zod.number().nullable(),
+  "manualAdjustment": zod.number().nullable(),
+  "orderTotal": zod.number().nullable(),
+  "paymentCard": zod.number().nullable(),
+  "paymentKlarna": zod.number().nullable(),
+  "paymentEcert": zod.number().nullable(),
+  "paymentPo": zod.number().nullable(),
+  "paymentPromo": zod.number().nullable(),
+  "chipplyFee": zod.number().nullable(),
+  "ccProcessingFee": zod.number().nullable(),
+  "totalDollarsGuess": zod.number().nullable()
+}).describe('One store\'s row from a SalesReport CSV. totalDollarsGuess = combinedPrice + sizeUpcharges + fundraising (matches the email\'s \"Total Dollars\" sell price); orderTotal additionally includes shipping\/handling\/tax.').nullable().describe('Populated when kind is sales_report'),
+  "namedRowCount": zod.number().describe('Data rows with a store name seen in the file (SalesReport exports carry one store; >1 means an unexpected multi-store file)'),
+  "marginRows": zod.array(zod.object({
+  "vendorName": zod.string().nullable(),
+  "style": zod.string().nullable(),
+  "productName": zod.string().nullable(),
+  "purchases": zod.number().nullable(),
+  "totalSale": zod.number().nullable(),
+  "totalCost": zod.number().nullable(),
+  "totalProfit": zod.number().nullable()
+})).nullable().describe('Populated when kind is margin_report'),
+  "candidates": zod.array(zod.object({
+  "eventId": zod.string(),
+  "nameGuess": zod.string(),
+  "invoiceCount": zod.number(),
+  "latestVisualId": zod.number(),
+  "statuses": zod.array(zod.string()),
+  "customerId": zod.string().nullable(),
+  "customerCompany": zod.string().nullable()
+}).describe('A Chipply event-id prefix group derived live from Printavo invoice nicknames (\"<eventId> <Store Name> <METHOD>: ...\").')).describe('Ranked invoice-prefix matches (sales_report only; empty otherwise)'),
+  "existingStore": zod.object({
+  "id": zod.string(),
+  "eventId": zod.string().nullable(),
+  "storeName": zod.string(),
+  "orgContact": zod.string().nullable(),
+  "storeAdmin": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "numOrders": zod.number().nullable(),
+  "numProducts": zod.number().nullable(),
+  "totalDollars": zod.string().nullable(),
+  "fundraising": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "organizationName": zod.string().nullable(),
+  "openedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "orgFee": zod.string().nullable(),
+  "productCost": zod.string().nullable(),
+  "productPrice": zod.string().nullable(),
+  "processPrice": zod.string().nullable(),
+  "combinedPrice": zod.string().nullable(),
+  "optionFees": zod.string().nullable(),
+  "sizeUpcharges": zod.string().nullable(),
+  "tax": zod.string().nullable(),
+  "shipping": zod.string().nullable(),
+  "handlingFee": zod.string().nullable(),
+  "manualAdjustment": zod.string().nullable().describe('May be negative (a credit)'),
+  "orderTotal": zod.string().nullable().describe('Includes shipping\/handling\/tax — NOT the same as totalDollars (sell price)'),
+  "paymentCard": zod.string().nullable(),
+  "paymentKlarna": zod.string().nullable(),
+  "paymentEcert": zod.string().nullable(),
+  "paymentPo": zod.string().nullable(),
+  "paymentPromo": zod.string().nullable(),
+  "chipplyFee": zod.string().nullable(),
+  "ccProcessingFee": zod.string().nullable(),
+  "pvCustomerId": zod.string().nullable(),
+  "pvCustomerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).nullable().describe('Already-imported store matching the file\'s event id or normalized store name (sales_report only)')
 })
 
 
@@ -2488,6 +2658,28 @@ export const ListChipplyStoresResponse = zod.object({
   "numProducts": zod.number().nullable(),
   "totalDollars": zod.string().nullable(),
   "fundraising": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "organizationName": zod.string().nullable(),
+  "openedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "orgFee": zod.string().nullable(),
+  "productCost": zod.string().nullable(),
+  "productPrice": zod.string().nullable(),
+  "processPrice": zod.string().nullable(),
+  "combinedPrice": zod.string().nullable(),
+  "optionFees": zod.string().nullable(),
+  "sizeUpcharges": zod.string().nullable(),
+  "tax": zod.string().nullable(),
+  "shipping": zod.string().nullable(),
+  "handlingFee": zod.string().nullable(),
+  "manualAdjustment": zod.string().nullable().describe('May be negative (a credit)'),
+  "orderTotal": zod.string().nullable().describe('Includes shipping\/handling\/tax — NOT the same as totalDollars (sell price)'),
+  "paymentCard": zod.string().nullable(),
+  "paymentKlarna": zod.string().nullable(),
+  "paymentEcert": zod.string().nullable(),
+  "paymentPo": zod.string().nullable(),
+  "paymentPromo": zod.string().nullable(),
+  "chipplyFee": zod.string().nullable(),
+  "ccProcessingFee": zod.string().nullable(),
   "pvCustomerId": zod.string().nullable(),
   "pvCustomerCompany": zod.string().nullable(),
   "notes": zod.string().nullable(),
@@ -2517,6 +2709,30 @@ export const CreateChipplyStoreBody = zod.object({
   "numProducts": zod.number().nullish(),
   "totalDollars": zod.number().nullish(),
   "fundraising": zod.number().nullish(),
+  "financials": zod.object({
+  "salesperson": zod.string().nullish(),
+  "organizationName": zod.string().nullish(),
+  "openedAt": zod.string().nullish().describe('YYYY-MM-DD'),
+  "orgFee": zod.number().nullish(),
+  "productCost": zod.number().nullish(),
+  "productPrice": zod.number().nullish(),
+  "processPrice": zod.number().nullish(),
+  "combinedPrice": zod.number().nullish(),
+  "optionFees": zod.number().nullish(),
+  "sizeUpcharges": zod.number().nullish(),
+  "tax": zod.number().nullish(),
+  "shipping": zod.number().nullish(),
+  "handlingFee": zod.number().nullish(),
+  "manualAdjustment": zod.number().nullish(),
+  "orderTotal": zod.number().nullish(),
+  "paymentCard": zod.number().nullish(),
+  "paymentKlarna": zod.number().nullish(),
+  "paymentEcert": zod.number().nullish(),
+  "paymentPo": zod.number().nullish(),
+  "paymentPromo": zod.number().nullish(),
+  "chipplyFee": zod.number().nullish(),
+  "ccProcessingFee": zod.number().nullish()
+}).describe('SalesReport CSV financials for create\/update. Money as numbers; manualAdjustment may be negative (a credit).').nullish(),
   "pvCustomerId": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "rawSource": zod.string().nullish()
@@ -2534,6 +2750,28 @@ export const CreateChipplyStoreResponse = zod.object({
   "numProducts": zod.number().nullable(),
   "totalDollars": zod.string().nullable(),
   "fundraising": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "organizationName": zod.string().nullable(),
+  "openedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "orgFee": zod.string().nullable(),
+  "productCost": zod.string().nullable(),
+  "productPrice": zod.string().nullable(),
+  "processPrice": zod.string().nullable(),
+  "combinedPrice": zod.string().nullable(),
+  "optionFees": zod.string().nullable(),
+  "sizeUpcharges": zod.string().nullable(),
+  "tax": zod.string().nullable(),
+  "shipping": zod.string().nullable(),
+  "handlingFee": zod.string().nullable(),
+  "manualAdjustment": zod.string().nullable().describe('May be negative (a credit)'),
+  "orderTotal": zod.string().nullable().describe('Includes shipping\/handling\/tax — NOT the same as totalDollars (sell price)'),
+  "paymentCard": zod.string().nullable(),
+  "paymentKlarna": zod.string().nullable(),
+  "paymentEcert": zod.string().nullable(),
+  "paymentPo": zod.string().nullable(),
+  "paymentPromo": zod.string().nullable(),
+  "chipplyFee": zod.string().nullable(),
+  "ccProcessingFee": zod.string().nullable(),
   "pvCustomerId": zod.string().nullable(),
   "pvCustomerCompany": zod.string().nullable(),
   "notes": zod.string().nullable(),
@@ -2563,6 +2801,28 @@ export const GetChipplyStoreResponse = zod.object({
   "numProducts": zod.number().nullable(),
   "totalDollars": zod.string().nullable(),
   "fundraising": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "organizationName": zod.string().nullable(),
+  "openedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "orgFee": zod.string().nullable(),
+  "productCost": zod.string().nullable(),
+  "productPrice": zod.string().nullable(),
+  "processPrice": zod.string().nullable(),
+  "combinedPrice": zod.string().nullable(),
+  "optionFees": zod.string().nullable(),
+  "sizeUpcharges": zod.string().nullable(),
+  "tax": zod.string().nullable(),
+  "shipping": zod.string().nullable(),
+  "handlingFee": zod.string().nullable(),
+  "manualAdjustment": zod.string().nullable().describe('May be negative (a credit)'),
+  "orderTotal": zod.string().nullable().describe('Includes shipping\/handling\/tax — NOT the same as totalDollars (sell price)'),
+  "paymentCard": zod.string().nullable(),
+  "paymentKlarna": zod.string().nullable(),
+  "paymentEcert": zod.string().nullable(),
+  "paymentPo": zod.string().nullable(),
+  "paymentPromo": zod.string().nullable(),
+  "chipplyFee": zod.string().nullable(),
+  "ccProcessingFee": zod.string().nullable(),
   "pvCustomerId": zod.string().nullable(),
   "pvCustomerCompany": zod.string().nullable(),
   "notes": zod.string().nullable(),
@@ -2583,7 +2843,18 @@ export const GetChipplyStoreResponse = zod.object({
   "itemNumber": zod.string().nullable(),
   "description": zod.string().nullable(),
   "totalQty": zod.number()
-}))
+})),
+  "marginStyles": zod.array(zod.object({
+  "id": zod.string(),
+  "vendorName": zod.string().nullable(),
+  "style": zod.string().nullable(),
+  "productName": zod.string().nullable(),
+  "purchases": zod.number().nullable(),
+  "totalSale": zod.string().nullable(),
+  "totalCost": zod.string().nullable(),
+  "totalProfit": zod.string().nullable(),
+  "createdAt": zod.string()
+})).describe('Per-style rows from the last imported Chipply Margin Report (Chipply-side dollars — never mixed with Printavo revenue)')
 })
 
 
@@ -2608,6 +2879,30 @@ export const UpdateChipplyStoreBody = zod.object({
   "numProducts": zod.number().nullish(),
   "totalDollars": zod.number().nullish(),
   "fundraising": zod.number().nullish(),
+  "financials": zod.object({
+  "salesperson": zod.string().nullish(),
+  "organizationName": zod.string().nullish(),
+  "openedAt": zod.string().nullish().describe('YYYY-MM-DD'),
+  "orgFee": zod.number().nullish(),
+  "productCost": zod.number().nullish(),
+  "productPrice": zod.number().nullish(),
+  "processPrice": zod.number().nullish(),
+  "combinedPrice": zod.number().nullish(),
+  "optionFees": zod.number().nullish(),
+  "sizeUpcharges": zod.number().nullish(),
+  "tax": zod.number().nullish(),
+  "shipping": zod.number().nullish(),
+  "handlingFee": zod.number().nullish(),
+  "manualAdjustment": zod.number().nullish(),
+  "orderTotal": zod.number().nullish(),
+  "paymentCard": zod.number().nullish(),
+  "paymentKlarna": zod.number().nullish(),
+  "paymentEcert": zod.number().nullish(),
+  "paymentPo": zod.number().nullish(),
+  "paymentPromo": zod.number().nullish(),
+  "chipplyFee": zod.number().nullish(),
+  "ccProcessingFee": zod.number().nullish()
+}).describe('SalesReport CSV financials for create\/update. Money as numbers; manualAdjustment may be negative (a credit).').nullish(),
   "pvCustomerId": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "archived": zod.boolean().optional()
@@ -2625,6 +2920,28 @@ export const UpdateChipplyStoreResponse = zod.object({
   "numProducts": zod.number().nullable(),
   "totalDollars": zod.string().nullable(),
   "fundraising": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "organizationName": zod.string().nullable(),
+  "openedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "orgFee": zod.string().nullable(),
+  "productCost": zod.string().nullable(),
+  "productPrice": zod.string().nullable(),
+  "processPrice": zod.string().nullable(),
+  "combinedPrice": zod.string().nullable(),
+  "optionFees": zod.string().nullable(),
+  "sizeUpcharges": zod.string().nullable(),
+  "tax": zod.string().nullable(),
+  "shipping": zod.string().nullable(),
+  "handlingFee": zod.string().nullable(),
+  "manualAdjustment": zod.string().nullable().describe('May be negative (a credit)'),
+  "orderTotal": zod.string().nullable().describe('Includes shipping\/handling\/tax — NOT the same as totalDollars (sell price)'),
+  "paymentCard": zod.string().nullable(),
+  "paymentKlarna": zod.string().nullable(),
+  "paymentEcert": zod.string().nullable(),
+  "paymentPo": zod.string().nullable(),
+  "paymentPromo": zod.string().nullable(),
+  "chipplyFee": zod.string().nullable(),
+  "ccProcessingFee": zod.string().nullable(),
   "pvCustomerId": zod.string().nullable(),
   "pvCustomerCompany": zod.string().nullable(),
   "notes": zod.string().nullable(),
@@ -2632,6 +2949,44 @@ export const UpdateChipplyStoreResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
+})
+
+
+/**
+ * @summary Replace the store's Chipply margin-report rows (full-snapshot semantics — delete + insert in one transaction)
+ */
+export const ReplaceChipplyStoreStylesParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const replaceChipplyStoreStylesBodyRowsMax = 1000;
+
+
+
+export const ReplaceChipplyStoreStylesBody = zod.object({
+  "rows": zod.array(zod.object({
+  "vendorName": zod.string().nullable(),
+  "style": zod.string().nullable(),
+  "productName": zod.string().nullable(),
+  "purchases": zod.number().nullable(),
+  "totalSale": zod.number().nullable(),
+  "totalCost": zod.number().nullable(),
+  "totalProfit": zod.number().nullable()
+})).min(1).max(replaceChipplyStoreStylesBodyRowsMax)
+})
+
+export const ReplaceChipplyStoreStylesResponse = zod.object({
+  "styles": zod.array(zod.object({
+  "id": zod.string(),
+  "vendorName": zod.string().nullable(),
+  "style": zod.string().nullable(),
+  "productName": zod.string().nullable(),
+  "purchases": zod.number().nullable(),
+  "totalSale": zod.string().nullable(),
+  "totalCost": zod.string().nullable(),
+  "totalProfit": zod.string().nullable(),
+  "createdAt": zod.string()
+}))
 })
 
 

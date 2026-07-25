@@ -1,7 +1,18 @@
 import { Router, type IRouter } from "express";
-import { db, pool, chipplyStoresTable } from "@workspace/db";
-import { eq, desc, and, ne, isNotNull } from "drizzle-orm";
+import {
+  db,
+  pool,
+  chipplyStoresTable,
+  chipplyStoreStylesTable,
+} from "@workspace/db";
+import { eq, desc, asc, and, ne, isNotNull } from "drizzle-orm";
 import { parseChipplyEmail, isEmptyParse } from "../lib/chipply/parseEmail";
+import {
+  parseCsvRows,
+  detectCsvKind,
+  parseSalesReportCsv,
+  parseMarginReportCsv,
+} from "../lib/chipply/parseCsv";
 import {
   findCandidates,
   listDetectedGroups,
@@ -46,7 +57,7 @@ async function customerCompanies(
   return map;
 }
 
-function storeJson(s: StoreRow, companies: Map<string, string>) {
+export function storeJson(s: StoreRow, companies: Map<string, string>) {
   return {
     id: s.id,
     eventId: s.eventId,
@@ -58,6 +69,28 @@ function storeJson(s: StoreRow, companies: Map<string, string>) {
     numProducts: s.numProducts,
     totalDollars: s.totalDollars,
     fundraising: s.fundraising,
+    salesperson: s.salesperson,
+    organizationName: s.organizationName,
+    openedAt: s.openedAt,
+    orgFee: s.orgFee,
+    productCost: s.productCost,
+    productPrice: s.productPrice,
+    processPrice: s.processPrice,
+    combinedPrice: s.combinedPrice,
+    optionFees: s.optionFees,
+    sizeUpcharges: s.sizeUpcharges,
+    tax: s.tax,
+    shipping: s.shipping,
+    handlingFee: s.handlingFee,
+    manualAdjustment: s.manualAdjustment,
+    orderTotal: s.orderTotal,
+    paymentCard: s.paymentCard,
+    paymentKlarna: s.paymentKlarna,
+    paymentEcert: s.paymentEcert,
+    paymentPo: s.paymentPo,
+    paymentPromo: s.paymentPromo,
+    chipplyFee: s.chipplyFee,
+    ccProcessingFee: s.ccProcessingFee,
     pvCustomerId: s.pvCustomerId,
     pvCustomerCompany: s.pvCustomerId
       ? (companies.get(s.pvCustomerId) ?? null)
@@ -74,6 +107,21 @@ function moneyToDb(v: unknown): string | null | undefined {
   if (v === null) return null;
   if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 10_000_000) {
     throw new Error("Money values must be non-negative numbers");
+  }
+  return v.toFixed(2);
+}
+
+/** Like moneyToDb but allows negatives (manual adjustments can be credits). */
+function signedMoneyToDb(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (
+    typeof v !== "number" ||
+    !Number.isFinite(v) ||
+    v < -10_000_000 ||
+    v > 10_000_000
+  ) {
+    throw new Error("Money values must be finite numbers");
   }
   return v.toFixed(2);
 }
@@ -130,6 +178,62 @@ function readStoreFields(body: Record<string, unknown>) {
   if (totalDollars !== undefined) out.totalDollars = totalDollars;
   const fundraising = moneyToDb(body.fundraising);
   if (fundraising !== undefined) out.fundraising = fundraising;
+  if (body.financials !== undefined && body.financials !== null) {
+    if (typeof body.financials !== "object") {
+      throw new Error("financials must be an object");
+    }
+    Object.assign(
+      out,
+      readFinancialFields(body.financials as Record<string, unknown>),
+    );
+  }
+  return out;
+}
+
+/**
+ * SalesReport CSV financial columns (nested under `financials` in
+ * create/patch bodies). All optional; only supplied keys are written.
+ */
+function readFinancialFields(fin: Record<string, unknown>) {
+  const out: Partial<typeof chipplyStoresTable.$inferInsert> = {};
+  const salesperson = textField(fin.salesperson, 200);
+  if (salesperson !== undefined) out.salesperson = salesperson;
+  const organizationName = textField(fin.organizationName, 200);
+  if (organizationName !== undefined) out.organizationName = organizationName;
+  const openedAt = textField(fin.openedAt, 10);
+  if (openedAt !== undefined) {
+    if (openedAt !== null && !DATE_RE.test(openedAt)) {
+      throw new Error("openedAt must be YYYY-MM-DD");
+    }
+    out.openedAt = openedAt;
+  }
+  const moneyCols = [
+    "orgFee",
+    "productCost",
+    "productPrice",
+    "processPrice",
+    "combinedPrice",
+    "optionFees",
+    "sizeUpcharges",
+    "tax",
+    "shipping",
+    "handlingFee",
+    "orderTotal",
+    "paymentCard",
+    "paymentKlarna",
+    "paymentEcert",
+    "paymentPo",
+    "paymentPromo",
+    "chipplyFee",
+    "ccProcessingFee",
+  ] as const;
+  for (const col of moneyCols) {
+    const v = moneyToDb(fin[col]);
+    if (v !== undefined) out[col] = v;
+  }
+  // Manual adjustment is the one field that can be negative (a credit).
+  const manualAdjustment = signedMoneyToDb(fin.manualAdjustment);
+  if (manualAdjustment !== undefined) out.manualAdjustment = manualAdjustment;
   return out;
 }
 
@@ -181,6 +285,123 @@ router.post("/chipply/parse-email", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "chipply parse-email failed");
     res.status(500).json({ error: "Failed to parse email" });
+  }
+});
+
+// ── Parse uploaded CSV export (no write) ────────────────────────────
+
+const numOrNull = (v: string | null): number | null =>
+  v == null ? null : Number(v);
+
+router.post("/chipply/parse-file", async (req, res) => {
+  const fileText =
+    typeof req.body?.fileText === "string" ? req.body.fileText : "";
+  if (fileText.trim().length < 10 || fileText.length > 200000) {
+    res.status(400).json({ error: "Upload a Chipply CSV export (10-200000 chars)" });
+    return;
+  }
+  try {
+    const headerRow = parseCsvRows(fileText)[0] ?? [];
+    const kind = detectCsvKind(headerRow);
+    if (kind === "unknown") {
+      res.status(400).json({
+        error:
+          "That file doesn't look like a Chipply SalesReport or Margin Report CSV export",
+      });
+      return;
+    }
+
+    if (kind === "margin_report") {
+      const rows = parseMarginReportCsv(fileText);
+      if (rows.length === 0) {
+        res.status(400).json({ error: "No style rows found in that Margin Report" });
+        return;
+      }
+      res.json({
+        kind,
+        salesReport: null,
+        namedRowCount: 0,
+        marginRows: rows.map((r) => ({
+          vendorName: r.vendorName,
+          style: r.style,
+          productName: r.productName,
+          purchases: r.purchases,
+          totalSale: numOrNull(r.totalSale),
+          totalCost: numOrNull(r.totalCost),
+          totalProfit: numOrNull(r.totalProfit),
+        })),
+        candidates: [],
+        existingStore: null,
+      });
+      return;
+    }
+
+    const { parsed, namedRowCount } = parseSalesReportCsv(fileText);
+    if (!parsed || !parsed.storeName) {
+      res.status(400).json({ error: "No store row found in that SalesReport" });
+      return;
+    }
+
+    const candidates = await findCandidates(parsed.storeName);
+
+    // Duplicate check — the CSV carries the real event id, so prefer an
+    // exact event-id match, then fall back to normalized store name.
+    let existing: StoreRow | null = null;
+    const stores = await db
+      .select()
+      .from(chipplyStoresTable)
+      .where(eq(chipplyStoresTable.archived, false));
+    existing =
+      (parsed.eventId
+        ? stores.find((s) => s.eventId === parsed.eventId)
+        : undefined) ??
+      stores.find(
+        (s) =>
+          parsed.storeName &&
+          normalizeName(s.storeName) === normalizeName(parsed.storeName),
+      ) ??
+      null;
+
+    const companies = await customerCompanies([existing?.pvCustomerId ?? null]);
+    res.json({
+      kind,
+      salesReport: {
+        storeName: parsed.storeName,
+        eventId: parsed.eventId,
+        openedAt: parsed.openedAt,
+        closedAt: parsed.closedAt,
+        salesperson: parsed.salesperson,
+        organizationName: parsed.organizationName,
+        orgFee: numOrNull(parsed.orgFee),
+        productCost: numOrNull(parsed.productCost),
+        productPrice: numOrNull(parsed.productPrice),
+        processPrice: numOrNull(parsed.processPrice),
+        combinedPrice: numOrNull(parsed.combinedPrice),
+        optionFees: numOrNull(parsed.optionFees),
+        sizeUpcharges: numOrNull(parsed.sizeUpcharges),
+        fundraising: numOrNull(parsed.fundraising),
+        tax: numOrNull(parsed.tax),
+        shipping: numOrNull(parsed.shipping),
+        handlingFee: numOrNull(parsed.handlingFee),
+        manualAdjustment: numOrNull(parsed.manualAdjustment),
+        orderTotal: numOrNull(parsed.orderTotal),
+        paymentCard: numOrNull(parsed.paymentCard),
+        paymentKlarna: numOrNull(parsed.paymentKlarna),
+        paymentEcert: numOrNull(parsed.paymentEcert),
+        paymentPo: numOrNull(parsed.paymentPo),
+        paymentPromo: numOrNull(parsed.paymentPromo),
+        chipplyFee: numOrNull(parsed.chipplyFee),
+        ccProcessingFee: numOrNull(parsed.ccProcessingFee),
+        totalDollarsGuess: numOrNull(parsed.totalDollarsGuess),
+      },
+      namedRowCount,
+      marginRows: null,
+      candidates,
+      existingStore: existing ? storeJson(existing, companies) : null,
+    });
+  } catch (err) {
+    req.log.error({ err }, "chipply parse-file failed");
+    res.status(500).json({ error: "Failed to parse file" });
   }
 });
 
@@ -274,12 +495,22 @@ router.get("/chipply/stores/:id", async (req, res) => {
       res.status(404).json({ error: "Store not found" });
       return;
     }
-    const [companies, invoices, styles] = await Promise.all([
+    const [companies, invoices, styles, marginRows] = await Promise.all([
       customerCompanies([store.pvCustomerId]),
       store.eventId ? listLinkedInvoices(store.eventId) : Promise.resolve([]),
       store.eventId ? aggregateStyles(store.eventId) : Promise.resolve([]),
+      db
+        .select()
+        .from(chipplyStoreStylesTable)
+        .where(eq(chipplyStoreStylesTable.storeId, id))
+        .orderBy(asc(chipplyStoreStylesTable.vendorName), asc(chipplyStoreStylesTable.style)),
     ]);
-    res.json({ store: storeJson(store, companies), invoices, styles });
+    res.json({
+      store: storeJson(store, companies),
+      invoices,
+      styles,
+      marginStyles: marginRows.map(styleJson),
+    });
   } catch (err) {
     req.log.error({ err }, "get chipply store failed");
     res.status(500).json({ error: "Failed to load store" });
@@ -352,6 +583,92 @@ router.patch("/chipply/stores/:id", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "update chipply store failed");
     res.status(500).json({ error: "Failed to update store" });
+  }
+});
+
+// ── Margin-report style rows (replace-on-reimport) ──────────────────
+
+type StyleRow = typeof chipplyStoreStylesTable.$inferSelect;
+
+function styleJson(r: StyleRow) {
+  return {
+    id: r.id,
+    vendorName: r.vendorName,
+    style: r.style,
+    productName: r.productName,
+    purchases: r.purchases,
+    totalSale: r.totalSale,
+    totalCost: r.totalCost,
+    totalProfit: r.totalProfit,
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
+router.post("/chipply/stores/:id/styles", async (req, res) => {
+  const { id } = req.params;
+  if (!UUID_RE.test(id)) {
+    res.status(404).json({ error: "Store not found" });
+    return;
+  }
+  const rowsRaw = req.body?.rows;
+  if (!Array.isArray(rowsRaw) || rowsRaw.length === 0 || rowsRaw.length > 1000) {
+    res.status(400).json({ error: "rows must be a non-empty array (max 1000)" });
+    return;
+  }
+  let values: (typeof chipplyStoreStylesTable.$inferInsert)[];
+  try {
+    values = rowsRaw.map((raw: unknown) => {
+      if (typeof raw !== "object" || raw === null) {
+        throw new Error("Each row must be an object");
+      }
+      const r = raw as Record<string, unknown>;
+      const row: typeof chipplyStoreStylesTable.$inferInsert = {
+        storeId: id,
+        vendorName: textField(r.vendorName, 200) ?? null,
+        style: textField(r.style, 100) ?? null,
+        productName: textField(r.productName, 300) ?? null,
+        purchases: intField(r.purchases) ?? null,
+        // Sale/cost can't be negative; profit can (sold below cost).
+        totalSale: moneyToDb(r.totalSale) ?? null,
+        totalCost: moneyToDb(r.totalCost) ?? null,
+        totalProfit: signedMoneyToDb(r.totalProfit) ?? null,
+      };
+      if (!row.vendorName && !row.style && !row.productName) {
+        throw new Error("Each row needs a vendor, style, or product name");
+      }
+      return row;
+    });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Invalid rows" });
+    return;
+  }
+  try {
+    const [store] = await db
+      .select({ id: chipplyStoresTable.id })
+      .from(chipplyStoresTable)
+      .where(eq(chipplyStoresTable.id, id))
+      .limit(1);
+    if (!store) {
+      res.status(404).json({ error: "Store not found" });
+      return;
+    }
+    // Full-snapshot semantics: the export is the complete style list, so
+    // replace everything in one transaction.
+    const inserted = await db.transaction(async (tx) => {
+      await tx
+        .delete(chipplyStoreStylesTable)
+        .where(eq(chipplyStoreStylesTable.storeId, id));
+      return tx.insert(chipplyStoreStylesTable).values(values).returning();
+    });
+    inserted.sort(
+      (a, b) =>
+        (a.vendorName ?? "").localeCompare(b.vendorName ?? "") ||
+        (a.style ?? "").localeCompare(b.style ?? ""),
+    );
+    res.json({ styles: inserted.map(styleJson) });
+  } catch (err) {
+    req.log.error({ err }, "replace chipply store styles failed");
+    res.status(500).json({ error: "Failed to save margin rows" });
   }
 });
 

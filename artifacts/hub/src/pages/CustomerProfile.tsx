@@ -30,7 +30,9 @@ import {
   Briefcase,
   Search,
   Shirt,
+  Store,
 } from "lucide-react";
+import { fmtMoney, fmtDate } from "./ChipplyStores";
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -267,6 +269,97 @@ export default function CustomerProfile() {
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+        ) : null}
+
+        {data.chipplyStores.length > 0 ? (
+          <div>
+            <h2 className="text-sm font-semibold text-slate-200 mb-2 inline-flex items-center gap-1.5">
+              <Store size={14} className="text-emerald-400" /> Chipply web stores
+              <span className="text-[10px] font-bold uppercase tracking-wide bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 rounded px-1.5 py-0.5">
+                separate from Printavo revenue
+              </span>
+            </h2>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-left text-xs text-slate-400">
+                      <th className="px-4 py-2 font-semibold">Store</th>
+                      <th className="px-4 py-2 font-semibold">Event #</th>
+                      <th className="px-4 py-2 font-semibold">Closed</th>
+                      <th className="px-4 py-2 font-semibold text-right">Orders</th>
+                      <th className="px-4 py-2 font-semibold text-right">Total dollars</th>
+                      <th className="px-4 py-2 font-semibold text-right">Fundraising</th>
+                      <th className="px-4 py-2 font-semibold text-right">Invoices</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.chipplyStores.map(({ store, linkedInvoiceCount }) => (
+                      <tr
+                        key={store.id}
+                        className="border-b border-slate-800/60"
+                      >
+                        <td className="px-4 py-2">
+                          <Link
+                            href={`/chipply/${store.id}`}
+                            className="text-emerald-400 hover:underline font-semibold"
+                          >
+                            {store.storeName}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2 text-slate-400 whitespace-nowrap">
+                          {store.eventId ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-slate-300 whitespace-nowrap">
+                          {fmtDate(store.closedAt)}
+                        </td>
+                        <td className="px-4 py-2 text-right text-slate-200 tabular-nums">
+                          {store.numOrders ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-right text-slate-200 tabular-nums">
+                          {fmtMoney(store.totalDollars)}
+                        </td>
+                        <td className="px-4 py-2 text-right text-slate-300 tabular-nums">
+                          {fmtMoney(store.fundraising)}
+                        </td>
+                        <td className="px-4 py-2 text-right text-slate-300 tabular-nums">
+                          {linkedInvoiceCount}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-800/40 font-semibold">
+                      <td className="px-4 py-2 text-slate-300" colSpan={4}>
+                        Total Chipply dollars
+                      </td>
+                      <td className="px-4 py-2 text-right text-white tabular-nums">
+                        {fmtMoney(
+                          data.chipplyStores.reduce(
+                            (sum, s) =>
+                              sum + (Number(s.store.totalDollars) || 0),
+                            0,
+                          ),
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-right text-slate-200 tabular-nums">
+                        {fmtMoney(
+                          data.chipplyStores.reduce(
+                            (sum, s) => sum + (Number(s.store.fundraising) || 0),
+                            0,
+                          ),
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-right text-slate-200 tabular-nums">
+                        {data.chipplyStores.reduce(
+                          (sum, s) => sum + s.linkedInvoiceCount,
+                          0,
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         ) : null}

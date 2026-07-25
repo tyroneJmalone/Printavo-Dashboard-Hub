@@ -17,6 +17,31 @@ export interface ChipplyStore {
   numProducts: number | null;
   totalDollars: string | null;
   fundraising: string | null;
+  salesperson: string | null;
+  organizationName: string | null;
+  /** YYYY-MM-DD */
+  openedAt: string | null;
+  orgFee: string | null;
+  productCost: string | null;
+  productPrice: string | null;
+  processPrice: string | null;
+  combinedPrice: string | null;
+  optionFees: string | null;
+  sizeUpcharges: string | null;
+  tax: string | null;
+  shipping: string | null;
+  handlingFee: string | null;
+  /** May be negative (a credit) */
+  manualAdjustment: string | null;
+  /** Includes shipping/handling/tax — NOT the same as totalDollars (sell price) */
+  orderTotal: string | null;
+  paymentCard: string | null;
+  paymentKlarna: string | null;
+  paymentEcert: string | null;
+  paymentPo: string | null;
+  paymentPromo: string | null;
+  chipplyFee: string | null;
+  ccProcessingFee: string | null;
   pvCustomerId: string | null;
   pvCustomerCompany: string | null;
   notes: string | null;

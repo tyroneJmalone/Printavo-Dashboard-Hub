@@ -46,6 +46,7 @@ import type {
   ChangeEventItem,
   ChipplyStoreDetailResponse,
   ChipplyStoreEnvelope,
+  ChipplyStoreStylesResponse,
   ChipplyStoresResponse,
   Comment,
   CommentInput,
@@ -132,6 +133,8 @@ import type {
   OrdersReport,
   ParseChipplyEmailRequest,
   ParseChipplyEmailResponse,
+  ParseChipplyFileRequest,
+  ParseChipplyFileResponse,
   PaymentsReport,
   PaymentsStats,
   PoFile,
@@ -163,6 +166,7 @@ import type {
   RedemptionInput,
   RedemptionResult,
   ReorderStatusRulesRequest,
+  ReplaceChipplyStoreStylesRequest,
   ReportFilterOptions,
   ReportSummary,
   RewardAward,
@@ -5532,6 +5536,76 @@ export const useParseChipplyEmail = <TError = ErrorType<ErrorResponse>,
       return useMutation(getParseChipplyEmailMutationOptions(options));
     }
 
+export const getParseChipplyFileUrl = () => {
+
+
+
+
+  return `/api/chipply/parse-file`
+}
+
+/**
+ * @summary Parse an uploaded Chipply CSV export (SalesReport or Margin Report) — no write
+ */
+export const parseChipplyFile = async (parseChipplyFileRequest: ParseChipplyFileRequest, options?: RequestInit): Promise<ParseChipplyFileResponse> => {
+
+  return customFetch<ParseChipplyFileResponse>(getParseChipplyFileUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(parseChipplyFileRequest)
+  }
+);}
+
+
+
+
+export const getParseChipplyFileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseChipplyFile>>, TError,{data: BodyType<ParseChipplyFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof parseChipplyFile>>, TError,{data: BodyType<ParseChipplyFileRequest>}, TContext> => {
+
+const mutationKey = ['parseChipplyFile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof parseChipplyFile>>, {data: BodyType<ParseChipplyFileRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  parseChipplyFile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ParseChipplyFileMutationResult = NonNullable<Awaited<ReturnType<typeof parseChipplyFile>>>
+    export type ParseChipplyFileMutationBody = BodyType<ParseChipplyFileRequest>
+    export type ParseChipplyFileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Parse an uploaded Chipply CSV export (SalesReport or Margin Report) — no write
+ */
+export const useParseChipplyFile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseChipplyFile>>, TError,{data: BodyType<ParseChipplyFileRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof parseChipplyFile>>,
+        TError,
+        {data: BodyType<ParseChipplyFileRequest>},
+        TContext
+      > => {
+      return useMutation(getParseChipplyFileMutationOptions(options));
+    }
+
 export const getListChipplyStoresUrl = (params?: ListChipplyStoresParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -5832,6 +5906,77 @@ export const useUpdateChipplyStore = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getUpdateChipplyStoreMutationOptions(options));
+    }
+
+export const getReplaceChipplyStoreStylesUrl = (id: string,) => {
+
+
+
+
+  return `/api/chipply/stores/${id}/styles`
+}
+
+/**
+ * @summary Replace the store's Chipply margin-report rows (full-snapshot semantics — delete + insert in one transaction)
+ */
+export const replaceChipplyStoreStyles = async (id: string,
+    replaceChipplyStoreStylesRequest: ReplaceChipplyStoreStylesRequest, options?: RequestInit): Promise<ChipplyStoreStylesResponse> => {
+
+  return customFetch<ChipplyStoreStylesResponse>(getReplaceChipplyStoreStylesUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(replaceChipplyStoreStylesRequest)
+  }
+);}
+
+
+
+
+export const getReplaceChipplyStoreStylesMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceChipplyStoreStyles>>, TError,{id: string;data: BodyType<ReplaceChipplyStoreStylesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replaceChipplyStoreStyles>>, TError,{id: string;data: BodyType<ReplaceChipplyStoreStylesRequest>}, TContext> => {
+
+const mutationKey = ['replaceChipplyStoreStyles'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replaceChipplyStoreStyles>>, {id: string;data: BodyType<ReplaceChipplyStoreStylesRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  replaceChipplyStoreStyles(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplaceChipplyStoreStylesMutationResult = NonNullable<Awaited<ReturnType<typeof replaceChipplyStoreStyles>>>
+    export type ReplaceChipplyStoreStylesMutationBody = BodyType<ReplaceChipplyStoreStylesRequest>
+    export type ReplaceChipplyStoreStylesMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Replace the store's Chipply margin-report rows (full-snapshot semantics — delete + insert in one transaction)
+ */
+export const useReplaceChipplyStoreStyles = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replaceChipplyStoreStyles>>, TError,{id: string;data: BodyType<ReplaceChipplyStoreStylesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replaceChipplyStoreStyles>>,
+        TError,
+        {id: string;data: BodyType<ReplaceChipplyStoreStylesRequest>},
+        TContext
+      > => {
+      return useMutation(getReplaceChipplyStoreStylesMutationOptions(options));
     }
 
 export const getListDetectedChipplyStoresUrl = () => {

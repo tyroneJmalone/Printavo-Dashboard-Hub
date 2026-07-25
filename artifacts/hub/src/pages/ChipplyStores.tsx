@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import {
@@ -7,11 +7,17 @@ import {
   useListDetectedChipplyStores,
   getListDetectedChipplyStoresQueryKey,
   useParseChipplyEmail,
+  useParseChipplyFile,
   useCreateChipplyStore,
+  useUpdateChipplyStore,
+  getGetChipplyStoreQueryKey,
   type ChipplyParsedEmail,
+  type ChipplyParsedSalesReport,
   type ChipplyStoreCandidate,
   type ChipplyStore,
+  type ChipplyStoreFinancialsInput,
   type CreateChipplyStoreRequest,
+  type UpdateChipplyStoreRequest,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -34,6 +40,9 @@ import {
   Radar,
   ArrowRight,
   CheckCircle2,
+  Upload,
+  FileSpreadsheet,
+  RefreshCcw,
 } from "lucide-react";
 
 const inputCls =
@@ -114,6 +123,65 @@ function draftFromParse(p: ChipplyParsedEmail): DraftFields {
   };
 }
 
+/** Total dollars prefills from the sell-price guess (combined + upcharges +
+ * fundraising) — editable, since the CSV has no literal "Total Dollars". */
+function draftFromSalesReport(sr: ChipplyParsedSalesReport): DraftFields {
+  return {
+    storeName: sr.storeName ?? "",
+    eventId: sr.eventId ?? "",
+    orgContact: "",
+    storeAdmin: "",
+    closedAt: sr.closedAt ?? "",
+    numOrders: "",
+    numProducts: "",
+    totalDollars:
+      sr.totalDollarsGuess !== null ? sr.totalDollarsGuess.toFixed(2) : "",
+    fundraising: sr.fundraising !== null ? sr.fundraising.toFixed(2) : "",
+    pvCustomerId: null,
+  };
+}
+
+function financialsFromSalesReport(
+  sr: ChipplyParsedSalesReport,
+): ChipplyStoreFinancialsInput {
+  return {
+    salesperson: sr.salesperson,
+    organizationName: sr.organizationName,
+    openedAt: sr.openedAt,
+    orgFee: sr.orgFee,
+    productCost: sr.productCost,
+    productPrice: sr.productPrice,
+    processPrice: sr.processPrice,
+    combinedPrice: sr.combinedPrice,
+    optionFees: sr.optionFees,
+    sizeUpcharges: sr.sizeUpcharges,
+    tax: sr.tax,
+    shipping: sr.shipping,
+    handlingFee: sr.handlingFee,
+    manualAdjustment: sr.manualAdjustment,
+    orderTotal: sr.orderTotal,
+    paymentCard: sr.paymentCard,
+    paymentKlarna: sr.paymentKlarna,
+    paymentEcert: sr.paymentEcert,
+    paymentPo: sr.paymentPo,
+    paymentPromo: sr.paymentPromo,
+    chipplyFee: sr.chipplyFee,
+    ccProcessingFee: sr.ccProcessingFee,
+  };
+}
+
+/** Read an uploaded CSV client-side; enforce the API's size cap up front. */
+export async function readCsvFile(file: File): Promise<string> {
+  const text = await file.text();
+  if (text.trim().length < 10) {
+    throw new Error("That file looks empty.");
+  }
+  if (text.length > 200_000) {
+    throw new Error("That file is too large to be a Chipply export.");
+  }
+  return text;
+}
+
 export function ImportEmailDialog({
   open,
   onOpenChange,
@@ -155,10 +223,22 @@ export function ImportEmailDialog({
   const [selectedEventId, setSelectedEventId] = useState<string | null>(
     prefill?.eventId ?? null,
   );
+  // File-upload (SalesReport CSV) flow: keeps the full financials block to
+  // send along on save, plus banners the paste flow never needs.
+  const [source, setSource] = useState<"email" | "file">("email");
+  const [financials, setFinancials] =
+    useState<ChipplyStoreFinancialsInput | null>(null);
+  const [marginNotice, setMarginNotice] = useState(false);
+  const [multiRowWarning, setMultiRowWarning] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseMutation = useParseChipplyEmail({
     mutation: {
       onSuccess: (data) => {
+        setSource("email");
+        setFinancials(null);
+        setMarginNotice(false);
+        setMultiRowWarning(false);
         setDraft(draftFromParse(data.parsed));
         setCandidates(data.candidates);
         setExistingStore(data.existingStore);
@@ -187,6 +267,74 @@ export function ImportEmailDialog({
     },
   });
 
+  const parseFileMutation = useParseChipplyFile({
+    mutation: {
+      onSuccess: (data) => {
+        if (data.kind === "margin_report") {
+          // Margin Reports carry no store identifier — they attach to a
+          // specific store from that store's detail page.
+          setMarginNotice(true);
+          return;
+        }
+        const sr = data.salesReport;
+        if (!sr) {
+          toast({
+            title: "Couldn't read that file",
+            description: "No store row found in the SalesReport.",
+            variant: "destructive",
+          });
+          return;
+        }
+        setSource("file");
+        setMarginNotice(false);
+        setFinancials(financialsFromSalesReport(sr));
+        setMultiRowWarning(data.namedRowCount > 1);
+        setCandidates(data.candidates);
+        setExistingStore(data.existingStore);
+        const base = draftFromSalesReport(sr);
+        // The CSV names its own event id — auto-link the matching invoice
+        // batch when one exists.
+        const match = sr.eventId
+          ? data.candidates.find((c) => c.eventId === sr.eventId)
+          : null;
+        if (match) {
+          setSelectedEventId(match.eventId);
+          setDraft({
+            ...base,
+            eventId: match.eventId,
+            pvCustomerId: match.customerId,
+          });
+        } else {
+          setSelectedEventId(null);
+          setDraft(base);
+        }
+        setStep("review");
+      },
+      onError: (err) =>
+        toast({
+          title: "Couldn't read that file",
+          description: extractError(err),
+          variant: "destructive",
+        }),
+    },
+  });
+
+  async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const fileText = await readCsvFile(file);
+      parseFileMutation.mutate({ data: { fileText } });
+    } catch (err) {
+      toast({
+        title: "Couldn't read that file",
+        description: err instanceof Error ? err.message : "Unreadable file",
+        variant: "destructive",
+      });
+    }
+  }
+
   const createMutation = useCreateChipplyStore({
     mutation: {
       onSuccess: (data) => {
@@ -205,6 +353,33 @@ export function ImportEmailDialog({
       onError: (err) =>
         toast({
           title: "Import failed",
+          description: extractError(err),
+          variant: "destructive",
+        }),
+    },
+  });
+
+  const updateMutation = useUpdateChipplyStore({
+    mutation: {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({
+          queryKey: getListChipplyStoresQueryKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: getListDetectedChipplyStoresQueryKey(),
+        });
+        queryClient.invalidateQueries({
+          queryKey: getGetChipplyStoreQueryKey(data.store.id),
+        });
+        toast({
+          title: "Store updated",
+          description: `${data.store.storeName} refreshed from the SalesReport.`,
+        });
+        handleOpenChange(false);
+      },
+      onError: (err) =>
+        toast({
+          title: "Update failed",
           description: extractError(err),
           variant: "destructive",
         }),
@@ -235,6 +410,10 @@ export function ImportEmailDialog({
       setCandidates([]);
       setExistingStore(null);
       setSelectedEventId(null);
+      setSource("email");
+      setFinancials(null);
+      setMarginNotice(false);
+      setMultiRowWarning(false);
     }
   }
 
@@ -242,7 +421,9 @@ export function ImportEmailDialog({
     setDraft((d) => (d ? { ...d, [key]: value } : d));
   }
 
-  function handleCreate() {
+  const saving = createMutation.isPending || updateMutation.isPending;
+
+  function handleSave() {
     if (!draft) return;
     const name = draft.storeName.trim();
     if (!name) {
@@ -270,6 +451,26 @@ export function ImportEmailDialog({
       });
       return;
     }
+
+    if (existingStore) {
+      // Update mode — refresh the existing store instead of creating a
+      // duplicate. Blank fields are OMITTED so values that only live in the
+      // closing email (org contact, store admin, # orders…) are retained.
+      const body: UpdateChipplyStoreRequest = { storeName: name };
+      if (draft.eventId.trim()) body.eventId = draft.eventId.trim();
+      if (draft.orgContact.trim()) body.orgContact = draft.orgContact.trim();
+      if (draft.storeAdmin.trim()) body.storeAdmin = draft.storeAdmin.trim();
+      if (draft.closedAt.trim()) body.closedAt = draft.closedAt.trim();
+      if (nums.numOrders !== null) body.numOrders = nums.numOrders;
+      if (nums.numProducts !== null) body.numProducts = nums.numProducts;
+      if (nums.totalDollars !== null) body.totalDollars = nums.totalDollars;
+      if (nums.fundraising !== null) body.fundraising = nums.fundraising;
+      if (financials) body.financials = financials;
+      if (draft.pvCustomerId) body.pvCustomerId = draft.pvCustomerId;
+      updateMutation.mutate({ id: existingStore.id, data: body });
+      return;
+    }
+
     const body: CreateChipplyStoreRequest = {
       storeName: name,
       eventId: draft.eventId.trim() || null,
@@ -277,8 +478,9 @@ export function ImportEmailDialog({
       storeAdmin: draft.storeAdmin.trim() || null,
       closedAt: draft.closedAt.trim() || null,
       ...nums,
+      financials,
       pvCustomerId: draft.pvCustomerId,
-      rawSource: emailText.trim() || null,
+      rawSource: source === "email" ? emailText.trim() || null : null,
     };
     createMutation.mutate({ data: body });
   }
@@ -293,7 +495,7 @@ export function ImportEmailDialog({
           </DialogTitle>
           <DialogDescription className="text-slate-400">
             {step === "paste"
-              ? 'Paste the full "Web Store Closed" email — everything gets read automatically, and you review before saving.'
+              ? 'Paste the full "Web Store Closed" email or upload a SalesReport CSV from the Chipply portal — everything gets read automatically, and you review before saving.'
               : "Check the details below, pick the matching Printavo invoices, then save."}
           </DialogDescription>
         </DialogHeader>
@@ -306,7 +508,38 @@ export function ImportEmailDialog({
               placeholder={'Paste the whole email here, e.g.\n\nFuel Summer - Web Store Closed\nOrganization Contact: ...\nNumber of Orders: ...\nTotal Dollars: ...'}
               className="min-h-[220px] bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 font-mono text-xs"
             />
-            <DialogFooter>
+            {marginNotice && (
+              <div className="flex items-start gap-2 bg-amber-950/40 border border-amber-800/50 rounded-lg px-3 py-2.5 text-sm text-amber-200">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                <span>
+                  That file is a <strong>Margin Report</strong> (per-style
+                  costs). It doesn't say which store it belongs to, so upload
+                  it from that store's own page instead — open the store and
+                  use "Upload margin report".
+                </span>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleFilePicked}
+              className="hidden"
+            />
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={parseFileMutation.isPending}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+              >
+                {parseFileMutation.isPending ? (
+                  <Loader2 size={16} className="animate-spin mr-1.5" />
+                ) : (
+                  <Upload size={16} className="mr-1.5" />
+                )}
+                Upload SalesReport CSV
+              </Button>
               <Button
                 onClick={() => parseMutation.mutate({ data: { emailText } })}
                 disabled={emailText.trim().length < 10 || parseMutation.isPending}
@@ -326,10 +559,10 @@ export function ImportEmailDialog({
         {step === "review" && draft && (
           <div className="space-y-4">
             {existingStore && (
-              <div className="flex items-start gap-2 bg-amber-950/40 border border-amber-800/50 rounded-lg px-3 py-2.5 text-sm text-amber-200">
-                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <div className="flex items-start gap-2 bg-emerald-950/40 border border-emerald-800/50 rounded-lg px-3 py-2.5 text-sm text-emerald-200">
+                <RefreshCcw size={16} className="mt-0.5 shrink-0" />
                 <span>
-                  This store looks like it was already imported as{" "}
+                  This store is already imported as{" "}
                   <Link
                     href={`/chipply/${existingStore.id}`}
                     className="underline font-semibold"
@@ -337,8 +570,19 @@ export function ImportEmailDialog({
                   >
                     {existingStore.storeName}
                   </Link>
-                  {existingStore.eventId ? ` (event ${existingStore.eventId})` : ""}. Saving again
-                  will create a duplicate.
+                  {existingStore.eventId ? ` (event ${existingStore.eventId})` : ""}. Saving will{" "}
+                  <strong>update it</strong> — no duplicate is created, and
+                  fields left blank here keep their current values.
+                </span>
+              </div>
+            )}
+            {multiRowWarning && (
+              <div className="flex items-start gap-2 bg-amber-950/40 border border-amber-800/50 rounded-lg px-3 py-2.5 text-sm text-amber-200">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                <span>
+                  This file listed more than one store — only the first one is
+                  shown here. Export one store per SalesReport to import the
+                  others.
                 </span>
               </div>
             )}
@@ -411,6 +655,39 @@ export function ImportEmailDialog({
               </div>
             </div>
 
+            {financials && (
+              <div className="rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2.5">
+                <p className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5 mb-1.5">
+                  <FileSpreadsheet size={12} className="text-[#059669]" />
+                  SalesReport financials (saved with the store)
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-xs">
+                  {(
+                    [
+                      ["Order total", financials.orderTotal],
+                      ["Product cost", financials.productCost],
+                      ["Product price", financials.productPrice],
+                      ["Chipply fee", financials.chipplyFee],
+                      ["CC processing", financials.ccProcessingFee],
+                      ["Shipping", financials.shipping],
+                      ["Handling", financials.handlingFee],
+                      ["Tax", financials.tax],
+                      ["Org fee", financials.orgFee],
+                    ] as const
+                  )
+                    .filter(([, v]) => v !== null && v !== undefined)
+                    .map(([label, v]) => (
+                      <div key={label} className="flex justify-between gap-2">
+                        <span className="text-slate-400">{label}</span>
+                        <span className="text-slate-200 font-mono">
+                          {fmtMoney(v as number)}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <label className={labelCls}>
                 <span className="flex items-center gap-1.5">
@@ -471,14 +748,12 @@ export function ImportEmailDialog({
                 </Button>
               )}
               <Button
-                onClick={handleCreate}
-                disabled={createMutation.isPending || !draft.storeName.trim()}
+                onClick={handleSave}
+                disabled={saving || !draft.storeName.trim()}
                 className="bg-[#059669] hover:bg-[#047857] text-white"
               >
-                {createMutation.isPending && (
-                  <Loader2 size={16} className="animate-spin mr-1.5" />
-                )}
-                Save store
+                {saving && <Loader2 size={16} className="animate-spin mr-1.5" />}
+                {existingStore ? "Update store" : "Save store"}
               </Button>
             </DialogFooter>
           </div>
@@ -521,8 +796,8 @@ export default function ChipplyStores() {
               Chipply Stores
             </h1>
             <p className="text-sm text-slate-400 mt-0.5">
-              Web store totals imported from Chipply closing emails — kept separate from Printavo
-              invoice revenue.
+              Web store totals imported from Chipply closing emails or SalesReport CSVs — kept
+              separate from Printavo invoice revenue.
             </p>
           </div>
           <Button
@@ -530,9 +805,53 @@ export default function ChipplyStores() {
             className="bg-[#059669] hover:bg-[#047857] text-white"
           >
             <ClipboardPaste size={16} className="mr-1.5" />
-            Import from email
+            Import store
           </Button>
         </div>
+
+        {stores.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {(
+              [
+                ["Stores", String(stores.length)],
+                [
+                  "Total dollars",
+                  fmtMoney(
+                    stores.reduce(
+                      (sum, s) => sum + (Number(s.store.totalDollars) || 0),
+                      0,
+                    ),
+                  ),
+                ],
+                [
+                  "Fundraising",
+                  fmtMoney(
+                    stores.reduce(
+                      (sum, s) => sum + (Number(s.store.fundraising) || 0),
+                      0,
+                    ),
+                  ),
+                ],
+                [
+                  "Linked invoices",
+                  String(
+                    stores.reduce((sum, s) => sum + s.linkedInvoiceCount, 0),
+                  ),
+                ],
+              ] as const
+            ).map(([label, value]) => (
+              <div
+                key={label}
+                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3"
+              >
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
+                  {label}
+                </p>
+                <p className="text-lg font-bold text-white mt-0.5">{value}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="flex gap-1.5">
           <button

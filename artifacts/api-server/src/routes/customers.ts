@@ -1,6 +1,9 @@
 import { Router, type IRouter } from "express";
-import { pool } from "@workspace/db";
+import { pool, db, chipplyStoresTable } from "@workspace/db";
+import { eq, desc, and } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/requireStaff";
+import { storeJson } from "./chipply";
+import { countLinkedInvoices } from "../lib/chipply/matching";
 
 /**
  * Client 360 — customer directory, niche categories, and niche reporting.
@@ -513,6 +516,25 @@ router.get("/customers/:id", async (req, res) => {
     const ordersWithItems = qty.orders_with_items as number;
     const totalItems = Number(qty.total_items);
 
+    // Chipply web stores assigned to this customer. Chipply dollars are
+    // shown in their own section — NEVER summed into Printavo spend stats.
+    const chipplyRows = await db
+      .select()
+      .from(chipplyStoresTable)
+      .where(
+        and(
+          eq(chipplyStoresTable.pvCustomerId, id),
+          eq(chipplyStoresTable.archived, false),
+        ),
+      )
+      .orderBy(desc(chipplyStoresTable.createdAt));
+    const chipplyCounts = await countLinkedInvoices(
+      chipplyRows.map((r) => r.eventId).filter((v): v is string => !!v),
+    );
+    const chipplyCompany = new Map([
+      [id, ((c.company_name as string | null) ?? "") as string],
+    ]);
+
     res.json({
       printavoId: c.printavo_id as string,
       displayName: c.display_name as string,
@@ -559,6 +581,12 @@ router.get("/customers/:id", async (req, res) => {
         statusName: (row.status_name as string | null) ?? null,
         total: row.total == null ? null : Number(row.total),
         orderDate: (row.order_date as string | null) ?? null,
+      })),
+      chipplyStores: chipplyRows.map((s) => ({
+        store: storeJson(s, chipplyCompany),
+        linkedInvoiceCount: s.eventId
+          ? (chipplyCounts.get(s.eventId) ?? 0)
+          : 0,
       })),
     });
   } catch (err) {

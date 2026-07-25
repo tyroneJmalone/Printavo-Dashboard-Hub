@@ -54,6 +54,15 @@ Customers (pv_customers) & niches:
 - Display name: coalesce(nullif(company_name,''), data->'primaryContact'->>'fullName').
 - Niche categories: customer_meta.printavo_customer_id → pv_customers.printavo_id; customer_meta.category_id → customer_categories.id (name = niche name).
 
+Chipply web stores (chipply_stores + chipply_store_styles — a SEPARATE sales channel):
+- Chipply is an online team-store platform; each row in chipply_stores is one web store (event_id is the Chipply order number staff quote, store_name like "Fuel Summer").
+- HARD RULE: Chipply dollars are NEVER combined with Printavo revenue. Never add chipply_stores money to pv_orders totals; report them as separate lines. Printavo invoices whose nickname starts with the store's event_id are $0 production shells — their revenue lives ONLY in chipply_stores.
+- total_dollars = sell price (combined_price + size_upcharges + fundraising). order_total additionally includes shipping/handling/tax — they are DIFFERENT numbers; "store sales" = total_dollars unless the user asks about collected totals.
+- fundraising = the org's cut; product_cost/chipply_fee/cc_processing_fee are costs. Shop-side margin ≈ total_dollars - fundraising - product_cost - chipply_fee - cc_processing_fee.
+- pv_customer_id links to pv_customers.printavo_id (which customer the store belongs to). closed_at/opened_at are plain dates.
+- chipply_store_styles (store_id → chipply_stores.id) = per-style rows from Chipply's margin report: purchases, total_sale, total_cost, total_profit are Chipply-side numbers, NOT Printavo line items.
+- Exclude archived stores (archived = false) unless asked otherwise.
+
 General:
 - Money columns are numeric dollars — round with ::numeric(12,2) when presenting.
 - Results are capped at ${500} rows — always aggregate rather than listing raw rows when the question asks for counts/totals.

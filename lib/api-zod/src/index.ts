@@ -21,3 +21,8 @@ export type {
 // nullable existingStore ref): bare name = zod schema; TS type aliased.
 export { ParseChipplyEmailResponse } from "./generated/api";
 export type { ParseChipplyEmailResponse as ParseChipplyEmailResponseType } from "./generated/types";
+
+// Same collision for the chipply parse-file response (allOf refs for the
+// nullable salesReport/existingStore): bare name = zod schema; TS type aliased.
+export { ParseChipplyFileResponse } from "./generated/api";
+export type { ParseChipplyFileResponse as ParseChipplyFileResponseType } from "./generated/types";

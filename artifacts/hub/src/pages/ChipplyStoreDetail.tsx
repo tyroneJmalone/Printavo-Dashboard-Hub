@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import {
@@ -7,13 +7,18 @@ import {
   getListChipplyStoresQueryKey,
   getListDetectedChipplyStoresQueryKey,
   useUpdateChipplyStore,
+  useParseChipplyFile,
+  useReplaceChipplyStoreStyles,
+  useListDirectoryCustomers,
+  getListDirectoryCustomersQueryKey,
   type ChipplyStore,
+  type ChipplyParsedMarginRow,
   type UpdateChipplyStoreRequest,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { fmtMoney, fmtDate, parseNumField } from "./ChipplyStores";
+import { fmtMoney, fmtDate, parseNumField, readCsvFile } from "./ChipplyStores";
 import {
   Store,
   Loader2,
@@ -25,6 +30,11 @@ import {
   Link2,
   Shirt,
   ExternalLink,
+  Upload,
+  FileSpreadsheet,
+  UserCog,
+  Search,
+  CheckCircle2,
 } from "lucide-react";
 
 const inputCls =
@@ -66,6 +76,28 @@ function editFromStore(s: ChipplyStore): EditFields {
   };
 }
 
+/** Money formatter that keeps nulls null so the financials grid can drop
+ * missing fields entirely instead of rendering "—". */
+function fmtOpt(v: string | null): string | null {
+  return v === null ? null : fmtMoney(v);
+}
+
+/** Decoration method token embedded in invoice nicknames
+ * ("553498 Fuel Summer EMB: …"). */
+const METHOD_LABELS: Record<string, string> = {
+  EMB: "Embroidery",
+  SP: "Screen Printing",
+  DTF: "Heat Applied Graphics",
+};
+
+export function decodeMethod(nickname: string | null): string | null {
+  if (!nickname) return null;
+  const m =
+    nickname.match(/\b(EMB|SP|DTF)\b(?=\s*:)/i) ??
+    nickname.match(/\b(EMB|SP|DTF)\b/i);
+  return m ? (METHOD_LABELS[m[1].toUpperCase()] ?? null) : null;
+}
+
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
@@ -90,6 +122,30 @@ export default function ChipplyStoreDetail() {
   const store = detailQuery.data?.store;
   const invoices = detailQuery.data?.invoices ?? [];
   const styles = detailQuery.data?.styles ?? [];
+  const marginStyles = detailQuery.data?.marginStyles ?? [];
+
+  // Margin report upload → preview → confirm replace
+  const marginFileRef = useRef<HTMLInputElement>(null);
+  const [marginPreview, setMarginPreview] = useState<
+    ChipplyParsedMarginRow[] | null
+  >(null);
+
+  // Customer reassignment
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(customerSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [customerSearch]);
+  const customerParams = { search: debouncedSearch, limit: 8 };
+  const customersQuery = useListDirectoryCustomers(customerParams, {
+    query: {
+      enabled: reassignOpen && debouncedSearch.length >= 2,
+      queryKey: getListDirectoryCustomersQueryKey(customerParams),
+    },
+  });
+  const customerResults = customersQuery.data?.customers ?? [];
 
   const updateMutation = useUpdateChipplyStore({
     mutation: {
@@ -98,6 +154,11 @@ export default function ChipplyStoreDetail() {
         queryClient.invalidateQueries({ queryKey: getListChipplyStoresQueryKey() });
         queryClient.invalidateQueries({
           queryKey: getListDetectedChipplyStoresQueryKey(),
+        });
+        queryClient.invalidateQueries({
+          predicate: (q) =>
+            typeof q.queryKey[0] === "string" &&
+            q.queryKey[0].startsWith("/api/customers"),
         });
         setEditing(false);
         toast({ title: "Store updated" });
@@ -110,6 +171,80 @@ export default function ChipplyStoreDetail() {
         }),
     },
   });
+
+  const parseFileMutation = useParseChipplyFile({
+    mutation: {
+      onSuccess: (data) => {
+        if (data.kind !== "margin_report") {
+          toast({
+            title: "That's a SalesReport",
+            description:
+              "Import SalesReport CSVs from the Chipply Stores page — this panel only takes Margin Reports.",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!data.marginRows || data.marginRows.length === 0) {
+          toast({
+            title: "No styles found",
+            description: "The Margin Report had no product rows to import.",
+            variant: "destructive",
+          });
+          return;
+        }
+        setMarginPreview(data.marginRows);
+      },
+      onError: (err) =>
+        toast({
+          title: "Couldn't read that file",
+          description: extractError(err),
+          variant: "destructive",
+        }),
+    },
+  });
+
+  const replaceStylesMutation = useReplaceChipplyStoreStyles({
+    mutation: {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({
+          queryKey: getGetChipplyStoreQueryKey(id),
+        });
+        setMarginPreview(null);
+        toast({
+          title: "Margin report saved",
+          description: `${data.styles.length} style${data.styles.length === 1 ? "" : "s"} imported.`,
+        });
+      },
+      onError: (err) =>
+        toast({
+          title: "Import failed",
+          description: extractError(err),
+          variant: "destructive",
+        }),
+    },
+  });
+
+  async function handleMarginFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const fileText = await readCsvFile(file);
+      parseFileMutation.mutate({ data: { fileText } });
+    } catch (err) {
+      toast({
+        title: "Couldn't read that file",
+        description: err instanceof Error ? err.message : "Unreadable file",
+        variant: "destructive",
+      });
+    }
+  }
+
+  function reassignCustomer(pvCustomerId: string | null) {
+    updateMutation.mutate({ id, data: { pvCustomerId } });
+    setReassignOpen(false);
+    setCustomerSearch("");
+  }
 
   function startEdit() {
     if (!store) return;
@@ -291,6 +426,55 @@ export default function ChipplyStoreDetail() {
                 <p className="text-slate-200 whitespace-pre-wrap">{store.notes ?? "—"}</p>
               </div>
             </div>
+
+            {store.orderTotal !== null && (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+                <p className="text-sm font-bold text-white flex items-center gap-2 mb-0.5">
+                  <FileSpreadsheet size={15} className="text-[#059669]" />
+                  SalesReport financials
+                </p>
+                <p className="text-xs text-slate-500 mb-2.5">
+                  From the Chipply SalesReport CSV. Order total includes
+                  shipping, handling and tax — it is not the same as Total
+                  dollars (sell price).
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-1.5 text-sm">
+                  {(
+                    [
+                      ["Opened", store.openedAt ? fmtDate(store.openedAt) : null],
+                      ["Salesperson", store.salesperson],
+                      ["Organization", store.organizationName],
+                      ["Order total", fmtOpt(store.orderTotal)],
+                      ["Product cost", fmtOpt(store.productCost)],
+                      ["Product price", fmtOpt(store.productPrice)],
+                      ["Process price", fmtOpt(store.processPrice)],
+                      ["Combined price", fmtOpt(store.combinedPrice)],
+                      ["Option fees", fmtOpt(store.optionFees)],
+                      ["Size upcharges", fmtOpt(store.sizeUpcharges)],
+                      ["Tax", fmtOpt(store.tax)],
+                      ["Shipping", fmtOpt(store.shipping)],
+                      ["Handling", fmtOpt(store.handlingFee)],
+                      ["Manual adjustment", fmtOpt(store.manualAdjustment)],
+                      ["Org fee", fmtOpt(store.orgFee)],
+                      ["Chipply fee", fmtOpt(store.chipplyFee)],
+                      ["CC processing", fmtOpt(store.ccProcessingFee)],
+                      ["Paid by card", fmtOpt(store.paymentCard)],
+                      ["Paid by Klarna", fmtOpt(store.paymentKlarna)],
+                      ["Paid by e-cert", fmtOpt(store.paymentEcert)],
+                      ["Paid by PO", fmtOpt(store.paymentPo)],
+                      ["Promo codes", fmtOpt(store.paymentPromo)],
+                    ] as const
+                  )
+                    .filter(([, v]) => v !== null)
+                    .map(([label, v]) => (
+                      <div key={label} className="flex justify-between gap-3">
+                        <span className="text-slate-400 text-xs pt-0.5">{label}</span>
+                        <span className="text-slate-200 font-mono text-xs pt-0.5">{v}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </>
         ) : (
           fields && (
@@ -403,6 +587,121 @@ export default function ChipplyStoreDetail() {
           )
         )}
 
+        <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-sm">
+              <UserCog size={15} className="text-[#059669]" />
+              <span className="font-bold text-white">Customer</span>
+              {store.pvCustomerId ? (
+                <Link
+                  href={`/customers/${store.pvCustomerId}`}
+                  className="text-[#34d399] hover:underline"
+                >
+                  {store.pvCustomerCompany ?? store.pvCustomerId}
+                </Link>
+              ) : (
+                <span className="text-slate-500">not linked</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setReassignOpen((o) => !o);
+                  setCustomerSearch("");
+                }}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+              >
+                {reassignOpen ? (
+                  <>
+                    <X size={14} className="mr-1.5" /> Cancel
+                  </>
+                ) : store.pvCustomerId ? (
+                  "Change customer"
+                ) : (
+                  "Link customer"
+                )}
+              </Button>
+              {store.pvCustomerId && !reassignOpen && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => reassignCustomer(null)}
+                  disabled={updateMutation.isPending}
+                  className="border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                  Unlink
+                </Button>
+              )}
+            </div>
+          </div>
+          {reassignOpen && (
+            <div className="mt-3 space-y-2">
+              <div className="relative">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                />
+                <input
+                  className={`${inputCls} pl-8`}
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="Search customers by name…"
+                  autoFocus
+                />
+              </div>
+              {debouncedSearch.length < 2 ? (
+                <p className="text-xs text-slate-500">
+                  Type at least 2 characters to search.
+                </p>
+              ) : customersQuery.isLoading ? (
+                <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                  <Loader2 size={12} className="animate-spin" /> Searching…
+                </p>
+              ) : customerResults.length === 0 ? (
+                <p className="text-xs text-slate-500">No customers matched.</p>
+              ) : (
+                <div className="space-y-1">
+                  {customerResults.map((c) => {
+                    const current = c.printavoId === store.pvCustomerId;
+                    return (
+                      <button
+                        key={c.printavoId}
+                        type="button"
+                        onClick={() => !current && reassignCustomer(c.printavoId)}
+                        disabled={updateMutation.isPending || current}
+                        className={`w-full text-left rounded-lg border px-3 py-2 text-sm transition-colors ${
+                          current
+                            ? "border-[#059669] bg-emerald-950/40 cursor-default"
+                            : "border-slate-700 bg-slate-800 hover:border-slate-500"
+                        }`}
+                      >
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-slate-100">
+                            {c.displayName}
+                          </span>
+                          {current && (
+                            <CheckCircle2
+                              size={15}
+                              className="text-[#059669] shrink-0"
+                            />
+                          )}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {c.orderCount} order{c.orderCount === 1 ? "" : "s"} ·{" "}
+                          {fmtMoney(c.lifetimeSpend)} lifetime
+                          {c.contactName ? ` · ${c.contactName}` : ""}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="grid lg:grid-cols-2 gap-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
@@ -427,6 +726,7 @@ export default function ChipplyStoreDetail() {
                     <tr className="border-b border-slate-800 text-left text-xs text-slate-400">
                       <th className="px-4 py-2 font-semibold">Invoice</th>
                       <th className="px-4 py-2 font-semibold">Name</th>
+                      <th className="px-4 py-2 font-semibold">Method</th>
                       <th className="px-4 py-2 font-semibold">Status</th>
                     </tr>
                   </thead>
@@ -447,8 +747,17 @@ export default function ChipplyStoreDetail() {
                             <ExternalLink size={11} />
                           </a>
                         </td>
-                        <td className="px-4 py-2 text-slate-300 max-w-[18rem] truncate">
+                        <td className="px-4 py-2 text-slate-300 max-w-[14rem] truncate">
                           {inv.nickname ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs">
+                          {decodeMethod(inv.nickname) ? (
+                            <span className="bg-slate-800 text-slate-300 rounded px-1.5 py-0.5 font-semibold">
+                              {decodeMethod(inv.nickname)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-2 text-slate-400 whitespace-nowrap text-xs">
                           {inv.statusName ?? "—"}
@@ -500,6 +809,173 @@ export default function ChipplyStoreDetail() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <FileSpreadsheet size={15} className="text-[#059669]" />
+              Margin report (per style)
+              <span className="text-xs text-slate-500 font-normal">
+                {marginPreview
+                  ? `${marginPreview.length} parsed — not saved yet`
+                  : marginStyles.length || ""}
+              </span>
+            </h2>
+            <input
+              ref={marginFileRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={handleMarginFilePicked}
+              className="hidden"
+            />
+            {marginPreview ? (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMarginPreview(null)}
+                  disabled={replaceStylesMutation.isPending}
+                  className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                >
+                  <X size={14} className="mr-1.5" /> Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    replaceStylesMutation.mutate({
+                      id,
+                      data: { rows: marginPreview },
+                    })
+                  }
+                  disabled={replaceStylesMutation.isPending}
+                  className="bg-[#059669] hover:bg-[#047857] text-white"
+                >
+                  {replaceStylesMutation.isPending ? (
+                    <Loader2 size={14} className="animate-spin mr-1.5" />
+                  ) : (
+                    <CheckCircle2 size={14} className="mr-1.5" />
+                  )}
+                  {marginStyles.length > 0
+                    ? "Replace saved styles"
+                    : "Save styles"}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => marginFileRef.current?.click()}
+                disabled={parseFileMutation.isPending}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+              >
+                {parseFileMutation.isPending ? (
+                  <Loader2 size={14} className="animate-spin mr-1.5" />
+                ) : (
+                  <Upload size={14} className="mr-1.5" />
+                )}
+                Upload margin report
+              </Button>
+            )}
+          </div>
+          {marginPreview && marginStyles.length > 0 && (
+            <p className="px-4 py-2 text-xs text-amber-200 bg-amber-950/40 border-b border-amber-800/50">
+              Saving replaces the {marginStyles.length} style
+              {marginStyles.length === 1 ? "" : "s"} currently on this store.
+            </p>
+          )}
+          {(() => {
+            const rows = (marginPreview ?? marginStyles).map((r) => ({
+              vendorName: r.vendorName,
+              style: r.style,
+              productName: r.productName,
+              purchases: r.purchases,
+              totalSale: r.totalSale !== null ? Number(r.totalSale) : null,
+              totalCost: r.totalCost !== null ? Number(r.totalCost) : null,
+              totalProfit: r.totalProfit !== null ? Number(r.totalProfit) : null,
+            }));
+            if (rows.length === 0) {
+              return (
+                <p className="px-4 py-8 text-sm text-slate-500 text-center">
+                  Upload this store's Margin Report CSV from Chipply to see
+                  per-style sales, cost and profit.
+                </p>
+              );
+            }
+            const sum = (key: "purchases" | "totalSale" | "totalCost" | "totalProfit") =>
+              rows.reduce((acc, r) => acc + (r[key] ?? 0), 0);
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-left text-xs text-slate-400">
+                      <th className="px-4 py-2 font-semibold">Vendor</th>
+                      <th className="px-4 py-2 font-semibold">Style</th>
+                      <th className="px-4 py-2 font-semibold">Product</th>
+                      <th className="px-4 py-2 font-semibold text-right">Purchases</th>
+                      <th className="px-4 py-2 font-semibold text-right">Sale</th>
+                      <th className="px-4 py-2 font-semibold text-right">Cost</th>
+                      <th className="px-4 py-2 font-semibold text-right">Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, i) => (
+                      <tr key={i} className="border-b border-slate-800/60">
+                        <td className="px-4 py-2 whitespace-nowrap text-slate-300">
+                          {r.vendorName ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-slate-200 font-semibold">
+                          {r.style ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-slate-300 max-w-[20rem] truncate">
+                          {r.productName ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-right text-slate-200">
+                          {r.purchases ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-right text-slate-200 font-mono text-xs">
+                          {r.totalSale !== null ? fmtMoney(r.totalSale) : "—"}
+                        </td>
+                        <td className="px-4 py-2 text-right text-slate-200 font-mono text-xs">
+                          {r.totalCost !== null ? fmtMoney(r.totalCost) : "—"}
+                        </td>
+                        <td
+                          className={`px-4 py-2 text-right font-mono text-xs ${
+                            (r.totalProfit ?? 0) < 0
+                              ? "text-red-400"
+                              : "text-[#34d399]"
+                          }`}
+                        >
+                          {r.totalProfit !== null ? fmtMoney(r.totalProfit) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-800/40 font-semibold">
+                      <td className="px-4 py-2 text-slate-300" colSpan={3}>
+                        Totals
+                      </td>
+                      <td className="px-4 py-2 text-right text-slate-100">
+                        {sum("purchases")}
+                      </td>
+                      <td className="px-4 py-2 text-right text-slate-100 font-mono text-xs">
+                        {fmtMoney(sum("totalSale"))}
+                      </td>
+                      <td className="px-4 py-2 text-right text-slate-100 font-mono text-xs">
+                        {fmtMoney(sum("totalCost"))}
+                      </td>
+                      <td
+                        className={`px-4 py-2 text-right font-mono text-xs ${
+                          sum("totalProfit") < 0 ? "text-red-400" : "text-[#34d399]"
+                        }`}
+                      >
+                        {fmtMoney(sum("totalProfit"))}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </AppShell>

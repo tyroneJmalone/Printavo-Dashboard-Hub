@@ -7,10 +7,13 @@
  */
 import type { ChipplyLinkedInvoice } from './chipplyLinkedInvoice';
 import type { ChipplyStore } from './chipplyStore';
+import type { ChipplyStoreStyle } from './chipplyStoreStyle';
 import type { ChipplyStyleAgg } from './chipplyStyleAgg';
 
 export interface ChipplyStoreDetailResponse {
   store: ChipplyStore;
   invoices: ChipplyLinkedInvoice[];
   styles: ChipplyStyleAgg[];
+  /** Per-style rows from the last imported Chipply Margin Report (Chipply-side dollars — never mixed with Printavo revenue) */
+  marginStyles: ChipplyStoreStyle[];
 }

@@ -36,6 +36,8 @@ export const INSIGHTS_TABLES = [
   "customer_categories",
   "customer_meta",
   "sync_runs",
+  "chipply_stores",
+  "chipply_store_styles",
 ] as const;
 
 export const ROW_CAP = 500;

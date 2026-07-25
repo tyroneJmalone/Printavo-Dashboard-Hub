@@ -1787,6 +1787,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /chipply/parse-file:
+    post:
+      operationId: parseChipplyFile
+      tags: [chipply]
+      summary: Parse an uploaded Chipply CSV export (SalesReport or Margin Report) — no write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseChipplyFileRequest"
+      responses:
+        "200":
+          description: Detected file kind plus parsed content; candidates/existingStore populated only for sales reports
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseChipplyFileResponse"
+        "400":
+          description: File is not a recognized Chipply CSV export
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /chipply/stores:
     get:
       operationId: listChipplyStores
@@ -1886,6 +1910,41 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: Another store already uses this Chipply event id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /chipply/stores/{id}/styles:
+    post:
+      operationId: replaceChipplyStoreStyles
+      tags: [chipply]
+      summary: Replace the store's Chipply margin-report rows (full-snapshot semantics — delete + insert in one transaction)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceChipplyStoreStylesRequest"
+      responses:
+        "200":
+          description: The store's margin rows after the replace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChipplyStoreStylesResponse"
+        "400":
+          description: Invalid rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
@@ -5569,13 +5628,35 @@ components:
         numProducts: { type: integer, nullable: true }
         totalDollars: { type: string, nullable: true }
         fundraising: { type: string, nullable: true }
+        salesperson: { type: string, nullable: true }
+        organizationName: { type: string, nullable: true }
+        openedAt: { type: string, nullable: true, description: "YYYY-MM-DD" }
+        orgFee: { type: string, nullable: true }
+        productCost: { type: string, nullable: true }
+        productPrice: { type: string, nullable: true }
+        processPrice: { type: string, nullable: true }
+        combinedPrice: { type: string, nullable: true }
+        optionFees: { type: string, nullable: true }
+        sizeUpcharges: { type: string, nullable: true }
+        tax: { type: string, nullable: true }
+        shipping: { type: string, nullable: true }
+        handlingFee: { type: string, nullable: true }
+        manualAdjustment: { type: string, nullable: true, description: "May be negative (a credit)" }
+        orderTotal: { type: string, nullable: true, description: "Includes shipping/handling/tax — NOT the same as totalDollars (sell price)" }
+        paymentCard: { type: string, nullable: true }
+        paymentKlarna: { type: string, nullable: true }
+        paymentEcert: { type: string, nullable: true }
+        paymentPo: { type: string, nullable: true }
+        paymentPromo: { type: string, nullable: true }
+        chipplyFee: { type: string, nullable: true }
+        ccProcessingFee: { type: string, nullable: true }
         pvCustomerId: { type: string, nullable: true }
         pvCustomerCompany: { type: string, nullable: true }
         notes: { type: string, nullable: true }
         archived: { type: boolean }
         createdAt: { type: string }
         updatedAt: { type: string }
-      required: [id, eventId, storeName, orgContact, storeAdmin, closedAt, numOrders, numProducts, totalDollars, fundraising, pvCustomerId, pvCustomerCompany, notes, archived, createdAt, updatedAt]
+      required: [id, eventId, storeName, orgContact, storeAdmin, closedAt, numOrders, numProducts, totalDollars, fundraising, salesperson, organizationName, openedAt, orgFee, productCost, productPrice, processPrice, combinedPrice, optionFees, sizeUpcharges, tax, shipping, handlingFee, manualAdjustment, orderTotal, paymentCard, paymentKlarna, paymentEcert, paymentPo, paymentPromo, chipplyFee, ccProcessingFee, pvCustomerId, pvCustomerCompany, notes, archived, createdAt, updatedAt]
     ChipplyStoreListItem:
       type: object
       properties:
@@ -5628,7 +5709,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ChipplyStyleAgg"
-      required: [store, invoices, styles]
+        marginStyles:
+          type: array
+          description: Per-style rows from the last imported Chipply Margin Report (Chipply-side dollars — never mixed with Printavo revenue)
+          items:
+            $ref: "#/components/schemas/ChipplyStoreStyle"
+      required: [store, invoices, styles, marginStyles]
     CreateChipplyStoreRequest:
       type: object
       properties:
@@ -5644,6 +5730,10 @@ components:
         numProducts: { type: integer, nullable: true }
         totalDollars: { type: number, nullable: true }
         fundraising: { type: number, nullable: true }
+        financials:
+          allOf:
+            - $ref: "#/components/schemas/ChipplyStoreFinancialsInput"
+          nullable: true
         pvCustomerId: { type: string, nullable: true }
         notes: { type: string, nullable: true }
         rawSource: { type: string, nullable: true }
@@ -5663,6 +5753,10 @@ components:
         numProducts: { type: integer, nullable: true }
         totalDollars: { type: number, nullable: true }
         fundraising: { type: number, nullable: true }
+        financials:
+          allOf:
+            - $ref: "#/components/schemas/ChipplyStoreFinancialsInput"
+          nullable: true
         pvCustomerId: { type: string, nullable: true }
         notes: { type: string, nullable: true }
         archived: { type: boolean }
@@ -5674,6 +5768,146 @@ components:
           items:
             $ref: "#/components/schemas/ChipplyStoreCandidate"
       required: [detected]
+    ParseChipplyFileRequest:
+      type: object
+      properties:
+        fileText:
+          type: string
+          minLength: 10
+          maxLength: 200000
+          description: Raw text of the uploaded CSV (read client-side)
+      required: [fileText]
+    ChipplyStoreFinancialsInput:
+      type: object
+      description: SalesReport CSV financials for create/update. Money as numbers; manualAdjustment may be negative (a credit).
+      properties:
+        salesperson: { type: string, nullable: true }
+        organizationName: { type: string, nullable: true }
+        openedAt: { type: string, nullable: true, description: "YYYY-MM-DD" }
+        orgFee: { type: number, nullable: true }
+        productCost: { type: number, nullable: true }
+        productPrice: { type: number, nullable: true }
+        processPrice: { type: number, nullable: true }
+        combinedPrice: { type: number, nullable: true }
+        optionFees: { type: number, nullable: true }
+        sizeUpcharges: { type: number, nullable: true }
+        tax: { type: number, nullable: true }
+        shipping: { type: number, nullable: true }
+        handlingFee: { type: number, nullable: true }
+        manualAdjustment: { type: number, nullable: true }
+        orderTotal: { type: number, nullable: true }
+        paymentCard: { type: number, nullable: true }
+        paymentKlarna: { type: number, nullable: true }
+        paymentEcert: { type: number, nullable: true }
+        paymentPo: { type: number, nullable: true }
+        paymentPromo: { type: number, nullable: true }
+        chipplyFee: { type: number, nullable: true }
+        ccProcessingFee: { type: number, nullable: true }
+    ChipplyParsedSalesReport:
+      type: object
+      description: One store's row from a SalesReport CSV. totalDollarsGuess = combinedPrice + sizeUpcharges + fundraising (matches the email's "Total Dollars" sell price); orderTotal additionally includes shipping/handling/tax.
+      properties:
+        storeName: { type: string, nullable: true }
+        eventId: { type: string, nullable: true }
+        openedAt: { type: string, nullable: true, description: "YYYY-MM-DD" }
+        closedAt: { type: string, nullable: true, description: "YYYY-MM-DD" }
+        salesperson: { type: string, nullable: true }
+        organizationName: { type: string, nullable: true }
+        orgFee: { type: number, nullable: true }
+        productCost: { type: number, nullable: true }
+        productPrice: { type: number, nullable: true }
+        processPrice: { type: number, nullable: true }
+        combinedPrice: { type: number, nullable: true }
+        optionFees: { type: number, nullable: true }
+        sizeUpcharges: { type: number, nullable: true }
+        fundraising: { type: number, nullable: true }
+        tax: { type: number, nullable: true }
+        shipping: { type: number, nullable: true }
+        handlingFee: { type: number, nullable: true }
+        manualAdjustment: { type: number, nullable: true }
+        orderTotal: { type: number, nullable: true }
+        paymentCard: { type: number, nullable: true }
+        paymentKlarna: { type: number, nullable: true }
+        paymentEcert: { type: number, nullable: true }
+        paymentPo: { type: number, nullable: true }
+        paymentPromo: { type: number, nullable: true }
+        chipplyFee: { type: number, nullable: true }
+        ccProcessingFee: { type: number, nullable: true }
+        totalDollarsGuess: { type: number, nullable: true }
+      required: [storeName, eventId, openedAt, closedAt, salesperson, organizationName, orgFee, productCost, productPrice, processPrice, combinedPrice, optionFees, sizeUpcharges, fundraising, tax, shipping, handlingFee, manualAdjustment, orderTotal, paymentCard, paymentKlarna, paymentEcert, paymentPo, paymentPromo, chipplyFee, ccProcessingFee, totalDollarsGuess]
+    ChipplyParsedMarginRow:
+      type: object
+      properties:
+        vendorName: { type: string, nullable: true }
+        style: { type: string, nullable: true }
+        productName: { type: string, nullable: true }
+        purchases: { type: integer, nullable: true }
+        totalSale: { type: number, nullable: true }
+        totalCost: { type: number, nullable: true }
+        totalProfit: { type: number, nullable: true }
+      required: [vendorName, style, productName, purchases, totalSale, totalCost, totalProfit]
+    ParseChipplyFileResponse:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [sales_report, margin_report]
+        salesReport:
+          allOf:
+            - $ref: "#/components/schemas/ChipplyParsedSalesReport"
+          nullable: true
+          description: Populated when kind is sales_report
+        namedRowCount:
+          type: integer
+          description: Data rows with a store name seen in the file (SalesReport exports carry one store; >1 means an unexpected multi-store file)
+        marginRows:
+          type: array
+          nullable: true
+          description: Populated when kind is margin_report
+          items:
+            $ref: "#/components/schemas/ChipplyParsedMarginRow"
+        candidates:
+          type: array
+          description: Ranked invoice-prefix matches (sales_report only; empty otherwise)
+          items:
+            $ref: "#/components/schemas/ChipplyStoreCandidate"
+        existingStore:
+          allOf:
+            - $ref: "#/components/schemas/ChipplyStore"
+          nullable: true
+          description: Already-imported store matching the file's event id or normalized store name (sales_report only)
+      required: [kind, salesReport, namedRowCount, marginRows, candidates, existingStore]
+    ReplaceChipplyStoreStylesRequest:
+      type: object
+      properties:
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/ChipplyParsedMarginRow"
+      required: [rows]
+    ChipplyStoreStyle:
+      type: object
+      properties:
+        id: { type: string }
+        vendorName: { type: string, nullable: true }
+        style: { type: string, nullable: true }
+        productName: { type: string, nullable: true }
+        purchases: { type: integer, nullable: true }
+        totalSale: { type: string, nullable: true }
+        totalCost: { type: string, nullable: true }
+        totalProfit: { type: string, nullable: true }
+        createdAt: { type: string }
+      required: [id, vendorName, style, productName, purchases, totalSale, totalCost, totalProfit, createdAt]
+    ChipplyStoreStylesResponse:
+      type: object
+      properties:
+        styles:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChipplyStoreStyle"
+      required: [styles]
     DecorationBreak:
       type: object
       description: A quantity price break within a matrix column. The highest break whose qty <= order qty wins.
@@ -7453,7 +7687,7 @@ components:
 
     CustomerProfileResponse:
       type: object
-      required: [printavoId, displayName, stats, topStyles, statuses, ordersTotal, orders]
+      required: [printavoId, displayName, stats, topStyles, statuses, ordersTotal, orders, chipplyStores]
       properties:
         printavoId:
           type: string
@@ -7496,6 +7730,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CustomerProfileOrder"
+        chipplyStores:
+          type: array
+          description: Chipply web stores assigned to this customer (Chipply dollars — kept separate from Printavo revenue)
+          items:
+            $ref: "#/components/schemas/ChipplyStoreListItem"
 
     NicheReportResponse:
       type: object

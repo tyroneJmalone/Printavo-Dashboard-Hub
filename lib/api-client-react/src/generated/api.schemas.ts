@@ -1381,6 +1381,31 @@ export interface ChipplyStore {
   numProducts: number | null;
   totalDollars: string | null;
   fundraising: string | null;
+  salesperson: string | null;
+  organizationName: string | null;
+  /** YYYY-MM-DD */
+  openedAt: string | null;
+  orgFee: string | null;
+  productCost: string | null;
+  productPrice: string | null;
+  processPrice: string | null;
+  combinedPrice: string | null;
+  optionFees: string | null;
+  sizeUpcharges: string | null;
+  tax: string | null;
+  shipping: string | null;
+  handlingFee: string | null;
+  /** May be negative (a credit) */
+  manualAdjustment: string | null;
+  /** Includes shipping/handling/tax — NOT the same as totalDollars (sell price) */
+  orderTotal: string | null;
+  paymentCard: string | null;
+  paymentKlarna: string | null;
+  paymentEcert: string | null;
+  paymentPo: string | null;
+  paymentPromo: string | null;
+  chipplyFee: string | null;
+  ccProcessingFee: string | null;
   pvCustomerId: string | null;
   pvCustomerCompany: string | null;
   notes: string | null;
@@ -1426,10 +1451,53 @@ export interface ChipplyStyleAgg {
   totalQty: number;
 }
 
+export interface ChipplyStoreStyle {
+  id: string;
+  vendorName: string | null;
+  style: string | null;
+  productName: string | null;
+  purchases: number | null;
+  totalSale: string | null;
+  totalCost: string | null;
+  totalProfit: string | null;
+  createdAt: string;
+}
+
 export interface ChipplyStoreDetailResponse {
   store: ChipplyStore;
   invoices: ChipplyLinkedInvoice[];
   styles: ChipplyStyleAgg[];
+  /** Per-style rows from the last imported Chipply Margin Report (Chipply-side dollars — never mixed with Printavo revenue) */
+  marginStyles: ChipplyStoreStyle[];
+}
+
+/**
+ * SalesReport CSV financials for create/update. Money as numbers; manualAdjustment may be negative (a credit).
+ */
+export interface ChipplyStoreFinancialsInput {
+  salesperson?: string | null;
+  organizationName?: string | null;
+  /** YYYY-MM-DD */
+  openedAt?: string | null;
+  orgFee?: number | null;
+  productCost?: number | null;
+  productPrice?: number | null;
+  processPrice?: number | null;
+  combinedPrice?: number | null;
+  optionFees?: number | null;
+  sizeUpcharges?: number | null;
+  tax?: number | null;
+  shipping?: number | null;
+  handlingFee?: number | null;
+  manualAdjustment?: number | null;
+  orderTotal?: number | null;
+  paymentCard?: number | null;
+  paymentKlarna?: number | null;
+  paymentEcert?: number | null;
+  paymentPo?: number | null;
+  paymentPromo?: number | null;
+  chipplyFee?: number | null;
+  ccProcessingFee?: number | null;
 }
 
 export interface CreateChipplyStoreRequest {
@@ -1446,6 +1514,7 @@ export interface CreateChipplyStoreRequest {
   numProducts?: number | null;
   totalDollars?: number | null;
   fundraising?: number | null;
+  financials?: ChipplyStoreFinancialsInput | null;
   pvCustomerId?: string | null;
   notes?: string | null;
   rawSource?: string | null;
@@ -1465,6 +1534,7 @@ export interface UpdateChipplyStoreRequest {
   numProducts?: number | null;
   totalDollars?: number | null;
   fundraising?: number | null;
+  financials?: ChipplyStoreFinancialsInput | null;
   pvCustomerId?: string | null;
   notes?: string | null;
   archived?: boolean;
@@ -1472,6 +1542,94 @@ export interface UpdateChipplyStoreRequest {
 
 export interface DetectedChipplyStoresResponse {
   detected: ChipplyStoreCandidate[];
+}
+
+export interface ParseChipplyFileRequest {
+  /**
+     * Raw text of the uploaded CSV (read client-side)
+     * @minLength 10
+     * @maxLength 200000
+     */
+  fileText: string;
+}
+
+/**
+ * One store's row from a SalesReport CSV. totalDollarsGuess = combinedPrice + sizeUpcharges + fundraising (matches the email's "Total Dollars" sell price); orderTotal additionally includes shipping/handling/tax.
+ */
+export interface ChipplyParsedSalesReport {
+  storeName: string | null;
+  eventId: string | null;
+  /** YYYY-MM-DD */
+  openedAt: string | null;
+  /** YYYY-MM-DD */
+  closedAt: string | null;
+  salesperson: string | null;
+  organizationName: string | null;
+  orgFee: number | null;
+  productCost: number | null;
+  productPrice: number | null;
+  processPrice: number | null;
+  combinedPrice: number | null;
+  optionFees: number | null;
+  sizeUpcharges: number | null;
+  fundraising: number | null;
+  tax: number | null;
+  shipping: number | null;
+  handlingFee: number | null;
+  manualAdjustment: number | null;
+  orderTotal: number | null;
+  paymentCard: number | null;
+  paymentKlarna: number | null;
+  paymentEcert: number | null;
+  paymentPo: number | null;
+  paymentPromo: number | null;
+  chipplyFee: number | null;
+  ccProcessingFee: number | null;
+  totalDollarsGuess: number | null;
+}
+
+export interface ChipplyParsedMarginRow {
+  vendorName: string | null;
+  style: string | null;
+  productName: string | null;
+  purchases: number | null;
+  totalSale: number | null;
+  totalCost: number | null;
+  totalProfit: number | null;
+}
+
+export type ParseChipplyFileResponseKind = typeof ParseChipplyFileResponseKind[keyof typeof ParseChipplyFileResponseKind];
+
+
+export const ParseChipplyFileResponseKind = {
+  sales_report: 'sales_report',
+  margin_report: 'margin_report',
+} as const;
+
+export interface ParseChipplyFileResponse {
+  kind: ParseChipplyFileResponseKind;
+  /** Populated when kind is sales_report */
+  salesReport: ChipplyParsedSalesReport | null;
+  /** Data rows with a store name seen in the file (SalesReport exports carry one store; >1 means an unexpected multi-store file) */
+  namedRowCount: number;
+  /** Populated when kind is margin_report */
+  marginRows: ChipplyParsedMarginRow[] | null;
+  /** Ranked invoice-prefix matches (sales_report only; empty otherwise) */
+  candidates: ChipplyStoreCandidate[];
+  /** Already-imported store matching the file's event id or normalized store name (sales_report only) */
+  existingStore: ChipplyStore | null;
+}
+
+export interface ReplaceChipplyStoreStylesRequest {
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     */
+  rows: ChipplyParsedMarginRow[];
+}
+
+export interface ChipplyStoreStylesResponse {
+  styles: ChipplyStoreStyle[];
 }
 
 /**
@@ -3111,6 +3269,8 @@ export interface CustomerProfileResponse {
   statuses: CustomerProfileStatus[];
   ordersTotal: number;
   orders: CustomerProfileOrder[];
+  /** Chipply web stores assigned to this customer (Chipply dollars — kept separate from Printavo revenue) */
+  chipplyStores: ChipplyStoreListItem[];
 }
 
 export type NicheReportResponseCoverage = {

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChipplyStoreFinancialsInput } from './chipplyStoreFinancialsInput';
 
 export interface UpdateChipplyStoreRequest {
   /**
@@ -20,6 +21,7 @@ export interface UpdateChipplyStoreRequest {
   numProducts?: number | null;
   totalDollars?: number | null;
   fundraising?: number | null;
+  financials?: ChipplyStoreFinancialsInput | null;
   pvCustomerId?: string | null;
   notes?: string | null;
   archived?: boolean;

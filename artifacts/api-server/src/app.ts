@@ -57,7 +57,7 @@ app.use(
     origin: (origin, cb) => cb(null, !origin || allowedOrigins.has(origin)),
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: "300kb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Resolve the publishable key from the incoming request host so the same
