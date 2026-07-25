@@ -91,6 +91,7 @@ import type {
   GetOrdersReportParams,
   GetPaymentsReportParams,
   GetPaymentsStatsParams,
+  GetPipelineParams,
   GetPricingMatrixBreakdownParams,
   GetRecentActivityParams,
   GetStatusBreakdownParams,
@@ -137,6 +138,7 @@ import type {
   ParseChipplyFileResponse,
   PaymentsReport,
   PaymentsStats,
+  PipelineReport,
   PoFile,
   PoFileList,
   PollResult,
@@ -1838,6 +1840,90 @@ export function useGetCustomerProfile<TData = Awaited<ReturnType<typeof getCusto
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCustomerProfileQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPipelineUrl = (params?: GetPipelineParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/pipeline?${stringifiedParams}` : `/api/pipeline`
+}
+
+/**
+ * @summary Sales pipeline — quotes by stage plus recently won/done invoices
+ */
+export const getPipeline = async (params?: GetPipelineParams, options?: RequestInit): Promise<PipelineReport> => {
+
+  return customFetch<PipelineReport>(getGetPipelineUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPipelineQueryKey = (params?: GetPipelineParams,) => {
+    return [
+    `/api/pipeline`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPipelineQueryOptions = <TData = Awaited<ReturnType<typeof getPipeline>>, TError = ErrorType<unknown>>(params?: GetPipelineParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPipeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPipelineQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPipeline>>> = ({ signal }) => getPipeline(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPipeline>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPipelineQueryResult = NonNullable<Awaited<ReturnType<typeof getPipeline>>>
+export type GetPipelineQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Sales pipeline — quotes by stage plus recently won/done invoices
+ */
+
+export function useGetPipeline<TData = Awaited<ReturnType<typeof getPipeline>>, TError = ErrorType<unknown>>(
+ params?: GetPipelineParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPipeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPipelineQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

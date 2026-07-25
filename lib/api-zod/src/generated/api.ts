@@ -527,6 +527,61 @@ export const GetCustomerProfileResponse = zod.object({
 
 
 /**
+ * @summary Sales pipeline — quotes by stage plus recently won/done invoices
+ */
+export const getPipelineQueryWonDaysMin = 7;
+export const getPipelineQueryWonDaysMax = 365;
+
+export const getPipelineQueryLimitMax = 500;
+
+export const getPipelineQueryOffsetMin = 0;
+
+
+
+export const GetPipelineQueryParams = zod.object({
+  "owner": zod.coerce.string().optional().describe('Filter to a single rep by owner email'),
+  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'won', 'done', 'dead', 'contract_dead_archive', 'archive', 'other']).optional().describe('Stage to list rows for. \"active\" (default) combines the working stages (quote, quote_sent, follow_up_1, follow_up_2, nurturing, art, other).\n'),
+  "wonDays": zod.coerce.number().min(getPipelineQueryWonDaysMin).max(getPipelineQueryWonDaysMax).optional().describe('Window (days) for the Won and Done stages'),
+  "limit": zod.coerce.number().min(1).max(getPipelineQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(getPipelineQueryOffsetMin).optional()
+})
+
+export const GetPipelineResponse = zod.object({
+  "stage": zod.string(),
+  "wonDays": zod.number(),
+  "owners": zod.array(zod.object({
+  "email": zod.string(),
+  "count": zod.number()
+})),
+  "stages": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "count": zod.number(),
+  "amount": zod.number()
+})),
+  "total": zod.number(),
+  "limit": zod.number(),
+  "offset": zod.number(),
+  "rows": zod.array(zod.object({
+  "id": zod.string(),
+  "visualId": zod.number(),
+  "orderType": zod.enum(['quote', 'invoice']),
+  "stageId": zod.string(),
+  "statusName": zod.string(),
+  "nickname": zod.string().nullish(),
+  "customerId": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "ownerEmail": zod.string().nullish(),
+  "createdAt": zod.string().nullish(),
+  "qty": zod.number(),
+  "total": zod.number(),
+  "statusSince": zod.string().nullish().describe('When the order entered its current status'),
+  "statusSinceExact": zod.boolean().describe('False when the change predates status tracking — statusSince is then a lower bound (\"at least this long\").\n')
+}))
+})
+
+
+/**
  * @summary One-request connectivity probe against Printavo
  */
 export const ProbePrintavoResponse = zod.object({

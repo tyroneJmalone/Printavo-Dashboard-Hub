@@ -324,6 +324,56 @@ export interface BreakdownReport {
   rows: ReportBreakdownRow[];
 }
 
+export interface PipelineStageSummary {
+  id: string;
+  label: string;
+  count: number;
+  amount: number;
+}
+
+export interface PipelineOwner {
+  email: string;
+  count: number;
+}
+
+export type PipelineRowOrderType = typeof PipelineRowOrderType[keyof typeof PipelineRowOrderType];
+
+
+export const PipelineRowOrderType = {
+  quote: 'quote',
+  invoice: 'invoice',
+} as const;
+
+export interface PipelineRow {
+  id: string;
+  visualId: number;
+  orderType: PipelineRowOrderType;
+  stageId: string;
+  statusName: string;
+  nickname?: string | null;
+  customerId?: string | null;
+  customerName?: string | null;
+  ownerEmail?: string | null;
+  createdAt?: string | null;
+  qty: number;
+  total: number;
+  /** When the order entered its current status */
+  statusSince?: string | null;
+  /** False when the change predates status tracking — statusSince is then a lower bound ("at least this long"). */
+  statusSinceExact: boolean;
+}
+
+export interface PipelineReport {
+  stage: string;
+  wonDays: number;
+  owners: PipelineOwner[];
+  stages: PipelineStageSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+  rows: PipelineRow[];
+}
+
 export interface PaymentBucket {
   bucket: string;
   count: number;
@@ -3441,6 +3491,51 @@ status?: string;
  */
 q?: string;
 };
+
+export type GetPipelineParams = {
+/**
+ * Filter to a single rep by owner email
+ */
+owner?: string;
+/**
+ * Stage to list rows for. "active" (default) combines the working stages (quote, quote_sent, follow_up_1, follow_up_2, nurturing, art, other).
+ */
+stage?: GetPipelineStage;
+/**
+ * Window (days) for the Won and Done stages
+ * @minimum 7
+ * @maximum 365
+ */
+wonDays?: number;
+/**
+ * @minimum 1
+ * @maximum 500
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type GetPipelineStage = typeof GetPipelineStage[keyof typeof GetPipelineStage];
+
+
+export const GetPipelineStage = {
+  active: 'active',
+  quote: 'quote',
+  quote_sent: 'quote_sent',
+  follow_up_1: 'follow_up_1',
+  follow_up_2: 'follow_up_2',
+  nurturing: 'nurturing',
+  art: 'art',
+  won: 'won',
+  done: 'done',
+  dead: 'dead',
+  contract_dead_archive: 'contract_dead_archive',
+  archive: 'archive',
+  other: 'other',
+} as const;
 
 export type ListVendorOrdersParams = {
 poFileId?: string;

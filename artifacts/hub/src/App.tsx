@@ -17,6 +17,7 @@ import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
+import Pipeline from "./pages/Pipeline";
 import Payments from "./pages/Payments";
 import VendorOrders from "./pages/VendorOrders";
 import PoLog from "./pages/PoLog";
@@ -183,6 +184,7 @@ function HubRoutes() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/orders" component={Orders} />
+      <Route path="/pipeline" component={Pipeline} />
       <Route path="/payments" component={Payments} />
       <Route path="/ask" component={AskAI} />
       <Route path="/chipply/:id" component={ChipplyStoreDetail} />

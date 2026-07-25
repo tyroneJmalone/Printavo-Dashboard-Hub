@@ -513,6 +513,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /pipeline:
+    get:
+      operationId: getPipeline
+      tags: [pipeline]
+      summary: Sales pipeline — quotes by stage plus recently won/done invoices
+      parameters:
+        - name: owner
+          in: query
+          required: false
+          description: Filter to a single rep by owner email
+          schema: { type: string }
+        - name: stage
+          in: query
+          required: false
+          description: >
+            Stage to list rows for. "active" (default) combines the working
+            stages (quote, quote_sent, follow_up_1, follow_up_2, nurturing,
+            art, other).
+          schema:
+            type: string
+            enum:
+              [
+                active,
+                quote,
+                quote_sent,
+                follow_up_1,
+                follow_up_2,
+                nurturing,
+                art,
+                won,
+                done,
+                dead,
+                contract_dead_archive,
+                archive,
+                other,
+              ]
+        - name: wonDays
+          in: query
+          required: false
+          description: Window (days) for the Won and Done stages
+          schema: { type: integer, minimum: 7, maximum: 365 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Pipeline report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineReport"
   /printavo/probe:
     get:
       operationId: probePrintavo
@@ -4655,6 +4711,76 @@ components:
           items:
             $ref: "#/components/schemas/ReportBreakdownRow"
       required: [filters, stats, rows]
+    PipelineStageSummary:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string }
+        count: { type: integer }
+        amount: { type: number }
+      required: [id, label, count, amount]
+    PipelineOwner:
+      type: object
+      properties:
+        email: { type: string }
+        count: { type: integer }
+      required: [email, count]
+    PipelineRow:
+      type: object
+      properties:
+        id: { type: string }
+        visualId: { type: integer }
+        orderType: { type: string, enum: [quote, invoice] }
+        stageId: { type: string }
+        statusName: { type: string }
+        nickname: { type: string, nullable: true }
+        customerId: { type: string, nullable: true }
+        customerName: { type: string, nullable: true }
+        ownerEmail: { type: string, nullable: true }
+        createdAt: { type: string, nullable: true }
+        qty: { type: integer }
+        total: { type: number }
+        statusSince:
+          type: string
+          nullable: true
+          description: When the order entered its current status
+        statusSinceExact:
+          type: boolean
+          description: >
+            False when the change predates status tracking — statusSince is
+            then a lower bound ("at least this long").
+      required:
+        [
+          id,
+          visualId,
+          orderType,
+          stageId,
+          statusName,
+          qty,
+          total,
+          statusSinceExact,
+        ]
+    PipelineReport:
+      type: object
+      properties:
+        stage: { type: string }
+        wonDays: { type: integer }
+        owners:
+          type: array
+          items:
+            $ref: "#/components/schemas/PipelineOwner"
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/PipelineStageSummary"
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PipelineRow"
+      required: [stage, wonDays, owners, stages, total, limit, offset, rows]
     PaymentBucket:
       type: object
       properties:
