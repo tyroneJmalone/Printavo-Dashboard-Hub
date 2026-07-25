@@ -10,3 +10,5 @@ description: Chipply web-store module invariants — revenue isolation and no-li
 **Rule 2:** Store→invoice links are DERIVED LIVE from the Printavo nickname prefix convention `"<eventId(5-7 digits)> <Store Name> <METHOD>:"` — there is deliberately NO link table.
 **Why:** Architect-approved design so invoices renamed/added later in Printavo self-link with zero maintenance; a link table would silently drift stale.
 **How to apply:** Don't "optimize" by materializing links. If perf ever matters, cache — never persist as source of truth. Parser was built from ONE sample email, so the UI review step must stay mandatory.
+
+**Method abbreviations** (Tyler, Jul 25 2026): the METHOD token in nicknames = decoration method — EMB = Embroidery, SP = Screen Printing, DTF = Heat Applied Graphics. Decode to friendly labels wherever methods surface in UI or reports.
