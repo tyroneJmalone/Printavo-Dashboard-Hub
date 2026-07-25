@@ -24,6 +24,28 @@ const router: IRouter = Router();
 /** Display name: company name, falling back to the primary contact. */
 const DISPLAY_NAME_SQL = `coalesce(nullif(c.company_name, ''), c.data->'primaryContact'->>'fullName', '(no name)')`;
 
+/**
+ * Map one pv_imprints row to a canonical decoration method. Printavo's
+ * type_of_work is blank on ~57% of imprints, but the pricing-matrix name
+ * ("Screen Printing - 8", "Embroidery - 5", "1st PRINT LOC - 2025", …)
+ * usually carries the method instead — so we read whichever is present.
+ * NULL = not derivable (blank goods, "Extras", …) → "Unspecified" bucket.
+ */
+const IMPRINT_METHOD_SQL = `CASE
+  WHEN coalesce(nullif(i.type_of_work, ''), i.matrix_name, '') ILIKE '%screen print%'
+    OR coalesce(nullif(i.type_of_work, ''), i.matrix_name, '') ILIKE '%print loc%'
+    OR coalesce(nullif(i.type_of_work, ''), i.matrix_name, '') ILIKE '%byo print%'
+    THEN 'Screen Printing'
+  WHEN coalesce(nullif(i.type_of_work, ''), i.matrix_name, '') ILIKE '%embroider%'
+    OR coalesce(nullif(i.type_of_work, ''), i.matrix_name, '') ILIKE '%byo emb%'
+    THEN 'Embroidery'
+  WHEN coalesce(nullif(i.type_of_work, ''), i.matrix_name, '') ILIKE '%heat%'
+    THEN 'Heat Applied Graphics'
+  WHEN coalesce(nullif(i.type_of_work, ''), i.matrix_name, '') ILIKE '%personalization%'
+    THEN 'Personalization'
+  ELSE NULL
+END`;
+
 /** Guard uuid inputs before ::uuid casts — otherwise Postgres 22P02 → 500. */
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -436,8 +458,15 @@ router.get("/customers/:id", async (req, res) => {
 
     // Ordering behavior: quantities + top styles (invoice line items) and the
     // status breakdown used by the order-history filter. All unfiltered.
-    const [qtyR, stylesR, statusesR, chipplyQtyR, chipplyStylesR] =
-      await Promise.all([
+    const [
+      qtyR,
+      stylesR,
+      statusesR,
+      chipplyQtyR,
+      chipplyStylesR,
+      methodsR,
+      chipplyMethodsR,
+    ] = await Promise.all([
       pool.query(
         `SELECT count(DISTINCT li.order_id)::int AS orders_with_items,
                 coalesce(sum(li.items), 0)::bigint AS total_items
@@ -502,6 +531,79 @@ router.get("/customers/:id", async (req, res) => {
           GROUP BY 1, 2
           ORDER BY sum(li.items) DESC, count(DISTINCT li.order_id) DESC
           LIMIT 6`,
+        [id],
+      ),
+      // Decoration-method breakdown (Printavo, shells excluded). Method is
+      // derived per line-item GROUP from its imprints; a group's pieces count
+      // once per distinct method (a garment that's both printed and
+      // embroidered legitimately belongs to both buckets).
+      pool.query(
+        `WITH grp AS (
+           SELECT g.printavo_id AS gid, g.order_id
+             FROM pv_line_item_groups g
+             JOIN pv_orders o ON o.printavo_id = g.order_id
+            WHERE o.customer_id = $1
+              AND o.order_type = 'invoice'
+              AND ${notChipplySql("o.nickname")}
+         ),
+         gm AS (
+           SELECT grp.gid, grp.order_id, coalesce(m.method, 'Unspecified') AS method
+             FROM grp
+             LEFT JOIN LATERAL (
+               SELECT DISTINCT mm.method
+                 FROM (SELECT ${IMPRINT_METHOD_SQL} AS method
+                         FROM pv_imprints i
+                        WHERE i.group_id = grp.gid) mm
+                WHERE mm.method IS NOT NULL
+             ) m ON true
+         ),
+         gp AS (
+           SELECT li.group_id AS gid, coalesce(sum(li.items), 0) AS pcs
+             FROM pv_line_items li
+            WHERE li.group_id IN (SELECT gid FROM grp)
+            GROUP BY 1
+         )
+         SELECT gm.method,
+                count(DISTINCT gm.order_id)::int AS order_count,
+                coalesce(sum(gp.pcs), 0)::bigint AS total_qty
+           FROM gm
+           LEFT JOIN gp ON gp.gid = gm.gid
+          GROUP BY 1
+          ORDER BY (gm.method = 'Unspecified') ASC, sum(gp.pcs) DESC NULLS LAST, 1`,
+        [id],
+      ),
+      // Decoration-method breakdown (Chipply shells) — decoded from the
+      // nickname method token before the colon ("553498 Fuel Summer EMB: …").
+      // Real data uses EMB / HEAT / PRINT (plus rare SCREEN / SP / DTF /
+      // ENGRAVED) — surveyed across all shell nicknames, not just one sample.
+      pool.query(
+        `SELECT x.method,
+                count(*)::int AS order_count,
+                coalesce(sum(p.pcs), 0)::bigint AS total_qty
+           FROM (
+             SELECT o.printavo_id,
+                    CASE upper(substring(split_part(o.nickname, ':', 1) from '(?i)\\m(EMB|SP|DTF|HEAT|PRINT|SCREEN|ENGRAVED)\\M'))
+                      WHEN 'EMB' THEN 'Embroidery'
+                      WHEN 'SP' THEN 'Screen Printing'
+                      WHEN 'PRINT' THEN 'Screen Printing'
+                      WHEN 'SCREEN' THEN 'Screen Printing'
+                      WHEN 'DTF' THEN 'Heat Applied Graphics'
+                      WHEN 'HEAT' THEN 'Heat Applied Graphics'
+                      WHEN 'ENGRAVED' THEN 'Engraving'
+                      ELSE 'Unspecified'
+                    END AS method
+               FROM pv_orders o
+              WHERE o.customer_id = $1
+                AND o.order_type = 'invoice'
+                AND ${chipplySql("o.nickname")}
+           ) x
+           LEFT JOIN LATERAL (
+             SELECT coalesce(sum(li.items), 0) AS pcs
+               FROM pv_line_items li
+              WHERE li.order_id = x.printavo_id
+           ) p ON true
+          GROUP BY 1
+          ORDER BY (x.method = 'Unspecified') ASC, sum(p.pcs) DESC NULLS LAST, 1`,
         [id],
       ),
     ]);
@@ -613,12 +715,22 @@ router.get("/customers/:id", async (req, res) => {
         name: row.status_name as string,
         count: row.n as number,
       })),
+      methodBreakdown: methodsR.rows.map((row) => ({
+        method: row.method as string,
+        orderCount: row.order_count as number,
+        totalQty: Number(row.total_qty),
+      })),
       chipplyProduction: {
         invoiceCount: chipplyQtyR.rows[0].shell_invoices as number,
         totalItems: Number(chipplyQtyR.rows[0].total_items),
         topStyles: chipplyStylesR.rows.map((row) => ({
           brand: (row.brand as string | null) ?? null,
           itemNumber: row.item_number as string,
+          orderCount: row.order_count as number,
+          totalQty: Number(row.total_qty),
+        })),
+        methods: chipplyMethodsR.rows.map((row) => ({
+          method: row.method as string,
           orderCount: row.order_count as number,
           totalQty: Number(row.total_qty),
         })),

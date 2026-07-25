@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CustomerMethodStat } from './customerMethodStat';
 import type { CustomerProfileTopStyle } from './customerProfileTopStyle';
 
 /**
@@ -16,4 +17,6 @@ export interface ChipplyProductionSummary {
   /** Total garment pieces across shell invoice line items */
   totalItems: number;
   topStyles: CustomerProfileTopStyle[];
+  /** Per-decoration-method breakdown decoded from the nickname method token (EMB/HEAT/PRINT dominate; SCREEN/SP/DTF/ENGRAVED rare) */
+  methods: CustomerMethodStat[];
 }

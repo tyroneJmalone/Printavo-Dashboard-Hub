@@ -3255,6 +3255,15 @@ export interface CustomerProfileStatus {
 }
 
 /**
+ * Pieces and order count for one decoration method ("Unspecified" bucket = no method recorded)
+ */
+export interface CustomerMethodStat {
+  method: string;
+  orderCount: number;
+  totalQty: number;
+}
+
+/**
  * Production stats derived from this customer's Chipply $0 shell invoices (excluded from Printavo behavior stats, surfaced separately here)
  */
 export interface ChipplyProductionSummary {
@@ -3263,6 +3272,8 @@ export interface ChipplyProductionSummary {
   /** Total garment pieces across shell invoice line items */
   totalItems: number;
   topStyles: CustomerProfileTopStyle[];
+  /** Per-decoration-method breakdown decoded from the nickname method token (EMB/HEAT/PRINT dominate; SCREEN/SP/DTF/ENGRAVED rare) */
+  methods: CustomerMethodStat[];
 }
 
 export interface CustomerProfileResponse {
@@ -3277,6 +3288,8 @@ export interface CustomerProfileResponse {
   categoryName?: string | null;
   stats: CustomerProfileStats;
   topStyles: CustomerProfileTopStyle[];
+  /** Decoration-method breakdown of non-Chipply invoices (from imprint type-of-work / pricing-matrix names) */
+  methodBreakdown: CustomerMethodStat[];
   statuses: CustomerProfileStatus[];
   ordersTotal: number;
   orders: CustomerProfileOrder[];

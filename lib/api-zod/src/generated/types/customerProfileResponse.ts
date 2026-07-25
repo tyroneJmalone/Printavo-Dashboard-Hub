@@ -7,6 +7,7 @@
  */
 import type { ChipplyProductionSummary } from './chipplyProductionSummary';
 import type { ChipplyStoreListItem } from './chipplyStoreListItem';
+import type { CustomerMethodStat } from './customerMethodStat';
 import type { CustomerProfileOrder } from './customerProfileOrder';
 import type { CustomerProfileStats } from './customerProfileStats';
 import type { CustomerProfileStatus } from './customerProfileStatus';
@@ -24,6 +25,8 @@ export interface CustomerProfileResponse {
   categoryName?: string | null;
   stats: CustomerProfileStats;
   topStyles: CustomerProfileTopStyle[];
+  /** Decoration-method breakdown of non-Chipply invoices (from imprint type-of-work / pricing-matrix names) */
+  methodBreakdown: CustomerMethodStat[];
   statuses: CustomerProfileStatus[];
   ordersTotal: number;
   orders: CustomerProfileOrder[];

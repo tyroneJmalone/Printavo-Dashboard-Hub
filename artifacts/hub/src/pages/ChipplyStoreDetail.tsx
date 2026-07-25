@@ -83,18 +83,27 @@ function fmtOpt(v: string | null): string | null {
 }
 
 /** Decoration method token embedded in invoice nicknames
- * ("553498 Fuel Summer EMB: …"). */
+ * ("553498 Fuel Summer EMB: …"). Token vocabulary surveyed across all shell
+ * nicknames: EMB / HEAT / PRINT dominate, SCREEN / SP / DTF / ENGRAVED rare.
+ * Keep in sync with the SQL mapping in the customer-profile method query. */
 const METHOD_LABELS: Record<string, string> = {
   EMB: "Embroidery",
   SP: "Screen Printing",
+  PRINT: "Screen Printing",
+  SCREEN: "Screen Printing",
   DTF: "Heat Applied Graphics",
+  HEAT: "Heat Applied Graphics",
+  ENGRAVED: "Engraving",
 };
+
+const METHOD_TOKEN = /\b(EMB|SP|DTF|HEAT|PRINT|SCREEN|ENGRAVED)\b/i;
+const METHOD_TOKEN_BEFORE_COLON =
+  /\b(EMB|SP|DTF|HEAT|PRINT|SCREEN|ENGRAVED)\b(?=\s*:)/i;
 
 export function decodeMethod(nickname: string | null): string | null {
   if (!nickname) return null;
   const m =
-    nickname.match(/\b(EMB|SP|DTF)\b(?=\s*:)/i) ??
-    nickname.match(/\b(EMB|SP|DTF)\b/i);
+    nickname.match(METHOD_TOKEN_BEFORE_COLON) ?? nickname.match(METHOD_TOKEN);
   return m ? (METHOD_LABELS[m[1].toUpperCase()] ?? null) : null;
 }
 

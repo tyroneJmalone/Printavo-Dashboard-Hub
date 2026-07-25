@@ -31,6 +31,7 @@ import {
   Search,
   Shirt,
   Store,
+  Palette,
 } from "lucide-react";
 import { fmtMoney, fmtDate } from "./ChipplyStores";
 
@@ -245,6 +246,35 @@ export default function CustomerProfile() {
           />
         </div>
 
+        {data.methodBreakdown.length > 0 ? (
+          <div>
+            <h2 className="text-sm font-semibold text-slate-200 mb-2 inline-flex items-center gap-1.5">
+              <Palette size={14} className="text-slate-400" /> Decoration methods
+              <span className="text-xs font-normal text-slate-500">
+                Chipply excluded · multi-method orders count in each method
+              </span>
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {data.methodBreakdown.map((m) => (
+                <div
+                  key={m.method}
+                  className="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2"
+                >
+                  <p
+                    className={`text-sm font-semibold ${m.method === "Unspecified" ? "text-slate-400" : "text-slate-200"}`}
+                  >
+                    {m.method === "Unspecified" ? "No method recorded" : m.method}
+                  </p>
+                  <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+                    {formatNumber(m.totalQty)} pcs · {formatNumber(m.orderCount)}{" "}
+                    order{m.orderCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {data.topStyles.length > 0 ? (
           <div>
             <h2 className="text-sm font-semibold text-slate-200 mb-2 inline-flex items-center gap-1.5">
@@ -377,26 +407,59 @@ export default function CustomerProfile() {
                   decorated — tracked here, excluded from the Printavo stats
                   above
                 </p>
+                {data.chipplyProduction.methods.length > 0 ? (
+                  <div className="mb-2">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5">
+                      By method
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {data.chipplyProduction.methods.map((m) => (
+                        <div
+                          key={m.method}
+                          className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-3 py-2"
+                        >
+                          <p
+                            className={`text-sm font-semibold ${m.method === "Unspecified" ? "text-slate-400" : "text-slate-200"}`}
+                          >
+                            {m.method === "Unspecified"
+                              ? "No method in nickname"
+                              : m.method}
+                          </p>
+                          <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+                            {formatNumber(m.totalQty)} pcs ·{" "}
+                            {formatNumber(m.orderCount)} invoice
+                            {m.orderCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {data.chipplyProduction.topStyles.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {data.chipplyProduction.topStyles.map((t) => (
-                      <div
-                        key={`${t.brand ?? ""}|${t.itemNumber}`}
-                        className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-3 py-2"
-                      >
-                        <p className="text-sm font-semibold text-slate-200">
-                          {t.brand ? `${t.brand} ` : ""}
-                          <span className="text-emerald-400">
-                            {t.itemNumber}
-                          </span>
-                        </p>
-                        <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
-                          {formatNumber(t.totalQty)} pcs ·{" "}
-                          {formatNumber(t.orderCount)} invoice
-                          {t.orderCount === 1 ? "" : "s"}
-                        </p>
-                      </div>
-                    ))}
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5">
+                      Top styles
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {data.chipplyProduction.topStyles.map((t) => (
+                        <div
+                          key={`${t.brand ?? ""}|${t.itemNumber}`}
+                          className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-3 py-2"
+                        >
+                          <p className="text-sm font-semibold text-slate-200">
+                            {t.brand ? `${t.brand} ` : ""}
+                            <span className="text-emerald-400">
+                              {t.itemNumber}
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+                            {formatNumber(t.totalQty)} pcs ·{" "}
+                            {formatNumber(t.orderCount)} invoice
+                            {t.orderCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </div>

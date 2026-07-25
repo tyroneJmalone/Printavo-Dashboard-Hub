@@ -95,6 +95,7 @@ export * from './customerCategoryInput';
 export * from './customerCategoryUpdate';
 export * from './customerCreditStat';
 export * from './customerInput';
+export * from './customerMethodStat';
 export * from './customerProfileOrder';
 export * from './customerProfileResponse';
 export * from './customerProfileStats';

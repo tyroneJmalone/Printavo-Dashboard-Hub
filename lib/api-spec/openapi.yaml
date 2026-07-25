@@ -7685,10 +7685,22 @@ components:
         count:
           type: integer
 
+    CustomerMethodStat:
+      type: object
+      description: Pieces and order count for one decoration method ("Unspecified" bucket = no method recorded)
+      required: [method, orderCount, totalQty]
+      properties:
+        method:
+          type: string
+        orderCount:
+          type: integer
+        totalQty:
+          type: integer
+
     ChipplyProductionSummary:
       type: object
       description: Production stats derived from this customer's Chipply $0 shell invoices (excluded from Printavo behavior stats, surfaced separately here)
-      required: [invoiceCount, totalItems, topStyles]
+      required: [invoiceCount, totalItems, topStyles, methods]
       properties:
         invoiceCount:
           type: integer
@@ -7700,10 +7712,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CustomerProfileTopStyle"
+        methods:
+          type: array
+          description: Per-decoration-method breakdown decoded from the nickname method token (EMB/HEAT/PRINT dominate; SCREEN/SP/DTF/ENGRAVED rare)
+          items:
+            $ref: "#/components/schemas/CustomerMethodStat"
 
     CustomerProfileResponse:
       type: object
-      required: [printavoId, displayName, stats, topStyles, statuses, ordersTotal, orders, chipplyStores, chipplyProduction]
+      required: [printavoId, displayName, stats, topStyles, methodBreakdown, statuses, ordersTotal, orders, chipplyStores, chipplyProduction]
       properties:
         printavoId:
           type: string
@@ -7736,6 +7753,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CustomerProfileTopStyle"
+        methodBreakdown:
+          type: array
+          description: Decoration-method breakdown of non-Chipply invoices (from imprint type-of-work / pricing-matrix names)
+          items:
+            $ref: "#/components/schemas/CustomerMethodStat"
         statuses:
           type: array
           items:

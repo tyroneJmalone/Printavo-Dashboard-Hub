@@ -16,7 +16,7 @@ description: Chipply web-store module invariants — revenue isolation and no-li
 **Why:** Architect-approved design so invoices renamed/added later in Printavo self-link with zero maintenance; a link table would silently drift stale.
 **How to apply:** Don't "optimize" by materializing links. If perf ever matters, cache — never persist as source of truth. Parser was built from ONE sample email, so the UI review step must stay mandatory.
 
-**Method abbreviations** (Tyler, Jul 25 2026): the METHOD token in nicknames = decoration method — EMB = Embroidery, SP = Screen Printing, DTF = Heat Applied Graphics. Decode to friendly labels wherever methods surface in UI or reports.
+**Method abbreviations** (Tyler, Jul 25 2026): the METHOD token in nicknames = decoration method. Tyler's sample gave EMB/SP/DTF, but a full survey of shell nicknames (Jul 25 2026) shows the REAL vocabulary is EMB (Embroidery), HEAT (Heat Applied Graphics), PRINT (Screen Printing), with SCREEN/SP/DTF/ENGRAVED rare. Map PRINT/SCREEN/SP→Screen Printing, HEAT/DTF→Heat Applied Graphics, ENGRAVED→Engraving. Keep the SQL mapping (customer profile) and the frontend decodeMethod in sync — never build token lists from one sample.
 
 **Chipply has TWO ids** (from real exports, Jul 25 2026): the **Sales Order #** (e.g. 553498) is what appears in Printavo nickname prefixes = our `event_id`; the store **eid** (e.g. 351861) appears only in chipply.com URLs. Never conflate them.
 

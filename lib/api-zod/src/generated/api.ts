@@ -446,6 +446,11 @@ export const GetCustomerProfileResponse = zod.object({
   "orderCount": zod.number(),
   "totalQty": zod.number()
 })),
+  "methodBreakdown": zod.array(zod.object({
+  "method": zod.string(),
+  "orderCount": zod.number(),
+  "totalQty": zod.number()
+}).describe('Pieces and order count for one decoration method (\"Unspecified\" bucket = no method recorded)')).describe('Decoration-method breakdown of non-Chipply invoices (from imprint type-of-work \/ pricing-matrix names)'),
   "statuses": zod.array(zod.object({
   "name": zod.string(),
   "count": zod.number()
@@ -511,7 +516,12 @@ export const GetCustomerProfileResponse = zod.object({
   "itemNumber": zod.string(),
   "orderCount": zod.number(),
   "totalQty": zod.number()
-}))
+})),
+  "methods": zod.array(zod.object({
+  "method": zod.string(),
+  "orderCount": zod.number(),
+  "totalQty": zod.number()
+}).describe('Pieces and order count for one decoration method (\"Unspecified\" bucket = no method recorded)')).describe('Per-decoration-method breakdown decoded from the nickname method token (EMB\/HEAT\/PRINT dominate; SCREEN\/SP\/DTF\/ENGRAVED rare)')
 }).describe('Production stats derived from this customer\'s Chipply $0 shell invoices (excluded from Printavo behavior stats, surfaced separately here)')
 })
 
