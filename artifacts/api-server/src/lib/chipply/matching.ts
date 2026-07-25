@@ -22,7 +22,17 @@ export interface ChipplyPrefixGroup {
   customerCompany: string | null;
 }
 
-const PREFIX_SQL_PATTERN = "^\\d{5,7}\\s"; // POSIX regex used in SQL
+export const PREFIX_SQL_PATTERN = "^\\d{5,7}\\s"; // POSIX regex used in SQL
+
+/**
+ * SQL condition that is true when a row is NOT a Chipply-linked shell
+ * invoice (nickname does not carry the event-id prefix). Chipply shells are
+ * $0 merch invoices — they must never count toward customer spend/behavior
+ * stats (order counts, frequency, quantities, top styles).
+ */
+export function notChipplySql(nicknameCol: string): string {
+  return `(${nicknameCol} IS NULL OR ${nicknameCol} !~ '${PREFIX_SQL_PATTERN}')`;
+}
 
 /** Lowercase, collapse everything non-alphanumeric to single spaces. */
 export function normalizeName(s: string): string {

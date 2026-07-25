@@ -3,7 +3,7 @@ import { pool, db, chipplyStoresTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/requireStaff";
 import { storeJson } from "./chipply";
-import { countLinkedInvoices } from "../lib/chipply/matching";
+import { countLinkedInvoices, notChipplySql } from "../lib/chipply/matching";
 
 /**
  * Client 360 — customer directory, niche categories, and niche reporting.
@@ -193,6 +193,7 @@ router.get("/customers", async (req, res) => {
                 count(*) FILTER (WHERE order_type = 'invoice')::int AS order_count,
                 max(invoice_at) FILTER (WHERE order_type = 'invoice') AS last_order_at
            FROM pv_orders
+          WHERE ${notChipplySql("nickname")}
           GROUP BY customer_id
        )
        SELECT c.printavo_id,
@@ -336,6 +337,7 @@ router.get("/customers/report", async (req, res) => {
          LEFT JOIN customer_meta cm ON cm.printavo_customer_id = o.customer_id
          LEFT JOIN customer_categories cc ON cc.id = cm.category_id
         WHERE o.order_type = 'invoice'${dateFilter}
+          AND ${notChipplySql("o.nickname")}
         GROUP BY cc.id, cc.name
         ORDER BY sum(o.total) DESC NULLS LAST`,
       params,
@@ -422,7 +424,8 @@ router.get("/customers/:id", async (req, res) => {
               (min(invoice_at) FILTER (WHERE order_type = 'invoice'))::text AS first_order_at,
               (max(invoice_at) FILTER (WHERE order_type = 'invoice'))::text AS last_order_at
          FROM pv_orders
-        WHERE customer_id = $1`,
+        WHERE customer_id = $1
+          AND ${notChipplySql("nickname")}`,
       [id],
     );
     const s = sr.rows[0];
@@ -435,7 +438,8 @@ router.get("/customers/:id", async (req, res) => {
                 coalesce(sum(li.items), 0)::bigint AS total_items
            FROM pv_line_items li
            JOIN pv_orders o ON o.printavo_id = li.order_id
-          WHERE o.customer_id = $1 AND o.order_type = 'invoice'`,
+          WHERE o.customer_id = $1 AND o.order_type = 'invoice'
+            AND ${notChipplySql("o.nickname")}`,
         [id],
       ),
       pool.query(
@@ -447,6 +451,7 @@ router.get("/customers/:id", async (req, res) => {
            JOIN pv_orders o ON o.printavo_id = li.order_id
           WHERE o.customer_id = $1
             AND o.order_type = 'invoice'
+            AND ${notChipplySql("o.nickname")}
             AND coalesce(li.item_number, '') <> ''
           GROUP BY 1, 2
           ORDER BY count(DISTINCT li.order_id) DESC, sum(li.items) DESC

@@ -57,6 +57,7 @@ Customers (pv_customers) & niches:
 Chipply web stores (chipply_stores + chipply_store_styles — a SEPARATE sales channel):
 - Chipply is an online team-store platform; each row in chipply_stores is one web store (event_id is the Chipply order number staff quote, store_name like "Fuel Summer").
 - HARD RULE: Chipply dollars are NEVER combined with Printavo revenue. Never add chipply_stores money to pv_orders totals; report them as separate lines. Printavo invoices whose nickname starts with the store's event_id are $0 production shells — their revenue lives ONLY in chipply_stores.
+- Shell invoices also distort COUNTS and quantities, not just revenue: when counting a customer's orders, order frequency, or summing pv_line_items quantities, exclude shells with (nickname IS NULL OR nickname !~ '^\\d{5,7}\\s') — the same rule the hub's customer stats use.
 - total_dollars = sell price (combined_price + size_upcharges + fundraising). order_total additionally includes shipping/handling/tax — they are DIFFERENT numbers; "store sales" = total_dollars unless the user asks about collected totals.
 - fundraising = the org's cut; product_cost/chipply_fee/cc_processing_fee are costs. Shop-side margin ≈ total_dollars - fundraising - product_cost - chipply_fee - cc_processing_fee.
 - pv_customer_id links to pv_customers.printavo_id (which customer the store belongs to). closed_at/opened_at are plain dates.
