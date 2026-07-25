@@ -12,3 +12,7 @@ description: Chipply web-store module invariants — revenue isolation and no-li
 **How to apply:** Don't "optimize" by materializing links. If perf ever matters, cache — never persist as source of truth. Parser was built from ONE sample email, so the UI review step must stay mandatory.
 
 **Method abbreviations** (Tyler, Jul 25 2026): the METHOD token in nicknames = decoration method — EMB = Embroidery, SP = Screen Printing, DTF = Heat Applied Graphics. Decode to friendly labels wherever methods surface in UI or reports.
+
+**Chipply has TWO ids** (from real exports, Jul 25 2026): the **Sales Order #** (e.g. 553498) is what appears in Printavo nickname prefixes = our `event_id`; the store **eid** (e.g. 351861) appears only in chipply.com URLs. Never conflate them.
+
+**Export field traps**: SalesReport CSV appends a summary row with a BLANK Store Name duplicating the totals — skip nameless rows; money comes as 4-decimal strings; the email's "Total Dollars" = Sell Price, NOT the CSV's Order Total (which adds shipping/handling/tax).
