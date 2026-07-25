@@ -2416,6 +2416,242 @@ export const RunInsightsPresetResponse = zod.object({
 
 
 /**
+ * @summary Parse a pasted "Web Store Closed" email and suggest Printavo invoice matches (no write)
+ */
+export const parseChipplyEmailBodyEmailTextMin = 10;
+export const parseChipplyEmailBodyEmailTextMax = 20000;
+
+
+
+export const ParseChipplyEmailBody = zod.object({
+  "emailText": zod.string().min(parseChipplyEmailBodyEmailTextMin).max(parseChipplyEmailBodyEmailTextMax)
+})
+
+export const ParseChipplyEmailResponse = zod.object({
+  "parsed": zod.object({
+  "storeName": zod.string().nullable(),
+  "orgContact": zod.string().nullable(),
+  "storeAdmin": zod.string().nullable(),
+  "closedAt": zod.string().nullable().describe('YYYY-MM-DD'),
+  "numOrders": zod.number().nullable(),
+  "numProducts": zod.number().nullable(),
+  "totalDollars": zod.number().nullable(),
+  "fundraising": zod.number().nullable()
+}).describe('Fields extracted from a pasted \"Web Store Closed\" email; any field the parser cannot find is null and editable in the UI.'),
+  "candidates": zod.array(zod.object({
+  "eventId": zod.string(),
+  "nameGuess": zod.string(),
+  "invoiceCount": zod.number(),
+  "latestVisualId": zod.number(),
+  "statuses": zod.array(zod.string()),
+  "customerId": zod.string().nullable(),
+  "customerCompany": zod.string().nullable()
+}).describe('A Chipply event-id prefix group derived live from Printavo invoice nicknames (\"<eventId> <Store Name> <METHOD>: ...\").')).describe('Ranked invoice-prefix matches for the parsed store name (may include prior seasons, staff picks).'),
+  "existingStore": zod.object({
+  "id": zod.string(),
+  "eventId": zod.string().nullable(),
+  "storeName": zod.string(),
+  "orgContact": zod.string().nullable(),
+  "storeAdmin": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "numOrders": zod.number().nullable(),
+  "numProducts": zod.number().nullable(),
+  "totalDollars": zod.string().nullable(),
+  "fundraising": zod.string().nullable(),
+  "pvCustomerId": zod.string().nullable(),
+  "pvCustomerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).nullable().describe('Already-imported store matching this email (by event id or normalized name), if any.')
+})
+
+
+/**
+ * @summary List imported Chipply stores
+ */
+export const ListChipplyStoresQueryParams = zod.object({
+  "includeArchived": zod.coerce.boolean().optional()
+})
+
+export const ListChipplyStoresResponse = zod.object({
+  "stores": zod.array(zod.object({
+  "store": zod.object({
+  "id": zod.string(),
+  "eventId": zod.string().nullable(),
+  "storeName": zod.string(),
+  "orgContact": zod.string().nullable(),
+  "storeAdmin": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "numOrders": zod.number().nullable(),
+  "numProducts": zod.number().nullable(),
+  "totalDollars": zod.string().nullable(),
+  "fundraising": zod.string().nullable(),
+  "pvCustomerId": zod.string().nullable(),
+  "pvCustomerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "linkedInvoiceCount": zod.number()
+}))
+})
+
+
+/**
+ * @summary Create a Chipply store record (from a parsed email or a detected prefix group)
+ */
+export const createChipplyStoreBodyStoreNameMax = 200;
+
+
+
+export const CreateChipplyStoreBody = zod.object({
+  "storeName": zod.string().min(1).max(createChipplyStoreBodyStoreNameMax),
+  "eventId": zod.string().nullish(),
+  "orgContact": zod.string().nullish(),
+  "storeAdmin": zod.string().nullish(),
+  "closedAt": zod.string().nullish(),
+  "numOrders": zod.number().nullish(),
+  "numProducts": zod.number().nullish(),
+  "totalDollars": zod.number().nullish(),
+  "fundraising": zod.number().nullish(),
+  "pvCustomerId": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "rawSource": zod.string().nullish()
+})
+
+export const CreateChipplyStoreResponse = zod.object({
+  "store": zod.object({
+  "id": zod.string(),
+  "eventId": zod.string().nullable(),
+  "storeName": zod.string(),
+  "orgContact": zod.string().nullable(),
+  "storeAdmin": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "numOrders": zod.number().nullable(),
+  "numProducts": zod.number().nullable(),
+  "totalDollars": zod.string().nullable(),
+  "fundraising": zod.string().nullable(),
+  "pvCustomerId": zod.string().nullable(),
+  "pvCustomerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Store detail with live-derived linked invoices and style/qty aggregation
+ */
+export const GetChipplyStoreParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetChipplyStoreResponse = zod.object({
+  "store": zod.object({
+  "id": zod.string(),
+  "eventId": zod.string().nullable(),
+  "storeName": zod.string(),
+  "orgContact": zod.string().nullable(),
+  "storeAdmin": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "numOrders": zod.number().nullable(),
+  "numProducts": zod.number().nullable(),
+  "totalDollars": zod.string().nullable(),
+  "fundraising": zod.string().nullable(),
+  "pvCustomerId": zod.string().nullable(),
+  "pvCustomerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "invoices": zod.array(zod.object({
+  "printavoId": zod.string(),
+  "visualId": zod.number(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "total": zod.string().nullable(),
+  "invoiceAt": zod.string().nullable()
+})),
+  "styles": zod.array(zod.object({
+  "brand": zod.string().nullable(),
+  "itemNumber": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "totalQty": zod.number()
+}))
+})
+
+
+/**
+ * @summary Edit store fields, change customer match, or archive
+ */
+export const UpdateChipplyStoreParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateChipplyStoreBodyStoreNameMax = 200;
+
+
+
+export const UpdateChipplyStoreBody = zod.object({
+  "storeName": zod.string().min(1).max(updateChipplyStoreBodyStoreNameMax).optional(),
+  "eventId": zod.string().nullish(),
+  "orgContact": zod.string().nullish(),
+  "storeAdmin": zod.string().nullish(),
+  "closedAt": zod.string().nullish(),
+  "numOrders": zod.number().nullish(),
+  "numProducts": zod.number().nullish(),
+  "totalDollars": zod.number().nullish(),
+  "fundraising": zod.number().nullish(),
+  "pvCustomerId": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "archived": zod.boolean().optional()
+})
+
+export const UpdateChipplyStoreResponse = zod.object({
+  "store": zod.object({
+  "id": zod.string(),
+  "eventId": zod.string().nullable(),
+  "storeName": zod.string(),
+  "orgContact": zod.string().nullable(),
+  "storeAdmin": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "numOrders": zod.number().nullable(),
+  "numProducts": zod.number().nullable(),
+  "totalDollars": zod.string().nullable(),
+  "fundraising": zod.string().nullable(),
+  "pvCustomerId": zod.string().nullable(),
+  "pvCustomerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Live-derived Chipply store prefixes found in invoice nicknames with no imported store row yet
+ */
+export const ListDetectedChipplyStoresResponse = zod.object({
+  "detected": zod.array(zod.object({
+  "eventId": zod.string(),
+  "nameGuess": zod.string(),
+  "invoiceCount": zod.number(),
+  "latestVisualId": zod.number(),
+  "statuses": zod.array(zod.string()),
+  "customerId": zod.string().nullable(),
+  "customerCompany": zod.string().nullable()
+}).describe('A Chipply event-id prefix group derived live from Printavo invoice nicknames (\"<eventId> <Store Name> <METHOD>: ...\").'))
+})
+
+
+/**
  * @summary List all decoration pricing matrices (team-shared), newest first
  */
 export const ListDecorationMatricesResponse = zod.object({

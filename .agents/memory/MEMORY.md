@@ -25,3 +25,5 @@
 - [Reference sync daily watermark](reference-sync-daily-watermark.md) — new fields on reference queries (statuses etc.) don't backfill until the daily refresh; delete the entity_watermarks row to force it.
 - [Catalog search requirements](catalog-search-requirements.md) — tabled but returning: must be a key-authed read-only API usable by Tyler's OTHER app, with product images.
 - [Shipping rate estimator](printavo-shipping-estimator.md) — ported into Hub with intentional deviations (not drift): 2 backend micro-fixes + smart paste parser (Tyler-requested).
+- [Chipply revenue separation & live linking](chipply-separation.md) — Chipply dollars NEVER sum into Printavo revenue; invoice links derived live from nickname prefix, deliberately no link table.
+- [e2e heavy-table steps crash the test notebook](e2e-heavy-steps.md) — never verify large rendered tables in test plans; assert a few rows or skip, verify the query via psql instead.

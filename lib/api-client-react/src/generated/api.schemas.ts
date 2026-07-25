@@ -1334,6 +1334,146 @@ export type RunInsightsPresetResponse = InsightsQueryResult & {
   ranAt: string;
 };
 
+export interface ParseChipplyEmailRequest {
+  /**
+     * @minLength 10
+     * @maxLength 20000
+     */
+  emailText: string;
+}
+
+/**
+ * Fields extracted from a pasted "Web Store Closed" email; any field the parser cannot find is null and editable in the UI.
+ */
+export interface ChipplyParsedEmail {
+  storeName: string | null;
+  orgContact: string | null;
+  storeAdmin: string | null;
+  /** YYYY-MM-DD */
+  closedAt: string | null;
+  numOrders: number | null;
+  numProducts: number | null;
+  totalDollars: number | null;
+  fundraising: number | null;
+}
+
+/**
+ * A Chipply event-id prefix group derived live from Printavo invoice nicknames ("<eventId> <Store Name> <METHOD>: ...").
+ */
+export interface ChipplyStoreCandidate {
+  eventId: string;
+  nameGuess: string;
+  invoiceCount: number;
+  latestVisualId: number;
+  statuses: string[];
+  customerId: string | null;
+  customerCompany: string | null;
+}
+
+export interface ChipplyStore {
+  id: string;
+  eventId: string | null;
+  storeName: string;
+  orgContact: string | null;
+  storeAdmin: string | null;
+  closedAt: string | null;
+  numOrders: number | null;
+  numProducts: number | null;
+  totalDollars: string | null;
+  fundraising: string | null;
+  pvCustomerId: string | null;
+  pvCustomerCompany: string | null;
+  notes: string | null;
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ParseChipplyEmailResponse {
+  parsed: ChipplyParsedEmail;
+  /** Ranked invoice-prefix matches for the parsed store name (may include prior seasons, staff picks). */
+  candidates: ChipplyStoreCandidate[];
+  /** Already-imported store matching this email (by event id or normalized name), if any. */
+  existingStore: ChipplyStore | null;
+}
+
+export interface ChipplyStoreListItem {
+  store: ChipplyStore;
+  linkedInvoiceCount: number;
+}
+
+export interface ChipplyStoresResponse {
+  stores: ChipplyStoreListItem[];
+}
+
+export interface ChipplyStoreEnvelope {
+  store: ChipplyStore;
+}
+
+export interface ChipplyLinkedInvoice {
+  printavoId: string;
+  visualId: number;
+  nickname: string | null;
+  statusName: string | null;
+  total: string | null;
+  invoiceAt: string | null;
+}
+
+export interface ChipplyStyleAgg {
+  brand: string | null;
+  itemNumber: string | null;
+  description: string | null;
+  totalQty: number;
+}
+
+export interface ChipplyStoreDetailResponse {
+  store: ChipplyStore;
+  invoices: ChipplyLinkedInvoice[];
+  styles: ChipplyStyleAgg[];
+}
+
+export interface CreateChipplyStoreRequest {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  storeName: string;
+  eventId?: string | null;
+  orgContact?: string | null;
+  storeAdmin?: string | null;
+  closedAt?: string | null;
+  numOrders?: number | null;
+  numProducts?: number | null;
+  totalDollars?: number | null;
+  fundraising?: number | null;
+  pvCustomerId?: string | null;
+  notes?: string | null;
+  rawSource?: string | null;
+}
+
+export interface UpdateChipplyStoreRequest {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  storeName?: string;
+  eventId?: string | null;
+  orgContact?: string | null;
+  storeAdmin?: string | null;
+  closedAt?: string | null;
+  numOrders?: number | null;
+  numProducts?: number | null;
+  totalDollars?: number | null;
+  fundraising?: number | null;
+  pvCustomerId?: string | null;
+  notes?: string | null;
+  archived?: boolean;
+}
+
+export interface DetectedChipplyStoresResponse {
+  detected: ChipplyStoreCandidate[];
+}
+
 /**
  * A quantity price break within a matrix column. The highest break whose qty <= order qty wins.
  */
@@ -3485,6 +3625,10 @@ end?: string;
 };
 
 export type ListInsightsPresetsParams = {
+includeArchived?: boolean;
+};
+
+export type ListChipplyStoresParams = {
 includeArchived?: boolean;
 };
 

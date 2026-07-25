@@ -44,8 +44,12 @@ import type {
   BulkDeleteTasksInput,
   BulkUpdateTasksInput,
   ChangeEventItem,
+  ChipplyStoreDetailResponse,
+  ChipplyStoreEnvelope,
+  ChipplyStoresResponse,
   Comment,
   CommentInput,
+  CreateChipplyStoreRequest,
   CreateInsightsPresetRequest,
   CreatePoFileRequest,
   CreatePqStatusRuleRequest,
@@ -67,6 +71,7 @@ import type {
   DashboardSummary,
   DecorationMatricesResponse,
   DecorationMatrix,
+  DetectedChipplyStoresResponse,
   DirectoryCustomersResponse,
   ErrorResponse,
   EvaluateStatusRulesResponse,
@@ -97,6 +102,7 @@ import type {
   ListAutoPrintJobsParams,
   ListAutoPrintRunsParams,
   ListChangeEventsParams,
+  ListChipplyStoresParams,
   ListCreditsParams,
   ListCustomersParams,
   ListDirectoryCustomersParams,
@@ -124,6 +130,8 @@ import type {
   NicheReportResponse,
   NotificationLogItem,
   OrdersReport,
+  ParseChipplyEmailRequest,
+  ParseChipplyEmailResponse,
   PaymentsReport,
   PaymentsStats,
   PoFile,
@@ -194,6 +202,7 @@ import type {
   Team,
   TeamInput,
   TeamUpdate,
+  UpdateChipplyStoreRequest,
   UpdateInsightsPresetRequest,
   UpdatePoFileRequest,
   UpdatePqStatusRuleRequest,
@@ -5452,6 +5461,455 @@ export const useRunInsightsPreset = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getRunInsightsPresetMutationOptions(options));
     }
+
+export const getParseChipplyEmailUrl = () => {
+
+
+
+
+  return `/api/chipply/parse-email`
+}
+
+/**
+ * @summary Parse a pasted "Web Store Closed" email and suggest Printavo invoice matches (no write)
+ */
+export const parseChipplyEmail = async (parseChipplyEmailRequest: ParseChipplyEmailRequest, options?: RequestInit): Promise<ParseChipplyEmailResponse> => {
+
+  return customFetch<ParseChipplyEmailResponse>(getParseChipplyEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(parseChipplyEmailRequest)
+  }
+);}
+
+
+
+
+export const getParseChipplyEmailMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseChipplyEmail>>, TError,{data: BodyType<ParseChipplyEmailRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof parseChipplyEmail>>, TError,{data: BodyType<ParseChipplyEmailRequest>}, TContext> => {
+
+const mutationKey = ['parseChipplyEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof parseChipplyEmail>>, {data: BodyType<ParseChipplyEmailRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  parseChipplyEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ParseChipplyEmailMutationResult = NonNullable<Awaited<ReturnType<typeof parseChipplyEmail>>>
+    export type ParseChipplyEmailMutationBody = BodyType<ParseChipplyEmailRequest>
+    export type ParseChipplyEmailMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Parse a pasted "Web Store Closed" email and suggest Printavo invoice matches (no write)
+ */
+export const useParseChipplyEmail = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof parseChipplyEmail>>, TError,{data: BodyType<ParseChipplyEmailRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof parseChipplyEmail>>,
+        TError,
+        {data: BodyType<ParseChipplyEmailRequest>},
+        TContext
+      > => {
+      return useMutation(getParseChipplyEmailMutationOptions(options));
+    }
+
+export const getListChipplyStoresUrl = (params?: ListChipplyStoresParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/chipply/stores?${stringifiedParams}` : `/api/chipply/stores`
+}
+
+/**
+ * @summary List imported Chipply stores
+ */
+export const listChipplyStores = async (params?: ListChipplyStoresParams, options?: RequestInit): Promise<ChipplyStoresResponse> => {
+
+  return customFetch<ChipplyStoresResponse>(getListChipplyStoresUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListChipplyStoresQueryKey = (params?: ListChipplyStoresParams,) => {
+    return [
+    `/api/chipply/stores`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListChipplyStoresQueryOptions = <TData = Awaited<ReturnType<typeof listChipplyStores>>, TError = ErrorType<unknown>>(params?: ListChipplyStoresParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChipplyStores>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListChipplyStoresQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listChipplyStores>>> = ({ signal }) => listChipplyStores(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listChipplyStores>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListChipplyStoresQueryResult = NonNullable<Awaited<ReturnType<typeof listChipplyStores>>>
+export type ListChipplyStoresQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List imported Chipply stores
+ */
+
+export function useListChipplyStores<TData = Awaited<ReturnType<typeof listChipplyStores>>, TError = ErrorType<unknown>>(
+ params?: ListChipplyStoresParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChipplyStores>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListChipplyStoresQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateChipplyStoreUrl = () => {
+
+
+
+
+  return `/api/chipply/stores`
+}
+
+/**
+ * @summary Create a Chipply store record (from a parsed email or a detected prefix group)
+ */
+export const createChipplyStore = async (createChipplyStoreRequest: CreateChipplyStoreRequest, options?: RequestInit): Promise<ChipplyStoreEnvelope> => {
+
+  return customFetch<ChipplyStoreEnvelope>(getCreateChipplyStoreUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createChipplyStoreRequest)
+  }
+);}
+
+
+
+
+export const getCreateChipplyStoreMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChipplyStore>>, TError,{data: BodyType<CreateChipplyStoreRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createChipplyStore>>, TError,{data: BodyType<CreateChipplyStoreRequest>}, TContext> => {
+
+const mutationKey = ['createChipplyStore'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createChipplyStore>>, {data: BodyType<CreateChipplyStoreRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createChipplyStore(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateChipplyStoreMutationResult = NonNullable<Awaited<ReturnType<typeof createChipplyStore>>>
+    export type CreateChipplyStoreMutationBody = BodyType<CreateChipplyStoreRequest>
+    export type CreateChipplyStoreMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a Chipply store record (from a parsed email or a detected prefix group)
+ */
+export const useCreateChipplyStore = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChipplyStore>>, TError,{data: BodyType<CreateChipplyStoreRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createChipplyStore>>,
+        TError,
+        {data: BodyType<CreateChipplyStoreRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateChipplyStoreMutationOptions(options));
+    }
+
+export const getGetChipplyStoreUrl = (id: string,) => {
+
+
+
+
+  return `/api/chipply/stores/${id}`
+}
+
+/**
+ * @summary Store detail with live-derived linked invoices and style/qty aggregation
+ */
+export const getChipplyStore = async (id: string, options?: RequestInit): Promise<ChipplyStoreDetailResponse> => {
+
+  return customFetch<ChipplyStoreDetailResponse>(getGetChipplyStoreUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChipplyStoreQueryKey = (id: string,) => {
+    return [
+    `/api/chipply/stores/${id}`
+    ] as const;
+    }
+
+
+export const getGetChipplyStoreQueryOptions = <TData = Awaited<ReturnType<typeof getChipplyStore>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyStore>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChipplyStoreQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChipplyStore>>> = ({ signal }) => getChipplyStore(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChipplyStore>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChipplyStoreQueryResult = NonNullable<Awaited<ReturnType<typeof getChipplyStore>>>
+export type GetChipplyStoreQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Store detail with live-derived linked invoices and style/qty aggregation
+ */
+
+export function useGetChipplyStore<TData = Awaited<ReturnType<typeof getChipplyStore>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyStore>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChipplyStoreQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateChipplyStoreUrl = (id: string,) => {
+
+
+
+
+  return `/api/chipply/stores/${id}`
+}
+
+/**
+ * @summary Edit store fields, change customer match, or archive
+ */
+export const updateChipplyStore = async (id: string,
+    updateChipplyStoreRequest: UpdateChipplyStoreRequest, options?: RequestInit): Promise<ChipplyStoreEnvelope> => {
+
+  return customFetch<ChipplyStoreEnvelope>(getUpdateChipplyStoreUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateChipplyStoreRequest)
+  }
+);}
+
+
+
+
+export const getUpdateChipplyStoreMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChipplyStore>>, TError,{id: string;data: BodyType<UpdateChipplyStoreRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateChipplyStore>>, TError,{id: string;data: BodyType<UpdateChipplyStoreRequest>}, TContext> => {
+
+const mutationKey = ['updateChipplyStore'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateChipplyStore>>, {id: string;data: BodyType<UpdateChipplyStoreRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateChipplyStore(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateChipplyStoreMutationResult = NonNullable<Awaited<ReturnType<typeof updateChipplyStore>>>
+    export type UpdateChipplyStoreMutationBody = BodyType<UpdateChipplyStoreRequest>
+    export type UpdateChipplyStoreMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Edit store fields, change customer match, or archive
+ */
+export const useUpdateChipplyStore = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateChipplyStore>>, TError,{id: string;data: BodyType<UpdateChipplyStoreRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateChipplyStore>>,
+        TError,
+        {id: string;data: BodyType<UpdateChipplyStoreRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateChipplyStoreMutationOptions(options));
+    }
+
+export const getListDetectedChipplyStoresUrl = () => {
+
+
+
+
+  return `/api/chipply/detected`
+}
+
+/**
+ * @summary Live-derived Chipply store prefixes found in invoice nicknames with no imported store row yet
+ */
+export const listDetectedChipplyStores = async ( options?: RequestInit): Promise<DetectedChipplyStoresResponse> => {
+
+  return customFetch<DetectedChipplyStoresResponse>(getListDetectedChipplyStoresUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDetectedChipplyStoresQueryKey = () => {
+    return [
+    `/api/chipply/detected`
+    ] as const;
+    }
+
+
+export const getListDetectedChipplyStoresQueryOptions = <TData = Awaited<ReturnType<typeof listDetectedChipplyStores>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDetectedChipplyStores>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDetectedChipplyStoresQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDetectedChipplyStores>>> = ({ signal }) => listDetectedChipplyStores({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDetectedChipplyStores>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDetectedChipplyStoresQueryResult = NonNullable<Awaited<ReturnType<typeof listDetectedChipplyStores>>>
+export type ListDetectedChipplyStoresQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Live-derived Chipply store prefixes found in invoice nicknames with no imported store row yet
+ */
+
+export function useListDetectedChipplyStores<TData = Awaited<ReturnType<typeof listDetectedChipplyStores>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDetectedChipplyStores>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDetectedChipplyStoresQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListDecorationMatricesUrl = () => {
 

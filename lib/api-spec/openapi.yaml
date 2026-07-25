@@ -28,6 +28,8 @@ tags:
     description: Client 360 — customer directory, niche categories, reporting
   - name: insights
     description: Ask AI — natural-language questions over local Printavo data + saved presets
+  - name: chipply
+    description: Chipply web stores — email/export import, Printavo invoice linking, revenue kept separate
 paths:
   /healthz:
     get:
@@ -1761,6 +1763,145 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /chipply/parse-email:
+    post:
+      operationId: parseChipplyEmail
+      tags: [chipply]
+      summary: Parse a pasted "Web Store Closed" email and suggest Printavo invoice matches (no write)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseChipplyEmailRequest"
+      responses:
+        "200":
+          description: Parsed fields plus ranked store candidates derived from invoice nicknames
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseChipplyEmailResponse"
+        "400":
+          description: Email text could not be parsed at all
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /chipply/stores:
+    get:
+      operationId: listChipplyStores
+      tags: [chipply]
+      summary: List imported Chipply stores
+      parameters:
+        - name: includeArchived
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: Stores with linked-invoice counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChipplyStoresResponse"
+    post:
+      operationId: createChipplyStore
+      tags: [chipply]
+      summary: Create a Chipply store record (from a parsed email or a detected prefix group)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChipplyStoreRequest"
+      responses:
+        "201":
+          description: Created store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChipplyStoreEnvelope"
+        "400":
+          description: Invalid store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A store with this Chipply event id already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /chipply/stores/{id}:
+    get:
+      operationId: getChipplyStore
+      tags: [chipply]
+      summary: Store detail with live-derived linked invoices and style/qty aggregation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Store detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChipplyStoreDetailResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateChipplyStore
+      tags: [chipply]
+      summary: Edit store fields, change customer match, or archive
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChipplyStoreRequest"
+      responses:
+        "200":
+          description: Updated store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChipplyStoreEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Another store already uses this Chipply event id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /chipply/detected:
+    get:
+      operationId: listDetectedChipplyStores
+      tags: [chipply]
+      summary: Live-derived Chipply store prefixes found in invoice nicknames with no imported store row yet
+      responses:
+        "200":
+          description: Detected prefix groups, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DetectedChipplyStoresResponse"
   /pricing/matrices:
     get:
       operationId: listDecorationMatrices
@@ -5364,6 +5505,175 @@ components:
               $ref: "#/components/schemas/InsightsPreset"
             ranAt: { type: string }
           required: [preset, ranAt]
+    ParseChipplyEmailRequest:
+      type: object
+      properties:
+        emailText:
+          type: string
+          minLength: 10
+          maxLength: 20000
+      required: [emailText]
+    ChipplyParsedEmail:
+      type: object
+      description: Fields extracted from a pasted "Web Store Closed" email; any field the parser cannot find is null and editable in the UI.
+      properties:
+        storeName: { type: string, nullable: true }
+        orgContact: { type: string, nullable: true }
+        storeAdmin: { type: string, nullable: true }
+        closedAt: { type: string, nullable: true, description: "YYYY-MM-DD" }
+        numOrders: { type: integer, nullable: true }
+        numProducts: { type: integer, nullable: true }
+        totalDollars: { type: number, nullable: true }
+        fundraising: { type: number, nullable: true }
+      required: [storeName, orgContact, storeAdmin, closedAt, numOrders, numProducts, totalDollars, fundraising]
+    ChipplyStoreCandidate:
+      type: object
+      description: 'A Chipply event-id prefix group derived live from Printavo invoice nicknames ("<eventId> <Store Name> <METHOD>: ...").'
+      properties:
+        eventId: { type: string }
+        nameGuess: { type: string }
+        invoiceCount: { type: integer }
+        latestVisualId: { type: integer }
+        statuses:
+          type: array
+          items: { type: string }
+        customerId: { type: string, nullable: true }
+        customerCompany: { type: string, nullable: true }
+      required: [eventId, nameGuess, invoiceCount, latestVisualId, statuses, customerId, customerCompany]
+    ParseChipplyEmailResponse:
+      type: object
+      properties:
+        parsed:
+          $ref: "#/components/schemas/ChipplyParsedEmail"
+        candidates:
+          type: array
+          description: Ranked invoice-prefix matches for the parsed store name (may include prior seasons, staff picks).
+          items:
+            $ref: "#/components/schemas/ChipplyStoreCandidate"
+        existingStore:
+          allOf:
+            - $ref: "#/components/schemas/ChipplyStore"
+          nullable: true
+          description: Already-imported store matching this email (by event id or normalized name), if any.
+      required: [parsed, candidates, existingStore]
+    ChipplyStore:
+      type: object
+      properties:
+        id: { type: string }
+        eventId: { type: string, nullable: true }
+        storeName: { type: string }
+        orgContact: { type: string, nullable: true }
+        storeAdmin: { type: string, nullable: true }
+        closedAt: { type: string, nullable: true }
+        numOrders: { type: integer, nullable: true }
+        numProducts: { type: integer, nullable: true }
+        totalDollars: { type: string, nullable: true }
+        fundraising: { type: string, nullable: true }
+        pvCustomerId: { type: string, nullable: true }
+        pvCustomerCompany: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        archived: { type: boolean }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [id, eventId, storeName, orgContact, storeAdmin, closedAt, numOrders, numProducts, totalDollars, fundraising, pvCustomerId, pvCustomerCompany, notes, archived, createdAt, updatedAt]
+    ChipplyStoreListItem:
+      type: object
+      properties:
+        store:
+          $ref: "#/components/schemas/ChipplyStore"
+        linkedInvoiceCount: { type: integer }
+      required: [store, linkedInvoiceCount]
+    ChipplyStoresResponse:
+      type: object
+      properties:
+        stores:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChipplyStoreListItem"
+      required: [stores]
+    ChipplyStoreEnvelope:
+      type: object
+      properties:
+        store:
+          $ref: "#/components/schemas/ChipplyStore"
+      required: [store]
+    ChipplyLinkedInvoice:
+      type: object
+      properties:
+        printavoId: { type: string }
+        visualId: { type: integer }
+        nickname: { type: string, nullable: true }
+        statusName: { type: string, nullable: true }
+        total: { type: string, nullable: true }
+        invoiceAt: { type: string, nullable: true }
+      required: [printavoId, visualId, nickname, statusName, total, invoiceAt]
+    ChipplyStyleAgg:
+      type: object
+      properties:
+        brand: { type: string, nullable: true }
+        itemNumber: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        totalQty: { type: integer }
+      required: [brand, itemNumber, description, totalQty]
+    ChipplyStoreDetailResponse:
+      type: object
+      properties:
+        store:
+          $ref: "#/components/schemas/ChipplyStore"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChipplyLinkedInvoice"
+        styles:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChipplyStyleAgg"
+      required: [store, invoices, styles]
+    CreateChipplyStoreRequest:
+      type: object
+      properties:
+        storeName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        eventId: { type: string, nullable: true }
+        orgContact: { type: string, nullable: true }
+        storeAdmin: { type: string, nullable: true }
+        closedAt: { type: string, nullable: true }
+        numOrders: { type: integer, nullable: true }
+        numProducts: { type: integer, nullable: true }
+        totalDollars: { type: number, nullable: true }
+        fundraising: { type: number, nullable: true }
+        pvCustomerId: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        rawSource: { type: string, nullable: true }
+      required: [storeName]
+    UpdateChipplyStoreRequest:
+      type: object
+      properties:
+        storeName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        eventId: { type: string, nullable: true }
+        orgContact: { type: string, nullable: true }
+        storeAdmin: { type: string, nullable: true }
+        closedAt: { type: string, nullable: true }
+        numOrders: { type: integer, nullable: true }
+        numProducts: { type: integer, nullable: true }
+        totalDollars: { type: number, nullable: true }
+        fundraising: { type: number, nullable: true }
+        pvCustomerId: { type: string, nullable: true }
+        notes: { type: string, nullable: true }
+        archived: { type: boolean }
+    DetectedChipplyStoresResponse:
+      type: object
+      properties:
+        detected:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChipplyStoreCandidate"
+      required: [detected]
     DecorationBreak:
       type: object
       description: A quantity price break within a matrix column. The highest break whose qty <= order qty wins.

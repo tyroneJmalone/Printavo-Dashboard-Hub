@@ -16,3 +16,8 @@ export type {
   AskInsightsResponse as AskInsightsResponseType,
   RunInsightsPresetResponse as RunInsightsPresetResponseType,
 } from "./generated/types";
+
+// Same collision for the chipply parse-email response (inline allOf for the
+// nullable existingStore ref): bare name = zod schema; TS type aliased.
+export { ParseChipplyEmailResponse } from "./generated/api";
+export type { ParseChipplyEmailResponse as ParseChipplyEmailResponseType } from "./generated/types";
