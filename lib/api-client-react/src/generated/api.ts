@@ -124,6 +124,8 @@ import type {
   ListUpdate,
   ListVendorOrdersParams,
   MarkVendorOrderFailedRequest,
+  MbTestEmailRequest,
+  MbUploadUrlRequest,
   Member,
   MemberInput,
   MemberUpdate,
@@ -171,6 +173,7 @@ import type {
   ReplaceChipplyStoreStylesRequest,
   ReportFilterOptions,
   ReportSummary,
+  RequestMbUploadUrl200,
   RewardAward,
   RewardRule,
   RewardRuleInput,
@@ -182,6 +185,7 @@ import type {
   RewardsSummary,
   RunInsightsPresetResponse,
   SeedStartResult,
+  SendTestRewardEmail200,
   SendToPrintavoResult,
   SetAdminPinRequest,
   ShippingError,
@@ -14215,6 +14219,146 @@ export const useDeleteRewardRule = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteRewardRuleMutationOptions(options));
+    }
+
+export const getSendTestRewardEmailUrl = () => {
+
+
+
+
+  return `/api/mintbucks/rewards/test-email`
+}
+
+/**
+ * @summary Send a test issuance or reminder email (no credit is created)
+ */
+export const sendTestRewardEmail = async (mbTestEmailRequest: MbTestEmailRequest, options?: RequestInit): Promise<SendTestRewardEmail200> => {
+
+  return customFetch<SendTestRewardEmail200>(getSendTestRewardEmailUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(mbTestEmailRequest)
+  }
+);}
+
+
+
+
+export const getSendTestRewardEmailMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTestRewardEmail>>, TError,{data: BodyType<MbTestEmailRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendTestRewardEmail>>, TError,{data: BodyType<MbTestEmailRequest>}, TContext> => {
+
+const mutationKey = ['sendTestRewardEmail'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendTestRewardEmail>>, {data: BodyType<MbTestEmailRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sendTestRewardEmail(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendTestRewardEmailMutationResult = NonNullable<Awaited<ReturnType<typeof sendTestRewardEmail>>>
+    export type SendTestRewardEmailMutationBody = BodyType<MbTestEmailRequest>
+    export type SendTestRewardEmailMutationError = ErrorType<void>
+
+    /**
+ * @summary Send a test issuance or reminder email (no credit is created)
+ */
+export const useSendTestRewardEmail = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTestRewardEmail>>, TError,{data: BodyType<MbTestEmailRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendTestRewardEmail>>,
+        TError,
+        {data: BodyType<MbTestEmailRequest>},
+        TContext
+      > => {
+      return useMutation(getSendTestRewardEmailMutationOptions(options));
+    }
+
+export const getRequestMbUploadUrlUrl = () => {
+
+
+
+
+  return `/api/mintbucks/storage/uploads/request-url`
+}
+
+/**
+ * @summary Request a presigned upload URL for a Mint Bucks email image
+ */
+export const requestMbUploadUrl = async (mbUploadUrlRequest: MbUploadUrlRequest, options?: RequestInit): Promise<RequestMbUploadUrl200> => {
+
+  return customFetch<RequestMbUploadUrl200>(getRequestMbUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(mbUploadUrlRequest)
+  }
+);}
+
+
+
+
+export const getRequestMbUploadUrlMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestMbUploadUrl>>, TError,{data: BodyType<MbUploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestMbUploadUrl>>, TError,{data: BodyType<MbUploadUrlRequest>}, TContext> => {
+
+const mutationKey = ['requestMbUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestMbUploadUrl>>, {data: BodyType<MbUploadUrlRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestMbUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestMbUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestMbUploadUrl>>>
+    export type RequestMbUploadUrlMutationBody = BodyType<MbUploadUrlRequest>
+    export type RequestMbUploadUrlMutationError = ErrorType<void>
+
+    /**
+ * @summary Request a presigned upload URL for a Mint Bucks email image
+ */
+export const useRequestMbUploadUrl = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestMbUploadUrl>>, TError,{data: BodyType<MbUploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestMbUploadUrl>>,
+        TError,
+        {data: BodyType<MbUploadUrlRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestMbUploadUrlMutationOptions(options));
     }
 
 export const getListRewardAwardsUrl = (params?: ListRewardAwardsParams,) => {

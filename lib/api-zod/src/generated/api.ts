@@ -4871,7 +4871,8 @@ export const GetCustomerCreditsResponseItem = zod.object({
   "updatedAt": zod.string(),
   "sourceOrderVisualId": zod.string().nullish(),
   "sourceOrderNickname": zod.string().nullish(),
-  "sourceRuleName": zod.string().nullish()
+  "sourceRuleName": zod.string().nullish(),
+  "imageObjectPath": zod.string().nullish()
 })
 export const GetCustomerCreditsResponse = zod.array(GetCustomerCreditsResponseItem)
 
@@ -4902,7 +4903,8 @@ export const ListCreditsResponseItem = zod.object({
   "updatedAt": zod.string(),
   "sourceOrderVisualId": zod.string().nullish(),
   "sourceOrderNickname": zod.string().nullish(),
-  "sourceRuleName": zod.string().nullish()
+  "sourceRuleName": zod.string().nullish(),
+  "imageObjectPath": zod.string().nullish()
 })
 export const ListCreditsResponse = zod.array(ListCreditsResponseItem)
 
@@ -4918,7 +4920,8 @@ export const IssueCreditBody = zod.object({
   "customerId": zod.number(),
   "amount": zod.number().min(issueCreditBodyAmountMin),
   "note": zod.string().optional(),
-  "expiresAt": zod.string().optional()
+  "expiresAt": zod.string().optional(),
+  "imageObjectPath": zod.string().nullish()
 })
 
 export const IssueCreditResponse = zod.object({
@@ -4938,7 +4941,8 @@ export const IssueCreditResponse = zod.object({
   "updatedAt": zod.string(),
   "sourceOrderVisualId": zod.string().nullish(),
   "sourceOrderNickname": zod.string().nullish(),
-  "sourceRuleName": zod.string().nullish()
+  "sourceRuleName": zod.string().nullish(),
+  "imageObjectPath": zod.string().nullish()
 })
 
 
@@ -4966,7 +4970,8 @@ export const GetCreditResponse = zod.object({
   "updatedAt": zod.string(),
   "sourceOrderVisualId": zod.string().nullish(),
   "sourceOrderNickname": zod.string().nullish(),
-  "sourceRuleName": zod.string().nullish()
+  "sourceRuleName": zod.string().nullish(),
+  "imageObjectPath": zod.string().nullish()
 })
 
 
@@ -5000,7 +5005,8 @@ export const UpdateCreditResponse = zod.object({
   "updatedAt": zod.string(),
   "sourceOrderVisualId": zod.string().nullish(),
   "sourceOrderNickname": zod.string().nullish(),
-  "sourceRuleName": zod.string().nullish()
+  "sourceRuleName": zod.string().nullish(),
+  "imageObjectPath": zod.string().nullish()
 })
 
 
@@ -5064,7 +5070,8 @@ export const RedeemCreditResponse = zod.object({
   "updatedAt": zod.string(),
   "sourceOrderVisualId": zod.string().nullish(),
   "sourceOrderNickname": zod.string().nullish(),
-  "sourceRuleName": zod.string().nullish()
+  "sourceRuleName": zod.string().nullish(),
+  "imageObjectPath": zod.string().nullish()
 })
 })
 
@@ -5244,7 +5251,8 @@ export const GetExpiringSoonResponseItem = zod.object({
   "updatedAt": zod.string(),
   "sourceOrderVisualId": zod.string().nullish(),
   "sourceOrderNickname": zod.string().nullish(),
-  "sourceRuleName": zod.string().nullish()
+  "sourceRuleName": zod.string().nullish(),
+  "imageObjectPath": zod.string().nullish()
 })
 export const GetExpiringSoonResponse = zod.array(GetExpiringSoonResponseItem)
 
@@ -5452,6 +5460,7 @@ export const ListRewardRulesResponseItem = zod.object({
   "paidDateFrom": zod.string().optional(),
   "paidDateTo": zod.string().optional()
 }),
+  "imageObjectPath": zod.string().nullish(),
   "startsAt": zod.string().nullish(),
   "endsAt": zod.string().nullish(),
   "createdAt": zod.string(),
@@ -5487,6 +5496,7 @@ export const CreateRewardRuleBody = zod.object({
   "paidDateFrom": zod.string().optional(),
   "paidDateTo": zod.string().optional()
 }).optional(),
+  "imageObjectPath": zod.string().nullish(),
   "startsAt": zod.string().nullish(),
   "endsAt": zod.string().nullish()
 })
@@ -5516,6 +5526,7 @@ export const CreateRewardRuleResponse = zod.object({
   "paidDateFrom": zod.string().optional(),
   "paidDateTo": zod.string().optional()
 }),
+  "imageObjectPath": zod.string().nullish(),
   "startsAt": zod.string().nullish(),
   "endsAt": zod.string().nullish(),
   "createdAt": zod.string(),
@@ -5554,6 +5565,7 @@ export const UpdateRewardRuleBody = zod.object({
   "paidDateFrom": zod.string().optional(),
   "paidDateTo": zod.string().optional()
 }).optional(),
+  "imageObjectPath": zod.string().nullish(),
   "startsAt": zod.string().nullish(),
   "endsAt": zod.string().nullish()
 })
@@ -5583,6 +5595,7 @@ export const UpdateRewardRuleResponse = zod.object({
   "paidDateFrom": zod.string().optional(),
   "paidDateTo": zod.string().optional()
 }),
+  "imageObjectPath": zod.string().nullish(),
   "startsAt": zod.string().nullish(),
   "endsAt": zod.string().nullish(),
   "createdAt": zod.string(),
@@ -5598,6 +5611,42 @@ export const DeleteRewardRuleParams = zod.object({
 })
 
 export const DeleteRewardRuleResponse = zod.void()
+
+
+/**
+ * @summary Send a test issuance or reminder email (no credit is created)
+ */
+export const sendTestRewardEmailBodyAmountMin = 0.01;
+
+
+
+export const SendTestRewardEmailBody = zod.object({
+  "emailType": zod.enum(['issued', 'reminder']),
+  "recipientEmail": zod.string().email(),
+  "amount": zod.number().min(sendTestRewardEmailBodyAmountMin),
+  "note": zod.string().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "imageObjectPath": zod.string().nullish()
+})
+
+export const SendTestRewardEmailResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Request a presigned upload URL for a Mint Bucks email image
+ */
+export const RequestMbUploadUrlBody = zod.object({
+  "name": zod.string(),
+  "size": zod.number(),
+  "contentType": zod.string()
+})
+
+export const RequestMbUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string()
+})
 
 
 /**

@@ -12,4 +12,6 @@ export interface CreditInput {
   amount: number;
   note?: string;
   expiresAt?: string;
+  /** @nullable */
+  imageObjectPath?: string | null;
 }

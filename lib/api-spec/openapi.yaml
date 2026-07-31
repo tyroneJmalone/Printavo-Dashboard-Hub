@@ -4192,6 +4192,62 @@ paths:
         "404":
           description: Rule not found
 
+  /mintbucks/rewards/test-email:
+    post:
+      operationId: sendTestRewardEmail
+      tags: [rewards]
+      summary: Send a test issuance or reminder email (no credit is created)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MbTestEmailRequest"
+      responses:
+        "200":
+          description: Test email sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+        "400":
+          description: Invalid request.
+        "500":
+          description: Email failed to send.
+
+  /mintbucks/storage/uploads/request-url:
+    post:
+      operationId: requestMbUploadUrl
+      tags: [rewards]
+      summary: Request a presigned upload URL for a Mint Bucks email image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MbUploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [uploadURL, objectPath]
+                properties:
+                  uploadURL:
+                    type: string
+                  objectPath:
+                    type: string
+        "400":
+          description: Invalid request.
+        "500":
+          description: Failed to generate upload URL.
+
   /mintbucks/rewards/awards:
     get:
       operationId: listRewardAwards
@@ -7054,6 +7110,8 @@ components:
           type: ["string", "null"]
         sourceRuleName:
           type: ["string", "null"]
+        imageObjectPath:
+          type: ["string", "null"]
 
     CreditInput:
       type: object
@@ -7068,6 +7126,8 @@ components:
           type: string
         expiresAt:
           type: string
+        imageObjectPath:
+          type: ["string", "null"]
 
     CreditUpdate:
       type: object
@@ -7408,6 +7468,8 @@ components:
           $ref: "#/components/schemas/RewardParams"
         conditions:
           $ref: "#/components/schemas/RewardConditions"
+        imageObjectPath:
+          type: ["string", "null"]
         startsAt:
           type: ["string", "null"]
         endsAt:
@@ -7432,6 +7494,8 @@ components:
           $ref: "#/components/schemas/RewardParams"
         conditions:
           $ref: "#/components/schemas/RewardConditions"
+        imageObjectPath:
+          type: ["string", "null"]
         startsAt:
           type: ["string", "null"]
         endsAt:
@@ -7451,10 +7515,43 @@ components:
           $ref: "#/components/schemas/RewardParams"
         conditions:
           $ref: "#/components/schemas/RewardConditions"
+        imageObjectPath:
+          type: ["string", "null"]
         startsAt:
           type: ["string", "null"]
         endsAt:
           type: ["string", "null"]
+
+    MbTestEmailRequest:
+      type: object
+      required: [emailType, recipientEmail, amount]
+      properties:
+        emailType:
+          type: string
+          enum: [issued, reminder]
+        recipientEmail:
+          type: string
+          format: email
+        amount:
+          type: number
+          minimum: 0.01
+        note:
+          type: ["string", "null"]
+        expiresAt:
+          type: ["string", "null"]
+        imageObjectPath:
+          type: ["string", "null"]
+
+    MbUploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+        size:
+          type: number
+        contentType:
+          type: string
 
     RewardAward:
       type: object

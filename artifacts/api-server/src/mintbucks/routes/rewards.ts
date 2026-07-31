@@ -11,6 +11,7 @@ import {
   ListRewardAwardsQueryParams,
   ApproveRewardAwardParams,
   RejectRewardAwardParams,
+  SendTestRewardEmailBody,
 } from "@workspace/api-zod";
 import {
   getRewardsConfig,
@@ -30,6 +31,8 @@ import {
   type RewardTypeValue,
 } from "../lib/rewards";
 import { runRewardsPoll, startPoller } from "../lib/poller";
+import { normalizeEmailImage } from "../lib/objectImages";
+import { sendCreditIssuedEmail, sendReminderEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -144,6 +147,16 @@ router.post("/rewards/rules", async (req, res): Promise<void> => {
     return;
   }
 
+  let imageObjectPath: string | null = null;
+  if (b.imageObjectPath) {
+    try {
+      imageObjectPath = await normalizeEmailImage(b.imageObjectPath);
+    } catch {
+      res.status(400).json({ error: "Invalid image upload path" });
+      return;
+    }
+  }
+
   const [rule] = await db
     .insert(rewardRulesTable)
     .values({
@@ -152,6 +165,7 @@ router.post("/rewards/rules", async (req, res): Promise<void> => {
       rewardType: b.rewardType,
       rewardParams: paramsCheck.value,
       conditions: condCheck.value,
+      imageObjectPath,
       startsAt: b.startsAt ? new Date(b.startsAt) : null,
       endsAt: b.endsAt ? new Date(b.endsAt) : null,
     })
@@ -192,6 +206,20 @@ router.patch("/rewards/rules/:id", async (req, res): Promise<void> => {
   if (b.rewardType !== undefined) updateData.rewardType = b.rewardType;
   if (b.startsAt !== undefined) updateData.startsAt = b.startsAt ? new Date(b.startsAt) : null;
   if (b.endsAt !== undefined) updateData.endsAt = b.endsAt ? new Date(b.endsAt) : null;
+  if (b.imageObjectPath !== undefined) {
+    if (b.imageObjectPath === null || b.imageObjectPath === "") {
+      updateData.imageObjectPath = null;
+    } else if (b.imageObjectPath !== existing.imageObjectPath) {
+      // Only (re-)normalize when the path actually changed — an unchanged
+      // path was already normalized and made public when first saved.
+      try {
+        updateData.imageObjectPath = await normalizeEmailImage(b.imageObjectPath);
+      } catch {
+        res.status(400).json({ error: "Invalid image upload path" });
+        return;
+      }
+    }
+  }
 
   // Validate params against the effective (possibly updated) reward type.
   const effectiveType = (b.rewardType ?? existing.rewardType) as RewardTypeValue;
@@ -242,6 +270,51 @@ router.delete("/rewards/rules/:id", async (req, res): Promise<void> => {
   }
   invalidatePipelineCache();
   res.sendStatus(204);
+});
+
+// ── Test email ───────────────────────────────────────────────────────────────
+// Sends a preview of the issuance/reminder email with dummy data — no credit
+// is created and nothing is written to the ledger.
+router.post("/rewards/test-email", async (req, res): Promise<void> => {
+  const parsed = SendTestRewardEmailBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { emailType, recipientEmail, amount, note, expiresAt, imageObjectPath: rawImagePath } = parsed.data;
+
+  let imageObjectPath: string | null = null;
+  if (rawImagePath) {
+    try {
+      imageObjectPath = await normalizeEmailImage(rawImagePath);
+    } catch {
+      res.status(400).json({ error: "Invalid image upload path" });
+      return;
+    }
+  }
+
+  const emailData = {
+    customerName: "Test Customer",
+    customerEmail: recipientEmail,
+    creditCode: "MB-TESTCODE",
+    amount,
+    expiresAt: expiresAt ?? null,
+    note: note ?? null,
+    creditId: 0,
+    imageObjectPath,
+    isTest: true,
+  };
+
+  const sent = emailType === "issued"
+    ? await sendCreditIssuedEmail(emailData)
+    : await sendReminderEmail(emailData);
+
+  if (!sent) {
+    res.status(500).json({ error: "Failed to send test email. Check that your FROM_EMAIL domain is verified in Resend." });
+    return;
+  }
+  res.json({ success: true });
 });
 
 // ── Awards ───────────────────────────────────────────────────────────────────

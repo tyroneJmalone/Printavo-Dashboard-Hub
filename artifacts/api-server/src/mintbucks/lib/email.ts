@@ -29,6 +29,32 @@ function applyEmailGuard(opts: { to: string; subject: string }): { to: string; s
   };
 }
 
+// HUB ADAPTATION: rule/credit images are served from the HUB's public image
+// route (which falls back to the standalone app for images uploaded there).
+// Email clients fetch anonymously, so this must be a public URL.
+function hubImageBaseUrl(): string {
+  const domain =
+    process.env.REPLIT_DOMAINS?.split(",")[0]?.trim() ||
+    process.env.REPLIT_DEV_DOMAIN?.trim();
+  return domain ? `https://${domain}` : "";
+}
+
+function testBanner(isTest?: boolean): string {
+  if (!isTest) return "";
+  return `<div style="background:#fff3cd;border:1px solid #ffe08a;border-radius:6px;padding:10px 16px;margin-bottom:16px;color:#7a5d00;font-size:13px;text-align:center;font-weight:600">TEST EMAIL — no credit has actually been issued. This is a preview of what customers receive.</div>`;
+}
+
+function ruleImageTag(imageObjectPath?: string | null): string {
+  if (!imageObjectPath) return "";
+  // Defense in depth: only render canonical /objects/... paths so no
+  // arbitrary markup or foreign URL can end up in the src attribute.
+  if (!/^\/objects\/[A-Za-z0-9._/-]+$/.test(imageObjectPath)) return "";
+  const base = hubImageBaseUrl();
+  if (!base) return "";
+  const src = `${base}/api/mintbucks/images${encodeURI(imageObjectPath)}`;
+  return `<div style="text-align:center;margin:24px 0"><img src="${src}" alt="" style="max-width:100%;height:auto;border-radius:8px"></div>`;
+}
+
 function logoImgTag(): string {
   const url = getAppUrl();
   if (!url) return `<div style="font-size:22px;font-weight:bold;color:#16261c;letter-spacing:2px">MINT PRINTWORKS</div>`;
@@ -71,6 +97,10 @@ interface CreditEmailData {
   expiresAt?: string | null;
   note?: string | null;
   creditId: number;
+  /** Object storage path (e.g. /objects/uploads/<id>) of a rule image to feature in the email. */
+  imageObjectPath?: string | null;
+  /** When true, the email is a staff test: subject is prefixed, a banner is added, and links are omitted. */
+  isTest?: boolean;
 }
 
 interface RedemptionEmailData {
@@ -113,17 +143,19 @@ const CSS = `
 
 export async function sendCreditIssuedEmail(data: CreditEmailData): Promise<boolean> {
   const appUrl = getAppUrl();
-  const certificateUrl = appUrl ? `${appUrl}/api/credits/${data.creditId}/certificate` : null;
-  const checkUrl = appUrl ? `${appUrl}/check/${data.creditCode}` : null;
+  const certificateUrl = appUrl && !data.isTest ? `${appUrl}/api/credits/${data.creditId}/certificate` : null;
+  const checkUrl = appUrl && !data.isTest ? `${appUrl}/check/${data.creditCode}` : null;
 
-  const subject = `You've received ${formatCurrency(data.amount)} in Mint Bucks — ${BUSINESS_NAME}`;
+  const subject = `${data.isTest ? "[TEST] " : ""}You've received ${formatCurrency(data.amount)} in Mint Bucks — ${BUSINESS_NAME}`;
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${CSS}</style></head><body>
 <div class="wrap">
   <div class="hd">${logoImgTag()}</div>
   <div class="bd">
+    ${testBanner(data.isTest)}
     <p>Hi ${data.customerName},</p>
     <p>You've been issued Mint Bucks — store credit you can apply to any future order at ${BUSINESS_NAME}.</p>
+    ${ruleImageTag(data.imageObjectPath)}
     <div class="amt"><div class="n">${formatCurrency(data.amount)}</div><div class="l">Mint Bucks Credit</div></div>
     <div class="code"><div class="c">${data.creditCode}</div><div class="cl">Your unique credit code</div></div>
     <div class="dl"><dl>
@@ -181,15 +213,17 @@ export async function sendRedemptionConfirmationEmail(data: RedemptionEmailData)
 
 export async function sendReminderEmail(data: CreditEmailData): Promise<boolean> {
   const appUrl = getAppUrl();
-  const checkUrl = appUrl ? `${appUrl}/check/${data.creditCode}` : null;
-  const subject = `Reminder: You have ${formatCurrency(data.amount)} in Mint Bucks waiting — ${BUSINESS_NAME}`;
+  const checkUrl = appUrl && !data.isTest ? `${appUrl}/check/${data.creditCode}` : null;
+  const subject = `${data.isTest ? "[TEST] " : ""}Reminder: You have ${formatCurrency(data.amount)} in Mint Bucks waiting — ${BUSINESS_NAME}`;
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${CSS}</style></head><body>
 <div class="wrap">
   <div class="hd">${logoImgTag()}</div>
   <div class="bd">
+    ${testBanner(data.isTest)}
     <p>Hi ${data.customerName},</p>
     <p>Just a friendly reminder — you have <strong>Mint Bucks</strong> store credit available. Don't forget to use it on your next order!</p>
+    ${ruleImageTag(data.imageObjectPath)}
     <div class="amt"><div class="n">${formatCurrency(data.amount)}</div><div class="l">Available Balance</div></div>
     <div class="code"><div class="c">${data.creditCode}</div><div class="cl">Your credit code</div></div>
     ${data.expiresAt ? `<p><strong>Expires:</strong> ${formatDate(data.expiresAt)} — don't let it go to waste!</p>` : ""}
@@ -210,6 +244,8 @@ export interface PrintavoNotificationData {
   totalOutstanding: number;
   orderNumber: string;
   orderTotal?: number;
+  /** Object storage path of a rule/credit image to feature in the email. */
+  imageObjectPath?: string | null;
 }
 
 export async function sendPrintavoNotificationEmail(data: PrintavoNotificationData): Promise<boolean> {
@@ -225,6 +261,7 @@ export async function sendPrintavoNotificationEmail(data: PrintavoNotificationDa
   <div class="bd">
     <p>Hi ${data.customerName},</p>
     <p>Great news! You have <strong>Mint Bucks</strong> store credit available and an order in progress with us. Don't forget to apply it!</p>
+    ${ruleImageTag(data.imageObjectPath)}
     <div class="amt"><div class="n">${formatCurrency(data.totalOutstanding)}</div><div class="l">Available Balance</div></div>
     <div class="code">
       <div style="color:#a8c5b8;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Your Credit Code${data.creditCodes.length > 1 ? "s" : ""}</div>

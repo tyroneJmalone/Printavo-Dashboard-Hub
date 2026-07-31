@@ -14,6 +14,9 @@ export const creditsTable = pgTable("credits", {
   status: text("status").notNull().default("active"),
   note: text("note"),
   sourceRuleId: integer("source_rule_id"),
+  // Optional branded image (object storage path) featured in issuance/reminder
+  // emails for this credit. Falls back to the source rule's image when null.
+  imageObjectPath: text("image_object_path"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

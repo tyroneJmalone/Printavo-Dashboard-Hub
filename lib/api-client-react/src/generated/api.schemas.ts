@@ -2750,6 +2750,8 @@ export interface Credit {
   sourceOrderNickname?: string | null;
   /** @nullable */
   sourceRuleName?: string | null;
+  /** @nullable */
+  imageObjectPath?: string | null;
 }
 
 export interface CreditInput {
@@ -2758,6 +2760,8 @@ export interface CreditInput {
   amount: number;
   note?: string;
   expiresAt?: string;
+  /** @nullable */
+  imageObjectPath?: string | null;
 }
 
 export type CreditUpdateStatus = typeof CreditUpdateStatus[keyof typeof CreditUpdateStatus];
@@ -3005,6 +3009,8 @@ export interface RewardRule {
   rewardParams: RewardParams;
   conditions: RewardConditions;
   /** @nullable */
+  imageObjectPath?: string | null;
+  /** @nullable */
   startsAt?: string | null;
   /** @nullable */
   endsAt?: string | null;
@@ -3029,6 +3035,8 @@ export interface RewardRuleInput {
   rewardParams: RewardParams;
   conditions?: RewardConditions;
   /** @nullable */
+  imageObjectPath?: string | null;
+  /** @nullable */
   startsAt?: string | null;
   /** @nullable */
   endsAt?: string | null;
@@ -3051,9 +3059,38 @@ export interface RewardRuleUpdate {
   rewardParams?: RewardParams;
   conditions?: RewardConditions;
   /** @nullable */
+  imageObjectPath?: string | null;
+  /** @nullable */
   startsAt?: string | null;
   /** @nullable */
   endsAt?: string | null;
+}
+
+export type MbTestEmailRequestEmailType = typeof MbTestEmailRequestEmailType[keyof typeof MbTestEmailRequestEmailType];
+
+
+export const MbTestEmailRequestEmailType = {
+  issued: 'issued',
+  reminder: 'reminder',
+} as const;
+
+export interface MbTestEmailRequest {
+  emailType: MbTestEmailRequestEmailType;
+  recipientEmail: string;
+  /** @minimum 0.01 */
+  amount: number;
+  /** @nullable */
+  note?: string | null;
+  /** @nullable */
+  expiresAt?: string | null;
+  /** @nullable */
+  imageObjectPath?: string | null;
+}
+
+export interface MbUploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
 }
 
 export type RewardAwardStatus = typeof RewardAwardStatus[keyof typeof RewardAwardStatus];
@@ -4044,6 +4081,15 @@ days?: string;
 
 export type GetRecentActivityParams = {
 limit?: string;
+};
+
+export type SendTestRewardEmail200 = {
+  success: boolean;
+};
+
+export type RequestMbUploadUrl200 = {
+  uploadURL: string;
+  objectPath: string;
 };
 
 export type ListRewardAwardsParams = {

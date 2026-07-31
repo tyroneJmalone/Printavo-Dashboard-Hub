@@ -22,6 +22,7 @@ import { isMomintumConfigured } from "@workspace/momintum-db";
 import momintumRouter from "../momintum";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
 import mintbucksRouter from "../mintbucks/routes";
+import mintbucksPublicRouter from "./mintbucksPublic";
 import { printavoConfigured } from "../lib/printavoGateway";
 import printavoTasksRouter from "../printavoTasks/routes";
 
@@ -33,6 +34,10 @@ const router: IRouter = Router();
 // allowlisted staff session (Clerk cookie).
 router.use(healthRouter);
 router.use(purchasingPublicRouter);
+// Mint Bucks email images — fetched anonymously by email clients.
+if (isMintbucksConfigured()) {
+  router.use(mintbucksPublicRouter);
+}
 
 // ── Staff-only ───────────────────────────────────────────────────────
 router.use(requireStaff);

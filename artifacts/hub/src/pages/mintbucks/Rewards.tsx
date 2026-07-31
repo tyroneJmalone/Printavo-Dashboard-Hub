@@ -732,7 +732,19 @@ export function Rewards() {
                 ) : rules?.length ? (
                   rules.map((rule) => (
                     <tr key={rule.id} data-testid={`row-rule-${rule.id}`} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-5 py-3.5 text-sm text-foreground font-medium">{rule.name}</td>
+                      <td className="px-5 py-3.5 text-sm text-foreground font-medium">
+                        <div className="flex items-center gap-2.5">
+                          {rule.imageObjectPath ? (
+                            <img
+                              src={`/api/mintbucks/images${rule.imageObjectPath}`}
+                              alt=""
+                              className="h-8 w-8 rounded object-cover border border-border flex-shrink-0"
+                              data-testid={`img-rule-thumb-${rule.id}`}
+                            />
+                          ) : null}
+                          <span>{rule.name}</span>
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5 text-sm text-muted-foreground">{rewardTypeLabels[rule.rewardType]}</td>
                       <td className="px-5 py-3.5 text-sm text-muted-foreground">{describeRule(rule)}</td>
                       <td className="px-5 py-3.5">

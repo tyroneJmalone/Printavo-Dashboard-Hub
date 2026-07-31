@@ -1,5 +1,8 @@
+import { useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ImagePlus, X } from "lucide-react";
+import { useMbImageUpload } from "@/hooks/use-mb-image-upload";
+import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -41,6 +44,13 @@ export function IssueCredit() {
 
   const issueCredit = useIssueCredit();
 
+  const [imageObjectPath, setImageObjectPath] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading } = useMbImageUpload({
+    onSuccess: (response) => setImageObjectPath(response.objectPath),
+    onError: (err) => toast({ title: "Image upload failed", description: err.message, variant: "destructive" }),
+  });
+
   const form = useForm<IssueCreditFormData>({
     resolver: zodResolver(issueCreditSchema),
     defaultValues: {
@@ -59,6 +69,7 @@ export function IssueCredit() {
           amount: parseFloat(data.amount),
           note: data.note || undefined,
           expiresAt: data.expiresAt || undefined,
+          imageObjectPath: imageObjectPath ?? undefined,
         },
       },
       {
@@ -189,6 +200,73 @@ export function IssueCredit() {
                 </FormItem>
               )}
             />
+
+            {/* Email image */}
+            <div className="rounded-md border border-border p-3 space-y-2">
+              <div>
+                <Label className="text-sm">Email image (optional)</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Shown in the issuance email the customer receives.
+                </p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                data-testid="input-credit-image-file"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadFile(file);
+                  e.target.value = "";
+                }}
+              />
+              {imageObjectPath ? (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={`/api/mintbucks/images${imageObjectPath}`}
+                    alt="Credit email image"
+                    className="h-16 w-16 rounded-md object-cover border border-border"
+                    data-testid="img-credit-image-preview"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isUploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      data-testid="button-replace-credit-image"
+                    >
+                      {isUploading ? "Uploading…" : "Replace"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive gap-1"
+                      onClick={() => setImageObjectPath(null)}
+                      data-testid="button-remove-credit-image"
+                    >
+                      <X className="w-3.5 h-3.5" /> Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={isUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="button-upload-credit-image"
+                >
+                  <ImagePlus className="w-3.5 h-3.5" />
+                  {isUploading ? "Uploading…" : "Upload image"}
+                </Button>
+              )}
+            </div>
 
             <div className="flex gap-3 pt-2">
               <Button

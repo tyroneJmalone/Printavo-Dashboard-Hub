@@ -15,6 +15,7 @@ import {
 } from "@workspace/api-zod";
 import { v4 as uuidv4 } from "uuid";
 import { sendCreditIssuedEmail, sendRedemptionConfirmationEmail, sendReminderEmail } from "../lib/email";
+import { normalizeEmailImage } from "../lib/objectImages";
 import { generateCertificatePdf, generateQrPng } from "../lib/certificate";
 
 const router: IRouter = Router();
@@ -128,12 +129,22 @@ router.post("/credits", async (req, res): Promise<void> => {
     return;
   }
 
-  const { customerId, amount, note, expiresAt } = parsed.data;
+  const { customerId, amount, note, expiresAt, imageObjectPath: rawImagePath } = parsed.data;
 
   const [customer] = await db.select().from(customersTable).where(eq(customersTable.id, customerId));
   if (!customer) {
     res.status(400).json({ error: "Customer not found" });
     return;
+  }
+
+  let imageObjectPath: string | null = null;
+  if (rawImagePath) {
+    try {
+      imageObjectPath = await normalizeEmailImage(rawImagePath);
+    } catch {
+      res.status(400).json({ error: "Invalid image upload path" });
+      return;
+    }
   }
 
   const code = `MB-${uuidv4().toUpperCase().replace(/-/g, "").slice(0, 8)}`;
@@ -147,6 +158,7 @@ router.post("/credits", async (req, res): Promise<void> => {
       amountRemaining: amount.toFixed(2),
       status: "active",
       note: note ?? null,
+      imageObjectPath,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
     })
     .returning();
@@ -160,6 +172,7 @@ router.post("/credits", async (req, res): Promise<void> => {
     expiresAt: credit.expiresAt?.toISOString() ?? null,
     note: credit.note,
     creditId: credit.id,
+    imageObjectPath: credit.imageObjectPath,
   }).catch(() => {});
 
   res.status(201).json(formatCredit(credit as unknown as Record<string, unknown>, customer.name, customer.email, customer.companyName ?? null));
@@ -331,6 +344,17 @@ router.post("/credits/:id/remind", async (req, res): Promise<void> => {
     return;
   }
 
+  // Featured image: the credit's own image wins; otherwise fall back to the
+  // source rule's image (auto-issued reward credits).
+  let imageObjectPath: string | null = credit.imageObjectPath ?? null;
+  if (!imageObjectPath && credit.sourceRuleId != null) {
+    const [rule] = await db
+      .select({ imageObjectPath: rewardRulesTable.imageObjectPath })
+      .from(rewardRulesTable)
+      .where(eq(rewardRulesTable.id, credit.sourceRuleId));
+    imageObjectPath = rule?.imageObjectPath ?? null;
+  }
+
   const sent = await sendReminderEmail({
     customerName: customer.name,
     customerEmail: customer.email,
@@ -339,6 +363,7 @@ router.post("/credits/:id/remind", async (req, res): Promise<void> => {
     expiresAt: credit.expiresAt?.toISOString() ?? null,
     note: credit.note,
     creditId: credit.id,
+    imageObjectPath,
   });
 
   if (!sent) {
