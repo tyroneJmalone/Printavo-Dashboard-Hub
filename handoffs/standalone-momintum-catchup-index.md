@@ -11,11 +11,4 @@ to the standalone agent **in this order** (they build on each other):
 5. `standalone-momintum-task-routing-overhaul.md` — task routing/visibility for Printavo-synced tasks (Jul 20)
 6. `standalone-momintum-sync-safeguard-confirmations.md` — confirmation prompts before acting on synced tasks (Jul 20)
 7. `standalone-momintum-task-sync-poller.md` — manual "sync from Printavo" button (Jul 21; the polling itself runs in the Hub — the standalone side is just the button/UI portion described in the doc)
-
-## One change with NO handoff yet
-**Accurate task counts on dashboard/lists (Jul 21):** lists now expose an
-`activeTaskCount` that excludes quarantined and soft-deleted tasks, and the
-dashboard/lists pages display it instead of counting raw rows. This one is NOT
-frontend-only — it changed the list API response. Low urgency (counts are just
-slightly off without it); ask the Hub agent for a proper handoff if you want it
-ported.
+8. `standalone-momintum-task-counts.md` — accurate task counts on the Lists page and Dashboard (Jul 21; server-computed `activeTaskCount` + trashed/quarantined tasks excluded from dashboard numbers — apply after #5, it builds on the quarantine filtering)
