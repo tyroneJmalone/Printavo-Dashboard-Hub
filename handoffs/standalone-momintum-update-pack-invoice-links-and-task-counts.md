@@ -2,6 +2,22 @@
 
 Two updates in one document. Paste the whole thing to the standalone moMINTum agent. Apply Part 1 first; Part 2 is independent of it but listed second.
 
+## Context: how this app relates to the Printavo Hub (read before changing anything)
+
+**The setup.** moMINTum exists in two places: this standalone app (the published, user-facing one) and a copy embedded inside Mint Printworks' internal "Printavo Hub" workspace. Both frontends read and write the SAME live production Postgres database — this app's database. There is one set of tasks, lists, and members; only the UI code is duplicated.
+
+**Who owns what:**
+- **This standalone app owns the database schema.** All migrations and schema tooling live here. The Hub never runs schema pushes against this DB; when the Hub needs new persistent state it adds separate, clearly hub-owned tables (currently `list_groups` and `list_group_memberships`, used for the sidebar list folders) with cascade FKs. Never drop or migrate away those tables — the Hub depends on them.
+- **This app owns user identity.** Each app has its own separate Clerk tenant; `members.clerk_user_id` belongs to THIS app's tenant. The shared identity key between the two apps is **email only** (case-insensitive, oldest row wins). Email must NOT gain a unique index — the Hub relies on the current shape.
+- **The Hub owns the Printavo sync.** A poller in the Hub's API server mirrors Printavo orders into tasks (titles ending "(INV #NNN)", Printavo URL in notes, the shared "Printavo" team's General/Production lists, quarantine behavior). This app should treat all of that as read-mostly data it renders — never re-implement or modify the sync itself.
+
+**The ideals (why these handoffs exist):**
+- **Feature parity, ported deliberately.** UI features are usually built first in the Hub's copy, then ported here via handoff docs like this one — code is adapted, not blindly copied, because this app has its own backend and API layer.
+- **Symmetric behavior.** Because both apps serve the same rows, gating and semantics must match on both sides (e.g. if an endpoint isn't admin-gated in one app, don't "fix" it in only one). If a handoff specifies a rule (like quarantine list matching by team name "Printavo", never hardcoded ids), keep it identical.
+- **Additive and reversible.** Prefer read-side and frontend changes; avoid destructive migrations; anything touching shared rows should be something the other app can tolerate without changes.
+
+If a requested change seems to conflict with any of the above, flag it rather than working around it.
+
 ---
 
 # PART 1 of 2
