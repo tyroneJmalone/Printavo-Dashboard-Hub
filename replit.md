@@ -60,6 +60,7 @@ Unified internal hub for Mint Printworks that consolidates 11 separate Printavo-
 - Maintenance & sidework log with scheduled reminders — possibly tied into the task management app integration.
 - Preset reports library in the Reports module — Tyler has a list to work through.
 - (Also logged in session plan: outgoing activity log, task management app integration, Missive messaging portal, public Reorder Portal.)
+- Stock availability checker (Tyler, Aug 4, 2026): salesperson types a style number, picks a color, app returns stock by warehouse across vendors (SanMar + S&S); plus a one-click stock check on a specific Printavo invoice's line items. High feasibility — reuses the existing vendor pricing/inventory clients and warehouse auto-pick logic from the PO builder, and the synced line-item mirror. Natural tie-in with the universal vendor product search / catalog-search API idea.
 
 ## User preferences
 
