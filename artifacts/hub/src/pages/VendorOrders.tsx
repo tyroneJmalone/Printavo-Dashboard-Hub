@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
-import { LastSynced } from "@/components/LastSynced";
-import { useGetNeedsOrdering, triggerPoll, getSyncStatus, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
+import { useGetNeedsOrdering, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
 import { formatNumber, formatDate } from "@/lib/format";
 import { usePoCart, guessVendor, type CartItem } from "@/stores/poCart";
 import { CartDrawer } from "@/components/purchasing/CartDrawer";
-import { useToast } from "@/hooks/use-toast";
-import { Truck, Loader2, RefreshCw, PackageSearch, Layers, Boxes, CalendarClock, ShoppingCart, Plus, Check, AlertTriangle } from "lucide-react";
+import { Truck, Loader2, PackageSearch, Layers, Boxes, CalendarClock, ShoppingCart, Plus, Check, AlertTriangle } from "lucide-react";
 
 function statusPill(name: string | null): string {
   if (!name) return "Unknown";
@@ -23,47 +21,6 @@ function staleWarning(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): str
     return `Order status is "${statusPill(order.statusName)}" — may already be done`;
   }
   return null;
-}
-
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-
-/**
- * A forced sync runs 1-3 minutes server-side (throttled Printavo crawl), far
- * longer than proxies keep an HTTP response open, so POST /sync/poll returns
- * "Poll started" immediately and we watch GET /sync/status until the run
- * leaves the "running" state.
- */
-async function watchSyncUntilDone(): Promise<{ ok: boolean; error: string | null }> {
-  const start = Date.now();
-  const deadline = start + 6 * 60_000;
-  let runId: number | null = null;
-  while (Date.now() < deadline) {
-    await sleep(4000);
-    try {
-      const status = await getSyncStatus();
-      const run = status.lastIncremental;
-      if (run?.status === "running") {
-        runId = run.id;
-        continue;
-      }
-      if (runId !== null && run?.id === runId) {
-        return { ok: run.status === "completed", error: run.error ?? null };
-      }
-      // Never observed it running after 30s: either it finished within our
-      // first 4s check, or it never actually started. Trust the run record
-      // (allowing a little client/server clock skew) instead of assuming
-      // success.
-      if (runId === null && Date.now() - start > 30_000) {
-        if (run?.finishedAt && new Date(run.startedAt).getTime() >= start - 60_000) {
-          return { ok: run.status === "completed", error: run.error ?? null };
-        }
-        return { ok: false, error: "The sync never started — check the Dashboard sync panel." };
-      }
-    } catch {
-      // Transient status-fetch hiccup — keep watching until the deadline.
-    }
-  }
-  return { ok: false, error: "Timed out waiting for the sync to finish" };
 }
 
 function buildCartItem(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): CartItem {
@@ -101,77 +58,12 @@ function buildCartItem(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): Ca
 }
 
 export default function VendorOrders() {
-  const { toast } = useToast();
-  const { data, isLoading, isFetching, refetch } = useGetNeedsOrdering();
+  const { data, isLoading } = useGetNeedsOrdering();
   const cartItems = usePoCart((s) => s.items);
   const addItem = usePoCart((s) => s.addItem);
   const removeItem = usePoCart((s) => s.removeItem);
   const [cartOpen, setCartOpen] = useState(false);
   const inCart = new Set(cartItems.map((i) => i.key));
-
-  const [syncing, setSyncing] = useState(false);
-
-  /**
-   * Forced refresh: trigger a Printavo incremental poll (new/changed orders +
-   * their line-item details), wait for it to finish, then re-run the
-   * needs-ordering scan. Safe to spam — the server no-ops with a message if
-   * a sync is already running.
-   */
-  async function handleSync() {
-    if (syncing) return;
-    setSyncing(true);
-    try {
-      const res = await triggerPoll();
-      if (!res.ran) {
-        // ran:false covers several cases the server reports as 200: another
-        // sync busy, seed not done, creds missing, or an actual poll failure.
-        const failed = res.message.startsWith("Poll failed");
-        void refetch();
-        toast({
-          title: failed ? "Printavo sync failed" : "Sync not run",
-          description: res.message,
-          ...(failed ? { variant: "destructive" as const } : {}),
-        });
-        return;
-      }
-      if (res.stats !== null) {
-        // Finished within the server's grace window — already done.
-        void refetch();
-        toast({ title: "Synced with Printavo", description: res.message });
-        return;
-      }
-      toast({
-        title: "Syncing with Printavo",
-        description: "Pulling the latest orders — usually takes a minute or two.",
-      });
-      const outcome = await watchSyncUntilDone();
-      void refetch();
-      if (outcome.ok) {
-        toast({
-          title: "Synced with Printavo",
-          description: "Latest Printavo changes pulled — list refreshed.",
-        });
-      } else {
-        toast({
-          title: "Printavo sync failed",
-          description: outcome.error ?? "Check the Dashboard sync panel.",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      // Still re-read the local scan — it may have data from the scheduler.
-      void refetch();
-      toast({
-        title: "Printavo sync failed",
-        description: err instanceof Error ? err.message : "Check the Dashboard sync panel.",
-        variant: "destructive",
-      });
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  const refreshing = syncing || isFetching;
 
   return (
     <AppShell>
@@ -186,16 +78,6 @@ export default function VendorOrders() {
               <p className="text-xs text-slate-400 mt-1">Line items flagged "needs ordering" in Printavo, refreshed by the 5-minute sync</p>
             </div>
             <div className="flex items-center gap-2">
-              <LastSynced className="mr-2" />
-              <button
-                onClick={() => void handleSync()}
-                disabled={refreshing}
-                title="Pull the latest orders from Printavo now, then re-scan for items needing ordering"
-                className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-                {syncing ? "Syncing with Printavo…" : "Sync now"}
-              </button>
               <button
                 onClick={() => setCartOpen(true)}
                 className="relative flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-lg bg-[#059669] text-white hover:bg-[#047857] transition-colors"

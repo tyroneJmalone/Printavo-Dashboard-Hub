@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
-import { LastSynced } from "@/components/LastSynced";
+import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
 import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter } from "lucide-react";
@@ -191,7 +191,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="text-[10px] text-slate-400 mt-0.5 font-medium">Mint Printworks</div>
             </div>
           </div>
-          <LastSynced className="mt-3" />
         </div>
 
         <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto custom-scrollbar">
@@ -284,9 +283,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-[#020617] relative custom-scrollbar">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <PrintavoSyncBar />
+        <main className="flex-1 overflow-y-auto bg-[#020617] relative custom-scrollbar">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
