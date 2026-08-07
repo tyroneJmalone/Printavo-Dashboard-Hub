@@ -31,3 +31,10 @@ uri = "file://handoffs/standalone-momintum-update-pack-invoice-links-and-task-co
 type = "text"
 title = "moMINTum update pack (2 features + context)"
 description = "Combined handoff for the standalone moMINTum agent: relationship/context primer, clickable Printavo invoice links, and accurate task counts."
+
+[[outputs]]
+id = "KGO9zB7mWfzIgRfR9GhT9"
+uri = "file://docs/status-and-roadmap.md"
+type = "text"
+title = "Hub Status & Roadmap Review"
+description = "Snapshot of everything built, the drafted curation tasks, the assessed ideas backlog (incl. the new CFO AI assistant idea), and a suggested sequencing for next steps."
