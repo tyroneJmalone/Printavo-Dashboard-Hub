@@ -11,7 +11,8 @@ title = "Printavo Hub — Consolidation Assessment (Updated July 7, 2026)"
 id = "Y0PG3VFvOR639daF8l3fw"
 uri = "file://exports/printavo-hub-plan-status.pdf"
 type = "pdf"
-title = "Printavo Hub — Project Plan & Status (Jul 25)"
+title = "Printavo Hub — Project Plan & Status (Aug 7)"
+description = "The familiar plan & status sheet, updated: punch list, new Aug items (sync bar, MB email images, curation drafts), un-tabled catalog search, and the new CFO assistant + email hub ideas in the backlog grid."
 
 [[outputs]]
 id = "cCumyYl_kqaOCcaajAS8j"

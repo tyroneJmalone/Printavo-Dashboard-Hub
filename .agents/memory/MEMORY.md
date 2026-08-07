@@ -1,3 +1,4 @@
+- [Canonical plan & status report](plan-status-report.md) — Tyler's status PDF is exports/printavo-hub-plan-status.html (styled sheet); update it in place, never create a new-format doc.
 - [Vendor submit runs off the snapshot](vendor-submit-snapshot.md) — any per-line field needed at SanMar/S&S submit time must persist end-to-end, not cart-only.
 - [Printavo non-nullable field bugs](printavo-non-nullable-bugs.md) — deleted records null "non-nullable" fields; list queries lose ALL data (re-query without field), single-object queries salvage partial.
 - [moMINTum shared live DB rules](momintum-shared-db.md) — email-only identity, never write members.clerk_user_id from hub, JIT-create needs advisory lock (raced once in prod).
