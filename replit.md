@@ -60,6 +60,7 @@ Unified internal hub for Mint Printworks that consolidates 11 separate Printavo-
 - Maintenance & sidework log with scheduled reminders — possibly tied into the task management app integration.
 - Preset reports library in the Reports module — Tyler has a list to work through.
 - (Also logged in session plan: outgoing activity log, task management app integration, Missive messaging portal, public Reorder Portal.)
+- Email correspondence hub (Tyler, Aug 7, 2026): monitor sales/CSR Google Workspace inboxes via Gmail API (read-only), map inbound/outbound emails to customers (exact contact-email match vs synced mirror) and invoices (heuristic — order#/nickname/link matching with manual confirm), show a correspondence timeline in the Hub. Team prefers real email threads over Printavo messaging. Read receipts unreliable industry-wide — track customer replies as the "read" proxy instead. Extends Sales & front-end support tools + outgoing activity log ideas.
 - Stock availability checker (Tyler, Aug 4, 2026): salesperson types a style number, picks a color, app returns stock by warehouse across vendors (SanMar + S&S); plus a one-click stock check on a specific Printavo invoice's line items. High feasibility — reuses the existing vendor pricing/inventory clients and warehouse auto-pick logic from the PO builder, and the synced line-item mirror. Natural tie-in with the universal vendor product search / catalog-search API idea.
 
 ## User preferences
