@@ -38,3 +38,10 @@ uri = "file://docs/status-and-roadmap.md"
 type = "text"
 title = "Hub Status & Roadmap Review"
 description = "Snapshot of everything built, the drafted curation tasks, the assessed ideas backlog (incl. the new CFO AI assistant idea), and a suggested sequencing for next steps."
+
+[[outputs]]
+id = "s_eZqJNNckfKBIZ704Jrl"
+uri = "file://docs/hub-status-and-roadmap.pdf"
+type = "pdf"
+title = "Hub Status & Roadmap (PDF)"
+description = "Printable/forwardable export of the Aug 7 status snapshot: modules built, drafted curation tasks, assessed ideas backlog, and suggested sequencing."
