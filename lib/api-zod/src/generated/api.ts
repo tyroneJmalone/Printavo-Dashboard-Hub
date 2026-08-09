@@ -716,6 +716,97 @@ export const VendorInventoryResponse = zod.object({
 
 
 /**
+ * Searches SanMar and S&S Activewear at once for a style query; retries known cross-vendor style aliases (e.g. G500 vs 5000) when a vendor misses. A single vendor failure degrades to a not-found entry with vendorErrors populated, rather than failing the whole search.
+ * @summary Cross-vendor product search (Product Finder)
+ */
+export const productSearchBodyQueryMax = 100;
+
+
+
+export const ProductSearchBody = zod.object({
+  "query": zod.string().min(1).max(productSearchBodyQueryMax)
+})
+
+export const ProductSearchResponse = zod.object({
+  "query": zod.string(),
+  "aliasesTried": zod.array(zod.string()),
+  "vendors": zod.array(zod.object({
+  "aliasUsed": zod.string().nullable().describe('Alias style number that produced the hit — null when the typed query hit directly.'),
+  "lookup": zod.object({
+  "found": zod.boolean(),
+  "matchType": zod.enum(['exact', 'closest', 'none']),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleQueried": zod.string(),
+  "styleId": zod.string().nullable().describe('Vendor-internal id of the matched product (S&S styleID). Pass it to vendor-inventory so stock comes from the SAME product that priced the line. Null for SanMar.'),
+  "styleName": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable().describe('Style-level hero image (absolute URL) — fallback before a color is chosen.'),
+  "colors": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable().describe('Small color swatch image (absolute URL) — null when the vendor has none.'),
+  "productImage": zod.string().nullable().describe('Product photo in this color (absolute URL) — null when the vendor has none.'),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "sku": zod.string().nullable(),
+  "inventoryKey": zod.string().nullable(),
+  "sizeIndex": zod.number().nullable(),
+  "cost": zod.number().nullable(),
+  "msrp": zod.number().nullable(),
+  "salePrice": zod.number().nullable(),
+  "saleEndsAt": zod.string().nullable(),
+  "inventoryTotal": zod.number().nullable(),
+  "warehouses": zod.array(zod.object({
+  "code": zod.string(),
+  "qty": zod.number()
+})).nullable()
+}))
+})),
+  "cached": zod.boolean(),
+  "fetchedAt": zod.string()
+})
+})),
+  "vendorErrors": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "error": zod.string()
+}))
+})
+
+
+/**
+ * @summary Synced order + line items by visual ID (Product Finder invoice mode)
+ */
+
+
+
+export const GetFinderOrderQueryParams = zod.object({
+  "visualId": zod.coerce.number().min(1)
+})
+
+export const GetFinderOrderResponse = zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "orderType": zod.string(),
+  "nickname": zod.string().nullable(),
+  "customerCompany": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.string(),
+  "itemNumber": zod.string().nullable(),
+  "color": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "items": zod.number(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "count": zod.number()
+}))
+}))
+})
+
+
+/**
  * @summary List saved purchase orders (newest first)
  */
 export const listPoFilesResponsePoFilesItemLineItemsItemSizesItemQtyMin = 0;

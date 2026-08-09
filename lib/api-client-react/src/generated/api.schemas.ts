@@ -635,6 +635,77 @@ export interface VendorInventoryResult {
   fetchedAt: string;
 }
 
+export interface ProductSearchRequest {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  query: string;
+}
+
+export interface ProductSearchVendorResult {
+  /**
+     * Alias style number that produced the hit — null when the typed query hit directly.
+     * @nullable
+     */
+  aliasUsed: string | null;
+  lookup: VendorLookupResult;
+}
+
+export type ProductSearchVendorErrorVendor = typeof ProductSearchVendorErrorVendor[keyof typeof ProductSearchVendorErrorVendor];
+
+
+export const ProductSearchVendorErrorVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface ProductSearchVendorError {
+  vendor: ProductSearchVendorErrorVendor;
+  error: string;
+}
+
+export interface ProductSearchResult {
+  query: string;
+  aliasesTried: string[];
+  vendors: ProductSearchVendorResult[];
+  vendorErrors: ProductSearchVendorError[];
+}
+
+export type FinderOrderLineItemSizesItem = {
+  size: string;
+  count: number;
+};
+
+export interface FinderOrderLineItem {
+  id: string;
+  /** @nullable */
+  itemNumber: string | null;
+  /** @nullable */
+  color: string | null;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  brand: string | null;
+  items: number;
+  sizes: FinderOrderLineItemSizesItem[];
+}
+
+export interface FinderOrder {
+  orderId: string;
+  visualId: number;
+  orderType: string;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  customerCompany: string | null;
+  /** @nullable */
+  contactName: string | null;
+  /** @nullable */
+  statusName: string | null;
+  lineItems: FinderOrderLineItem[];
+}
+
 export interface PoFileSizeEntry {
   size: string;
   /** @minimum 0 */
@@ -3573,6 +3644,13 @@ export const GetPipelineStage = {
   archive: 'archive',
   other: 'other',
 } as const;
+
+export type GetFinderOrderParams = {
+/**
+ * @minimum 1
+ */
+visualId: number;
+};
 
 export type ListVendorOrdersParams = {
 poFileId?: string;

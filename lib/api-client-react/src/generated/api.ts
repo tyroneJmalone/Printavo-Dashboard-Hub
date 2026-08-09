@@ -76,6 +76,7 @@ import type {
   DirectoryCustomersResponse,
   ErrorResponse,
   EvaluateStatusRulesResponse,
+  FinderOrder,
   GetBrandBreakdownParams,
   GetColorBreakdownParams,
   GetCombinedBoxLabelsHtmlParams,
@@ -85,6 +86,7 @@ import type {
   GetCustomerProfileParams,
   GetDashboardSummaryParams,
   GetExpiringSoonParams,
+  GetFinderOrderParams,
   GetImprintsByTierParams,
   GetNicheReportParams,
   GetOrderQuantityBreakdownParams,
@@ -161,6 +163,8 @@ import type {
   PrintavoSyncResult,
   PrintavoTestInput,
   ProbeResult,
+  ProductSearchRequest,
+  ProductSearchResult,
   PushStartResponse,
   Quote,
   QuoteInput,
@@ -2236,6 +2240,161 @@ export const useVendorInventory = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getVendorInventoryMutationOptions(options));
     }
+
+export const getProductSearchUrl = () => {
+
+
+
+
+  return `/api/purchasing/product-search`
+}
+
+/**
+ * Searches SanMar and S&S Activewear at once for a style query; retries known cross-vendor style aliases (e.g. G500 vs 5000) when a vendor misses. A single vendor failure degrades to a not-found entry with vendorErrors populated, rather than failing the whole search.
+ * @summary Cross-vendor product search (Product Finder)
+ */
+export const productSearch = async (productSearchRequest: ProductSearchRequest, options?: RequestInit): Promise<ProductSearchResult> => {
+
+  return customFetch<ProductSearchResult>(getProductSearchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(productSearchRequest)
+  }
+);}
+
+
+
+
+export const getProductSearchMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productSearch>>, TError,{data: BodyType<ProductSearchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof productSearch>>, TError,{data: BodyType<ProductSearchRequest>}, TContext> => {
+
+const mutationKey = ['productSearch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof productSearch>>, {data: BodyType<ProductSearchRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  productSearch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ProductSearchMutationResult = NonNullable<Awaited<ReturnType<typeof productSearch>>>
+    export type ProductSearchMutationBody = BodyType<ProductSearchRequest>
+    export type ProductSearchMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Cross-vendor product search (Product Finder)
+ */
+export const useProductSearch = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof productSearch>>, TError,{data: BodyType<ProductSearchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof productSearch>>,
+        TError,
+        {data: BodyType<ProductSearchRequest>},
+        TContext
+      > => {
+      return useMutation(getProductSearchMutationOptions(options));
+    }
+
+export const getGetFinderOrderUrl = (params: GetFinderOrderParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/purchasing/finder-order?${stringifiedParams}` : `/api/purchasing/finder-order`
+}
+
+/**
+ * @summary Synced order + line items by visual ID (Product Finder invoice mode)
+ */
+export const getFinderOrder = async (params: GetFinderOrderParams, options?: RequestInit): Promise<FinderOrder> => {
+
+  return customFetch<FinderOrder>(getGetFinderOrderUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinderOrderQueryKey = (params?: GetFinderOrderParams,) => {
+    return [
+    `/api/purchasing/finder-order`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetFinderOrderQueryOptions = <TData = Awaited<ReturnType<typeof getFinderOrder>>, TError = ErrorType<ErrorResponse>>(params: GetFinderOrderParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinderOrder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinderOrderQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinderOrder>>> = ({ signal }) => getFinderOrder(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinderOrder>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinderOrderQueryResult = NonNullable<Awaited<ReturnType<typeof getFinderOrder>>>
+export type GetFinderOrderQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Synced order + line items by visual ID (Product Finder invoice mode)
+ */
+
+export function useGetFinderOrder<TData = Awaited<ReturnType<typeof getFinderOrder>>, TError = ErrorType<ErrorResponse>>(
+ params: GetFinderOrderParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinderOrder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinderOrderQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListPoFilesUrl = () => {
 

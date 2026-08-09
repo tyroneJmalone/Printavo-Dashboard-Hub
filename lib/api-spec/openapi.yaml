@@ -644,6 +644,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/product-search:
+    post:
+      operationId: productSearch
+      tags: [purchasing]
+      summary: Cross-vendor product search (Product Finder)
+      description: Searches SanMar and S&S Activewear at once for a style query; retries known cross-vendor style aliases (e.g. G500 vs 5000) when a vendor misses. A single vendor failure degrades to a not-found entry with vendorErrors populated, rather than failing the whole search.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductSearchRequest"
+      responses:
+        "200":
+          description: Per-vendor search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductSearchResult"
+        "503":
+          description: Vendor credentials missing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/finder-order:
+    get:
+      operationId: getFinderOrder
+      tags: [purchasing]
+      summary: Synced order + line items by visual ID (Product Finder invoice mode)
+      parameters:
+        - name: visualId
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Order with line items from the local mirror
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinderOrder"
+        "404":
+          description: No synced order with this visual ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /purchasing/po-files:
     get:
       operationId: listPoFiles
@@ -5056,6 +5104,75 @@ components:
         cached: { type: boolean }
         fetchedAt: { type: string }
       required: [vendor, style, catalogColor, sizes, cached, fetchedAt]
+    ProductSearchRequest:
+      type: object
+      properties:
+        query: { type: string, minLength: 1, maxLength: 100 }
+      required: [query]
+    ProductSearchVendorResult:
+      type: object
+      properties:
+        aliasUsed:
+          type: ["string", "null"]
+          description: Alias style number that produced the hit — null when the typed query hit directly.
+        lookup:
+          $ref: "#/components/schemas/VendorLookupResult"
+      required: [aliasUsed, lookup]
+    ProductSearchVendorError:
+      type: object
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        error: { type: string }
+      required: [vendor, error]
+    ProductSearchResult:
+      type: object
+      properties:
+        query: { type: string }
+        aliasesTried:
+          type: array
+          items: { type: string }
+        vendors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductSearchVendorResult"
+        vendorErrors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductSearchVendorError"
+      required: [query, aliasesTried, vendors, vendorErrors]
+    FinderOrderLineItem:
+      type: object
+      properties:
+        id: { type: string }
+        itemNumber: { type: ["string", "null"] }
+        color: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        brand: { type: ["string", "null"] }
+        items: { type: integer }
+        sizes:
+          type: array
+          items:
+            type: object
+            properties:
+              size: { type: string }
+              count: { type: integer }
+            required: [size, count]
+      required: [id, itemNumber, color, description, brand, items, sizes]
+    FinderOrder:
+      type: object
+      properties:
+        orderId: { type: string }
+        visualId: { type: integer }
+        orderType: { type: string }
+        nickname: { type: ["string", "null"] }
+        customerCompany: { type: ["string", "null"] }
+        contactName: { type: ["string", "null"] }
+        statusName: { type: ["string", "null"] }
+        lineItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/FinderOrderLineItem"
+      required: [orderId, visualId, orderType, nickname, customerCompany, contactName, statusName, lineItems]
     PoFileSizeEntry:
       type: object
       properties:

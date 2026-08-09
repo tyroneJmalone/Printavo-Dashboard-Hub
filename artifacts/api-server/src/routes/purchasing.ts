@@ -3,6 +3,8 @@ import { requireValidAdminPin } from "../lib/auth/adminPin";
 import {
   VendorLookupBody,
   VendorInventoryBody,
+  ProductSearchBody,
+  GetFinderOrderQueryParams,
   CreatePoFileBody,
   UpdatePoFileBody,
   AppendPoLineItemsBody,
@@ -18,6 +20,7 @@ import {
 import { loadNeedsOrdering } from "../lib/purchasing/needsOrdering";
 import { vendorLookup, VendorConfigError } from "../lib/purchasing/vendorLookup";
 import { vendorInventory } from "../lib/purchasing/vendorInventory";
+import { productSearch, loadOrderLineItems } from "../lib/purchasing/productFinder";
 import {
   createPoFile,
   listPoFiles,
@@ -83,6 +86,44 @@ router.get("/purchasing/needs-ordering", (req, res) => {
     .catch((err) => {
       req.log.error({ err }, "Needs-ordering scan failed");
       res.status(500).json({ error: "Needs-ordering scan failed" });
+    });
+});
+
+router.post("/purchasing/product-search", (req, res) => {
+  const parsed = ProductSearchBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid product-search request" });
+    return;
+  }
+  productSearch(parsed.data.query)
+    .then((result) => res.json(result))
+    .catch((err) => {
+      if (err instanceof VendorConfigError) {
+        res.status(503).json({ error: err.message });
+        return;
+      }
+      req.log.error({ err, query: parsed.data.query }, "Product search failed");
+      res.status(503).json({ error: "Product search failed — vendor APIs may be temporarily unavailable" });
+    });
+});
+
+router.get("/purchasing/finder-order", (req, res) => {
+  const parsed = GetFinderOrderQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid visualId" });
+    return;
+  }
+  loadOrderLineItems(parsed.data.visualId)
+    .then((order) => {
+      if (!order) {
+        res.status(404).json({ error: `No synced order with visual ID ${parsed.data.visualId}` });
+        return;
+      }
+      res.json(order);
+    })
+    .catch((err) => {
+      req.log.error({ err, visualId: parsed.data.visualId }, "Finder order load failed");
+      res.status(500).json({ error: "Order lookup failed" });
     });
 });
 

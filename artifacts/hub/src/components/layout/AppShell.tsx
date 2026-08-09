@@ -5,7 +5,7 @@ import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api
 import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -41,6 +41,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     heading: "Sales",
     items: [
+      { id: "product-finder", label: "Product Finder", href: "/product-finder", icon: Search },
       { id: "pipeline", label: "Pipeline", href: "/pipeline", icon: Filter },
       { id: "chipply", label: "Chipply Stores", href: "/chipply", icon: Store },
       { id: "reorders", label: "Reorder Inbox", icon: Inbox, disabled: true },

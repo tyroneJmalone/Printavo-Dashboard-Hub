@@ -1,0 +1,680 @@
+import { useState, useRef, useEffect } from "react";
+import { AppShell } from "@/components/layout/AppShell";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Search, X, AlertTriangle, CheckCircle } from "lucide-react";
+import {
+  useProductSearch,
+  productSearch,
+  vendorInventory,
+  useGetFinderOrder,
+  getGetFinderOrderQueryKey,
+  type VendorLookupResult,
+  type VendorColorOffer,
+  type VendorSizeOffer,
+  type VendorInventoryResult,
+  type FinderOrderLineItem,
+} from "@workspace/api-client-react";
+
+// --- Types ---
+interface SessionSelection {
+  id: string;
+  vendor: "sanmar" | "ss";
+  styleName: string;
+  styleId: string | null;
+  colorName: string;
+  productImage: string | null;
+  sizes: VendorSizeOffer[];
+  inventory: VendorInventoryResult | null;
+  isLoadingInventory: boolean;
+  error: string | null;
+}
+
+interface InvoiceLineState {
+  line: FinderOrderLineItem;
+  status: "idle" | "searching" | "checking_inventory" | "done" | "error";
+  error?: string;
+  lookupResult?: VendorLookupResult;
+  colorOffer?: VendorColorOffer;
+  inventoryResult?: VendorInventoryResult;
+}
+
+// --- Shared Components ---
+
+function InventoryGrid({ sizes, inventory, neededSizes }: { sizes: VendorSizeOffer[], inventory?: VendorInventoryResult | null, neededSizes?: FinderOrderLineItem["sizes"] }) {
+  const warehousesSource = inventory
+    ? inventory.sizes
+    : sizes.map(s => ({ size: s.size, warehouses: s.warehouses || [] }));
+
+  const allWarehousesMap = new Map<string, string>();
+  warehousesSource.forEach(s => {
+    s.warehouses?.forEach(w => allWarehousesMap.set(w.code, (w as any).name || w.code));
+  });
+  const allWarehouses = Array.from(allWarehousesMap.entries());
+
+  return (
+    <div className="overflow-x-auto custom-scrollbar">
+      <table className="w-full text-[11px] text-left text-slate-300">
+        <thead className="text-slate-400 border-b border-slate-800 uppercase tracking-wider">
+          <tr>
+            <th className="py-2 px-3 font-semibold w-32">Warehouse</th>
+            {sizes.map(s => {
+               const needed = neededSizes?.find(n => n.size === s.size);
+               return (
+                 <th key={s.size} className="py-2 px-2 text-center min-w-[40px]">
+                   <div className="font-semibold text-slate-200">{s.size}</div>
+                   {needed && <div className="text-[10px] text-amber-400 mt-0.5 bg-amber-400/10 rounded px-1 inline-block">Need {needed.count}</div>}
+                 </th>
+               )
+            })}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/50">
+          {allWarehouses.map(([code, name]) => (
+            <tr key={code} className="hover:bg-slate-800/20 transition-colors">
+              <td className="py-2 px-3 font-medium text-slate-400 truncate max-w-[120px]" title={name}>{name}</td>
+              {sizes.map(s => {
+                 const invSize = warehousesSource.find(is => is.size === s.size);
+                 const wh = invSize?.warehouses?.find(w => w.code === code);
+                 const qty = wh ? wh.qty : 0;
+                 return (
+                   <td key={s.size} className={`py-2 px-2 text-center font-mono ${qty > 0 ? "text-slate-200 font-semibold" : "text-slate-600"}`}>
+                     {wh ? ((wh as any).capped ? `${wh.qty}+` : wh.qty) : "-"}
+                   </td>
+                 )
+              })}
+            </tr>
+          ))}
+          {/* Cost Row */}
+          <tr className="bg-slate-900/50">
+             <td className="py-2 px-3 text-slate-400 font-medium">Cost</td>
+             {sizes.map(s => (
+                <td key={s.size} className="py-2 px-2 text-center text-[#10b981] font-mono font-bold">
+                  {s.cost != null ? `$${s.cost.toFixed(2)}` : "-"}
+                  {s.salePrice != null && <span className="text-[10px] text-red-400 line-through block font-normal">${s.salePrice.toFixed(2)}</span>}
+                </td>
+             ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function VendorResultCard({ vendorResult, onColorSelect }: { vendorResult: any, onColorSelect: (c: VendorColorOffer) => void }) {
+  const { lookup, aliasUsed } = vendorResult;
+  if (!lookup.found) {
+    return (
+      <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+        <div className="font-bold text-slate-400 capitalize flex items-center gap-2">
+           {lookup.vendor}
+        </div>
+        <div className="text-xs font-medium text-slate-500 bg-slate-800/50 px-2 py-1 rounded">Not carried</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5 space-y-4 shadow-sm relative overflow-hidden group hover:border-slate-600 transition-colors">
+      <div className="flex justify-between items-start gap-4">
+         <div className="flex-1 min-w-0">
+           <div className="flex items-center gap-2 mb-1">
+             <div className="font-bold text-white capitalize text-lg">{lookup.vendor}</div>
+             {lookup.matchType === "closest" && <Badge variant="secondary" className="text-[10px] h-5 bg-amber-500/20 text-amber-400 border-0 hover:bg-amber-500/20">Closest match</Badge>}
+             {aliasUsed && <Badge variant="secondary" className="text-[10px] h-5 border-0 bg-slate-800">Alias: {aliasUsed}</Badge>}
+           </div>
+           <div className="text-sm font-semibold text-[#10b981] flex items-center gap-1.5 truncate">
+             <span className="text-slate-300 font-mono text-xs">{lookup.styleName}</span>
+             <span className="text-slate-600">&bull;</span>
+             {lookup.title}
+           </div>
+           <div className="text-xs text-slate-500 mt-1">{lookup.brand}</div>
+         </div>
+         {lookup.styleImage && (
+           <div className="w-16 h-16 rounded-md bg-white/5 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center p-1">
+             <img src={lookup.styleImage} className="max-w-full max-h-full object-contain mix-blend-screen" alt={lookup.title} />
+           </div>
+         )}
+      </div>
+      
+      <div className="pt-3 border-t border-slate-800/50">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Available Colors</div>
+        <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+           {lookup.colors.map((color: VendorColorOffer) => (
+              <button
+                 key={color.colorName}
+                 onClick={() => onColorSelect(color)}
+                 className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded bg-slate-800/80 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 transition-colors group/btn"
+              >
+                 {color.swatchImage ? (
+                    <img src={color.swatchImage} className="w-4 h-4 rounded-sm shadow-sm" alt="" />
+                 ) : (
+                    <div className="w-4 h-4 rounded-sm bg-slate-600 shadow-sm" />
+                 )}
+                 <span className="text-[11px] font-medium text-slate-300 group-hover/btn:text-white transition-colors">{color.colorName}</span>
+              </button>
+           ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SelectionCard({ selection, onRemove }: { selection: SessionSelection, onRemove: () => void }) {
+  const { sizes } = selection;
+
+  return (
+    <div className="bg-[#0f172a] border border-slate-700 rounded-xl overflow-hidden shadow-lg relative group">
+      <div className="absolute top-0 left-0 w-1 h-full bg-[#10b981]" />
+      <button onClick={onRemove} className="absolute top-3 right-3 p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-md transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+        <X size={14}/>
+      </button>
+      
+      <div className="p-5 flex flex-col sm:flex-row gap-5">
+        {selection.productImage ? (
+           <div className="w-full sm:w-28 h-28 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-2 flex-shrink-0">
+              <img src={selection.productImage} className="max-w-full max-h-full object-contain mix-blend-screen" alt="" />
+           </div>
+        ) : (
+           <div className="w-full sm:w-28 h-28 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-700">
+              <span className="text-xs text-slate-500">No Image</span>
+           </div>
+        )}
+        
+        <div className="flex-1 min-w-0">
+           <div className="flex items-center gap-2 mb-1 pr-6">
+             <div className="font-bold text-white text-lg truncate" title={`${selection.styleName} in ${selection.colorName}`}>
+                {selection.styleName}
+             </div>
+             <div className="text-sm font-medium text-[#10b981] px-2 py-0.5 rounded-full bg-[#059669]/10 border border-[#059669]/20 truncate">
+                {selection.colorName}
+             </div>
+           </div>
+           <div className="text-xs font-bold text-slate-400 capitalize tracking-wider">{selection.vendor}</div>
+
+           <div className="mt-5 bg-slate-900/50 rounded-lg border border-slate-800 p-1 relative">
+              {selection.isLoadingInventory && (
+                 <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center backdrop-blur-sm z-10 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm font-medium text-white bg-slate-800/90 px-4 py-2 rounded-full border border-slate-700 shadow-xl">
+                      <Loader2 className="animate-spin w-4 h-4 text-[#10b981]" />
+                      Fetching live stock...
+                    </div>
+                 </div>
+              )}
+              <InventoryGrid sizes={sizes} inventory={selection.inventory} />
+           </div>
+           
+           {selection.error && (
+              <div className="mt-3 text-sm text-red-400 bg-red-950/20 p-4 rounded-lg border border-red-900/50 flex items-center gap-2">
+                 <AlertTriangle size={16} />
+                 Failed to load live inventory: {selection.error}
+              </div>
+           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// --- Modes ---
+
+function StyleSearchMode() {
+  const [query, setQuery] = useState("");
+  const searchMutation = useProductSearch();
+  const [selections, setSelections] = useState<SessionSelection[]>([]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    searchMutation.mutate({ data: { query: query.trim() } });
+  };
+
+  const addSelection = async (lookup: VendorLookupResult, color: VendorColorOffer) => {
+    const newSelection: SessionSelection = {
+      id: `${lookup.vendor}-${lookup.styleName}-${color.colorName}-${Date.now()}`,
+      vendor: lookup.vendor,
+      styleName: lookup.styleName || "",
+      styleId: lookup.styleId,
+      colorName: color.colorName,
+      productImage: color.productImage || lookup.styleImage,
+      sizes: color.sizes,
+      inventory: null,
+      isLoadingInventory: true,
+      error: null,
+    };
+    setSelections(prev => [newSelection, ...prev]);
+
+    try {
+      const invResult = await vendorInventory({
+        vendor: lookup.vendor,
+        style: lookup.styleName || "",
+        styleId: lookup.styleId,
+        catalogColor: color.colorName,
+        sizes: color.sizes.map(s => s.size),
+      });
+      setSelections(prev => prev.map(s => s.id === newSelection.id ? { ...s, inventory: invResult, isLoadingInventory: false } : s));
+    } catch (err: any) {
+      setSelections(prev => prev.map(s => s.id === newSelection.id ? { ...s, error: err.message || String(err), isLoadingInventory: false } : s));
+    }
+  }
+
+  const removeSelection = (id: string) => {
+    setSelections(prev => prev.filter(s => s.id !== id));
+  }
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 h-full pb-0">
+      {/* Left Column: Search & Results */}
+      <div className="w-full lg:w-[400px] flex flex-col gap-5 lg:border-r border-slate-800 lg:pr-6 flex-shrink-0">
+        <form onSubmit={handleSearch} className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+          <Input 
+            placeholder="Search style (e.g. PC54)..." 
+            value={query} 
+            onChange={e => setQuery(e.target.value)} 
+            autoFocus 
+            className="pl-9 bg-slate-900 border-slate-700 h-10 text-sm shadow-inner"
+          />
+          <button type="submit" className="hidden" />
+        </form>
+        
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4 pb-4">
+           {searchMutation.isPending && (
+              <div className="py-12 flex flex-col items-center justify-center text-slate-500 space-y-3">
+                 <Loader2 className="animate-spin text-[#10b981] w-6 h-6" />
+                 <span className="text-sm font-medium">Searching vendors...</span>
+              </div>
+           )}
+           
+           {!searchMutation.isPending && !searchMutation.data && (
+              <div className="py-12 flex flex-col items-center justify-center text-slate-600 text-center px-4">
+                 <Search className="w-10 h-10 mb-3 opacity-20" />
+                 <p className="text-sm font-medium text-slate-400">Search for a style number</p>
+                 <p className="text-xs mt-1">We'll check S&S and SanMar instantly.</p>
+              </div>
+           )}
+
+           {searchMutation.data && (
+             <>
+               {searchMutation.data.vendorErrors.map((err, i) => (
+                  <div key={i} className="bg-red-950/30 border border-red-900/50 p-3 rounded-lg text-xs text-red-400 flex gap-2">
+                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                     <div>
+                        <span className="font-bold capitalize">{err.vendor}:</span> {err.error}
+                     </div>
+                  </div>
+               ))}
+               {searchMutation.data.vendors.map(v => (
+                 <VendorResultCard
+                   key={v.lookup.vendor}
+                   vendorResult={v}
+                   onColorSelect={(color) => addSelection(v.lookup, color)}
+                 />
+               ))}
+             </>
+           )}
+        </div>
+      </div>
+
+      {/* Right Column: Selections */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-6 space-y-5 px-1">
+        {selections.length === 0 ? (
+           <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-3 pb-20">
+              <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center">
+                 <div className="w-8 h-8 rounded-full bg-slate-700" />
+              </div>
+              <p className="text-sm font-medium text-slate-400">No colors selected</p>
+              <p className="text-xs">Pick a color from the search results to view live warehouse stock and pricing.</p>
+           </div>
+        ) : (
+           selections.map(sel => (
+             <SelectionCard key={sel.id} selection={sel} onRemove={() => removeSelection(sel.id)} />
+           ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+
+function InvoiceLineCard({ state, onPickColor }: { state: InvoiceLineState, onPickColor: (c: VendorColorOffer, lookup: VendorLookupResult) => void }) {
+   const line = state.line;
+   const isChecking = state.status === "searching" || state.status === "checking_inventory";
+
+   let stockStatus = null;
+   let stockMessage = "";
+
+   if (state.status === "done" && state.inventoryResult && state.colorOffer) {
+      const needed = line.sizes;
+      const missing: string[] = [];
+
+      needed.forEach(n => {
+         const invSize = state.inventoryResult!.sizes.find(is => is.size === n.size);
+         if (!invSize || !invSize.found) {
+            missing.push(n.size);
+         } else {
+            const totalStock = invSize.warehouses.reduce((acc, w) => acc + w.qty, 0);
+            if (totalStock < n.count) {
+               missing.push(n.size);
+            }
+         }
+      });
+
+      if (missing.length > 0) {
+         stockStatus = "short";
+         stockMessage = `Short on sizes: ${missing.join(", ")}`;
+      } else {
+         stockStatus = "ok";
+         stockMessage = "Enough stock across all warehouses";
+      }
+   }
+
+   return (
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+         <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start gap-4">
+            <div className="flex-1">
+               <div className="flex items-center gap-2 mb-1">
+                  <div className="font-bold text-white text-lg">{line.itemNumber || "No Item #"}</div>
+                  {line.color && (
+                     <div className="text-sm font-medium text-slate-300 px-2 py-0.5 rounded bg-slate-800 border border-slate-700">
+                        {line.color}
+                     </div>
+                  )}
+               </div>
+               <div className="text-sm text-slate-500 max-w-2xl">{line.description || "No description"}</div>
+               <div className="flex items-center gap-2 mt-3">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Needed:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                     {line.sizes.length === 0 ? (
+                        <span className="text-xs text-slate-600">—</span>
+                     ) : (
+                        line.sizes.map(s => (
+                           <span key={s.size} className="text-[11px] font-mono bg-slate-950 border border-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
+                              {s.size} &times; {s.count}
+                           </span>
+                        ))
+                     )}
+                  </div>
+               </div>
+            </div>
+            
+            <div className="flex-shrink-0 flex sm:flex-col items-center sm:items-end gap-2 w-full sm:w-auto">
+               {isChecking && (
+                  <Badge variant="outline" className="bg-slate-800 border-slate-700 text-slate-300 py-1">
+                     <Loader2 className="w-3 h-3 mr-1.5 animate-spin text-[#10b981]"/> Checking...
+                  </Badge>
+               )}
+               {state.status === "error" && <Badge variant="destructive" className="py-1"><AlertTriangle className="w-3 h-3 mr-1.5"/> {state.error}</Badge>}
+               {state.status === "done" && state.error && !state.lookupResult && <Badge variant="destructive" className="py-1"><AlertTriangle className="w-3 h-3 mr-1.5"/> {state.error}</Badge>}
+               {stockStatus === "ok" && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 py-1"><CheckCircle className="w-3 h-3 mr-1.5"/> {stockMessage}</Badge>}
+               {stockStatus === "short" && <Badge variant="destructive" className="py-1"><AlertTriangle className="w-3 h-3 mr-1.5"/> {stockMessage}</Badge>}
+            </div>
+         </div>
+
+         {state.status === "done" && state.lookupResult && !state.colorOffer && (
+            <div className="px-5 pb-5 pt-2 border-t border-slate-800 bg-slate-900/50">
+               <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <div className="text-sm font-medium text-amber-500">Auto-match failed. Pick a color for {state.lookupResult.vendor}:</div>
+               </div>
+               <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                  {state.lookupResult.colors.map(c => (
+                     <button 
+                        key={c.colorName} 
+                        onClick={() => onPickColor(c, state.lookupResult!)} 
+                        className="flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors group/btn"
+                     >
+                        {c.swatchImage ? (
+                           <img src={c.swatchImage} className="w-5 h-5 rounded-sm shadow-sm" alt="" />
+                        ) : (
+                           <div className="w-5 h-5 rounded-sm bg-slate-600 shadow-sm" />
+                        )}
+                        <span className="text-xs font-medium text-slate-200 group-hover/btn:text-white transition-colors">{c.colorName}</span>
+                     </button>
+                  ))}
+               </div>
+            </div>
+         )}
+
+         {(state.colorOffer || state.inventoryResult) && (
+            <div className="px-5 pb-5 pt-4 border-t border-slate-800 bg-[#0f172a]/50 relative">
+               <div className="text-xs font-medium text-slate-400 mb-3 flex items-center gap-2">
+                 Matched to <span className="text-[#10b981] font-bold px-1.5 py-0.5 rounded bg-[#10b981]/10 border border-[#10b981]/20">{state.colorOffer?.colorName}</span> at <span className="capitalize font-bold text-slate-300">{state.lookupResult?.vendor}</span>
+               </div>
+               <div className="bg-slate-900 rounded-lg border border-slate-800 p-1 relative">
+                  {state.status === "checking_inventory" && (
+                     <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center backdrop-blur-sm z-10 rounded-lg">
+                        <div className="flex items-center gap-2 text-sm font-medium text-white bg-slate-800/90 px-4 py-2 rounded-full border border-slate-700 shadow-xl">
+                          <Loader2 className="animate-spin w-4 h-4 text-[#10b981]" />
+                          Fetching live stock...
+                        </div>
+                     </div>
+                  )}
+                  <InventoryGrid sizes={state.colorOffer?.sizes || []} inventory={state.inventoryResult} neededSizes={line.sizes} />
+               </div>
+            </div>
+         )}
+      </div>
+   )
+}
+
+function InvoiceCheckMode() {
+  const [visualIdStr, setVisualIdStr] = useState("");
+  const [visualId, setVisualId] = useState<number | null>(null);
+
+  const { data: order, isLoading: isOrderLoading, error: orderError } = useGetFinderOrder(
+    { visualId: visualId! },
+    { query: { enabled: !!visualId, queryKey: getGetFinderOrderQueryKey({ visualId: visualId! }), retry: false } }
+  );
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseInt(visualIdStr.trim(), 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      setVisualId(parsed);
+    }
+  };
+
+  const [lineStates, setLineStates] = useState<Record<string, InvoiceLineState>>({});
+  // Generation guard: a new order (or re-submit) invalidates all in-flight
+  // async work from the previous run so stale responses can't write into the
+  // fresh lineStates.
+  const runIdRef = useRef(0);
+  const checkedOrderRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!order || checkedOrderRef.current === order.orderId) return;
+    checkedOrderRef.current = order.orderId;
+    const runId = ++runIdRef.current;
+
+    const initial: Record<string, InvoiceLineState> = {};
+    order.lineItems.forEach(line => {
+      initial[line.id] = { line, status: "idle" };
+    });
+    setLineStates(initial);
+
+    const setLine = (id: string, patch: Partial<InvoiceLineState>) => {
+      if (runIdRef.current !== runId) return; // stale run — drop the update
+      setLineStates(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+    };
+
+    const checkAll = async () => {
+       for (const line of order.lineItems) {
+          if (runIdRef.current !== runId) return;
+          if (!line.itemNumber) {
+             setLine(line.id, { status: "error", error: "No style number on line" });
+             continue;
+          }
+          setLine(line.id, { status: "searching" });
+          try {
+             const res = await productSearch({ query: line.itemNumber });
+             // Prefer an exact match at either vendor over a fuzzy "closest"
+             // guess (SanMar is listed first and could otherwise shadow an
+             // exact S&S hit with the wrong garment).
+             const bestVendor =
+                res.vendors.find(v => v.lookup.found && v.lookup.matchType === "exact") ??
+                res.vendors.find(v => v.lookup.found);
+             if (!bestVendor) {
+                const outage = res.vendorErrors.length > 0
+                   ? ` (${res.vendorErrors.map(e => `${e.vendor} unavailable`).join(", ")})`
+                   : "";
+                setLine(line.id, { status: "error", error: `Style not found${outage ? " — vendor outage" + outage : " at any vendor"}` });
+                continue;
+             }
+
+             const lookup = bestVendor.lookup;
+             const matchColor = lookup.colors.find(c => c.colorName.toLowerCase() === (line.color || "").toLowerCase());
+
+             if (matchColor) {
+                setLine(line.id, { status: "checking_inventory", lookupResult: lookup, colorOffer: matchColor });
+                const inv = await vendorInventory({
+                   vendor: lookup.vendor,
+                   style: lookup.styleName || "",
+                   styleId: lookup.styleId,
+                   catalogColor: matchColor.colorName,
+                   sizes: matchColor.sizes.map(s => s.size)
+                });
+                setLine(line.id, { status: "done", inventoryResult: inv });
+             } else {
+                setLine(line.id, { status: "done", lookupResult: lookup, error: "Color not matched automatically" });
+             }
+          } catch (err: any) {
+             setLine(line.id, { status: "error", error: err.message || String(err) });
+          }
+       }
+    };
+    checkAll();
+  }, [order]);
+
+  return (
+    <div className="flex flex-col h-full pb-0">
+      <div className="mb-6 flex-shrink-0">
+        <form onSubmit={handleSubmit} className="flex gap-3 max-w-md">
+           <div className="relative flex-1">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+             <Input 
+               placeholder="Printavo Invoice #" 
+               value={visualIdStr} 
+               onChange={e => setVisualIdStr(e.target.value)} 
+               className="pl-9 bg-slate-900 border-slate-700 h-10 shadow-inner"
+             />
+           </div>
+           <Button type="submit" className="bg-[#059669] hover:bg-[#047857] text-white font-bold h-10 px-6">Check</Button>
+        </form>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-10 pr-2">
+        {isOrderLoading && (
+           <div className="py-12 flex flex-col items-center justify-center text-slate-500 space-y-3">
+              <Loader2 className="animate-spin text-[#10b981] w-8 h-8" />
+              <span className="text-sm font-medium text-slate-400">Fetching order details...</span>
+           </div>
+        )}
+        
+        {orderError && (
+           <div className="bg-red-950/20 border border-red-900/50 p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-red-900/20 flex items-center justify-center text-red-500">
+                 <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                 <div className="font-bold text-slate-200">Order not found</div>
+                 <div className="text-sm text-slate-400 mt-1">Make sure the invoice number is correct and has been synced.</div>
+              </div>
+           </div>
+        )}
+
+        {!visualId && !isOrderLoading && !orderError && (
+           <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-4 pb-20">
+              <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center">
+                 <Search className="w-8 h-8 text-slate-500" />
+              </div>
+              <div className="text-center">
+                 <p className="text-sm font-medium text-slate-300">Enter an invoice number</p>
+                 <p className="text-xs text-slate-500 mt-1 max-w-xs leading-relaxed">We'll scan all line items, find the best matching vendor products, and report live availability for the needed sizes.</p>
+              </div>
+           </div>
+        )}
+
+        {order && (
+           <div className="space-y-6">
+              <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 flex items-center justify-between">
+                 <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                       <span className="text-[#10b981]">#{order.visualId}</span>
+                       <span className="text-slate-600 font-normal">&bull;</span>
+                       {order.nickname || order.customerCompany || "No Name"}
+                    </h2>
+                    <div className="text-sm text-slate-500 mt-1">{order.statusName || "Unknown Status"}</div>
+                 </div>
+                 <div className="text-right text-sm">
+                    <div className="font-medium text-slate-300">{order.lineItems.length} lines</div>
+                    <div className="text-xs text-slate-500">Auto-checking stock</div>
+                 </div>
+              </div>
+
+              <div className="space-y-4">
+                 {order.lineItems.map(line => (
+                    <InvoiceLineCard 
+                       key={line.id} 
+                       state={lineStates[line.id] ?? { line, status: "idle" }} 
+                       onPickColor={async (color, lookup) => {
+                         setLineStates(prev => ({ ...prev, [line.id]: { ...prev[line.id], status: "checking_inventory", colorOffer: color } }));
+                         try {
+                           const inv = await vendorInventory({
+                              vendor: lookup.vendor,
+                              style: lookup.styleName || "",
+                              styleId: lookup.styleId,
+                              catalogColor: color.colorName,
+                              sizes: color.sizes.map(s => s.size)
+                           });
+                           setLineStates(prev => ({ ...prev, [line.id]: { ...prev[line.id], status: "done", inventoryResult: inv, error: undefined } }));
+                         } catch (err: any) {
+                           setLineStates(prev => ({ ...prev, [line.id]: { ...prev[line.id], status: "error", error: err.message || String(err) } }));
+                         }
+                       }}
+                    />
+                 ))}
+              </div>
+           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function ProductFinder() {
+  return (
+    <AppShell>
+      <Tabs defaultValue="search" className="flex flex-col h-full overflow-hidden bg-[#020617]">
+        <div className="flex-shrink-0 border-b border-slate-800 px-6 pt-6 pb-0 z-10 relative">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg bg-[#059669]/20 border border-[#059669]/30 flex items-center justify-center text-[#10b981] shadow-inner shadow-[#10b981]/10">
+               <Search size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight">Product Finder</h1>
+              <p className="text-xs text-slate-400 mt-0.5">Live stock from SanMar and S&S Activewear</p>
+            </div>
+          </div>
+
+          <TabsList className="bg-slate-900 border border-slate-800 p-1 w-full max-w-sm grid grid-cols-2 rounded-lg mb-0 relative top-[1px]">
+            <TabsTrigger value="search" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Search by Style</TabsTrigger>
+            <TabsTrigger value="invoice" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Check Invoice</TabsTrigger>
+          </TabsList>
+        </div>
+        
+        <div className="flex-1 overflow-hidden">
+           <TabsContent value="search" className="m-0 h-full border-none outline-none p-6">
+             <StyleSearchMode />
+           </TabsContent>
+           
+           <TabsContent value="invoice" className="m-0 h-full border-none outline-none p-6">
+             <InvoiceCheckMode />
+           </TabsContent>
+        </div>
+      </Tabs>
+    </AppShell>
+  );
+}
