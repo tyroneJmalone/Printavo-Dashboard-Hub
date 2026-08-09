@@ -635,6 +635,128 @@ export interface VendorInventoryResult {
   fetchedAt: string;
 }
 
+export interface CatalogMatchedColor {
+  colorName: string;
+  /** @nullable */
+  swatchImage: string | null;
+  /** @nullable */
+  productImage: string | null;
+  families: string[];
+}
+
+export type CatalogSearchHitVendor = typeof CatalogSearchHitVendor[keyof typeof CatalogSearchHitVendor];
+
+
+export const CatalogSearchHitVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface CatalogSearchHit {
+  id: number;
+  vendor: CatalogSearchHitVendor;
+  styleName: string;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  category: string | null;
+  /** @nullable */
+  styleImage: string | null;
+  /** @nullable */
+  priceMin: number | null;
+  /** @nullable */
+  priceMax: number | null;
+  sizes: string[];
+  tags: string[];
+  matchedColors: CatalogMatchedColor[];
+  colorCount: number;
+  score: number;
+}
+
+export interface CatalogSearchResult {
+  total: number;
+  hits: CatalogSearchHit[];
+}
+
+export interface CatalogFilters {
+  brands: string[];
+  categories: string[];
+  colorFamilies: string[];
+}
+
+export type CatalogRefreshRunStatus = typeof CatalogRefreshRunStatus[keyof typeof CatalogRefreshRunStatus];
+
+
+export const CatalogRefreshRunStatus = {
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface CatalogRefreshRun {
+  id: number;
+  vendor: string;
+  status: CatalogRefreshRunStatus;
+  trigger: string;
+  startedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+  productsUpserted: number;
+  colorsUpserted: number;
+  discontinuedCount: number;
+  colorsTagged: number;
+  productsTagged: number;
+  /** @nullable */
+  error: string | null;
+}
+
+export interface CatalogHealth {
+  refreshActive: boolean;
+  activeProducts: number;
+  discontinuedProducts: number;
+  colors: number;
+  colorsTagged: number;
+  productsTagged: number;
+  tagOverrides: number;
+  staffColorFixes: number;
+  recentRuns: CatalogRefreshRun[];
+}
+
+export type CatalogTagOverrideRequestVendor = typeof CatalogTagOverrideRequestVendor[keyof typeof CatalogTagOverrideRequestVendor];
+
+
+export const CatalogTagOverrideRequestVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface CatalogTagOverrideRequest {
+  vendor: CatalogTagOverrideRequestVendor;
+  /** @minLength 1 */
+  styleName: string;
+  /**
+     * @items.minLength 1
+     * @items.maxLength 40
+     */
+  addTags: string[];
+  /**
+     * @items.minLength 1
+     * @items.maxLength 40
+     */
+  removeTags: string[];
+}
+
+export interface CatalogColorFamilyRequest {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  colorName: string;
+  families: string[];
+}
+
 export interface ProductSearchRequest {
   /**
      * @minLength 1
@@ -3650,6 +3772,49 @@ export type GetFinderOrderParams = {
  * @minimum 1
  */
 visualId: number;
+};
+
+export type CatalogSearchParams = {
+/**
+ * @minLength 1
+ * @maxLength 200
+ */
+q: string;
+vendor?: CatalogSearchVendor;
+brand?: string;
+category?: string;
+colorFamily?: string;
+priceMin?: number;
+priceMax?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type CatalogSearchVendor = typeof CatalogSearchVendor[keyof typeof CatalogSearchVendor];
+
+
+export const CatalogSearchVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export type TriggerCatalogRefresh200 = {
+  started: boolean;
+};
+
+export type SetCatalogTagOverride200 = {
+  effectiveTags: string[];
+};
+
+export type SetCatalogColorFamily200 = {
+  ok: boolean;
 };
 
 export type ListVendorOrdersParams = {

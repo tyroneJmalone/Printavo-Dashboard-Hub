@@ -24,6 +24,8 @@
 - [Printavo test-order safety](printavo-test-order-safety.md) — real-write tests use order #22251 ("TEST DO NOT ORDER") ONLY; #19004 banned (status changes emailed the customer); status changes = customer-visible.
 - [Printavo status-name matching](printavo-status-name-matching.md) — status names carry stray double spaces/emoji; match whitespace-normalized names at runtime, never hardcode ids.
 - [Reference sync daily watermark](reference-sync-daily-watermark.md) — new fields on reference queries (statuses etc.) don't backfill until the daily refresh; delete the entity_watermarks row to force it.
+- [Vendor catalog enumeration & import](vendor-catalog-enumeration.md) — S&S /styles/ lists all; SanMar PromoStandards v1.0.0 SharedObjects ns; corrections stored off imported rows; retry 503s.
+- [Long background jobs die with the shell](background-jobs-shellexec.md) — nohup/setsid don't survive; run long jobs in the server process; drizzle array params need ARRAY[...] literals.
 - [Catalog search requirements](catalog-search-requirements.md) — tabled but returning: must be a key-authed read-only API usable by Tyler's OTHER app, with product images.
 - [Shipping rate estimator](printavo-shipping-estimator.md) — ported into Hub with intentional deviations (not drift): 2 backend micro-fixes + smart paste parser (Tyler-requested).
 - [Chipply revenue separation & live linking](chipply-separation.md) — Chipply dollars NEVER sum into Printavo revenue; invoice links derived live from nickname prefix, deliberately no link table.

@@ -1,21 +1,38 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, X, AlertTriangle, CheckCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2, Search, X, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import {
   useProductSearch,
   productSearch,
   vendorInventory,
   useGetFinderOrder,
   getGetFinderOrderQueryKey,
+  useCatalogSearch,
+  getCatalogSearchQueryKey,
+  useGetCatalogFilters,
+  getGetCatalogFiltersQueryKey,
+  useGetCatalogHealth,
+  getGetCatalogHealthQueryKey,
+  useTriggerCatalogRefresh,
+  useSetCatalogTagOverride,
+  useSetCatalogColorFamily,
   type VendorLookupResult,
   type VendorColorOffer,
   type VendorSizeOffer,
   type VendorInventoryResult,
   type FinderOrderLineItem,
+  type CatalogSearchHit,
+  type CatalogMatchedColor,
+  type CatalogHealth,
 } from "@workspace/api-client-react";
 
 // --- Types ---
@@ -220,10 +237,23 @@ function SelectionCard({ selection, onRemove }: { selection: SessionSelection, o
 
 // --- Modes ---
 
-function StyleSearchMode() {
+function StyleSearchMode({ initialQuery, onClearInitialQuery }: { initialQuery?: string, onClearInitialQuery?: () => void }) {
   const [query, setQuery] = useState("");
   const searchMutation = useProductSearch();
   const [selections, setSelections] = useState<SessionSelection[]>([]);
+
+  const onClearRef = useRef(onClearInitialQuery);
+  onClearRef.current = onClearInitialQuery;
+  const mutateRef = useRef(searchMutation.mutate);
+  mutateRef.current = searchMutation.mutate;
+
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+      mutateRef.current({ data: { query: initialQuery } });
+      onClearRef.current?.();
+    }
+  }, [initialQuery]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -644,10 +674,477 @@ function InvoiceCheckMode() {
   )
 }
 
+
+function CatalogHealthPanel() {
+  const { data: health, isLoading } = useGetCatalogHealth({
+    query: {
+       refetchInterval: (query) => query.state.data?.refreshActive ? 3000 : false,
+       queryKey: getGetCatalogHealthQueryKey()
+    }
+  });
+  
+  const qc = useQueryClient();
+  const refreshMutation = useTriggerCatalogRefresh({
+     mutation: {
+       onSuccess: () => qc.invalidateQueries({ queryKey: getGetCatalogHealthQueryKey() })
+     }
+  });
+  const { toast } = useToast();
+  
+  if (isLoading || !health) return null;
+
+  return (
+    <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center gap-6">
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Active Products</span>
+          <span className="font-mono text-white text-lg leading-none">{health.activeProducts.toLocaleString()}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Colors</span>
+          <span className="font-mono text-slate-300 text-lg leading-none">{health.colors.toLocaleString()}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Discontinued</span>
+          <span className="font-mono text-slate-400 text-lg leading-none">{health.discontinuedProducts.toLocaleString()}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Staff Corrections</span>
+          <span className="font-mono text-[#10b981] text-lg leading-none">{(health.tagOverrides + health.staffColorFixes).toLocaleString()}</span>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-3">
+         {health.refreshActive && (
+            <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+               <RefreshCw size={12} className="animate-spin" />
+               Syncing catalog...
+            </div>
+         )}
+         <Button 
+           variant="outline" 
+           size="sm"
+           onClick={() => {
+              refreshMutation.mutate(undefined, {
+                 onSuccess: () => toast({ title: "Catalog refresh started" }),
+                 onError: (err) => toast({ title: "Failed to start refresh", description: String(err), variant: "destructive" })
+              })
+           }}
+           disabled={health.refreshActive || refreshMutation.isPending}
+           className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-xs h-8"
+         >
+           <RefreshCw size={14} className={`mr-2 ${health.refreshActive ? 'animate-spin' : ''}`} />
+           {health.refreshActive ? "Syncing..." : "Refresh Now"}
+         </Button>
+      </div>
+    </div>
+  )
+}
+
+function TagEditor({ hit }: { hit: CatalogSearchHit }) {
+   const qc = useQueryClient();
+   const { toast } = useToast();
+   const mutation = useSetCatalogTagOverride({
+      mutation: {
+         onSuccess: () => {
+             qc.invalidateQueries({ queryKey: getCatalogSearchQueryKey() });
+             qc.invalidateQueries({ queryKey: getGetCatalogHealthQueryKey() });
+         },
+         onError: (err) => toast({ title: "Failed to update tags", description: String(err), variant: "destructive" })
+      }
+   });
+   
+   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const val = new FormData(e.currentTarget).get("tags") as string;
+      if (!val) return;
+      const tags = val.split(",").map(t => t.trim()).filter(Boolean);
+      mutation.mutate({ data: { vendor: hit.vendor, styleName: hit.styleName, addTags: tags, removeTags: [] } });
+      e.currentTarget.reset();
+   }
+   
+   const handleRemove = (tag: string) => {
+      mutation.mutate({ data: { vendor: hit.vendor, styleName: hit.styleName, addTags: [], removeTags: [tag] } });
+   }
+
+   return (
+     <div className="flex flex-wrap gap-1.5 items-center mt-2">
+       {hit.tags.map(t => (
+         <Badge key={t} variant="secondary" className="text-[10px] bg-slate-800 text-slate-300 pr-1 border border-slate-700">
+           {t}
+           <button onClick={() => handleRemove(t)} className="ml-1 hover:text-white focus:outline-none" disabled={mutation.isPending}>
+             <X size={10} />
+           </button>
+         </Badge>
+       ))}
+       <Popover>
+         <PopoverTrigger asChild>
+           <button className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-slate-200">
+             + Add Tag
+           </button>
+         </PopoverTrigger>
+         <PopoverContent className="w-64 p-3 bg-slate-900 border-slate-700" side="top">
+           <form onSubmit={handleAdd} className="flex gap-2">
+             <Input name="tags" placeholder="cool, summer, basics" className="h-8 text-xs bg-slate-950 border-slate-800" autoFocus />
+             <Button type="submit" size="sm" className="h-8 text-xs bg-[#059669] text-white" disabled={mutation.isPending}>Add</Button>
+           </form>
+         </PopoverContent>
+       </Popover>
+     </div>
+   )
+}
+
+function ColorFamilyEditor({ color, availableFamilies }: { color: CatalogMatchedColor, availableFamilies: string[] }) {
+   const qc = useQueryClient();
+   const { toast } = useToast();
+   const mutation = useSetCatalogColorFamily({
+      mutation: {
+         onSuccess: () => {
+             qc.invalidateQueries({ queryKey: getCatalogSearchQueryKey() });
+             qc.invalidateQueries({ queryKey: getGetCatalogHealthQueryKey() });
+         },
+         onError: (err) => toast({ title: "Failed to update color family", description: String(err), variant: "destructive" })
+      }
+   });
+
+   const [open, setOpen] = useState(false);
+   const [selected, setSelected] = useState<string[]>(color.families || []);
+
+   const handleSave = () => {
+      mutation.mutate({ data: { colorName: color.colorName, families: selected } }, {
+         onSuccess: () => setOpen(false)
+      });
+   };
+
+   return (
+     <Popover open={open} onOpenChange={setOpen}>
+       <PopoverTrigger asChild>
+         <button className="flex flex-wrap gap-1 hover:opacity-80 transition-opacity mt-1">
+           {color.families.length > 0 ? (
+             color.families.map(f => (
+                <span key={f} className="text-[9px] bg-slate-800 border border-slate-700 text-slate-400 px-1 rounded-sm leading-tight">
+                  {f}
+                </span>
+             ))
+           ) : (
+             <span className="text-[9px] text-slate-600 border border-dashed border-slate-700 px-1 rounded-sm">Uncategorized</span>
+           )}
+         </button>
+       </PopoverTrigger>
+       <PopoverContent className="w-64 p-4 bg-slate-900 border-slate-700" side="top">
+          <div className="text-xs font-semibold text-slate-300 mb-3 flex items-center justify-between">
+            <span>Families for {color.colorName}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar mb-4 pr-1">
+             {availableFamilies.map(f => (
+                <label key={f} className="flex items-center gap-2 text-xs text-slate-300">
+                   <Checkbox 
+                      checked={selected.includes(f)}
+                      onCheckedChange={(checked) => {
+                         if (checked) setSelected(p => [...p, f]);
+                         else setSelected(p => p.filter(x => x !== f));
+                      }}
+                      className="border-slate-600 data-[state=checked]:bg-[#10b981] data-[state=checked]:border-[#10b981]"
+                   />
+                   <span className="truncate" title={f}>{f}</span>
+                </label>
+             ))}
+          </div>
+          <Button onClick={handleSave} size="sm" className="w-full h-8 bg-[#059669] hover:bg-[#047857] text-white" disabled={mutation.isPending}>
+            Save
+          </Button>
+       </PopoverContent>
+     </Popover>
+   )
+}
+
+function CatalogHitCard({ hit, onSelectStyle, availableFamilies }: { hit: CatalogSearchHit, onSelectStyle: (styleName: string) => void, availableFamilies: string[] }) {
+  return (
+    <div className="bg-slate-900/40 hover:bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-colors rounded-xl p-5 shadow-sm group">
+      <div className="flex flex-col sm:flex-row gap-5">
+         {hit.styleImage ? (
+            <div className="w-full sm:w-32 h-32 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-2 flex-shrink-0">
+               <img src={hit.styleImage} className="max-w-full max-h-full object-contain mix-blend-screen" alt={hit.title || hit.styleName} />
+            </div>
+         ) : (
+            <div className="w-full sm:w-32 h-32 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-700">
+               <span className="text-xs text-slate-500">No Image</span>
+            </div>
+         )}
+         
+         <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start gap-4">
+               <div>
+                 <div className="flex items-center gap-2 mb-1">
+                   <div className="font-bold text-white capitalize text-lg">{hit.vendor}</div>
+                   <div className="text-sm font-bold text-[#10b981] bg-[#10b981]/10 px-2 py-0.5 rounded border border-[#10b981]/20">{hit.styleName}</div>
+                   {hit.brand && <div className="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">{hit.brand}</div>}
+                 </div>
+                 <div className="text-sm text-slate-300 mb-2 truncate max-w-xl">{hit.title}</div>
+               </div>
+               
+               <div className="text-right flex-shrink-0">
+                  <div className="text-sm font-mono font-bold text-[#10b981]">
+                    {hit.priceMin != null && hit.priceMax != null && hit.priceMin !== hit.priceMax 
+                       ? `$${hit.priceMin.toFixed(2)} - $${hit.priceMax.toFixed(2)}`
+                       : hit.priceMin != null ? `$${hit.priceMin.toFixed(2)}` : "No price"
+                    }
+                  </div>
+                  <div className="text-[10px] uppercase text-slate-500 mt-1 font-bold">Dealer Cost</div>
+               </div>
+            </div>
+            
+            <div className="flex items-center gap-2 text-xs text-slate-400 mb-4">
+               {hit.category && <span>{hit.category}</span>}
+               {hit.category && <span>&bull;</span>}
+               {hit.sizes.length > 0 && (
+                 <>
+                   <span>{hit.sizes.length} sizes ({hit.sizes[0]} - {hit.sizes[hit.sizes.length-1]})</span>
+                   <span>&bull;</span>
+                 </>
+               )}
+               <span>{hit.colorCount} colors available</span>
+            </div>
+            
+            <TagEditor hit={hit} />
+            
+            {hit.matchedColors.length > 0 && (
+               <div className="mt-4 pt-4 border-t border-slate-800/50">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Matched Colors</div>
+                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                     {hit.matchedColors.map(c => (
+                        <div key={c.colorName} className="flex items-start gap-2 bg-slate-950 border border-slate-800 rounded p-2 pr-3 min-w-[120px]">
+                           {c.swatchImage ? (
+                              <img src={c.swatchImage} className="w-6 h-6 rounded-sm shadow-sm flex-shrink-0" alt="" />
+                           ) : (
+                              <div className="w-6 h-6 rounded-sm bg-slate-700 shadow-sm flex-shrink-0" />
+                           )}
+                           <div className="flex flex-col justify-center min-w-0">
+                              <span className="text-[11px] font-medium text-slate-300 leading-none mb-1 truncate">{c.colorName}</span>
+                              <ColorFamilyEditor color={c} availableFamilies={availableFamilies} />
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            )}
+            
+            <div className="mt-4 pt-4 border-t border-slate-800/50 flex justify-end">
+               <Button 
+                  onClick={() => onSelectStyle(hit.styleName)} 
+                  className="bg-slate-800 hover:bg-slate-700 text-white text-xs h-8"
+               >
+                  Check Live Stock & Pricing &rarr;
+               </Button>
+            </div>
+         </div>
+      </div>
+    </div>
+  )
+}
+
+function CatalogSearchMode({ onSelectStyle }: { onSelectStyle: (styleName: string) => void }) {
+  const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState(q);
+  
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const [vendor, setVendor] = useState<string>("all");
+  const [brand, setBrand] = useState<string>("all");
+  const [category, setCategory] = useState<string>("all");
+  const [colorFamily, setColorFamily] = useState<string>("all");
+  
+  const [priceMinStr, setPriceMinStr] = useState("");
+  const [priceMaxStr, setPriceMaxStr] = useState("");
+  
+  const [debouncedPriceMin, setDebouncedPriceMin] = useState("");
+  const [debouncedPriceMax, setDebouncedPriceMax] = useState("");
+  
+  useEffect(() => {
+    const t = setTimeout(() => {
+       setDebouncedPriceMin(priceMinStr);
+       setDebouncedPriceMax(priceMaxStr);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [priceMinStr, priceMaxStr]);
+
+  const { data: filters } = useGetCatalogFilters({
+     query: { queryKey: getGetCatalogFiltersQueryKey() }
+  });
+
+  const { data: health } = useGetCatalogHealth({
+    query: {
+      refetchInterval: (query) => query.state.data?.refreshActive ? 3000 : false,
+      queryKey: getGetCatalogHealthQueryKey()
+    }
+  });
+
+  const searchParams = useMemo(() => {
+     const p: any = { q: debouncedQ };
+     if (vendor !== "all") p.vendor = vendor;
+     if (brand !== "all") p.brand = brand;
+     if (category !== "all") p.category = category;
+     if (colorFamily !== "all") p.colorFamily = colorFamily;
+     const pMin = parseFloat(debouncedPriceMin);
+     if (!isNaN(pMin)) p.priceMin = pMin;
+     const pMax = parseFloat(debouncedPriceMax);
+     if (!isNaN(pMax)) p.priceMax = pMax;
+     return p;
+  }, [debouncedQ, vendor, brand, category, colorFamily, debouncedPriceMin, debouncedPriceMax]);
+
+  const { data: searchResult, isFetching } = useCatalogSearch(searchParams, {
+     query: {
+        enabled: !!debouncedQ.trim(),
+        queryKey: getCatalogSearchQueryKey(searchParams)
+     }
+  });
+  
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+       <div className="flex-shrink-0 mb-6">
+         <CatalogHealthPanel />
+       </div>
+       
+       <div className="flex-shrink-0 mb-6 space-y-4">
+         <div className="relative">
+           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
+           <Input 
+             placeholder="Search natural language (e.g. 'forest green polos', 'women\'s crop tees')..." 
+             value={q}
+             onChange={e => setQ(e.target.value)}
+             className="pl-12 bg-slate-900 border-slate-700 h-12 text-base shadow-inner rounded-xl"
+             autoFocus
+           />
+         </div>
+         
+         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <Select value={vendor} onValueChange={setVendor}>
+              <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-300 h-9 text-xs"><SelectValue placeholder="Vendor" /></SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800">
+                <SelectItem value="all">All Vendors</SelectItem>
+                <SelectItem value="sanmar">SanMar</SelectItem>
+                <SelectItem value="ss">S&S Activewear</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={brand} onValueChange={setBrand}>
+              <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-300 h-9 text-xs"><SelectValue placeholder="Brand" /></SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800 max-h-64">
+                <SelectItem value="all">All Brands</SelectItem>
+                {filters?.brands.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-300 h-9 text-xs"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800 max-h-64">
+                <SelectItem value="all">All Categories</SelectItem>
+                {filters?.categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={colorFamily} onValueChange={setColorFamily}>
+              <SelectTrigger className="bg-slate-900 border-slate-800 text-slate-300 h-9 text-xs"><SelectValue placeholder="Color Family" /></SelectTrigger>
+              <SelectContent className="bg-slate-900 border-slate-800 max-h-64">
+                <SelectItem value="all">All Colors</SelectItem>
+                {filters?.colorFamilies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <Input placeholder="Min $" value={priceMinStr} onChange={e => setPriceMinStr(e.target.value)} className="bg-slate-900 border-slate-800 h-9 text-xs px-2" />
+              <span className="text-slate-600">-</span>
+              <Input placeholder="Max $" value={priceMaxStr} onChange={e => setPriceMaxStr(e.target.value)} className="bg-slate-900 border-slate-800 h-9 text-xs px-2" />
+            </div>
+         </div>
+       </div>
+       
+       <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
+          {(() => {
+             if (health && health.activeProducts === 0 && !health.refreshActive) {
+                return (
+                   <div className="py-20 flex flex-col items-center justify-center text-center">
+                      <div className="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mb-6 border border-slate-700">
+                        <Search className="w-10 h-10 text-slate-500" />
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2">Catalog is empty</h3>
+                      <p className="text-slate-400 max-w-md text-sm mb-6">
+                         The product catalog imports nightly. You can manually trigger a sync in the panel above to fetch the latest products from SanMar and S&S Activewear.
+                      </p>
+                   </div>
+                )
+             }
+             
+             if (!debouncedQ.trim()) {
+                return (
+                   <div className="py-20 flex flex-col items-center justify-center text-center px-4">
+                      <div className="w-16 h-16 bg-slate-800/30 rounded-2xl flex items-center justify-center mb-4 border border-slate-800">
+                        <Search className="w-8 h-8 text-slate-500 opacity-50" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-300">Describe what you're looking for</p>
+                      <p className="text-xs text-slate-500 mt-2 max-w-sm">
+                        Search across tens of thousands of products. We match on style numbers, descriptions, tags, and colors.
+                      </p>
+                   </div>
+                )
+             }
+             
+             if (isFetching && !searchResult) {
+                return (
+                   <div className="py-20 flex flex-col items-center justify-center text-slate-500 space-y-3">
+                      <Loader2 className="animate-spin text-[#10b981] w-8 h-8" />
+                      <span className="text-sm font-medium">Searching catalog...</span>
+                   </div>
+                )
+             }
+             
+             if (searchResult && searchResult.hits.length === 0) {
+                return (
+                   <div className="py-12 flex flex-col items-center justify-center text-slate-500">
+                      <p className="text-sm font-medium">No products found matching "{debouncedQ}"</p>
+                   </div>
+                )
+             }
+             
+             if (searchResult) {
+                return (
+                   <div className="space-y-4">
+                      {isFetching && (
+                         <div className="absolute right-8 top-1/2 flex items-center text-xs text-slate-500">
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin text-[#10b981]" /> updating...
+                         </div>
+                      )}
+                      <div className="text-xs text-slate-500 mb-2">Found {searchResult.total} matches</div>
+                      {searchResult.hits.map(hit => (
+                         <CatalogHitCard 
+                           key={`${hit.vendor}-${hit.styleName}`} 
+                           hit={hit} 
+                           onSelectStyle={onSelectStyle}
+                           availableFamilies={filters?.colorFamilies || []}
+                         />
+                      ))}
+                   </div>
+                )
+             }
+             
+             return null;
+          })()}
+       </div>
+    </div>
+  )
+}
+
 export default function ProductFinder() {
+  const [activeTab, setActiveTab] = useState("catalog");
+  const [styleQuery, setStyleQuery] = useState("");
+
+  const handleSelectStyle = (styleName: string) => {
+    setStyleQuery(styleName);
+    setActiveTab("search");
+  };
+
   return (
     <AppShell>
-      <Tabs defaultValue="search" className="flex flex-col h-full overflow-hidden bg-[#020617]">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full overflow-hidden bg-[#020617]">
         <div className="flex-shrink-0 border-b border-slate-800 px-6 pt-6 pb-0 z-10 relative">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg bg-[#059669]/20 border border-[#059669]/30 flex items-center justify-center text-[#10b981] shadow-inner shadow-[#10b981]/10">
@@ -655,19 +1152,24 @@ export default function ProductFinder() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight">Product Finder</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Live stock from SanMar and S&S Activewear</p>
+              <p className="text-xs text-slate-400 mt-0.5">Catalog & Live stock from SanMar and S&S Activewear</p>
             </div>
           </div>
 
-          <TabsList className="bg-slate-900 border border-slate-800 p-1 w-full max-w-sm grid grid-cols-2 rounded-lg mb-0 relative top-[1px]">
+          <TabsList className="bg-slate-900 border border-slate-800 p-1 w-full max-w-md grid grid-cols-3 rounded-lg mb-0 relative top-[1px]">
+            <TabsTrigger value="catalog" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Catalog Search</TabsTrigger>
             <TabsTrigger value="search" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Search by Style</TabsTrigger>
             <TabsTrigger value="invoice" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Check Invoice</TabsTrigger>
           </TabsList>
         </div>
         
         <div className="flex-1 overflow-hidden">
+           <TabsContent value="catalog" className="m-0 h-full border-none outline-none p-6">
+             <CatalogSearchMode onSelectStyle={handleSelectStyle} />
+           </TabsContent>
+
            <TabsContent value="search" className="m-0 h-full border-none outline-none p-6">
-             <StyleSearchMode />
+             <StyleSearchMode initialQuery={styleQuery} onClearInitialQuery={() => setStyleQuery("")} />
            </TabsContent>
            
            <TabsContent value="invoice" className="m-0 h-full border-none outline-none p-6">

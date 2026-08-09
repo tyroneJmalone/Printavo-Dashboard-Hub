@@ -320,6 +320,56 @@ export class SanMarClient {
   }
 
   /**
+   * All sellable SanMar style numbers (PromoStandards ProductData
+   * getProductSellable — SanMar serves wsVersion 1.0.0; verified live
+   * 2026-08-09: ~3,100 unique styles, 13MB response). READ-ONLY. Credentials
+   * ride in the SharedObjects namespace like the other PromoStandards calls.
+   */
+  async getSellableStyles(): Promise<string[]> {
+    const ns = "http://www.promostandards.org/WSDL/ProductDataService/1.0.0/";
+    const sh = `${ns}SharedObjects/`;
+    const body = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Header/><soapenv:Body>
+<ns:GetProductSellableRequest xmlns:ns="${ns}" xmlns:sh="${sh}">
+<sh:wsVersion>1.0.0</sh:wsVersion><sh:id>${xmlEscape(this.creds.username)}</sh:id><sh:password>${xmlEscape(this.creds.password)}</sh:password>
+<sh:isSellable>true</sh:isSellable></ns:GetProductSellableRequest>
+</soapenv:Body></soapenv:Envelope>`;
+    // The 13MB response takes well past the normal attempt timeouts — one
+    // attempt with a generous cap instead of soapCall's fast-fail ladder.
+    let text: string;
+    try {
+      const res = await fetch(
+        "https://ws.sanmar.com:8080/promostandards/ProductDataServiceBinding",
+        {
+          method: "POST",
+          headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: "getProductSellable" },
+          body,
+          signal: AbortSignal.timeout(180_000),
+        },
+      );
+      text = await res.text();
+      if (!res.ok) {
+        const fault = text.match(/<faultstring>([^<]*)<\/faultstring>/)?.[1];
+        throw new SanMarApiError(
+          fault ? `SanMar SOAP fault: ${xmlDecode(fault)}` : `SanMar HTTP ${res.status}`,
+          fault ? "fault" : "http",
+          res.status,
+        );
+      }
+    } catch (err) {
+      if (err instanceof SanMarApiError) throw err;
+      throw new SanMarApiError(
+        `SanMar getProductSellable failed: ${err instanceof Error ? err.message : String(err)}`,
+        "network",
+      );
+    }
+    const ids = text.match(/<(?:\w+:)?productId>([^<]*)<\/(?:\w+:)?productId>/g) ?? [];
+    return Array.from(new Set(ids.map((x) => xmlDecode(x.replace(/<[^>]+>/g, "").trim())))).filter(
+      (s) => s.length > 0,
+    );
+  }
+
+  /**
    * Submit a purchase order to SanMar (SOAP submitPO).
    *
    * SINGLE ATTEMPT — deliberately NOT retried: a submit that reaches SanMar

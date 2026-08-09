@@ -692,6 +692,134 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/catalog/search:
+    get:
+      operationId: catalogSearch
+      tags: [purchasing]
+      summary: Descriptive search over the local vendor catalog
+      description: Deterministic tokenized search over the nightly-imported SanMar + S&S catalog. Color words expand to color families ("forest green polos" matches Forest, Forest Green, Dark Green...). No live inventory here — click through to the live stock view for that.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: vendor
+          in: query
+          schema: { type: string, enum: [sanmar, ss] }
+        - name: brand
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: colorFamily
+          in: query
+          schema: { type: string }
+        - name: priceMin
+          in: query
+          schema: { type: number }
+        - name: priceMax
+          in: query
+          schema: { type: number }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Ranked catalog hits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogSearchResult"
+  /purchasing/catalog/filters:
+    get:
+      operationId: getCatalogFilters
+      tags: [purchasing]
+      summary: Distinct filter values (brands, categories, color families)
+      responses:
+        "200":
+          description: Filter values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogFilters"
+  /purchasing/catalog/health:
+    get:
+      operationId: getCatalogHealth
+      tags: [purchasing]
+      summary: Catalog counts + recent refresh runs (health panel)
+      responses:
+        "200":
+          description: Health snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogHealth"
+  /purchasing/catalog/refresh:
+    post:
+      operationId: triggerCatalogRefresh
+      tags: [purchasing]
+      summary: Kick off a catalog refresh in the background
+      description: Returns immediately; progress is visible via the health endpoint. No-op (started=false) when a refresh is already running.
+      responses:
+        "200":
+          description: Refresh trigger result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  started: { type: boolean }
+                required: [started]
+  /purchasing/catalog/tag-override:
+    post:
+      operationId: setCatalogTagOverride
+      tags: [purchasing]
+      summary: Staff tag correction for a catalog product
+      description: Keyed by vendor+style so it survives nightly re-imports. Effective tags = (imported ∪ add) − remove.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CatalogTagOverrideRequest"
+      responses:
+        "200":
+          description: Updated effective tags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  effectiveTags:
+                    type: array
+                    items: { type: string }
+                required: [effectiveTags]
+  /purchasing/catalog/color-family:
+    post:
+      operationId: setCatalogColorFamily
+      tags: [purchasing]
+      summary: Staff correction of a color name's families
+      description: Global across vendors and products; marked source=staff so nightly AI passes never overwrite it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CatalogColorFamilyRequest"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
   /purchasing/po-files:
     get:
       operationId: listPoFiles
@@ -5104,6 +5232,115 @@ components:
         cached: { type: boolean }
         fetchedAt: { type: string }
       required: [vendor, style, catalogColor, sizes, cached, fetchedAt]
+    CatalogMatchedColor:
+      type: object
+      properties:
+        colorName: { type: string }
+        swatchImage: { type: ["string", "null"] }
+        productImage: { type: ["string", "null"] }
+        families:
+          type: array
+          items: { type: string }
+      required: [colorName, swatchImage, productImage, families]
+    CatalogSearchHit:
+      type: object
+      properties:
+        id: { type: integer }
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleName: { type: string }
+        brand: { type: ["string", "null"] }
+        title: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        styleImage: { type: ["string", "null"] }
+        priceMin: { type: ["number", "null"] }
+        priceMax: { type: ["number", "null"] }
+        sizes:
+          type: array
+          items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        matchedColors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogMatchedColor"
+        colorCount: { type: integer }
+        score: { type: number }
+      required: [id, vendor, styleName, brand, title, category, styleImage, priceMin, priceMax, sizes, tags, matchedColors, colorCount, score]
+    CatalogSearchResult:
+      type: object
+      properties:
+        total: { type: integer }
+        hits:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogSearchHit"
+      required: [total, hits]
+    CatalogFilters:
+      type: object
+      properties:
+        brands:
+          type: array
+          items: { type: string }
+        categories:
+          type: array
+          items: { type: string }
+        colorFamilies:
+          type: array
+          items: { type: string }
+      required: [brands, categories, colorFamilies]
+    CatalogRefreshRun:
+      type: object
+      properties:
+        id: { type: integer }
+        vendor: { type: string }
+        status: { type: string, enum: [running, completed, failed] }
+        trigger: { type: string }
+        startedAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+        productsUpserted: { type: integer }
+        colorsUpserted: { type: integer }
+        discontinuedCount: { type: integer }
+        colorsTagged: { type: integer }
+        productsTagged: { type: integer }
+        error: { type: ["string", "null"] }
+      required: [id, vendor, status, trigger, startedAt, finishedAt, productsUpserted, colorsUpserted, discontinuedCount, colorsTagged, productsTagged, error]
+    CatalogHealth:
+      type: object
+      properties:
+        refreshActive: { type: boolean }
+        activeProducts: { type: integer }
+        discontinuedProducts: { type: integer }
+        colors: { type: integer }
+        colorsTagged: { type: integer }
+        productsTagged: { type: integer }
+        tagOverrides: { type: integer }
+        staffColorFixes: { type: integer }
+        recentRuns:
+          type: array
+          items:
+            $ref: "#/components/schemas/CatalogRefreshRun"
+      required: [refreshActive, activeProducts, discontinuedProducts, colors, colorsTagged, productsTagged, tagOverrides, staffColorFixes, recentRuns]
+    CatalogTagOverrideRequest:
+      type: object
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleName: { type: string, minLength: 1 }
+        addTags:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 40 }
+        removeTags:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 40 }
+      required: [vendor, styleName, addTags, removeTags]
+    CatalogColorFamilyRequest:
+      type: object
+      properties:
+        colorName: { type: string, minLength: 1, maxLength: 100 }
+        families:
+          type: array
+          items: { type: string }
+      required: [colorName, families]
     ProductSearchRequest:
       type: object
       properties:

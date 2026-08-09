@@ -62,6 +62,18 @@ export interface SSStyle {
   styleImage: string | null;
 }
 
+/** Catalog-level style record from GET /styles/ (full-catalog import). */
+export interface SSCatalogStyle {
+  styleID: number;
+  styleName: string;
+  brandName: string;
+  title: string | null;
+  description: string | null;
+  baseCategory: string | null;
+  /** RELATIVE path (prefix https://www.ssactivewear.com/). */
+  styleImage: string | null;
+}
+
 export interface SSWarehouseQty {
   warehouseAbbr: string;
   qty: number;
@@ -168,12 +180,12 @@ export class SSClient {
     this.authHeader = `Basic ${Buffer.from(`${creds.accountNumber}:${creds.apiKey}`).toString("base64")}`;
   }
 
-  private async get<T>(path: string): Promise<T> {
+  private async get<T>(path: string, timeoutMs = this.timeoutMs): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${BASE_URL}${path}`, {
         headers: { Authorization: this.authHeader, Accept: "application/json" },
-        signal: AbortSignal.timeout(this.timeoutMs),
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (err) {
       throw new SSApiError(
@@ -200,6 +212,29 @@ export class SSClient {
         styleImage: s.styleImage ? String(s.styleImage) : null,
       }))
       .filter((s) => Number.isFinite(s.styleID));
+  }
+
+  /**
+   * The ENTIRE S&S style catalog in one call (~5,600 styles, verified live
+   * 2026-08-09). Slow-moving catalog data for the local catalog import —
+   * per-style colors/prices still come from getProducts().
+   */
+  async listAllStyles(): Promise<SSCatalogStyle[]> {
+    const raw = await this.get<unknown>(`/styles/`, 120_000);
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)
+      .map((s) => ({
+        styleID: Number(s.styleID),
+        styleName: String(s.styleName ?? ""),
+        brandName: String(s.brandName ?? ""),
+        title: s.title ? String(s.title) : null,
+        /** HTML bullet list — strip tags before storing/searching. */
+        description: s.description ? String(s.description) : null,
+        baseCategory: s.baseCategory ? String(s.baseCategory) : null,
+        styleImage: s.styleImage ? String(s.styleImage) : null,
+      }))
+      .filter((s) => Number.isFinite(s.styleID) && s.styleName.length > 0);
   }
 
   /** All SKUs (color × size) for a styleID, incl. pricing + per-warehouse inventory. */

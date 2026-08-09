@@ -43,6 +43,12 @@ import type {
   BreakdownReport,
   BulkDeleteTasksInput,
   BulkUpdateTasksInput,
+  CatalogColorFamilyRequest,
+  CatalogFilters,
+  CatalogHealth,
+  CatalogSearchParams,
+  CatalogSearchResult,
+  CatalogTagOverrideRequest,
   ChangeEventItem,
   ChipplyStoreDetailResponse,
   ChipplyStoreEnvelope,
@@ -192,6 +198,8 @@ import type {
   SendTestRewardEmail200,
   SendToPrintavoResult,
   SetAdminPinRequest,
+  SetCatalogColorFamily200,
+  SetCatalogTagOverride200,
   ShippingError,
   ShippingListCarriers200Item,
   SorterError,
@@ -216,6 +224,7 @@ import type {
   Team,
   TeamInput,
   TeamUpdate,
+  TriggerCatalogRefresh200,
   UpdateChipplyStoreRequest,
   UpdateInsightsPresetRequest,
   UpdatePoFileRequest,
@@ -2395,6 +2404,458 @@ export function useGetFinderOrder<TData = Awaited<ReturnType<typeof getFinderOrd
 
 
 
+
+export const getCatalogSearchUrl = (params: CatalogSearchParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/purchasing/catalog/search?${stringifiedParams}` : `/api/purchasing/catalog/search`
+}
+
+/**
+ * Deterministic tokenized search over the nightly-imported SanMar + S&S catalog. Color words expand to color families ("forest green polos" matches Forest, Forest Green, Dark Green...). No live inventory here — click through to the live stock view for that.
+ * @summary Descriptive search over the local vendor catalog
+ */
+export const catalogSearch = async (params: CatalogSearchParams, options?: RequestInit): Promise<CatalogSearchResult> => {
+
+  return customFetch<CatalogSearchResult>(getCatalogSearchUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCatalogSearchQueryKey = (params?: CatalogSearchParams,) => {
+    return [
+    `/api/purchasing/catalog/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getCatalogSearchQueryOptions = <TData = Awaited<ReturnType<typeof catalogSearch>>, TError = ErrorType<unknown>>(params: CatalogSearchParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof catalogSearch>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCatalogSearchQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof catalogSearch>>> = ({ signal }) => catalogSearch(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof catalogSearch>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CatalogSearchQueryResult = NonNullable<Awaited<ReturnType<typeof catalogSearch>>>
+export type CatalogSearchQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Descriptive search over the local vendor catalog
+ */
+
+export function useCatalogSearch<TData = Awaited<ReturnType<typeof catalogSearch>>, TError = ErrorType<unknown>>(
+ params: CatalogSearchParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof catalogSearch>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCatalogSearchQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCatalogFiltersUrl = () => {
+
+
+
+
+  return `/api/purchasing/catalog/filters`
+}
+
+/**
+ * @summary Distinct filter values (brands, categories, color families)
+ */
+export const getCatalogFilters = async ( options?: RequestInit): Promise<CatalogFilters> => {
+
+  return customFetch<CatalogFilters>(getGetCatalogFiltersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCatalogFiltersQueryKey = () => {
+    return [
+    `/api/purchasing/catalog/filters`
+    ] as const;
+    }
+
+
+export const getGetCatalogFiltersQueryOptions = <TData = Awaited<ReturnType<typeof getCatalogFilters>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCatalogFilters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCatalogFiltersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCatalogFilters>>> = ({ signal }) => getCatalogFilters({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCatalogFilters>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCatalogFiltersQueryResult = NonNullable<Awaited<ReturnType<typeof getCatalogFilters>>>
+export type GetCatalogFiltersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Distinct filter values (brands, categories, color families)
+ */
+
+export function useGetCatalogFilters<TData = Awaited<ReturnType<typeof getCatalogFilters>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCatalogFilters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCatalogFiltersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCatalogHealthUrl = () => {
+
+
+
+
+  return `/api/purchasing/catalog/health`
+}
+
+/**
+ * @summary Catalog counts + recent refresh runs (health panel)
+ */
+export const getCatalogHealth = async ( options?: RequestInit): Promise<CatalogHealth> => {
+
+  return customFetch<CatalogHealth>(getGetCatalogHealthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCatalogHealthQueryKey = () => {
+    return [
+    `/api/purchasing/catalog/health`
+    ] as const;
+    }
+
+
+export const getGetCatalogHealthQueryOptions = <TData = Awaited<ReturnType<typeof getCatalogHealth>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCatalogHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCatalogHealthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCatalogHealth>>> = ({ signal }) => getCatalogHealth({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCatalogHealth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCatalogHealthQueryResult = NonNullable<Awaited<ReturnType<typeof getCatalogHealth>>>
+export type GetCatalogHealthQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Catalog counts + recent refresh runs (health panel)
+ */
+
+export function useGetCatalogHealth<TData = Awaited<ReturnType<typeof getCatalogHealth>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCatalogHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCatalogHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getTriggerCatalogRefreshUrl = () => {
+
+
+
+
+  return `/api/purchasing/catalog/refresh`
+}
+
+/**
+ * Returns immediately; progress is visible via the health endpoint. No-op (started=false) when a refresh is already running.
+ * @summary Kick off a catalog refresh in the background
+ */
+export const triggerCatalogRefresh = async ( options?: RequestInit): Promise<TriggerCatalogRefresh200> => {
+
+  return customFetch<TriggerCatalogRefresh200>(getTriggerCatalogRefreshUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTriggerCatalogRefreshMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerCatalogRefresh>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerCatalogRefresh>>, TError,void, TContext> => {
+
+const mutationKey = ['triggerCatalogRefresh'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerCatalogRefresh>>, void> = () => {
+
+
+          return  triggerCatalogRefresh(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerCatalogRefreshMutationResult = NonNullable<Awaited<ReturnType<typeof triggerCatalogRefresh>>>
+
+    export type TriggerCatalogRefreshMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Kick off a catalog refresh in the background
+ */
+export const useTriggerCatalogRefresh = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerCatalogRefresh>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerCatalogRefresh>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTriggerCatalogRefreshMutationOptions(options));
+    }
+
+export const getSetCatalogTagOverrideUrl = () => {
+
+
+
+
+  return `/api/purchasing/catalog/tag-override`
+}
+
+/**
+ * Keyed by vendor+style so it survives nightly re-imports. Effective tags = (imported ∪ add) − remove.
+ * @summary Staff tag correction for a catalog product
+ */
+export const setCatalogTagOverride = async (catalogTagOverrideRequest: CatalogTagOverrideRequest, options?: RequestInit): Promise<SetCatalogTagOverride200> => {
+
+  return customFetch<SetCatalogTagOverride200>(getSetCatalogTagOverrideUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(catalogTagOverrideRequest)
+  }
+);}
+
+
+
+
+export const getSetCatalogTagOverrideMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCatalogTagOverride>>, TError,{data: BodyType<CatalogTagOverrideRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setCatalogTagOverride>>, TError,{data: BodyType<CatalogTagOverrideRequest>}, TContext> => {
+
+const mutationKey = ['setCatalogTagOverride'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setCatalogTagOverride>>, {data: BodyType<CatalogTagOverrideRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setCatalogTagOverride(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetCatalogTagOverrideMutationResult = NonNullable<Awaited<ReturnType<typeof setCatalogTagOverride>>>
+    export type SetCatalogTagOverrideMutationBody = BodyType<CatalogTagOverrideRequest>
+    export type SetCatalogTagOverrideMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Staff tag correction for a catalog product
+ */
+export const useSetCatalogTagOverride = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCatalogTagOverride>>, TError,{data: BodyType<CatalogTagOverrideRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setCatalogTagOverride>>,
+        TError,
+        {data: BodyType<CatalogTagOverrideRequest>},
+        TContext
+      > => {
+      return useMutation(getSetCatalogTagOverrideMutationOptions(options));
+    }
+
+export const getSetCatalogColorFamilyUrl = () => {
+
+
+
+
+  return `/api/purchasing/catalog/color-family`
+}
+
+/**
+ * Global across vendors and products; marked source=staff so nightly AI passes never overwrite it.
+ * @summary Staff correction of a color name's families
+ */
+export const setCatalogColorFamily = async (catalogColorFamilyRequest: CatalogColorFamilyRequest, options?: RequestInit): Promise<SetCatalogColorFamily200> => {
+
+  return customFetch<SetCatalogColorFamily200>(getSetCatalogColorFamilyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(catalogColorFamilyRequest)
+  }
+);}
+
+
+
+
+export const getSetCatalogColorFamilyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCatalogColorFamily>>, TError,{data: BodyType<CatalogColorFamilyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setCatalogColorFamily>>, TError,{data: BodyType<CatalogColorFamilyRequest>}, TContext> => {
+
+const mutationKey = ['setCatalogColorFamily'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setCatalogColorFamily>>, {data: BodyType<CatalogColorFamilyRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setCatalogColorFamily(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetCatalogColorFamilyMutationResult = NonNullable<Awaited<ReturnType<typeof setCatalogColorFamily>>>
+    export type SetCatalogColorFamilyMutationBody = BodyType<CatalogColorFamilyRequest>
+    export type SetCatalogColorFamilyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Staff correction of a color name's families
+ */
+export const useSetCatalogColorFamily = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCatalogColorFamily>>, TError,{data: BodyType<CatalogColorFamilyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setCatalogColorFamily>>,
+        TError,
+        {data: BodyType<CatalogColorFamilyRequest>},
+        TContext
+      > => {
+      return useMutation(getSetCatalogColorFamilyMutationOptions(options));
+    }
 
 export const getListPoFilesUrl = () => {
 

@@ -807,6 +807,145 @@ export const GetFinderOrderResponse = zod.object({
 
 
 /**
+ * Deterministic tokenized search over the nightly-imported SanMar + S&S catalog. Color words expand to color families ("forest green polos" matches Forest, Forest Green, Dark Green...). No live inventory here — click through to the live stock view for that.
+ * @summary Descriptive search over the local vendor catalog
+ */
+export const catalogSearchQueryQMax = 200;
+
+export const catalogSearchQueryLimitMax = 100;
+
+export const catalogSearchQueryOffsetMin = 0;
+
+
+
+export const CatalogSearchQueryParams = zod.object({
+  "q": zod.coerce.string().min(1).max(catalogSearchQueryQMax),
+  "vendor": zod.enum(['sanmar', 'ss']).optional(),
+  "brand": zod.coerce.string().optional(),
+  "category": zod.coerce.string().optional(),
+  "colorFamily": zod.coerce.string().optional(),
+  "priceMin": zod.coerce.number().optional(),
+  "priceMax": zod.coerce.number().optional(),
+  "limit": zod.coerce.number().min(1).max(catalogSearchQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(catalogSearchQueryOffsetMin).optional()
+})
+
+export const CatalogSearchResponse = zod.object({
+  "total": zod.number(),
+  "hits": zod.array(zod.object({
+  "id": zod.number(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "category": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "priceMin": zod.number().nullable(),
+  "priceMax": zod.number().nullable(),
+  "sizes": zod.array(zod.string()),
+  "tags": zod.array(zod.string()),
+  "matchedColors": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string())
+})),
+  "colorCount": zod.number(),
+  "score": zod.number()
+}))
+})
+
+
+/**
+ * @summary Distinct filter values (brands, categories, color families)
+ */
+export const GetCatalogFiltersResponse = zod.object({
+  "brands": zod.array(zod.string()),
+  "categories": zod.array(zod.string()),
+  "colorFamilies": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Catalog counts + recent refresh runs (health panel)
+ */
+export const GetCatalogHealthResponse = zod.object({
+  "refreshActive": zod.boolean(),
+  "activeProducts": zod.number(),
+  "discontinuedProducts": zod.number(),
+  "colors": zod.number(),
+  "colorsTagged": zod.number(),
+  "productsTagged": zod.number(),
+  "tagOverrides": zod.number(),
+  "staffColorFixes": zod.number(),
+  "recentRuns": zod.array(zod.object({
+  "id": zod.number(),
+  "vendor": zod.string(),
+  "status": zod.enum(['running', 'completed', 'failed']),
+  "trigger": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable(),
+  "productsUpserted": zod.number(),
+  "colorsUpserted": zod.number(),
+  "discontinuedCount": zod.number(),
+  "colorsTagged": zod.number(),
+  "productsTagged": zod.number(),
+  "error": zod.string().nullable()
+}))
+})
+
+
+/**
+ * Returns immediately; progress is visible via the health endpoint. No-op (started=false) when a refresh is already running.
+ * @summary Kick off a catalog refresh in the background
+ */
+export const TriggerCatalogRefreshResponse = zod.object({
+  "started": zod.boolean()
+})
+
+
+/**
+ * Keyed by vendor+style so it survives nightly re-imports. Effective tags = (imported ∪ add) − remove.
+ * @summary Staff tag correction for a catalog product
+ */
+
+export const setCatalogTagOverrideBodyAddTagsItemMax = 40;
+
+export const setCatalogTagOverrideBodyRemoveTagsItemMax = 40;
+
+
+
+export const SetCatalogTagOverrideBody = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string().min(1),
+  "addTags": zod.array(zod.string().min(1).max(setCatalogTagOverrideBodyAddTagsItemMax)),
+  "removeTags": zod.array(zod.string().min(1).max(setCatalogTagOverrideBodyRemoveTagsItemMax))
+})
+
+export const SetCatalogTagOverrideResponse = zod.object({
+  "effectiveTags": zod.array(zod.string())
+})
+
+
+/**
+ * Global across vendors and products; marked source=staff so nightly AI passes never overwrite it.
+ * @summary Staff correction of a color name's families
+ */
+export const setCatalogColorFamilyBodyColorNameMax = 100;
+
+
+
+export const SetCatalogColorFamilyBody = zod.object({
+  "colorName": zod.string().min(1).max(setCatalogColorFamilyBodyColorNameMax),
+  "families": zod.array(zod.string())
+})
+
+export const SetCatalogColorFamilyResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
  * @summary List saved purchase orders (newest first)
  */
 export const listPoFilesResponsePoFilesItemLineItemsItemSizesItemQtyMin = 0;

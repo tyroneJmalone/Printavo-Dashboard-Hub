@@ -16,7 +16,16 @@ import {
   CreateStatusRuleBody,
   UpdateStatusRuleBody,
   ReorderStatusRulesBody,
+  CatalogSearchQueryParams,
+  SetCatalogTagOverrideBody,
+  SetCatalogColorFamilyBody,
 } from "@workspace/api-zod";
+import { searchCatalog, catalogFilters } from "../lib/catalog/search";
+import { catalogHealth, runCatalogRefresh, isRefreshActive } from "../lib/catalog/refresh";
+import { normColorName } from "../lib/catalog/importers";
+import { COLOR_FAMILIES } from "../lib/catalog/tagger";
+import { db, catalogTagOverridesTable, catalogColorFamiliesTable } from "@workspace/db";
+import { sql, and, eq } from "drizzle-orm";
 import { loadNeedsOrdering } from "../lib/purchasing/needsOrdering";
 import { vendorLookup, VendorConfigError } from "../lib/purchasing/vendorLookup";
 import { vendorInventory } from "../lib/purchasing/vendorInventory";
@@ -124,6 +133,144 @@ router.get("/purchasing/finder-order", (req, res) => {
     .catch((err) => {
       req.log.error({ err, visualId: parsed.data.visualId }, "Finder order load failed");
       res.status(500).json({ error: "Order lookup failed" });
+    });
+});
+
+router.get("/purchasing/catalog/search", (req, res) => {
+  const parsed = CatalogSearchQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid catalog search query" });
+    return;
+  }
+  searchCatalog({
+    query: parsed.data.q,
+    vendor: parsed.data.vendor,
+    brand: parsed.data.brand,
+    category: parsed.data.category,
+    colorFamily: parsed.data.colorFamily,
+    priceMin: parsed.data.priceMin,
+    priceMax: parsed.data.priceMax,
+    limit: parsed.data.limit,
+    offset: parsed.data.offset,
+  })
+    .then((result) => res.json(result))
+    .catch((err) => {
+      req.log.error({ err, q: parsed.data.q }, "Catalog search failed");
+      res.status(500).json({ error: "Catalog search failed" });
+    });
+});
+
+router.get("/purchasing/catalog/filters", (req, res) => {
+  catalogFilters()
+    .then((f) => res.json(f))
+    .catch((err) => {
+      req.log.error({ err }, "Catalog filters load failed");
+      res.status(500).json({ error: "Catalog filters load failed" });
+    });
+});
+
+router.get("/purchasing/catalog/health", (req, res) => {
+  catalogHealth()
+    .then((h) => res.json(h))
+    .catch((err) => {
+      req.log.error({ err }, "Catalog health load failed");
+      res.status(500).json({ error: "Catalog health load failed" });
+    });
+});
+
+router.post("/purchasing/catalog/refresh", (req, res) => {
+  if (isRefreshActive()) {
+    res.json({ started: false });
+    return;
+  }
+  // Fire and forget — progress is visible via the health endpoint.
+  void runCatalogRefresh({ trigger: "manual" }, req.log).catch((err) => {
+    req.log.error({ err }, "Manual catalog refresh failed");
+  });
+  res.json({ started: true });
+});
+
+router.post("/purchasing/catalog/tag-override", (req, res) => {
+  const parsed = SetCatalogTagOverrideBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid tag override request" });
+    return;
+  }
+  const { vendor, styleName } = parsed.data;
+  const deltaAdd = Array.from(new Set(parsed.data.addTags.map((t) => t.toLowerCase().trim()).filter(Boolean)));
+  const deltaRemove = Array.from(new Set(parsed.data.removeTags.map((t) => t.toLowerCase().trim()).filter(Boolean)));
+  (async () => {
+    // Merge the incoming DELTA with the stored override — each request is one
+    // correction, not the full desired state. A tag added now leaves the
+    // remove-list; a tag removed now leaves the add-list.
+    const [existing] = await db
+      .select()
+      .from(catalogTagOverridesTable)
+      .where(and(eq(catalogTagOverridesTable.vendor, vendor), eq(catalogTagOverridesTable.styleName, styleName)))
+      .limit(1);
+    const addSet = new Set(existing?.addTags ?? []);
+    const removeSet = new Set(existing?.removeTags ?? []);
+    for (const t of deltaAdd) {
+      addSet.add(t);
+      removeSet.delete(t);
+    }
+    for (const t of deltaRemove) {
+      removeSet.add(t);
+      addSet.delete(t);
+    }
+    const addTags = Array.from(addSet);
+    const removeTags = Array.from(removeSet);
+    await db
+      .insert(catalogTagOverridesTable)
+      .values({ vendor, styleName, addTags, removeTags, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [catalogTagOverridesTable.vendor, catalogTagOverridesTable.styleName],
+        set: { addTags, removeTags, updatedAt: new Date() },
+      });
+    const arrayLit = (items: string[]) =>
+      items.length === 0
+        ? sql`'{}'::text[]`
+        : sql`ARRAY[${sql.join(items.map((t) => sql`${t}`), sql`, `)}]::text[]`;
+    const eff = (await db.execute(sql`
+      SELECT COALESCE(array_agg(DISTINCT t), '{}'::text[]) AS tags FROM (
+        SELECT unnest(p.tags) AS t FROM catalog_products p WHERE p.vendor = ${vendor} AND p.style_name = ${styleName}
+        UNION SELECT unnest(${arrayLit(addTags)})
+        EXCEPT SELECT unnest(${arrayLit(removeTags)})
+      ) e
+    `)) as unknown as { rows: { tags: string[] }[] };
+    return eff.rows[0]?.tags ?? [];
+  })()
+    .then((effectiveTags) => res.json({ effectiveTags }))
+    .catch((err) => {
+      req.log.error({ err, vendor, styleName }, "Tag override save failed");
+      res.status(500).json({ error: "Tag override save failed" });
+    });
+});
+
+router.post("/purchasing/catalog/color-family", (req, res) => {
+  const parsed = SetCatalogColorFamilyBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid color family request" });
+    return;
+  }
+  const families = Array.from(
+    new Set(parsed.data.families.map((f) => f.toLowerCase().trim())),
+  ).filter((f) => (COLOR_FAMILIES as readonly string[]).includes(f));
+  if (parsed.data.families.length > 0 && families.length === 0) {
+    res.status(400).json({ error: `Unknown color family — allowed: ${COLOR_FAMILIES.join(", ")}` });
+    return;
+  }
+  const normName = normColorName(parsed.data.colorName);
+  db.insert(catalogColorFamiliesTable)
+    .values({ normName, colorName: parsed.data.colorName, families, source: "staff", updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: catalogColorFamiliesTable.normName,
+      set: { families, source: "staff", updatedAt: new Date() },
+    })
+    .then(() => res.json({ ok: true }))
+    .catch((err) => {
+      req.log.error({ err, colorName: parsed.data.colorName }, "Color family save failed");
+      res.status(500).json({ error: "Color family save failed" });
     });
 });
 
