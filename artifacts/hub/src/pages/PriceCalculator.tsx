@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import { MatricesManager } from "@/components/pricing/MatricesManager";
 import { QuoteCalculator } from "@/components/pricing/QuoteCalculator";
@@ -8,6 +9,20 @@ type Tab = "calculator" | "matrices";
 
 export default function PriceCalculator() {
   const [tab, setTab] = useState<Tab>("calculator");
+  
+  const searchString = useSearch();
+  const params = new URLSearchParams(searchString);
+  const costParam = params.get("garmentCost") || "";
+  const labelParam = params.get("label") || "";
+  
+  const [initialGarmentCost, setInitialGarmentCost] = useState(costParam);
+  const [initialLabel, setInitialLabel] = useState(labelParam);
+
+  useEffect(() => {
+    if (costParam || labelParam) {
+       window.history.replaceState({}, '', '/price-calculator');
+    }
+  }, [costParam, labelParam]);
 
   const tabCls = (active: boolean) =>
     `flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg border transition-colors ${
@@ -46,7 +61,11 @@ export default function PriceCalculator() {
 
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
           {tab === "calculator" ? (
-            <QuoteCalculator onGoToMatrices={() => setTab("matrices")} />
+            <QuoteCalculator 
+               onGoToMatrices={() => setTab("matrices")} 
+               initialGarmentCost={initialGarmentCost}
+               initialLabel={initialLabel}
+            />
           ) : (
             <MatricesManager />
           )}

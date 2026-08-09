@@ -36,6 +36,8 @@ import CustomerProfile from "./pages/CustomerProfile";
 import NicheReport from "./pages/NicheReport";
 import AskAI from "./pages/AskAI";
 import ProductFinder from "./pages/ProductFinder";
+import Collections from "./pages/Collections";
+import CollectionDetail from "./pages/CollectionDetail";
 import ChipplyStores from "./pages/ChipplyStores";
 import ChipplyStoreDetail from "./pages/ChipplyStoreDetail";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
@@ -189,6 +191,8 @@ function HubRoutes() {
       <Route path="/payments" component={Payments} />
       <Route path="/ask" component={AskAI} />
       <Route path="/product-finder" component={ProductFinder} />
+      <Route path="/collections/:id" component={CollectionDetail} />
+      <Route path="/collections" component={Collections} />
       <Route path="/chipply/:id" component={ChipplyStoreDetail} />
       <Route path="/chipply" component={ChipplyStores} />
       <Route path="/vendor-orders" component={VendorOrders} />

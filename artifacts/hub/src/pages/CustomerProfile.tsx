@@ -9,6 +9,8 @@ import {
   useListCustomerCategories,
   getListCustomerCategoriesQueryKey,
   useAssignCustomerCategory,
+  useListCollections,
+  getListCollectionsQueryKey
 } from "@workspace/api-client-react";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ import {
   Shirt,
   Store,
   Palette,
+  Star
 } from "lucide-react";
 import { fmtMoney, fmtDate } from "./ChipplyStores";
 
@@ -83,6 +86,12 @@ export default function CustomerProfile() {
     () => (catData?.categories ?? []).filter((c) => c.active),
     [catData],
   );
+
+  const { data: collectionsData } = useListCollections(
+    { customerId: data?.printavoId },
+    { query: { enabled: !!data?.printavoId, queryKey: getListCollectionsQueryKey({ customerId: data?.printavoId }) } }
+  );
+  const collections = collectionsData?.collections ?? [];
 
   const assign = useAssignCustomerCategory({
     mutation: {
@@ -466,6 +475,56 @@ export default function CustomerProfile() {
             ) : null}
           </div>
         ) : null}
+
+        {collections.length > 0 ? (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-slate-200 inline-flex items-center gap-1.5">
+                <Star size={14} className="text-[#10b981]" /> Style Collections
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {collections.map(c => (
+                <Link key={c.id} href={`/collections/${c.id}`}>
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 hover:bg-slate-900/60 transition-colors cursor-pointer group">
+                    <div className="flex items-center justify-between mb-1">
+                       <h3 className="font-bold text-white text-sm truncate">{c.name}</h3>
+                       <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{c.itemCount} item{c.itemCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    {c.previewImages.length > 0 ? (
+                       <div className="flex gap-1.5 mb-2">
+                          {c.previewImages.map((img, i) => (
+                             <div key={i} className="w-8 h-8 rounded bg-white/5 border border-white/10 flex items-center justify-center p-0.5">
+                               <img src={img} className="max-w-full max-h-full object-contain mix-blend-screen" alt="" />
+                             </div>
+                          ))}
+                       </div>
+                    ) : (
+                       <div className="text-xs text-slate-500 italic mb-2">Empty collection</div>
+                    )}
+                    <div className="text-[10px] text-slate-500">Updated {c.updatedAt.split("T")[0]}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-slate-200 inline-flex items-center gap-1.5">
+                <Star size={14} className="text-slate-500" /> Style Collections
+              </h2>
+            </div>
+            <div className="rounded-xl border border-slate-800 border-dashed bg-slate-900/20 px-4 py-6 text-center">
+               <p className="text-sm text-slate-400 mb-3">No style collections linked to this customer.</p>
+               <Link href="/collections">
+                 <Button variant="outline" size="sm" className="bg-slate-800 border-slate-700 text-slate-300">
+                   Go to Collections
+                 </Button>
+               </Link>
+            </div>
+          </div>
+        )}
 
         <div>
           <div className="flex flex-wrap items-center gap-3 mb-2">

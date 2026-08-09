@@ -21,6 +21,7 @@ import type {
 
 import type {
   ActivityItem,
+  AddCollectionItemsRequest,
   AddStaffRequest,
   AddTeamMember201,
   AdminPinStatus,
@@ -54,9 +55,11 @@ import type {
   ChipplyStoreEnvelope,
   ChipplyStoreStylesResponse,
   ChipplyStoresResponse,
+  CollectionDetail,
   Comment,
   CommentInput,
   CreateChipplyStoreRequest,
+  CreateCollectionRequest,
   CreateInsightsPresetRequest,
   CreatePoFileRequest,
   CreatePqStatusRuleRequest,
@@ -78,6 +81,7 @@ import type {
   DashboardSummary,
   DecorationMatricesResponse,
   DecorationMatrix,
+  DeleteCollection200,
   DetectedChipplyStoresResponse,
   DirectoryCustomersResponse,
   ErrorResponse,
@@ -113,6 +117,8 @@ import type {
   ListAutoPrintRunsParams,
   ListChangeEventsParams,
   ListChipplyStoresParams,
+  ListCollections200,
+  ListCollectionsParams,
   ListCreditsParams,
   ListCustomersParams,
   ListDirectoryCustomersParams,
@@ -226,6 +232,8 @@ import type {
   TeamUpdate,
   TriggerCatalogRefresh200,
   UpdateChipplyStoreRequest,
+  UpdateCollectionItemRequest,
+  UpdateCollectionRequest,
   UpdateInsightsPresetRequest,
   UpdatePoFileRequest,
   UpdatePqStatusRuleRequest,
@@ -2855,6 +2863,595 @@ export const useSetCatalogColorFamily = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSetCatalogColorFamilyMutationOptions(options));
+    }
+
+export const getListCollectionsUrl = (params?: ListCollectionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/collections?${stringifiedParams}` : `/api/collections`
+}
+
+/**
+ * @summary List curation collections (newest first)
+ */
+export const listCollections = async (params?: ListCollectionsParams, options?: RequestInit): Promise<ListCollections200> => {
+
+  return customFetch<ListCollections200>(getListCollectionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCollectionsQueryKey = (params?: ListCollectionsParams,) => {
+    return [
+    `/api/collections`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCollectionsQueryOptions = <TData = Awaited<ReturnType<typeof listCollections>>, TError = ErrorType<unknown>>(params?: ListCollectionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCollections>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCollectionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCollections>>> = ({ signal }) => listCollections(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCollections>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCollectionsQueryResult = NonNullable<Awaited<ReturnType<typeof listCollections>>>
+export type ListCollectionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List curation collections (newest first)
+ */
+
+export function useListCollections<TData = Awaited<ReturnType<typeof listCollections>>, TError = ErrorType<unknown>>(
+ params?: ListCollectionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCollections>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCollectionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCollectionUrl = () => {
+
+
+
+
+  return `/api/collections`
+}
+
+/**
+ * @summary Create a collection (optionally with initial items)
+ */
+export const createCollection = async (createCollectionRequest: CreateCollectionRequest, options?: RequestInit): Promise<CollectionDetail> => {
+
+  return customFetch<CollectionDetail>(getCreateCollectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createCollectionRequest)
+  }
+);}
+
+
+
+
+export const getCreateCollectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCollection>>, TError,{data: BodyType<CreateCollectionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCollection>>, TError,{data: BodyType<CreateCollectionRequest>}, TContext> => {
+
+const mutationKey = ['createCollection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCollection>>, {data: BodyType<CreateCollectionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCollection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCollectionMutationResult = NonNullable<Awaited<ReturnType<typeof createCollection>>>
+    export type CreateCollectionMutationBody = BodyType<CreateCollectionRequest>
+    export type CreateCollectionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a collection (optionally with initial items)
+ */
+export const useCreateCollection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCollection>>, TError,{data: BodyType<CreateCollectionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCollection>>,
+        TError,
+        {data: BodyType<CreateCollectionRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateCollectionMutationOptions(options));
+    }
+
+export const getGetCollectionUrl = (id: string,) => {
+
+
+
+
+  return `/api/collections/${id}`
+}
+
+/**
+ * @summary Fetch one collection with enriched items
+ */
+export const getCollection = async (id: string, options?: RequestInit): Promise<CollectionDetail> => {
+
+  return customFetch<CollectionDetail>(getGetCollectionUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCollectionQueryKey = (id: string,) => {
+    return [
+    `/api/collections/${id}`
+    ] as const;
+    }
+
+
+export const getGetCollectionQueryOptions = <TData = Awaited<ReturnType<typeof getCollection>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCollection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCollectionQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCollection>>> = ({ signal }) => getCollection(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCollection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCollectionQueryResult = NonNullable<Awaited<ReturnType<typeof getCollection>>>
+export type GetCollectionQueryError = ErrorType<void>
+
+
+/**
+ * @summary Fetch one collection with enriched items
+ */
+
+export function useGetCollection<TData = Awaited<ReturnType<typeof getCollection>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCollection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCollectionQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCollectionUrl = (id: string,) => {
+
+
+
+
+  return `/api/collections/${id}`
+}
+
+/**
+ * @summary Rename, edit notes, or reassign the linked customer
+ */
+export const updateCollection = async (id: string,
+    updateCollectionRequest: UpdateCollectionRequest, options?: RequestInit): Promise<CollectionDetail> => {
+
+  return customFetch<CollectionDetail>(getUpdateCollectionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateCollectionRequest)
+  }
+);}
+
+
+
+
+export const getUpdateCollectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCollection>>, TError,{id: string;data: BodyType<UpdateCollectionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCollection>>, TError,{id: string;data: BodyType<UpdateCollectionRequest>}, TContext> => {
+
+const mutationKey = ['updateCollection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCollection>>, {id: string;data: BodyType<UpdateCollectionRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCollection(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCollectionMutationResult = NonNullable<Awaited<ReturnType<typeof updateCollection>>>
+    export type UpdateCollectionMutationBody = BodyType<UpdateCollectionRequest>
+    export type UpdateCollectionMutationError = ErrorType<void>
+
+    /**
+ * @summary Rename, edit notes, or reassign the linked customer
+ */
+export const useUpdateCollection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCollection>>, TError,{id: string;data: BodyType<UpdateCollectionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCollection>>,
+        TError,
+        {id: string;data: BodyType<UpdateCollectionRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateCollectionMutationOptions(options));
+    }
+
+export const getDeleteCollectionUrl = (id: string,) => {
+
+
+
+
+  return `/api/collections/${id}`
+}
+
+/**
+ * @summary Delete a collection and its items
+ */
+export const deleteCollection = async (id: string, options?: RequestInit): Promise<DeleteCollection200> => {
+
+  return customFetch<DeleteCollection200>(getDeleteCollectionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCollectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCollection>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCollection>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteCollection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCollection>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCollection(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCollectionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCollection>>>
+
+    export type DeleteCollectionMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a collection and its items
+ */
+export const useDeleteCollection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCollection>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCollection>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteCollectionMutationOptions(options));
+    }
+
+export const getAddCollectionItemsUrl = (id: string,) => {
+
+
+
+
+  return `/api/collections/${id}/items`
+}
+
+/**
+ * Styles already in the collection are merged (colors unioned, note kept unless a new one is given) rather than duplicated.
+ * @summary Add one or more styles to a collection
+ */
+export const addCollectionItems = async (id: string,
+    addCollectionItemsRequest: AddCollectionItemsRequest, options?: RequestInit): Promise<CollectionDetail> => {
+
+  return customFetch<CollectionDetail>(getAddCollectionItemsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addCollectionItemsRequest)
+  }
+);}
+
+
+
+
+export const getAddCollectionItemsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addCollectionItems>>, TError,{id: string;data: BodyType<AddCollectionItemsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addCollectionItems>>, TError,{id: string;data: BodyType<AddCollectionItemsRequest>}, TContext> => {
+
+const mutationKey = ['addCollectionItems'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addCollectionItems>>, {id: string;data: BodyType<AddCollectionItemsRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addCollectionItems(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddCollectionItemsMutationResult = NonNullable<Awaited<ReturnType<typeof addCollectionItems>>>
+    export type AddCollectionItemsMutationBody = BodyType<AddCollectionItemsRequest>
+    export type AddCollectionItemsMutationError = ErrorType<void>
+
+    /**
+ * @summary Add one or more styles to a collection
+ */
+export const useAddCollectionItems = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addCollectionItems>>, TError,{id: string;data: BodyType<AddCollectionItemsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addCollectionItems>>,
+        TError,
+        {id: string;data: BodyType<AddCollectionItemsRequest>},
+        TContext
+      > => {
+      return useMutation(getAddCollectionItemsMutationOptions(options));
+    }
+
+export const getUpdateCollectionItemUrl = (id: string,
+    itemId: string,) => {
+
+
+
+
+  return `/api/collections/${id}/items/${itemId}`
+}
+
+/**
+ * @summary Update an item's chosen colors or note
+ */
+export const updateCollectionItem = async (id: string,
+    itemId: string,
+    updateCollectionItemRequest: UpdateCollectionItemRequest, options?: RequestInit): Promise<CollectionDetail> => {
+
+  return customFetch<CollectionDetail>(getUpdateCollectionItemUrl(id,itemId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateCollectionItemRequest)
+  }
+);}
+
+
+
+
+export const getUpdateCollectionItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCollectionItem>>, TError,{id: string;itemId: string;data: BodyType<UpdateCollectionItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCollectionItem>>, TError,{id: string;itemId: string;data: BodyType<UpdateCollectionItemRequest>}, TContext> => {
+
+const mutationKey = ['updateCollectionItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCollectionItem>>, {id: string;itemId: string;data: BodyType<UpdateCollectionItemRequest>}> = (props) => {
+          const {id,itemId,data} = props ?? {};
+
+          return  updateCollectionItem(id,itemId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCollectionItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateCollectionItem>>>
+    export type UpdateCollectionItemMutationBody = BodyType<UpdateCollectionItemRequest>
+    export type UpdateCollectionItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Update an item's chosen colors or note
+ */
+export const useUpdateCollectionItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCollectionItem>>, TError,{id: string;itemId: string;data: BodyType<UpdateCollectionItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCollectionItem>>,
+        TError,
+        {id: string;itemId: string;data: BodyType<UpdateCollectionItemRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateCollectionItemMutationOptions(options));
+    }
+
+export const getRemoveCollectionItemUrl = (id: string,
+    itemId: string,) => {
+
+
+
+
+  return `/api/collections/${id}/items/${itemId}`
+}
+
+/**
+ * @summary Remove an item from a collection
+ */
+export const removeCollectionItem = async (id: string,
+    itemId: string, options?: RequestInit): Promise<CollectionDetail> => {
+
+  return customFetch<CollectionDetail>(getRemoveCollectionItemUrl(id,itemId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveCollectionItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCollectionItem>>, TError,{id: string;itemId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeCollectionItem>>, TError,{id: string;itemId: string}, TContext> => {
+
+const mutationKey = ['removeCollectionItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeCollectionItem>>, {id: string;itemId: string}> = (props) => {
+          const {id,itemId} = props ?? {};
+
+          return  removeCollectionItem(id,itemId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveCollectionItemMutationResult = NonNullable<Awaited<ReturnType<typeof removeCollectionItem>>>
+
+    export type RemoveCollectionItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Remove an item from a collection
+ */
+export const useRemoveCollectionItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCollectionItem>>, TError,{id: string;itemId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeCollectionItem>>,
+        TError,
+        {id: string;itemId: string},
+        TContext
+      > => {
+      return useMutation(getRemoveCollectionItemMutationOptions(options));
     }
 
 export const getListPoFilesUrl = () => {

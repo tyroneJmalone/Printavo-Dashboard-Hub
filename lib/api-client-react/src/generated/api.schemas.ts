@@ -757,6 +757,158 @@ export interface CatalogColorFamilyRequest {
   families: string[];
 }
 
+export interface CollectionSummary {
+  id: string;
+  name: string;
+  /** @nullable */
+  printavoCustomerId: string | null;
+  /**
+     * Display name resolved from the synced customer directory (null when unlinked or unknown).
+     * @nullable
+     */
+  customerName: string | null;
+  /** @nullable */
+  notes: string | null;
+  /** @nullable */
+  createdByEmail: string | null;
+  itemCount: number;
+  /** Up to 4 item images for the list card. */
+  previewImages: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CollectionItemDetailVendor = typeof CollectionItemDetailVendor[keyof typeof CollectionItemDetailVendor];
+
+
+export const CollectionItemDetailVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface CollectionItemDetail {
+  id: string;
+  vendor: CollectionItemDetailVendor;
+  styleName: string;
+  colors: string[];
+  /** @nullable */
+  note: string | null;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  styleImage: string | null;
+  /** @nullable */
+  priceMin: number | null;
+  /** @nullable */
+  priceMax: number | null;
+  /** True when the style has dropped off the vendor's sellable list since it was saved. */
+  discontinued: boolean;
+  /** False when the style is no longer present in the local catalog at all. */
+  inCatalog: boolean;
+  createdAt: string;
+}
+
+export interface CollectionDetail {
+  id: string;
+  name: string;
+  /** @nullable */
+  printavoCustomerId: string | null;
+  /** @nullable */
+  customerName: string | null;
+  /** @nullable */
+  notes: string | null;
+  /** @nullable */
+  createdByEmail: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: CollectionItemDetail[];
+}
+
+export type NewCollectionItemVendor = typeof NewCollectionItemVendor[keyof typeof NewCollectionItemVendor];
+
+
+export const NewCollectionItemVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface NewCollectionItem {
+  vendor: NewCollectionItemVendor;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  styleName: string;
+  /**
+     * @maxItems 50
+     * @items.maxLength 100
+     */
+  colors?: string[];
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export interface CreateCollectionRequest {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  name: string;
+  /** @nullable */
+  printavoCustomerId?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+  /** @maxItems 200 */
+  items?: NewCollectionItem[];
+}
+
+export interface UpdateCollectionRequest {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  name?: string;
+  /**
+     * Set to null to unlink the customer; omit to leave unchanged.
+     * @nullable
+     */
+  printavoCustomerId?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export interface AddCollectionItemsRequest {
+  /**
+     * @minItems 1
+     * @maxItems 200
+     */
+  items: NewCollectionItem[];
+}
+
+export interface UpdateCollectionItemRequest {
+  /**
+     * @maxItems 50
+     * @items.maxLength 100
+     */
+  colors?: string[];
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  note?: string | null;
+}
+
 export interface ProductSearchRequest {
   /**
      * @minLength 1
@@ -3814,6 +3966,21 @@ export type SetCatalogTagOverride200 = {
 };
 
 export type SetCatalogColorFamily200 = {
+  ok: boolean;
+};
+
+export type ListCollectionsParams = {
+/**
+ * Filter to collections linked to this Printavo customer id
+ */
+customerId?: string;
+};
+
+export type ListCollections200 = {
+  collections: CollectionSummary[];
+};
+
+export type DeleteCollection200 = {
   ok: boolean;
 };
 

@@ -7,6 +7,7 @@ import {
   MapPin,
   Plus,
   Trash2,
+  X,
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import {
@@ -42,8 +43,12 @@ const labelCls =
 
 export function QuoteCalculator({
   onGoToMatrices,
+  initialGarmentCost,
+  initialLabel
 }: {
   onGoToMatrices: () => void;
+  initialGarmentCost?: string;
+  initialLabel?: string;
 }) {
   const { toast } = useToast();
   const { data, isLoading } = useListDecorationMatrices({
@@ -51,7 +56,8 @@ export function QuoteCalculator({
   });
   const matrices = data?.matrices ?? [];
 
-  const [garmentCostStr, setGarmentCostStr] = useState("");
+  const [garmentCostStr, setGarmentCostStr] = useState(initialGarmentCost || "");
+  const [labelHint, setLabelHint] = useState(initialLabel || "");
   const [markupSel, setMarkupSel] = useState(String(DEFAULT_MARKUP));
   const [customMarkupStr, setCustomMarkupStr] = useState("");
   const [rows, setRows] = useState<LocationRow[]>([
@@ -227,7 +233,10 @@ export function QuoteCalculator({
                 type="text"
                 inputMode="decimal"
                 value={garmentCostStr}
-                onChange={(e) => setGarmentCostStr(e.target.value)}
+                onChange={(e) => {
+                  setGarmentCostStr(e.target.value);
+                  if (labelHint) setLabelHint(""); // auto-dismiss hint on edit
+                }}
                 placeholder="0.00"
                 className={`${inputCls} pl-6 font-mono`}
               />
@@ -236,6 +245,12 @@ export function QuoteCalculator({
               <p className="text-[11px] text-amber-400 mt-1">
                 Enter a valid garment cost (0 or more).
               </p>
+            )}
+            {labelHint && garmentValid && (
+              <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] px-2 py-1.5 rounded mt-2">
+                <span className="truncate mr-2">From: {labelHint}</span>
+                <button onClick={() => setLabelHint("")} className="hover:text-emerald-300"><X size={12} /></button>
+              </div>
             )}
           </div>
 

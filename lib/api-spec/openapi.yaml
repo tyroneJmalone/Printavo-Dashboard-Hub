@@ -820,6 +820,187 @@ paths:
                 properties:
                   ok: { type: boolean }
                 required: [ok]
+  /collections:
+    get:
+      operationId: listCollections
+      tags: [collections]
+      summary: List curation collections (newest first)
+      parameters:
+        - name: customerId
+          in: query
+          description: Filter to collections linked to this Printavo customer id
+          schema: { type: string }
+      responses:
+        "200":
+          description: Collection list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CollectionSummary"
+                required: [collections]
+    post:
+      operationId: createCollection
+      tags: [collections]
+      summary: Create a collection (optionally with initial items)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCollectionRequest"
+      responses:
+        "201":
+          description: Created collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionDetail"
+  /collections/{id}:
+    get:
+      operationId: getCollection
+      tags: [collections]
+      summary: Fetch one collection with enriched items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Collection detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCollection
+      tags: [collections]
+      summary: Rename, edit notes, or reassign the linked customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCollectionRequest"
+      responses:
+        "200":
+          description: Updated collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionDetail"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteCollection
+      tags: [collections]
+      summary: Delete a collection and its items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
+        "404":
+          description: Not found
+  /collections/{id}/items:
+    post:
+      operationId: addCollectionItems
+      tags: [collections]
+      summary: Add one or more styles to a collection
+      description: Styles already in the collection are merged (colors unioned, note kept unless a new one is given) rather than duplicated.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCollectionItemsRequest"
+      responses:
+        "200":
+          description: Collection detail after the add
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionDetail"
+        "404":
+          description: Not found
+  /collections/{id}/items/{itemId}:
+    patch:
+      operationId: updateCollectionItem
+      tags: [collections]
+      summary: Update an item's chosen colors or note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCollectionItemRequest"
+      responses:
+        "200":
+          description: Collection detail after the update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionDetail"
+        "404":
+          description: Not found
+    delete:
+      operationId: removeCollectionItem
+      tags: [collections]
+      summary: Remove an item from a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Collection detail after the removal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionDetail"
+        "404":
+          description: Not found
   /purchasing/po-files:
     get:
       operationId: listPoFiles
@@ -5341,6 +5522,113 @@ components:
           type: array
           items: { type: string }
       required: [colorName, families]
+    CollectionSummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        printavoCustomerId: { type: ["string", "null"] }
+        customerName:
+          type: ["string", "null"]
+          description: Display name resolved from the synced customer directory (null when unlinked or unknown).
+        notes: { type: ["string", "null"] }
+        createdByEmail: { type: ["string", "null"] }
+        itemCount: { type: integer }
+        previewImages:
+          type: array
+          description: Up to 4 item images for the list card.
+          items: { type: string }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      required: [id, name, printavoCustomerId, customerName, notes, createdByEmail, itemCount, previewImages, createdAt, updatedAt]
+    CollectionItemDetail:
+      type: object
+      properties:
+        id: { type: string }
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleName: { type: string }
+        colors:
+          type: array
+          items: { type: string }
+        note: { type: ["string", "null"] }
+        brand: { type: ["string", "null"] }
+        title: { type: ["string", "null"] }
+        styleImage: { type: ["string", "null"] }
+        priceMin: { type: ["number", "null"] }
+        priceMax: { type: ["number", "null"] }
+        discontinued:
+          type: boolean
+          description: True when the style has dropped off the vendor's sellable list since it was saved.
+        inCatalog:
+          type: boolean
+          description: False when the style is no longer present in the local catalog at all.
+        createdAt: { type: string }
+      required: [id, vendor, styleName, colors, note, brand, title, styleImage, priceMin, priceMax, discontinued, inCatalog, createdAt]
+    CollectionDetail:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        printavoCustomerId: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        createdByEmail: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CollectionItemDetail"
+      required: [id, name, printavoCustomerId, customerName, notes, createdByEmail, createdAt, updatedAt, items]
+    NewCollectionItem:
+      type: object
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleName: { type: string, minLength: 1, maxLength: 100 }
+        colors:
+          type: array
+          items: { type: string, maxLength: 100 }
+          maxItems: 50
+        note: { type: ["string", "null"], maxLength: 1000 }
+      required: [vendor, styleName]
+    CreateCollectionRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        printavoCustomerId: { type: ["string", "null"] }
+        notes: { type: ["string", "null"], maxLength: 2000 }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/NewCollectionItem"
+          maxItems: 200
+      required: [name]
+    UpdateCollectionRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        printavoCustomerId:
+          type: ["string", "null"]
+          description: Set to null to unlink the customer; omit to leave unchanged.
+        notes: { type: ["string", "null"], maxLength: 2000 }
+    AddCollectionItemsRequest:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/NewCollectionItem"
+          minItems: 1
+          maxItems: 200
+      required: [items]
+    UpdateCollectionItemRequest:
+      type: object
+      properties:
+        colors:
+          type: array
+          items: { type: string, maxLength: 100 }
+          maxItems: 50
+        note: { type: ["string", "null"], maxLength: 1000 }
     ProductSearchRequest:
       type: object
       properties:

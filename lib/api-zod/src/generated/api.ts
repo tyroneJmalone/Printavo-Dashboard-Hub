@@ -946,6 +946,318 @@ export const SetCatalogColorFamilyResponse = zod.object({
 
 
 /**
+ * @summary List curation collections (newest first)
+ */
+export const ListCollectionsQueryParams = zod.object({
+  "customerId": zod.coerce.string().optional().describe('Filter to collections linked to this Printavo customer id')
+})
+
+export const ListCollectionsResponse = zod.object({
+  "collections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "printavoCustomerId": zod.string().nullable(),
+  "customerName": zod.string().nullable().describe('Display name resolved from the synced customer directory (null when unlinked or unknown).'),
+  "notes": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "itemCount": zod.number(),
+  "previewImages": zod.array(zod.string()).describe('Up to 4 item images for the list card.'),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Create a collection (optionally with initial items)
+ */
+export const createCollectionBodyNameMax = 200;
+
+export const createCollectionBodyNotesMax = 2000;
+
+export const createCollectionBodyItemsItemStyleNameMax = 100;
+
+export const createCollectionBodyItemsItemColorsItemMax = 100;
+
+export const createCollectionBodyItemsItemColorsMax = 50;
+
+export const createCollectionBodyItemsItemNoteMax = 1000;
+
+export const createCollectionBodyItemsMax = 200;
+
+
+
+export const CreateCollectionBody = zod.object({
+  "name": zod.string().min(1).max(createCollectionBodyNameMax),
+  "printavoCustomerId": zod.string().nullish(),
+  "notes": zod.string().max(createCollectionBodyNotesMax).nullish(),
+  "items": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string().min(1).max(createCollectionBodyItemsItemStyleNameMax),
+  "colors": zod.array(zod.string().max(createCollectionBodyItemsItemColorsItemMax)).max(createCollectionBodyItemsItemColorsMax).optional(),
+  "note": zod.string().max(createCollectionBodyItemsItemNoteMax).nullish()
+})).max(createCollectionBodyItemsMax).optional()
+})
+
+export const CreateCollectionResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "printavoCustomerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colors": zod.array(zod.string()),
+  "note": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "priceMin": zod.number().nullable(),
+  "priceMax": zod.number().nullable(),
+  "discontinued": zod.boolean().describe('True when the style has dropped off the vendor\'s sellable list since it was saved.'),
+  "inCatalog": zod.boolean().describe('False when the style is no longer present in the local catalog at all.'),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Fetch one collection with enriched items
+ */
+export const GetCollectionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetCollectionResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "printavoCustomerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colors": zod.array(zod.string()),
+  "note": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "priceMin": zod.number().nullable(),
+  "priceMax": zod.number().nullable(),
+  "discontinued": zod.boolean().describe('True when the style has dropped off the vendor\'s sellable list since it was saved.'),
+  "inCatalog": zod.boolean().describe('False when the style is no longer present in the local catalog at all.'),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Rename, edit notes, or reassign the linked customer
+ */
+export const UpdateCollectionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateCollectionBodyNameMax = 200;
+
+export const updateCollectionBodyNotesMax = 2000;
+
+
+
+export const UpdateCollectionBody = zod.object({
+  "name": zod.string().min(1).max(updateCollectionBodyNameMax).optional(),
+  "printavoCustomerId": zod.string().nullish().describe('Set to null to unlink the customer; omit to leave unchanged.'),
+  "notes": zod.string().max(updateCollectionBodyNotesMax).nullish()
+})
+
+export const UpdateCollectionResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "printavoCustomerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colors": zod.array(zod.string()),
+  "note": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "priceMin": zod.number().nullable(),
+  "priceMax": zod.number().nullable(),
+  "discontinued": zod.boolean().describe('True when the style has dropped off the vendor\'s sellable list since it was saved.'),
+  "inCatalog": zod.boolean().describe('False when the style is no longer present in the local catalog at all.'),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Delete a collection and its items
+ */
+export const DeleteCollectionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteCollectionResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * Styles already in the collection are merged (colors unioned, note kept unless a new one is given) rather than duplicated.
+ * @summary Add one or more styles to a collection
+ */
+export const AddCollectionItemsParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const addCollectionItemsBodyItemsItemStyleNameMax = 100;
+
+export const addCollectionItemsBodyItemsItemColorsItemMax = 100;
+
+export const addCollectionItemsBodyItemsItemColorsMax = 50;
+
+export const addCollectionItemsBodyItemsItemNoteMax = 1000;
+
+export const addCollectionItemsBodyItemsMax = 200;
+
+
+
+export const AddCollectionItemsBody = zod.object({
+  "items": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string().min(1).max(addCollectionItemsBodyItemsItemStyleNameMax),
+  "colors": zod.array(zod.string().max(addCollectionItemsBodyItemsItemColorsItemMax)).max(addCollectionItemsBodyItemsItemColorsMax).optional(),
+  "note": zod.string().max(addCollectionItemsBodyItemsItemNoteMax).nullish()
+})).min(1).max(addCollectionItemsBodyItemsMax)
+})
+
+export const AddCollectionItemsResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "printavoCustomerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colors": zod.array(zod.string()),
+  "note": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "priceMin": zod.number().nullable(),
+  "priceMax": zod.number().nullable(),
+  "discontinued": zod.boolean().describe('True when the style has dropped off the vendor\'s sellable list since it was saved.'),
+  "inCatalog": zod.boolean().describe('False when the style is no longer present in the local catalog at all.'),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Update an item's chosen colors or note
+ */
+export const UpdateCollectionItemParams = zod.object({
+  "id": zod.coerce.string(),
+  "itemId": zod.coerce.string()
+})
+
+export const updateCollectionItemBodyColorsItemMax = 100;
+
+export const updateCollectionItemBodyColorsMax = 50;
+
+export const updateCollectionItemBodyNoteMax = 1000;
+
+
+
+export const UpdateCollectionItemBody = zod.object({
+  "colors": zod.array(zod.string().max(updateCollectionItemBodyColorsItemMax)).max(updateCollectionItemBodyColorsMax).optional(),
+  "note": zod.string().max(updateCollectionItemBodyNoteMax).nullish()
+})
+
+export const UpdateCollectionItemResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "printavoCustomerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colors": zod.array(zod.string()),
+  "note": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "priceMin": zod.number().nullable(),
+  "priceMax": zod.number().nullable(),
+  "discontinued": zod.boolean().describe('True when the style has dropped off the vendor\'s sellable list since it was saved.'),
+  "inCatalog": zod.boolean().describe('False when the style is no longer present in the local catalog at all.'),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Remove an item from a collection
+ */
+export const RemoveCollectionItemParams = zod.object({
+  "id": zod.coerce.string(),
+  "itemId": zod.coerce.string()
+})
+
+export const RemoveCollectionItemResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "printavoCustomerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colors": zod.array(zod.string()),
+  "note": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "priceMin": zod.number().nullable(),
+  "priceMax": zod.number().nullable(),
+  "discontinued": zod.boolean().describe('True when the style has dropped off the vendor\'s sellable list since it was saved.'),
+  "inCatalog": zod.boolean().describe('False when the style is no longer present in the local catalog at all.'),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
  * @summary List saved purchase orders (newest first)
  */
 export const listPoFilesResponsePoFilesItemLineItemsItemSizesItemQtyMin = 0;

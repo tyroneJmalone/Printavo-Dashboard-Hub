@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useLocation, useSearch } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Search, X, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
+import { Loader2, Search, X, AlertTriangle, CheckCircle, RefreshCw, Star } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { CollectionPicker } from "@/components/collections/CollectionPicker";
 import {
   useProductSearch,
   productSearch,
@@ -148,6 +150,13 @@ function VendorResultCard({ vendorResult, onColorSelect }: { vendorResult: any, 
              {lookup.title}
            </div>
            <div className="text-xs text-slate-500 mt-1">{lookup.brand}</div>
+           <div className="mt-2">
+             <CollectionPicker items={[{ vendor: lookup.vendor as any, styleName: lookup.styleName || "" }]}>
+               <Button variant="outline" size="sm" className="bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white h-7 text-[10px] px-2">
+                 <Star className="w-3 h-3 mr-1" /> Save
+               </Button>
+             </CollectionPicker>
+           </div>
          </div>
          {lookup.styleImage && (
            <div className="w-16 h-16 rounded-md bg-white/5 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center p-1">
@@ -349,20 +358,32 @@ function StyleSearchMode({ initialQuery, onClearInitialQuery }: { initialQuery?:
       </div>
 
       {/* Right Column: Selections */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-6 space-y-5 px-1">
-        {selections.length === 0 ? (
-           <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-3 pb-20">
-              <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center">
-                 <div className="w-8 h-8 rounded-full bg-slate-700" />
-              </div>
-              <p className="text-sm font-medium text-slate-400">No colors selected</p>
-              <p className="text-xs">Pick a color from the search results to view live warehouse stock and pricing.</p>
-           </div>
-        ) : (
-           selections.map(sel => (
-             <SelectionCard key={sel.id} selection={sel} onRemove={() => removeSelection(sel.id)} />
-           ))
+      <div className="flex-1 overflow-y-auto custom-scrollbar pb-6 px-1 flex flex-col">
+        {selections.length > 0 && (
+          <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#020617]/90 backdrop-blur-sm z-10 py-2 border-b border-slate-800">
+            <span className="text-sm font-semibold text-slate-300">{selections.length} selected</span>
+            <CollectionPicker items={selections.map(s => ({ vendor: s.vendor as any, styleName: s.styleName, colors: [s.colorName] }))}>
+              <Button variant="outline" size="sm" className="bg-[#059669]/10 border-[#059669]/30 text-[#10b981] hover:bg-[#059669]/20 h-8">
+                <Star className="w-3 h-3 mr-2" /> Save All to Collection
+              </Button>
+            </CollectionPicker>
+          </div>
         )}
+        <div className="space-y-5">
+          {selections.length === 0 ? (
+             <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-3 pb-20 mt-20">
+                <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center">
+                   <div className="w-8 h-8 rounded-full bg-slate-700" />
+                </div>
+                <p className="text-sm font-medium text-slate-400">No colors selected</p>
+                <p className="text-xs">Pick a color from the search results to view live warehouse stock and pricing.</p>
+             </div>
+          ) : (
+             selections.map(sel => (
+               <SelectionCard key={sel.id} selection={sel} onRemove={() => removeSelection(sel.id)} />
+             ))
+          )}
+        </div>
       </div>
     </div>
   )
@@ -470,8 +491,17 @@ function InvoiceLineCard({ state, onPickColor }: { state: InvoiceLineState, onPi
 
          {(state.colorOffer || state.inventoryResult) && (
             <div className="px-5 pb-5 pt-4 border-t border-slate-800 bg-[#0f172a]/50 relative">
-               <div className="text-xs font-medium text-slate-400 mb-3 flex items-center gap-2">
-                 Matched to <span className="text-[#10b981] font-bold px-1.5 py-0.5 rounded bg-[#10b981]/10 border border-[#10b981]/20">{state.colorOffer?.colorName}</span> at <span className="capitalize font-bold text-slate-300">{state.lookupResult?.vendor}</span>
+               <div className="flex items-center justify-between mb-3">
+                 <div className="text-xs font-medium text-slate-400 flex items-center gap-2">
+                   Matched to <span className="text-[#10b981] font-bold px-1.5 py-0.5 rounded bg-[#10b981]/10 border border-[#10b981]/20">{state.colorOffer?.colorName}</span> at <span className="capitalize font-bold text-slate-300">{state.lookupResult?.vendor}</span>
+                 </div>
+                 {state.lookupResult && (
+                   <CollectionPicker items={[{ vendor: state.lookupResult.vendor as any, styleName: state.lookupResult.styleName || "", colors: state.colorOffer ? [state.colorOffer.colorName] : [] }]}>
+                     <Button variant="outline" size="sm" className="bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white h-7 text-[10px] px-2">
+                       <Star className="w-3 h-3 mr-1" /> Save
+                     </Button>
+                   </CollectionPicker>
+                 )}
                </div>
                <div className="bg-slate-900 rounded-lg border border-slate-800 p-1 relative">
                   {state.status === "checking_inventory" && (
@@ -929,7 +959,12 @@ function CatalogHitCard({ hit, onSelectStyle, availableFamilies }: { hit: Catalo
                </div>
             )}
             
-            <div className="mt-4 pt-4 border-t border-slate-800/50 flex justify-end">
+            <div className="mt-4 pt-4 border-t border-slate-800/50 flex justify-end gap-2">
+               <CollectionPicker items={[{ vendor: hit.vendor, styleName: hit.styleName, colors: hit.matchedColors.map(c => c.colorName) }]}>
+                 <Button variant="outline" size="sm" className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white h-8">
+                   <Star className="w-3 h-3 mr-2" /> Save to Collection
+                 </Button>
+               </CollectionPicker>
                <Button 
                   onClick={() => onSelectStyle(hit.styleName)} 
                   className="bg-slate-800 hover:bg-slate-700 text-white text-xs h-8"
@@ -1136,6 +1171,18 @@ function CatalogSearchMode({ onSelectStyle }: { onSelectStyle: (styleName: strin
 export default function ProductFinder() {
   const [activeTab, setActiveTab] = useState("catalog");
   const [styleQuery, setStyleQuery] = useState("");
+  
+  const searchString = useSearch();
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const style = params.get("style");
+    if (style) {
+      setStyleQuery(style);
+      setActiveTab("search");
+      // clear the URL param so it doesn't re-trigger on remount
+      window.history.replaceState({}, '', '/product-finder');
+    }
+  }, [searchString]);
 
   const handleSelectStyle = (styleName: string) => {
     setStyleQuery(styleName);
