@@ -304,7 +304,7 @@ function StyleSearchMode({ initialQuery, onClearInitialQuery }: { initialQuery?:
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-full pb-0">
+    <div className="flex flex-col lg:flex-row gap-6 lg:h-full pb-0">
       {/* Left Column: Search & Results */}
       <div className="w-full lg:w-[400px] flex flex-col gap-5 lg:border-r border-slate-800 lg:pr-6 flex-shrink-0">
         <form onSubmit={handleSearch} className="relative">
@@ -319,7 +319,7 @@ function StyleSearchMode({ initialQuery, onClearInitialQuery }: { initialQuery?:
           <button type="submit" className="hidden" />
         </form>
         
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4 pb-4">
+        <div className="flex-1 lg:overflow-y-auto custom-scrollbar lg:pr-2 space-y-4 pb-4">
            {searchMutation.isPending && (
               <div className="py-12 flex flex-col items-center justify-center text-slate-500 space-y-3">
                  <Loader2 className="animate-spin text-[#10b981] w-6 h-6" />
@@ -358,7 +358,7 @@ function StyleSearchMode({ initialQuery, onClearInitialQuery }: { initialQuery?:
       </div>
 
       {/* Right Column: Selections */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-6 px-1 flex flex-col">
+      <div className="flex-1 lg:overflow-y-auto custom-scrollbar pb-6 px-1 flex flex-col">
         {selections.length > 0 && (
           <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#020617]/90 backdrop-blur-sm z-10 py-2 border-b border-slate-800">
             <span className="text-sm font-semibold text-slate-300">{selections.length} selected</span>
@@ -609,7 +609,7 @@ function InvoiceCheckMode() {
   }, [order]);
 
   return (
-    <div className="flex flex-col h-full pb-0">
+    <div className="flex flex-col lg:h-full pb-0">
       <div className="mb-6 flex-shrink-0">
         <form onSubmit={handleSubmit} className="flex gap-3 max-w-md">
            <div className="relative flex-1">
@@ -625,7 +625,7 @@ function InvoiceCheckMode() {
         </form>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pb-10 pr-2">
+      <div className="flex-1 lg:overflow-y-auto custom-scrollbar pb-10 lg:pr-2">
         {isOrderLoading && (
            <div className="py-12 flex flex-col items-center justify-center text-slate-500 space-y-3">
               <Loader2 className="animate-spin text-[#10b981] w-8 h-8" />
@@ -1038,7 +1038,7 @@ function CatalogSearchMode({ onSelectStyle }: { onSelectStyle: (styleName: strin
   });
   
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col lg:h-full lg:overflow-hidden">
        <div className="flex-shrink-0 mb-6">
          <CatalogHealthPanel />
        </div>
@@ -1093,7 +1093,7 @@ function CatalogSearchMode({ onSelectStyle }: { onSelectStyle: (styleName: strin
          </div>
        </div>
        
-       <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
+       <div className="flex-1 lg:overflow-y-auto custom-scrollbar pb-10">
           {(() => {
              if (health && health.activeProducts === 0 && !health.refreshActive) {
                 return (
@@ -1191,7 +1191,7 @@ export default function ProductFinder() {
 
   return (
     <AppShell>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full overflow-hidden bg-[#020617]">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col min-h-full lg:h-full lg:overflow-hidden bg-[#020617]">
         <div className="flex-shrink-0 border-b border-slate-800 px-6 pt-6 pb-0 z-10 relative">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg bg-[#059669]/20 border border-[#059669]/30 flex items-center justify-center text-[#10b981] shadow-inner shadow-[#10b981]/10">
@@ -1210,16 +1210,16 @@ export default function ProductFinder() {
           </TabsList>
         </div>
         
-        <div className="flex-1 overflow-hidden">
-           <TabsContent value="catalog" className="m-0 h-full border-none outline-none p-6">
+        <div className="flex-1 lg:overflow-hidden">
+           <TabsContent value="catalog" className="m-0 lg:h-full border-none outline-none p-4 lg:p-6">
              <CatalogSearchMode onSelectStyle={handleSelectStyle} />
            </TabsContent>
 
-           <TabsContent value="search" className="m-0 h-full border-none outline-none p-6">
+           <TabsContent value="search" className="m-0 lg:h-full border-none outline-none p-4 lg:p-6">
              <StyleSearchMode initialQuery={styleQuery} onClearInitialQuery={() => setStyleQuery("")} />
            </TabsContent>
            
-           <TabsContent value="invoice" className="m-0 h-full border-none outline-none p-6">
+           <TabsContent value="invoice" className="m-0 lg:h-full border-none outline-none p-4 lg:p-6">
              <InvoiceCheckMode />
            </TabsContent>
         </div>

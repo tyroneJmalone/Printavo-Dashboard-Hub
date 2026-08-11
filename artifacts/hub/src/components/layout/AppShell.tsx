@@ -1,11 +1,11 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -158,6 +158,13 @@ function StaffChip() {
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsedGroups);
+  /** Mobile drawer state — the sidebar is hidden by default below lg. */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close the drawer whenever navigation happens.
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location]);
 
   const toggleGroup = (heading: string) => {
     setCollapsedGroups((prev) => {
@@ -178,9 +185,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     : undefined;
 
   return (
-    <div className="flex h-screen bg-[#020617] text-slate-100 font-sans overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-60 flex flex-col bg-[#0f172a] border-r border-slate-800 flex-shrink-0">
+    <div className="flex h-dvh bg-[#020617] text-slate-100 font-sans overflow-hidden">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {/* Sidebar — slide-over drawer below lg, static column at lg+ */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col bg-[#0f172a] border-r border-slate-800 flex-shrink-0 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0 lg:transition-none ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="px-5 py-5 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <img
@@ -188,10 +207,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               alt="Mint Printworks"
               className="h-10 w-auto flex-shrink-0 drop-shadow-[0_0_10px_rgba(5,150,105,0.35)]"
             />
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold text-white leading-none tracking-tight">Printavo Hub</div>
               <div className="text-[10px] text-slate-400 mt-0.5 font-medium">Mint Printworks</div>
             </div>
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
 
@@ -286,6 +313,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile top bar */}
+        <div className="lg:hidden flex items-center gap-3 px-3 py-2 border-b border-slate-800 bg-[#0f172a] flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <img src={mintLogo} alt="Mint Printworks" className="h-7 w-auto" />
+          <span className="text-sm font-semibold text-white tracking-tight">Printavo Hub</span>
+        </div>
         <PrintavoSyncBar />
         <main className="flex-1 overflow-y-auto bg-[#020617] relative custom-scrollbar">
           {children}
