@@ -1,6 +1,6 @@
 import type { Logger } from "pino";
 import { db, catalogRefreshRunsTable } from "@workspace/db";
-import { desc, eq, and, inArray } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
 import { runCatalogRefresh, isRefreshActive, failOrphanedCatalogRuns } from "./refresh";
 
 /**
@@ -13,6 +13,14 @@ import { runCatalogRefresh, isRefreshActive, failOrphanedCatalogRuns } from "./r
 
 const TICK_MS = 15 * 60 * 1000;
 const FRESH_MS = 20 * 60 * 60 * 1000;
+/** Boot catch-up: a vendor with no success in this long gets refreshed at
+ * startup instead of waiting for the nightly window. A dev workspace is
+ * usually asleep at 1–6 AM, so the window alone can starve a vendor forever
+ * (SanMar sat at a partial import for days this way). */
+const BOOT_STALE_MS = 26 * 60 * 60 * 1000;
+
+const VENDORS = ["ss", "sanmar"] as const;
+type Vendor = (typeof VENDORS)[number];
 
 let started = false;
 
@@ -22,28 +30,36 @@ function chicagoHour(): number {
   );
 }
 
-async function lastSuccessfulVendorRunAt(): Promise<Date | null> {
-  const [row] = await db
-    .select({ finishedAt: catalogRefreshRunsTable.finishedAt })
-    .from(catalogRefreshRunsTable)
-    .where(and(eq(catalogRefreshRunsTable.status, "completed"), inArray(catalogRefreshRunsTable.vendor, ["ss", "sanmar"])))
-    .orderBy(desc(catalogRefreshRunsTable.finishedAt))
-    .limit(1);
-  return row?.finishedAt ?? null;
+/** Per-vendor last successful run. One vendor's success must never mask the
+ * other vendor's failed/missing import. */
+async function staleVendors(maxAgeMs: number): Promise<Vendor[]> {
+  const stale: Vendor[] = [];
+  for (const vendor of VENDORS) {
+    const [row] = await db
+      .select({ finishedAt: catalogRefreshRunsTable.finishedAt })
+      .from(catalogRefreshRunsTable)
+      .where(and(eq(catalogRefreshRunsTable.status, "completed"), eq(catalogRefreshRunsTable.vendor, vendor)))
+      .orderBy(desc(catalogRefreshRunsTable.finishedAt))
+      .limit(1);
+    const last = row?.finishedAt ?? null;
+    if (!last || Date.now() - last.getTime() > maxAgeMs) stale.push(vendor);
+  }
+  return stale;
 }
 
 export function startCatalogScheduler(log: Logger): void {
   if (started) return;
   started = true;
-  // Boot: clean up orphans, then bootstrap the very first import immediately
-  // (an empty catalog shouldn't wait for tonight's window).
+  // Boot: clean up orphans, then catch up any vendor whose last successful
+  // import is missing or stale (covers both the very first seed and imports
+  // killed mid-run by a restart).
   void (async () => {
     try {
       await failOrphanedCatalogRuns();
-      const last = await lastSuccessfulVendorRunAt();
-      if (!last) {
-        log.info("no successful catalog import yet — starting initial seed");
-        await runCatalogRefresh({ trigger: "seed" }, log);
+      const vendors = await staleVendors(BOOT_STALE_MS);
+      if (vendors.length > 0) {
+        log.info({ vendors }, "catalog stale at boot — starting catch-up import");
+        await runCatalogRefresh({ trigger: "seed", vendors: [...vendors] }, log);
       }
     } catch (err) {
       log.warn({ err }, "catalog boot check failed");
@@ -54,10 +70,10 @@ export function startCatalogScheduler(log: Logger): void {
       if (isRefreshActive()) return;
       const hour = chicagoHour();
       if (hour < 1 || hour >= 6) return;
-      const last = await lastSuccessfulVendorRunAt();
-      if (last && Date.now() - last.getTime() < FRESH_MS) return;
-      log.info("starting nightly catalog refresh");
-      await runCatalogRefresh({ trigger: "scheduler" }, log);
+      const vendors = await staleVendors(FRESH_MS);
+      if (vendors.length === 0) return;
+      log.info({ vendors }, "starting nightly catalog refresh");
+      await runCatalogRefresh({ trigger: "scheduler", vendors: [...vendors] }, log);
     } catch (err) {
       log.error({ err }, "catalog scheduler tick failed");
     }
