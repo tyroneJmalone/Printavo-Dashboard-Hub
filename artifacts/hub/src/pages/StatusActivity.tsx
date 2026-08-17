@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
-import { useGetStatusActivity, getGetStatusActivityQueryKey } from "@workspace/api-client-react";
+import { Link } from "wouter";
+import {
+  useGetStatusActivity,
+  getGetStatusActivityQueryKey,
+  useGetStatusActivityOrders,
+  getGetStatusActivityOrdersQueryKey,
+} from "@workspace/api-client-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { Activity, Hourglass, Info } from "lucide-react";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
+import { Activity, Hourglass, Info, X } from "lucide-react";
 
 /**
  * Status Activity — daily counts of orders entering each Printavo status
@@ -61,8 +68,118 @@ function dayLabels(days: number): string[] {
   return out;
 }
 
+function fmtMoney(n: number): string {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
+/** Drill-down modal: the invoices behind a status (arrivals or currently-in). */
+function StatusOrdersModal({
+  statusName,
+  mode,
+  days,
+  onClose,
+}: {
+  statusName: string;
+  mode: "arrivals" | "current";
+  days: number;
+  onClose: () => void;
+}) {
+  const params = { status: statusName, mode, days };
+  const { data, isLoading } = useGetStatusActivityOrders(params, {
+    query: { queryKey: getGetStatusActivityOrdersQueryKey(params) },
+  });
+  const orders = data?.orders ?? [];
+  const totalValue = orders.reduce((s, o) => s + o.total, 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div
+        className="relative w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl border border-slate-700 bg-slate-900 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-slate-700 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-white">{statusName}</h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {mode === "arrivals"
+                ? `Orders that entered this status in the last ${days} days`
+                : "Orders currently in this status"}
+              {orders.length > 0 && ` — ${orders.length} order${orders.length === 1 ? "" : "s"}, ${fmtMoney(totalValue)}`}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="overflow-y-auto p-4">
+          {isLoading ? (
+            <div className="text-sm text-slate-400 py-6 text-center">Loading…</div>
+          ) : orders.length === 0 ? (
+            <div className="text-sm text-slate-400 py-6 text-center">No orders found.</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-slate-400 border-b border-slate-700">
+                  <th className="py-2 pr-3 font-normal">Order</th>
+                  <th className="py-2 px-3 font-normal">Customer</th>
+                  <th className="py-2 px-3 font-normal">Nickname</th>
+                  <th className="py-2 px-3 font-normal text-right">Total</th>
+                  <th className="py-2 pl-3 font-normal text-right">
+                    {mode === "arrivals" ? "Entered" : "Since"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o.printavoId} className="border-b border-slate-800/60">
+                    <td className="py-2 pr-3 font-mono whitespace-nowrap">
+                      <PrintavoOrderLink orderId={o.printavoId} visualId={o.visualId} className="text-slate-200" />
+                      {mode === "arrivals" && !o.stillInStatus && (
+                        <span className="ml-1.5 text-[10px] text-slate-500" title="Has since moved to another status">
+                          moved on
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-slate-200 max-w-[180px] truncate">
+                      {o.customerId ? (
+                        <Link
+                          href={`/customers/${o.customerId}`}
+                          className="hover:text-[#10b981] hover:underline underline-offset-2"
+                        >
+                          {o.customerName ?? "(no name)"}
+                        </Link>
+                      ) : (
+                        (o.customerName ?? "—")
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-slate-400 max-w-[180px] truncate" title={o.nickname ?? undefined}>
+                      {o.nickname || "—"}
+                    </td>
+                    <td className="py-2 px-3 text-right text-slate-300">{fmtMoney(o.total)}</td>
+                    <td className="py-2 pl-3 text-right text-slate-400 whitespace-nowrap text-xs">
+                      {o.at
+                        ? new Date(o.at).toLocaleDateString("en-US", {
+                            timeZone: "America/Chicago",
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StatusActivity() {
   const [preset, setPreset] = useState<(typeof PRESETS)[number]["id"]>("30d");
+  const [drill, setDrill] = useState<{ statusName: string; mode: "arrivals" | "current" } | null>(null);
   const days = PRESETS.find((p) => p.id === preset)!.days;
   const params = { days };
   const { data, isLoading } = useGetStatusActivity(params, {
@@ -147,8 +264,13 @@ export default function StatusActivity() {
                     const rowMax = Math.max(...s.daily.map((d) => d.count), 0);
                     return (
                       <tr key={s.statusName}>
-                        <td className="pr-2 text-slate-200 whitespace-nowrap max-w-[260px] truncate sticky left-0 bg-slate-900" title={s.statusName}>
-                          {s.statusName}
+                        <td className="pr-2 whitespace-nowrap max-w-[260px] truncate sticky left-0 bg-slate-900" title={s.statusName}>
+                          <button
+                            onClick={() => setDrill({ statusName: s.statusName, mode: "arrivals" })}
+                            className="text-slate-200 hover:text-[#10b981] hover:underline underline-offset-2"
+                          >
+                            {s.statusName}
+                          </button>
                           {s.stageId && (
                             <span className="ml-1.5 text-[10px] text-slate-500">{STAGE_LABELS[s.stageId] ?? s.stageId}</span>
                           )}
@@ -200,8 +322,13 @@ export default function StatusActivity() {
               <tbody>
                 {bottlenecks.map((s) => (
                   <tr key={s.statusName} className="border-b border-slate-800/60">
-                    <td className="py-2 pr-3 text-slate-200 max-w-[300px] truncate" title={s.statusName}>
-                      {s.statusName}
+                    <td className="py-2 pr-3 max-w-[300px] truncate" title={s.statusName}>
+                      <button
+                        onClick={() => setDrill({ statusName: s.statusName, mode: "current" })}
+                        className="text-slate-200 hover:text-[#10b981] hover:underline underline-offset-2"
+                      >
+                        {s.statusName}
+                      </button>
                     </td>
                     <td className="py-2 px-3 text-slate-400 text-xs">{s.stageId ? STAGE_LABELS[s.stageId] ?? s.stageId : "—"}</td>
                     <td className="py-2 px-3 text-right text-slate-200 font-medium">{s.currentCount}</td>
@@ -213,6 +340,15 @@ export default function StatusActivity() {
             </table>
           </div>
         </section>
+
+        {drill && (
+          <StatusOrdersModal
+            statusName={drill.statusName}
+            mode={drill.mode}
+            days={days}
+            onClose={() => setDrill(null)}
+          />
+        )}
       </div>
     </AppShell>
   );

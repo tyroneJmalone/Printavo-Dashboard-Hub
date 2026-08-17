@@ -6763,3 +6763,34 @@ export const GetStatusActivityResponse = zod.object({
 })
 
 
+/**
+ * @summary Orders behind a status — arrivals in the window, or currently sitting in it
+ */
+export const getStatusActivityOrdersQueryModeDefault = `arrivals`;
+export const getStatusActivityOrdersQueryDaysDefault = 30;
+export const getStatusActivityOrdersQueryDaysMax = 365;
+
+
+
+export const GetStatusActivityOrdersQueryParams = zod.object({
+  "status": zod.coerce.string(),
+  "mode": zod.enum(['arrivals', 'current']).default(getStatusActivityOrdersQueryModeDefault),
+  "days": zod.coerce.number().min(1).max(getStatusActivityOrdersQueryDaysMax).default(getStatusActivityOrdersQueryDaysDefault)
+})
+
+export const GetStatusActivityOrdersResponse = zod.object({
+  "mode": zod.enum(['arrivals', 'current']),
+  "statusName": zod.string(),
+  "orders": zod.array(zod.object({
+  "printavoId": zod.string(),
+  "visualId": zod.number(),
+  "nickname": zod.string().nullable(),
+  "customerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "total": zod.number(),
+  "stillInStatus": zod.boolean().describe('Whether the order is still in this status now'),
+  "at": zod.string().nullable().describe('Arrivals mode: when the order entered the status. Current mode: status-since (dwell start).')
+}))
+})
+
+

@@ -131,6 +131,7 @@ import type {
   GetPipelineParams,
   GetPricingMatrixBreakdownParams,
   GetRecentActivityParams,
+  GetStatusActivityOrdersParams,
   GetStatusActivityParams,
   GetStatusBreakdownParams,
   GetStyleNumberBreakdownParams,
@@ -242,6 +243,7 @@ import type {
   StaffMember,
   StartAutoPrintRunRequest,
   StartPqStatusJobRequest,
+  StatusActivityOrdersResponse,
   StatusActivityResponse,
   StatusRule,
   StatusRulesResponse,
@@ -17641,6 +17643,90 @@ export function useGetStatusActivity<TData = Awaited<ReturnType<typeof getStatus
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStatusActivityQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetStatusActivityOrdersUrl = (params: GetStatusActivityOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/status-activity/orders?${stringifiedParams}` : `/api/status-activity/orders`
+}
+
+/**
+ * @summary Orders behind a status — arrivals in the window, or currently sitting in it
+ */
+export const getStatusActivityOrders = async (params: GetStatusActivityOrdersParams, options?: RequestInit): Promise<StatusActivityOrdersResponse> => {
+
+  return customFetch<StatusActivityOrdersResponse>(getGetStatusActivityOrdersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStatusActivityOrdersQueryKey = (params?: GetStatusActivityOrdersParams,) => {
+    return [
+    `/api/status-activity/orders`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStatusActivityOrdersQueryOptions = <TData = Awaited<ReturnType<typeof getStatusActivityOrders>>, TError = ErrorType<unknown>>(params: GetStatusActivityOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStatusActivityOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStatusActivityOrdersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStatusActivityOrders>>> = ({ signal }) => getStatusActivityOrders(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStatusActivityOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStatusActivityOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof getStatusActivityOrders>>>
+export type GetStatusActivityOrdersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Orders behind a status — arrivals in the window, or currently sitting in it
+ */
+
+export function useGetStatusActivityOrders<TData = Awaited<ReturnType<typeof getStatusActivityOrders>>, TError = ErrorType<unknown>>(
+ params: GetStatusActivityOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStatusActivityOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStatusActivityOrdersQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

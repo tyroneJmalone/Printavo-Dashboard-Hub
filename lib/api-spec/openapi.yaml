@@ -5167,6 +5167,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StatusActivityResponse"
+  /status-activity/orders:
+    get:
+      operationId: getStatusActivityOrders
+      tags: [statusActivity]
+      summary: Orders behind a status — arrivals in the window, or currently sitting in it
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema: { type: string }
+        - name: mode
+          in: query
+          schema: { type: string, enum: [arrivals, current], default: arrivals }
+        - name: days
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 365, default: 30 }
+      responses:
+        "200":
+          description: Orders for the status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusActivityOrdersResponse"
 components:
   parameters:
     OrderTypeParam:
@@ -9501,3 +9524,28 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StatusActivityStatus"
+    StatusActivityOrder:
+      type: object
+      required: [printavoId, visualId, nickname, customerId, customerName, total, stillInStatus, at]
+      properties:
+        printavoId: { type: string }
+        visualId: { type: integer }
+        nickname: { type: string, nullable: true }
+        customerId: { type: string, nullable: true }
+        customerName: { type: string, nullable: true }
+        total: { type: number }
+        stillInStatus: { type: boolean, description: "Whether the order is still in this status now" }
+        at:
+          type: string
+          nullable: true
+          description: "Arrivals mode: when the order entered the status. Current mode: status-since (dwell start)."
+    StatusActivityOrdersResponse:
+      type: object
+      required: [mode, statusName, orders]
+      properties:
+        mode: { type: string, enum: [arrivals, current] }
+        statusName: { type: string }
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusActivityOrder"

@@ -201,4 +201,91 @@ router.get("/status-activity", (req, res) => {
   });
 });
 
+router.get("/status-activity/orders", (req, res) => {
+  (async () => {
+    const status = String(req.query.status ?? "").trim();
+    const mode = req.query.mode === "current" ? "current" : "arrivals";
+    const days = intParam(req.query.days, 30, 1, 365);
+    if (!status) {
+      res.status(400).json({ error: "status query param is required" });
+      return;
+    }
+
+    let rows;
+    if (mode === "arrivals") {
+      // Orders that ENTERED this status within the window (latest entry per
+      // order shown; an order can bounce in and out multiple times).
+      const r = await pool.query(
+        `WITH ev AS (
+           SELECT DISTINCT ON (ce.entity_id) ce.entity_id, ce.occurred_at
+             FROM change_events ce
+            WHERE ce.entity_type = 'order'
+              AND ce.event_type = 'status_change'
+              AND ${norm(`ce.new_value #>> '{}'`)} = ${norm("$2")}
+              AND (ce.occurred_at AT TIME ZONE 'America/Chicago')::date
+                  >= (now() AT TIME ZONE 'America/Chicago')::date - ($1::int - 1)
+            ORDER BY ce.entity_id, ce.occurred_at DESC
+         )
+         SELECT o.printavo_id, o.visual_id, o.nickname, o.customer_id,
+                coalesce(nullif(o.customer_company, ''), o.contact_name) AS customer_name,
+                coalesce(o.total, 0)::float8 AS total,
+                ${norm("o.status_name")} = ${norm("$2")} AS still_in_status,
+                ev.occurred_at AS at
+           FROM ev
+           JOIN pv_orders o ON o.printavo_id = ev.entity_id
+          ORDER BY ev.occurred_at DESC`,
+        [days, status],
+      );
+      rows = r.rows;
+    } else {
+      // Orders sitting in this status right now, with dwell (same fallback
+      // logic as the occupancy query above).
+      const r = await pool.query(
+        `SELECT o.printavo_id, o.visual_id, o.nickname, o.customer_id,
+                coalesce(nullif(o.customer_company, ''), o.contact_name) AS customer_name,
+                coalesce(o.total, 0)::float8 AS total,
+                true AS still_in_status,
+                coalesce(
+                  ev.occurred_at,
+                  CASE WHEN o.printavo_created_at >= o.first_seen_at - interval '2 days'
+                       THEN o.printavo_created_at
+                       ELSE o.first_seen_at
+                  END
+                ) AS at
+           FROM pv_orders o
+           LEFT JOIN (
+             SELECT DISTINCT ON (ce.entity_id) ce.entity_id, ce.occurred_at
+               FROM change_events ce
+              WHERE ce.entity_type = 'order'
+                AND ce.event_type = 'status_change'
+                AND ce.field = 'status'
+              ORDER BY ce.entity_id, ce.occurred_at DESC
+           ) ev ON ev.entity_id = o.printavo_id
+          WHERE ${norm("o.status_name")} = ${norm("$1")}
+          ORDER BY at ASC`,
+        [status],
+      );
+      rows = r.rows;
+    }
+
+    res.json({
+      mode,
+      statusName: status,
+      orders: rows.map((r) => ({
+        printavoId: r.printavo_id as string,
+        visualId: r.visual_id as number,
+        nickname: (r.nickname as string | null) ?? null,
+        customerId: (r.customer_id as string | null) ?? null,
+        customerName: (r.customer_name as string | null) ?? null,
+        total: Number(r.total),
+        stillInStatus: Boolean(r.still_in_status),
+        at: r.at ? (r.at as Date).toISOString() : null,
+      })),
+    });
+  })().catch((err) => {
+    req.log.error({ err }, "status activity orders drill-down failed");
+    res.status(500).json({ error: "Status activity orders failed" });
+  });
+});
+
 export default router;

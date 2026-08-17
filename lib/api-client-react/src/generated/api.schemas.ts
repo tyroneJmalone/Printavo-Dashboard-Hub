@@ -4090,6 +4090,33 @@ export interface StatusActivityResponse {
   statuses: StatusActivityStatus[];
 }
 
+export interface StatusActivityOrder {
+  printavoId: string;
+  visualId: number;
+  nickname: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  total: number;
+  /** Whether the order is still in this status now */
+  stillInStatus: boolean;
+  /** Arrivals mode: when the order entered the status. Current mode: status-since (dwell start). */
+  at: string | null;
+}
+
+export type StatusActivityOrdersResponseMode = typeof StatusActivityOrdersResponseMode[keyof typeof StatusActivityOrdersResponseMode];
+
+
+export const StatusActivityOrdersResponseMode = {
+  arrivals: 'arrivals',
+  current: 'current',
+} as const;
+
+export interface StatusActivityOrdersResponse {
+  mode: StatusActivityOrdersResponseMode;
+  statusName: string;
+  orders: StatusActivityOrder[];
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -4909,4 +4936,22 @@ export type GetStatusActivityParams = {
  */
 days?: number;
 };
+
+export type GetStatusActivityOrdersParams = {
+status: string;
+mode?: GetStatusActivityOrdersMode;
+/**
+ * @minimum 1
+ * @maximum 365
+ */
+days?: number;
+};
+
+export type GetStatusActivityOrdersMode = typeof GetStatusActivityOrdersMode[keyof typeof GetStatusActivityOrdersMode];
+
+
+export const GetStatusActivityOrdersMode = {
+  arrivals: 'arrivals',
+  current: 'current',
+} as const;
 
