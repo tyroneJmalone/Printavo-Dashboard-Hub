@@ -55,3 +55,4 @@ export * from "./chipplyStores";
 export * from "./insightsPresets";
 export * from "./catalog";
 export * from "./collections";
+export * from "./emailActivity";

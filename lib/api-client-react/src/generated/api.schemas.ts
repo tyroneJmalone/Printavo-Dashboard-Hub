@@ -3743,6 +3743,212 @@ export interface NicheReportResponse {
   rows: NicheReportRow[];
 }
 
+export type EmailMailboxStatusLastSyncStatus = typeof EmailMailboxStatusLastSyncStatus[keyof typeof EmailMailboxStatusLastSyncStatus];
+
+
+export const EmailMailboxStatusLastSyncStatus = {
+  never: 'never',
+  ok: 'ok',
+  error: 'error',
+} as const;
+
+export interface EmailMailboxStatus {
+  id: string;
+  email: string;
+  displayName: string | null;
+  active: boolean;
+  backfillComplete: boolean;
+  lastSyncAt: string | null;
+  lastSyncStatus: EmailMailboxStatusLastSyncStatus;
+  lastSyncError: string | null;
+  messageCount: number;
+  filteredCount: number;
+}
+
+export interface EmailActivitySettings {
+  unansweredThresholdHours: number;
+  backfillDays: number;
+}
+
+export interface EmailActivityStatus {
+  credentialsConfigured: boolean;
+  /** The service account's client_email — needed for the Admin-console DWD setup */
+  serviceAccountEmail: string | null;
+  syncActive: boolean;
+  mailboxes: EmailMailboxStatus[];
+  settings: EmailActivitySettings;
+}
+
+export interface AddEmailMailboxRequest {
+  email: string;
+  displayName?: string;
+}
+
+export interface UpdateEmailMailboxRequest {
+  displayName?: string | null;
+  active?: boolean;
+}
+
+export interface EmailMailboxVerifyResult {
+  ok: boolean;
+  error: string | null;
+  messagesTotal: number | null;
+}
+
+export interface EmailSyncTriggerResult {
+  ran: boolean;
+  message: string;
+}
+
+export type EmailExclusionRuleKind = typeof EmailExclusionRuleKind[keyof typeof EmailExclusionRuleKind];
+
+
+export const EmailExclusionRuleKind = {
+  address: 'address',
+  domain: 'domain',
+} as const;
+
+export interface EmailExclusionRule {
+  id: string;
+  kind: EmailExclusionRuleKind;
+  value: string;
+  note: string | null;
+  createdByEmail: string | null;
+  createdAt: string;
+}
+
+export type AddEmailExclusionRequestKind = typeof AddEmailExclusionRequestKind[keyof typeof AddEmailExclusionRequestKind];
+
+
+export const AddEmailExclusionRequestKind = {
+  address: 'address',
+  domain: 'domain',
+} as const;
+
+export interface AddEmailExclusionRequest {
+  kind: AddEmailExclusionRequestKind;
+  value: string;
+  note?: string;
+}
+
+export interface UpdateEmailSettingsRequest {
+  /**
+     * @minimum 1
+     * @maximum 720
+     */
+  unansweredThresholdHours?: number;
+  /**
+     * @minimum 7
+     * @maximum 3650
+     */
+  backfillDays?: number;
+}
+
+export interface EmailPersonStats {
+  /** null = team totals */
+  mailboxId: string | null;
+  email: string | null;
+  displayName: string | null;
+  sent: number;
+  received: number;
+  threads: number;
+  filtered: number;
+  avgThreadDepth: number | null;
+  /** Thread-depth histogram counts for [1, 2-3, 4-6, 7+] */
+  depthBuckets: number[];
+}
+
+export interface EmailSeriesPoint {
+  /** YYYY-MM-DD bucket start (shop-local) */
+  bucket: string;
+  /** null = team */
+  mailboxId: string | null;
+  sent: number;
+  received: number;
+}
+
+export type EmailStatsResponseGranularity = typeof EmailStatsResponseGranularity[keyof typeof EmailStatsResponseGranularity];
+
+
+export const EmailStatsResponseGranularity = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+} as const;
+
+export interface EmailStatsResponse {
+  granularity: EmailStatsResponseGranularity;
+  people: EmailPersonStats[];
+  team: EmailPersonStats;
+  series: EmailSeriesPoint[];
+}
+
+export interface EmailResponseTimeStats {
+  /** null = team */
+  mailboxId: string | null;
+  email: string | null;
+  displayName: string | null;
+  repliedThreads: number;
+  medianSecs: number | null;
+  p90Secs: number | null;
+  /** Counts for [<15m, 15m-1h, 1-4h, 4-24h, >24h] */
+  distribution: number[];
+}
+
+export interface EmailResponseTimesResponse {
+  people: EmailResponseTimeStats[];
+  team: EmailResponseTimeStats;
+}
+
+export interface EmailUnansweredThread {
+  mailboxId: string;
+  email: string | null;
+  gmailThreadId: string;
+  subject: string;
+  counterpart: string;
+  lastInboundAt: string;
+  ageHours: number;
+  messageCount: number;
+}
+
+export interface EmailUnansweredResponse {
+  thresholdHours: number;
+  threads: EmailUnansweredThread[];
+}
+
+export interface EmailHeatmapCell {
+  /** 0=Sunday .. 6=Saturday (America/Chicago) */
+  dow: number;
+  hour: number;
+  sent: number;
+  received: number;
+}
+
+export interface EmailHeatmapResponse {
+  cells: EmailHeatmapCell[];
+}
+
+export interface EmailFilteredReason {
+  reason: string;
+  count: number;
+}
+
+export interface EmailFilteredSample {
+  mailboxId: string;
+  email: string | null;
+  subject: string;
+  counterpart: string;
+  reason: string;
+  direction: string;
+  internalDate: string;
+}
+
+export interface EmailFilteredResponse {
+  total: number;
+  breakdown: EmailFilteredReason[];
+  sample: EmailFilteredSample[];
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -4505,5 +4711,43 @@ export type RequestMbUploadUrl200 = {
 export type ListRewardAwardsParams = {
 status?: string;
 limit?: string;
+};
+
+export type GetEmailActivityStatsParams = {
+granularity: GetEmailActivityStatsGranularity;
+start: string;
+end: string;
+mailboxId?: string;
+};
+
+export type GetEmailActivityStatsGranularity = typeof GetEmailActivityStatsGranularity[keyof typeof GetEmailActivityStatsGranularity];
+
+
+export const GetEmailActivityStatsGranularity = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+} as const;
+
+export type GetEmailResponseTimesParams = {
+start: string;
+end: string;
+mailboxId?: string;
+};
+
+export type GetEmailUnansweredThreadsParams = {
+mailboxId?: string;
+};
+
+export type GetEmailHeatmapParams = {
+start: string;
+end: string;
+mailboxId?: string;
+};
+
+export type GetEmailFilteredBucketParams = {
+start: string;
+end: string;
+mailboxId?: string;
 };
 

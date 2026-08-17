@@ -5,7 +5,7 @@ import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api
 import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -16,6 +16,8 @@ interface NavItem {
   disabled?: boolean;
   /** Plain <a> navigation to another artifact (full page load, no wouter). */
   external?: boolean;
+  /** Hidden from non-admin staff. */
+  adminOnly?: boolean;
 }
 
 interface NavGroup {
@@ -36,6 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "reports", label: "Reports", href: "/orders", icon: FileSpreadsheet },
       { id: "payments", label: "Payments", href: "/payments", icon: CreditCard },
       { id: "ai", label: "Ask AI", href: "/ask", icon: Sparkles },
+      { id: "email-activity", label: "Email Activity", href: "/email-activity", icon: Mail, adminOnly: true },
     ],
   },
   {
@@ -157,6 +160,7 @@ function StaffChip() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const { role } = useStaff();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsedGroups);
   /** Mobile drawer state — the sidebar is hidden by default below lg. */
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -223,7 +227,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto custom-scrollbar">
-          {NAV_GROUPS.map((group, gi) => {
+          {NAV_GROUPS.map((rawGroup, gi) => {
+            const group = {
+              ...rawGroup,
+              items: rawGroup.items.filter((item) => !item.adminOnly || role === "admin"),
+            };
+            if (group.items.length === 0) return null;
             const isCollapsed = group.heading ? !!collapsedGroups[group.heading] : false;
             const hasActive = group.items.some((item) => item.href && location === item.href);
             return (

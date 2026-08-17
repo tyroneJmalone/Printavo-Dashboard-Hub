@@ -35,6 +35,8 @@ import CustomersDirectory from "./pages/CustomersDirectory";
 import CustomerProfile from "./pages/CustomerProfile";
 import NicheReport from "./pages/NicheReport";
 import AskAI from "./pages/AskAI";
+import EmailActivity from "./pages/EmailActivity";
+import EmailActivitySettings from "./pages/EmailActivitySettings";
 import ProductFinder from "./pages/ProductFinder";
 import Collections from "./pages/Collections";
 import CollectionDetail from "./pages/CollectionDetail";
@@ -190,6 +192,8 @@ function HubRoutes() {
       <Route path="/pipeline" component={Pipeline} />
       <Route path="/payments" component={Payments} />
       <Route path="/ask" component={AskAI} />
+      <Route path="/email-activity/settings" component={EmailActivitySettings} />
+      <Route path="/email-activity" component={EmailActivity} />
       <Route path="/product-finder" component={ProductFinder} />
       <Route path="/collections/:id" component={CollectionDetail} />
       <Route path="/collections" component={Collections} />

@@ -4,6 +4,7 @@ import { startScheduler } from "./lib/sync/scheduler";
 import { startFileMirror } from "./lib/sync/fileMirror";
 import { startAutoPrintScheduler } from "./lib/printQueue/autoPrint/scheduler";
 import { startCatalogScheduler } from "./lib/catalog/scheduler";
+import { startEmailActivityScheduler } from "./lib/emailActivity/scheduler";
 import { bootstrapStaffAdmin } from "./lib/auth/bootstrap";
 import { seedCustomerCategories } from "./lib/customers/seedCategories";
 import { ensureInsightsRole } from "./lib/insights/guard";
@@ -45,6 +46,8 @@ app.listen(port, (err) => {
   startFileMirror(logger);
   startAutoPrintScheduler(logger);
   startCatalogScheduler(logger);
+  // Email activity tracker — dormant until GOOGLE_SERVICE_ACCOUNT_JSON is set.
+  startEmailActivityScheduler(logger);
   // Mint Bucks poller: dormant unless MINTBUCKS_POLLER_ENABLED=true (phased
   // ownership handoff — the standalone app keeps polling until Tyler flips it).
   if (isMintbucksConfigured()) {

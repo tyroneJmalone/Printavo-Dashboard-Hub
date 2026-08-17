@@ -28,6 +28,8 @@ tags:
     description: Client 360 — customer directory, niche categories, reporting
   - name: insights
     description: Ask AI — natural-language questions over local Printavo data + saved presets
+  - name: emailActivity
+    description: Email activity tracker — Gmail metadata sync + team stats
   - name: chipply
     description: Chipply web stores — email/export import, Printavo invoice linking, revenue kept separate
 paths:
@@ -4701,6 +4703,326 @@ paths:
         "502":
           description: Failed to fetch from Printavo
 
+  /email-activity/status:
+    get:
+      operationId: getEmailActivityStatus
+      tags: [emailActivity]
+      summary: Email tracker setup + sync status (admin only)
+      responses:
+        "200":
+          description: Credentials + per-mailbox sync state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailActivityStatus"
+  /email-activity/mailboxes:
+    post:
+      operationId: addEmailMailbox
+      tags: [emailActivity]
+      summary: Track a new mailbox (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddEmailMailboxRequest"
+      responses:
+        "201":
+          description: Created mailbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailMailboxStatus"
+        "400":
+          description: Invalid email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Mailbox already tracked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /email-activity/mailboxes/{id}:
+    patch:
+      operationId: updateEmailMailbox
+      tags: [emailActivity]
+      summary: Update a tracked mailbox (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEmailMailboxRequest"
+      responses:
+        "200":
+          description: Updated mailbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailMailboxStatus"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: removeEmailMailbox
+      tags: [emailActivity]
+      summary: Stop tracking a mailbox and delete its synced metadata (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /email-activity/mailboxes/{id}/verify:
+    post:
+      operationId: verifyEmailMailbox
+      tags: [emailActivity]
+      summary: Test Gmail connectivity for one mailbox (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailMailboxVerifyResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /email-activity/sync:
+    post:
+      operationId: triggerEmailSync
+      tags: [emailActivity]
+      summary: Run an email sync now (admin only)
+      responses:
+        "200":
+          description: Sync trigger result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailSyncTriggerResult"
+  /email-activity/exclusions:
+    get:
+      operationId: listEmailExclusions
+      tags: [emailActivity]
+      summary: List exclusion rules (admin only)
+      responses:
+        "200":
+          description: Rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmailExclusionRule"
+    post:
+      operationId: addEmailExclusion
+      tags: [emailActivity]
+      summary: Add an exclusion rule; applied retroactively (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddEmailExclusionRequest"
+      responses:
+        "201":
+          description: Created rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailExclusionRule"
+        "400":
+          description: Invalid rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Duplicate rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /email-activity/exclusions/{id}:
+    delete:
+      operationId: removeEmailExclusion
+      tags: [emailActivity]
+      summary: Remove an exclusion rule; reclassifies retroactively (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /email-activity/settings:
+    put:
+      operationId: updateEmailActivitySettings
+      tags: [emailActivity]
+      summary: Update email tracker settings (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEmailSettingsRequest"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailActivitySettings"
+  /email-activity/stats:
+    get:
+      operationId: getEmailActivityStats
+      tags: [emailActivity]
+      summary: Sent/received/thread counts + series + thread depth (admin only)
+      parameters:
+        - name: granularity
+          in: query
+          required: true
+          schema: { type: string, enum: [daily, weekly, monthly] }
+        - name: start
+          in: query
+          required: true
+          schema: { type: string }
+        - name: end
+          in: query
+          required: true
+          schema: { type: string }
+        - name: mailboxId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Aggregates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailStatsResponse"
+  /email-activity/response-times:
+    get:
+      operationId: getEmailResponseTimes
+      tags: [emailActivity]
+      summary: Inbound → first-reply timing per mailbox (admin only)
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema: { type: string }
+        - name: end
+          in: query
+          required: true
+          schema: { type: string }
+        - name: mailboxId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Response-time metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailResponseTimesResponse"
+  /email-activity/unanswered:
+    get:
+      operationId: getEmailUnansweredThreads
+      tags: [emailActivity]
+      summary: Threads unanswered past the configured threshold (admin only)
+      parameters:
+        - name: mailboxId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Unanswered threads, oldest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailUnansweredResponse"
+  /email-activity/heatmap:
+    get:
+      operationId: getEmailHeatmap
+      tags: [emailActivity]
+      summary: Day-of-week × hour-of-day activity (shop-local time, admin only)
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema: { type: string }
+        - name: end
+          in: query
+          required: true
+          schema: { type: string }
+        - name: mailboxId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Heatmap cells
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailHeatmapResponse"
+  /email-activity/filtered:
+    get:
+      operationId: getEmailFilteredBucket
+      tags: [emailActivity]
+      summary: Filtered-mail breakdown + spot-check sample (admin only)
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema: { type: string }
+        - name: end
+          in: query
+          required: true
+          schema: { type: string }
+        - name: mailboxId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Filtered bucket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailFilteredResponse"
 components:
   parameters:
     OrderTypeParam:
@@ -8665,3 +8987,216 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/NicheReportRow"
+
+    EmailMailboxStatus:
+      type: object
+      required: [id, email, displayName, active, backfillComplete, lastSyncAt, lastSyncStatus, lastSyncError, messageCount, filteredCount]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        displayName: { type: string, nullable: true }
+        active: { type: boolean }
+        backfillComplete: { type: boolean }
+        lastSyncAt: { type: string, nullable: true }
+        lastSyncStatus: { type: string, enum: [never, ok, error] }
+        lastSyncError: { type: string, nullable: true }
+        messageCount: { type: integer }
+        filteredCount: { type: integer }
+    EmailActivitySettings:
+      type: object
+      required: [unansweredThresholdHours, backfillDays]
+      properties:
+        unansweredThresholdHours: { type: integer }
+        backfillDays: { type: integer }
+    EmailActivityStatus:
+      type: object
+      required: [credentialsConfigured, serviceAccountEmail, syncActive, mailboxes, settings]
+      properties:
+        credentialsConfigured: { type: boolean }
+        serviceAccountEmail:
+          type: string
+          nullable: true
+          description: The service account's client_email — needed for the Admin-console DWD setup
+        syncActive: { type: boolean }
+        mailboxes:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailMailboxStatus"
+        settings:
+          $ref: "#/components/schemas/EmailActivitySettings"
+    AddEmailMailboxRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string }
+        displayName: { type: string }
+    UpdateEmailMailboxRequest:
+      type: object
+      properties:
+        displayName: { type: string, nullable: true }
+        active: { type: boolean }
+    EmailMailboxVerifyResult:
+      type: object
+      required: [ok, error, messagesTotal]
+      properties:
+        ok: { type: boolean }
+        error: { type: string, nullable: true }
+        messagesTotal: { type: integer, nullable: true }
+    EmailSyncTriggerResult:
+      type: object
+      required: [ran, message]
+      properties:
+        ran: { type: boolean }
+        message: { type: string }
+    EmailExclusionRule:
+      type: object
+      required: [id, kind, value, note, createdByEmail, createdAt]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [address, domain] }
+        value: { type: string }
+        note: { type: string, nullable: true }
+        createdByEmail: { type: string, nullable: true }
+        createdAt: { type: string }
+    AddEmailExclusionRequest:
+      type: object
+      required: [kind, value]
+      properties:
+        kind: { type: string, enum: [address, domain] }
+        value: { type: string }
+        note: { type: string }
+    UpdateEmailSettingsRequest:
+      type: object
+      properties:
+        unansweredThresholdHours: { type: integer, minimum: 1, maximum: 720 }
+        backfillDays: { type: integer, minimum: 7, maximum: 3650 }
+    EmailPersonStats:
+      type: object
+      required: [mailboxId, email, displayName, sent, received, threads, filtered, avgThreadDepth, depthBuckets]
+      properties:
+        mailboxId: { type: string, nullable: true, description: "null = team totals" }
+        email: { type: string, nullable: true }
+        displayName: { type: string, nullable: true }
+        sent: { type: integer }
+        received: { type: integer }
+        threads: { type: integer }
+        filtered: { type: integer }
+        avgThreadDepth: { type: number, nullable: true }
+        depthBuckets:
+          type: array
+          description: Thread-depth histogram counts for [1, 2-3, 4-6, 7+]
+          items: { type: integer }
+    EmailSeriesPoint:
+      type: object
+      required: [bucket, mailboxId, sent, received]
+      properties:
+        bucket: { type: string, description: "YYYY-MM-DD bucket start (shop-local)" }
+        mailboxId: { type: string, nullable: true, description: "null = team" }
+        sent: { type: integer }
+        received: { type: integer }
+    EmailStatsResponse:
+      type: object
+      required: [granularity, people, team, series]
+      properties:
+        granularity: { type: string, enum: [daily, weekly, monthly] }
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailPersonStats"
+        team:
+          $ref: "#/components/schemas/EmailPersonStats"
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailSeriesPoint"
+    EmailResponseTimeStats:
+      type: object
+      required: [mailboxId, email, displayName, repliedThreads, medianSecs, p90Secs, distribution]
+      properties:
+        mailboxId: { type: string, nullable: true, description: "null = team" }
+        email: { type: string, nullable: true }
+        displayName: { type: string, nullable: true }
+        repliedThreads: { type: integer }
+        medianSecs: { type: number, nullable: true }
+        p90Secs: { type: number, nullable: true }
+        distribution:
+          type: array
+          description: Counts for [<15m, 15m-1h, 1-4h, 4-24h, >24h]
+          items: { type: integer }
+    EmailResponseTimesResponse:
+      type: object
+      required: [people, team]
+      properties:
+        people:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailResponseTimeStats"
+        team:
+          $ref: "#/components/schemas/EmailResponseTimeStats"
+    EmailUnansweredThread:
+      type: object
+      required: [mailboxId, email, gmailThreadId, subject, counterpart, lastInboundAt, ageHours, messageCount]
+      properties:
+        mailboxId: { type: string }
+        email: { type: string, nullable: true }
+        gmailThreadId: { type: string }
+        subject: { type: string }
+        counterpart: { type: string }
+        lastInboundAt: { type: string }
+        ageHours: { type: number }
+        messageCount: { type: integer }
+    EmailUnansweredResponse:
+      type: object
+      required: [thresholdHours, threads]
+      properties:
+        thresholdHours: { type: integer }
+        threads:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailUnansweredThread"
+    EmailHeatmapCell:
+      type: object
+      required: [dow, hour, sent, received]
+      properties:
+        dow: { type: integer, description: "0=Sunday .. 6=Saturday (America/Chicago)" }
+        hour: { type: integer }
+        sent: { type: integer }
+        received: { type: integer }
+    EmailHeatmapResponse:
+      type: object
+      required: [cells]
+      properties:
+        cells:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailHeatmapCell"
+    EmailFilteredReason:
+      type: object
+      required: [reason, count]
+      properties:
+        reason: { type: string }
+        count: { type: integer }
+    EmailFilteredSample:
+      type: object
+      required: [mailboxId, email, subject, counterpart, reason, direction, internalDate]
+      properties:
+        mailboxId: { type: string }
+        email: { type: string, nullable: true }
+        subject: { type: string }
+        counterpart: { type: string }
+        reason: { type: string }
+        direction: { type: string }
+        internalDate: { type: string }
+    EmailFilteredResponse:
+      type: object
+      required: [total, breakdown, sample]
+      properties:
+        total: { type: integer }
+        breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailFilteredReason"
+        sample:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailFilteredSample"

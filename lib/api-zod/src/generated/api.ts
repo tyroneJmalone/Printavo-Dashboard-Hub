@@ -6287,3 +6287,316 @@ export const GetRewardsPipelineResponse = zod.object({
 })
 
 
+/**
+ * @summary Email tracker setup + sync status (admin only)
+ */
+export const GetEmailActivityStatusResponse = zod.object({
+  "credentialsConfigured": zod.boolean(),
+  "serviceAccountEmail": zod.string().nullable().describe('The service account\'s client_email — needed for the Admin-console DWD setup'),
+  "syncActive": zod.boolean(),
+  "mailboxes": zod.array(zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string().nullable(),
+  "active": zod.boolean(),
+  "backfillComplete": zod.boolean(),
+  "lastSyncAt": zod.string().nullable(),
+  "lastSyncStatus": zod.enum(['never', 'ok', 'error']),
+  "lastSyncError": zod.string().nullable(),
+  "messageCount": zod.number(),
+  "filteredCount": zod.number()
+})),
+  "settings": zod.object({
+  "unansweredThresholdHours": zod.number(),
+  "backfillDays": zod.number()
+})
+})
+
+
+/**
+ * @summary Track a new mailbox (admin only)
+ */
+export const AddEmailMailboxBody = zod.object({
+  "email": zod.string(),
+  "displayName": zod.string().optional()
+})
+
+export const AddEmailMailboxResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string().nullable(),
+  "active": zod.boolean(),
+  "backfillComplete": zod.boolean(),
+  "lastSyncAt": zod.string().nullable(),
+  "lastSyncStatus": zod.enum(['never', 'ok', 'error']),
+  "lastSyncError": zod.string().nullable(),
+  "messageCount": zod.number(),
+  "filteredCount": zod.number()
+})
+
+
+/**
+ * @summary Update a tracked mailbox (admin only)
+ */
+export const UpdateEmailMailboxParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateEmailMailboxBody = zod.object({
+  "displayName": zod.string().nullish(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateEmailMailboxResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string().nullable(),
+  "active": zod.boolean(),
+  "backfillComplete": zod.boolean(),
+  "lastSyncAt": zod.string().nullable(),
+  "lastSyncStatus": zod.enum(['never', 'ok', 'error']),
+  "lastSyncError": zod.string().nullable(),
+  "messageCount": zod.number(),
+  "filteredCount": zod.number()
+})
+
+
+/**
+ * @summary Stop tracking a mailbox and delete its synced metadata (admin only)
+ */
+export const RemoveEmailMailboxParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RemoveEmailMailboxResponse = zod.void()
+
+
+/**
+ * @summary Test Gmail connectivity for one mailbox (admin only)
+ */
+export const VerifyEmailMailboxParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const VerifyEmailMailboxResponse = zod.object({
+  "ok": zod.boolean(),
+  "error": zod.string().nullable(),
+  "messagesTotal": zod.number().nullable()
+})
+
+
+/**
+ * @summary Run an email sync now (admin only)
+ */
+export const TriggerEmailSyncResponse = zod.object({
+  "ran": zod.boolean(),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary List exclusion rules (admin only)
+ */
+export const ListEmailExclusionsResponseItem = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['address', 'domain']),
+  "value": zod.string(),
+  "note": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+export const ListEmailExclusionsResponse = zod.array(ListEmailExclusionsResponseItem)
+
+
+/**
+ * @summary Add an exclusion rule; applied retroactively (admin only)
+ */
+export const AddEmailExclusionBody = zod.object({
+  "kind": zod.enum(['address', 'domain']),
+  "value": zod.string(),
+  "note": zod.string().optional()
+})
+
+export const AddEmailExclusionResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['address', 'domain']),
+  "value": zod.string(),
+  "note": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Remove an exclusion rule; reclassifies retroactively (admin only)
+ */
+export const RemoveEmailExclusionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RemoveEmailExclusionResponse = zod.void()
+
+
+/**
+ * @summary Update email tracker settings (admin only)
+ */
+export const updateEmailActivitySettingsBodyUnansweredThresholdHoursMax = 720;
+
+export const updateEmailActivitySettingsBodyBackfillDaysMin = 7;
+export const updateEmailActivitySettingsBodyBackfillDaysMax = 3650;
+
+
+
+export const UpdateEmailActivitySettingsBody = zod.object({
+  "unansweredThresholdHours": zod.number().min(1).max(updateEmailActivitySettingsBodyUnansweredThresholdHoursMax).optional(),
+  "backfillDays": zod.number().min(updateEmailActivitySettingsBodyBackfillDaysMin).max(updateEmailActivitySettingsBodyBackfillDaysMax).optional()
+})
+
+export const UpdateEmailActivitySettingsResponse = zod.object({
+  "unansweredThresholdHours": zod.number(),
+  "backfillDays": zod.number()
+})
+
+
+/**
+ * @summary Sent/received/thread counts + series + thread depth (admin only)
+ */
+export const GetEmailActivityStatsQueryParams = zod.object({
+  "granularity": zod.enum(['daily', 'weekly', 'monthly']),
+  "start": zod.coerce.string(),
+  "end": zod.coerce.string(),
+  "mailboxId": zod.coerce.string().optional()
+})
+
+export const GetEmailActivityStatsResponse = zod.object({
+  "granularity": zod.enum(['daily', 'weekly', 'monthly']),
+  "people": zod.array(zod.object({
+  "mailboxId": zod.string().nullable().describe('null = team totals'),
+  "email": zod.string().nullable(),
+  "displayName": zod.string().nullable(),
+  "sent": zod.number(),
+  "received": zod.number(),
+  "threads": zod.number(),
+  "filtered": zod.number(),
+  "avgThreadDepth": zod.number().nullable(),
+  "depthBuckets": zod.array(zod.number()).describe('Thread-depth histogram counts for [1, 2-3, 4-6, 7+]')
+})),
+  "team": zod.object({
+  "mailboxId": zod.string().nullable().describe('null = team totals'),
+  "email": zod.string().nullable(),
+  "displayName": zod.string().nullable(),
+  "sent": zod.number(),
+  "received": zod.number(),
+  "threads": zod.number(),
+  "filtered": zod.number(),
+  "avgThreadDepth": zod.number().nullable(),
+  "depthBuckets": zod.array(zod.number()).describe('Thread-depth histogram counts for [1, 2-3, 4-6, 7+]')
+}),
+  "series": zod.array(zod.object({
+  "bucket": zod.string().describe('YYYY-MM-DD bucket start (shop-local)'),
+  "mailboxId": zod.string().nullable().describe('null = team'),
+  "sent": zod.number(),
+  "received": zod.number()
+}))
+})
+
+
+/**
+ * @summary Inbound → first-reply timing per mailbox (admin only)
+ */
+export const GetEmailResponseTimesQueryParams = zod.object({
+  "start": zod.coerce.string(),
+  "end": zod.coerce.string(),
+  "mailboxId": zod.coerce.string().optional()
+})
+
+export const GetEmailResponseTimesResponse = zod.object({
+  "people": zod.array(zod.object({
+  "mailboxId": zod.string().nullable().describe('null = team'),
+  "email": zod.string().nullable(),
+  "displayName": zod.string().nullable(),
+  "repliedThreads": zod.number(),
+  "medianSecs": zod.number().nullable(),
+  "p90Secs": zod.number().nullable(),
+  "distribution": zod.array(zod.number()).describe('Counts for [<15m, 15m-1h, 1-4h, 4-24h, >24h]')
+})),
+  "team": zod.object({
+  "mailboxId": zod.string().nullable().describe('null = team'),
+  "email": zod.string().nullable(),
+  "displayName": zod.string().nullable(),
+  "repliedThreads": zod.number(),
+  "medianSecs": zod.number().nullable(),
+  "p90Secs": zod.number().nullable(),
+  "distribution": zod.array(zod.number()).describe('Counts for [<15m, 15m-1h, 1-4h, 4-24h, >24h]')
+})
+})
+
+
+/**
+ * @summary Threads unanswered past the configured threshold (admin only)
+ */
+export const GetEmailUnansweredThreadsQueryParams = zod.object({
+  "mailboxId": zod.coerce.string().optional()
+})
+
+export const GetEmailUnansweredThreadsResponse = zod.object({
+  "thresholdHours": zod.number(),
+  "threads": zod.array(zod.object({
+  "mailboxId": zod.string(),
+  "email": zod.string().nullable(),
+  "gmailThreadId": zod.string(),
+  "subject": zod.string(),
+  "counterpart": zod.string(),
+  "lastInboundAt": zod.string(),
+  "ageHours": zod.number(),
+  "messageCount": zod.number()
+}))
+})
+
+
+/**
+ * @summary Day-of-week × hour-of-day activity (shop-local time, admin only)
+ */
+export const GetEmailHeatmapQueryParams = zod.object({
+  "start": zod.coerce.string(),
+  "end": zod.coerce.string(),
+  "mailboxId": zod.coerce.string().optional()
+})
+
+export const GetEmailHeatmapResponse = zod.object({
+  "cells": zod.array(zod.object({
+  "dow": zod.number().describe('0=Sunday .. 6=Saturday (America\/Chicago)'),
+  "hour": zod.number(),
+  "sent": zod.number(),
+  "received": zod.number()
+}))
+})
+
+
+/**
+ * @summary Filtered-mail breakdown + spot-check sample (admin only)
+ */
+export const GetEmailFilteredBucketQueryParams = zod.object({
+  "start": zod.coerce.string(),
+  "end": zod.coerce.string(),
+  "mailboxId": zod.coerce.string().optional()
+})
+
+export const GetEmailFilteredBucketResponse = zod.object({
+  "total": zod.number(),
+  "breakdown": zod.array(zod.object({
+  "reason": zod.string(),
+  "count": zod.number()
+})),
+  "sample": zod.array(zod.object({
+  "mailboxId": zod.string(),
+  "email": zod.string().nullable(),
+  "subject": zod.string(),
+  "counterpart": zod.string(),
+  "reason": zod.string(),
+  "direction": zod.string(),
+  "internalDate": zod.string()
+}))
+})
+
+

@@ -22,6 +22,8 @@ import type {
 import type {
   ActivityItem,
   AddCollectionItemsRequest,
+  AddEmailExclusionRequest,
+  AddEmailMailboxRequest,
   AddStaffRequest,
   AddTeamMember201,
   AdminPinStatus,
@@ -84,6 +86,17 @@ import type {
   DeleteCollection200,
   DetectedChipplyStoresResponse,
   DirectoryCustomersResponse,
+  EmailActivitySettings,
+  EmailActivityStatus,
+  EmailExclusionRule,
+  EmailFilteredResponse,
+  EmailHeatmapResponse,
+  EmailMailboxStatus,
+  EmailMailboxVerifyResult,
+  EmailResponseTimesResponse,
+  EmailStatsResponse,
+  EmailSyncTriggerResult,
+  EmailUnansweredResponse,
   ErrorResponse,
   EvaluateStatusRulesResponse,
   FinderOrder,
@@ -95,6 +108,11 @@ import type {
   GetCreditsOverTimeParams,
   GetCustomerProfileParams,
   GetDashboardSummaryParams,
+  GetEmailActivityStatsParams,
+  GetEmailFilteredBucketParams,
+  GetEmailHeatmapParams,
+  GetEmailResponseTimesParams,
+  GetEmailUnansweredThreadsParams,
   GetExpiringSoonParams,
   GetFinderOrderParams,
   GetImprintsByTierParams,
@@ -234,6 +252,8 @@ import type {
   UpdateChipplyStoreRequest,
   UpdateCollectionItemRequest,
   UpdateCollectionRequest,
+  UpdateEmailMailboxRequest,
+  UpdateEmailSettingsRequest,
   UpdateInsightsPresetRequest,
   UpdatePoFileRequest,
   UpdatePqStatusRuleRequest,
@@ -15937,6 +15957,1141 @@ export function useGetRewardsPipeline<TData = Awaited<ReturnType<typeof getRewar
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetRewardsPipelineQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEmailActivityStatusUrl = () => {
+
+
+
+
+  return `/api/email-activity/status`
+}
+
+/**
+ * @summary Email tracker setup + sync status (admin only)
+ */
+export const getEmailActivityStatus = async ( options?: RequestInit): Promise<EmailActivityStatus> => {
+
+  return customFetch<EmailActivityStatus>(getGetEmailActivityStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailActivityStatusQueryKey = () => {
+    return [
+    `/api/email-activity/status`
+    ] as const;
+    }
+
+
+export const getGetEmailActivityStatusQueryOptions = <TData = Awaited<ReturnType<typeof getEmailActivityStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailActivityStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailActivityStatus>>> = ({ signal }) => getEmailActivityStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailActivityStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailActivityStatus>>>
+export type GetEmailActivityStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Email tracker setup + sync status (admin only)
+ */
+
+export function useGetEmailActivityStatus<TData = Awaited<ReturnType<typeof getEmailActivityStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailActivityStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddEmailMailboxUrl = () => {
+
+
+
+
+  return `/api/email-activity/mailboxes`
+}
+
+/**
+ * @summary Track a new mailbox (admin only)
+ */
+export const addEmailMailbox = async (addEmailMailboxRequest: AddEmailMailboxRequest, options?: RequestInit): Promise<EmailMailboxStatus> => {
+
+  return customFetch<EmailMailboxStatus>(getAddEmailMailboxUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addEmailMailboxRequest)
+  }
+);}
+
+
+
+
+export const getAddEmailMailboxMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEmailMailbox>>, TError,{data: BodyType<AddEmailMailboxRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addEmailMailbox>>, TError,{data: BodyType<AddEmailMailboxRequest>}, TContext> => {
+
+const mutationKey = ['addEmailMailbox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addEmailMailbox>>, {data: BodyType<AddEmailMailboxRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  addEmailMailbox(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddEmailMailboxMutationResult = NonNullable<Awaited<ReturnType<typeof addEmailMailbox>>>
+    export type AddEmailMailboxMutationBody = BodyType<AddEmailMailboxRequest>
+    export type AddEmailMailboxMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Track a new mailbox (admin only)
+ */
+export const useAddEmailMailbox = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEmailMailbox>>, TError,{data: BodyType<AddEmailMailboxRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addEmailMailbox>>,
+        TError,
+        {data: BodyType<AddEmailMailboxRequest>},
+        TContext
+      > => {
+      return useMutation(getAddEmailMailboxMutationOptions(options));
+    }
+
+export const getUpdateEmailMailboxUrl = (id: string,) => {
+
+
+
+
+  return `/api/email-activity/mailboxes/${id}`
+}
+
+/**
+ * @summary Update a tracked mailbox (admin only)
+ */
+export const updateEmailMailbox = async (id: string,
+    updateEmailMailboxRequest: UpdateEmailMailboxRequest, options?: RequestInit): Promise<EmailMailboxStatus> => {
+
+  return customFetch<EmailMailboxStatus>(getUpdateEmailMailboxUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateEmailMailboxRequest)
+  }
+);}
+
+
+
+
+export const getUpdateEmailMailboxMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailMailbox>>, TError,{id: string;data: BodyType<UpdateEmailMailboxRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEmailMailbox>>, TError,{id: string;data: BodyType<UpdateEmailMailboxRequest>}, TContext> => {
+
+const mutationKey = ['updateEmailMailbox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEmailMailbox>>, {id: string;data: BodyType<UpdateEmailMailboxRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateEmailMailbox(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEmailMailboxMutationResult = NonNullable<Awaited<ReturnType<typeof updateEmailMailbox>>>
+    export type UpdateEmailMailboxMutationBody = BodyType<UpdateEmailMailboxRequest>
+    export type UpdateEmailMailboxMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a tracked mailbox (admin only)
+ */
+export const useUpdateEmailMailbox = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailMailbox>>, TError,{id: string;data: BodyType<UpdateEmailMailboxRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEmailMailbox>>,
+        TError,
+        {id: string;data: BodyType<UpdateEmailMailboxRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateEmailMailboxMutationOptions(options));
+    }
+
+export const getRemoveEmailMailboxUrl = (id: string,) => {
+
+
+
+
+  return `/api/email-activity/mailboxes/${id}`
+}
+
+/**
+ * @summary Stop tracking a mailbox and delete its synced metadata (admin only)
+ */
+export const removeEmailMailbox = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveEmailMailboxUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveEmailMailboxMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeEmailMailbox>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeEmailMailbox>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['removeEmailMailbox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeEmailMailbox>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  removeEmailMailbox(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveEmailMailboxMutationResult = NonNullable<Awaited<ReturnType<typeof removeEmailMailbox>>>
+
+    export type RemoveEmailMailboxMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Stop tracking a mailbox and delete its synced metadata (admin only)
+ */
+export const useRemoveEmailMailbox = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeEmailMailbox>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeEmailMailbox>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRemoveEmailMailboxMutationOptions(options));
+    }
+
+export const getVerifyEmailMailboxUrl = (id: string,) => {
+
+
+
+
+  return `/api/email-activity/mailboxes/${id}/verify`
+}
+
+/**
+ * @summary Test Gmail connectivity for one mailbox (admin only)
+ */
+export const verifyEmailMailbox = async (id: string, options?: RequestInit): Promise<EmailMailboxVerifyResult> => {
+
+  return customFetch<EmailMailboxVerifyResult>(getVerifyEmailMailboxUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getVerifyEmailMailboxMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyEmailMailbox>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyEmailMailbox>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['verifyEmailMailbox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyEmailMailbox>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  verifyEmailMailbox(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyEmailMailboxMutationResult = NonNullable<Awaited<ReturnType<typeof verifyEmailMailbox>>>
+
+    export type VerifyEmailMailboxMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Test Gmail connectivity for one mailbox (admin only)
+ */
+export const useVerifyEmailMailbox = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyEmailMailbox>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyEmailMailbox>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getVerifyEmailMailboxMutationOptions(options));
+    }
+
+export const getTriggerEmailSyncUrl = () => {
+
+
+
+
+  return `/api/email-activity/sync`
+}
+
+/**
+ * @summary Run an email sync now (admin only)
+ */
+export const triggerEmailSync = async ( options?: RequestInit): Promise<EmailSyncTriggerResult> => {
+
+  return customFetch<EmailSyncTriggerResult>(getTriggerEmailSyncUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTriggerEmailSyncMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerEmailSync>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerEmailSync>>, TError,void, TContext> => {
+
+const mutationKey = ['triggerEmailSync'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerEmailSync>>, void> = () => {
+
+
+          return  triggerEmailSync(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerEmailSyncMutationResult = NonNullable<Awaited<ReturnType<typeof triggerEmailSync>>>
+
+    export type TriggerEmailSyncMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run an email sync now (admin only)
+ */
+export const useTriggerEmailSync = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerEmailSync>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerEmailSync>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTriggerEmailSyncMutationOptions(options));
+    }
+
+export const getListEmailExclusionsUrl = () => {
+
+
+
+
+  return `/api/email-activity/exclusions`
+}
+
+/**
+ * @summary List exclusion rules (admin only)
+ */
+export const listEmailExclusions = async ( options?: RequestInit): Promise<EmailExclusionRule[]> => {
+
+  return customFetch<EmailExclusionRule[]>(getListEmailExclusionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmailExclusionsQueryKey = () => {
+    return [
+    `/api/email-activity/exclusions`
+    ] as const;
+    }
+
+
+export const getListEmailExclusionsQueryOptions = <TData = Awaited<ReturnType<typeof listEmailExclusions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailExclusions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmailExclusionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmailExclusions>>> = ({ signal }) => listEmailExclusions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmailExclusions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmailExclusionsQueryResult = NonNullable<Awaited<ReturnType<typeof listEmailExclusions>>>
+export type ListEmailExclusionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List exclusion rules (admin only)
+ */
+
+export function useListEmailExclusions<TData = Awaited<ReturnType<typeof listEmailExclusions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailExclusions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmailExclusionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddEmailExclusionUrl = () => {
+
+
+
+
+  return `/api/email-activity/exclusions`
+}
+
+/**
+ * @summary Add an exclusion rule; applied retroactively (admin only)
+ */
+export const addEmailExclusion = async (addEmailExclusionRequest: AddEmailExclusionRequest, options?: RequestInit): Promise<EmailExclusionRule> => {
+
+  return customFetch<EmailExclusionRule>(getAddEmailExclusionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addEmailExclusionRequest)
+  }
+);}
+
+
+
+
+export const getAddEmailExclusionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEmailExclusion>>, TError,{data: BodyType<AddEmailExclusionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addEmailExclusion>>, TError,{data: BodyType<AddEmailExclusionRequest>}, TContext> => {
+
+const mutationKey = ['addEmailExclusion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addEmailExclusion>>, {data: BodyType<AddEmailExclusionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  addEmailExclusion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddEmailExclusionMutationResult = NonNullable<Awaited<ReturnType<typeof addEmailExclusion>>>
+    export type AddEmailExclusionMutationBody = BodyType<AddEmailExclusionRequest>
+    export type AddEmailExclusionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Add an exclusion rule; applied retroactively (admin only)
+ */
+export const useAddEmailExclusion = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addEmailExclusion>>, TError,{data: BodyType<AddEmailExclusionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addEmailExclusion>>,
+        TError,
+        {data: BodyType<AddEmailExclusionRequest>},
+        TContext
+      > => {
+      return useMutation(getAddEmailExclusionMutationOptions(options));
+    }
+
+export const getRemoveEmailExclusionUrl = (id: string,) => {
+
+
+
+
+  return `/api/email-activity/exclusions/${id}`
+}
+
+/**
+ * @summary Remove an exclusion rule; reclassifies retroactively (admin only)
+ */
+export const removeEmailExclusion = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveEmailExclusionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveEmailExclusionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeEmailExclusion>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeEmailExclusion>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['removeEmailExclusion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeEmailExclusion>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  removeEmailExclusion(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveEmailExclusionMutationResult = NonNullable<Awaited<ReturnType<typeof removeEmailExclusion>>>
+
+    export type RemoveEmailExclusionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove an exclusion rule; reclassifies retroactively (admin only)
+ */
+export const useRemoveEmailExclusion = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeEmailExclusion>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeEmailExclusion>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRemoveEmailExclusionMutationOptions(options));
+    }
+
+export const getUpdateEmailActivitySettingsUrl = () => {
+
+
+
+
+  return `/api/email-activity/settings`
+}
+
+/**
+ * @summary Update email tracker settings (admin only)
+ */
+export const updateEmailActivitySettings = async (updateEmailSettingsRequest: UpdateEmailSettingsRequest, options?: RequestInit): Promise<EmailActivitySettings> => {
+
+  return customFetch<EmailActivitySettings>(getUpdateEmailActivitySettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateEmailSettingsRequest)
+  }
+);}
+
+
+
+
+export const getUpdateEmailActivitySettingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailActivitySettings>>, TError,{data: BodyType<UpdateEmailSettingsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEmailActivitySettings>>, TError,{data: BodyType<UpdateEmailSettingsRequest>}, TContext> => {
+
+const mutationKey = ['updateEmailActivitySettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEmailActivitySettings>>, {data: BodyType<UpdateEmailSettingsRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateEmailActivitySettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEmailActivitySettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateEmailActivitySettings>>>
+    export type UpdateEmailActivitySettingsMutationBody = BodyType<UpdateEmailSettingsRequest>
+    export type UpdateEmailActivitySettingsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update email tracker settings (admin only)
+ */
+export const useUpdateEmailActivitySettings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailActivitySettings>>, TError,{data: BodyType<UpdateEmailSettingsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEmailActivitySettings>>,
+        TError,
+        {data: BodyType<UpdateEmailSettingsRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateEmailActivitySettingsMutationOptions(options));
+    }
+
+export const getGetEmailActivityStatsUrl = (params: GetEmailActivityStatsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/email-activity/stats?${stringifiedParams}` : `/api/email-activity/stats`
+}
+
+/**
+ * @summary Sent/received/thread counts + series + thread depth (admin only)
+ */
+export const getEmailActivityStats = async (params: GetEmailActivityStatsParams, options?: RequestInit): Promise<EmailStatsResponse> => {
+
+  return customFetch<EmailStatsResponse>(getGetEmailActivityStatsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailActivityStatsQueryKey = (params?: GetEmailActivityStatsParams,) => {
+    return [
+    `/api/email-activity/stats`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEmailActivityStatsQueryOptions = <TData = Awaited<ReturnType<typeof getEmailActivityStats>>, TError = ErrorType<unknown>>(params: GetEmailActivityStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailActivityStatsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailActivityStats>>> = ({ signal }) => getEmailActivityStats(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailActivityStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailActivityStats>>>
+export type GetEmailActivityStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Sent/received/thread counts + series + thread depth (admin only)
+ */
+
+export function useGetEmailActivityStats<TData = Awaited<ReturnType<typeof getEmailActivityStats>>, TError = ErrorType<unknown>>(
+ params: GetEmailActivityStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailActivityStatsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEmailResponseTimesUrl = (params: GetEmailResponseTimesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/email-activity/response-times?${stringifiedParams}` : `/api/email-activity/response-times`
+}
+
+/**
+ * @summary Inbound → first-reply timing per mailbox (admin only)
+ */
+export const getEmailResponseTimes = async (params: GetEmailResponseTimesParams, options?: RequestInit): Promise<EmailResponseTimesResponse> => {
+
+  return customFetch<EmailResponseTimesResponse>(getGetEmailResponseTimesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailResponseTimesQueryKey = (params?: GetEmailResponseTimesParams,) => {
+    return [
+    `/api/email-activity/response-times`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEmailResponseTimesQueryOptions = <TData = Awaited<ReturnType<typeof getEmailResponseTimes>>, TError = ErrorType<unknown>>(params: GetEmailResponseTimesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailResponseTimes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailResponseTimesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailResponseTimes>>> = ({ signal }) => getEmailResponseTimes(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailResponseTimes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailResponseTimesQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailResponseTimes>>>
+export type GetEmailResponseTimesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Inbound → first-reply timing per mailbox (admin only)
+ */
+
+export function useGetEmailResponseTimes<TData = Awaited<ReturnType<typeof getEmailResponseTimes>>, TError = ErrorType<unknown>>(
+ params: GetEmailResponseTimesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailResponseTimes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailResponseTimesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEmailUnansweredThreadsUrl = (params?: GetEmailUnansweredThreadsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/email-activity/unanswered?${stringifiedParams}` : `/api/email-activity/unanswered`
+}
+
+/**
+ * @summary Threads unanswered past the configured threshold (admin only)
+ */
+export const getEmailUnansweredThreads = async (params?: GetEmailUnansweredThreadsParams, options?: RequestInit): Promise<EmailUnansweredResponse> => {
+
+  return customFetch<EmailUnansweredResponse>(getGetEmailUnansweredThreadsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailUnansweredThreadsQueryKey = (params?: GetEmailUnansweredThreadsParams,) => {
+    return [
+    `/api/email-activity/unanswered`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEmailUnansweredThreadsQueryOptions = <TData = Awaited<ReturnType<typeof getEmailUnansweredThreads>>, TError = ErrorType<unknown>>(params?: GetEmailUnansweredThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailUnansweredThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailUnansweredThreadsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailUnansweredThreads>>> = ({ signal }) => getEmailUnansweredThreads(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailUnansweredThreads>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailUnansweredThreadsQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailUnansweredThreads>>>
+export type GetEmailUnansweredThreadsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Threads unanswered past the configured threshold (admin only)
+ */
+
+export function useGetEmailUnansweredThreads<TData = Awaited<ReturnType<typeof getEmailUnansweredThreads>>, TError = ErrorType<unknown>>(
+ params?: GetEmailUnansweredThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailUnansweredThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailUnansweredThreadsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEmailHeatmapUrl = (params: GetEmailHeatmapParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/email-activity/heatmap?${stringifiedParams}` : `/api/email-activity/heatmap`
+}
+
+/**
+ * @summary Day-of-week × hour-of-day activity (shop-local time, admin only)
+ */
+export const getEmailHeatmap = async (params: GetEmailHeatmapParams, options?: RequestInit): Promise<EmailHeatmapResponse> => {
+
+  return customFetch<EmailHeatmapResponse>(getGetEmailHeatmapUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailHeatmapQueryKey = (params?: GetEmailHeatmapParams,) => {
+    return [
+    `/api/email-activity/heatmap`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEmailHeatmapQueryOptions = <TData = Awaited<ReturnType<typeof getEmailHeatmap>>, TError = ErrorType<unknown>>(params: GetEmailHeatmapParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailHeatmap>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailHeatmapQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailHeatmap>>> = ({ signal }) => getEmailHeatmap(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailHeatmap>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailHeatmapQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailHeatmap>>>
+export type GetEmailHeatmapQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Day-of-week × hour-of-day activity (shop-local time, admin only)
+ */
+
+export function useGetEmailHeatmap<TData = Awaited<ReturnType<typeof getEmailHeatmap>>, TError = ErrorType<unknown>>(
+ params: GetEmailHeatmapParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailHeatmap>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailHeatmapQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEmailFilteredBucketUrl = (params: GetEmailFilteredBucketParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/email-activity/filtered?${stringifiedParams}` : `/api/email-activity/filtered`
+}
+
+/**
+ * @summary Filtered-mail breakdown + spot-check sample (admin only)
+ */
+export const getEmailFilteredBucket = async (params: GetEmailFilteredBucketParams, options?: RequestInit): Promise<EmailFilteredResponse> => {
+
+  return customFetch<EmailFilteredResponse>(getGetEmailFilteredBucketUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailFilteredBucketQueryKey = (params?: GetEmailFilteredBucketParams,) => {
+    return [
+    `/api/email-activity/filtered`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEmailFilteredBucketQueryOptions = <TData = Awaited<ReturnType<typeof getEmailFilteredBucket>>, TError = ErrorType<unknown>>(params: GetEmailFilteredBucketParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailFilteredBucket>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailFilteredBucketQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailFilteredBucket>>> = ({ signal }) => getEmailFilteredBucket(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailFilteredBucket>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailFilteredBucketQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailFilteredBucket>>>
+export type GetEmailFilteredBucketQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Filtered-mail breakdown + spot-check sample (admin only)
+ */
+
+export function useGetEmailFilteredBucket<TData = Awaited<ReturnType<typeof getEmailFilteredBucket>>, TError = ErrorType<unknown>>(
+ params: GetEmailFilteredBucketParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailFilteredBucket>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailFilteredBucketQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
