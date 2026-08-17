@@ -18,6 +18,7 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import Pipeline from "./pages/Pipeline";
+import StatusActivity from "./pages/StatusActivity";
 import Payments from "./pages/Payments";
 import VendorOrders from "./pages/VendorOrders";
 import PoLog from "./pages/PoLog";
@@ -191,6 +192,7 @@ function HubRoutes() {
       <Route path="/" component={Dashboard} />
       <Route path="/orders" component={Orders} />
       <Route path="/pipeline" component={Pipeline} />
+      <Route path="/status-activity" component={StatusActivity} />
       <Route path="/payments" component={Payments} />
       <Route path="/ask" component={AskAI} />
       <Route path="/email-activity/settings" component={EmailActivitySettings} />

@@ -131,6 +131,7 @@ import type {
   GetPipelineParams,
   GetPricingMatrixBreakdownParams,
   GetRecentActivityParams,
+  GetStatusActivityParams,
   GetStatusBreakdownParams,
   GetStyleNumberBreakdownParams,
   GetTopCustomersParams,
@@ -241,6 +242,7 @@ import type {
   StaffMember,
   StartAutoPrintRunRequest,
   StartPqStatusJobRequest,
+  StatusActivityResponse,
   StatusRule,
   StatusRulesResponse,
   StatusSuggestion,
@@ -17555,6 +17557,90 @@ export function useGetEmailDealsReport<TData = Awaited<ReturnType<typeof getEmai
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetEmailDealsReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetStatusActivityUrl = (params?: GetStatusActivityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/status-activity?${stringifiedParams}` : `/api/status-activity`
+}
+
+/**
+ * @summary Daily status-arrival counts + current occupancy and dwell per status
+ */
+export const getStatusActivity = async (params?: GetStatusActivityParams, options?: RequestInit): Promise<StatusActivityResponse> => {
+
+  return customFetch<StatusActivityResponse>(getGetStatusActivityUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStatusActivityQueryKey = (params?: GetStatusActivityParams,) => {
+    return [
+    `/api/status-activity`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetStatusActivityQueryOptions = <TData = Awaited<ReturnType<typeof getStatusActivity>>, TError = ErrorType<unknown>>(params?: GetStatusActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStatusActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStatusActivityQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStatusActivity>>> = ({ signal }) => getStatusActivity(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStatusActivity>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStatusActivityQueryResult = NonNullable<Awaited<ReturnType<typeof getStatusActivity>>>
+export type GetStatusActivityQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Daily status-arrival counts + current occupancy and dwell per status
+ */
+
+export function useGetStatusActivity<TData = Awaited<ReturnType<typeof getStatusActivity>>, TError = ErrorType<unknown>>(
+ params?: GetStatusActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStatusActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStatusActivityQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

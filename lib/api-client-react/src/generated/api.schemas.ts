@@ -4064,6 +4064,32 @@ export interface EmailDealsReportResponse {
   rows: EmailDealsReportRow[];
 }
 
+export interface StatusActivityDay {
+  /** YYYY-MM-DD (America/Chicago) */
+  day: string;
+  count: number;
+}
+
+export interface StatusActivityStatus {
+  statusName: string;
+  /** Pipeline stage keyword bucket, if mapped */
+  stageId: string | null;
+  /** Orders that entered this status in the window */
+  totalArrivals: number;
+  daily: StatusActivityDay[];
+  /** Orders sitting in this status right now */
+  currentCount: number;
+  medianDwellDays: number | null;
+  maxDwellDays: number | null;
+}
+
+export interface StatusActivityResponse {
+  days: number;
+  /** When status-change tracking began — arrivals before this are unknown */
+  firstTrackedAt: string | null;
+  statuses: StatusActivityStatus[];
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -4874,5 +4900,13 @@ end: string;
 export type GetEmailDealsReportParams = {
 start: string;
 end: string;
+};
+
+export type GetStatusActivityParams = {
+/**
+ * @minimum 1
+ * @maximum 365
+ */
+days?: number;
 };
 

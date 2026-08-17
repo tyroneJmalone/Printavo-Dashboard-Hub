@@ -6733,3 +6733,33 @@ export const GetEmailDealsReportResponse = zod.object({
 })
 
 
+/**
+ * @summary Daily status-arrival counts + current occupancy and dwell per status
+ */
+export const getStatusActivityQueryDaysDefault = 30;
+export const getStatusActivityQueryDaysMax = 365;
+
+
+
+export const GetStatusActivityQueryParams = zod.object({
+  "days": zod.coerce.number().min(1).max(getStatusActivityQueryDaysMax).default(getStatusActivityQueryDaysDefault)
+})
+
+export const GetStatusActivityResponse = zod.object({
+  "days": zod.number(),
+  "firstTrackedAt": zod.string().nullable().describe('When status-change tracking began — arrivals before this are unknown'),
+  "statuses": zod.array(zod.object({
+  "statusName": zod.string(),
+  "stageId": zod.string().nullable().describe('Pipeline stage keyword bucket, if mapped'),
+  "totalArrivals": zod.number().describe('Orders that entered this status in the window'),
+  "daily": zod.array(zod.object({
+  "day": zod.string().describe('YYYY-MM-DD (America\/Chicago)'),
+  "count": zod.number()
+})),
+  "currentCount": zod.number().describe('Orders sitting in this status right now'),
+  "medianDwellDays": zod.number().nullable(),
+  "maxDwellDays": zod.number().nullable()
+}))
+})
+
+

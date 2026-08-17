@@ -30,6 +30,8 @@ tags:
     description: Ask AI — natural-language questions over local Printavo data + saved presets
   - name: emailActivity
     description: Email activity tracker — Gmail metadata sync + team stats
+  - name: statusActivity
+    description: Status activity — daily status-arrival counts + per-status occupancy/dwell (bottlenecks)
   - name: chipply
     description: Chipply web stores — email/export import, Printavo invoice linking, revenue kept separate
 paths:
@@ -5149,6 +5151,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmailDealsReportResponse"
+  /status-activity:
+    get:
+      operationId: getStatusActivity
+      tags: [statusActivity]
+      summary: Daily status-arrival counts + current occupancy and dwell per status
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 365, default: 30 }
+      responses:
+        "200":
+          description: Status activity report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusActivityResponse"
 components:
   parameters:
     OrderTypeParam:
@@ -9450,3 +9468,36 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/EmailDealsReportRow"
+    StatusActivityDay:
+      type: object
+      required: [day, count]
+      properties:
+        day: { type: string, description: "YYYY-MM-DD (America/Chicago)" }
+        count: { type: integer }
+    StatusActivityStatus:
+      type: object
+      required: [statusName, stageId, totalArrivals, daily, currentCount, medianDwellDays, maxDwellDays]
+      properties:
+        statusName: { type: string }
+        stageId: { type: string, nullable: true, description: "Pipeline stage keyword bucket, if mapped" }
+        totalArrivals: { type: integer, description: "Orders that entered this status in the window" }
+        daily:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusActivityDay"
+        currentCount: { type: integer, description: "Orders sitting in this status right now" }
+        medianDwellDays: { type: number, nullable: true }
+        maxDwellDays: { type: number, nullable: true }
+    StatusActivityResponse:
+      type: object
+      required: [days, firstTrackedAt, statuses]
+      properties:
+        days: { type: integer }
+        firstTrackedAt:
+          type: string
+          nullable: true
+          description: When status-change tracking began — arrivals before this are unknown
+        statuses:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusActivityStatus"
