@@ -34,9 +34,17 @@ import {
   Shirt,
   Store,
   Palette,
-  Star
+  Star,
+  Link2,
+  X
 } from "lucide-react";
 import { fmtMoney, fmtDate } from "./ChipplyStores";
+import {
+  useGetEmailCustomerCorrespondence,
+  getGetEmailCustomerCorrespondenceQueryKey,
+  useCreateEmailThreadLink,
+  useRemoveEmailThreadLink,
+} from "@workspace/api-client-react";
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -46,6 +54,178 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
       </p>
       <p className="text-lg font-bold text-white tabular-nums mt-0.5">{value}</p>
       {sub ? <p className="text-xs text-slate-500 mt-0.5">{sub}</p> : null}
+    </div>
+  );
+}
+
+function fmtDur(secs: number | null | undefined): string {
+  if (secs == null) return "—";
+  if (secs < 60) return `${Math.round(secs)}s`;
+  if (secs < 3600) return `${Math.round(secs / 60)}m`;
+  if (secs < 86400) return `${(secs / 3600).toFixed(1)}h`;
+  return `${(secs / 86400).toFixed(1)}d`;
+}
+
+/**
+ * Correspondence section — admin-only data (email tracker). The query 403s
+ * for non-admin staff, in which case the section silently hides.
+ */
+function CorrespondenceSection({ customerId }: { customerId: string }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [linkingThread, setLinkingThread] = useState<string | null>(null);
+  const [visualIdInput, setVisualIdInput] = useState("");
+
+  const queryKey = getGetEmailCustomerCorrespondenceQueryKey(customerId);
+  const { data, error } = useGetEmailCustomerCorrespondence(customerId, {
+    query: { enabled: !!customerId, queryKey, retry: false },
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey });
+  const createLink = useCreateEmailThreadLink({
+    mutation: {
+      onSuccess: (r) => {
+        toast({ title: `Linked to order #${r.visualId}` });
+        setLinkingThread(null);
+        setVisualIdInput("");
+        invalidate();
+      },
+      onError: (err: unknown) =>
+        toast({
+          title: "Link failed",
+          description:
+            (err as { error?: string })?.error ?? "No synced order with that visual ID.",
+          variant: "destructive",
+        }),
+    },
+  });
+  const removeLink = useRemoveEmailThreadLink({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Invoice link removed" });
+        invalidate();
+      },
+      onError: () => toast({ title: "Unlink failed", variant: "destructive" }),
+    },
+  });
+
+  if (error || !data) return null; // non-admin (403) or no tracker data
+  if (data.stats.threadCount === 0) return null;
+
+  const s = data.stats;
+  return (
+    <div>
+      <h2 className="text-sm font-semibold text-slate-200 mb-2 inline-flex items-center gap-1.5">
+        <Mail size={14} className="text-slate-400" /> Correspondence
+        <span className="text-xs font-normal text-slate-500">from the email tracker · metadata only</span>
+      </h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <StatCard label="Email threads" value={formatNumber(s.threadCount)} />
+        <StatCard
+          label="Messages"
+          value={formatNumber(s.messageCount)}
+          sub={`${formatNumber(s.sent)} sent · ${formatNumber(s.received)} received`}
+        />
+        <StatCard
+          label="Median response"
+          value={fmtDur(s.medianSecs)}
+          sub={s.p90Secs != null ? `p90 ${fmtDur(s.p90Secs)} · ${formatNumber(s.repliedThreads)} replied` : undefined}
+        />
+        <StatCard
+          label="Last email"
+          value={s.lastEmailAt ? new Date(s.lastEmailAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+        />
+      </div>
+      <div className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-800 text-left text-xs text-slate-400">
+              <th className="px-4 py-2 font-semibold">Recent threads</th>
+              <th className="px-4 py-2 font-semibold text-right">Msgs</th>
+              <th className="px-4 py-2 font-semibold text-right">Last</th>
+              <th className="px-4 py-2 font-semibold">Linked invoices</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.threads.map((t) => {
+              const key = `${t.mailboxId}|${t.gmailThreadId}`;
+              return (
+                <tr key={key} className="border-b border-slate-800/60 align-top">
+                  <td className="px-4 py-2 max-w-[380px]">
+                    <p className="text-slate-200 truncate">{t.subject || "(no subject)"}</p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {t.counterpart} ↔ {t.mailboxEmail?.split("@")[0] ?? "—"}
+                    </p>
+                  </td>
+                  <td className="px-4 py-2 text-right text-slate-300 tabular-nums">{t.messageCount}</td>
+                  <td className="px-4 py-2 text-right text-slate-400 whitespace-nowrap">
+                    {new Date(t.lastAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {t.orderLinks.map((l) => (
+                        <span
+                          key={l.id}
+                          title={`${l.nickname ?? ""}${l.source === "auto" ? " (auto-detected)" : " (manually linked)"}`}
+                          className="inline-flex items-center gap-1 rounded border border-slate-700 bg-slate-800/60 px-1.5 py-0.5 text-[11px] text-slate-200"
+                        >
+                          <PrintavoOrderLink orderId={l.printavoOrderId} visualId={l.visualId ?? 0} />
+                          {l.source === "auto" ? <span className="text-slate-500">auto</span> : null}
+                          <button
+                            onClick={() => removeLink.mutate({ id: l.id })}
+                            className="text-slate-500 hover:text-red-400"
+                            title="Remove link"
+                          >
+                            <X size={11} />
+                          </button>
+                        </span>
+                      ))}
+                      {linkingThread === key ? (
+                        <form
+                          className="inline-flex items-center gap-1"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const v = Number(visualIdInput.replace(/^#/, "").trim());
+                            if (!Number.isInteger(v) || v <= 0) return;
+                            createLink.mutate({
+                              data: { mailboxId: t.mailboxId, gmailThreadId: t.gmailThreadId, visualId: v },
+                            });
+                          }}
+                        >
+                          <Input
+                            autoFocus
+                            value={visualIdInput}
+                            onChange={(e) => setVisualIdInput(e.target.value)}
+                            placeholder="#1234"
+                            className="h-6 w-20 text-xs px-1.5"
+                          />
+                          <Button type="submit" size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={createLink.isPending}>
+                            Link
+                          </Button>
+                          <button type="button" onClick={() => setLinkingThread(null)} className="text-slate-500 hover:text-slate-300">
+                            <X size={12} />
+                          </button>
+                        </form>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setLinkingThread(key);
+                            setVisualIdInput("");
+                          }}
+                          className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-[#10b981]"
+                          title="Link this thread to an invoice by visual ID"
+                        >
+                          <Link2 size={11} /> link
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -525,6 +705,8 @@ export default function CustomerProfile() {
             </div>
           </div>
         )}
+
+        <CorrespondenceSection customerId={data.printavoId} />
 
         <div>
           <div className="flex flex-wrap items-center gap-3 mb-2">

@@ -6600,3 +6600,136 @@ export const GetEmailFilteredBucketResponse = zod.object({
 })
 
 
+/**
+ * @summary Run the thread↔customer/invoice matching pass now (admin only)
+ */
+export const RunEmailMatchingResponse = zod.object({
+  "customersLinked": zod.number(),
+  "invoicesLinked": zod.number()
+})
+
+
+/**
+ * @summary Per-customer email volume in a range — dashboard drill-down (admin only)
+ */
+export const ListEmailCustomersQueryParams = zod.object({
+  "start": zod.coerce.string(),
+  "end": zod.coerce.string()
+})
+
+export const ListEmailCustomersResponse = zod.object({
+  "customers": zod.array(zod.object({
+  "customerId": zod.string(),
+  "displayName": zod.string(),
+  "threads": zod.number(),
+  "messages": zod.number(),
+  "sent": zod.number(),
+  "received": zod.number(),
+  "lastEmailAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Correspondence for one Printavo customer — threads, stats, invoice links (admin only)
+ */
+export const GetEmailCustomerCorrespondenceParams = zod.object({
+  "customerId": zod.coerce.string()
+})
+
+export const GetEmailCustomerCorrespondenceResponse = zod.object({
+  "stats": zod.object({
+  "threadCount": zod.number(),
+  "messageCount": zod.number(),
+  "sent": zod.number(),
+  "received": zod.number(),
+  "lastEmailAt": zod.string().nullable(),
+  "repliedThreads": zod.number(),
+  "medianSecs": zod.number().nullable(),
+  "p90Secs": zod.number().nullable()
+}),
+  "threads": zod.array(zod.object({
+  "mailboxId": zod.string(),
+  "mailboxEmail": zod.string().nullable(),
+  "gmailThreadId": zod.string(),
+  "subject": zod.string(),
+  "counterpart": zod.string(),
+  "messageCount": zod.number(),
+  "sent": zod.number(),
+  "received": zod.number(),
+  "firstAt": zod.string(),
+  "lastAt": zod.string(),
+  "orderLinks": zod.array(zod.object({
+  "id": zod.string(),
+  "printavoOrderId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "source": zod.enum(['auto', 'manual']),
+  "nickname": zod.string().nullable(),
+  "orderType": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "total": zod.number().nullable()
+}))
+}))
+})
+
+
+/**
+ * @summary Manually link a thread to a Printavo order by visual ID (admin only)
+ */
+
+
+
+export const CreateEmailThreadLinkBody = zod.object({
+  "mailboxId": zod.string(),
+  "gmailThreadId": zod.string(),
+  "visualId": zod.number().min(1)
+})
+
+export const CreateEmailThreadLinkResponse = zod.object({
+  "id": zod.string(),
+  "printavoOrderId": zod.string(),
+  "visualId": zod.number(),
+  "source": zod.enum(['auto', 'manual'])
+})
+
+
+/**
+ * @summary Remove a thread↔order link (auto links are suppressed, manual deleted)
+ */
+export const RemoveEmailThreadLinkParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RemoveEmailThreadLinkResponse = zod.void()
+
+
+/**
+ * @summary Email volume vs. invoices won per customer — Printavo invoices only (admin only)
+ */
+export const GetEmailDealsReportQueryParams = zod.object({
+  "start": zod.coerce.string(),
+  "end": zod.coerce.string()
+})
+
+export const GetEmailDealsReportResponse = zod.object({
+  "summary": zod.object({
+  "customers": zod.number(),
+  "emails": zod.number(),
+  "invoicesWon": zod.number(),
+  "revenue": zod.number(),
+  "emailsPerWonInvoice": zod.number().nullable()
+}),
+  "rows": zod.array(zod.object({
+  "customerId": zod.string(),
+  "displayName": zod.string(),
+  "threads": zod.number(),
+  "emails": zod.number(),
+  "invoicesWon": zod.number(),
+  "revenue": zod.number(),
+  "emailsPerWonInvoice": zod.number().nullable(),
+  "lastInvoiceAt": zod.string().nullable(),
+  "timeSink": zod.boolean()
+}))
+})
+
+

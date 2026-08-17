@@ -5023,6 +5023,132 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmailFilteredResponse"
+  /email-activity/match:
+    post:
+      operationId: runEmailMatching
+      tags: [emailActivity]
+      summary: Run the thread↔customer/invoice matching pass now (admin only)
+      responses:
+        "200":
+          description: Matching result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailMatchResult"
+  /email-activity/customers:
+    get:
+      operationId: listEmailCustomers
+      tags: [emailActivity]
+      summary: Per-customer email volume in a range — dashboard drill-down (admin only)
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema: { type: string }
+        - name: end
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Customers with linked email activity, busiest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailCustomersResponse"
+  /email-activity/customers/{customerId}:
+    get:
+      operationId: getEmailCustomerCorrespondence
+      tags: [emailActivity]
+      summary: Correspondence for one Printavo customer — threads, stats, invoice links (admin only)
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Correspondence detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailCustomerCorrespondence"
+        "404":
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /email-activity/thread-links:
+    post:
+      operationId: createEmailThreadLink
+      tags: [emailActivity]
+      summary: Manually link a thread to a Printavo order by visual ID (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEmailThreadLinkRequest"
+      responses:
+        "201":
+          description: Created (or revived) link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailThreadLinkCreated"
+        "400":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No synced order with that visual ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /email-activity/thread-links/{id}:
+    delete:
+      operationId: removeEmailThreadLink
+      tags: [emailActivity]
+      summary: Remove a thread↔order link (auto links are suppressed, manual deleted)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: Link not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /email-activity/deals-report:
+    get:
+      operationId: getEmailDealsReport
+      tags: [emailActivity]
+      summary: Email volume vs. invoices won per customer — Printavo invoices only (admin only)
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema: { type: string }
+        - name: end
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deals report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailDealsReportResponse"
 components:
   parameters:
     OrderTypeParam:
@@ -9200,3 +9326,127 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/EmailFilteredSample"
+    EmailMatchResult:
+      type: object
+      required: [customersLinked, invoicesLinked]
+      properties:
+        customersLinked: { type: integer }
+        invoicesLinked: { type: integer }
+    EmailCustomerListItem:
+      type: object
+      required: [customerId, displayName, threads, messages, sent, received, lastEmailAt]
+      properties:
+        customerId: { type: string }
+        displayName: { type: string }
+        threads: { type: integer }
+        messages: { type: integer }
+        sent: { type: integer }
+        received: { type: integer }
+        lastEmailAt: { type: string }
+    EmailCustomersResponse:
+      type: object
+      required: [customers]
+      properties:
+        customers:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailCustomerListItem"
+    EmailThreadOrderLink:
+      type: object
+      required: [id, printavoOrderId, visualId, source, nickname, orderType, statusName, total]
+      properties:
+        id: { type: string }
+        printavoOrderId: { type: string }
+        visualId: { type: integer, nullable: true }
+        source: { type: string, enum: [auto, manual] }
+        nickname: { type: string, nullable: true }
+        orderType: { type: string, nullable: true }
+        statusName: { type: string, nullable: true }
+        total: { type: number, nullable: true }
+    EmailCustomerThread:
+      type: object
+      required: [mailboxId, mailboxEmail, gmailThreadId, subject, counterpart, messageCount, sent, received, firstAt, lastAt, orderLinks]
+      properties:
+        mailboxId: { type: string }
+        mailboxEmail: { type: string, nullable: true }
+        gmailThreadId: { type: string }
+        subject: { type: string }
+        counterpart: { type: string }
+        messageCount: { type: integer }
+        sent: { type: integer }
+        received: { type: integer }
+        firstAt: { type: string }
+        lastAt: { type: string }
+        orderLinks:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailThreadOrderLink"
+    EmailCustomerCorrespondenceStats:
+      type: object
+      required: [threadCount, messageCount, sent, received, lastEmailAt, repliedThreads, medianSecs, p90Secs]
+      properties:
+        threadCount: { type: integer }
+        messageCount: { type: integer }
+        sent: { type: integer }
+        received: { type: integer }
+        lastEmailAt: { type: string, nullable: true }
+        repliedThreads: { type: integer }
+        medianSecs: { type: number, nullable: true }
+        p90Secs: { type: number, nullable: true }
+    EmailCustomerCorrespondence:
+      type: object
+      required: [stats, threads]
+      properties:
+        stats:
+          $ref: "#/components/schemas/EmailCustomerCorrespondenceStats"
+        threads:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailCustomerThread"
+    CreateEmailThreadLinkRequest:
+      type: object
+      required: [mailboxId, gmailThreadId, visualId]
+      properties:
+        mailboxId: { type: string }
+        gmailThreadId: { type: string }
+        visualId: { type: integer, minimum: 1 }
+    EmailThreadLinkCreated:
+      type: object
+      required: [id, printavoOrderId, visualId, source]
+      properties:
+        id: { type: string }
+        printavoOrderId: { type: string }
+        visualId: { type: integer }
+        source: { type: string, enum: [auto, manual] }
+    EmailDealsReportSummary:
+      type: object
+      required: [customers, emails, invoicesWon, revenue, emailsPerWonInvoice]
+      properties:
+        customers: { type: integer }
+        emails: { type: integer }
+        invoicesWon: { type: integer }
+        revenue: { type: number }
+        emailsPerWonInvoice: { type: number, nullable: true }
+    EmailDealsReportRow:
+      type: object
+      required: [customerId, displayName, threads, emails, invoicesWon, revenue, emailsPerWonInvoice, lastInvoiceAt, timeSink]
+      properties:
+        customerId: { type: string }
+        displayName: { type: string }
+        threads: { type: integer }
+        emails: { type: integer }
+        invoicesWon: { type: integer }
+        revenue: { type: number }
+        emailsPerWonInvoice: { type: number, nullable: true }
+        lastInvoiceAt: { type: string, nullable: true }
+        timeSink: { type: boolean }
+    EmailDealsReportResponse:
+      type: object
+      required: [summary, rows]
+      properties:
+        summary:
+          $ref: "#/components/schemas/EmailDealsReportSummary"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailDealsReportRow"

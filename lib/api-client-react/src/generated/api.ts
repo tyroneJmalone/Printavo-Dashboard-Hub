@@ -62,6 +62,7 @@ import type {
   CommentInput,
   CreateChipplyStoreRequest,
   CreateCollectionRequest,
+  CreateEmailThreadLinkRequest,
   CreateInsightsPresetRequest,
   CreatePoFileRequest,
   CreatePqStatusRuleRequest,
@@ -88,14 +89,19 @@ import type {
   DirectoryCustomersResponse,
   EmailActivitySettings,
   EmailActivityStatus,
+  EmailCustomerCorrespondence,
+  EmailCustomersResponse,
+  EmailDealsReportResponse,
   EmailExclusionRule,
   EmailFilteredResponse,
   EmailHeatmapResponse,
   EmailMailboxStatus,
   EmailMailboxVerifyResult,
+  EmailMatchResult,
   EmailResponseTimesResponse,
   EmailStatsResponse,
   EmailSyncTriggerResult,
+  EmailThreadLinkCreated,
   EmailUnansweredResponse,
   ErrorResponse,
   EvaluateStatusRulesResponse,
@@ -109,6 +115,7 @@ import type {
   GetCustomerProfileParams,
   GetDashboardSummaryParams,
   GetEmailActivityStatsParams,
+  GetEmailDealsReportParams,
   GetEmailFilteredBucketParams,
   GetEmailHeatmapParams,
   GetEmailResponseTimesParams,
@@ -140,6 +147,7 @@ import type {
   ListCreditsParams,
   ListCustomersParams,
   ListDirectoryCustomersParams,
+  ListEmailCustomersParams,
   ListGroup,
   ListGroupInput,
   ListGroupUpdate,
@@ -17092,6 +17100,461 @@ export function useGetEmailFilteredBucket<TData = Awaited<ReturnType<typeof getE
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetEmailFilteredBucketQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunEmailMatchingUrl = () => {
+
+
+
+
+  return `/api/email-activity/match`
+}
+
+/**
+ * @summary Run the thread↔customer/invoice matching pass now (admin only)
+ */
+export const runEmailMatching = async ( options?: RequestInit): Promise<EmailMatchResult> => {
+
+  return customFetch<EmailMatchResult>(getRunEmailMatchingUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRunEmailMatchingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runEmailMatching>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runEmailMatching>>, TError,void, TContext> => {
+
+const mutationKey = ['runEmailMatching'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runEmailMatching>>, void> = () => {
+
+
+          return  runEmailMatching(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunEmailMatchingMutationResult = NonNullable<Awaited<ReturnType<typeof runEmailMatching>>>
+
+    export type RunEmailMatchingMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run the thread↔customer/invoice matching pass now (admin only)
+ */
+export const useRunEmailMatching = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runEmailMatching>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runEmailMatching>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRunEmailMatchingMutationOptions(options));
+    }
+
+export const getListEmailCustomersUrl = (params: ListEmailCustomersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/email-activity/customers?${stringifiedParams}` : `/api/email-activity/customers`
+}
+
+/**
+ * @summary Per-customer email volume in a range — dashboard drill-down (admin only)
+ */
+export const listEmailCustomers = async (params: ListEmailCustomersParams, options?: RequestInit): Promise<EmailCustomersResponse> => {
+
+  return customFetch<EmailCustomersResponse>(getListEmailCustomersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmailCustomersQueryKey = (params?: ListEmailCustomersParams,) => {
+    return [
+    `/api/email-activity/customers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListEmailCustomersQueryOptions = <TData = Awaited<ReturnType<typeof listEmailCustomers>>, TError = ErrorType<unknown>>(params: ListEmailCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmailCustomersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmailCustomers>>> = ({ signal }) => listEmailCustomers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmailCustomers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmailCustomersQueryResult = NonNullable<Awaited<ReturnType<typeof listEmailCustomers>>>
+export type ListEmailCustomersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Per-customer email volume in a range — dashboard drill-down (admin only)
+ */
+
+export function useListEmailCustomers<TData = Awaited<ReturnType<typeof listEmailCustomers>>, TError = ErrorType<unknown>>(
+ params: ListEmailCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmailCustomersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEmailCustomerCorrespondenceUrl = (customerId: string,) => {
+
+
+
+
+  return `/api/email-activity/customers/${customerId}`
+}
+
+/**
+ * @summary Correspondence for one Printavo customer — threads, stats, invoice links (admin only)
+ */
+export const getEmailCustomerCorrespondence = async (customerId: string, options?: RequestInit): Promise<EmailCustomerCorrespondence> => {
+
+  return customFetch<EmailCustomerCorrespondence>(getGetEmailCustomerCorrespondenceUrl(customerId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailCustomerCorrespondenceQueryKey = (customerId: string,) => {
+    return [
+    `/api/email-activity/customers/${customerId}`
+    ] as const;
+    }
+
+
+export const getGetEmailCustomerCorrespondenceQueryOptions = <TData = Awaited<ReturnType<typeof getEmailCustomerCorrespondence>>, TError = ErrorType<ErrorResponse>>(customerId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailCustomerCorrespondence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailCustomerCorrespondenceQueryKey(customerId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailCustomerCorrespondence>>> = ({ signal }) => getEmailCustomerCorrespondence(customerId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: customerId !== null && customerId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailCustomerCorrespondence>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailCustomerCorrespondenceQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailCustomerCorrespondence>>>
+export type GetEmailCustomerCorrespondenceQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Correspondence for one Printavo customer — threads, stats, invoice links (admin only)
+ */
+
+export function useGetEmailCustomerCorrespondence<TData = Awaited<ReturnType<typeof getEmailCustomerCorrespondence>>, TError = ErrorType<ErrorResponse>>(
+ customerId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailCustomerCorrespondence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailCustomerCorrespondenceQueryOptions(customerId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateEmailThreadLinkUrl = () => {
+
+
+
+
+  return `/api/email-activity/thread-links`
+}
+
+/**
+ * @summary Manually link a thread to a Printavo order by visual ID (admin only)
+ */
+export const createEmailThreadLink = async (createEmailThreadLinkRequest: CreateEmailThreadLinkRequest, options?: RequestInit): Promise<EmailThreadLinkCreated> => {
+
+  return customFetch<EmailThreadLinkCreated>(getCreateEmailThreadLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createEmailThreadLinkRequest)
+  }
+);}
+
+
+
+
+export const getCreateEmailThreadLinkMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmailThreadLink>>, TError,{data: BodyType<CreateEmailThreadLinkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEmailThreadLink>>, TError,{data: BodyType<CreateEmailThreadLinkRequest>}, TContext> => {
+
+const mutationKey = ['createEmailThreadLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEmailThreadLink>>, {data: BodyType<CreateEmailThreadLinkRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createEmailThreadLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEmailThreadLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createEmailThreadLink>>>
+    export type CreateEmailThreadLinkMutationBody = BodyType<CreateEmailThreadLinkRequest>
+    export type CreateEmailThreadLinkMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Manually link a thread to a Printavo order by visual ID (admin only)
+ */
+export const useCreateEmailThreadLink = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmailThreadLink>>, TError,{data: BodyType<CreateEmailThreadLinkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createEmailThreadLink>>,
+        TError,
+        {data: BodyType<CreateEmailThreadLinkRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateEmailThreadLinkMutationOptions(options));
+    }
+
+export const getRemoveEmailThreadLinkUrl = (id: string,) => {
+
+
+
+
+  return `/api/email-activity/thread-links/${id}`
+}
+
+/**
+ * @summary Remove a thread↔order link (auto links are suppressed, manual deleted)
+ */
+export const removeEmailThreadLink = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRemoveEmailThreadLinkUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRemoveEmailThreadLinkMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeEmailThreadLink>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeEmailThreadLink>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['removeEmailThreadLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeEmailThreadLink>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  removeEmailThreadLink(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveEmailThreadLinkMutationResult = NonNullable<Awaited<ReturnType<typeof removeEmailThreadLink>>>
+
+    export type RemoveEmailThreadLinkMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove a thread↔order link (auto links are suppressed, manual deleted)
+ */
+export const useRemoveEmailThreadLink = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeEmailThreadLink>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeEmailThreadLink>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRemoveEmailThreadLinkMutationOptions(options));
+    }
+
+export const getGetEmailDealsReportUrl = (params: GetEmailDealsReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/email-activity/deals-report?${stringifiedParams}` : `/api/email-activity/deals-report`
+}
+
+/**
+ * @summary Email volume vs. invoices won per customer — Printavo invoices only (admin only)
+ */
+export const getEmailDealsReport = async (params: GetEmailDealsReportParams, options?: RequestInit): Promise<EmailDealsReportResponse> => {
+
+  return customFetch<EmailDealsReportResponse>(getGetEmailDealsReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailDealsReportQueryKey = (params?: GetEmailDealsReportParams,) => {
+    return [
+    `/api/email-activity/deals-report`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetEmailDealsReportQueryOptions = <TData = Awaited<ReturnType<typeof getEmailDealsReport>>, TError = ErrorType<unknown>>(params: GetEmailDealsReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailDealsReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailDealsReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailDealsReport>>> = ({ signal }) => getEmailDealsReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailDealsReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailDealsReportQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailDealsReport>>>
+export type GetEmailDealsReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Email volume vs. invoices won per customer — Printavo invoices only (admin only)
+ */
+
+export function useGetEmailDealsReport<TData = Awaited<ReturnType<typeof getEmailDealsReport>>, TError = ErrorType<unknown>>(
+ params: GetEmailDealsReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailDealsReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailDealsReportQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

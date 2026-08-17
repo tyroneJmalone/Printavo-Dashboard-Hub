@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import type { Logger } from "pino";
 import { GmailMailboxClient, GmailApiError, gmailConfigured } from "./gmail";
 import { parseGmailMessage, classifyMessages } from "./classify";
+import { runEmailMatching } from "./matching";
 
 /**
  * Per-mailbox Gmail metadata sync.
@@ -202,6 +203,9 @@ export async function runEmailSync(log: Logger): Promise<{ ran: boolean; message
     for (const mailbox of mailboxes) {
       await syncMailbox(mailbox, log);
     }
+    // Correlation pass: link new threads to Printavo customers/invoices.
+    // Never throws — a matching failure must not mark the sync as failed.
+    await runEmailMatching(log);
     return { ran: true, message: `Synced ${mailboxes.length} mailbox(es)` };
   } finally {
     syncActive = false;

@@ -3949,6 +3949,121 @@ export interface EmailFilteredResponse {
   sample: EmailFilteredSample[];
 }
 
+export interface EmailMatchResult {
+  customersLinked: number;
+  invoicesLinked: number;
+}
+
+export interface EmailCustomerListItem {
+  customerId: string;
+  displayName: string;
+  threads: number;
+  messages: number;
+  sent: number;
+  received: number;
+  lastEmailAt: string;
+}
+
+export interface EmailCustomersResponse {
+  customers: EmailCustomerListItem[];
+}
+
+export type EmailThreadOrderLinkSource = typeof EmailThreadOrderLinkSource[keyof typeof EmailThreadOrderLinkSource];
+
+
+export const EmailThreadOrderLinkSource = {
+  auto: 'auto',
+  manual: 'manual',
+} as const;
+
+export interface EmailThreadOrderLink {
+  id: string;
+  printavoOrderId: string;
+  visualId: number | null;
+  source: EmailThreadOrderLinkSource;
+  nickname: string | null;
+  orderType: string | null;
+  statusName: string | null;
+  total: number | null;
+}
+
+export interface EmailCustomerThread {
+  mailboxId: string;
+  mailboxEmail: string | null;
+  gmailThreadId: string;
+  subject: string;
+  counterpart: string;
+  messageCount: number;
+  sent: number;
+  received: number;
+  firstAt: string;
+  lastAt: string;
+  orderLinks: EmailThreadOrderLink[];
+}
+
+export interface EmailCustomerCorrespondenceStats {
+  threadCount: number;
+  messageCount: number;
+  sent: number;
+  received: number;
+  lastEmailAt: string | null;
+  repliedThreads: number;
+  medianSecs: number | null;
+  p90Secs: number | null;
+}
+
+export interface EmailCustomerCorrespondence {
+  stats: EmailCustomerCorrespondenceStats;
+  threads: EmailCustomerThread[];
+}
+
+export interface CreateEmailThreadLinkRequest {
+  mailboxId: string;
+  gmailThreadId: string;
+  /** @minimum 1 */
+  visualId: number;
+}
+
+export type EmailThreadLinkCreatedSource = typeof EmailThreadLinkCreatedSource[keyof typeof EmailThreadLinkCreatedSource];
+
+
+export const EmailThreadLinkCreatedSource = {
+  auto: 'auto',
+  manual: 'manual',
+} as const;
+
+export interface EmailThreadLinkCreated {
+  id: string;
+  printavoOrderId: string;
+  visualId: number;
+  source: EmailThreadLinkCreatedSource;
+}
+
+export interface EmailDealsReportSummary {
+  customers: number;
+  emails: number;
+  invoicesWon: number;
+  revenue: number;
+  emailsPerWonInvoice: number | null;
+}
+
+export interface EmailDealsReportRow {
+  customerId: string;
+  displayName: string;
+  threads: number;
+  emails: number;
+  invoicesWon: number;
+  revenue: number;
+  emailsPerWonInvoice: number | null;
+  lastInvoiceAt: string | null;
+  timeSink: boolean;
+}
+
+export interface EmailDealsReportResponse {
+  summary: EmailDealsReportSummary;
+  rows: EmailDealsReportRow[];
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -4749,5 +4864,15 @@ export type GetEmailFilteredBucketParams = {
 start: string;
 end: string;
 mailboxId?: string;
+};
+
+export type ListEmailCustomersParams = {
+start: string;
+end: string;
+};
+
+export type GetEmailDealsReportParams = {
+start: string;
+end: string;
 };
 

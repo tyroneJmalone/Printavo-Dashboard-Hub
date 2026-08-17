@@ -13,6 +13,8 @@ import {
   getGetEmailHeatmapQueryKey,
   useGetEmailFilteredBucket,
   getGetEmailFilteredBucketQueryKey,
+  useListEmailCustomers,
+  getListEmailCustomersQueryKey,
 } from "@workspace/api-client-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
@@ -26,7 +28,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Mail, Clock, Flame, Filter, AlertTriangle, Settings2 } from "lucide-react";
+import { Mail, Clock, Flame, Filter, AlertTriangle, Settings2, Users, TrendingUp } from "lucide-react";
 
 /**
  * Email Activity dashboard (admin only). Sent/received/thread stats per
@@ -167,6 +169,10 @@ export default function EmailActivity() {
   const { data: filtered } = useGetEmailFilteredBucket(common, {
     query: { enabled: isAdmin, queryKey: getGetEmailFilteredBucketQueryKey(common) },
   });
+  const custParams = { start, end };
+  const { data: emailCustomers } = useListEmailCustomers(custParams, {
+    query: { enabled: isAdmin, queryKey: getListEmailCustomersQueryKey(custParams) },
+  });
 
   const series = useMemo(() => {
     if (!stats) return [];
@@ -203,6 +209,11 @@ export default function EmailActivity() {
             <h1 className="text-lg font-semibold text-white">Email Activity</h1>
           </div>
           <div className="flex-1" />
+          <Link href="/email-activity/deals">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-100 border border-slate-700 rounded-md px-2.5 py-1.5 cursor-pointer">
+              <TrendingUp size={13} /> Email vs. Deals
+            </div>
+          </Link>
           <Link href="/email-activity/settings">
             <div className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-100 border border-slate-700 rounded-md px-2.5 py-1.5 cursor-pointer">
               <Settings2 size={13} /> Mailboxes & exclusions
@@ -348,6 +359,53 @@ export default function EmailActivity() {
                   <tr>
                     <td colSpan={7} className="py-6 text-center text-slate-500 text-sm">
                       No counted email in this range yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Customer drill-down */}
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <SectionTitle icon={Users}>By customer (matched Printavo customers)</SectionTitle>
+            <Link href="/email-activity/deals" className="text-xs text-[#10b981] hover:underline">
+              Full Email vs. Deals report →
+            </Link>
+          </div>
+          <div className="max-h-80 overflow-y-auto custom-scrollbar">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                  <th className="py-2 pr-3">Customer</th>
+                  <th className="py-2 pr-3 text-right">Threads</th>
+                  <th className="py-2 pr-3 text-right">Sent</th>
+                  <th className="py-2 pr-3 text-right">Received</th>
+                  <th className="py-2 pr-0 text-right">Last email</th>
+                </tr>
+              </thead>
+              <tbody>
+                {emailCustomers?.customers.map((c) => (
+                  <tr key={c.customerId} className="border-b border-slate-800/60">
+                    <td className="py-2 pr-3">
+                      <Link href={`/customers/${c.customerId}`} className="text-slate-200 font-medium hover:text-[#10b981]">
+                        {c.displayName}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-3 text-right text-slate-300 tabular-nums">{c.threads.toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-right text-slate-300 tabular-nums">{c.sent.toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-right text-slate-300 tabular-nums">{c.received.toLocaleString()}</td>
+                    <td className="py-2 pr-0 text-right text-slate-400 whitespace-nowrap">
+                      {new Date(c.lastEmailAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </td>
+                  </tr>
+                ))}
+                {emailCustomers && emailCustomers.customers.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-slate-500 text-sm">
+                      No threads matched to Printavo customers in this range yet — matching runs after every sync.
                     </td>
                   </tr>
                 )}

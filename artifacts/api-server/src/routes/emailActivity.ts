@@ -30,6 +30,15 @@ import {
   heatmapStats,
   filteredStats,
 } from "../lib/emailActivity/stats";
+import {
+  runEmailMatching,
+  customerThreads,
+  customerEmailStats,
+  threadOrderLinks,
+  emailCustomersList,
+  dealsReport,
+} from "../lib/emailActivity/matching";
+import { pool } from "@workspace/db";
 
 /**
  * Email activity tracker — Gmail metadata sync config + team stats.
@@ -376,6 +385,176 @@ router.get("/email-activity/filtered", async (req, res) => {
       reason: s.excluded_reason,
       direction: s.direction,
       internalDate: new Date(s.internal_date).toISOString(),
+    })),
+  });
+});
+
+// ── Customer / invoice correlation ───────────────────────────────────
+
+router.post("/email-activity/match", async (_req, res) => {
+  const result = await runEmailMatching(logger);
+  res.json(result);
+});
+
+router.get("/email-activity/customers", async (req, res) => {
+  const range = parseRange(req, res);
+  if (!range) return;
+  const rows = await emailCustomersList(range);
+  res.json({
+    customers: rows.map((r) => ({
+      customerId: r.customer_id,
+      displayName: r.display_name,
+      threads: r.threads,
+      messages: r.messages,
+      sent: r.sent,
+      received: r.received,
+      lastEmailAt: new Date(r.last_email_at).toISOString(),
+    })),
+  });
+});
+
+router.get("/email-activity/customers/:customerId", async (req, res) => {
+  const customerId = String(req.params.customerId);
+  if (!/^\d+$/.test(customerId)) return res.status(404).json({ error: "Customer not found" });
+  const [threads, stats, lookup] = await Promise.all([
+    customerThreads(customerId),
+    customerEmailStats(customerId),
+    mailboxLookup(),
+  ]);
+  const links = await threadOrderLinks(
+    threads.map((t) => ({ mailboxId: t.mailbox_id, gmailThreadId: t.gmail_thread_id })),
+  );
+  const linksByThread = new Map<string, typeof links>();
+  for (const l of links) {
+    const key = `${l.mailbox_id}|${l.gmail_thread_id}`;
+    const arr = linksByThread.get(key) ?? [];
+    arr.push(l);
+    linksByThread.set(key, arr);
+  }
+  return res.json({
+    stats: {
+      threadCount: stats.thread_count,
+      messageCount: stats.message_count,
+      sent: stats.sent,
+      received: stats.received,
+      lastEmailAt: stats.last_email_at ? new Date(stats.last_email_at).toISOString() : null,
+      repliedThreads: stats.replied_threads,
+      medianSecs: stats.median_secs != null ? Number(stats.median_secs) : null,
+      p90Secs: stats.p90_secs != null ? Number(stats.p90_secs) : null,
+    },
+    threads: threads.map((t) => ({
+      mailboxId: t.mailbox_id,
+      mailboxEmail: lookup.get(t.mailbox_id)?.email ?? null,
+      gmailThreadId: t.gmail_thread_id,
+      subject: t.subject ?? "",
+      counterpart: t.counterpart_address,
+      messageCount: t.msg_count,
+      sent: t.sent,
+      received: t.received,
+      firstAt: new Date(t.first_at).toISOString(),
+      lastAt: new Date(t.last_at).toISOString(),
+      orderLinks: (linksByThread.get(`${t.mailbox_id}|${t.gmail_thread_id}`) ?? []).map((l) => ({
+        id: l.id,
+        printavoOrderId: l.printavo_order_id,
+        visualId: l.visual_id,
+        source: l.source as "auto" | "manual",
+        nickname: l.nickname,
+        orderType: l.order_type,
+        statusName: l.status_name,
+        total: l.total != null ? Number(l.total) : null,
+      })),
+    })),
+  });
+});
+
+router.post("/email-activity/thread-links", async (req, res) => {
+  const mailboxId = typeof req.body?.mailboxId === "string" ? req.body.mailboxId : "";
+  const gmailThreadId = typeof req.body?.gmailThreadId === "string" ? req.body.gmailThreadId : "";
+  const visualId = Number(req.body?.visualId);
+  if (!mailboxId || !gmailThreadId || !Number.isInteger(visualId) || visualId <= 0) {
+    return res.status(400).json({ error: "mailboxId, gmailThreadId and a positive integer visualId are required" });
+  }
+  // Validate against synced orders — prefer invoice, then most recent.
+  const or = await pool.query(
+    `SELECT printavo_id, visual_id FROM pv_orders
+      WHERE visual_id = $1
+      ORDER BY (order_type = 'invoice') DESC, invoice_at DESC NULLS LAST, printavo_id DESC
+      LIMIT 1`,
+    [visualId],
+  );
+  if (or.rows.length === 0) {
+    return res.status(404).json({ error: `No synced order with visual ID #${visualId}` });
+  }
+  const order = or.rows[0];
+  // Upsert: revive a suppressed auto row as a manual link.
+  const ir = await pool.query(
+    `INSERT INTO email_thread_orders
+       (mailbox_id, gmail_thread_id, printavo_order_id, visual_id, source, suppressed, created_by_email)
+     VALUES ($1::uuid, $2, $3, $4, 'manual', false, $5)
+     ON CONFLICT (mailbox_id, gmail_thread_id, printavo_order_id) DO UPDATE
+        SET suppressed = false, source = 'manual', created_by_email = excluded.created_by_email
+     RETURNING id, printavo_order_id, visual_id, source`,
+    [mailboxId, gmailThreadId, order.printavo_id, order.visual_id, req.staff?.email ?? null],
+  );
+  const row = ir.rows[0];
+  return res.status(201).json({
+    id: row.id as string,
+    printavoOrderId: row.printavo_order_id as string,
+    visualId: row.visual_id as number,
+    source: row.source as "auto" | "manual",
+  });
+});
+
+router.delete("/email-activity/thread-links/:id", async (req, res) => {
+  // Auto links are suppressed (so the matching pass can't re-add them);
+  // manual links are deleted outright.
+  const r = await pool.query(
+    `WITH target AS (SELECT id, source FROM email_thread_orders WHERE id = $1::uuid),
+     del AS (DELETE FROM email_thread_orders
+              WHERE id IN (SELECT id FROM target WHERE source = 'manual') RETURNING id),
+     sup AS (UPDATE email_thread_orders SET suppressed = true
+              WHERE id IN (SELECT id FROM target WHERE source = 'auto') RETURNING id)
+     SELECT (SELECT count(*) FROM del) + (SELECT count(*) FROM sup) AS n`,
+    [req.params.id],
+  );
+  if (Number(r.rows[0]?.n ?? 0) === 0) return res.status(404).json({ error: "Link not found" });
+  return res.status(204).end();
+});
+
+router.get("/email-activity/deals-report", async (req, res) => {
+  const range = parseRange(req, res);
+  if (!range) return;
+  const rows = await dealsReport(range);
+  const totalEmails = rows.reduce((s, r) => s + r.emails, 0);
+  const totalWon = rows.reduce((s, r) => s + r.invoices_won, 0);
+  const totalRevenue = rows.reduce((s, r) => s + Number(r.revenue), 0);
+  // Time sink: meaningful email volume in the period, but no invoice in the
+  // period AND nothing won in the 90 days before the period's end.
+  const staleCutoff = new Date(range.end.getTime() - 90 * 86400_000);
+  res.json({
+    summary: {
+      customers: rows.length,
+      emails: totalEmails,
+      invoicesWon: totalWon,
+      revenue: totalRevenue,
+      emailsPerWonInvoice: totalWon > 0 ? Math.round((totalEmails / totalWon) * 10) / 10 : null,
+    },
+    rows: rows.map((r) => ({
+      customerId: r.customer_id,
+      displayName: r.display_name,
+      threads: r.threads,
+      emails: r.emails,
+      invoicesWon: r.invoices_won,
+      revenue: Number(r.revenue),
+      emailsPerWonInvoice:
+        r.invoices_won > 0 ? Math.round((r.emails / r.invoices_won) * 10) / 10 : null,
+      lastInvoiceAt: r.last_invoice_at
+        ? new Date(r.last_invoice_at).toISOString().slice(0, 10)
+        : null,
+      timeSink:
+        r.emails >= 10 &&
+        r.invoices_won === 0 &&
+        (r.last_invoice_at == null || new Date(r.last_invoice_at) < staleCutoff),
     })),
   });
 });
