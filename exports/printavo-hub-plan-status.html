@@ -74,7 +74,7 @@
   <h2>Foundation — Sync, Backup &amp; Reports</h2>
   <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Printavo sync engine + speed overhaul</b><p>Everything mirrored to our database. Recent changes land within one 5-min tick; manual Sync Now ~70s; deep re-checks nightly.</p></div></div>
   <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Global sync bar<span class="new-tag">NEW — built Aug 7</span></b><p>"Printavo synced X min ago" + Sync Now button now atop EVERY Hub page (was Vendor Orders only). Finishing a manual sync refreshes whatever page you're on.</p></div></div>
-  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Complete Printavo backup</b><p>Full history to Feb 2018 (~19k orders), payments to Dec 2017, messages/inquiries/payment requests/merch stores/reference data, order files mirrored to our cloud storage, one-click ~61 MB JSON ZIP export. Known limits: pricing-matrix cells not exposed by API; packing slips login-walled.</p></div></div>
+  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Complete Printavo backup</b><p>Full history to Feb 2018 (~19k orders), payments to Dec 2017, messages/inquiries/payment requests/merch stores/reference data, order files mirrored to our cloud storage, one-click ~61 MB JSON ZIP export. Known limits: pricing-matrix cells not exposed by API; packing slips login-walled. Disaster-recovery note: this preserves recoverable business data, but it is not yet a one-click restore back into Printavo.</p></div></div>
   <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Order detail + payments history + Reports API</b><p>Backend done (2017→today payments, legacy Insights formulas). Reports UI + your preset-reports list still to come.</p></div></div>
 </div>
 
@@ -172,11 +172,12 @@
     <div class="idea"><b>Missive messaging portal</b><p>Inbox / messaging inside the Hub via Missive's API.</p></div>
     <div class="idea"><b>Public Reorder Portal</b><p>Customer-facing reordering, after internal modules settle.</p></div>
     <div class="idea"><b>Orders report / dashboard shell counts</b><p>Chipply shells still inflate the general Orders report + dashboard counts — parked for a decision.</p></div>
+    <div class="idea"><b>Offsite Printavo backup copies<span class="new-tag">NEW Aug 20</span></b><p>Nightly, dated backup bundles pushed to a dedicated Google Drive folder with retention and visible success/failure status; recommended first choice. Optional second copy to a NAS via secure SFTP/WebDAV or a NAS-side pull agent — never expose a local SMB share publicly. Must include both the portable data ZIP and mirrored file objects, preserve prior good copies, and verify each backup can be opened.</p></div>
   </div>
 </div>
 
 <div class="foot">
-  Since last report (Jul 25): Mint Bucks branded email images + test-email sending shipped · moMINTum standalone update pack written (ready to forward) · global Printavo sync bar on every page · Product Curation Tool planned in 3 phases (drafted, awaiting your acceptance) — absorbs the tabled catalog search + Aug 4 stock-checker idea · two new ideas logged &amp; assessed: CFO AI assistant, email correspondence hub.
+  Since last report (Jul 25): Mint Bucks branded email images + test-email sending shipped · moMINTum standalone update pack written (ready to forward) · global Printavo sync bar on every page · Product Curation Tool planned in 3 phases (drafted, awaiting your acceptance) — absorbs the tabled catalog search + Aug 4 stock-checker idea · three new ideas logged &amp; assessed: CFO AI assistant, email correspondence hub, offsite Printavo backup copies.
   &nbsp;·&nbsp; <b>Testing rule in force: order #22251 only; #19004 never again.</b>
 </div>
 
