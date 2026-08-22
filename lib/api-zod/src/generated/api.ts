@@ -4559,7 +4559,7 @@ export const CreatePrintavoQuoteFromDraftParams = zod.object({
 
 
 export const CreatePrintavoQuoteFromDraftBody = zod.object({
-  "confirmation": zod.enum(['CREATE QUOTE']),
+  "confirmation": zod.enum(['CONFIRM QUOTE']),
   "revision": zod.number().min(1)
 })
 

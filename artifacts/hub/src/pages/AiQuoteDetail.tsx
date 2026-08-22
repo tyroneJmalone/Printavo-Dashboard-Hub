@@ -200,7 +200,7 @@ export default function AiQuoteDetail() {
     createQuote.mutate({
       id,
       data: {
-        confirmation: "CREATE QUOTE",
+        confirmation: "CONFIRM QUOTE",
         revision: quoteDraft.revision,
       },
     }, {
@@ -985,13 +985,13 @@ export default function AiQuoteDetail() {
           <div className="py-5 space-y-4">
             <div className="bg-amber-950/20 border border-amber-900/40 p-4 rounded-lg">
               <p className="text-sm font-medium text-amber-500/90 mb-3">
-                Type <strong className="text-amber-400 font-mono bg-amber-900/40 px-1.5 py-0.5 rounded select-all tracking-wider text-xs">CREATE QUOTE</strong> below to confirm.
+                Type <strong className="text-amber-400 font-mono bg-amber-900/40 px-1.5 py-0.5 rounded select-all tracking-wider text-xs">CONFIRM QUOTE</strong> below to confirm.
               </p>
               <Input 
                 value={createConfirmText} 
                 onChange={e => setCreateConfirmText(e.target.value)} 
                 className="bg-slate-950 border-slate-800 text-slate-100 font-mono tracking-wider text-center h-12 text-sm uppercase placeholder:text-slate-600"
-                placeholder="CREATE QUOTE"
+                placeholder="CONFIRM QUOTE"
                 autoFocus
               />
             </div>
@@ -1002,7 +1002,10 @@ export default function AiQuoteDetail() {
               Cancel
             </Button>
             <Button 
-              disabled={createConfirmText !== "CREATE QUOTE" || createQuote.isPending}
+              disabled={
+                createConfirmText.trim().toUpperCase() !== "CONFIRM QUOTE" ||
+                createQuote.isPending
+              }
               onClick={handleCreateQuote}
               className="bg-[#059669] hover:bg-[#047857] text-white transition-colors"
             >

@@ -133,8 +133,8 @@ router.post("/quote-drafts/:id/create-printavo", async (req, res) => {
     return;
   }
   const parsed = CreatePrintavoQuoteFromDraftBody.safeParse(req.body);
-  if (!parsed.success || parsed.data.confirmation !== "CREATE QUOTE") {
-    res.status(400).json({ error: 'Type "CREATE QUOTE" to confirm.' });
+  if (!parsed.success || parsed.data.confirmation !== "CONFIRM QUOTE") {
+    res.status(400).json({ error: 'Type "CONFIRM QUOTE" to confirm.' });
     return;
   }
   try {

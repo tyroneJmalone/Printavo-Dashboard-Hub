@@ -10,5 +10,5 @@ export type CreatePrintavoQuoteRequestConfirmation = typeof CreatePrintavoQuoteR
 
 
 export const CreatePrintavoQuoteRequestConfirmation = {
-  CREATE_QUOTE: 'CREATE QUOTE',
+  CONFIRM_QUOTE: 'CONFIRM QUOTE',
 } as const;

@@ -6527,7 +6527,7 @@ components:
       properties:
         confirmation:
           type: string
-          enum: ["CREATE QUOTE"]
+          enum: ["CONFIRM QUOTE"]
         revision: { type: integer, minimum: 1 }
       required: [confirmation, revision]
     FinderOrderLineItem:
