@@ -678,14 +678,18 @@ function removeResolvedUncertainties(
   garments: AiQuoteGarment[],
 ): string[] {
   return uncertainties.filter((uncertainty) => {
-    const brandMatch = uncertainty.match(
-      /^brand for style\s+(.+?)\s+was not specified\.?$/i,
-    );
-    if (!brandMatch) return true;
+    const brandStyle =
+      uncertainty.match(
+        /^brand for style\s+(.+?)\s+was not specified\.?$/i,
+      )?.[1] ??
+      uncertainty.match(
+        /^garment brand was not specified for style\s+(.+?)\.?$/i,
+      )?.[1];
+    if (!brandStyle) return true;
     return !garments.some(
       (garment) =>
         Boolean(garment.selectedProduct?.brand?.trim()) &&
-        sameText(garment.style, brandMatch[1]),
+        sameText(garment.style, brandStyle.replace(/\.$/, "")),
     );
   });
 }
