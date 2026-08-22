@@ -715,7 +715,10 @@ export default function AiQuoteDetail() {
                                         });
                                         return;
                                       }
-                                      updateGarment(i, { selectedProduct: selection });
+                                       updateGarment(i, {
+                                         brand: selection.brand,
+                                         selectedProduct: selection,
+                                       });
                                     }}
                                     className={`relative p-3 rounded-lg border flex gap-3 transition-colors cursor-pointer ${
                                       isSelected 
@@ -754,7 +757,12 @@ export default function AiQuoteDetail() {
                                      value={g.selectedProduct.color}
                                      onValueChange={(colorName) => {
                                        const selection = selectionFromOption(g, selectedOption, colorName);
-                                       if (selection) updateGarment(i, { selectedProduct: selection });
+                                        if (selection) {
+                                          updateGarment(i, {
+                                            brand: selection.brand,
+                                            selectedProduct: selection,
+                                          });
+                                        }
                                      }}
                                      disabled={!isDraft}
                                    >

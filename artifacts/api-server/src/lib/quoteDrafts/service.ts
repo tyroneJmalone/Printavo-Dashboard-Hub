@@ -637,6 +637,7 @@ async function verifyGarment(
   }
   return {
     ...garment,
+    brand: option.brand,
     productOptions: options,
     selectedProduct: {
       vendor: option.vendor,
@@ -648,6 +649,23 @@ async function verifyGarment(
       image: color.image ?? option.image,
     },
   };
+}
+
+function removeResolvedUncertainties(
+  uncertainties: string[],
+  garments: AiQuoteGarment[],
+): string[] {
+  return uncertainties.filter((uncertainty) => {
+    const brandMatch = uncertainty.match(
+      /^brand for style\s+(.+?)\s+was not specified\.?$/i,
+    );
+    if (!brandMatch) return true;
+    return !garments.some(
+      (garment) =>
+        Boolean(garment.selectedProduct?.brand?.trim()) &&
+        sameText(garment.style, brandMatch[1]),
+    );
+  });
 }
 
 async function recalculateDraft(input: AiQuoteDraftData): Promise<AiQuoteDraftData> {
@@ -729,6 +747,7 @@ async function recalculateDraft(input: AiQuoteDraftData): Promise<AiQuoteDraftDa
     selectedCustomer,
     garments,
     pricing,
+    uncertainties: removeResolvedUncertainties(input.uncertainties, garments),
     warnings,
   };
 }
@@ -782,6 +801,7 @@ export async function interpretAndCreateDraft(
       selectedProduct: null,
     };
     base.selectedProduct = autoSelectProduct(base, options);
+    base.brand = base.selectedProduct?.brand ?? base.brand;
     return base;
   });
   const decorations: AiQuoteDecoration[] = extracted.decorations.map(
@@ -890,8 +910,23 @@ async function recoverStaleCreatingDrafts(): Promise<void> {
     );
 }
 
+function canonicalJson(value: unknown): string {
+  const normalize = (input: unknown): unknown => {
+    if (Array.isArray(input)) return input.map(normalize);
+    if (input && typeof input === "object") {
+      return Object.fromEntries(
+        Object.entries(input as Record<string, unknown>)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, nested]) => [key, normalize(nested)]),
+      );
+    }
+    return input;
+  };
+  return JSON.stringify(normalize(value));
+}
+
 function trustedSnapshot(draft: AiQuoteDraftData): string {
-  return JSON.stringify({
+  return canonicalJson({
     customer: draft.selectedCustomer,
     dueDate: draft.dueDate,
     nickname: draft.nickname,

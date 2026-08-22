@@ -33,3 +33,4 @@
 - [Gmail metadata scope](gmail-metadata-scope.md) — DWD scope must be gmail.readonly (gmail.metadata forbids q= backfill searches); privacy via format=metadata.
 - [Express body limit vs text caps](express-body-limit-vs-text-caps.md) — express.json defaults 100KB; any pasted/upload text endpoint 413s before the route unless the limit stays ahead of the app cap.
 - [Printavo mutation safety](printavo-mutation-safety.md) — non-idempotent writes get one attempt; any ambiguous result stays locked for manual verification.
+- [Quote snapshot comparisons](quote-snapshot-canonical-json.md) — compare trusted quote snapshots with recursively key-sorted JSON; JSONB key order caused false 409 conflicts.
