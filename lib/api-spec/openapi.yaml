@@ -2378,6 +2378,153 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DetectedChipplyStoresResponse"
+  /quote-drafts:
+    get:
+      operationId: listAiQuoteDrafts
+      tags: [quoting]
+      summary: List recent AI-assisted quote drafts
+      responses:
+        "200":
+          description: Recent drafts, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQuoteDraftListResponse"
+    post:
+      operationId: interpretAiQuotePrompt
+      tags: [quoting]
+      summary: Interpret a natural-language quote request and save a local draft
+      description: Uses AI only for extraction. Customer, vendor product, cost, and pricing facts are resolved by Hub before the draft is saved. This endpoint never writes to Printavo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InterpretAiQuotePromptRequest"
+      responses:
+        "201":
+          description: Saved local draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQuoteDraft"
+        "400":
+          description: Invalid or unparseable prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /quote-drafts/{id}:
+    get:
+      operationId: getAiQuoteDraft
+      tags: [quoting]
+      summary: Get a saved AI quote draft
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Saved draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQuoteDraft"
+        "404":
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateAiQuoteDraft
+      tags: [quoting]
+      summary: Save reviewed edits and recalculate trusted pricing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAiQuoteDraftRequest"
+      responses:
+        "200":
+          description: Recalculated saved draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQuoteDraft"
+        "400":
+          description: Invalid draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Created or in-flight drafts are immutable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /quote-drafts/{id}/create-printavo:
+    post:
+      operationId: createPrintavoQuoteFromDraft
+      tags: [quoting]
+      summary: Explicitly create a Printavo quote from a reviewed local draft
+      description: Non-idempotent external write. Requires an exact typed confirmation. An ambiguous network outcome is persisted as unknown and may not be automatically retried.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePrintavoQuoteRequest"
+      responses:
+        "200":
+          description: Draft with confirmed Printavo result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQuoteDraft"
+        "400":
+          description: Draft is incomplete or confirmation is invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Draft has already been attempted or created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /pricing/matrices:
     get:
       operationId: listDecorationMatrices
@@ -6154,6 +6301,201 @@ components:
           items:
             $ref: "#/components/schemas/ProductSearchVendorError"
       required: [query, aliasesTried, vendors, vendorErrors]
+    AiQuoteSize:
+      type: object
+      properties:
+        size: { type: string, minLength: 1, maxLength: 20 }
+        quantity: { type: integer, minimum: 0, maximum: 100000 }
+      required: [size, quantity]
+    AiQuoteCustomerCandidate:
+      type: object
+      properties:
+        customerId: { type: string }
+        companyName: { type: string }
+        contactId: { type: ["string", "null"] }
+        contactName: { type: ["string", "null"] }
+        contactEmail: { type: ["string", "null"] }
+        matchType: { type: string, enum: [exact, possible] }
+      required: [customerId, companyName, contactId, contactName, contactEmail, matchType]
+    AiQuoteProductSize:
+      type: object
+      properties:
+        size: { type: string }
+        cost: { type: ["number", "null"] }
+        salePrice: { type: ["number", "null"] }
+        inventoryTotal: { type: ["integer", "null"] }
+      required: [size, cost, salePrice, inventoryTotal]
+    AiQuoteProductColor:
+      type: object
+      properties:
+        name: { type: string }
+        image: { type: ["string", "null"] }
+        sizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiQuoteProductSize"
+      required: [name, image, sizes]
+    AiQuoteProductOption:
+      type: object
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        matchType: { type: string, enum: [exact, closest] }
+        styleName: { type: string }
+        brand: { type: ["string", "null"] }
+        title: { type: ["string", "null"] }
+        image: { type: ["string", "null"] }
+        colors:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiQuoteProductColor"
+      required: [vendor, matchType, styleName, brand, title, image, colors]
+    AiQuoteGarmentSelection:
+      type: object
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleName: { type: string }
+        brand: { type: ["string", "null"] }
+        title: { type: ["string", "null"] }
+        color: { type: string }
+        garmentCost: { type: number, minimum: 0 }
+        image: { type: ["string", "null"] }
+      required: [vendor, styleName, brand, title, color, garmentCost, image]
+    AiQuoteGarment:
+      type: object
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        brand: { type: ["string", "null"], maxLength: 100 }
+        style: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: ["string", "null"], maxLength: 500 }
+        color: { type: string, maxLength: 100 }
+        sizes:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items:
+            $ref: "#/components/schemas/AiQuoteSize"
+        productOptions:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/AiQuoteProductOption"
+        selectedProduct:
+          anyOf:
+            - $ref: "#/components/schemas/AiQuoteGarmentSelection"
+            - type: "null"
+      required: [id, brand, style, description, color, sizes, productOptions, selectedProduct]
+    AiQuoteDecoration:
+      type: object
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        location: { type: string, minLength: 1, maxLength: 100 }
+        method: { type: string, minLength: 1, maxLength: 100 }
+        colorCount: { type: ["integer", "null"], minimum: 1, maximum: 20 }
+        details: { type: ["string", "null"], maxLength: 500 }
+        matrixId: { type: ["string", "null"], format: uuid }
+        matrixColumnIndex: { type: ["integer", "null"], minimum: 0 }
+      required: [id, location, method, colorCount, details, matrixId, matrixColumnIndex]
+    AiQuotePricingLine:
+      type: object
+      properties:
+        garmentId: { type: string }
+        quantity: { type: integer, minimum: 0 }
+        garmentCost: { type: number, minimum: 0 }
+        garmentMarkup: { type: number, minimum: 0 }
+        decorationCost: { type: number, minimum: 0 }
+        unitPrice: { type: number, minimum: 0 }
+        total: { type: number, minimum: 0 }
+      required: [garmentId, quantity, garmentCost, garmentMarkup, decorationCost, unitPrice, total]
+    AiQuoteDraftData:
+      type: object
+      properties:
+        customerQuery: { type: string, minLength: 1, maxLength: 300 }
+        customerCandidates:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/AiQuoteCustomerCandidate"
+        selectedCustomer:
+          anyOf:
+            - $ref: "#/components/schemas/AiQuoteCustomerCandidate"
+            - type: "null"
+        nickname: { type: string, maxLength: 300 }
+        dueDate:
+          type: ["string", "null"]
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        markup: { type: number, minimum: 0, maximum: 10 }
+        customerNote: { type: string, maxLength: 10000 }
+        productionNote: { type: string, maxLength: 10000 }
+        garments:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/AiQuoteGarment"
+        decorations:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/AiQuoteDecoration"
+        pricing:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiQuotePricingLine"
+        uncertainties:
+          type: array
+          items: { type: string, maxLength: 500 }
+          maxItems: 30
+        warnings:
+          type: array
+          items: { type: string, maxLength: 500 }
+          maxItems: 30
+      required: [customerQuery, customerCandidates, selectedCustomer, nickname, dueDate, markup, customerNote, productionNote, garments, decorations, pricing, uncertainties, warnings]
+    AiQuoteDraft:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [draft, creating, created, failed, unknown] }
+        revision: { type: integer, minimum: 1 }
+        prompt: { type: string }
+        draft:
+          $ref: "#/components/schemas/AiQuoteDraftData"
+        createdByEmail: { type: ["string", "null"] }
+        printavoQuoteId: { type: ["string", "null"] }
+        printavoVisualId: { type: ["integer", "null"] }
+        printavoCreatedAt: { type: ["string", "null"], format: date-time }
+        createAttemptedAt: { type: ["string", "null"], format: date-time }
+        error: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, status, revision, prompt, draft, createdByEmail, printavoQuoteId, printavoVisualId, printavoCreatedAt, createAttemptedAt, error, createdAt, updatedAt]
+    AiQuoteDraftListResponse:
+      type: object
+      properties:
+        drafts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiQuoteDraft"
+      required: [drafts]
+    InterpretAiQuotePromptRequest:
+      type: object
+      properties:
+        prompt: { type: string, minLength: 8, maxLength: 10000 }
+      required: [prompt]
+    UpdateAiQuoteDraftRequest:
+      type: object
+      properties:
+        revision: { type: integer, minimum: 1 }
+        draft:
+          $ref: "#/components/schemas/AiQuoteDraftData"
+      required: [revision, draft]
+    CreatePrintavoQuoteRequest:
+      type: object
+      properties:
+        confirmation:
+          type: string
+          enum: ["CREATE QUOTE"]
+        revision: { type: integer, minimum: 1 }
+      required: [confirmation, revision]
     FinderOrderLineItem:
       type: object
       properties:

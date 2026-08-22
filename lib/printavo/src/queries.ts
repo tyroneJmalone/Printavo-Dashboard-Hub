@@ -425,6 +425,81 @@ export function lineItemUpdateMutation(
   }`;
 }
 
+export interface QuoteCreateLineItem {
+  position: number;
+  itemNumber: string;
+  description: string;
+  color: string;
+  unitPrice: number;
+  markupPercentage: number;
+  sizes: Array<{ size: string; count: number }>;
+}
+
+export interface QuoteCreateImprint {
+  details: string;
+}
+
+export interface QuoteCreateLineItemGroup {
+  position: number;
+  lineItems: QuoteCreateLineItem[];
+  imprints: QuoteCreateImprint[];
+}
+
+export interface QuoteCreateInput {
+  contactId: string;
+  customerDueAt: string;
+  dueAt: string;
+  nickname: string;
+  customerNote?: string;
+  productionNote?: string;
+  lineItemGroups: QuoteCreateLineItemGroup[];
+}
+
+/**
+ * Build the single nested Printavo quoteCreate mutation. Input shape was
+ * verified through live schema introspection in August 2026. Every enum value
+ * is validated before it is emitted as an unquoted GraphQL literal.
+ */
+export function quoteCreateMutation(input: QuoteCreateInput): string {
+  const groups = input.lineItemGroups.map((group) => {
+    const lineItems = group.lineItems.map((item) => {
+      const sizes = item.sizes.map(
+        (size) =>
+          `{ size: ${enumLit(size.size, "LineItemSize")}, count: ${Math.trunc(size.count)} }`,
+      );
+      return `{ position: ${Math.trunc(item.position)}, itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, unitPrice: ${Number(item.unitPrice).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: need_ordering, taxable: true, sizes: [${sizes.join(", ")}] }`;
+    });
+    const imprints = group.imprints.map(
+      (imprint) => `{ details: ${lit(imprint.details)} }`,
+    );
+    return `{ position: ${Math.trunc(group.position)}, lineItems: [${lineItems.join(", ")}], imprints: [${imprints.join(", ")}] }`;
+  });
+
+  const parts = [
+    `contact: { id: ${lit(input.contactId)} }`,
+    `customerDueAt: ${lit(input.customerDueAt)}`,
+    `dueAt: ${lit(input.dueAt)}`,
+    `nickname: ${lit(input.nickname)}`,
+    `lineItemGroups: [${groups.join(", ")}]`,
+  ];
+  if (input.customerNote) parts.push(`customerNote: ${lit(input.customerNote)}`);
+  if (input.productionNote) {
+    parts.push(`productionNote: ${lit(input.productionNote)}`);
+  }
+
+  return `mutation {
+    quoteCreate(input: { ${parts.join(", ")} }) {
+      id
+      visualId
+      publicUrl
+      nickname
+      total
+      customerDueAt
+      dueAt
+    }
+  }`;
+}
+
 export function productionFileCreateMutation(
   parentId: string,
   publicFileUrl: string,

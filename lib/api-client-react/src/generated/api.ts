@@ -28,6 +28,8 @@ import type {
   AddTeamMember201,
   AdminPinStatus,
   AdminUnlockPoFileRequest,
+  AiQuoteDraft,
+  AiQuoteDraftListResponse,
   AppendPoLineItemsRequest,
   ApplyStatusSuggestionError,
   AskInsightsRequest,
@@ -66,6 +68,7 @@ import type {
   CreateInsightsPresetRequest,
   CreatePoFileRequest,
   CreatePqStatusRuleRequest,
+  CreatePrintavoQuoteRequest,
   CreateStatusRuleRequest,
   Credit,
   CreditCheckResult,
@@ -139,6 +142,7 @@ import type {
   HealthStatus,
   InsightsPresetEnvelope,
   InsightsPresetsResponse,
+  InterpretAiQuotePromptRequest,
   List,
   ListAutoPrintJobsParams,
   ListAutoPrintRunsParams,
@@ -261,6 +265,7 @@ import type {
   TeamInput,
   TeamUpdate,
   TriggerCatalogRefresh200,
+  UpdateAiQuoteDraftRequest,
   UpdateChipplyStoreRequest,
   UpdateCollectionItemRequest,
   UpdateCollectionRequest,
@@ -7394,6 +7399,374 @@ export function useListDetectedChipplyStores<TData = Awaited<ReturnType<typeof l
 
 
 
+
+export const getListAiQuoteDraftsUrl = () => {
+
+
+
+
+  return `/api/quote-drafts`
+}
+
+/**
+ * @summary List recent AI-assisted quote drafts
+ */
+export const listAiQuoteDrafts = async ( options?: RequestInit): Promise<AiQuoteDraftListResponse> => {
+
+  return customFetch<AiQuoteDraftListResponse>(getListAiQuoteDraftsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAiQuoteDraftsQueryKey = () => {
+    return [
+    `/api/quote-drafts`
+    ] as const;
+    }
+
+
+export const getListAiQuoteDraftsQueryOptions = <TData = Awaited<ReturnType<typeof listAiQuoteDrafts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAiQuoteDrafts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAiQuoteDraftsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAiQuoteDrafts>>> = ({ signal }) => listAiQuoteDrafts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAiQuoteDrafts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAiQuoteDraftsQueryResult = NonNullable<Awaited<ReturnType<typeof listAiQuoteDrafts>>>
+export type ListAiQuoteDraftsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List recent AI-assisted quote drafts
+ */
+
+export function useListAiQuoteDrafts<TData = Awaited<ReturnType<typeof listAiQuoteDrafts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAiQuoteDrafts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAiQuoteDraftsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getInterpretAiQuotePromptUrl = () => {
+
+
+
+
+  return `/api/quote-drafts`
+}
+
+/**
+ * Uses AI only for extraction. Customer, vendor product, cost, and pricing facts are resolved by Hub before the draft is saved. This endpoint never writes to Printavo.
+ * @summary Interpret a natural-language quote request and save a local draft
+ */
+export const interpretAiQuotePrompt = async (interpretAiQuotePromptRequest: InterpretAiQuotePromptRequest, options?: RequestInit): Promise<AiQuoteDraft> => {
+
+  return customFetch<AiQuoteDraft>(getInterpretAiQuotePromptUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(interpretAiQuotePromptRequest)
+  }
+);}
+
+
+
+
+export const getInterpretAiQuotePromptMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof interpretAiQuotePrompt>>, TError,{data: BodyType<InterpretAiQuotePromptRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof interpretAiQuotePrompt>>, TError,{data: BodyType<InterpretAiQuotePromptRequest>}, TContext> => {
+
+const mutationKey = ['interpretAiQuotePrompt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof interpretAiQuotePrompt>>, {data: BodyType<InterpretAiQuotePromptRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  interpretAiQuotePrompt(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InterpretAiQuotePromptMutationResult = NonNullable<Awaited<ReturnType<typeof interpretAiQuotePrompt>>>
+    export type InterpretAiQuotePromptMutationBody = BodyType<InterpretAiQuotePromptRequest>
+    export type InterpretAiQuotePromptMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Interpret a natural-language quote request and save a local draft
+ */
+export const useInterpretAiQuotePrompt = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof interpretAiQuotePrompt>>, TError,{data: BodyType<InterpretAiQuotePromptRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof interpretAiQuotePrompt>>,
+        TError,
+        {data: BodyType<InterpretAiQuotePromptRequest>},
+        TContext
+      > => {
+      return useMutation(getInterpretAiQuotePromptMutationOptions(options));
+    }
+
+export const getGetAiQuoteDraftUrl = (id: string,) => {
+
+
+
+
+  return `/api/quote-drafts/${id}`
+}
+
+/**
+ * @summary Get a saved AI quote draft
+ */
+export const getAiQuoteDraft = async (id: string, options?: RequestInit): Promise<AiQuoteDraft> => {
+
+  return customFetch<AiQuoteDraft>(getGetAiQuoteDraftUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAiQuoteDraftQueryKey = (id: string,) => {
+    return [
+    `/api/quote-drafts/${id}`
+    ] as const;
+    }
+
+
+export const getGetAiQuoteDraftQueryOptions = <TData = Awaited<ReturnType<typeof getAiQuoteDraft>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAiQuoteDraft>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAiQuoteDraftQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAiQuoteDraft>>> = ({ signal }) => getAiQuoteDraft(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAiQuoteDraft>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAiQuoteDraftQueryResult = NonNullable<Awaited<ReturnType<typeof getAiQuoteDraft>>>
+export type GetAiQuoteDraftQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a saved AI quote draft
+ */
+
+export function useGetAiQuoteDraft<TData = Awaited<ReturnType<typeof getAiQuoteDraft>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAiQuoteDraft>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAiQuoteDraftQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAiQuoteDraftUrl = (id: string,) => {
+
+
+
+
+  return `/api/quote-drafts/${id}`
+}
+
+/**
+ * @summary Save reviewed edits and recalculate trusted pricing
+ */
+export const updateAiQuoteDraft = async (id: string,
+    updateAiQuoteDraftRequest: UpdateAiQuoteDraftRequest, options?: RequestInit): Promise<AiQuoteDraft> => {
+
+  return customFetch<AiQuoteDraft>(getUpdateAiQuoteDraftUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateAiQuoteDraftRequest)
+  }
+);}
+
+
+
+
+export const getUpdateAiQuoteDraftMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAiQuoteDraft>>, TError,{id: string;data: BodyType<UpdateAiQuoteDraftRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAiQuoteDraft>>, TError,{id: string;data: BodyType<UpdateAiQuoteDraftRequest>}, TContext> => {
+
+const mutationKey = ['updateAiQuoteDraft'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAiQuoteDraft>>, {id: string;data: BodyType<UpdateAiQuoteDraftRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAiQuoteDraft(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAiQuoteDraftMutationResult = NonNullable<Awaited<ReturnType<typeof updateAiQuoteDraft>>>
+    export type UpdateAiQuoteDraftMutationBody = BodyType<UpdateAiQuoteDraftRequest>
+    export type UpdateAiQuoteDraftMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save reviewed edits and recalculate trusted pricing
+ */
+export const useUpdateAiQuoteDraft = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAiQuoteDraft>>, TError,{id: string;data: BodyType<UpdateAiQuoteDraftRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAiQuoteDraft>>,
+        TError,
+        {id: string;data: BodyType<UpdateAiQuoteDraftRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateAiQuoteDraftMutationOptions(options));
+    }
+
+export const getCreatePrintavoQuoteFromDraftUrl = (id: string,) => {
+
+
+
+
+  return `/api/quote-drafts/${id}/create-printavo`
+}
+
+/**
+ * Non-idempotent external write. Requires an exact typed confirmation. An ambiguous network outcome is persisted as unknown and may not be automatically retried.
+ * @summary Explicitly create a Printavo quote from a reviewed local draft
+ */
+export const createPrintavoQuoteFromDraft = async (id: string,
+    createPrintavoQuoteRequest: CreatePrintavoQuoteRequest, options?: RequestInit): Promise<AiQuoteDraft> => {
+
+  return customFetch<AiQuoteDraft>(getCreatePrintavoQuoteFromDraftUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPrintavoQuoteRequest)
+  }
+);}
+
+
+
+
+export const getCreatePrintavoQuoteFromDraftMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPrintavoQuoteFromDraft>>, TError,{id: string;data: BodyType<CreatePrintavoQuoteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPrintavoQuoteFromDraft>>, TError,{id: string;data: BodyType<CreatePrintavoQuoteRequest>}, TContext> => {
+
+const mutationKey = ['createPrintavoQuoteFromDraft'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPrintavoQuoteFromDraft>>, {id: string;data: BodyType<CreatePrintavoQuoteRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createPrintavoQuoteFromDraft(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePrintavoQuoteFromDraftMutationResult = NonNullable<Awaited<ReturnType<typeof createPrintavoQuoteFromDraft>>>
+    export type CreatePrintavoQuoteFromDraftMutationBody = BodyType<CreatePrintavoQuoteRequest>
+    export type CreatePrintavoQuoteFromDraftMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Explicitly create a Printavo quote from a reviewed local draft
+ */
+export const useCreatePrintavoQuoteFromDraft = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPrintavoQuoteFromDraft>>, TError,{id: string;data: BodyType<CreatePrintavoQuoteRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPrintavoQuoteFromDraft>>,
+        TError,
+        {id: string;data: BodyType<CreatePrintavoQuoteRequest>},
+        TContext
+      > => {
+      return useMutation(getCreatePrintavoQuoteFromDraftMutationOptions(options));
+    }
 
 export const getListDecorationMatricesUrl = () => {
 

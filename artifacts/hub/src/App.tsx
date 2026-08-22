@@ -36,6 +36,8 @@ import CustomersDirectory from "./pages/CustomersDirectory";
 import CustomerProfile from "./pages/CustomerProfile";
 import NicheReport from "./pages/NicheReport";
 import AskAI from "./pages/AskAI";
+import AiQuotesList from "./pages/AiQuotesList";
+import AiQuoteDetail from "./pages/AiQuoteDetail";
 import EmailActivity from "./pages/EmailActivity";
 import EmailDealsReport from "./pages/EmailDealsReport";
 import EmailActivitySettings from "./pages/EmailActivitySettings";
@@ -195,6 +197,8 @@ function HubRoutes() {
       <Route path="/status-activity" component={StatusActivity} />
       <Route path="/payments" component={Payments} />
       <Route path="/ask" component={AskAI} />
+      <Route path="/ai-quotes/:id" component={AiQuoteDetail} />
+      <Route path="/ai-quotes" component={AiQuotesList} />
       <Route path="/email-activity/settings" component={EmailActivitySettings} />
       <Route path="/email-activity/deals" component={EmailDealsReport} />
       <Route path="/email-activity" component={EmailActivity} />

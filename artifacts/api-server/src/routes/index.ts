@@ -21,6 +21,7 @@ import customersRouter from "./customers";
 import pipelineRouter from "./pipeline";
 import statusActivityRouter from "./statusActivity";
 import emailActivityRouter from "./emailActivity";
+import aiQuotesRouter from "./aiQuotes";
 import { isMomintumConfigured } from "@workspace/momintum-db";
 import momintumRouter from "../momintum";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
@@ -63,6 +64,7 @@ router.use(customersRouter); // category manage routes are admin-only inside
 router.use(pipelineRouter);
 router.use(statusActivityRouter);
 router.use(emailActivityRouter); // admin-only inside (staff performance data)
+router.use(aiQuotesRouter);
 
 // moMINTum task management — shared LIVE database with the standalone app.
 // Only mounted when MOMINTUM_DATABASE_URL is set (removing the secret is the

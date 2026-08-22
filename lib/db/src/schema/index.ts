@@ -57,3 +57,4 @@ export * from "./catalog";
 export * from "./collections";
 export * from "./emailActivity";
 export * from "./emailLinks";
+export * from "./aiQuoteDrafts";

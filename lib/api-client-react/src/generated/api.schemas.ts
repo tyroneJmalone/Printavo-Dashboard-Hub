@@ -946,6 +946,302 @@ export interface ProductSearchResult {
   vendorErrors: ProductSearchVendorError[];
 }
 
+export interface AiQuoteSize {
+  /**
+     * @minLength 1
+     * @maxLength 20
+     */
+  size: string;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  quantity: number;
+}
+
+export type AiQuoteCustomerCandidateMatchType = typeof AiQuoteCustomerCandidateMatchType[keyof typeof AiQuoteCustomerCandidateMatchType];
+
+
+export const AiQuoteCustomerCandidateMatchType = {
+  exact: 'exact',
+  possible: 'possible',
+} as const;
+
+export interface AiQuoteCustomerCandidate {
+  customerId: string;
+  companyName: string;
+  /** @nullable */
+  contactId: string | null;
+  /** @nullable */
+  contactName: string | null;
+  /** @nullable */
+  contactEmail: string | null;
+  matchType: AiQuoteCustomerCandidateMatchType;
+}
+
+export interface AiQuoteProductSize {
+  size: string;
+  /** @nullable */
+  cost: number | null;
+  /** @nullable */
+  salePrice: number | null;
+  /** @nullable */
+  inventoryTotal: number | null;
+}
+
+export interface AiQuoteProductColor {
+  name: string;
+  /** @nullable */
+  image: string | null;
+  sizes: AiQuoteProductSize[];
+}
+
+export type AiQuoteProductOptionVendor = typeof AiQuoteProductOptionVendor[keyof typeof AiQuoteProductOptionVendor];
+
+
+export const AiQuoteProductOptionVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export type AiQuoteProductOptionMatchType = typeof AiQuoteProductOptionMatchType[keyof typeof AiQuoteProductOptionMatchType];
+
+
+export const AiQuoteProductOptionMatchType = {
+  exact: 'exact',
+  closest: 'closest',
+} as const;
+
+export interface AiQuoteProductOption {
+  vendor: AiQuoteProductOptionVendor;
+  matchType: AiQuoteProductOptionMatchType;
+  styleName: string;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  image: string | null;
+  colors: AiQuoteProductColor[];
+}
+
+export type AiQuoteGarmentSelectionVendor = typeof AiQuoteGarmentSelectionVendor[keyof typeof AiQuoteGarmentSelectionVendor];
+
+
+export const AiQuoteGarmentSelectionVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface AiQuoteGarmentSelection {
+  vendor: AiQuoteGarmentSelectionVendor;
+  styleName: string;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  color: string;
+  /** @minimum 0 */
+  garmentCost: number;
+  /** @nullable */
+  image: string | null;
+}
+
+export interface AiQuoteGarment {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  id: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  brand: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  style: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description: string | null;
+  /** @maxLength 100 */
+  color: string;
+  /**
+     * @minItems 1
+     * @maxItems 30
+     */
+  sizes: AiQuoteSize[];
+  /** @maxItems 10 */
+  productOptions: AiQuoteProductOption[];
+  selectedProduct: AiQuoteGarmentSelection | null;
+}
+
+export interface AiQuoteDecoration {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  location: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  method: string;
+  /**
+     * @minimum 1
+     * @maximum 20
+     * @nullable
+     */
+  colorCount: number | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  details: string | null;
+  /** @nullable */
+  matrixId: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  matrixColumnIndex: number | null;
+}
+
+export interface AiQuotePricingLine {
+  garmentId: string;
+  /** @minimum 0 */
+  quantity: number;
+  /** @minimum 0 */
+  garmentCost: number;
+  /** @minimum 0 */
+  garmentMarkup: number;
+  /** @minimum 0 */
+  decorationCost: number;
+  /** @minimum 0 */
+  unitPrice: number;
+  /** @minimum 0 */
+  total: number;
+}
+
+export interface AiQuoteDraftData {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  customerQuery: string;
+  /** @maxItems 10 */
+  customerCandidates: AiQuoteCustomerCandidate[];
+  selectedCustomer: AiQuoteCustomerCandidate | null;
+  /** @maxLength 300 */
+  nickname: string;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  dueDate: string | null;
+  /**
+     * @minimum 0
+     * @maximum 10
+     */
+  markup: number;
+  /** @maxLength 10000 */
+  customerNote: string;
+  /** @maxLength 10000 */
+  productionNote: string;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  garments: AiQuoteGarment[];
+  /** @maxItems 20 */
+  decorations: AiQuoteDecoration[];
+  pricing: AiQuotePricingLine[];
+  /**
+     * @maxItems 30
+     * @items.maxLength 500
+     */
+  uncertainties: string[];
+  /**
+     * @maxItems 30
+     * @items.maxLength 500
+     */
+  warnings: string[];
+}
+
+export type AiQuoteDraftStatus = typeof AiQuoteDraftStatus[keyof typeof AiQuoteDraftStatus];
+
+
+export const AiQuoteDraftStatus = {
+  draft: 'draft',
+  creating: 'creating',
+  created: 'created',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+export interface AiQuoteDraft {
+  id: string;
+  status: AiQuoteDraftStatus;
+  /** @minimum 1 */
+  revision: number;
+  prompt: string;
+  draft: AiQuoteDraftData;
+  /** @nullable */
+  createdByEmail: string | null;
+  /** @nullable */
+  printavoQuoteId: string | null;
+  /** @nullable */
+  printavoVisualId: number | null;
+  /** @nullable */
+  printavoCreatedAt: string | null;
+  /** @nullable */
+  createAttemptedAt: string | null;
+  /** @nullable */
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiQuoteDraftListResponse {
+  drafts: AiQuoteDraft[];
+}
+
+export interface InterpretAiQuotePromptRequest {
+  /**
+     * @minLength 8
+     * @maxLength 10000
+     */
+  prompt: string;
+}
+
+export interface UpdateAiQuoteDraftRequest {
+  /** @minimum 1 */
+  revision: number;
+  draft: AiQuoteDraftData;
+}
+
+export type CreatePrintavoQuoteRequestConfirmation = typeof CreatePrintavoQuoteRequestConfirmation[keyof typeof CreatePrintavoQuoteRequestConfirmation];
+
+
+export const CreatePrintavoQuoteRequestConfirmation = {
+  CREATE_QUOTE: 'CREATE QUOTE',
+} as const;
+
+export interface CreatePrintavoQuoteRequest {
+  confirmation: CreatePrintavoQuoteRequestConfirmation;
+  /** @minimum 1 */
+  revision: number;
+}
+
 export type FinderOrderLineItemSizesItem = {
   size: string;
   count: number;

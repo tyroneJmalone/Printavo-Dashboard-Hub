@@ -80,7 +80,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: "Quoting",
-    items: [{ id: "quote", label: "Price Calculator", href: "/price-calculator", icon: Calculator }],
+    items: [
+      { id: "ai-quotes", label: "AI Quote Drafts", href: "/ai-quotes", icon: Wand2 },
+      { id: "quote", label: "Price Calculator", href: "/price-calculator", icon: Calculator }
+    ],
   },
   {
     heading: "Team",

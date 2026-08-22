@@ -3624,6 +3624,1074 @@ export const ListDetectedChipplyStoresResponse = zod.object({
 
 
 /**
+ * @summary List recent AI-assisted quote drafts
+ */
+
+export const listAiQuoteDraftsResponseDraftsItemDraftCustomerQueryMax = 300;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftCustomerCandidatesMax = 10;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftNicknameMax = 300;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftDueDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const listAiQuoteDraftsResponseDraftsItemDraftMarkupMin = 0;
+export const listAiQuoteDraftsResponseDraftsItemDraftMarkupMax = 10;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftCustomerNoteMax = 10000;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftProductionNoteMax = 10000;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemIdMax = 100;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemBrandMax = 100;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemStyleMax = 100;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemDescriptionMax = 500;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemColorMax = 100;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSizesItemSizeMax = 20;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSizesItemQuantityMin = 0;
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSizesItemQuantityMax = 100000;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSizesMax = 30;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemProductOptionsMax = 10;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSelectedProductOneGarmentCostMin = 0;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftGarmentsMax = 20;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemIdMax = 100;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemLocationMax = 100;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemMethodMax = 100;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemColorCountMax = 20;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemDetailsMax = 500;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemMatrixColumnIndexMin = 0;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftDecorationsMax = 20;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftPricingItemQuantityMin = 0;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftPricingItemGarmentCostMin = 0;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftPricingItemGarmentMarkupMin = 0;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftPricingItemDecorationCostMin = 0;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftPricingItemUnitPriceMin = 0;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftPricingItemTotalMin = 0;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftUncertaintiesItemMax = 500;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftUncertaintiesMax = 30;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftWarningsItemMax = 500;
+
+export const listAiQuoteDraftsResponseDraftsItemDraftWarningsMax = 30;
+
+
+
+export const ListAiQuoteDraftsResponse = zod.object({
+  "drafts": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['draft', 'creating', 'created', 'failed', 'unknown']),
+  "revision": zod.number().min(1),
+  "prompt": zod.string(),
+  "draft": zod.object({
+  "customerQuery": zod.string().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftCustomerQueryMax),
+  "customerCandidates": zod.array(zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+})).max(listAiQuoteDraftsResponseDraftsItemDraftCustomerCandidatesMax),
+  "selectedCustomer": zod.union([zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+}),zod.null()]),
+  "nickname": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftNicknameMax),
+  "dueDate": zod.string().regex(listAiQuoteDraftsResponseDraftsItemDraftDueDateRegExp).nullable(),
+  "markup": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftMarkupMin).max(listAiQuoteDraftsResponseDraftsItemDraftMarkupMax),
+  "customerNote": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftCustomerNoteMax),
+  "productionNote": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftProductionNoteMax),
+  "garments": zod.array(zod.object({
+  "id": zod.string().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemIdMax),
+  "brand": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemBrandMax).nullable(),
+  "style": zod.string().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemStyleMax),
+  "description": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemDescriptionMax).nullable(),
+  "color": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemColorMax),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSizesItemSizeMax),
+  "quantity": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSizesItemQuantityMin).max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSizesItemQuantityMax)
+})).min(1).max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSizesMax),
+  "productOptions": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "matchType": zod.enum(['exact', 'closest']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "image": zod.string().nullable(),
+  "colors": zod.array(zod.object({
+  "name": zod.string(),
+  "image": zod.string().nullable(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "cost": zod.number().nullable(),
+  "salePrice": zod.number().nullable(),
+  "inventoryTotal": zod.number().nullable()
+}))
+}))
+})).max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemProductOptionsMax),
+  "selectedProduct": zod.union([zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "color": zod.string(),
+  "garmentCost": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftGarmentsItemSelectedProductOneGarmentCostMin),
+  "image": zod.string().nullable()
+}),zod.null()])
+})).min(1).max(listAiQuoteDraftsResponseDraftsItemDraftGarmentsMax),
+  "decorations": zod.array(zod.object({
+  "id": zod.string().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemIdMax),
+  "location": zod.string().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemLocationMax),
+  "method": zod.string().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemMethodMax),
+  "colorCount": zod.number().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemColorCountMax).nullable(),
+  "details": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemDetailsMax).nullable(),
+  "matrixId": zod.string().uuid().nullable(),
+  "matrixColumnIndex": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftDecorationsItemMatrixColumnIndexMin).nullable()
+})).max(listAiQuoteDraftsResponseDraftsItemDraftDecorationsMax),
+  "pricing": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "quantity": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftPricingItemQuantityMin),
+  "garmentCost": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftPricingItemGarmentCostMin),
+  "garmentMarkup": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftPricingItemGarmentMarkupMin),
+  "decorationCost": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftPricingItemDecorationCostMin),
+  "unitPrice": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftPricingItemUnitPriceMin),
+  "total": zod.number().min(listAiQuoteDraftsResponseDraftsItemDraftPricingItemTotalMin)
+})),
+  "uncertainties": zod.array(zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftUncertaintiesItemMax)).max(listAiQuoteDraftsResponseDraftsItemDraftUncertaintiesMax),
+  "warnings": zod.array(zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftWarningsItemMax)).max(listAiQuoteDraftsResponseDraftsItemDraftWarningsMax)
+}),
+  "createdByEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string().nullable(),
+  "printavoVisualId": zod.number().nullable(),
+  "printavoCreatedAt": zod.coerce.date().nullable(),
+  "createAttemptedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * Uses AI only for extraction. Customer, vendor product, cost, and pricing facts are resolved by Hub before the draft is saved. This endpoint never writes to Printavo.
+ * @summary Interpret a natural-language quote request and save a local draft
+ */
+export const interpretAiQuotePromptBodyPromptMin = 8;
+export const interpretAiQuotePromptBodyPromptMax = 10000;
+
+
+
+export const InterpretAiQuotePromptBody = zod.object({
+  "prompt": zod.string().min(interpretAiQuotePromptBodyPromptMin).max(interpretAiQuotePromptBodyPromptMax)
+})
+
+
+export const interpretAiQuotePromptResponseDraftCustomerQueryMax = 300;
+
+export const interpretAiQuotePromptResponseDraftCustomerCandidatesMax = 10;
+
+export const interpretAiQuotePromptResponseDraftNicknameMax = 300;
+
+export const interpretAiQuotePromptResponseDraftDueDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const interpretAiQuotePromptResponseDraftMarkupMin = 0;
+export const interpretAiQuotePromptResponseDraftMarkupMax = 10;
+
+export const interpretAiQuotePromptResponseDraftCustomerNoteMax = 10000;
+
+export const interpretAiQuotePromptResponseDraftProductionNoteMax = 10000;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemIdMax = 100;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemBrandMax = 100;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemStyleMax = 100;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemDescriptionMax = 500;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemColorMax = 100;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemSizesItemSizeMax = 20;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemSizesItemQuantityMin = 0;
+export const interpretAiQuotePromptResponseDraftGarmentsItemSizesItemQuantityMax = 100000;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemSizesMax = 30;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemProductOptionsMax = 10;
+
+export const interpretAiQuotePromptResponseDraftGarmentsItemSelectedProductOneGarmentCostMin = 0;
+
+export const interpretAiQuotePromptResponseDraftGarmentsMax = 20;
+
+export const interpretAiQuotePromptResponseDraftDecorationsItemIdMax = 100;
+
+export const interpretAiQuotePromptResponseDraftDecorationsItemLocationMax = 100;
+
+export const interpretAiQuotePromptResponseDraftDecorationsItemMethodMax = 100;
+
+export const interpretAiQuotePromptResponseDraftDecorationsItemColorCountMax = 20;
+
+export const interpretAiQuotePromptResponseDraftDecorationsItemDetailsMax = 500;
+
+export const interpretAiQuotePromptResponseDraftDecorationsItemMatrixColumnIndexMin = 0;
+
+export const interpretAiQuotePromptResponseDraftDecorationsMax = 20;
+
+export const interpretAiQuotePromptResponseDraftPricingItemQuantityMin = 0;
+
+export const interpretAiQuotePromptResponseDraftPricingItemGarmentCostMin = 0;
+
+export const interpretAiQuotePromptResponseDraftPricingItemGarmentMarkupMin = 0;
+
+export const interpretAiQuotePromptResponseDraftPricingItemDecorationCostMin = 0;
+
+export const interpretAiQuotePromptResponseDraftPricingItemUnitPriceMin = 0;
+
+export const interpretAiQuotePromptResponseDraftPricingItemTotalMin = 0;
+
+export const interpretAiQuotePromptResponseDraftUncertaintiesItemMax = 500;
+
+export const interpretAiQuotePromptResponseDraftUncertaintiesMax = 30;
+
+export const interpretAiQuotePromptResponseDraftWarningsItemMax = 500;
+
+export const interpretAiQuotePromptResponseDraftWarningsMax = 30;
+
+
+
+export const InterpretAiQuotePromptResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['draft', 'creating', 'created', 'failed', 'unknown']),
+  "revision": zod.number().min(1),
+  "prompt": zod.string(),
+  "draft": zod.object({
+  "customerQuery": zod.string().min(1).max(interpretAiQuotePromptResponseDraftCustomerQueryMax),
+  "customerCandidates": zod.array(zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+})).max(interpretAiQuotePromptResponseDraftCustomerCandidatesMax),
+  "selectedCustomer": zod.union([zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+}),zod.null()]),
+  "nickname": zod.string().max(interpretAiQuotePromptResponseDraftNicknameMax),
+  "dueDate": zod.string().regex(interpretAiQuotePromptResponseDraftDueDateRegExp).nullable(),
+  "markup": zod.number().min(interpretAiQuotePromptResponseDraftMarkupMin).max(interpretAiQuotePromptResponseDraftMarkupMax),
+  "customerNote": zod.string().max(interpretAiQuotePromptResponseDraftCustomerNoteMax),
+  "productionNote": zod.string().max(interpretAiQuotePromptResponseDraftProductionNoteMax),
+  "garments": zod.array(zod.object({
+  "id": zod.string().min(1).max(interpretAiQuotePromptResponseDraftGarmentsItemIdMax),
+  "brand": zod.string().max(interpretAiQuotePromptResponseDraftGarmentsItemBrandMax).nullable(),
+  "style": zod.string().min(1).max(interpretAiQuotePromptResponseDraftGarmentsItemStyleMax),
+  "description": zod.string().max(interpretAiQuotePromptResponseDraftGarmentsItemDescriptionMax).nullable(),
+  "color": zod.string().max(interpretAiQuotePromptResponseDraftGarmentsItemColorMax),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().min(1).max(interpretAiQuotePromptResponseDraftGarmentsItemSizesItemSizeMax),
+  "quantity": zod.number().min(interpretAiQuotePromptResponseDraftGarmentsItemSizesItemQuantityMin).max(interpretAiQuotePromptResponseDraftGarmentsItemSizesItemQuantityMax)
+})).min(1).max(interpretAiQuotePromptResponseDraftGarmentsItemSizesMax),
+  "productOptions": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "matchType": zod.enum(['exact', 'closest']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "image": zod.string().nullable(),
+  "colors": zod.array(zod.object({
+  "name": zod.string(),
+  "image": zod.string().nullable(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "cost": zod.number().nullable(),
+  "salePrice": zod.number().nullable(),
+  "inventoryTotal": zod.number().nullable()
+}))
+}))
+})).max(interpretAiQuotePromptResponseDraftGarmentsItemProductOptionsMax),
+  "selectedProduct": zod.union([zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "color": zod.string(),
+  "garmentCost": zod.number().min(interpretAiQuotePromptResponseDraftGarmentsItemSelectedProductOneGarmentCostMin),
+  "image": zod.string().nullable()
+}),zod.null()])
+})).min(1).max(interpretAiQuotePromptResponseDraftGarmentsMax),
+  "decorations": zod.array(zod.object({
+  "id": zod.string().min(1).max(interpretAiQuotePromptResponseDraftDecorationsItemIdMax),
+  "location": zod.string().min(1).max(interpretAiQuotePromptResponseDraftDecorationsItemLocationMax),
+  "method": zod.string().min(1).max(interpretAiQuotePromptResponseDraftDecorationsItemMethodMax),
+  "colorCount": zod.number().min(1).max(interpretAiQuotePromptResponseDraftDecorationsItemColorCountMax).nullable(),
+  "details": zod.string().max(interpretAiQuotePromptResponseDraftDecorationsItemDetailsMax).nullable(),
+  "matrixId": zod.string().uuid().nullable(),
+  "matrixColumnIndex": zod.number().min(interpretAiQuotePromptResponseDraftDecorationsItemMatrixColumnIndexMin).nullable()
+})).max(interpretAiQuotePromptResponseDraftDecorationsMax),
+  "pricing": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "quantity": zod.number().min(interpretAiQuotePromptResponseDraftPricingItemQuantityMin),
+  "garmentCost": zod.number().min(interpretAiQuotePromptResponseDraftPricingItemGarmentCostMin),
+  "garmentMarkup": zod.number().min(interpretAiQuotePromptResponseDraftPricingItemGarmentMarkupMin),
+  "decorationCost": zod.number().min(interpretAiQuotePromptResponseDraftPricingItemDecorationCostMin),
+  "unitPrice": zod.number().min(interpretAiQuotePromptResponseDraftPricingItemUnitPriceMin),
+  "total": zod.number().min(interpretAiQuotePromptResponseDraftPricingItemTotalMin)
+})),
+  "uncertainties": zod.array(zod.string().max(interpretAiQuotePromptResponseDraftUncertaintiesItemMax)).max(interpretAiQuotePromptResponseDraftUncertaintiesMax),
+  "warnings": zod.array(zod.string().max(interpretAiQuotePromptResponseDraftWarningsItemMax)).max(interpretAiQuotePromptResponseDraftWarningsMax)
+}),
+  "createdByEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string().nullable(),
+  "printavoVisualId": zod.number().nullable(),
+  "printavoCreatedAt": zod.coerce.date().nullable(),
+  "createAttemptedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a saved AI quote draft
+ */
+export const GetAiQuoteDraftParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+export const getAiQuoteDraftResponseDraftCustomerQueryMax = 300;
+
+export const getAiQuoteDraftResponseDraftCustomerCandidatesMax = 10;
+
+export const getAiQuoteDraftResponseDraftNicknameMax = 300;
+
+export const getAiQuoteDraftResponseDraftDueDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAiQuoteDraftResponseDraftMarkupMin = 0;
+export const getAiQuoteDraftResponseDraftMarkupMax = 10;
+
+export const getAiQuoteDraftResponseDraftCustomerNoteMax = 10000;
+
+export const getAiQuoteDraftResponseDraftProductionNoteMax = 10000;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemIdMax = 100;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemBrandMax = 100;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemStyleMax = 100;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemDescriptionMax = 500;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemColorMax = 100;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemSizesItemSizeMax = 20;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemSizesItemQuantityMin = 0;
+export const getAiQuoteDraftResponseDraftGarmentsItemSizesItemQuantityMax = 100000;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemSizesMax = 30;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemProductOptionsMax = 10;
+
+export const getAiQuoteDraftResponseDraftGarmentsItemSelectedProductOneGarmentCostMin = 0;
+
+export const getAiQuoteDraftResponseDraftGarmentsMax = 20;
+
+export const getAiQuoteDraftResponseDraftDecorationsItemIdMax = 100;
+
+export const getAiQuoteDraftResponseDraftDecorationsItemLocationMax = 100;
+
+export const getAiQuoteDraftResponseDraftDecorationsItemMethodMax = 100;
+
+export const getAiQuoteDraftResponseDraftDecorationsItemColorCountMax = 20;
+
+export const getAiQuoteDraftResponseDraftDecorationsItemDetailsMax = 500;
+
+export const getAiQuoteDraftResponseDraftDecorationsItemMatrixColumnIndexMin = 0;
+
+export const getAiQuoteDraftResponseDraftDecorationsMax = 20;
+
+export const getAiQuoteDraftResponseDraftPricingItemQuantityMin = 0;
+
+export const getAiQuoteDraftResponseDraftPricingItemGarmentCostMin = 0;
+
+export const getAiQuoteDraftResponseDraftPricingItemGarmentMarkupMin = 0;
+
+export const getAiQuoteDraftResponseDraftPricingItemDecorationCostMin = 0;
+
+export const getAiQuoteDraftResponseDraftPricingItemUnitPriceMin = 0;
+
+export const getAiQuoteDraftResponseDraftPricingItemTotalMin = 0;
+
+export const getAiQuoteDraftResponseDraftUncertaintiesItemMax = 500;
+
+export const getAiQuoteDraftResponseDraftUncertaintiesMax = 30;
+
+export const getAiQuoteDraftResponseDraftWarningsItemMax = 500;
+
+export const getAiQuoteDraftResponseDraftWarningsMax = 30;
+
+
+
+export const GetAiQuoteDraftResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['draft', 'creating', 'created', 'failed', 'unknown']),
+  "revision": zod.number().min(1),
+  "prompt": zod.string(),
+  "draft": zod.object({
+  "customerQuery": zod.string().min(1).max(getAiQuoteDraftResponseDraftCustomerQueryMax),
+  "customerCandidates": zod.array(zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+})).max(getAiQuoteDraftResponseDraftCustomerCandidatesMax),
+  "selectedCustomer": zod.union([zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+}),zod.null()]),
+  "nickname": zod.string().max(getAiQuoteDraftResponseDraftNicknameMax),
+  "dueDate": zod.string().regex(getAiQuoteDraftResponseDraftDueDateRegExp).nullable(),
+  "markup": zod.number().min(getAiQuoteDraftResponseDraftMarkupMin).max(getAiQuoteDraftResponseDraftMarkupMax),
+  "customerNote": zod.string().max(getAiQuoteDraftResponseDraftCustomerNoteMax),
+  "productionNote": zod.string().max(getAiQuoteDraftResponseDraftProductionNoteMax),
+  "garments": zod.array(zod.object({
+  "id": zod.string().min(1).max(getAiQuoteDraftResponseDraftGarmentsItemIdMax),
+  "brand": zod.string().max(getAiQuoteDraftResponseDraftGarmentsItemBrandMax).nullable(),
+  "style": zod.string().min(1).max(getAiQuoteDraftResponseDraftGarmentsItemStyleMax),
+  "description": zod.string().max(getAiQuoteDraftResponseDraftGarmentsItemDescriptionMax).nullable(),
+  "color": zod.string().max(getAiQuoteDraftResponseDraftGarmentsItemColorMax),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().min(1).max(getAiQuoteDraftResponseDraftGarmentsItemSizesItemSizeMax),
+  "quantity": zod.number().min(getAiQuoteDraftResponseDraftGarmentsItemSizesItemQuantityMin).max(getAiQuoteDraftResponseDraftGarmentsItemSizesItemQuantityMax)
+})).min(1).max(getAiQuoteDraftResponseDraftGarmentsItemSizesMax),
+  "productOptions": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "matchType": zod.enum(['exact', 'closest']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "image": zod.string().nullable(),
+  "colors": zod.array(zod.object({
+  "name": zod.string(),
+  "image": zod.string().nullable(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "cost": zod.number().nullable(),
+  "salePrice": zod.number().nullable(),
+  "inventoryTotal": zod.number().nullable()
+}))
+}))
+})).max(getAiQuoteDraftResponseDraftGarmentsItemProductOptionsMax),
+  "selectedProduct": zod.union([zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "color": zod.string(),
+  "garmentCost": zod.number().min(getAiQuoteDraftResponseDraftGarmentsItemSelectedProductOneGarmentCostMin),
+  "image": zod.string().nullable()
+}),zod.null()])
+})).min(1).max(getAiQuoteDraftResponseDraftGarmentsMax),
+  "decorations": zod.array(zod.object({
+  "id": zod.string().min(1).max(getAiQuoteDraftResponseDraftDecorationsItemIdMax),
+  "location": zod.string().min(1).max(getAiQuoteDraftResponseDraftDecorationsItemLocationMax),
+  "method": zod.string().min(1).max(getAiQuoteDraftResponseDraftDecorationsItemMethodMax),
+  "colorCount": zod.number().min(1).max(getAiQuoteDraftResponseDraftDecorationsItemColorCountMax).nullable(),
+  "details": zod.string().max(getAiQuoteDraftResponseDraftDecorationsItemDetailsMax).nullable(),
+  "matrixId": zod.string().uuid().nullable(),
+  "matrixColumnIndex": zod.number().min(getAiQuoteDraftResponseDraftDecorationsItemMatrixColumnIndexMin).nullable()
+})).max(getAiQuoteDraftResponseDraftDecorationsMax),
+  "pricing": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "quantity": zod.number().min(getAiQuoteDraftResponseDraftPricingItemQuantityMin),
+  "garmentCost": zod.number().min(getAiQuoteDraftResponseDraftPricingItemGarmentCostMin),
+  "garmentMarkup": zod.number().min(getAiQuoteDraftResponseDraftPricingItemGarmentMarkupMin),
+  "decorationCost": zod.number().min(getAiQuoteDraftResponseDraftPricingItemDecorationCostMin),
+  "unitPrice": zod.number().min(getAiQuoteDraftResponseDraftPricingItemUnitPriceMin),
+  "total": zod.number().min(getAiQuoteDraftResponseDraftPricingItemTotalMin)
+})),
+  "uncertainties": zod.array(zod.string().max(getAiQuoteDraftResponseDraftUncertaintiesItemMax)).max(getAiQuoteDraftResponseDraftUncertaintiesMax),
+  "warnings": zod.array(zod.string().max(getAiQuoteDraftResponseDraftWarningsItemMax)).max(getAiQuoteDraftResponseDraftWarningsMax)
+}),
+  "createdByEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string().nullable(),
+  "printavoVisualId": zod.number().nullable(),
+  "printavoCreatedAt": zod.coerce.date().nullable(),
+  "createAttemptedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Save reviewed edits and recalculate trusted pricing
+ */
+export const UpdateAiQuoteDraftParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+export const updateAiQuoteDraftBodyDraftCustomerQueryMax = 300;
+
+export const updateAiQuoteDraftBodyDraftCustomerCandidatesMax = 10;
+
+export const updateAiQuoteDraftBodyDraftNicknameMax = 300;
+
+export const updateAiQuoteDraftBodyDraftDueDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateAiQuoteDraftBodyDraftMarkupMin = 0;
+export const updateAiQuoteDraftBodyDraftMarkupMax = 10;
+
+export const updateAiQuoteDraftBodyDraftCustomerNoteMax = 10000;
+
+export const updateAiQuoteDraftBodyDraftProductionNoteMax = 10000;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemIdMax = 100;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemBrandMax = 100;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemStyleMax = 100;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemDescriptionMax = 500;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemColorMax = 100;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemSizesItemSizeMax = 20;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemSizesItemQuantityMin = 0;
+export const updateAiQuoteDraftBodyDraftGarmentsItemSizesItemQuantityMax = 100000;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemSizesMax = 30;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemProductOptionsMax = 10;
+
+export const updateAiQuoteDraftBodyDraftGarmentsItemSelectedProductOneGarmentCostMin = 0;
+
+export const updateAiQuoteDraftBodyDraftGarmentsMax = 20;
+
+export const updateAiQuoteDraftBodyDraftDecorationsItemIdMax = 100;
+
+export const updateAiQuoteDraftBodyDraftDecorationsItemLocationMax = 100;
+
+export const updateAiQuoteDraftBodyDraftDecorationsItemMethodMax = 100;
+
+export const updateAiQuoteDraftBodyDraftDecorationsItemColorCountMax = 20;
+
+export const updateAiQuoteDraftBodyDraftDecorationsItemDetailsMax = 500;
+
+export const updateAiQuoteDraftBodyDraftDecorationsItemMatrixColumnIndexMin = 0;
+
+export const updateAiQuoteDraftBodyDraftDecorationsMax = 20;
+
+export const updateAiQuoteDraftBodyDraftPricingItemQuantityMin = 0;
+
+export const updateAiQuoteDraftBodyDraftPricingItemGarmentCostMin = 0;
+
+export const updateAiQuoteDraftBodyDraftPricingItemGarmentMarkupMin = 0;
+
+export const updateAiQuoteDraftBodyDraftPricingItemDecorationCostMin = 0;
+
+export const updateAiQuoteDraftBodyDraftPricingItemUnitPriceMin = 0;
+
+export const updateAiQuoteDraftBodyDraftPricingItemTotalMin = 0;
+
+export const updateAiQuoteDraftBodyDraftUncertaintiesItemMax = 500;
+
+export const updateAiQuoteDraftBodyDraftUncertaintiesMax = 30;
+
+export const updateAiQuoteDraftBodyDraftWarningsItemMax = 500;
+
+export const updateAiQuoteDraftBodyDraftWarningsMax = 30;
+
+
+
+export const UpdateAiQuoteDraftBody = zod.object({
+  "revision": zod.number().min(1),
+  "draft": zod.object({
+  "customerQuery": zod.string().min(1).max(updateAiQuoteDraftBodyDraftCustomerQueryMax),
+  "customerCandidates": zod.array(zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+})).max(updateAiQuoteDraftBodyDraftCustomerCandidatesMax),
+  "selectedCustomer": zod.union([zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+}),zod.null()]),
+  "nickname": zod.string().max(updateAiQuoteDraftBodyDraftNicknameMax),
+  "dueDate": zod.string().regex(updateAiQuoteDraftBodyDraftDueDateRegExp).nullable(),
+  "markup": zod.number().min(updateAiQuoteDraftBodyDraftMarkupMin).max(updateAiQuoteDraftBodyDraftMarkupMax),
+  "customerNote": zod.string().max(updateAiQuoteDraftBodyDraftCustomerNoteMax),
+  "productionNote": zod.string().max(updateAiQuoteDraftBodyDraftProductionNoteMax),
+  "garments": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateAiQuoteDraftBodyDraftGarmentsItemIdMax),
+  "brand": zod.string().max(updateAiQuoteDraftBodyDraftGarmentsItemBrandMax).nullable(),
+  "style": zod.string().min(1).max(updateAiQuoteDraftBodyDraftGarmentsItemStyleMax),
+  "description": zod.string().max(updateAiQuoteDraftBodyDraftGarmentsItemDescriptionMax).nullable(),
+  "color": zod.string().max(updateAiQuoteDraftBodyDraftGarmentsItemColorMax),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().min(1).max(updateAiQuoteDraftBodyDraftGarmentsItemSizesItemSizeMax),
+  "quantity": zod.number().min(updateAiQuoteDraftBodyDraftGarmentsItemSizesItemQuantityMin).max(updateAiQuoteDraftBodyDraftGarmentsItemSizesItemQuantityMax)
+})).min(1).max(updateAiQuoteDraftBodyDraftGarmentsItemSizesMax),
+  "productOptions": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "matchType": zod.enum(['exact', 'closest']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "image": zod.string().nullable(),
+  "colors": zod.array(zod.object({
+  "name": zod.string(),
+  "image": zod.string().nullable(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "cost": zod.number().nullable(),
+  "salePrice": zod.number().nullable(),
+  "inventoryTotal": zod.number().nullable()
+}))
+}))
+})).max(updateAiQuoteDraftBodyDraftGarmentsItemProductOptionsMax),
+  "selectedProduct": zod.union([zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "color": zod.string(),
+  "garmentCost": zod.number().min(updateAiQuoteDraftBodyDraftGarmentsItemSelectedProductOneGarmentCostMin),
+  "image": zod.string().nullable()
+}),zod.null()])
+})).min(1).max(updateAiQuoteDraftBodyDraftGarmentsMax),
+  "decorations": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateAiQuoteDraftBodyDraftDecorationsItemIdMax),
+  "location": zod.string().min(1).max(updateAiQuoteDraftBodyDraftDecorationsItemLocationMax),
+  "method": zod.string().min(1).max(updateAiQuoteDraftBodyDraftDecorationsItemMethodMax),
+  "colorCount": zod.number().min(1).max(updateAiQuoteDraftBodyDraftDecorationsItemColorCountMax).nullable(),
+  "details": zod.string().max(updateAiQuoteDraftBodyDraftDecorationsItemDetailsMax).nullable(),
+  "matrixId": zod.string().uuid().nullable(),
+  "matrixColumnIndex": zod.number().min(updateAiQuoteDraftBodyDraftDecorationsItemMatrixColumnIndexMin).nullable()
+})).max(updateAiQuoteDraftBodyDraftDecorationsMax),
+  "pricing": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "quantity": zod.number().min(updateAiQuoteDraftBodyDraftPricingItemQuantityMin),
+  "garmentCost": zod.number().min(updateAiQuoteDraftBodyDraftPricingItemGarmentCostMin),
+  "garmentMarkup": zod.number().min(updateAiQuoteDraftBodyDraftPricingItemGarmentMarkupMin),
+  "decorationCost": zod.number().min(updateAiQuoteDraftBodyDraftPricingItemDecorationCostMin),
+  "unitPrice": zod.number().min(updateAiQuoteDraftBodyDraftPricingItemUnitPriceMin),
+  "total": zod.number().min(updateAiQuoteDraftBodyDraftPricingItemTotalMin)
+})),
+  "uncertainties": zod.array(zod.string().max(updateAiQuoteDraftBodyDraftUncertaintiesItemMax)).max(updateAiQuoteDraftBodyDraftUncertaintiesMax),
+  "warnings": zod.array(zod.string().max(updateAiQuoteDraftBodyDraftWarningsItemMax)).max(updateAiQuoteDraftBodyDraftWarningsMax)
+})
+})
+
+
+export const updateAiQuoteDraftResponseDraftCustomerQueryMax = 300;
+
+export const updateAiQuoteDraftResponseDraftCustomerCandidatesMax = 10;
+
+export const updateAiQuoteDraftResponseDraftNicknameMax = 300;
+
+export const updateAiQuoteDraftResponseDraftDueDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateAiQuoteDraftResponseDraftMarkupMin = 0;
+export const updateAiQuoteDraftResponseDraftMarkupMax = 10;
+
+export const updateAiQuoteDraftResponseDraftCustomerNoteMax = 10000;
+
+export const updateAiQuoteDraftResponseDraftProductionNoteMax = 10000;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemIdMax = 100;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemBrandMax = 100;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemStyleMax = 100;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemDescriptionMax = 500;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemColorMax = 100;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemSizesItemSizeMax = 20;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemSizesItemQuantityMin = 0;
+export const updateAiQuoteDraftResponseDraftGarmentsItemSizesItemQuantityMax = 100000;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemSizesMax = 30;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemProductOptionsMax = 10;
+
+export const updateAiQuoteDraftResponseDraftGarmentsItemSelectedProductOneGarmentCostMin = 0;
+
+export const updateAiQuoteDraftResponseDraftGarmentsMax = 20;
+
+export const updateAiQuoteDraftResponseDraftDecorationsItemIdMax = 100;
+
+export const updateAiQuoteDraftResponseDraftDecorationsItemLocationMax = 100;
+
+export const updateAiQuoteDraftResponseDraftDecorationsItemMethodMax = 100;
+
+export const updateAiQuoteDraftResponseDraftDecorationsItemColorCountMax = 20;
+
+export const updateAiQuoteDraftResponseDraftDecorationsItemDetailsMax = 500;
+
+export const updateAiQuoteDraftResponseDraftDecorationsItemMatrixColumnIndexMin = 0;
+
+export const updateAiQuoteDraftResponseDraftDecorationsMax = 20;
+
+export const updateAiQuoteDraftResponseDraftPricingItemQuantityMin = 0;
+
+export const updateAiQuoteDraftResponseDraftPricingItemGarmentCostMin = 0;
+
+export const updateAiQuoteDraftResponseDraftPricingItemGarmentMarkupMin = 0;
+
+export const updateAiQuoteDraftResponseDraftPricingItemDecorationCostMin = 0;
+
+export const updateAiQuoteDraftResponseDraftPricingItemUnitPriceMin = 0;
+
+export const updateAiQuoteDraftResponseDraftPricingItemTotalMin = 0;
+
+export const updateAiQuoteDraftResponseDraftUncertaintiesItemMax = 500;
+
+export const updateAiQuoteDraftResponseDraftUncertaintiesMax = 30;
+
+export const updateAiQuoteDraftResponseDraftWarningsItemMax = 500;
+
+export const updateAiQuoteDraftResponseDraftWarningsMax = 30;
+
+
+
+export const UpdateAiQuoteDraftResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['draft', 'creating', 'created', 'failed', 'unknown']),
+  "revision": zod.number().min(1),
+  "prompt": zod.string(),
+  "draft": zod.object({
+  "customerQuery": zod.string().min(1).max(updateAiQuoteDraftResponseDraftCustomerQueryMax),
+  "customerCandidates": zod.array(zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+})).max(updateAiQuoteDraftResponseDraftCustomerCandidatesMax),
+  "selectedCustomer": zod.union([zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+}),zod.null()]),
+  "nickname": zod.string().max(updateAiQuoteDraftResponseDraftNicknameMax),
+  "dueDate": zod.string().regex(updateAiQuoteDraftResponseDraftDueDateRegExp).nullable(),
+  "markup": zod.number().min(updateAiQuoteDraftResponseDraftMarkupMin).max(updateAiQuoteDraftResponseDraftMarkupMax),
+  "customerNote": zod.string().max(updateAiQuoteDraftResponseDraftCustomerNoteMax),
+  "productionNote": zod.string().max(updateAiQuoteDraftResponseDraftProductionNoteMax),
+  "garments": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateAiQuoteDraftResponseDraftGarmentsItemIdMax),
+  "brand": zod.string().max(updateAiQuoteDraftResponseDraftGarmentsItemBrandMax).nullable(),
+  "style": zod.string().min(1).max(updateAiQuoteDraftResponseDraftGarmentsItemStyleMax),
+  "description": zod.string().max(updateAiQuoteDraftResponseDraftGarmentsItemDescriptionMax).nullable(),
+  "color": zod.string().max(updateAiQuoteDraftResponseDraftGarmentsItemColorMax),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().min(1).max(updateAiQuoteDraftResponseDraftGarmentsItemSizesItemSizeMax),
+  "quantity": zod.number().min(updateAiQuoteDraftResponseDraftGarmentsItemSizesItemQuantityMin).max(updateAiQuoteDraftResponseDraftGarmentsItemSizesItemQuantityMax)
+})).min(1).max(updateAiQuoteDraftResponseDraftGarmentsItemSizesMax),
+  "productOptions": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "matchType": zod.enum(['exact', 'closest']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "image": zod.string().nullable(),
+  "colors": zod.array(zod.object({
+  "name": zod.string(),
+  "image": zod.string().nullable(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "cost": zod.number().nullable(),
+  "salePrice": zod.number().nullable(),
+  "inventoryTotal": zod.number().nullable()
+}))
+}))
+})).max(updateAiQuoteDraftResponseDraftGarmentsItemProductOptionsMax),
+  "selectedProduct": zod.union([zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "color": zod.string(),
+  "garmentCost": zod.number().min(updateAiQuoteDraftResponseDraftGarmentsItemSelectedProductOneGarmentCostMin),
+  "image": zod.string().nullable()
+}),zod.null()])
+})).min(1).max(updateAiQuoteDraftResponseDraftGarmentsMax),
+  "decorations": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateAiQuoteDraftResponseDraftDecorationsItemIdMax),
+  "location": zod.string().min(1).max(updateAiQuoteDraftResponseDraftDecorationsItemLocationMax),
+  "method": zod.string().min(1).max(updateAiQuoteDraftResponseDraftDecorationsItemMethodMax),
+  "colorCount": zod.number().min(1).max(updateAiQuoteDraftResponseDraftDecorationsItemColorCountMax).nullable(),
+  "details": zod.string().max(updateAiQuoteDraftResponseDraftDecorationsItemDetailsMax).nullable(),
+  "matrixId": zod.string().uuid().nullable(),
+  "matrixColumnIndex": zod.number().min(updateAiQuoteDraftResponseDraftDecorationsItemMatrixColumnIndexMin).nullable()
+})).max(updateAiQuoteDraftResponseDraftDecorationsMax),
+  "pricing": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "quantity": zod.number().min(updateAiQuoteDraftResponseDraftPricingItemQuantityMin),
+  "garmentCost": zod.number().min(updateAiQuoteDraftResponseDraftPricingItemGarmentCostMin),
+  "garmentMarkup": zod.number().min(updateAiQuoteDraftResponseDraftPricingItemGarmentMarkupMin),
+  "decorationCost": zod.number().min(updateAiQuoteDraftResponseDraftPricingItemDecorationCostMin),
+  "unitPrice": zod.number().min(updateAiQuoteDraftResponseDraftPricingItemUnitPriceMin),
+  "total": zod.number().min(updateAiQuoteDraftResponseDraftPricingItemTotalMin)
+})),
+  "uncertainties": zod.array(zod.string().max(updateAiQuoteDraftResponseDraftUncertaintiesItemMax)).max(updateAiQuoteDraftResponseDraftUncertaintiesMax),
+  "warnings": zod.array(zod.string().max(updateAiQuoteDraftResponseDraftWarningsItemMax)).max(updateAiQuoteDraftResponseDraftWarningsMax)
+}),
+  "createdByEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string().nullable(),
+  "printavoVisualId": zod.number().nullable(),
+  "printavoCreatedAt": zod.coerce.date().nullable(),
+  "createAttemptedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * Non-idempotent external write. Requires an exact typed confirmation. An ambiguous network outcome is persisted as unknown and may not be automatically retried.
+ * @summary Explicitly create a Printavo quote from a reviewed local draft
+ */
+export const CreatePrintavoQuoteFromDraftParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+
+
+export const CreatePrintavoQuoteFromDraftBody = zod.object({
+  "confirmation": zod.enum(['CREATE QUOTE']),
+  "revision": zod.number().min(1)
+})
+
+
+export const createPrintavoQuoteFromDraftResponseDraftCustomerQueryMax = 300;
+
+export const createPrintavoQuoteFromDraftResponseDraftCustomerCandidatesMax = 10;
+
+export const createPrintavoQuoteFromDraftResponseDraftNicknameMax = 300;
+
+export const createPrintavoQuoteFromDraftResponseDraftDueDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createPrintavoQuoteFromDraftResponseDraftMarkupMin = 0;
+export const createPrintavoQuoteFromDraftResponseDraftMarkupMax = 10;
+
+export const createPrintavoQuoteFromDraftResponseDraftCustomerNoteMax = 10000;
+
+export const createPrintavoQuoteFromDraftResponseDraftProductionNoteMax = 10000;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemIdMax = 100;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemBrandMax = 100;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemStyleMax = 100;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemDescriptionMax = 500;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemColorMax = 100;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemSizesItemSizeMax = 20;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemSizesItemQuantityMin = 0;
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemSizesItemQuantityMax = 100000;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemSizesMax = 30;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemProductOptionsMax = 10;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsItemSelectedProductOneGarmentCostMin = 0;
+
+export const createPrintavoQuoteFromDraftResponseDraftGarmentsMax = 20;
+
+export const createPrintavoQuoteFromDraftResponseDraftDecorationsItemIdMax = 100;
+
+export const createPrintavoQuoteFromDraftResponseDraftDecorationsItemLocationMax = 100;
+
+export const createPrintavoQuoteFromDraftResponseDraftDecorationsItemMethodMax = 100;
+
+export const createPrintavoQuoteFromDraftResponseDraftDecorationsItemColorCountMax = 20;
+
+export const createPrintavoQuoteFromDraftResponseDraftDecorationsItemDetailsMax = 500;
+
+export const createPrintavoQuoteFromDraftResponseDraftDecorationsItemMatrixColumnIndexMin = 0;
+
+export const createPrintavoQuoteFromDraftResponseDraftDecorationsMax = 20;
+
+export const createPrintavoQuoteFromDraftResponseDraftPricingItemQuantityMin = 0;
+
+export const createPrintavoQuoteFromDraftResponseDraftPricingItemGarmentCostMin = 0;
+
+export const createPrintavoQuoteFromDraftResponseDraftPricingItemGarmentMarkupMin = 0;
+
+export const createPrintavoQuoteFromDraftResponseDraftPricingItemDecorationCostMin = 0;
+
+export const createPrintavoQuoteFromDraftResponseDraftPricingItemUnitPriceMin = 0;
+
+export const createPrintavoQuoteFromDraftResponseDraftPricingItemTotalMin = 0;
+
+export const createPrintavoQuoteFromDraftResponseDraftUncertaintiesItemMax = 500;
+
+export const createPrintavoQuoteFromDraftResponseDraftUncertaintiesMax = 30;
+
+export const createPrintavoQuoteFromDraftResponseDraftWarningsItemMax = 500;
+
+export const createPrintavoQuoteFromDraftResponseDraftWarningsMax = 30;
+
+
+
+export const CreatePrintavoQuoteFromDraftResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['draft', 'creating', 'created', 'failed', 'unknown']),
+  "revision": zod.number().min(1),
+  "prompt": zod.string(),
+  "draft": zod.object({
+  "customerQuery": zod.string().min(1).max(createPrintavoQuoteFromDraftResponseDraftCustomerQueryMax),
+  "customerCandidates": zod.array(zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+})).max(createPrintavoQuoteFromDraftResponseDraftCustomerCandidatesMax),
+  "selectedCustomer": zod.union([zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+}),zod.null()]),
+  "nickname": zod.string().max(createPrintavoQuoteFromDraftResponseDraftNicknameMax),
+  "dueDate": zod.string().regex(createPrintavoQuoteFromDraftResponseDraftDueDateRegExp).nullable(),
+  "markup": zod.number().min(createPrintavoQuoteFromDraftResponseDraftMarkupMin).max(createPrintavoQuoteFromDraftResponseDraftMarkupMax),
+  "customerNote": zod.string().max(createPrintavoQuoteFromDraftResponseDraftCustomerNoteMax),
+  "productionNote": zod.string().max(createPrintavoQuoteFromDraftResponseDraftProductionNoteMax),
+  "garments": zod.array(zod.object({
+  "id": zod.string().min(1).max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemIdMax),
+  "brand": zod.string().max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemBrandMax).nullable(),
+  "style": zod.string().min(1).max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemStyleMax),
+  "description": zod.string().max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemDescriptionMax).nullable(),
+  "color": zod.string().max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemColorMax),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().min(1).max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemSizesItemSizeMax),
+  "quantity": zod.number().min(createPrintavoQuoteFromDraftResponseDraftGarmentsItemSizesItemQuantityMin).max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemSizesItemQuantityMax)
+})).min(1).max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemSizesMax),
+  "productOptions": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "matchType": zod.enum(['exact', 'closest']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "image": zod.string().nullable(),
+  "colors": zod.array(zod.object({
+  "name": zod.string(),
+  "image": zod.string().nullable(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "cost": zod.number().nullable(),
+  "salePrice": zod.number().nullable(),
+  "inventoryTotal": zod.number().nullable()
+}))
+}))
+})).max(createPrintavoQuoteFromDraftResponseDraftGarmentsItemProductOptionsMax),
+  "selectedProduct": zod.union([zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "color": zod.string(),
+  "garmentCost": zod.number().min(createPrintavoQuoteFromDraftResponseDraftGarmentsItemSelectedProductOneGarmentCostMin),
+  "image": zod.string().nullable()
+}),zod.null()])
+})).min(1).max(createPrintavoQuoteFromDraftResponseDraftGarmentsMax),
+  "decorations": zod.array(zod.object({
+  "id": zod.string().min(1).max(createPrintavoQuoteFromDraftResponseDraftDecorationsItemIdMax),
+  "location": zod.string().min(1).max(createPrintavoQuoteFromDraftResponseDraftDecorationsItemLocationMax),
+  "method": zod.string().min(1).max(createPrintavoQuoteFromDraftResponseDraftDecorationsItemMethodMax),
+  "colorCount": zod.number().min(1).max(createPrintavoQuoteFromDraftResponseDraftDecorationsItemColorCountMax).nullable(),
+  "details": zod.string().max(createPrintavoQuoteFromDraftResponseDraftDecorationsItemDetailsMax).nullable(),
+  "matrixId": zod.string().uuid().nullable(),
+  "matrixColumnIndex": zod.number().min(createPrintavoQuoteFromDraftResponseDraftDecorationsItemMatrixColumnIndexMin).nullable()
+})).max(createPrintavoQuoteFromDraftResponseDraftDecorationsMax),
+  "pricing": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "quantity": zod.number().min(createPrintavoQuoteFromDraftResponseDraftPricingItemQuantityMin),
+  "garmentCost": zod.number().min(createPrintavoQuoteFromDraftResponseDraftPricingItemGarmentCostMin),
+  "garmentMarkup": zod.number().min(createPrintavoQuoteFromDraftResponseDraftPricingItemGarmentMarkupMin),
+  "decorationCost": zod.number().min(createPrintavoQuoteFromDraftResponseDraftPricingItemDecorationCostMin),
+  "unitPrice": zod.number().min(createPrintavoQuoteFromDraftResponseDraftPricingItemUnitPriceMin),
+  "total": zod.number().min(createPrintavoQuoteFromDraftResponseDraftPricingItemTotalMin)
+})),
+  "uncertainties": zod.array(zod.string().max(createPrintavoQuoteFromDraftResponseDraftUncertaintiesItemMax)).max(createPrintavoQuoteFromDraftResponseDraftUncertaintiesMax),
+  "warnings": zod.array(zod.string().max(createPrintavoQuoteFromDraftResponseDraftWarningsItemMax)).max(createPrintavoQuoteFromDraftResponseDraftWarningsMax)
+}),
+  "createdByEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string().nullable(),
+  "printavoVisualId": zod.number().nullable(),
+  "printavoCreatedAt": zod.coerce.date().nullable(),
+  "createAttemptedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List all decoration pricing matrices (team-shared), newest first
  */
 export const ListDecorationMatricesResponse = zod.object({

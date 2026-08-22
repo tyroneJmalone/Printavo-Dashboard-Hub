@@ -100,17 +100,41 @@ export class PrintavoClient {
 
   /** All Printavo traffic must go through this method. */
   query<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-    return this.gate.schedule(() => this.execute<T>(query, variables));
+    return this.gate.schedule(() => this.execute<T>(query, variables, true));
+  }
+
+  /**
+   * Execute a non-idempotent GraphQL mutation exactly once.
+   *
+   * A connection drop after Printavo accepts a mutation can look identical to
+   * a drop before it accepts it. Retrying in either this client or a caller
+   * could create a duplicate quote/order, so writes intentionally get no 429,
+   * timeout, or network retry. Callers must persist ambiguous outcomes for
+   * operator review.
+   */
+  mutate<T>(mutation: string, variables: Record<string, unknown> = {}): Promise<T> {
+    return this.gate.schedule(() => this.execute<T>(mutation, variables, false));
   }
 
   private async execute<T>(
     query: string,
     variables: Record<string, unknown>,
+    allowRetry: boolean,
   ): Promise<T> {
     for (let timeoutAttempt = 0; ; timeoutAttempt++) {
-      let response = await this.postWithNetworkRetry(query, variables);
+      let response = allowRetry
+        ? await this.postWithNetworkRetry(query, variables)
+        : await this.postOnce(query, variables);
 
       if (response.status === 429) {
+        if (!allowRetry) {
+          this.last429At = new Date();
+          this.errorCount += 1;
+          throw new PrintavoApiError(
+            "Printavo rate limited a non-idempotent mutation; it was not retried",
+            429,
+          );
+        }
         this.last429At = new Date();
         this.retryCount += 1;
         await sleep(RETRY_AFTER_429_MS);
@@ -145,6 +169,7 @@ export class PrintavoClient {
 
       if (body.errors && body.errors.length > 0) {
         if (
+          allowRetry &&
           isTransientTimeout(body.errors) &&
           timeoutAttempt < GRAPHQL_TIMEOUT_RETRY_DELAYS_MS.length
         ) {
@@ -203,6 +228,15 @@ export class PrintavoClient {
         await sleep(NETWORK_RETRY_DELAYS_MS[attempt]);
       }
     }
+  }
+
+  private async postOnce(
+    query: string,
+    variables: Record<string, unknown>,
+  ): Promise<BufferedResponse> {
+    const response = await this.post(query, variables);
+    const bodyText = await response.text();
+    return { status: response.status, ok: response.ok, bodyText };
   }
 
   private async post(
