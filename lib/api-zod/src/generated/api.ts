@@ -3798,7 +3798,15 @@ export const ListAiQuoteDraftsResponse = zod.object({
   "createAttemptedAt": zod.coerce.date().nullable(),
   "error": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "events": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "eventType": zod.enum(['printavo_quote_created']),
+  "actorEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string(),
+  "printavoVisualId": zod.number(),
+  "createdAt": zod.coerce.date()
+}))
 }))
 })
 
@@ -3987,7 +3995,15 @@ export const InterpretAiQuotePromptResponse = zod.object({
   "createAttemptedAt": zod.coerce.date().nullable(),
   "error": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "events": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "eventType": zod.enum(['printavo_quote_created']),
+  "actorEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string(),
+  "printavoVisualId": zod.number(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -4198,7 +4214,15 @@ export const GetAiQuoteDraftResponse = zod.object({
   "createAttemptedAt": zod.coerce.date().nullable(),
   "error": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "events": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "eventType": zod.enum(['printavo_quote_created']),
+  "actorEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string(),
+  "printavoVisualId": zod.number(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -4543,7 +4567,15 @@ export const UpdateAiQuoteDraftResponse = zod.object({
   "createAttemptedAt": zod.coerce.date().nullable(),
   "error": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "events": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "eventType": zod.enum(['printavo_quote_created']),
+  "actorEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string(),
+  "printavoVisualId": zod.number(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -4734,7 +4766,15 @@ export const CreatePrintavoQuoteFromDraftResponse = zod.object({
   "createAttemptedAt": zod.coerce.date().nullable(),
   "error": zod.string().nullable(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "events": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "eventType": zod.enum(['printavo_quote_created']),
+  "actorEmail": zod.string().nullable(),
+  "printavoQuoteId": zod.string(),
+  "printavoVisualId": zod.number(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 

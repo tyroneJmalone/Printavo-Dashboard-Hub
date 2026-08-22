@@ -1195,6 +1195,23 @@ export const AiQuoteDraftStatus = {
   unknown: 'unknown',
 } as const;
 
+export type AiQuoteDraftEventEventType = typeof AiQuoteDraftEventEventType[keyof typeof AiQuoteDraftEventEventType];
+
+
+export const AiQuoteDraftEventEventType = {
+  printavo_quote_created: 'printavo_quote_created',
+} as const;
+
+export interface AiQuoteDraftEvent {
+  id: string;
+  eventType: AiQuoteDraftEventEventType;
+  /** @nullable */
+  actorEmail: string | null;
+  printavoQuoteId: string;
+  printavoVisualId: number;
+  createdAt: string;
+}
+
 export interface AiQuoteDraft {
   id: string;
   status: AiQuoteDraftStatus;
@@ -1216,6 +1233,7 @@ export interface AiQuoteDraft {
   error: string | null;
   createdAt: string;
   updatedAt: string;
+  events: AiQuoteDraftEvent[];
 }
 
 export interface AiQuoteDraftListResponse {

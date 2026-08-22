@@ -141,6 +141,7 @@ router.post("/quote-drafts/:id/create-printavo", async (req, res) => {
     const draft = await createPrintavoQuote(
       req.params.id,
       parsed.data.revision,
+      req.staff?.email ?? null,
     );
     if (!draft) {
       res.status(404).json({ error: "Draft not found" });

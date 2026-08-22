@@ -24,6 +24,8 @@ export * from './aiQuoteCustomerSearchResponse';
 export * from './aiQuoteDecoration';
 export * from './aiQuoteDraft';
 export * from './aiQuoteDraftData';
+export * from './aiQuoteDraftEvent';
+export * from './aiQuoteDraftEventEventType';
 export * from './aiQuoteDraftListResponse';
 export * from './aiQuoteDraftStatus';
 export * from './aiQuoteGarment';

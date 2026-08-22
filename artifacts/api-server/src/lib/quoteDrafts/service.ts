@@ -1,4 +1,5 @@
 import {
+  aiQuoteDraftEventsTable,
   aiQuoteDraftsTable,
   db,
   decorationMatricesTable,
@@ -8,6 +9,7 @@ import {
   type AiQuoteDecoration,
   type AiQuoteDraft,
   type AiQuoteDraftData,
+  type AiQuoteDraftEvent,
   type AiQuoteGarment,
   type AiQuoteProductOption,
 } from "@workspace/db";
@@ -778,7 +780,21 @@ async function recalculateDraft(input: AiQuoteDraftData): Promise<AiQuoteDraftDa
   };
 }
 
-export function quoteDraftDto(row: AiQuoteDraft) {
+function quoteDraftEventDto(row: AiQuoteDraftEvent) {
+  return {
+    id: row.id,
+    eventType: row.eventType,
+    actorEmail: row.actorEmail,
+    printavoQuoteId: row.printavoQuoteId,
+    printavoVisualId: row.printavoVisualId,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function quoteDraftDto(
+  row: AiQuoteDraft,
+  events: AiQuoteDraftEvent[] = [],
+) {
   return {
     id: row.id,
     status: row.status,
@@ -793,6 +809,7 @@ export function quoteDraftDto(row: AiQuoteDraft) {
     error: row.error,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    events: events.map(quoteDraftEventDto),
   };
 }
 
@@ -870,17 +887,24 @@ export async function listQuoteDrafts() {
     .from(aiQuoteDraftsTable)
     .orderBy(desc(aiQuoteDraftsTable.createdAt))
     .limit(50);
-  return rows.map(quoteDraftDto);
+  return rows.map((row) => quoteDraftDto(row));
 }
 
 export async function getQuoteDraft(id: string) {
   await recoverStaleCreatingDrafts();
-  const [row] = await db
-    .select()
-    .from(aiQuoteDraftsTable)
-    .where(eq(aiQuoteDraftsTable.id, id))
-    .limit(1);
-  return row ? quoteDraftDto(row) : null;
+  const [rows, events] = await Promise.all([
+    db
+      .select()
+      .from(aiQuoteDraftsTable)
+      .where(eq(aiQuoteDraftsTable.id, id))
+      .limit(1),
+    db
+      .select()
+      .from(aiQuoteDraftEventsTable)
+      .where(eq(aiQuoteDraftEventsTable.draftId, id))
+      .orderBy(desc(aiQuoteDraftEventsTable.createdAt)),
+  ]);
+  return rows[0] ? quoteDraftDto(rows[0], events) : null;
 }
 
 export async function updateQuoteDraft(
@@ -1029,7 +1053,57 @@ function assertCreateReady(draft: AiQuoteDraftData): void {
   }
 }
 
-export async function createPrintavoQuote(id: string, expectedRevision: number) {
+export async function persistConfirmedPrintavoQuote(input: {
+  draftId: string;
+  actorEmail: string | null;
+  printavoQuoteId: string;
+  printavoVisualId: number;
+  createdAt?: Date;
+}) {
+  const printavoCreatedAt = input.createdAt ?? new Date();
+  const persisted = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(aiQuoteDraftsTable)
+      .set({
+        status: "created",
+        printavoQuoteId: input.printavoQuoteId,
+        printavoVisualId: input.printavoVisualId,
+        printavoCreatedAt,
+        error: null,
+      })
+      .where(
+        and(
+          eq(aiQuoteDraftsTable.id, input.draftId),
+          eq(aiQuoteDraftsTable.status, "creating"),
+        ),
+      )
+      .returning();
+    if (!updated) {
+      throw new Error(
+        `Printavo quote ${input.printavoVisualId} was created, but the local draft result could not be saved.`,
+      );
+    }
+    const [event] = await tx
+      .insert(aiQuoteDraftEventsTable)
+      .values({
+        draftId: input.draftId,
+        eventType: "printavo_quote_created",
+        actorEmail: input.actorEmail,
+        printavoQuoteId: input.printavoQuoteId,
+        printavoVisualId: input.printavoVisualId,
+        createdAt: printavoCreatedAt,
+      })
+      .returning();
+    return { updated, event };
+  });
+  return quoteDraftDto(persisted.updated, [persisted.event]);
+}
+
+export async function createPrintavoQuote(
+  id: string,
+  expectedRevision: number,
+  actorEmail: string | null,
+) {
   await recoverStaleCreatingDrafts();
   const [preflight] = await db
     .select()
@@ -1160,28 +1234,12 @@ export async function createPrintavoQuote(id: string, expectedRevision: number) 
     const result = await getPrintavoClient().mutate<{
       quoteCreate: { id: string; visualId: number };
     }>(mutation);
-    const [updated] = await db
-      .update(aiQuoteDraftsTable)
-      .set({
-        status: "created",
-        printavoQuoteId: result.quoteCreate.id,
-        printavoVisualId: result.quoteCreate.visualId,
-        printavoCreatedAt: new Date(),
-        error: null,
-      })
-      .where(
-        and(
-          eq(aiQuoteDraftsTable.id, id),
-          eq(aiQuoteDraftsTable.status, "creating"),
-        ),
-      )
-      .returning();
-    if (!updated) {
-      throw new Error(
-        `Printavo quote ${result.quoteCreate.visualId} was created, but the local draft result could not be saved.`,
-      );
-    }
-    return quoteDraftDto(updated);
+    return await persistConfirmedPrintavoQuote({
+      draftId: id,
+      actorEmail,
+      printavoQuoteId: result.quoteCreate.id,
+      printavoVisualId: result.quoteCreate.visualId,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown Printavo error";
     if (isDefinitiveGraphqlValidationRejection(err)) {

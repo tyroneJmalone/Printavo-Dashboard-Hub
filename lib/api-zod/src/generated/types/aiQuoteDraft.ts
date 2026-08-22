@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AiQuoteDraftData } from './aiQuoteDraftData';
+import type { AiQuoteDraftEvent } from './aiQuoteDraftEvent';
 import type { AiQuoteDraftStatus } from './aiQuoteDraftStatus';
 
 export interface AiQuoteDraft {
@@ -29,4 +30,5 @@ export interface AiQuoteDraft {
   error: string | null;
   createdAt: Date;
   updatedAt: Date;
+  events: AiQuoteDraftEvent[];
 }

@@ -6501,7 +6501,23 @@ components:
         error: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-      required: [id, status, revision, prompt, draft, createdByEmail, printavoQuoteId, printavoVisualId, printavoCreatedAt, createAttemptedAt, error, createdAt, updatedAt]
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiQuoteDraftEvent"
+      required: [id, status, revision, prompt, draft, createdByEmail, printavoQuoteId, printavoVisualId, printavoCreatedAt, createAttemptedAt, error, createdAt, updatedAt, events]
+    AiQuoteDraftEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        eventType:
+          type: string
+          enum: [printavo_quote_created]
+        actorEmail: { type: ["string", "null"] }
+        printavoQuoteId: { type: string }
+        printavoVisualId: { type: integer }
+        createdAt: { type: string, format: date-time }
+      required: [id, eventType, actorEmail, printavoQuoteId, printavoVisualId, createdAt]
     AiQuoteDraftListResponse:
       type: object
       properties:

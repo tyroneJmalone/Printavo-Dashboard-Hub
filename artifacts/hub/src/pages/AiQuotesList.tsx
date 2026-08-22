@@ -116,6 +116,11 @@ export default function AiQuotesList() {
                             <Clock className="w-3 h-3" />
                             {formatDistanceToNow(new Date(d.createdAt), { addSuffix: true })}
                           </span>
+                          {d.printavoVisualId && (
+                            <span className="text-[10px] font-mono font-bold text-emerald-400">
+                              Printavo quote #{d.printavoVisualId}
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-slate-300 line-clamp-2 leading-relaxed">
                           {d.prompt}

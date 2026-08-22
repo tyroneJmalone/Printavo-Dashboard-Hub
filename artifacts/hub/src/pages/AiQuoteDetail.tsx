@@ -21,7 +21,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { 
   Loader2, ArrowLeft, Save, FileText, CheckCircle2, AlertTriangle,
-  Info, ShoppingCart, User, Brush, DollarSign, Search
+  Info, ShoppingCart, User, Brush, DollarSign, Search, History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,10 +204,15 @@ export default function AiQuoteDetail() {
         revision: quoteDraft.revision,
       },
     }, {
-      onSuccess: () => {
+      onSuccess: (created) => {
         setCreateDialogOpen(false);
-        queryClient.invalidateQueries({ queryKey: getGetAiQuoteDraftQueryKey(id) });
-        toast({ title: "Quote Created!", description: "Check Printavo for details." });
+        setCreateConfirmText("");
+        queryClient.setQueryData(getGetAiQuoteDraftQueryKey(id), created);
+        setDraft(created.draft);
+        toast({
+          title: `Printavo quote #${created.printavoVisualId} created`,
+          description: "The quote number was saved in this draft's activity log.",
+        });
       },
       onError: (err: any) => {
         queryClient.invalidateQueries({ queryKey: getGetAiQuoteDraftQueryKey(id) });
@@ -372,6 +377,41 @@ export default function AiQuoteDetail() {
                   <p className="text-sm text-red-500/90 leading-relaxed">
                     {quoteDraft.error || "An error occurred while creating the quote in Printavo."}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {quoteDraft.events.length > 0 && (
+              <div className="bg-[#0f172a] border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                <div className="px-5 py-3 border-b border-slate-800 bg-slate-950/50 flex items-center gap-2">
+                  <History className="w-4 h-4 text-slate-500" />
+                  <h3 className="font-semibold text-slate-300 text-sm">Draft Activity</h3>
+                </div>
+                <div className="divide-y divide-slate-800/70">
+                  {quoteDraft.events.map((event) => (
+                    <div key={event.id} className="px-5 py-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-slate-200">
+                          Printavo quote{" "}
+                          <span className="font-mono font-bold text-[#10b981]">
+                            #{event.printavoVisualId}
+                          </span>{" "}
+                          created
+                        </div>
+                        {event.actorEmail && (
+                          <div className="text-xs text-slate-500 mt-1">
+                            Confirmed by {event.actorEmail}
+                          </div>
+                        )}
+                      </div>
+                      <time
+                        dateTime={event.createdAt}
+                        className="text-xs font-mono text-slate-500"
+                      >
+                        {new Date(event.createdAt).toLocaleString()}
+                      </time>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
