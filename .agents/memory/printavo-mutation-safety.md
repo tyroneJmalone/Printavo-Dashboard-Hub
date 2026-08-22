@@ -7,4 +7,4 @@ Non-idempotent Printavo writes get exactly one network attempt. Persist an exclu
 
 **Why:** A transport failure cannot prove that Printavo rejected the mutation. Retrying can create duplicate customer-facing records, while treating the outcome as a normal failure encourages unsafe manual retries.
 
-**How to apply:** Use the dedicated non-retrying mutation path, bind the action to the exact reviewed local revision, and move ambiguous or abandoned in-flight attempts to a locked `unknown` state that requires manual verification in Printavo.
+**How to apply:** Use the dedicated non-retrying mutation path, bind the action to the exact reviewed local revision, and move ambiguous or abandoned in-flight attempts to a locked `unknown` state that requires manual verification in Printavo. A narrowly proven GraphQL document-validation rejection (HTTP 200, no partial data, only explicit input-field validation errors) occurs before resolver execution and may release the claim after read-only verification; never generalize that exception to transport, timeout, partial-data, or execution errors.

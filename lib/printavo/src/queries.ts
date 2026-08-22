@@ -430,7 +430,7 @@ export interface QuoteCreateLineItem {
   itemNumber: string;
   description: string;
   color: string;
-  unitPrice: number;
+  price: number;
   markupPercentage: number;
   sizes: Array<{ size: string; count: number }>;
 }
@@ -467,7 +467,7 @@ export function quoteCreateMutation(input: QuoteCreateInput): string {
         (size) =>
           `{ size: ${enumLit(size.size, "LineItemSize")}, count: ${Math.trunc(size.count)} }`,
       );
-      return `{ position: ${Math.trunc(item.position)}, itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, unitPrice: ${Number(item.unitPrice).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: need_ordering, taxable: true, sizes: [${sizes.join(", ")}] }`;
+      return `{ position: ${Math.trunc(item.position)}, itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, price: ${Number(item.price).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: need_ordering, taxed: true, sizes: [${sizes.join(", ")}] }`;
     });
     const imprints = group.imprints.map(
       (imprint) => `{ details: ${lit(imprint.details)} }`,

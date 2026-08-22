@@ -12,6 +12,7 @@ import {
   type AiQuoteProductOption,
 } from "@workspace/db";
 import {
+  PrintavoApiError,
   quoteCreateMutation,
   toLineItemSizeEnum,
 } from "@workspace/printavo";
@@ -34,6 +35,27 @@ export class QuoteDraftConflictError extends Error {
     super(message);
     this.name = "QuoteDraftConflictError";
   }
+}
+
+function isDefinitiveGraphqlValidationRejection(
+  err: unknown,
+): err is PrintavoApiError {
+  if (
+    !(err instanceof PrintavoApiError) ||
+    err.httpStatus !== 200 ||
+    err.partialData !== undefined ||
+    !err.graphqlErrors?.length
+  ) {
+    return false;
+  }
+  return err.graphqlErrors.every((graphqlError) => {
+    if (!graphqlError || typeof graphqlError !== "object") return false;
+    const message = (graphqlError as { message?: unknown }).message;
+    return (
+      typeof message === "string" &&
+      /^InputObject '.+' doesn't accept argument '.+'$/.test(message)
+    );
+  });
 }
 
 function compactWords(value: string): string[] {
@@ -1109,8 +1131,8 @@ export async function createPrintavoQuote(id: string, expectedRevision: number) 
             garment.description ??
             garment.selectedProduct!.styleName,
           color: garment.selectedProduct!.color,
-          unitPrice: pricing.unitPrice,
-          markupPercentage: (draft.markup - 1) * 100,
+          price: pricing.unitPrice,
+          markupPercentage: draft.markup * 100,
           sizes: garment.sizes.map((size) => ({
             size: toLineItemSizeEnum(size.size)!,
             count: size.quantity,
@@ -1158,6 +1180,30 @@ export async function createPrintavoQuote(id: string, expectedRevision: number) 
     return quoteDraftDto(updated);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown Printavo error";
+    if (isDefinitiveGraphqlValidationRejection(err)) {
+      const [released] = await db
+        .update(aiQuoteDraftsTable)
+        .set({
+          status: "draft",
+          createAttemptedAt: null,
+          error: null,
+        })
+        .where(
+          and(
+            eq(aiQuoteDraftsTable.id, id),
+            eq(aiQuoteDraftsTable.status, "creating"),
+          ),
+        )
+        .returning({ id: aiQuoteDraftsTable.id });
+      if (!released) {
+        throw new QuoteDraftConflictError(
+          "Printavo rejected the request before creation, but the draft lock could not be released. Verify the draft before trying again.",
+        );
+      }
+      throw new QuoteDraftValidationError(
+        "Printavo rejected the request before creating a quote. The draft remains editable; reload it before trying again.",
+      );
+    }
     await db
       .update(aiQuoteDraftsTable)
       .set({
