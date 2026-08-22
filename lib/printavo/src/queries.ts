@@ -437,6 +437,7 @@ export interface QuoteCreateLineItem {
 
 export interface QuoteCreateImprint {
   details: string;
+  pricingMatrixColumnId: string;
 }
 
 export interface QuoteCreateLineItemGroup {
@@ -469,9 +470,9 @@ export function quoteCreateMutation(input: QuoteCreateInput): string {
       );
       return `{ position: ${Math.trunc(item.position)}, itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, price: ${Number(item.price).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: need_ordering, taxed: true, sizes: [${sizes.join(", ")}] }`;
     });
-    const imprints = group.imprints.map(
-      (imprint) => `{ details: ${lit(imprint.details)} }`,
-    );
+    const imprints = group.imprints.map((imprint) => {
+      return `{ details: ${lit(imprint.details)}, pricingMatrixColumn: { id: ${lit(imprint.pricingMatrixColumnId)} } }`;
+    });
     return `{ position: ${Math.trunc(group.position)}, lineItems: [${lineItems.join(", ")}], imprints: [${imprints.join(", ")}] }`;
   });
 

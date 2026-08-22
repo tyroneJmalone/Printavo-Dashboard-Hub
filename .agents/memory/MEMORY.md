@@ -35,3 +35,4 @@
 - [Printavo mutation safety](printavo-mutation-safety.md) — non-idempotent writes get one attempt; any ambiguous result stays locked for manual verification.
 - [Quote snapshot comparisons](quote-snapshot-canonical-json.md) — compare trusted quote snapshots with recursively key-sorted JSON; JSONB key order caused false 409 conflicts.
 - [Clerk browser-test verification emails](clerk-browser-test-verification-emails.md) — programmatic Hub sign-in can send real development OTP emails; reuse a session or avoid auth UI tests.
+- [Printavo imprint matrix pricing](printavo-imprint-matrix-pricing.md) — matrix columns are attribution, not added charges; resolve live IDs before the one-shot quote claim.

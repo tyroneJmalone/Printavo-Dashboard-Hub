@@ -14,6 +14,7 @@ import {
   type AiQuoteProductOption,
 } from "@workspace/db";
 import {
+  accountReferencePageQuery,
   PrintavoApiError,
   quoteCreateMutation,
   toLineItemSizeEnum,
@@ -24,6 +25,11 @@ import { getPrintavoClient } from "../printavoGateway";
 import { listDecorationMatrices } from "../pricing/matrices";
 import { productSearch } from "../purchasing/productFinder";
 import { extractQuotePrompt } from "./extract";
+import {
+  parsePrintavoPricingMatrixReferences,
+  PrintavoMatrixResolutionError,
+  resolvePrintavoPricingColumns,
+} from "./printavoMatrices";
 
 export class QuoteDraftValidationError extends Error {
   constructor(message: string) {
@@ -1053,6 +1059,127 @@ function assertCreateReady(draft: AiQuoteDraftData): void {
   }
 }
 
+interface CurrentPrintavoPricingMatricesPage {
+  account: {
+    pricingMatrices: {
+      nodes: unknown[];
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+    };
+  };
+}
+
+async function resolveDraftPrintavoPricingColumns(draft: AiQuoteDraftData) {
+  try {
+    const hubMatricesPromise = listDecorationMatrices();
+    const currentPrintavoMatrices: unknown[] = [];
+    let after: string | null = null;
+    do {
+      const response: CurrentPrintavoPricingMatricesPage =
+        await getPrintavoClient().query<CurrentPrintavoPricingMatricesPage>(
+          accountReferencePageQuery("pricing_matrix", after),
+        );
+      const page: CurrentPrintavoPricingMatricesPage["account"]["pricingMatrices"] =
+        response.account.pricingMatrices;
+      currentPrintavoMatrices.push(...page.nodes);
+      if (!page.pageInfo.hasNextPage) break;
+      if (!page.pageInfo.endCursor) {
+        throw new PrintavoMatrixResolutionError(
+          "Printavo pricing-matrix pagination was incomplete. The quote was not created.",
+        );
+      }
+      after = page.pageInfo.endCursor;
+    } while (true);
+
+    return resolvePrintavoPricingColumns(
+      draft.decorations,
+      await hubMatricesPromise,
+      parsePrintavoPricingMatrixReferences(currentPrintavoMatrices),
+    );
+  } catch (err) {
+    if (err instanceof PrintavoMatrixResolutionError) {
+      throw new QuoteDraftValidationError(err.message);
+    }
+    throw new QuoteDraftValidationError(
+      "Current Printavo pricing matrices could not be verified. The draft remains editable; try again before creating the quote.",
+    );
+  }
+}
+
+function buildPrintavoQuoteMutation(
+  draft: AiQuoteDraftData,
+  draftId: string,
+  resolvedColumns: Awaited<ReturnType<typeof resolveDraftPrintavoPricingColumns>>,
+): string {
+  const pricingMatrixColumnByDecorationId = new Map(
+    resolvedColumns.map((resolved) => [
+      resolved.decorationId,
+      resolved.pricingMatrixColumnId,
+    ]),
+  );
+  const productionNote = [
+    draft.productionNote,
+    draft.decorations
+      .map((decoration) =>
+        [
+          decoration.location,
+          decoration.method,
+          decoration.colorCount ? `${decoration.colorCount} color` : null,
+          decoration.details,
+        ]
+          .filter(Boolean)
+          .join(" — "),
+      )
+      .join("\n"),
+    `Created from Hub AI quote draft ${draftId}.`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return quoteCreateMutation({
+    contactId: draft.selectedCustomer!.contactId!,
+    customerDueAt: draft.dueDate!,
+    dueAt: newYorkDueAt(draft.dueDate!),
+    nickname: draft.nickname,
+    customerNote: draft.customerNote,
+    productionNote,
+    lineItemGroups: draft.garments.map((garment, index) => {
+      const pricing = draft.pricing.find((line) => line.garmentId === garment.id)!;
+      return {
+        position: index + 1,
+        lineItems: [{
+          position: 1,
+          itemNumber: garment.selectedProduct!.styleName,
+          description:
+            garment.selectedProduct!.title ??
+            garment.description ??
+            garment.selectedProduct!.styleName,
+          color: garment.selectedProduct!.color,
+          // Printavo imprint inputs carry matrix attribution but no price field.
+          // Keeping the reviewed unit price here preserves the exact Hub total.
+          price: pricing.unitPrice,
+          markupPercentage: draft.markup * 100,
+          sizes: garment.sizes.map((size) => ({
+            size: toLineItemSizeEnum(size.size)!,
+            count: size.quantity,
+          })),
+        }],
+        imprints: draft.decorations.map((decoration) => ({
+          details: [
+            decoration.location,
+            decoration.method,
+            decoration.colorCount ? `${decoration.colorCount} color` : null,
+            decoration.details,
+          ]
+            .filter(Boolean)
+            .join(" — "),
+          pricingMatrixColumnId:
+            pricingMatrixColumnByDecorationId.get(decoration.id)!,
+        })),
+      };
+    }),
+  });
+}
+
 export async function persistConfirmedPrintavoQuote(input: {
   draftId: string;
   actorEmail: string | null;
@@ -1130,6 +1257,8 @@ export async function createPrintavoQuote(
       "Verified customer, vendor cost, product, or pricing data changed. Save and review the refreshed draft before creating a quote.",
     );
   }
+  const resolvedColumns = await resolveDraftPrintavoPricingColumns(freshDraft);
+  const mutation = buildPrintavoQuoteMutation(freshDraft, id, resolvedColumns);
 
   const claimed = await db.transaction(async (tx) => {
     const [row] = await tx
@@ -1170,65 +1299,6 @@ export async function createPrintavoQuote(
     return updated;
   });
   if (!claimed) return null;
-
-  const draft = claimed.draft;
-  const productionNote = [
-    draft.productionNote,
-    draft.decorations
-      .map((decoration) =>
-        [
-          decoration.location,
-          decoration.method,
-          decoration.colorCount ? `${decoration.colorCount} color` : null,
-          decoration.details,
-        ]
-          .filter(Boolean)
-          .join(" — "),
-      )
-      .join("\n"),
-    `Created from Hub AI quote draft ${claimed.id}.`,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-  const mutation = quoteCreateMutation({
-    contactId: draft.selectedCustomer!.contactId!,
-    customerDueAt: draft.dueDate!,
-    dueAt: newYorkDueAt(draft.dueDate!),
-    nickname: draft.nickname,
-    customerNote: draft.customerNote,
-    productionNote,
-    lineItemGroups: draft.garments.map((garment, index) => {
-      const pricing = draft.pricing.find((line) => line.garmentId === garment.id)!;
-      return {
-        position: index + 1,
-        lineItems: [{
-          position: 1,
-          itemNumber: garment.selectedProduct!.styleName,
-          description:
-            garment.selectedProduct!.title ??
-            garment.description ??
-            garment.selectedProduct!.styleName,
-          color: garment.selectedProduct!.color,
-          price: pricing.unitPrice,
-          markupPercentage: draft.markup * 100,
-          sizes: garment.sizes.map((size) => ({
-            size: toLineItemSizeEnum(size.size)!,
-            count: size.quantity,
-          })),
-        }],
-        imprints: draft.decorations.map((decoration) => ({
-          details: [
-            decoration.location,
-            decoration.method,
-            decoration.colorCount ? `${decoration.colorCount} color` : null,
-            decoration.details,
-          ]
-            .filter(Boolean)
-            .join(" — "),
-        })),
-      };
-    }),
-  });
 
   try {
     const result = await getPrintavoClient().mutate<{
