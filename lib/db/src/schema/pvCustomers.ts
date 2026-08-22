@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const pvCustomersTable = pgTable(
   "pv_customers",
@@ -18,7 +19,13 @@ export const pvCustomersTable = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("pv_customers_company_idx").on(t.companyName)],
+  (t) => [
+    index("pv_customers_company_idx").on(t.companyName),
+    index("pv_customers_company_search_idx").using(
+      "gin",
+      sql`to_tsvector('simple', coalesce(${t.companyName}, ''))`,
+    ),
+  ],
 );
 
 export type PvCustomer = typeof pvCustomersTable.$inferSelect;

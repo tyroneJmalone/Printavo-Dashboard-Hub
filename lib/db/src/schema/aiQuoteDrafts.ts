@@ -91,6 +91,7 @@ export interface AiQuotePricingLine {
 
 export interface AiQuoteDraftData {
   customerQuery: string;
+  contactQuery?: string | null;
   customerCandidates: AiQuoteCustomerCandidate[];
   selectedCustomer: AiQuoteCustomerCandidate | null;
   nickname: string;

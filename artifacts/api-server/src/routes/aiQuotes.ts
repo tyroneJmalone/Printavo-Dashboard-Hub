@@ -13,6 +13,7 @@ import {
   getQuoteDraft,
   interpretAndCreateDraft,
   listQuoteDrafts,
+  searchQuoteCustomers,
   updateQuoteDraft,
 } from "../lib/quoteDrafts/service";
 
@@ -50,6 +51,22 @@ router.post("/quote-drafts", async (req, res) => {
     res.status(503).json({
       error: "Quote interpretation is temporarily unavailable. No draft was created.",
     });
+  }
+});
+
+router.get("/quote-drafts/customers/search", async (req, res) => {
+  const query = typeof req.query.query === "string"
+    ? req.query.query.trim()
+    : "";
+  if (query.length < 2 || query.length > 100) {
+    res.status(400).json({ error: "Search must be 2-100 characters." });
+    return;
+  }
+  try {
+    res.json({ customers: await searchQuoteCustomers(query) });
+  } catch (err) {
+    req.log.error({ err, query }, "AI quote customer search failed");
+    res.status(500).json({ error: "Failed to search Printavo customers" });
   }
 });
 

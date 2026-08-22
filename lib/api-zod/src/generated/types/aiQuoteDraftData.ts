@@ -11,11 +11,13 @@ import type { AiQuoteGarment } from './aiQuoteGarment';
 import type { AiQuotePricingLine } from './aiQuotePricingLine';
 
 export interface AiQuoteDraftData {
-  /**
-     * @minLength 1
-     * @maxLength 300
-     */
+  /** @maxLength 300 */
   customerQuery: string;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
+  contactQuery?: string | null;
   /** @maxItems 10 */
   customerCandidates: AiQuoteCustomerCandidate[];
   selectedCustomer: AiQuoteCustomerCandidate | null;

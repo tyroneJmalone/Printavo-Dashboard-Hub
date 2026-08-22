@@ -2420,6 +2420,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /quote-drafts/customers/search:
+    get:
+      operationId: searchAiQuoteCustomers
+      tags: [quoting]
+      summary: Search verified Printavo customers and contacts for a quote draft
+      description: Searches the local Printavo mirror only. Results are verified again when a draft is saved.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 100 }
+      responses:
+        "200":
+          description: Matching verified customer/contact pairs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiQuoteCustomerSearchResponse"
+        "400":
+          description: Search query is too short or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /quote-drafts/{id}:
     get:
       operationId: getAiQuoteDraft
@@ -6409,7 +6433,8 @@ components:
     AiQuoteDraftData:
       type: object
       properties:
-        customerQuery: { type: string, minLength: 1, maxLength: 300 }
+        customerQuery: { type: string, maxLength: 300 }
+        contactQuery: { type: ["string", "null"], maxLength: 300 }
         customerCandidates:
           type: array
           maxItems: 10
@@ -6450,6 +6475,15 @@ components:
           items: { type: string, maxLength: 500 }
           maxItems: 30
       required: [customerQuery, customerCandidates, selectedCustomer, nickname, dueDate, markup, customerNote, productionNote, garments, decorations, pricing, uncertainties, warnings]
+    AiQuoteCustomerSearchResponse:
+      type: object
+      properties:
+        customers:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/AiQuoteCustomerCandidate"
+      required: [customers]
     AiQuoteDraft:
       type: object
       properties:

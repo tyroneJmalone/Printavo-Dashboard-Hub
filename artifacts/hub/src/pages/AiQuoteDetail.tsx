@@ -5,10 +5,13 @@ import {
   useGetAiQuoteDraft, 
   useUpdateAiQuoteDraft, 
   useCreatePrintavoQuoteFromDraft,
+  useSearchAiQuoteCustomers,
   useListDecorationMatrices,
   useProductSearch,
   getGetAiQuoteDraftQueryKey,
+  getSearchAiQuoteCustomersQueryKey,
   type AiQuoteDraftData,
+  type AiQuoteCustomerCandidate,
   type AiQuoteGarment,
   type AiQuoteDecoration,
   type AiQuoteGarmentSelection,
@@ -30,6 +33,9 @@ import { useToast } from "@/hooks/use-toast";
 
 // helper to format currency
 const money = (val: number) => `$${val.toFixed(2)}`;
+
+const customerKey = (customer: AiQuoteCustomerCandidate) =>
+  `${customer.customerId}:${customer.contactId ?? ""}`;
 
 function selectionFromOption(
   garment: AiQuoteGarment,
@@ -110,6 +116,8 @@ export default function AiQuoteDetail() {
   const refreshProducts = useProductSearch();
 
   const [draft, setDraft] = useState<AiQuoteDraftData | null>(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState("");
   const initializedId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -118,6 +126,28 @@ export default function AiQuoteDetail() {
       initializedId.current = quoteDraft.id;
     }
   }, [quoteDraft]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDebouncedCustomerSearch(customerSearch.trim()),
+      300,
+    );
+    return () => window.clearTimeout(timer);
+  }, [customerSearch]);
+
+  const customerSearchQuery = useSearchAiQuoteCustomers(
+    { query: debouncedCustomerSearch },
+    {
+      query: {
+        queryKey: getSearchAiQuoteCustomersQueryKey({
+          query: debouncedCustomerSearch,
+        }),
+        enabled:
+          debouncedCustomerSearch.length >= 2 &&
+          quoteDraft?.status === "draft",
+      },
+    },
+  );
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createConfirmText, setCreateConfirmText] = useState("");
@@ -201,6 +231,29 @@ export default function AiQuoteDetail() {
       const newDecorations = [...prev.decorations];
       newDecorations[index] = { ...newDecorations[index], ...partial };
       return { ...prev, decorations: newDecorations };
+    });
+  };
+
+  const selectCustomer = (customer: AiQuoteCustomerCandidate | null) => {
+    setDraft((previous) => {
+      if (!previous) return previous;
+      if (!customer) return { ...previous, selectedCustomer: null };
+      const key = customerKey(customer);
+      const candidates = previous.customerCandidates.some(
+        (candidate) => customerKey(candidate) === key,
+      )
+        ? previous.customerCandidates
+        : [
+            customer,
+            ...previous.customerCandidates.filter(
+              (candidate) => customerKey(candidate) !== key,
+            ),
+          ].slice(0, 10);
+      return {
+        ...previous,
+        selectedCustomer: customer,
+        customerCandidates: candidates,
+      };
     });
   };
 
@@ -359,12 +412,24 @@ export default function AiQuoteDetail() {
                       <h3 className="font-semibold text-slate-300 text-sm">Customer</h3>
                     </div>
                     <div className="p-5 flex-1">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                         <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2.5">
+                           <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Extracted company/customer</div>
+                           <div className="text-sm text-slate-200 mt-1">{draft.customerQuery || "Not provided"}</div>
+                         </div>
+                         <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2.5">
+                           <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Extracted contact</div>
+                           <div className="text-sm text-slate-200 mt-1">{draft.contactQuery || "Not provided"}</div>
+                         </div>
+                       </div>
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">Match</label>
                       <Select 
-                        value={draft.selectedCustomer?.customerId || "none"}
+                         value={draft.selectedCustomer ? customerKey(draft.selectedCustomer) : "none"}
                         onValueChange={(val) => {
-                          const cust = draft.customerCandidates.find(c => c.customerId === val);
-                          setDraft(prev => prev ? { ...prev, selectedCustomer: cust || null } : prev);
+                           const customer = draft.customerCandidates.find(
+                             (candidate) => customerKey(candidate) === val,
+                           );
+                           selectCustomer(customer ?? null);
                         }}
                         disabled={!isDraft}
                       >
@@ -372,9 +437,9 @@ export default function AiQuoteDetail() {
                           <SelectValue placeholder="Select a customer..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">None / Manual Entry Later</SelectItem>
+                           <SelectItem value="none">No customer selected</SelectItem>
                           {draft.customerCandidates.map(c => (
-                            <SelectItem key={c.customerId} value={c.customerId}>
+                             <SelectItem key={customerKey(c)} value={customerKey(c)}>
                               <div className="flex items-center justify-between w-full pr-4 gap-4">
                                 <span className="font-medium">{c.companyName} <span className="text-slate-500 font-normal">{c.contactName ? `(${c.contactName})` : ''}</span></span>
                                 <MatchBadge type={c.matchType} />
@@ -392,6 +457,58 @@ export default function AiQuoteDetail() {
                           </div>
                         </div>
                       )}
+                       {isDraft && (
+                         <div className="mt-5 pt-5 border-t border-slate-800">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 block">
+                             Search Printavo customers or contacts
+                           </label>
+                           <div className="relative">
+                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                             <Input
+                               value={customerSearch}
+                               onChange={(event) => setCustomerSearch(event.target.value)}
+                               placeholder="Company, contact, or email..."
+                               className="h-10 bg-slate-950 border-slate-800 pl-9 pr-9 text-sm"
+                             />
+                             {customerSearchQuery.isFetching && (
+                               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-500" />
+                             )}
+                           </div>
+                           {debouncedCustomerSearch.length >= 2 && (
+                             <div className="mt-2 max-h-52 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950">
+                               {customerSearchQuery.isError ? (
+                                 <div className="px-3 py-3 text-xs text-red-400">
+                                   Customer search failed. Try again.
+                                 </div>
+                               ) : customerSearchQuery.data?.customers.length ? (
+                                 customerSearchQuery.data.customers.map((customer) => (
+                                   <button
+                                     key={customerKey(customer)}
+                                     type="button"
+                                     onClick={() => selectCustomer(customer)}
+                                     className="w-full px-3 py-2.5 text-left border-b border-slate-800 last:border-b-0 hover:bg-slate-900 transition-colors"
+                                   >
+                                     <div className="flex items-center justify-between gap-3">
+                                       <span className="text-sm font-medium text-slate-200">{customer.companyName}</span>
+                                       <MatchBadge type={customer.matchType} />
+                                     </div>
+                                     <div className="mt-0.5 text-xs text-slate-500">
+                                       {[customer.contactName, customer.contactEmail].filter(Boolean).join(" · ") || "No contact"}
+                                     </div>
+                                   </button>
+                                 ))
+                               ) : !customerSearchQuery.isFetching ? (
+                                 <div className="px-3 py-3 text-xs text-slate-500">
+                                   No synced Printavo customers or contacts matched.
+                                 </div>
+                               ) : null}
+                             </div>
+                           )}
+                           <p className="mt-2 text-[11px] text-slate-500">
+                             Selecting a result changes this local draft only. Save to verify the customer/contact pair.
+                           </p>
+                         </div>
+                       )}
                     </div>
                   </div>
 

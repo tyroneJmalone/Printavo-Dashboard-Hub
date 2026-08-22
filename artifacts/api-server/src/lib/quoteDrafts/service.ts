@@ -15,7 +15,7 @@ import {
   quoteCreateMutation,
   toLineItemSizeEnum,
 } from "@workspace/printavo";
-import { and, desc, eq, ilike, lt, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { getPrintavoClient } from "../printavoGateway";
 import { listDecorationMatrices } from "../pricing/matrices";
@@ -47,9 +47,9 @@ function compactWords(value: string): string[] {
     .filter(Boolean);
 }
 
-function customerScore(query: string, company: string): number {
+function matchScore(query: string, candidate: string): number {
   const queryWords = compactWords(query);
-  const companyWords = compactWords(company);
+  const companyWords = compactWords(candidate);
   const q = queryWords.join("");
   const c = companyWords.join("");
   if (q === c) return 100;
@@ -60,54 +60,369 @@ function customerScore(query: string, company: string): number {
   return jaccard + containment;
 }
 
-async function findCustomers(query: string): Promise<AiQuoteCustomerCandidate[]> {
-  const terms = compactWords(query).filter((term) => term.length >= 2).slice(0, 4);
-  const filters = terms.map((term) => ilike(pvCustomersTable.companyName, `%${term}%`));
-  const rows = await db
-    .select({
-      customerId: pvCustomersTable.printavoId,
-      companyName: pvCustomersTable.companyName,
-      contactId: pvContactsTable.printavoId,
-      contactName: pvContactsTable.fullName,
-      contactEmail: pvContactsTable.email,
-    })
-    .from(pvCustomersTable)
-    .leftJoin(
-      pvContactsTable,
-      eq(pvContactsTable.printavoId, pvCustomersTable.primaryContactId),
-    )
-    // Require every meaningful company-name token. A broad OR query makes
-    // generic words such as "company" fill the row limit before the actual
-    // customer is reached.
-    .where(
-      filters.length > 1
-        ? and(...filters)
-        : filters.length === 1
-          ? filters[0]
-          : undefined,
-    )
-    .limit(100);
+function containsAllTerms(value: string, terms: string[]): boolean {
+  const words = compactWords(value);
+  return terms.every((term) => words.some((word) => word.includes(term)));
+}
 
-  return rows
-    .map((row) => ({
-      row,
-      score: customerScore(query, row.companyName ?? ""),
-    }))
-    .filter(({ score }) => score >= 0.35)
+function customerTextSearch(terms: string[], operator: "&" | "|") {
+  const query = terms.map((term) => `${term}:*`).join(` ${operator} `);
+  return sql<boolean>`to_tsvector('simple', coalesce(${pvCustomersTable.companyName}, '')) @@ to_tsquery('simple', ${query})`;
+}
+
+function contactTextSearch(terms: string[], operator: "&" | "|") {
+  const query = terms.map((term) => `${term}:*`).join(` ${operator} `);
+  return sql<boolean>`to_tsvector('simple', coalesce(${pvContactsTable.fullName}, '') || ' ' || coalesce(${pvContactsTable.email}, '')) @@ to_tsquery('simple', ${query})`;
+}
+
+type QuoteCustomerRow = {
+  customerId: string;
+  companyName: string | null;
+  primaryContactId: string | null;
+};
+
+type QuoteContactRow = {
+  contactId: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  customerId: string | null;
+};
+
+type QuoteCustomerGroup = {
+  customerId: string;
+  companyName: string;
+  primaryContactId: string | null;
+  contacts: Array<{
+    contactId: string;
+    contactName: string | null;
+    contactEmail: string | null;
+  }>;
+};
+
+async function findCustomers(
+  customerQuery: string,
+  contactQuery: string | null = null,
+): Promise<AiQuoteCustomerCandidate[]> {
+  const companyTerms = compactWords(customerQuery)
+    .filter((term) => term.length >= 2)
+    .slice(0, 4);
+  const contactTerms = compactWords(contactQuery ?? "")
+    .filter((term) => term.length >= 2)
+    .slice(0, 4);
+  if (companyTerms.length === 0 && contactTerms.length === 0) return [];
+  let customerRows: QuoteCustomerRow[] = [];
+  let contactRows: QuoteContactRow[] = [];
+  if (companyTerms.length > 0) {
+    customerRows = await db
+      .select({
+        customerId: pvCustomersTable.printavoId,
+        companyName: pvCustomersTable.companyName,
+        primaryContactId: pvCustomersTable.primaryContactId,
+      })
+      .from(pvCustomersTable)
+      .where(customerTextSearch(companyTerms, "&"))
+      .limit(100);
+    if (customerRows.length > 0 && contactTerms.length > 0) {
+      const customerIds = customerRows.map((customer) => customer.customerId);
+      const primaryContactIds = customerRows
+        .map((customer) => customer.primaryContactId)
+        .filter((id): id is string => Boolean(id));
+      const relationFilters = [
+        inArray(pvContactsTable.customerId, customerIds),
+        ...(primaryContactIds.length > 0
+          ? [inArray(pvContactsTable.printavoId, primaryContactIds)]
+          : []),
+      ];
+      contactRows = await db
+        .select({
+          contactId: pvContactsTable.printavoId,
+          contactName: pvContactsTable.fullName,
+          contactEmail: pvContactsTable.email,
+          customerId: pvContactsTable.customerId,
+        })
+        .from(pvContactsTable)
+        .where(
+          and(
+            or(...relationFilters),
+            contactTextSearch(contactTerms, "&"),
+          ),
+        )
+        .orderBy(pvContactsTable.printavoId)
+        .limit(100);
+    } else if (customerRows.length > 0) {
+      const primaryContactIds = customerRows
+        .map((customer) => customer.primaryContactId)
+        .filter((id): id is string => Boolean(id));
+      if (primaryContactIds.length > 0) {
+        contactRows = await db
+          .select({
+            contactId: pvContactsTable.printavoId,
+            contactName: pvContactsTable.fullName,
+            contactEmail: pvContactsTable.email,
+            customerId: pvContactsTable.customerId,
+          })
+          .from(pvContactsTable)
+          .where(inArray(pvContactsTable.printavoId, primaryContactIds));
+      }
+    }
+  } else {
+    contactRows = await db
+      .select({
+        contactId: pvContactsTable.printavoId,
+        contactName: pvContactsTable.fullName,
+        contactEmail: pvContactsTable.email,
+        customerId: pvContactsTable.customerId,
+      })
+      .from(pvContactsTable)
+      .where(contactTextSearch(contactTerms, "&"))
+      .orderBy(pvContactsTable.printavoId)
+      .limit(100);
+    const directCustomerIds = contactRows
+      .map((contact) => contact.customerId)
+      .filter((id): id is string => Boolean(id));
+    const contactIds = contactRows.map((contact) => contact.contactId);
+    const ownershipFilters = [
+      ...(directCustomerIds.length > 0
+        ? [inArray(pvCustomersTable.printavoId, directCustomerIds)]
+        : []),
+      ...(contactIds.length > 0
+        ? [inArray(pvCustomersTable.primaryContactId, contactIds)]
+        : []),
+    ];
+    if (ownershipFilters.length > 0) {
+      customerRows = await db
+        .select({
+          customerId: pvCustomersTable.printavoId,
+          companyName: pvCustomersTable.companyName,
+          primaryContactId: pvCustomersTable.primaryContactId,
+        })
+        .from(pvCustomersTable)
+        .where(or(...ownershipFilters))
+        .limit(100);
+    }
+  }
+  const grouped = new Map<string, QuoteCustomerGroup>();
+  for (const customer of customerRows) {
+    const group: QuoteCustomerGroup = {
+      customerId: customer.customerId,
+      companyName: customer.companyName ?? "Unnamed customer",
+      primaryContactId: customer.primaryContactId,
+      contacts: [],
+    };
+    for (const contact of contactRows) {
+      const belongs =
+        contact.customerId === customer.customerId ||
+        contact.contactId === customer.primaryContactId;
+      if (
+        belongs &&
+        !group.contacts.some(
+          (existing) => existing.contactId === contact.contactId,
+        )
+      ) {
+      group.contacts.push({
+          contactId: contact.contactId,
+          contactName: contact.contactName,
+          contactEmail: contact.contactEmail,
+      });
+    }
+    }
+    grouped.set(customer.customerId, group);
+  }
+
+  return [...grouped.values()]
+    .map((group) => {
+      const companyScore = customerQuery
+        ? matchScore(customerQuery, group.companyName)
+        : 0;
+      const contacts = group.contacts
+        .map((contact) => ({
+          ...contact,
+          score: contactQuery
+            ? Math.max(
+                matchScore(contactQuery, contact.contactName ?? ""),
+                matchScore(contactQuery, contact.contactEmail ?? ""),
+              )
+            : 0,
+        }))
+        .sort((a, b) => b.score - a.score);
+      const matchedContact =
+        contactQuery
+          ? (contacts[0]?.score ?? 0) >= 0.35
+            ? contacts[0]
+            : null
+          : contacts.find(
+                (contact) => contact.contactId === group.primaryContactId,
+              ) ?? contacts[0] ?? null;
+      const contactScore = contactQuery ? contacts[0]?.score ?? 0 : 0;
+      const companyMatches = !customerQuery || companyScore >= 0.35;
+      const contactMatches = !contactQuery || contactScore >= 0.35;
+      const exact =
+        (!customerQuery || companyScore >= 99) &&
+        (!contactQuery || contactScore >= 99);
+      return {
+        candidate: {
+          customerId: group.customerId,
+          companyName: group.companyName,
+          contactId: matchedContact?.contactId ?? null,
+          contactName: matchedContact?.contactName ?? null,
+          contactEmail: matchedContact?.contactEmail ?? null,
+          matchType: exact ? "exact" as const : "possible" as const,
+        },
+        companyMatches,
+        contactMatches,
+        score: customerQuery
+          ? companyScore * 10 + contactScore
+          : contactScore,
+      };
+    })
+    .filter(({ companyMatches, contactMatches }) =>
+      customerQuery ? companyMatches : contactMatches,
+    )
     .sort(
       (a, b) =>
         b.score - a.score ||
-        (a.row.companyName ?? "").localeCompare(b.row.companyName ?? ""),
+        a.candidate.companyName.localeCompare(b.candidate.companyName),
     )
     .slice(0, 10)
-    .map(({ row, score }, index) => ({
-      customerId: row.customerId,
-      companyName: row.companyName ?? "Unnamed customer",
-      contactId: row.contactId ?? null,
-      contactName: row.contactName ?? null,
-      contactEmail: row.contactEmail ?? null,
-      matchType: score >= 99 || (index === 0 && score >= 0.95) ? "exact" : "possible",
+    .map(({ candidate }) => candidate);
+}
+
+export async function searchQuoteCustomers(
+  query: string,
+): Promise<AiQuoteCustomerCandidate[]> {
+  const terms = compactWords(query)
+    .filter((term) => term.length >= 2)
+    .slice(0, 6);
+  if (terms.length === 0) return [];
+  const companyHits = await db
+    .select({
+      customerId: pvCustomersTable.printavoId,
+      companyName: pvCustomersTable.companyName,
+      primaryContactId: pvCustomersTable.primaryContactId,
+    })
+    .from(pvCustomersTable)
+    .where(customerTextSearch(terms, "|"))
+    .orderBy(pvCustomersTable.printavoId)
+    .limit(80);
+  const contactHits = await db
+    .select({
+      contactId: pvContactsTable.printavoId,
+      contactName: pvContactsTable.fullName,
+      contactEmail: pvContactsTable.email,
+      customerId: pvContactsTable.customerId,
+    })
+    .from(pvContactsTable)
+    .where(contactTextSearch(terms, "|"))
+    .orderBy(pvContactsTable.printavoId)
+    .limit(120);
+  const customerIds = new Set([
+    ...companyHits.map((customer) => customer.customerId),
+    ...contactHits
+      .map((contact) => contact.customerId)
+      .filter((id): id is string => Boolean(id)),
+  ]);
+  const contactIds = contactHits.map((contact) => contact.contactId);
+  const customerFilters = [
+    ...(customerIds.size > 0
+      ? [inArray(pvCustomersTable.printavoId, [...customerIds])]
+      : []),
+    ...(contactIds.length > 0
+      ? [inArray(pvCustomersTable.primaryContactId, contactIds)]
+      : []),
+  ];
+  if (customerFilters.length === 0) return [];
+  const customers = await db
+    .select({
+      customerId: pvCustomersTable.printavoId,
+      companyName: pvCustomersTable.companyName,
+      primaryContactId: pvCustomersTable.primaryContactId,
+    })
+    .from(pvCustomersTable)
+    .where(or(...customerFilters))
+    .orderBy(pvCustomersTable.printavoId)
+    .limit(100);
+  const primaryContactIds = customers
+    .map((customer) => customer.primaryContactId)
+    .filter((id): id is string => Boolean(id));
+  const primaryContacts: QuoteContactRow[] =
+    primaryContactIds.length > 0
+      ? await db
+          .select({
+            contactId: pvContactsTable.printavoId,
+            contactName: pvContactsTable.fullName,
+            contactEmail: pvContactsTable.email,
+            customerId: pvContactsTable.customerId,
+          })
+          .from(pvContactsTable)
+          .where(inArray(pvContactsTable.printavoId, primaryContactIds))
+      : [];
+  const contacts = [...contactHits, ...primaryContacts].filter(
+    (contact, index, all) =>
+      all.findIndex((candidate) => candidate.contactId === contact.contactId) ===
+      index,
+  );
+  const rows = customers.flatMap((customer) => {
+    const matchingContacts = contacts.filter(
+      (contact) =>
+        contact.customerId === customer.customerId ||
+        contact.contactId === customer.primaryContactId,
+    );
+    const pairs = matchingContacts.length > 0 ? matchingContacts : [null];
+    return pairs.map((contact) => ({
+      customerId: customer.customerId,
+      companyName: customer.companyName,
+      contactId: contact?.contactId ?? null,
+      contactName: contact?.contactName ?? null,
+      contactEmail: contact?.contactEmail ?? null,
     }));
+  });
+
+  const seen = new Set<string>();
+  return rows
+    .filter((row) =>
+      containsAllTerms(
+        [row.companyName, row.contactName, row.contactEmail]
+          .filter(Boolean)
+          .join(" "),
+        terms,
+      ),
+    )
+    .map((row) => {
+      const companyName = row.companyName ?? "Unnamed customer";
+      const combined = [companyName, row.contactName, row.contactEmail]
+        .filter(Boolean)
+        .join(" ");
+      const score = Math.max(
+        matchScore(query, companyName),
+        matchScore(query, row.contactName ?? ""),
+        matchScore(query, row.contactEmail ?? ""),
+        matchScore(query, combined),
+      );
+      return {
+        score,
+        candidate: {
+          customerId: row.customerId,
+          companyName,
+          contactId: row.contactId ?? null,
+          contactName: row.contactName ?? null,
+          contactEmail: row.contactEmail ?? null,
+          matchType: score >= 99 ? "exact" as const : "possible" as const,
+        },
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.candidate.companyName.localeCompare(b.candidate.companyName),
+    )
+    .filter(({ candidate }) => {
+      const key = `${candidate.customerId}:${candidate.contactId ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 20)
+    .map(({ candidate }) => candidate);
 }
 
 function sameText(a: string, b: string): boolean {
@@ -339,7 +654,7 @@ async function recalculateDraft(input: AiQuoteDraftData): Promise<AiQuoteDraftDa
   const [matrices, customerCandidates, selectedCustomer, garments] =
     await Promise.all([
       listDecorationMatrices(),
-      findCustomers(input.customerQuery),
+      findCustomers(input.customerQuery, input.contactQuery ?? null),
       verifySelectedCustomer(input.selectedCustomer),
       Promise.all(input.garments.map(verifyGarment)),
     ]);
@@ -399,12 +714,16 @@ async function recalculateDraft(input: AiQuoteDraftData): Promise<AiQuoteDraftDa
 
   const currentCandidates = selectedCustomer &&
     !customerCandidates.some(
-      (candidate) => candidate.customerId === selectedCustomer.customerId,
+      (candidate) =>
+        candidate.customerId === selectedCustomer.customerId &&
+        candidate.contactId === selectedCustomer.contactId,
     )
     ? [selectedCustomer, ...customerCandidates].slice(0, 10)
     : customerCandidates;
   return {
     ...input,
+    customerQuery: input.customerQuery ?? "",
+    contactQuery: input.contactQuery ?? null,
     dueDate: input.dueDate?.slice(0, 10) ?? null,
     customerCandidates: currentCandidates,
     selectedCustomer,
@@ -438,7 +757,10 @@ export async function interpretAndCreateDraft(
 ) {
   const extracted = await extractQuotePrompt(prompt);
   const [customerCandidates, matrices, productResults] = await Promise.all([
-    findCustomers(extracted.customerName),
+    findCustomers(
+      extracted.companyCustomerName ?? "",
+      extracted.contactName,
+    ),
     listDecorationMatrices(),
     Promise.all(
       extracted.garments.map((garment) =>
@@ -470,12 +792,13 @@ export async function interpretAndCreateDraft(
     }),
   );
   const initial: AiQuoteDraftData = {
-    customerQuery: extracted.customerName,
+    customerQuery: extracted.companyCustomerName ?? "",
+    contactQuery: extracted.contactName,
     customerCandidates,
     selectedCustomer,
     nickname:
       extracted.nickname ??
-      `${extracted.customerName} — ${garments[0]?.style ?? "Quote"}`,
+      `${extracted.companyCustomerName ?? extracted.contactName ?? "New quote"} — ${garments[0]?.style ?? "Quote"}`,
     dueDate: extracted.dueDate,
     markup: 1.75,
     customerNote: extracted.customerNote,

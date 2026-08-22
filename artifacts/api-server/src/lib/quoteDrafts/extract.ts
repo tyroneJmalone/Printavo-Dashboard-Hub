@@ -5,7 +5,8 @@ const MODEL = "gpt-5.6-terra";
 const CALL_TIMEOUT_MS = 30_000;
 
 const ExtractedQuoteSchema = z.object({
-  customerName: z.string().min(1).max(300),
+  companyCustomerName: z.string().min(1).max(300).nullable(),
+  contactName: z.string().min(1).max(300).nullable(),
   nickname: z.string().max(300).nullable(),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   customerNote: z.string().max(10_000),
@@ -68,7 +69,8 @@ export async function extractQuotePrompt(prompt: string): Promise<ExtractedQuote
 
 Return ONLY a JSON object matching this shape:
 {
-  "customerName": "string",
+  "companyCustomerName": "company or customer organization name, or null",
+  "contactName": "person/contact name, or null",
   "nickname": "string or null",
   "dueDate": "YYYY-MM-DD or null",
   "customerNote": "string",
@@ -91,6 +93,10 @@ Return ONLY a JSON object matching this shape:
 
 Rules:
 - Extract facts only. Never invent customers, products, colors, quantities, dates, costs, prices, or vendor availability.
+- Keep the company/customer organization and the individual contact in separate fields.
+- In "Tyler Gauthier Beercelona", use "Beercelona" as companyCustomerName and "Tyler Gauthier" as contactName.
+- In "Lost Cowboy Brewing Company", use that full organization as companyCustomerName and null as contactName unless a person is explicitly named.
+- If only a person's name is supplied, put it in contactName and leave companyCustomerName null. Do not copy a person into the company field.
 - Normalize common apparel sizes to XS, S, M, L, XL, 2XL, 3XL, etc.
 - If the request says a due date, convert it to YYYY-MM-DD. Otherwise dueDate must be null.
 - If a required-looking fact is missing or ambiguous, preserve the best literal value and describe the uncertainty.

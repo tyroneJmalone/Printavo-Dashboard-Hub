@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const pvContactsTable = pgTable(
   "pv_contacts",
@@ -22,6 +23,10 @@ export const pvContactsTable = pgTable(
   (t) => [
     index("pv_contacts_email_idx").on(t.email),
     index("pv_contacts_customer_idx").on(t.customerId),
+    index("pv_contacts_search_idx").using(
+      "gin",
+      sql`to_tsvector('simple', coalesce(${t.fullName}, '') || ' ' || coalesce(${t.email}, ''))`,
+    ),
   ],
 );
 

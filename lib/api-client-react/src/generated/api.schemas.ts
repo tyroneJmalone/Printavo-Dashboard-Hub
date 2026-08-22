@@ -1133,11 +1133,13 @@ export interface AiQuotePricingLine {
 }
 
 export interface AiQuoteDraftData {
-  /**
-     * @minLength 1
-     * @maxLength 300
-     */
+  /** @maxLength 300 */
   customerQuery: string;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
+  contactQuery?: string | null;
   /** @maxItems 10 */
   customerCandidates: AiQuoteCustomerCandidate[];
   selectedCustomer: AiQuoteCustomerCandidate | null;
@@ -1175,6 +1177,11 @@ export interface AiQuoteDraftData {
      * @items.maxLength 500
      */
   warnings: string[];
+}
+
+export interface AiQuoteCustomerSearchResponse {
+  /** @maxItems 20 */
+  customers: AiQuoteCustomerCandidate[];
 }
 
 export type AiQuoteDraftStatus = typeof AiQuoteDraftStatus[keyof typeof AiQuoteDraftStatus];
@@ -5027,6 +5034,14 @@ includeArchived?: boolean;
 
 export type ListChipplyStoresParams = {
 includeArchived?: boolean;
+};
+
+export type SearchAiQuoteCustomersParams = {
+/**
+ * @minLength 2
+ * @maxLength 100
+ */
+query: string;
 };
 
 export type ListPrintQueueOrdersParams = {

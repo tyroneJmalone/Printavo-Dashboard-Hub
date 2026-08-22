@@ -3629,6 +3629,8 @@ export const ListDetectedChipplyStoresResponse = zod.object({
 
 export const listAiQuoteDraftsResponseDraftsItemDraftCustomerQueryMax = 300;
 
+export const listAiQuoteDraftsResponseDraftsItemDraftContactQueryMax = 300;
+
 export const listAiQuoteDraftsResponseDraftsItemDraftCustomerCandidatesMax = 10;
 
 export const listAiQuoteDraftsResponseDraftsItemDraftNicknameMax = 300;
@@ -3707,7 +3709,8 @@ export const ListAiQuoteDraftsResponse = zod.object({
   "revision": zod.number().min(1),
   "prompt": zod.string(),
   "draft": zod.object({
-  "customerQuery": zod.string().min(1).max(listAiQuoteDraftsResponseDraftsItemDraftCustomerQueryMax),
+  "customerQuery": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftCustomerQueryMax),
+  "contactQuery": zod.string().max(listAiQuoteDraftsResponseDraftsItemDraftContactQueryMax).nullish(),
   "customerCandidates": zod.array(zod.object({
   "customerId": zod.string(),
   "companyName": zod.string(),
@@ -3816,6 +3819,8 @@ export const InterpretAiQuotePromptBody = zod.object({
 
 export const interpretAiQuotePromptResponseDraftCustomerQueryMax = 300;
 
+export const interpretAiQuotePromptResponseDraftContactQueryMax = 300;
+
 export const interpretAiQuotePromptResponseDraftCustomerCandidatesMax = 10;
 
 export const interpretAiQuotePromptResponseDraftNicknameMax = 300;
@@ -3893,7 +3898,8 @@ export const InterpretAiQuotePromptResponse = zod.object({
   "revision": zod.number().min(1),
   "prompt": zod.string(),
   "draft": zod.object({
-  "customerQuery": zod.string().min(1).max(interpretAiQuotePromptResponseDraftCustomerQueryMax),
+  "customerQuery": zod.string().max(interpretAiQuotePromptResponseDraftCustomerQueryMax),
+  "contactQuery": zod.string().max(interpretAiQuotePromptResponseDraftContactQueryMax).nullish(),
   "customerCandidates": zod.array(zod.object({
   "customerId": zod.string(),
   "companyName": zod.string(),
@@ -3986,6 +3992,35 @@ export const InterpretAiQuotePromptResponse = zod.object({
 
 
 /**
+ * Searches the local Printavo mirror only. Results are verified again when a draft is saved.
+ * @summary Search verified Printavo customers and contacts for a quote draft
+ */
+export const searchAiQuoteCustomersQueryQueryMin = 2;
+export const searchAiQuoteCustomersQueryQueryMax = 100;
+
+
+
+export const SearchAiQuoteCustomersQueryParams = zod.object({
+  "query": zod.coerce.string().min(searchAiQuoteCustomersQueryQueryMin).max(searchAiQuoteCustomersQueryQueryMax)
+})
+
+export const searchAiQuoteCustomersResponseCustomersMax = 20;
+
+
+
+export const SearchAiQuoteCustomersResponse = zod.object({
+  "customers": zod.array(zod.object({
+  "customerId": zod.string(),
+  "companyName": zod.string(),
+  "contactId": zod.string().nullable(),
+  "contactName": zod.string().nullable(),
+  "contactEmail": zod.string().nullable(),
+  "matchType": zod.enum(['exact', 'possible'])
+})).max(searchAiQuoteCustomersResponseCustomersMax)
+})
+
+
+/**
  * @summary Get a saved AI quote draft
  */
 export const GetAiQuoteDraftParams = zod.object({
@@ -3994,6 +4029,8 @@ export const GetAiQuoteDraftParams = zod.object({
 
 
 export const getAiQuoteDraftResponseDraftCustomerQueryMax = 300;
+
+export const getAiQuoteDraftResponseDraftContactQueryMax = 300;
 
 export const getAiQuoteDraftResponseDraftCustomerCandidatesMax = 10;
 
@@ -4072,7 +4109,8 @@ export const GetAiQuoteDraftResponse = zod.object({
   "revision": zod.number().min(1),
   "prompt": zod.string(),
   "draft": zod.object({
-  "customerQuery": zod.string().min(1).max(getAiQuoteDraftResponseDraftCustomerQueryMax),
+  "customerQuery": zod.string().max(getAiQuoteDraftResponseDraftCustomerQueryMax),
+  "contactQuery": zod.string().max(getAiQuoteDraftResponseDraftContactQueryMax).nullish(),
   "customerCandidates": zod.array(zod.object({
   "customerId": zod.string(),
   "companyName": zod.string(),
@@ -4174,6 +4212,8 @@ export const UpdateAiQuoteDraftParams = zod.object({
 
 export const updateAiQuoteDraftBodyDraftCustomerQueryMax = 300;
 
+export const updateAiQuoteDraftBodyDraftContactQueryMax = 300;
+
 export const updateAiQuoteDraftBodyDraftCustomerCandidatesMax = 10;
 
 export const updateAiQuoteDraftBodyDraftNicknameMax = 300;
@@ -4248,7 +4288,8 @@ export const updateAiQuoteDraftBodyDraftWarningsMax = 30;
 export const UpdateAiQuoteDraftBody = zod.object({
   "revision": zod.number().min(1),
   "draft": zod.object({
-  "customerQuery": zod.string().min(1).max(updateAiQuoteDraftBodyDraftCustomerQueryMax),
+  "customerQuery": zod.string().max(updateAiQuoteDraftBodyDraftCustomerQueryMax),
+  "contactQuery": zod.string().max(updateAiQuoteDraftBodyDraftContactQueryMax).nullish(),
   "customerCandidates": zod.array(zod.object({
   "customerId": zod.string(),
   "companyName": zod.string(),
@@ -4334,6 +4375,8 @@ export const UpdateAiQuoteDraftBody = zod.object({
 
 export const updateAiQuoteDraftResponseDraftCustomerQueryMax = 300;
 
+export const updateAiQuoteDraftResponseDraftContactQueryMax = 300;
+
 export const updateAiQuoteDraftResponseDraftCustomerCandidatesMax = 10;
 
 export const updateAiQuoteDraftResponseDraftNicknameMax = 300;
@@ -4411,7 +4454,8 @@ export const UpdateAiQuoteDraftResponse = zod.object({
   "revision": zod.number().min(1),
   "prompt": zod.string(),
   "draft": zod.object({
-  "customerQuery": zod.string().min(1).max(updateAiQuoteDraftResponseDraftCustomerQueryMax),
+  "customerQuery": zod.string().max(updateAiQuoteDraftResponseDraftCustomerQueryMax),
+  "contactQuery": zod.string().max(updateAiQuoteDraftResponseDraftContactQueryMax).nullish(),
   "customerCandidates": zod.array(zod.object({
   "customerId": zod.string(),
   "companyName": zod.string(),
@@ -4522,6 +4566,8 @@ export const CreatePrintavoQuoteFromDraftBody = zod.object({
 
 export const createPrintavoQuoteFromDraftResponseDraftCustomerQueryMax = 300;
 
+export const createPrintavoQuoteFromDraftResponseDraftContactQueryMax = 300;
+
 export const createPrintavoQuoteFromDraftResponseDraftCustomerCandidatesMax = 10;
 
 export const createPrintavoQuoteFromDraftResponseDraftNicknameMax = 300;
@@ -4599,7 +4645,8 @@ export const CreatePrintavoQuoteFromDraftResponse = zod.object({
   "revision": zod.number().min(1),
   "prompt": zod.string(),
   "draft": zod.object({
-  "customerQuery": zod.string().min(1).max(createPrintavoQuoteFromDraftResponseDraftCustomerQueryMax),
+  "customerQuery": zod.string().max(createPrintavoQuoteFromDraftResponseDraftCustomerQueryMax),
+  "contactQuery": zod.string().max(createPrintavoQuoteFromDraftResponseDraftContactQueryMax).nullish(),
   "customerCandidates": zod.array(zod.object({
   "customerId": zod.string(),
   "companyName": zod.string(),

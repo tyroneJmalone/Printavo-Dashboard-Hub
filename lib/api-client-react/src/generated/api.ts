@@ -28,6 +28,7 @@ import type {
   AddTeamMember201,
   AdminPinStatus,
   AdminUnlockPoFileRequest,
+  AiQuoteCustomerSearchResponse,
   AiQuoteDraft,
   AiQuoteDraftListResponse,
   AppendPoLineItemsRequest,
@@ -232,6 +233,7 @@ import type {
   RewardsSettingsInput,
   RewardsSummary,
   RunInsightsPresetResponse,
+  SearchAiQuoteCustomersParams,
   SeedStartResult,
   SendTestRewardEmail200,
   SendToPrintavoResult,
@@ -7547,6 +7549,91 @@ export const useInterpretAiQuotePrompt = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getInterpretAiQuotePromptMutationOptions(options));
     }
+
+export const getSearchAiQuoteCustomersUrl = (params: SearchAiQuoteCustomersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/quote-drafts/customers/search?${stringifiedParams}` : `/api/quote-drafts/customers/search`
+}
+
+/**
+ * Searches the local Printavo mirror only. Results are verified again when a draft is saved.
+ * @summary Search verified Printavo customers and contacts for a quote draft
+ */
+export const searchAiQuoteCustomers = async (params: SearchAiQuoteCustomersParams, options?: RequestInit): Promise<AiQuoteCustomerSearchResponse> => {
+
+  return customFetch<AiQuoteCustomerSearchResponse>(getSearchAiQuoteCustomersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchAiQuoteCustomersQueryKey = (params?: SearchAiQuoteCustomersParams,) => {
+    return [
+    `/api/quote-drafts/customers/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchAiQuoteCustomersQueryOptions = <TData = Awaited<ReturnType<typeof searchAiQuoteCustomers>>, TError = ErrorType<ErrorResponse>>(params: SearchAiQuoteCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchAiQuoteCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchAiQuoteCustomersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchAiQuoteCustomers>>> = ({ signal }) => searchAiQuoteCustomers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchAiQuoteCustomers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchAiQuoteCustomersQueryResult = NonNullable<Awaited<ReturnType<typeof searchAiQuoteCustomers>>>
+export type SearchAiQuoteCustomersQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Search verified Printavo customers and contacts for a quote draft
+ */
+
+export function useSearchAiQuoteCustomers<TData = Awaited<ReturnType<typeof searchAiQuoteCustomers>>, TError = ErrorType<ErrorResponse>>(
+ params: SearchAiQuoteCustomersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchAiQuoteCustomers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchAiQuoteCustomersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAiQuoteDraftUrl = (id: string,) => {
 
