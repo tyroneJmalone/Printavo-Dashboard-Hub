@@ -5,11 +5,14 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HubInvoiceSearchItemOrderType } from './hubInvoiceSearchItemOrderType';
 
 export interface HubInvoiceSearchItem {
   /** Internal Printavo GraphQL id */
   id: string;
   visualId: number;
+  /** Whether this Printavo order is an invoice or a quote */
+  orderType: HubInvoiceSearchItemOrderType;
   nickname: string | null;
   customerCompany: string | null;
   statusName: string | null;

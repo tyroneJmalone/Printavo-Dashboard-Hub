@@ -85,6 +85,7 @@ export function parseObjectPath(p) {
           contents: `
 export const eq = () => {};
 export const and = () => {};
+export const inArray = () => {};
 export const isNull = () => {};
 export const sql = (s) => s;
 `,

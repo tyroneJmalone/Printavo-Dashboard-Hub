@@ -5,7 +5,7 @@ import {
   parseObjectPath,
 } from "../objectStorage";
 import { db, hubCalcUploadsTable, pvOrdersTable, type InsertHubCalcUpload } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { publicBaseUrl } from "../publicUrl";
 import {
   validatePriceRows,
@@ -75,8 +75,9 @@ export interface PngUploadSlot {
 }
 
 /**
- * Validate invoiceId+visualId against the local pv_orders mirror.
- * Throws HubUploadError if not found or if visualId mismatches.
+ * Validate the Printavo order id (invoice OR quote) + visualId against the
+ * local pv_orders mirror. Throws HubUploadError if not found or if visualId
+ * mismatches.
  */
 async function validateInvoiceMirror(
   invoiceId: string,
@@ -88,19 +89,19 @@ async function validateInvoiceMirror(
     .where(
       and(
         eq(pvOrdersTable.printavoId, invoiceId),
-        eq(pvOrdersTable.orderType, "invoice"),
+        inArray(pvOrdersTable.orderType, ["invoice", "quote"]),
       ),
     )
     .limit(1);
   if (!row) {
     throw new HubUploadError(
-      `Invoice "${invoiceId}" not found in local mirror`,
+      `Invoice or quote "${invoiceId}" not found in local mirror`,
       "not_found",
     );
   }
   if (row.visualId !== visualId) {
     throw new HubUploadError(
-      `Invoice "${invoiceId}" has visualId ${row.visualId}, not ${visualId}`,
+      `Invoice or quote "${invoiceId}" has visualId ${row.visualId}, not ${visualId}`,
       "invalid",
     );
   }

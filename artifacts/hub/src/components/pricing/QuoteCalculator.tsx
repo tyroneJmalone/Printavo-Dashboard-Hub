@@ -1012,17 +1012,17 @@ export function QuoteCalculator({
         </div>
       </div>
 
-      {/* Push to Printavo Invoice */}
+      {/* Push to Printavo (invoice or quote) */}
       {quote.length > 0 && (
         <div className="bg-[#1e293b]/30 border border-slate-800 rounded-xl p-5 space-y-4">
           <div className="text-sm font-semibold text-slate-200 flex items-center gap-2">
             <CloudUpload className="text-[#3b82f6]" size={16} />
-            Push to Printavo Invoice
+            Push to Printavo
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <label className={labelCls}>Search Invoice</label>
+              <label className={labelCls}>Search Invoice / Quote</label>
               <div className="relative">
                 <Search
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
@@ -1035,7 +1035,7 @@ export function QuoteCalculator({
                     setSearchQ(e.target.value);
                     setSelectedInvoice(null);
                   }}
-                  placeholder="Type invoice number..."
+                  placeholder="Type invoice or quote number..."
                   className={`${inputCls} pl-9`}
                   data-testid="input-invoice-search"
                 />
@@ -1065,15 +1065,26 @@ export function QuoteCalculator({
                         data-testid={`invoice-result-${inv.visualId}`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-200">
-                            #{inv.visualId}
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-slate-200">
+                              #{inv.visualId}
+                            </span>
+                            <span
+                              className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                                inv.orderType === "quote"
+                                  ? "bg-amber-500/15 text-amber-400"
+                                  : "bg-emerald-500/15 text-emerald-400"
+                              }`}
+                            >
+                              {inv.orderType === "quote" ? "Quote" : "Invoice"}
+                            </span>
                           </span>
                           <span className="text-[10px] text-slate-400 px-1.5 py-0.5 bg-slate-950 rounded">
                             {inv.statusName || "No status"}
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-300 truncate mt-0.5">
-                          {inv.nickname || "Untitled invoice"}
+                          {inv.nickname || "Untitled"}
                         </div>
                         <div className="text-[10px] text-slate-500 truncate mt-0.5">
                           {inv.customerCompany || "No customer company"}
@@ -1088,7 +1099,7 @@ export function QuoteCalculator({
                 !selectedInvoice &&
                 !searchLoading && (
                   <p className="text-[11px] text-slate-500 mt-2">
-                    No invoices found for "{debouncedQ}".
+                    No invoices or quotes found for "{debouncedQ}".
                   </p>
                 )}
             </div>
@@ -1101,11 +1112,12 @@ export function QuoteCalculator({
                     <strong>
                       {quote.filter((q) => activeRange.filter(q.qty)).length}
                     </strong>{" "}
-                    tiers from range <strong>{activeRange.label}</strong> to
-                    invoice <strong>#{selectedInvoice.visualId}</strong>.
+                    tiers from range <strong>{activeRange.label}</strong> to{" "}
+                    {selectedInvoice.orderType === "quote" ? "quote" : "invoice"}{" "}
+                    <strong>#{selectedInvoice.visualId}</strong>.
                   </div>
                    <div className="text-[10px] text-slate-400">
-                     {selectedInvoice.nickname || "Untitled invoice"}
+                     {selectedInvoice.nickname || "Untitled"}
                      {selectedInvoice.customerCompany
                        ? ` · ${selectedInvoice.customerCompany}`
                        : ""}
@@ -1135,7 +1147,7 @@ export function QuoteCalculator({
               ) : (
                 <div className="bg-slate-900/50 border border-slate-800 border-dashed rounded-lg h-[92px] flex items-center justify-center">
                   <span className="text-[11px] text-slate-500 font-medium">
-                    Select an invoice to push
+                    Select an invoice or quote to push
                   </span>
                 </div>
               )}

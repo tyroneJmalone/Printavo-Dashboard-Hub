@@ -4872,6 +4872,7 @@ export const SearchHubInvoicesResponse = zod.object({
   "invoices": zod.array(zod.object({
   "id": zod.string().describe('Internal Printavo GraphQL id'),
   "visualId": zod.number(),
+  "orderType": zod.enum(['invoice', 'quote']).describe('Whether this Printavo order is an invoice or a quote'),
   "nickname": zod.string().nullable(),
   "customerCompany": zod.string().nullable(),
   "statusName": zod.string().nullable()

@@ -29,6 +29,8 @@ import {
 import {
   invoiceByIdQuery,
   invoiceUpdateMutation,
+  quoteByIdQuery,
+  quoteUpdateMutation,
 } from "../../../lib/printavo/src/queries.ts";
 import {
   resolveStandardSizeGarmentPricing,
@@ -686,6 +688,39 @@ test("invoiceUpdateMutation: throws on empty input", () => {
 test("invoiceUpdateMutation: JSON-escapes special characters in productionNote", () => {
   const m = invoiceUpdateMutation("inv-1", {
     productionNote: 'Say "hello" & done\n',
+  });
+  assert.match(m, /\\"/);
+  assert.match(m, /\\n/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// quoteByIdQuery + quoteUpdateMutation
+// ─────────────────────────────────────────────────────────────────────────
+
+test("quoteByIdQuery: builds a valid query string", () => {
+  const q = quoteByIdQuery("quote-9");
+  assert.match(q, /query/);
+  assert.match(q, /quote\(/);
+  assert.match(q, /"quote-9"/);
+  assert.match(q, /productionNote/);
+  assert.match(q, /visualId/);
+});
+
+test("quoteUpdateMutation: builds mutation with productionNote", () => {
+  const m = quoteUpdateMutation("quote-9", { productionNote: "Hello Quote" });
+  assert.match(m, /mutation/);
+  assert.match(m, /quoteUpdate/);
+  assert.match(m, /"Hello Quote"/);
+  assert.match(m, /productionNote/);
+});
+
+test("quoteUpdateMutation: throws on empty input", () => {
+  assert.throws(() => quoteUpdateMutation("quote-9", {}), /at least one field/);
+});
+
+test("quoteUpdateMutation: JSON-escapes special characters in productionNote", () => {
+  const m = quoteUpdateMutation("quote-9", {
+    productionNote: 'Say "hi" & done\n',
   });
   assert.match(m, /\\"/);
   assert.match(m, /\\n/);

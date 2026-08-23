@@ -4438,10 +4438,23 @@ export interface StatusActivityOrdersResponse {
   orders: StatusActivityOrder[];
 }
 
+/**
+ * Whether this Printavo order is an invoice or a quote
+ */
+export type HubInvoiceSearchItemOrderType = typeof HubInvoiceSearchItemOrderType[keyof typeof HubInvoiceSearchItemOrderType];
+
+
+export const HubInvoiceSearchItemOrderType = {
+  invoice: 'invoice',
+  quote: 'quote',
+} as const;
+
 export interface HubInvoiceSearchItem {
   /** Internal Printavo GraphQL id */
   id: string;
   visualId: number;
+  /** Whether this Printavo order is an invoice or a quote */
+  orderType: HubInvoiceSearchItemOrderType;
   nickname: string | null;
   customerCompany: string | null;
   statusName: string | null;

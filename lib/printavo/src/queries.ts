@@ -1197,6 +1197,23 @@ export function invoiceByIdQuery(printavoId: string): string {
   }`;
 }
 
+/**
+ * Fetch a single quote by its internal Printavo id, returning only the
+ * fields needed by the Hub Price Calculator push (productionNote + id/visualId).
+ *
+ * NOTE: Quote.visualId is a String in the Printavo schema (Invoice.visualId
+ * is an Int) — callers must normalize with Number().
+ */
+export function quoteByIdQuery(printavoId: string): string {
+  return `query {
+    quote(id: ${lit(printavoId)}) {
+      id
+      visualId
+      productionNote
+    }
+  }`;
+}
+
 export interface InvoiceUpdateInput {
   productionNote?: string;
 }
@@ -1219,6 +1236,36 @@ export function invoiceUpdateMutation(
   }
   return `mutation {
     invoiceUpdate(id: ${lit(invoiceId)}, input: { ${parts.join(", ")} }) {
+      id
+      visualId
+      productionNote
+    }
+  }`;
+}
+
+export interface QuoteUpdateInput {
+  productionNote?: string;
+}
+
+/**
+ * Update a quote's mutable header fields (Hub Price Calculator push).
+ * Only non-undefined fields are emitted.
+ * Uses `quoteUpdate(id, input)` with Printavo's QuoteInput type — verified
+ * via schema introspection that QuoteInput includes productionNote.
+ */
+export function quoteUpdateMutation(
+  quoteId: string,
+  input: QuoteUpdateInput,
+): string {
+  const parts: string[] = [];
+  if (input.productionNote !== undefined) {
+    parts.push(`productionNote: ${lit(input.productionNote)}`);
+  }
+  if (parts.length === 0) {
+    throw new Error("quoteUpdateMutation: at least one field must be provided");
+  }
+  return `mutation {
+    quoteUpdate(id: ${lit(quoteId)}, input: { ${parts.join(", ")} }) {
       id
       visualId
       productionNote

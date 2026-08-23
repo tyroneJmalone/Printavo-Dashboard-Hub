@@ -10120,10 +10120,14 @@ components:
             $ref: "#/components/schemas/StatusActivityOrder"
     HubInvoiceSearchItem:
       type: object
-      required: [id, visualId, nickname, customerCompany, statusName]
+      required: [id, visualId, orderType, nickname, customerCompany, statusName]
       properties:
         id: { type: string, description: Internal Printavo GraphQL id }
         visualId: { type: integer }
+        orderType:
+          type: string
+          enum: [invoice, quote]
+          description: Whether this Printavo order is an invoice or a quote
         nickname: { type: string, nullable: true }
         customerCompany: { type: string, nullable: true }
         statusName: { type: string, nullable: true }

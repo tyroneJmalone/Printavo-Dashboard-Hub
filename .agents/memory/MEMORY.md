@@ -37,3 +37,4 @@
 - [Clerk browser-test verification emails](clerk-browser-test-verification-emails.md) — programmatic Hub sign-in can send real development OTP emails; reuse a session or avoid auth UI tests.
 - [Printavo imprint matrix pricing](printavo-imprint-matrix-pricing.md) — matrix columns are attribution, not added charges; resolve live IDs before the one-shot quote claim.
 - [Printavo products API](printavo-products-api.md) — standalone search exposes custom product identity/colors, but not cost, sizes, inventory, or images; history is broader than the live library.
+- [Printavo quote vs invoice identity](printavo-quote-vs-invoice-ids.md) — conversion issues a NEW printavo id (visual number survives); Quote.visualId is a String; quoteUpdate input type is QuoteInput.

@@ -243,6 +243,7 @@ export * from './hubCalculatorPushResultFileOutcome';
 export * from './hubCalculatorPushResultNoteOutcome';
 export * from './hubCalculatorPushResultStatus';
 export * from './hubInvoiceSearchItem';
+export * from './hubInvoiceSearchItemOrderType';
 export * from './hubInvoiceSearchResponse';
 export * from './hubPngUploadRequest';
 export * from './hubPngUploadRequestRangeKey';

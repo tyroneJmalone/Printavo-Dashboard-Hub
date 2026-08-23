@@ -1,5 +1,10 @@
 /**
- * Hub Price Calculator — Printavo push logic.
+ * Hub Price Calculator — Printavo push logic (invoices AND quotes).
+ *
+ * The target order type is derived from the local pv_orders mirror (never
+ * from the client) and selects invoiceUpdate vs quoteUpdate for the note
+ * write. Quote→invoice conversion replaces the mirror row under a new
+ * Printavo id, so a stale target fails closed with a re-select message.
  *
  * Safety rules:
  * 1. noteAttemptedAt / fileAttemptedAt are set atomically via conditional
@@ -15,12 +20,14 @@
  * 5. Repeated identical confirmed requests are idempotent.
  */
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db, hubCalcUploadsTable, pvOrdersTable } from "@workspace/db";
 import { getPrintavoClient } from "../printavoGateway";
 import {
   invoiceByIdQuery,
   invoiceUpdateMutation,
+  quoteByIdQuery,
+  quoteUpdateMutation,
   productionFileCreateMutation,
 } from "@workspace/printavo";
 import { hubCalcPngPublicUrl, verifyAndConfirmPngUploaded } from "./pngStorage";
@@ -219,36 +226,59 @@ export function priceRowsEqual(
   );
 }
 
-// ── Live invoice fetch ───────────────────────────────────────────────────
+// ── Live order fetch (invoice or quote) ─────────────────────────────────
 
-async function fetchLiveInvoice(
-  invoiceId: string,
+export type HubPushOrderType = "invoice" | "quote";
+
+async function fetchLiveOrder(
+  orderId: string,
+  orderType: HubPushOrderType,
 ): Promise<{ productionNote: string | null; visualId: number } | null> {
   const client = getPrintavoClient();
+  if (orderType === "quote") {
+    // NOTE: Quote.visualId is a String in the Printavo schema — normalize.
+    const result = await client.query<{
+      quote: { id: string; visualId: number | string; productionNote: string | null } | null;
+    }>(quoteByIdQuery(orderId));
+    if (!result.quote) return null;
+    return {
+      productionNote: result.quote.productionNote ?? null,
+      visualId: Number(result.quote.visualId),
+    };
+  }
   const result = await client.query<{
-    invoice: { id: string; visualId: number; productionNote: string | null } | null;
-  }>(invoiceByIdQuery(invoiceId));
+    invoice: { id: string; visualId: number | string; productionNote: string | null } | null;
+  }>(invoiceByIdQuery(orderId));
   if (!result.invoice) return null;
   return {
     productionNote: result.invoice.productionNote ?? null,
-    visualId: result.invoice.visualId,
+    visualId: Number(result.invoice.visualId),
   };
 }
 
-// ── Local mirror visualId lookup ─────────────────────────────────────────
+// ── Local mirror lookup (visualId + order type) ──────────────────────────
 
-async function fetchMirrorVisualId(invoiceId: string): Promise<number | null> {
+async function fetchMirrorOrder(
+  orderId: string,
+): Promise<{ visualId: number; orderType: HubPushOrderType } | null> {
   const [row] = await db
-    .select({ visualId: pvOrdersTable.visualId })
+    .select({
+      visualId: pvOrdersTable.visualId,
+      orderType: pvOrdersTable.orderType,
+    })
     .from(pvOrdersTable)
     .where(
       and(
-        eq(pvOrdersTable.printavoId, invoiceId),
-        eq(pvOrdersTable.orderType, "invoice"),
+        eq(pvOrdersTable.printavoId, orderId),
+        inArray(pvOrdersTable.orderType, ["invoice", "quote"]),
       ),
     )
     .limit(1);
-  return row?.visualId ?? null;
+  if (!row) return null;
+  return {
+    visualId: row.visualId,
+    orderType: row.orderType === "quote" ? "quote" : "invoice",
+  };
 }
 
 // ── Main push ────────────────────────────────────────────────────────────
@@ -297,20 +327,41 @@ export async function pushCalcToInvoice(
     );
   }
 
-  // ── 3. Validate invoice against local mirror ───────────────────────────
-  const mirrorVisualId = await fetchMirrorVisualId(req.invoiceId);
-  if (mirrorVisualId === null) {
+  // ── 3. Validate order (invoice or quote) against local mirror ──────────
+  const mirror = await fetchMirrorOrder(req.invoiceId);
+  if (mirror === null) {
+    // The id may be stale because Printavo quote→invoice conversion replaces
+    // the quote row with an invoice row under a NEW Printavo id (same visual
+    // number). Detect that and tell the user to re-select — never silently
+    // redirect a write to an order they did not pick.
+    const [replacement] = await db
+      .select({ orderType: pvOrdersTable.orderType })
+      .from(pvOrdersTable)
+      .where(
+        and(
+          eq(pvOrdersTable.visualId, req.visualId),
+          inArray(pvOrdersTable.orderType, ["invoice", "quote"]),
+        ),
+      )
+      .limit(1);
+    if (replacement) {
+      throw new CalcPushError(
+        `#${req.visualId} was converted to an ${replacement.orderType} in Printavo since it was selected — search for #${req.visualId} again and push to the ${replacement.orderType}.`,
+        "not_found",
+      );
+    }
     throw new CalcPushError(
-      `Invoice "${req.invoiceId}" not found in local mirror`,
+      `Invoice or quote "${req.invoiceId}" not found in local mirror`,
       "not_found",
     );
   }
-  if (mirrorVisualId !== req.visualId) {
+  if (mirror.visualId !== req.visualId) {
     throw new CalcPushError(
-      `Mirror visualId ${mirrorVisualId} does not match request visualId ${req.visualId}`,
+      `Mirror visualId ${mirror.visualId} does not match request visualId ${req.visualId}`,
       "invalid",
     );
   }
+  const orderType: HubPushOrderType = mirror.orderType;
 
   // ── 4. Finalize and verify the staged PNG before any Printavo work ─────
   await assertFinalizedPngReady(req.uploadId);
@@ -324,11 +375,11 @@ export async function pushCalcToInvoice(
   let confirmedNoteMissing = false;
   if (fileAlreadyAttached) {
     // Live read to confirm note is present too
-    const live = await fetchLiveInvoice(req.invoiceId);
+    const live = await fetchLiveOrder(req.invoiceId, orderType);
     const liveVisualId = live?.visualId;
     if (liveVisualId !== undefined && liveVisualId !== req.visualId) {
       throw new CalcPushError(
-        `Live invoice visualId ${liveVisualId} does not match request ${req.visualId}`,
+        `Live ${orderType} visualId ${liveVisualId} does not match request ${req.visualId}`,
         "invalid",
       );
     }
@@ -357,7 +408,7 @@ export async function pushCalcToInvoice(
     // Check: was a prior note attempt made without success?
     if (upload.noteAttemptedAt !== null) {
       // Prior attempt exists without noteOk — try a live read to recover
-      const live = await fetchLiveInvoice(req.invoiceId);
+      const live = await fetchLiveOrder(req.invoiceId, orderType);
       if (live && noteContainsBlock(live.productionNote, newBlock)) {
         // Block already in live note — recover
         noteOk = true;
@@ -372,15 +423,18 @@ export async function pushCalcToInvoice(
       }
     } else {
       // Atomically claim the note mutation
-      const liveInvoice = await fetchLiveInvoice(req.invoiceId);
+      const liveInvoice = await fetchLiveOrder(req.invoiceId, orderType);
       if (!liveInvoice) {
-        throw new CalcPushError("Live Printavo invoice was not found", "not_found");
+        throw new CalcPushError(
+          `Live Printavo ${orderType} was not found`,
+          "not_found",
+        );
       }
 
       // Verify live visualId
       if (liveInvoice.visualId !== req.visualId) {
         throw new CalcPushError(
-          `Live invoice visualId ${liveInvoice.visualId} does not match request ${req.visualId}`,
+          `Live ${orderType} visualId ${liveInvoice.visualId} does not match request ${req.visualId}`,
           "invalid",
         );
       }
@@ -446,9 +500,15 @@ export async function pushCalcToInvoice(
 
         try {
           await assertFinalizedPngReady(req.uploadId);
-          await client.mutate<{
-            invoiceUpdate: { id: string; productionNote: string | null };
-          }>(invoiceUpdateMutation(req.invoiceId, { productionNote: splicedNote }));
+          if (orderType === "quote") {
+            await client.mutate<{
+              quoteUpdate: { id: string; productionNote: string | null };
+            }>(quoteUpdateMutation(req.invoiceId, { productionNote: splicedNote }));
+          } else {
+            await client.mutate<{
+              invoiceUpdate: { id: string; productionNote: string | null };
+            }>(invoiceUpdateMutation(req.invoiceId, { productionNote: splicedNote }));
+          }
 
           noteOk = true;
           await db
@@ -475,7 +535,7 @@ export async function pushCalcToInvoice(
             .where(eq(hubCalcUploadsTable.id, req.uploadId));
           noteLocked = true;
           try {
-            const verification = await fetchLiveInvoice(req.invoiceId);
+            const verification = await fetchLiveOrder(req.invoiceId, orderType);
             if (
               verification &&
               noteContainsBlock(verification.productionNote, newBlock)
@@ -509,6 +569,13 @@ export async function pushCalcToInvoice(
       fileError =
         upload.fileError ??
         "productionFileCreate was previously attempted with ambiguous outcome — manual verification required";
+    } else if (!(await fetchLiveOrder(req.invoiceId, orderType))) {
+      // Revalidate the live target before consuming the single file attempt.
+      // A quote can be converted (or an order deleted) between the note write
+      // and the file attach; attempting productionFileCreate against the dead
+      // parent would permanently lock this upload for no benefit. Leave the
+      // attempt unclaimed so a re-selected push can proceed cleanly.
+      fileError = `Production file was not attempted: the live Printavo ${orderType} was not found (it may have been converted or deleted). Search for #${req.visualId} again and push to the current order.`;
     } else {
       // Atomically claim the file mutation
       const claimResult = await db

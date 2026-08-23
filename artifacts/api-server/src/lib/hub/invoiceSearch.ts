@@ -1,23 +1,28 @@
 import { db, pvOrdersTable } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, inArray, sql } from "drizzle-orm";
+
+export type HubOrderType = "invoice" | "quote";
 
 export interface HubInvoiceSearchItem {
   id: string;
   visualId: number;
+  orderType: HubOrderType;
   nickname: string | null;
   customerCompany: string | null;
   statusName: string | null;
 }
 
 /**
- * Search invoices in the local pv_orders mirror by visible invoice number.
+ * Search invoices AND quotes in the local pv_orders mirror by visible
+ * order number.
  *
  * Supports:
  *   - Exact match: q="1234" → visualId === 1234
  *   - Prefix/typeahead: q="123" → visualIds 1230-1239 etc (cast to text + LIKE)
  *
- * Returns only invoices (not quotes). The returned `id` is the internal
- * Printavo GraphQL id which callers can use to push via the Printavo client.
+ * Returns both invoices and quotes (orderType distinguishes them). The
+ * returned `id` is the internal Printavo GraphQL id which callers can use
+ * to push via the Printavo client.
  */
 export async function searchHubInvoices(
   q: string,
@@ -34,6 +39,7 @@ export async function searchHubInvoices(
     .select({
       printavoId: pvOrdersTable.printavoId,
       visualId: pvOrdersTable.visualId,
+      orderType: pvOrdersTable.orderType,
       nickname: pvOrdersTable.nickname,
       customerCompany: pvOrdersTable.customerCompany,
       statusName: pvOrdersTable.statusName,
@@ -41,7 +47,7 @@ export async function searchHubInvoices(
     .from(pvOrdersTable)
     .where(
       and(
-        eq(pvOrdersTable.orderType, "invoice"),
+        inArray(pvOrdersTable.orderType, ["invoice", "quote"]),
         sql`${pvOrdersTable.visualId}::text LIKE ${`${trimmed}%`}`,
       ),
     )
@@ -54,6 +60,7 @@ export async function searchHubInvoices(
   return rows.map((row) => ({
     id: row.printavoId,
     visualId: row.visualId,
+    orderType: row.orderType === "quote" ? "quote" : "invoice",
     nickname: row.nickname ?? null,
     customerCompany: row.customerCompany ?? null,
     statusName: row.statusName ?? null,
