@@ -98,6 +98,7 @@ Rules:
 - In "Lost Cowboy Brewing Company", use that full organization as companyCustomerName and null as contactName unless a person is explicitly named.
 - If only a person's name is supplied, put it in contactName and leave companyCustomerName null. Do not copy a person into the company field.
 - Normalize common apparel sizes to XS, S, M, L, XL, 2XL, 3XL, etc.
+- For embroidery, preserve any stated stitch count in the decoration details. A number ending in K means thousand stitches: for example, keep "3k stitches" or "12K stitches" in details. colorCount is only for ink/thread colors; never use it for a stitch count.
 - If the request says a due date, convert it to YYYY-MM-DD. Otherwise dueDate must be null.
 - If a required-looking fact is missing or ambiguous, preserve the best literal value and describe the uncertainty.
 - nickname should be a short useful quote name only when the request clearly supplies one; otherwise null.

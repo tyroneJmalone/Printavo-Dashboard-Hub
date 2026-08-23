@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { quoteCreateMutation } from "../../../lib/printavo/src/queries";
 import {
+  automaticMatrixColumnIndex,
+  embroideryStitchTierIndex,
+} from "../src/lib/quoteDrafts/embroideryStitchTiers";
+import {
   parsePrintavoPricingMatrixReferences,
   PrintavoMatrixResolutionError,
   resolvePrintavoPricingColumns,
@@ -40,6 +44,118 @@ const printavoMatrices: PrintavoPricingMatrixReference[] = [
     ],
   },
 ];
+
+test("maps embroidery stitch counts to their configured thousand-stitch tiers", () => {
+  const columns = [
+    { label: "0-5k" },
+    { label: "5K-6K" },
+    { label: "6k-7k" },
+    { label: "10k-11k" },
+    { label: "11k-12k" },
+    { label: "12k-13k" },
+  ];
+
+  assert.equal(embroideryStitchTierIndex("Logo with 3k stitches", columns), 0);
+  assert.equal(embroideryStitchTierIndex("5k stitches", columns), 1);
+  assert.equal(embroideryStitchTierIndex("12K stitches", columns), 5);
+  assert.equal(embroideryStitchTierIndex("stitch count: 12K", columns), 5);
+  assert.equal(
+    embroideryStitchTierIndex("12,000 stitches for the left chest", columns),
+    5,
+  );
+  assert.equal(
+    embroideryStitchTierIndex(
+      "3k stitches on the front and 12k stitches on the back",
+      columns,
+    ),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("12K-13K stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("stitch count: 12K-13K", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("between 12,000 and 13,000 stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("12K or 13K stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("stitch count: 12K or 13K", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("12,000 or 13,000 stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("12K/13K stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("12K through 13K stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("up to 12K stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("under 12,000 stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("stitch count: at least 12K", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("12K stitches or less", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("approximately 12K stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("about 12,000 stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("~12K stitches", columns),
+    null,
+  );
+  assert.equal(
+    embroideryStitchTierIndex("12k stitches (12,000 stitches)", columns),
+    5,
+  );
+  assert.equal(embroideryStitchTierIndex("9k stitches", columns), null);
+  assert.equal(embroideryStitchTierIndex("3k shirts", columns), null);
+  assert.equal(embroideryStitchTierIndex("3k MOQ", columns), null);
+  assert.equal(embroideryStitchTierIndex("unqualified 3k", columns), null);
+  assert.equal(embroideryStitchTierIndex("many stitches", columns), null);
+  assert.equal(embroideryStitchTierIndex("stitch count unknown", columns), null);
+  assert.equal(embroideryStitchTierIndex(null, columns), null);
+});
+
+test("never falls back to color-count columns for embroidery", () => {
+  assert.equal(
+    automaticMatrixColumnIndex(
+      {
+        method: "Embroidery",
+        colorCount: 1,
+        details: "stitch count unknown",
+      },
+      [{ label: "1 color" }, { label: "0-5k" }],
+    ),
+    null,
+  );
+});
 
 test("resolves normalized screen-print and embroidery matrix identities", () => {
   const resolved = resolvePrintavoPricingColumns(

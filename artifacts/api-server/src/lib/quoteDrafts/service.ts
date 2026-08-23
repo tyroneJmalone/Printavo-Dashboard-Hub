@@ -24,6 +24,7 @@ import { randomUUID } from "node:crypto";
 import { getPrintavoClient } from "../printavoGateway";
 import { listDecorationMatrices } from "../pricing/matrices";
 import { productSearch } from "../purchasing/productFinder";
+import { automaticMatrixColumnIndex } from "./embroideryStitchTiers";
 import { extractQuotePrompt } from "./extract";
 import {
   parsePrintavoPricingMatrixReferences,
@@ -543,14 +544,10 @@ function autoMatrix(
   }
   if (!matrix) return { matrixId: null, matrixColumnIndex: null };
 
-  let columnIndex: number | null = null;
-  if (decoration.colorCount !== null) {
-    const target = `${decoration.colorCount}color`;
-    const found = matrix.data.xValues.findIndex(
-      (column) => column.label.toLowerCase().replace(/\s+/g, "") === target,
-    );
-    if (found >= 0) columnIndex = found;
-  }
+  const columnIndex = automaticMatrixColumnIndex(
+    decoration,
+    matrix.data.xValues,
+  );
   return { matrixId: matrix.id, matrixColumnIndex: columnIndex };
 }
 
