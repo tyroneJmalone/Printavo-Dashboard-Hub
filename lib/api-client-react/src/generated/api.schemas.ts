@@ -4438,6 +4438,185 @@ export interface StatusActivityOrdersResponse {
   orders: StatusActivityOrder[];
 }
 
+export interface HubInvoiceSearchItem {
+  /** Internal Printavo GraphQL id */
+  id: string;
+  visualId: number;
+  nickname: string | null;
+  customerCompany: string | null;
+  statusName: string | null;
+}
+
+export interface HubInvoiceSearchResponse {
+  invoices: HubInvoiceSearchItem[];
+}
+
+export interface HubPricingDecorationFill {
+  matrixId: string;
+  columnIndex: number;
+  label: string;
+}
+
+export interface HubPricingInterpretRequest {
+  /**
+     * @minLength 8
+     * @maxLength 10000
+     */
+  prompt: string;
+}
+
+export interface HubPricingInterpretResult {
+  /**
+     * Extracted Printavo quote number if present in the prompt
+     * @maxLength 20
+     * @pattern ^\d{1,20}$
+     */
+  quoteNumber: string | null;
+  /** Explicitly stated garment cost per piece; null if not stated */
+  garmentCost: number | null;
+  /** Explicitly stated markup multiplier; null falls back to calculator default */
+  markup: number | null;
+  /**
+     * Up to 4 matched decoration matrix columns
+     * @maxItems 4
+     */
+  decorations: HubPricingDecorationFill[];
+  /** Non-fatal issues (ambiguous product, missing column, etc.) */
+  warnings: string[];
+}
+
+/**
+ * Validated range key — one of: all, 12-48, 36-72, 60-96, 84-120, 108-144, 144-288. Submitted qtys must fall within the inclusive range (all accepts any positive qty).
+ */
+export type HubPngUploadRequestRangeKey = typeof HubPngUploadRequestRangeKey[keyof typeof HubPngUploadRequestRangeKey];
+
+
+export const HubPngUploadRequestRangeKey = {
+  all: 'all',
+  '12-48': '12-48',
+  '36-72': '36-72',
+  '60-96': '60-96',
+  '84-120': '84-120',
+  '108-144': '108-144',
+  '144-288': '144-288',
+} as const;
+
+export interface HubCalculatorPriceRow {
+  /** @minimum 1 */
+  qty: number;
+  /** @minimum 0 */
+  unitPrice: number;
+}
+
+export interface HubPngUploadRequest {
+  /** Internal Printavo invoice id (validated against local mirror) */
+  invoiceId: string;
+  /** Visible invoice number (validated against local mirror) */
+  visualId: number;
+  /** Validated range key — one of: all, 12-48, 36-72, 60-96, 84-120, 108-144, 144-288. Submitted qtys must fall within the inclusive range (all accepts any positive qty). */
+  rangeKey: HubPngUploadRequestRangeKey;
+  /** Price rows for this snapshot. Unique ascending qtys, finite unit prices >=0. Used for dedupe hash and stored in the upload row. */
+  priceRows: HubCalculatorPriceRow[];
+  /**
+     * @maxLength 20
+     * @pattern ^\d{1,20}$
+     */
+  quoteNumber: string;
+  /** @maxLength 2000 */
+  note?: string | null;
+  /**
+     * Declared file size (unused for server-side GCS verification but informational)
+     * @minimum 1
+     * @maximum 10485760
+     */
+  fileSizeBytes?: number;
+}
+
+export interface HubPngUploadResponse {
+  /** Hub upload row UUID — pass to the push endpoint */
+  uploadId: string;
+  /** Presigned PUT URL (valid ~15 minutes); upload PNG bytes directly to GCS with Content-Type image/png. Null when dedupe matched an existing row that is already uploaded/pushed (no re-upload needed). */
+  uploadUrl: string | null;
+  /** GCS object path for the PNG */
+  objectPath: string;
+  /** Stable unauthenticated public URL (available once PNG is uploaded) */
+  publicUrl: string;
+  /** True when an existing identical snapshot row was reused */
+  dedupe: boolean;
+}
+
+/**
+ * Range key (must match upload row)
+ */
+export type HubCalculatorPushRequestRangeKey = typeof HubCalculatorPushRequestRangeKey[keyof typeof HubCalculatorPushRequestRangeKey];
+
+
+export const HubCalculatorPushRequestRangeKey = {
+  all: 'all',
+  '12-48': '12-48',
+  '36-72': '36-72',
+  '60-96': '60-96',
+  '84-120': '84-120',
+  '108-144': '108-144',
+  '144-288': '144-288',
+} as const;
+
+export interface HubCalculatorPushRequest {
+  /** Upload row UUID from requestHubPngUploadUrl */
+  uploadId: string;
+  /** Internal Printavo invoice id (must match upload row and live invoice) */
+  invoiceId: string;
+  /** Visible invoice number (must match upload row and live invoice) */
+  visualId: number;
+  /** Range key (must match upload row) */
+  rangeKey: HubCalculatorPushRequestRangeKey;
+  /** Price rows — must match the snapshot stored in the upload row */
+  priceRows: HubCalculatorPriceRow[];
+  /**
+     * @maxLength 20
+     * @pattern ^\d{1,20}$
+     */
+  quoteNumber: string;
+}
+
+/**
+ * file_locked means productionFileCreate was attempted but the outcome is ambiguous — manual verification required, no retry allowed.
+ */
+export type HubCalculatorPushResultStatus = typeof HubCalculatorPushResultStatus[keyof typeof HubCalculatorPushResultStatus];
+
+
+export const HubCalculatorPushResultStatus = {
+  note_ok: 'note_ok',
+  file_ok: 'file_ok',
+  note_failed: 'note_failed',
+  file_failed: 'file_failed',
+  file_locked: 'file_locked',
+  partial: 'partial',
+} as const;
+
+export type HubCalculatorPushResultNoteOutcome = {
+  ok: boolean;
+  /** True when note mutation is locked pending verification */
+  locked?: boolean;
+  error?: string | null;
+};
+
+export type HubCalculatorPushResultFileOutcome = {
+  ok: boolean;
+  /** True when file mutation is locked pending verification */
+  locked?: boolean;
+  productionFileId?: string | null;
+  error?: string | null;
+};
+
+export interface HubCalculatorPushResult {
+  uploadId: string;
+  /** file_locked means productionFileCreate was attempted but the outcome is ambiguous — manual verification required, no retry allowed. */
+  status: HubCalculatorPushResultStatus;
+  noteOutcome: HubCalculatorPushResultNoteOutcome;
+  fileOutcome: HubCalculatorPushResultFileOutcome;
+}
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -5060,6 +5239,20 @@ export type SearchAiQuoteCustomersParams = {
  * @maxLength 100
  */
 query: string;
+};
+
+export type SearchHubInvoicesParams = {
+/**
+ * Exact or prefix invoice number (digits only)
+ * @minLength 1
+ * @maxLength 20
+ */
+q: string;
+/**
+ * @minimum 1
+ * @maximum 20
+ */
+limit?: number;
 };
 
 export type ListPrintQueueOrdersParams = {

@@ -1180,3 +1180,48 @@ export function accountReferencePageQuery(
     }
   }`;
 }
+
+// ── Hub Price Calculator mutations (added for Task #27) ──────────────────
+
+/**
+ * Fetch a single invoice by its internal Printavo id, returning only the
+ * fields needed by the Hub Price Calculator push (productionNote + id/visualId).
+ */
+export function invoiceByIdQuery(printavoId: string): string {
+  return `query {
+    invoice(id: ${lit(printavoId)}) {
+      id
+      visualId
+      productionNote
+    }
+  }`;
+}
+
+export interface InvoiceUpdateInput {
+  productionNote?: string;
+}
+
+/**
+ * Update an invoice's mutable header fields (Hub Price Calculator push).
+ * Only non-undefined fields are emitted.
+ * Uses `invoiceUpdate(id, input)` — verified via Printavo schema.
+ */
+export function invoiceUpdateMutation(
+  invoiceId: string,
+  input: InvoiceUpdateInput,
+): string {
+  const parts: string[] = [];
+  if (input.productionNote !== undefined) {
+    parts.push(`productionNote: ${lit(input.productionNote)}`);
+  }
+  if (parts.length === 0) {
+    throw new Error("invoiceUpdateMutation: at least one field must be provided");
+  }
+  return `mutation {
+    invoiceUpdate(id: ${lit(invoiceId)}, input: { ${parts.join(", ")} }) {
+      id
+      visualId
+      productionNote
+    }
+  }`;
+}

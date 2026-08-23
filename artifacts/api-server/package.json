@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test:quote-matrices": "node ./test-quote-matrices.mjs",
+    "test:hub-calc": "node ./test-hub-calc.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -59,3 +59,4 @@ export * from "./emailActivity";
 export * from "./emailLinks";
 export * from "./aiQuoteDrafts";
 export * from "./aiQuoteDraftEvents";
+export * from "./hubCalcUploads";

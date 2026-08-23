@@ -141,6 +141,13 @@ import type {
   GetStyleNumberBreakdownParams,
   GetTopCustomersParams,
   HealthStatus,
+  HubCalculatorPushRequest,
+  HubCalculatorPushResult,
+  HubInvoiceSearchResponse,
+  HubPngUploadRequest,
+  HubPngUploadResponse,
+  HubPricingInterpretRequest,
+  HubPricingInterpretResult,
   InsightsPresetEnvelope,
   InsightsPresetsResponse,
   InterpretAiQuotePromptRequest,
@@ -234,6 +241,7 @@ import type {
   RewardsSummary,
   RunInsightsPresetResponse,
   SearchAiQuoteCustomersParams,
+  SearchHubInvoicesParams,
   SeedStartResult,
   SendTestRewardEmail200,
   SendToPrintavoResult,
@@ -8070,6 +8078,387 @@ export const useDeleteDecorationMatrix = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getDeleteDecorationMatrixMutationOptions(options));
+    }
+
+export const getSearchHubInvoicesUrl = (params: SearchHubInvoicesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/hub/invoices/search?${stringifiedParams}` : `/api/hub/invoices/search`
+}
+
+/**
+ * Search invoices by visible order number (visualId). Supports exact match or typeahead prefix (up to 20 results). Returns only invoices (not quotes). Results come from the local mirror — no live Printavo call is made.
+ * @summary Exact invoice-number search from the local pv_orders mirror
+ */
+export const searchHubInvoices = async (params: SearchHubInvoicesParams, options?: RequestInit): Promise<HubInvoiceSearchResponse> => {
+
+  return customFetch<HubInvoiceSearchResponse>(getSearchHubInvoicesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchHubInvoicesQueryKey = (params?: SearchHubInvoicesParams,) => {
+    return [
+    `/api/hub/invoices/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchHubInvoicesQueryOptions = <TData = Awaited<ReturnType<typeof searchHubInvoices>>, TError = ErrorType<ErrorResponse>>(params: SearchHubInvoicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchHubInvoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchHubInvoicesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchHubInvoices>>> = ({ signal }) => searchHubInvoices(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchHubInvoices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchHubInvoicesQueryResult = NonNullable<Awaited<ReturnType<typeof searchHubInvoices>>>
+export type SearchHubInvoicesQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Exact invoice-number search from the local pv_orders mirror
+ */
+
+export function useSearchHubInvoices<TData = Awaited<ReturnType<typeof searchHubInvoices>>, TError = ErrorType<ErrorResponse>>(
+ params: SearchHubInvoicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchHubInvoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchHubInvoicesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getInterpretHubPricingPromptUrl = () => {
+
+
+
+
+  return `/api/hub/pricing/interpret`
+}
+
+/**
+ * Uses AI to extract garment, decoration, cost, and pricing facts from a free-text prompt and maps them to pricing calculator fields. No persistence and no Printavo write. Exact vendor product match only — fails closed on ambiguous or fuzzy products. Returns editable calculator fill values plus warnings.
+ * @summary AI interpretation of a natural-language pricing calculator prompt
+ */
+export const interpretHubPricingPrompt = async (hubPricingInterpretRequest: HubPricingInterpretRequest, options?: RequestInit): Promise<HubPricingInterpretResult> => {
+
+  return customFetch<HubPricingInterpretResult>(getInterpretHubPricingPromptUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(hubPricingInterpretRequest)
+  }
+);}
+
+
+
+
+export const getInterpretHubPricingPromptMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof interpretHubPricingPrompt>>, TError,{data: BodyType<HubPricingInterpretRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof interpretHubPricingPrompt>>, TError,{data: BodyType<HubPricingInterpretRequest>}, TContext> => {
+
+const mutationKey = ['interpretHubPricingPrompt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof interpretHubPricingPrompt>>, {data: BodyType<HubPricingInterpretRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  interpretHubPricingPrompt(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InterpretHubPricingPromptMutationResult = NonNullable<Awaited<ReturnType<typeof interpretHubPricingPrompt>>>
+    export type InterpretHubPricingPromptMutationBody = BodyType<HubPricingInterpretRequest>
+    export type InterpretHubPricingPromptMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary AI interpretation of a natural-language pricing calculator prompt
+ */
+export const useInterpretHubPricingPrompt = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof interpretHubPricingPrompt>>, TError,{data: BodyType<HubPricingInterpretRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof interpretHubPricingPrompt>>,
+        TError,
+        {data: BodyType<HubPricingInterpretRequest>},
+        TContext
+      > => {
+      return useMutation(getInterpretHubPricingPromptMutationOptions(options));
+    }
+
+export const getRequestHubPngUploadUrlUrl = () => {
+
+
+
+
+  return `/api/hub/uploads/request-png-url`
+}
+
+/**
+ * Returns a short-lived presigned PUT URL the client uses to upload a PNG directly to GCS. Size is capped at 10 MB. An upload row is created immediately so the push endpoint can reference it by id.
+ * @summary Request a presigned PUT URL to upload a calculator PNG to App Storage
+ */
+export const requestHubPngUploadUrl = async (hubPngUploadRequest: HubPngUploadRequest, options?: RequestInit): Promise<HubPngUploadResponse> => {
+
+  return customFetch<HubPngUploadResponse>(getRequestHubPngUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(hubPngUploadRequest)
+  }
+);}
+
+
+
+
+export const getRequestHubPngUploadUrlMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestHubPngUploadUrl>>, TError,{data: BodyType<HubPngUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestHubPngUploadUrl>>, TError,{data: BodyType<HubPngUploadRequest>}, TContext> => {
+
+const mutationKey = ['requestHubPngUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestHubPngUploadUrl>>, {data: BodyType<HubPngUploadRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestHubPngUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestHubPngUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestHubPngUploadUrl>>>
+    export type RequestHubPngUploadUrlMutationBody = BodyType<HubPngUploadRequest>
+    export type RequestHubPngUploadUrlMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Request a presigned PUT URL to upload a calculator PNG to App Storage
+ */
+export const useRequestHubPngUploadUrl = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestHubPngUploadUrl>>, TError,{data: BodyType<HubPngUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestHubPngUploadUrl>>,
+        TError,
+        {data: BodyType<HubPngUploadRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestHubPngUploadUrlMutationOptions(options));
+    }
+
+export const getGetHubCalcPngUrl = (token: string,
+    filename: string,) => {
+
+
+
+
+  return `/api/hub/uploads/${token}/${filename}`
+}
+
+/**
+ * Identified by a high-entropy token (64-char hex). The trailing filename segment is cosmetic — it controls how Printavo names the attached file. No auth required; token is the only access control.
+ * @summary Unauthenticated public URL that streams a calculator PNG from App Storage
+ */
+export const getHubCalcPng = async (token: string,
+    filename: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetHubCalcPngUrl(token,filename),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHubCalcPngQueryKey = (token: string,
+    filename: string,) => {
+    return [
+    `/api/hub/uploads/${token}/${filename}`
+    ] as const;
+    }
+
+
+export const getGetHubCalcPngQueryOptions = <TData = Awaited<ReturnType<typeof getHubCalcPng>>, TError = ErrorType<void>>(token: string,
+    filename: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHubCalcPng>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHubCalcPngQueryKey(token,filename);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHubCalcPng>>> = ({ signal }) => getHubCalcPng(token,filename, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: token !== null && token !== undefined && filename !== null && filename !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHubCalcPng>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHubCalcPngQueryResult = NonNullable<Awaited<ReturnType<typeof getHubCalcPng>>>
+export type GetHubCalcPngQueryError = ErrorType<void>
+
+
+/**
+ * @summary Unauthenticated public URL that streams a calculator PNG from App Storage
+ */
+
+export function useGetHubCalcPng<TData = Awaited<ReturnType<typeof getHubCalcPng>>, TError = ErrorType<void>>(
+ token: string,
+    filename: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHubCalcPng>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHubCalcPngQueryOptions(token,filename,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPushHubCalculatorUrl = () => {
+
+
+
+
+  return `/api/hub/calculator/push`
+}
+
+/**
+ * Re-reads the live invoice productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls invoiceUpdate and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. Never modifies line items, totals, customer notes, statuses, or other files.
+ * @summary Push pricing calculator results to a Printavo invoice
+ */
+export const pushHubCalculator = async (hubCalculatorPushRequest: HubCalculatorPushRequest, options?: RequestInit): Promise<HubCalculatorPushResult> => {
+
+  return customFetch<HubCalculatorPushResult>(getPushHubCalculatorUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(hubCalculatorPushRequest)
+  }
+);}
+
+
+
+
+export const getPushHubCalculatorMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pushHubCalculator>>, TError,{data: BodyType<HubCalculatorPushRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pushHubCalculator>>, TError,{data: BodyType<HubCalculatorPushRequest>}, TContext> => {
+
+const mutationKey = ['pushHubCalculator'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pushHubCalculator>>, {data: BodyType<HubCalculatorPushRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  pushHubCalculator(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PushHubCalculatorMutationResult = NonNullable<Awaited<ReturnType<typeof pushHubCalculator>>>
+    export type PushHubCalculatorMutationBody = BodyType<HubCalculatorPushRequest>
+    export type PushHubCalculatorMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Push pricing calculator results to a Printavo invoice
+ */
+export const usePushHubCalculator = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pushHubCalculator>>, TError,{data: BodyType<HubCalculatorPushRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pushHubCalculator>>,
+        TError,
+        {data: BodyType<HubCalculatorPushRequest>},
+        TContext
+      > => {
+      return useMutation(getPushHubCalculatorMutationOptions(options));
     }
 
 export const getListPrintQueueOrdersUrl = (params: ListPrintQueueOrdersParams,) => {

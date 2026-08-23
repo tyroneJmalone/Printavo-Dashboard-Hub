@@ -4853,6 +4853,160 @@ export const DeleteDecorationMatrixResponse = zod.void()
 
 
 /**
+ * Search invoices by visible order number (visualId). Supports exact match or typeahead prefix (up to 20 results). Returns only invoices (not quotes). Results come from the local mirror — no live Printavo call is made.
+ * @summary Exact invoice-number search from the local pv_orders mirror
+ */
+export const searchHubInvoicesQueryQMax = 20;
+
+export const searchHubInvoicesQueryLimitDefault = 10;
+export const searchHubInvoicesQueryLimitMax = 20;
+
+
+
+export const SearchHubInvoicesQueryParams = zod.object({
+  "q": zod.coerce.string().min(1).max(searchHubInvoicesQueryQMax).describe('Exact or prefix invoice number (digits only)'),
+  "limit": zod.coerce.number().min(1).max(searchHubInvoicesQueryLimitMax).default(searchHubInvoicesQueryLimitDefault)
+})
+
+export const SearchHubInvoicesResponse = zod.object({
+  "invoices": zod.array(zod.object({
+  "id": zod.string().describe('Internal Printavo GraphQL id'),
+  "visualId": zod.number(),
+  "nickname": zod.string().nullable(),
+  "customerCompany": zod.string().nullable(),
+  "statusName": zod.string().nullable()
+}))
+})
+
+
+/**
+ * Uses AI to extract garment, decoration, cost, and pricing facts from a free-text prompt and maps them to pricing calculator fields. No persistence and no Printavo write. Exact vendor product match only — fails closed on ambiguous or fuzzy products. Returns editable calculator fill values plus warnings.
+ * @summary AI interpretation of a natural-language pricing calculator prompt
+ */
+export const interpretHubPricingPromptBodyPromptMin = 8;
+export const interpretHubPricingPromptBodyPromptMax = 10000;
+
+
+
+export const InterpretHubPricingPromptBody = zod.object({
+  "prompt": zod.string().min(interpretHubPricingPromptBodyPromptMin).max(interpretHubPricingPromptBodyPromptMax)
+})
+
+export const interpretHubPricingPromptResponseQuoteNumberMax = 20;
+
+
+export const interpretHubPricingPromptResponseQuoteNumberRegExp = new RegExp('^\\d{1,20}$');
+export const interpretHubPricingPromptResponseDecorationsMax = 4;
+
+
+
+export const InterpretHubPricingPromptResponse = zod.object({
+  "quoteNumber": zod.string().max(interpretHubPricingPromptResponseQuoteNumberMax).regex(interpretHubPricingPromptResponseQuoteNumberRegExp).nullable().describe('Extracted Printavo quote number if present in the prompt'),
+  "garmentCost": zod.number().nullable().describe('Explicitly stated garment cost per piece; null if not stated'),
+  "markup": zod.number().nullable().describe('Explicitly stated markup multiplier; null falls back to calculator default'),
+  "decorations": zod.array(zod.object({
+  "matrixId": zod.string(),
+  "columnIndex": zod.number(),
+  "label": zod.string()
+})).max(interpretHubPricingPromptResponseDecorationsMax).describe('Up to 4 matched decoration matrix columns'),
+  "warnings": zod.array(zod.string()).describe('Non-fatal issues (ambiguous product, missing column, etc.)')
+})
+
+
+/**
+ * Returns a short-lived presigned PUT URL the client uses to upload a PNG directly to GCS. Size is capped at 10 MB. An upload row is created immediately so the push endpoint can reference it by id.
+ * @summary Request a presigned PUT URL to upload a calculator PNG to App Storage
+ */
+
+export const requestHubPngUploadUrlBodyPriceRowsItemUnitPriceMin = 0;
+
+export const requestHubPngUploadUrlBodyQuoteNumberMax = 20;
+
+
+export const requestHubPngUploadUrlBodyQuoteNumberRegExp = new RegExp('^\\d{1,20}$');
+export const requestHubPngUploadUrlBodyNoteMax = 2000;
+
+export const requestHubPngUploadUrlBodyFileSizeBytesMax = 10485760;
+
+
+
+export const RequestHubPngUploadUrlBody = zod.object({
+  "invoiceId": zod.string().describe('Internal Printavo invoice id (validated against local mirror)'),
+  "visualId": zod.number().describe('Visible invoice number (validated against local mirror)'),
+  "rangeKey": zod.enum(['all', '12-48', '36-72', '60-96', '84-120', '108-144', '144-288']).describe('Validated range key — one of: all, 12-48, 36-72, 60-96, 84-120, 108-144, 144-288. Submitted qtys must fall within the inclusive range (all accepts any positive qty).\n'),
+  "priceRows": zod.array(zod.object({
+  "qty": zod.number().min(1),
+  "unitPrice": zod.number().min(requestHubPngUploadUrlBodyPriceRowsItemUnitPriceMin)
+})).describe('Price rows for this snapshot. Unique ascending qtys, finite unit prices >=0. Used for dedupe hash and stored in the upload row.\n'),
+  "quoteNumber": zod.string().max(requestHubPngUploadUrlBodyQuoteNumberMax).regex(requestHubPngUploadUrlBodyQuoteNumberRegExp),
+  "note": zod.string().max(requestHubPngUploadUrlBodyNoteMax).nullish(),
+  "fileSizeBytes": zod.number().min(1).max(requestHubPngUploadUrlBodyFileSizeBytesMax).optional().describe('Declared file size (unused for server-side GCS verification but informational)')
+})
+
+export const RequestHubPngUploadUrlResponse = zod.object({
+  "uploadId": zod.string().describe('Hub upload row UUID — pass to the push endpoint'),
+  "uploadUrl": zod.string().nullable().describe('Presigned PUT URL (valid ~15 minutes); upload PNG bytes directly to GCS with Content-Type image\/png. Null when dedupe matched an existing row that is already uploaded\/pushed (no re-upload needed).\n'),
+  "objectPath": zod.string().describe('GCS object path for the PNG'),
+  "publicUrl": zod.string().describe('Stable unauthenticated public URL (available once PNG is uploaded)'),
+  "dedupe": zod.boolean().describe('True when an existing identical snapshot row was reused')
+})
+
+
+/**
+ * Identified by a high-entropy token (64-char hex). The trailing filename segment is cosmetic — it controls how Printavo names the attached file. No auth required; token is the only access control.
+ * @summary Unauthenticated public URL that streams a calculator PNG from App Storage
+ */
+export const GetHubCalcPngParams = zod.object({
+  "token": zod.coerce.string(),
+  "filename": zod.coerce.string()
+})
+
+export const GetHubCalcPngResponse = zod.unknown()
+
+
+/**
+ * Re-reads the live invoice productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls invoiceUpdate and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. Never modifies line items, totals, customer notes, statuses, or other files.
+ * @summary Push pricing calculator results to a Printavo invoice
+ */
+
+export const pushHubCalculatorBodyPriceRowsItemUnitPriceMin = 0;
+
+export const pushHubCalculatorBodyQuoteNumberMax = 20;
+
+
+export const pushHubCalculatorBodyQuoteNumberRegExp = new RegExp('^\\d{1,20}$');
+
+
+export const PushHubCalculatorBody = zod.object({
+  "uploadId": zod.string().describe('Upload row UUID from requestHubPngUploadUrl'),
+  "invoiceId": zod.string().describe('Internal Printavo invoice id (must match upload row and live invoice)'),
+  "visualId": zod.number().describe('Visible invoice number (must match upload row and live invoice)'),
+  "rangeKey": zod.enum(['all', '12-48', '36-72', '60-96', '84-120', '108-144', '144-288']).describe('Range key (must match upload row)'),
+  "priceRows": zod.array(zod.object({
+  "qty": zod.number().min(1),
+  "unitPrice": zod.number().min(pushHubCalculatorBodyPriceRowsItemUnitPriceMin)
+})).describe('Price rows — must match the snapshot stored in the upload row'),
+  "quoteNumber": zod.string().max(pushHubCalculatorBodyQuoteNumberMax).regex(pushHubCalculatorBodyQuoteNumberRegExp)
+})
+
+export const PushHubCalculatorResponse = zod.object({
+  "uploadId": zod.string(),
+  "status": zod.enum(['note_ok', 'file_ok', 'note_failed', 'file_failed', 'file_locked', 'partial']).describe('file_locked means productionFileCreate was attempted but the outcome is ambiguous — manual verification required, no retry allowed.\n'),
+  "noteOutcome": zod.object({
+  "ok": zod.boolean(),
+  "locked": zod.boolean().optional().describe('True when note mutation is locked pending verification'),
+  "error": zod.string().nullish()
+}),
+  "fileOutcome": zod.object({
+  "ok": zod.boolean(),
+  "locked": zod.boolean().optional().describe('True when file mutation is locked pending verification'),
+  "productionFileId": zod.string().nullish(),
+  "error": zod.string().nullish()
+})
+})
+
+
+/**
  * @summary Orders in the selected Printavo statuses (from the local sync, newest first)
  */
 export const ListPrintQueueOrdersQueryParams = zod.object({

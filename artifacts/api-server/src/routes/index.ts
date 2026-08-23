@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import purchasingPublicRouter from "./purchasingPublic";
+import hubPublicRouter from "./hubPublic";
 import { requireStaff } from "../middlewares/requireStaff";
 import authRouter from "./auth";
 import staffRouter from "./staff";
@@ -22,6 +23,7 @@ import pipelineRouter from "./pipeline";
 import statusActivityRouter from "./statusActivity";
 import emailActivityRouter from "./emailActivity";
 import aiQuotesRouter from "./aiQuotes";
+import hubRouter from "./hub";
 import { isMomintumConfigured } from "@workspace/momintum-db";
 import momintumRouter from "../momintum";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
@@ -33,11 +35,13 @@ import printavoTasksRouter from "../printavoTasks/routes";
 const router: IRouter = Router();
 
 // ── Public (no session) ──────────────────────────────────────────────
-// ONLY /healthz and the tokenized PO HTML that Printavo fetches
-// server-to-server. Everything below the requireStaff line needs an
-// allowlisted staff session (Clerk cookie).
+// ONLY /healthz, the tokenized PO HTML that Printavo fetches
+// server-to-server, and the Hub calc PNG that Printavo fetches after
+// productionFileCreate. Everything below requireStaff needs a session.
 router.use(healthRouter);
 router.use(purchasingPublicRouter);
+// Hub calc PNG — fetched anonymously by Printavo after productionFileCreate.
+router.use(hubPublicRouter);
 // Mint Bucks email images — fetched anonymously by email clients.
 if (isMintbucksConfigured()) {
   router.use(mintbucksPublicRouter);
@@ -65,6 +69,7 @@ router.use(pipelineRouter);
 router.use(statusActivityRouter);
 router.use(emailActivityRouter); // admin-only inside (staff performance data)
 router.use(aiQuotesRouter);
+router.use(hubRouter);
 
 // moMINTum task management — shared LIVE database with the standalone app.
 // Only mounted when MOMINTUM_DATABASE_URL is set (removing the secret is the

@@ -34,6 +34,8 @@ tags:
     description: Status activity — daily status-arrival counts + per-status occupancy/dwell (bottlenecks)
   - name: chipply
     description: Chipply web stores — email/export import, Printavo invoice linking, revenue kept separate
+  - name: hub
+    description: Hub Price Calculator — AI interpretation, PNG upload, invoice search, and Printavo push
 paths:
   /healthz:
     get:
@@ -2599,6 +2601,181 @@ paths:
           description: Deleted
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /hub/invoices/search:
+    get:
+      operationId: searchHubInvoices
+      tags: [hub]
+      summary: Exact invoice-number search from the local pv_orders mirror
+      description: >
+        Search invoices by visible order number (visualId). Supports exact
+        match or typeahead prefix (up to 20 results). Returns only invoices
+        (not quotes). Results come from the local mirror — no live Printavo
+        call is made.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Exact or prefix invoice number (digits only)
+          schema: { type: string, minLength: 1, maxLength: 20 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 20, default: 10 }
+      responses:
+        "200":
+          description: Matching invoices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubInvoiceSearchResponse"
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /hub/pricing/interpret:
+    post:
+      operationId: interpretHubPricingPrompt
+      tags: [hub]
+      summary: AI interpretation of a natural-language pricing calculator prompt
+      description: >
+        Uses AI to extract garment, decoration, cost, and pricing facts from
+        a free-text prompt and maps them to pricing calculator fields. No
+        persistence and no Printavo write. Exact vendor product match only —
+        fails closed on ambiguous or fuzzy products. Returns editable
+        calculator fill values plus warnings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HubPricingInterpretRequest"
+      responses:
+        "200":
+          description: Extracted calculator fill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubPricingInterpretResult"
+        "400":
+          description: Invalid prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /hub/uploads/request-png-url:
+    post:
+      operationId: requestHubPngUploadUrl
+      tags: [hub]
+      summary: Request a presigned PUT URL to upload a calculator PNG to App Storage
+      description: >
+        Returns a short-lived presigned PUT URL the client uses to upload a
+        PNG directly to GCS. Size is capped at 10 MB. An upload row is
+        created immediately so the push endpoint can reference it by id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HubPngUploadRequest"
+      responses:
+        "200":
+          description: Presigned upload URL and upload row id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubPngUploadResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: App Storage not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /hub/uploads/{token}/{filename}:
+    get:
+      operationId: getHubCalcPng
+      tags: [hub]
+      summary: Unauthenticated public URL that streams a calculator PNG from App Storage
+      description: >
+        Identified by a high-entropy token (64-char hex). The trailing
+        filename segment is cosmetic — it controls how Printavo names the
+        attached file. No auth required; token is the only access control.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: filename
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: PNG image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not found (unknown token or object not yet uploaded)
+  /hub/calculator/push:
+    post:
+      operationId: pushHubCalculator
+      tags: [hub]
+      summary: Push pricing calculator results to a Printavo invoice
+      description: >
+        Re-reads the live invoice productionNote, replaces only the
+        deterministic [Hub Price Calculator ...] block for the same
+        quote/range marker, then calls invoiceUpdate and productionFileCreate
+        exactly once. Persists state before/between mutations. Idempotent for
+        identical confirmed requests — will not duplicate the note block or
+        attachment. Never modifies line items, totals, customer notes,
+        statuses, or other files.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HubCalculatorPushRequest"
+      responses:
+        "200":
+          description: Push outcome (may be partial success)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubCalculatorPushResult"
+        "400":
+          description: Invalid request or upload row not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Push already in progress for this upload row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Printavo not configured
           content:
             application/json:
               schema:
@@ -9941,3 +10118,181 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/StatusActivityOrder"
+    HubInvoiceSearchItem:
+      type: object
+      required: [id, visualId, nickname, customerCompany, statusName]
+      properties:
+        id: { type: string, description: Internal Printavo GraphQL id }
+        visualId: { type: integer }
+        nickname: { type: string, nullable: true }
+        customerCompany: { type: string, nullable: true }
+        statusName: { type: string, nullable: true }
+    HubInvoiceSearchResponse:
+      type: object
+      required: [invoices]
+      properties:
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/HubInvoiceSearchItem"
+    HubPricingDecorationFill:
+      type: object
+      required: [matrixId, columnIndex, label]
+      properties:
+        matrixId: { type: string }
+        columnIndex: { type: integer }
+        label: { type: string }
+    HubPricingInterpretRequest:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+          minLength: 8
+          maxLength: 10000
+    HubPricingInterpretResult:
+      type: object
+      required: [quoteNumber, garmentCost, markup, decorations, warnings]
+      properties:
+        quoteNumber:
+          type: string
+          nullable: true
+          pattern: '^\d{1,20}$'
+          maxLength: 20
+          description: Extracted Printavo quote number if present in the prompt
+        garmentCost:
+          type: number
+          nullable: true
+          description: Explicitly stated garment cost per piece; null if not stated
+        markup:
+          type: number
+          nullable: true
+          description: Explicitly stated markup multiplier; null falls back to calculator default
+        decorations:
+          type: array
+          maxItems: 4
+          description: Up to 4 matched decoration matrix columns
+          items:
+            $ref: "#/components/schemas/HubPricingDecorationFill"
+        warnings:
+          type: array
+          items: { type: string }
+          description: Non-fatal issues (ambiguous product, missing column, etc.)
+    HubPngUploadRequest:
+      type: object
+      required: [invoiceId, visualId, rangeKey, priceRows, quoteNumber]
+      properties:
+        invoiceId:
+          type: string
+          description: Internal Printavo invoice id (validated against local mirror)
+        visualId:
+          type: integer
+          description: Visible invoice number (validated against local mirror)
+        rangeKey:
+          type: string
+          description: >
+            Validated range key — one of: all, 12-48, 36-72, 60-96, 84-120,
+            108-144, 144-288. Submitted qtys must fall within the inclusive range
+            (all accepts any positive qty).
+          enum: [all, "12-48", "36-72", "60-96", "84-120", "108-144", "144-288"]
+        priceRows:
+          type: array
+          description: >
+            Price rows for this snapshot. Unique ascending qtys, finite unit
+            prices >=0. Used for dedupe hash and stored in the upload row.
+          items:
+            $ref: "#/components/schemas/HubCalculatorPriceRow"
+        quoteNumber:
+          type: string
+          pattern: '^\d{1,20}$'
+          maxLength: 20
+        note:
+          type: string
+          nullable: true
+          maxLength: 2000
+        fileSizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+          description: Declared file size (unused for server-side GCS verification but informational)
+    HubPngUploadResponse:
+      type: object
+      required: [uploadId, uploadUrl, objectPath, publicUrl, dedupe]
+      properties:
+        uploadId:
+          type: string
+          description: Hub upload row UUID — pass to the push endpoint
+        uploadUrl:
+          type: string
+          description: >
+            Presigned PUT URL (valid ~15 minutes); upload PNG bytes directly to
+            GCS with Content-Type image/png. Null when dedupe matched an existing
+            row that is already uploaded/pushed (no re-upload needed).
+          nullable: true
+        objectPath:
+          type: string
+          description: GCS object path for the PNG
+        publicUrl:
+          type: string
+          description: Stable unauthenticated public URL (available once PNG is uploaded)
+        dedupe:
+          type: boolean
+          description: True when an existing identical snapshot row was reused
+    HubCalculatorPriceRow:
+      type: object
+      required: [qty, unitPrice]
+      properties:
+        qty: { type: integer, minimum: 1 }
+        unitPrice: { type: number, minimum: 0 }
+    HubCalculatorPushRequest:
+      type: object
+      required: [uploadId, invoiceId, visualId, rangeKey, priceRows, quoteNumber]
+      properties:
+        uploadId:
+          type: string
+          description: Upload row UUID from requestHubPngUploadUrl
+        invoiceId:
+          type: string
+          description: Internal Printavo invoice id (must match upload row and live invoice)
+        visualId:
+          type: integer
+          description: Visible invoice number (must match upload row and live invoice)
+        rangeKey:
+          type: string
+          description: Range key (must match upload row)
+          enum: [all, "12-48", "36-72", "60-96", "84-120", "108-144", "144-288"]
+        priceRows:
+          type: array
+          description: Price rows — must match the snapshot stored in the upload row
+          items:
+            $ref: "#/components/schemas/HubCalculatorPriceRow"
+        quoteNumber:
+          type: string
+          pattern: '^\d{1,20}$'
+          maxLength: 20
+    HubCalculatorPushResult:
+      type: object
+      required: [noteOutcome, fileOutcome, uploadId, status]
+      properties:
+        uploadId: { type: string }
+        status:
+          type: string
+          enum: [note_ok, file_ok, note_failed, file_failed, file_locked, partial]
+          description: >
+            file_locked means productionFileCreate was attempted but the outcome
+            is ambiguous — manual verification required, no retry allowed.
+        noteOutcome:
+          type: object
+          required: [ok]
+          properties:
+            ok: { type: boolean }
+            locked: { type: boolean, description: "True when note mutation is locked pending verification" }
+            error: { type: string, nullable: true }
+        fileOutcome:
+          type: object
+          required: [ok]
+          properties:
+            ok: { type: boolean }
+            locked: { type: boolean, description: "True when file mutation is locked pending verification" }
+            productionFileId: { type: string, nullable: true }
+            error: { type: string, nullable: true }
