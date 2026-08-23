@@ -30,6 +30,258 @@ import {
   invoiceByIdQuery,
   invoiceUpdateMutation,
 } from "../../../lib/printavo/src/queries.ts";
+import {
+  resolveStandardSizeGarmentPricing,
+} from "../src/lib/hub/pricingProductResolver.ts";
+
+function pricingVendor(
+  vendor: "sanmar" | "ss",
+  matchType: "exact" | "closest",
+  colors: Array<{
+    colorName: string;
+    sizes: Array<{
+      size: string;
+      cost: number | null;
+      salePrice: number | null;
+      saleEndsAt?: string | null;
+    }>;
+  }>,
+) {
+  return {
+    aliasUsed: null,
+    lookup: {
+      found: true,
+      matchType,
+      vendor,
+      styleQueried: "PC54",
+      styleId: vendor === "ss" ? "123" : null,
+      styleName: "PC54",
+      brand: "Port & Company",
+      title: "Core Cotton Tee",
+      styleImage: null,
+      colors: colors.map((color) => ({
+        colorName: color.colorName,
+        swatchImage: null,
+        productImage: null,
+        sizes: color.sizes.map((size) => ({
+          ...size,
+          sku: null,
+          inventoryKey: null,
+          sizeIndex: null,
+          msrp: null,
+          saleEndsAt:
+            size.salePrice === null
+              ? null
+              : (size.saleEndsAt ?? "2026-09-01"),
+          inventoryTotal: null,
+          warehouses: null,
+        })),
+      })),
+      cached: false,
+      fetchedAt: "2026-08-23T00:00:00.000Z",
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// AI calculator vendor pricing — standard sizes only, no size list required
+// ─────────────────────────────────────────────────────────────────────────
+
+test("resolveStandardSizeGarmentPricing: uses active sale from XS–XL and ignores plus sizes", () => {
+  const result = resolveStandardSizeGarmentPricing(
+    {
+      vendors: [
+        pricingVendor("sanmar", "exact", [
+          {
+            colorName: "Jet Black",
+            sizes: [
+              { size: "S", cost: 3, salePrice: 2.44 },
+              { size: "XL", cost: 3, salePrice: 2.44 },
+              { size: "4XL", cost: 1, salePrice: 0.5 },
+            ],
+          },
+        ]),
+      ],
+    },
+    "PC54",
+    "Jet Black",
+    new Date("2026-08-23T12:00:00.000Z"),
+  );
+
+  assert.equal(result.resolved, true);
+  if (!result.resolved) return;
+  assert.equal(result.cost, 2.44);
+  assert.equal(result.match.regularCost, 3);
+  assert.equal(result.match.saleCost, 2.44);
+  assert.equal(result.match.appliedPriceType, "sale");
+});
+
+test("resolveStandardSizeGarmentPricing: ignores an expired dated sale", () => {
+  const result = resolveStandardSizeGarmentPricing(
+    {
+      vendors: [
+        pricingVendor("sanmar", "exact", [
+          {
+            colorName: "Jet Black",
+            sizes: [
+              {
+                size: "M",
+                cost: 3,
+                salePrice: 2.44,
+                saleEndsAt: "2026-07-12",
+              },
+            ],
+          },
+        ]),
+      ],
+    },
+    "PC54",
+    "Jet Black",
+    new Date("2026-08-23T12:00:00.000Z"),
+  );
+
+  assert.equal(result.resolved, true);
+  if (!result.resolved) return;
+  assert.equal(result.cost, 3);
+  assert.equal(result.match.regularCost, 3);
+  assert.equal(result.match.saleCost, null);
+  assert.equal(result.match.appliedPriceType, "regular");
+});
+
+test("resolveStandardSizeGarmentPricing: ignores malformed and impossible sale dates", () => {
+  for (const saleEndsAt of ["not-a-date", "2026-02-30"]) {
+    const result = resolveStandardSizeGarmentPricing(
+      {
+        vendors: [
+          pricingVendor("sanmar", "exact", [
+            {
+              colorName: "Jet Black",
+              sizes: [
+                {
+                  size: "M",
+                  cost: 3,
+                  salePrice: 2.44,
+                  saleEndsAt,
+                },
+              ],
+            },
+          ]),
+        ],
+      },
+      "PC54",
+      "Jet Black",
+      new Date("2026-01-15T12:00:00.000Z"),
+    );
+
+    assert.equal(result.resolved, true);
+    if (!result.resolved) continue;
+    assert.equal(result.cost, 3, saleEndsAt);
+    assert.equal(result.match.saleCost, null, saleEndsAt);
+    assert.equal(result.match.appliedPriceType, "regular", saleEndsAt);
+  }
+});
+
+test("resolveStandardSizeGarmentPricing: uses regular cost when no sale is active", () => {
+  const result = resolveStandardSizeGarmentPricing(
+    {
+      vendors: [
+        pricingVendor("ss", "exact", [
+          {
+            colorName: "Navy",
+            sizes: [
+              { size: "M", cost: 4.25, salePrice: null },
+              { size: "2XL", cost: 6.5, salePrice: null },
+            ],
+          },
+        ]),
+      ],
+    },
+    "PC54",
+    "Navy",
+  );
+
+  assert.equal(result.resolved, true);
+  if (!result.resolved) return;
+  assert.equal(result.cost, 4.25);
+  assert.equal(result.match.regularCost, 4.25);
+  assert.equal(result.match.saleCost, null);
+  assert.equal(result.match.appliedPriceType, "regular");
+});
+
+test("resolveStandardSizeGarmentPricing: resolves without a color and reports the selected regular-size color", () => {
+  const result = resolveStandardSizeGarmentPricing(
+    {
+      vendors: [
+        pricingVendor("sanmar", "exact", [
+          {
+            colorName: "Plus Only",
+            sizes: [{ size: "4XL", cost: 1, salePrice: null }],
+          },
+          {
+            colorName: "Athletic Heather",
+            sizes: [{ size: "M", cost: 3.5, salePrice: null }],
+          },
+        ]),
+      ],
+    },
+    "PC54",
+    null,
+  );
+
+  assert.equal(result.resolved, true);
+  if (!result.resolved) return;
+  assert.equal(result.match.colorName, "Athletic Heather");
+  assert.match(result.warnings.join(" "), /No garment color was provided/i);
+});
+
+test("resolveStandardSizeGarmentPricing: exact vendor match wins over a cheaper closest match", () => {
+  const result = resolveStandardSizeGarmentPricing(
+    {
+      vendors: [
+        pricingVendor("sanmar", "exact", [
+          {
+            colorName: "Black",
+            sizes: [{ size: "M", cost: 5, salePrice: null }],
+          },
+        ]),
+        pricingVendor("ss", "closest", [
+          {
+            colorName: "Black",
+            sizes: [{ size: "M", cost: 2, salePrice: null }],
+          },
+        ]),
+      ],
+    },
+    "PC54",
+    "Black",
+  );
+
+  assert.equal(result.resolved, true);
+  if (!result.resolved) return;
+  assert.equal(result.match.vendor, "sanmar");
+  assert.equal(result.cost, 5);
+});
+
+test("resolveStandardSizeGarmentPricing: fails when only plus-size prices exist", () => {
+  const result = resolveStandardSizeGarmentPricing(
+    {
+      vendors: [
+        pricingVendor("sanmar", "exact", [
+          {
+            colorName: "Black",
+            sizes: [{ size: "3XL", cost: 7.5, salePrice: 6 }],
+          },
+        ]),
+      ],
+    },
+    "PC54",
+    "Black",
+  );
+
+  assert.equal(result.resolved, false);
+  if (result.resolved) return;
+  assert.match(result.warning, /no regular-size \(XS–XL\) pricing/i);
+});
 
 // ─────────────────────────────────────────────────────────────────────────
 // blockMarker

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HubPricingDecorationFill } from './hubPricingDecorationFill';
+import type { HubPricingGarmentMatch } from './hubPricingGarmentMatch';
 
 export interface HubPricingInterpretResult {
   /**
@@ -14,10 +15,15 @@ export interface HubPricingInterpretResult {
      * @pattern ^\d{1,20}$
      */
   quoteNumber: string | null;
-  /** Explicitly stated garment cost per piece; null if not stated */
+  /** Explicitly stated cost or resolved current standard-size vendor cost */
   garmentCost: number | null;
-  /** Explicitly stated markup multiplier; null falls back to calculator default */
-  markup: number | null;
+  /** Resolved live vendor product and regular/sale pricing details */
+  garmentMatch: HubPricingGarmentMatch | null;
+  /**
+     * Explicit markup multiplier, or the calculator's automatic 1.75x default
+     * @minimum 0.01
+     */
+  markup: number;
   /**
      * Up to 4 matched decoration matrix columns
      * @maxItems 4

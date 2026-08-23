@@ -4896,14 +4896,31 @@ export const interpretHubPricingPromptResponseQuoteNumberMax = 20;
 
 
 export const interpretHubPricingPromptResponseQuoteNumberRegExp = new RegExp('^\\d{1,20}$');
+export const interpretHubPricingPromptResponseGarmentMatchOneRegularCostMin = 0;
+
+export const interpretHubPricingPromptResponseGarmentMatchOneSaleCostMin = 0;
+
+export const interpretHubPricingPromptResponseMarkupMin = 0.01;
+
 export const interpretHubPricingPromptResponseDecorationsMax = 4;
 
 
 
 export const InterpretHubPricingPromptResponse = zod.object({
   "quoteNumber": zod.string().max(interpretHubPricingPromptResponseQuoteNumberMax).regex(interpretHubPricingPromptResponseQuoteNumberRegExp).nullable().describe('Extracted Printavo quote number if present in the prompt'),
-  "garmentCost": zod.number().nullable().describe('Explicitly stated garment cost per piece; null if not stated'),
-  "markup": zod.number().nullable().describe('Explicitly stated markup multiplier; null falls back to calculator default'),
+  "garmentCost": zod.number().nullable().describe('Explicitly stated cost or resolved current standard-size vendor cost'),
+  "garmentMatch": zod.union([zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "matchType": zod.enum(['exact', 'closest']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "colorName": zod.string(),
+  "regularCost": zod.number().min(interpretHubPricingPromptResponseGarmentMatchOneRegularCostMin).describe('Regular vendor cost from a standard XS–XL size'),
+  "saleCost": zod.number().min(interpretHubPricingPromptResponseGarmentMatchOneSaleCostMin).nullable().describe('Active dated sale cost for the same standard size, when available'),
+  "appliedPriceType": zod.enum(['regular', 'sale'])
+}),zod.null()]).describe('Resolved live vendor product and regular\/sale pricing details'),
+  "markup": zod.number().min(interpretHubPricingPromptResponseMarkupMin).describe('Explicit markup multiplier, or the calculator\'s automatic 1.75x default'),
   "decorations": zod.array(zod.object({
   "matrixId": zod.string(),
   "columnIndex": zod.number(),

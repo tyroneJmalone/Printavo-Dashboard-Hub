@@ -25,6 +25,7 @@ import {
   useRequestHubPngUploadUrl,
   usePushHubCalculator,
   type DecorationMatrix,
+  type HubPricingGarmentMatch,
   type HubInvoiceSearchItem,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
@@ -96,6 +97,9 @@ export function QuoteCalculator({
   const [garmentCostStr, setGarmentCostStr] = useState(
     initialGarmentCost || ""
   );
+  const garmentCostSourceRef = useRef<"empty" | "initial" | "manual" | "vendor" | "ai">(
+    initialGarmentCost ? "initial" : "empty",
+  );
   const [labelHint, setLabelHint] = useState(initialLabel || "");
   const [markupSel, setMarkupSel] = useState(String(DEFAULT_MARKUP));
   const [customMarkupStr, setCustomMarkupStr] = useState("");
@@ -115,6 +119,8 @@ export function QuoteCalculator({
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiWarnings, setAiWarnings] = useState<string[]>([]);
+  const [aiGarmentMatch, setAiGarmentMatch] =
+    useState<HubPricingGarmentMatch | null>(null);
   const interpretMutation = useInterpretHubPricingPrompt();
 
   const [searchQ, setSearchQ] = useState("");
@@ -215,9 +221,28 @@ export function QuoteCalculator({
       { data: { prompt: aiPrompt } },
       {
         onSuccess: (res) => {
+          setAiGarmentMatch(res.garmentMatch);
           if (res.garmentCost !== null) {
             setGarmentCostStr(res.garmentCost.toFixed(2));
+            garmentCostSourceRef.current = "ai";
+            setLabelHint(
+              res.garmentMatch
+                ? [
+                    res.garmentMatch.brand,
+                    res.garmentMatch.styleName,
+                    res.garmentMatch.colorName,
+                    res.garmentMatch.vendor === "sanmar"
+                      ? "SanMar"
+                      : "S&S Activewear",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                : "AI prompt",
+            );
+          } else if (garmentCostSourceRef.current === "ai") {
+            setGarmentCostStr("");
             setLabelHint("");
+            garmentCostSourceRef.current = "empty";
           }
           if (res.markup !== null) {
             if (MARKUP_PRESETS.includes(res.markup)) {
@@ -552,6 +577,33 @@ export function QuoteCalculator({
             </ul>
           </div>
         )}
+        {aiGarmentMatch && (
+          <div
+            className="bg-emerald-500/10 border border-emerald-500/20 rounded p-3 text-[11px] text-emerald-300"
+            data-testid="ai-garment-match"
+          >
+            <div className="font-semibold">
+              Matched{" "}
+              {[aiGarmentMatch.brand, aiGarmentMatch.styleName]
+                .filter(Boolean)
+                .join(" ")}{" "}
+              · {aiGarmentMatch.colorName} ·{" "}
+              {aiGarmentMatch.vendor === "sanmar"
+                ? "SanMar"
+                : "S&S Activewear"}
+            </div>
+            <div className="mt-1 text-emerald-400/80">
+              Regular XS–XL: ${money(aiGarmentMatch.regularCost)}
+              {aiGarmentMatch.saleCost !== null && (
+                <>
+                  {" "}
+                  · Sale: ${money(aiGarmentMatch.saleCost)} · using sale price
+                </>
+              )}
+              {aiGarmentMatch.saleCost === null && " · using regular price"}
+            </div>
+          </div>
+        )}
       </div>
 
       <div ref={exportRef} className="space-y-4 bg-[#020617] p-4 -m-4">
@@ -583,7 +635,11 @@ export function QuoteCalculator({
             </div>
             <div className="border-t border-slate-800 -mx-4 px-4 pt-4">
               <VendorCostLookup
-                onApply={(cost) => setGarmentCostStr(cost.toFixed(2))}
+                onApply={(cost) => {
+                  setGarmentCostStr(cost.toFixed(2));
+                  garmentCostSourceRef.current = "vendor";
+                  setAiGarmentMatch(null);
+                }}
               />
             </div>
             <div className="border-t border-slate-800 -mx-4 px-4 pt-4">
@@ -601,6 +657,9 @@ export function QuoteCalculator({
                   value={garmentCostStr}
                   onChange={(e) => {
                     setGarmentCostStr(e.target.value);
+                    garmentCostSourceRef.current =
+                      e.target.value.trim() === "" ? "empty" : "manual";
+                    setAiGarmentMatch(null);
                     if (labelHint) setLabelHint("");
                   }}
                   placeholder="0.00"

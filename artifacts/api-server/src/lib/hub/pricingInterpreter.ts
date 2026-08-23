@@ -3,9 +3,14 @@ import { z } from "zod/v4";
 import { listDecorationMatrices } from "../pricing/matrices";
 import { productSearch } from "../purchasing/productFinder";
 import { automaticMatrixColumnIndex } from "../quoteDrafts/embroideryStitchTiers";
+import {
+  resolveStandardSizeGarmentPricing,
+  type PricingGarmentMatch,
+} from "./pricingProductResolver";
 
 const MODEL = "gpt-5.6-terra";
 const CALL_TIMEOUT_MS = 30_000;
+const DEFAULT_MARKUP = 1.75;
 
 // ── Extraction schema ───────────────────────────────────────────────────
 
@@ -69,8 +74,10 @@ Rules:
 - Extract only what is explicitly stated. Never invent costs, quantities, or styles.
 - quoteNumber: digits only if stated (strip # prefix). null if not mentioned.
 - explicitGarmentCostPerPiece: only if explicitly stated per-piece garment cost.
-- explicitMarkup: only if explicitly stated. Convert % to multiplier (175% → 1.75).
+- explicitMarkup: only if explicitly stated. Convert % to multiplier (175% → 1.75). If absent, leave null; the calculator automatically uses 1.75×.
 - Normalize sizes: XS, S, M, L, XL, 2XL, 3XL, etc.
+- Sizes are optional for this calculator. Do not add an uncertainty when sizes are absent; vendor cost uses regular sizes XS–XL automatically.
+- Do not add an uncertainty when markup is absent; the calculator applies its automatic markup.
 - For embroidery, preserve stitch counts in decoration details.
 - If a fact is ambiguous or missing, set it null and add to uncertainties.
 - Include ALL decorations mentioned, even beyond 4.`,
@@ -96,101 +103,6 @@ Rules:
     );
   }
   return validated.data;
-}
-
-// ── Product verification (exact only) ───────────────────────────────────
-
-function sameText(a: string, b: string): boolean {
-  return (
-    a.trim().toLowerCase().replace(/[^a-z0-9]/g, "") ===
-    b.trim().toLowerCase().replace(/[^a-z0-9]/g, "")
-  );
-}
-
-/**
- * Attempt an exact vendor product lookup against all vendors.
- *
- * Rules:
- * - If more than one vendor returns an exact match → ambiguous, fail closed.
- * - If no sizes supplied → cannot resolve cost (no silent max-of-all).
- * - All requested sizes must have exact cost data; any missing → fail closed.
- * - Uses the max cost across requested sizes (conservative).
- */
-async function exactGarmentCost(
-  style: string | null,
-  color: string | null,
-  requestedSizes: Array<{ size: string; quantity: number }>,
-): Promise<{ resolved: true; cost: number } | { resolved: false; warning: string }> {
-  if (!style) return { resolved: false, warning: "No garment style in prompt." };
-
-  let searchResult: Awaited<ReturnType<typeof productSearch>>;
-  try {
-    searchResult = await productSearch(style);
-  } catch {
-    return { resolved: false, warning: `Could not look up style "${style}": vendor error.` };
-  }
-
-  // Collect all exact-match vendor results
-  const exactVendors = searchResult.vendors.filter(
-    (v) => v.lookup.found && v.lookup.matchType === "exact",
-  );
-
-  if (exactVendors.length === 0) {
-    return {
-      resolved: false,
-      warning: `Style "${style}" was not found exactly in any vendor catalog — garment cost not resolved.`,
-    };
-  }
-  if (exactVendors.length > 1) {
-    const names = exactVendors.map((v) => v.lookup.vendor).join(", ");
-    return {
-      resolved: false,
-      warning: `Style "${style}" matched exactly in multiple vendors (${names}) — ambiguous, cost not resolved.`,
-    };
-  }
-
-  const exactVendor = exactVendors[0]!;
-
-  if (!color) {
-    return {
-      resolved: false,
-      warning: `Style "${style}" found but no color specified — garment cost not resolved.`,
-    };
-  }
-
-  const matchedColor = exactVendor.lookup.colors.find((c) =>
-    sameText(c.colorName, color),
-  );
-  if (!matchedColor) {
-    return {
-      resolved: false,
-      warning: `Color "${color}" not found for style "${style}" (vendor: ${exactVendor.lookup.vendor}).`,
-    };
-  }
-
-  // Require explicit sizes
-  if (requestedSizes.length === 0) {
-    return {
-      resolved: false,
-      warning: `No sizes specified for style "${style}" — cannot resolve garment cost without explicit sizes.`,
-    };
-  }
-
-  // All requested sizes must have cost data
-  const costs: number[] = [];
-  for (const req of requestedSizes) {
-    const offer = matchedColor.sizes.find((s) => sameText(s.size, req.size));
-    const cost = offer ? (offer.salePrice ?? offer.cost) : null;
-    if (cost === null) {
-      return {
-        resolved: false,
-        warning: `Size "${req.size}" has no cost data for style "${style}" / color "${color}".`,
-      };
-    }
-    costs.push(cost);
-  }
-
-  return { resolved: true, cost: Math.max(...costs) };
 }
 
 // ── Matrix matching ──────────────────────────────────────────────────────
@@ -236,7 +148,8 @@ function matchDecoration(
 export interface PricingInterpretResult {
   quoteNumber: string | null;
   garmentCost: number | null;
-  markup: number | null;
+  garmentMatch: PricingGarmentMatch | null;
+  markup: number;
   decorations: DecorationFill[];
   warnings: string[];
 }
@@ -251,22 +164,36 @@ export async function interpretPricingPrompt(
     listDecorationMatrices(),
   ]);
 
-  const warnings: string[] = [...extracted.uncertainties];
+  const warnings: string[] = extracted.uncertainties.filter(
+    (warning) => !/\b(markup|sizes?)\b/i.test(warning),
+  );
   let garmentCost: number | null = null;
+  let garmentMatch: PricingGarmentMatch | null = null;
 
-  // Use explicit cost if stated; otherwise attempt exact vendor lookup
+  // Use explicit cost if stated; otherwise resolve live XS–XL vendor pricing.
   if (extracted.explicitGarmentCostPerPiece !== null) {
     garmentCost = extracted.explicitGarmentCostPerPiece;
+  } else if (!extracted.garmentStyle) {
+    warnings.push("No garment style in prompt.");
   } else {
-    const vendorResult = await exactGarmentCost(
-      extracted.garmentStyle,
-      extracted.garmentColor,
-      extracted.sizes,
-    );
-    if (vendorResult.resolved) {
-      garmentCost = vendorResult.cost;
-    } else {
-      warnings.push(vendorResult.warning);
+    try {
+      const search = await productSearch(extracted.garmentStyle);
+      const vendorResult = resolveStandardSizeGarmentPricing(
+        search,
+        extracted.garmentStyle,
+        extracted.garmentColor,
+      );
+      if (vendorResult.resolved) {
+        garmentCost = vendorResult.cost;
+        garmentMatch = vendorResult.match;
+        warnings.push(...vendorResult.warnings);
+      } else {
+        warnings.push(vendorResult.warning);
+      }
+    } catch {
+      warnings.push(
+        `Could not look up style "${extracted.garmentStyle}": vendor error.`,
+      );
     }
   }
 
@@ -295,7 +222,8 @@ export async function interpretPricingPrompt(
   return {
     quoteNumber: extracted.quoteNumber,
     garmentCost,
-    markup: extracted.explicitMarkup,
+    garmentMatch,
+    markup: extracted.explicitMarkup ?? DEFAULT_MARKUP,
     decorations,
     warnings,
   };

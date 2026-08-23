@@ -5,7 +5,7 @@ description: Which price fields are the shop's real dealer cost in SanMar SOAP a
 
 # SanMar (SOAP getProductInfoByStyleColorSize → productPriceInfo)
 
-**Rule:** `casePrice` is the shop's regular dealer NET cost — the baseline. `piecePrice` is the HIGHER broken-case tier, never the baseline. Sale = `caseSalePrice`, genuine only when `>0 && < regular && saleEndDate present`. Effective unit cost consumed by UI = `salePrice ?? cost`. Map costs casePrice-first: `casePrice ?? piecePrice`.
+**Rule:** `casePrice` is the shop's regular dealer NET cost — the baseline. `piecePrice` is the HIGHER broken-case tier, never the baseline. Sale = `caseSalePrice`, genuine only when `>0 && < regular` and `saleEndDate` is a strictly valid, non-expired calendar date. Effective unit cost consumed by UI = active `salePrice ?? cost`. Map costs casePrice-first: `casePrice ?? piecePrice`.
 
 **Why (two prior wrong beliefs, in order):**
 1. First belief: "pieceSalePrice = net cost, piecePrice = MSRP" — false; left every not-on-sale style with cost null and blocked PO save. Only appeared to work because staples sit on rolling sales.
@@ -13,7 +13,7 @@ description: Which price fields are the shop's real dealer cost in SanMar SOAP a
 
 Live evidence (July 2026): PC54 Jet Black S–XL: piece 4.00 / pieceSale 2.44 / case 3.00 / caseSale 2.44, saleEnd 2026-07-12.
 
-**How to apply:** Anywhere SanMar costs feed quotes/POs (Hub vendorLookup sanMarToColors and any revival of legacy PO Builder). Caveat to surface to the user: broken-case (below case-quantity) orders may invoice at the higher piecePrice, so estimates can run slightly low there. No price is ever transmitted to vendors in PO submits — internal estimates only.
+**How to apply:** Anywhere SanMar costs feed quotes/POs (Hub vendorLookup sanMarToColors and any revival of legacy PO Builder). Vendor responses can retain expired sale values, so re-check the date at the final pricing decision boundary; do not rely on sale-field presence alone or JavaScript's permissive date normalization. Caveat to surface to the user: broken-case (below case-quantity) orders may invoice at the higher piecePrice, so estimates can run slightly low there. No price is ever transmitted to vendors in PO submits — internal estimates only.
 
 # SanMar combined-size labels
 
@@ -21,7 +21,7 @@ SanMar abbreviates combined sizes: `2XL/3XL` comes back as **`2/3X`**, `4XL/5XL`
 
 # S&S Activewear (REST /products)
 
-`piecePrice` = regular dealer cost. `salePrice` genuine only if >0, < piecePrice, and `saleExpiration` present. `customerPrice` mirrors salePrice during sales — never a baseline.
+`piecePrice` = regular dealer cost. `salePrice` genuine only if >0, < piecePrice, and `saleExpiration` is a strictly valid, non-expired date. `customerPrice` mirrors salePrice during sales — never a baseline.
 
 # SanMar plus-size color-bucket split
 

@@ -4465,6 +4465,53 @@ export interface HubPricingInterpretRequest {
   prompt: string;
 }
 
+export type HubPricingGarmentMatchVendor = typeof HubPricingGarmentMatchVendor[keyof typeof HubPricingGarmentMatchVendor];
+
+
+export const HubPricingGarmentMatchVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export type HubPricingGarmentMatchMatchType = typeof HubPricingGarmentMatchMatchType[keyof typeof HubPricingGarmentMatchMatchType];
+
+
+export const HubPricingGarmentMatchMatchType = {
+  exact: 'exact',
+  closest: 'closest',
+} as const;
+
+export type HubPricingGarmentMatchAppliedPriceType = typeof HubPricingGarmentMatchAppliedPriceType[keyof typeof HubPricingGarmentMatchAppliedPriceType];
+
+
+export const HubPricingGarmentMatchAppliedPriceType = {
+  regular: 'regular',
+  sale: 'sale',
+} as const;
+
+export interface HubPricingGarmentMatch {
+  vendor: HubPricingGarmentMatchVendor;
+  matchType: HubPricingGarmentMatchMatchType;
+  styleName: string;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  colorName: string;
+  /**
+     * Regular vendor cost from a standard XS–XL size
+     * @minimum 0
+     */
+  regularCost: number;
+  /**
+     * Active dated sale cost for the same standard size, when available
+     * @minimum 0
+     * @nullable
+     */
+  saleCost: number | null;
+  appliedPriceType: HubPricingGarmentMatchAppliedPriceType;
+}
+
 export interface HubPricingInterpretResult {
   /**
      * Extracted Printavo quote number if present in the prompt
@@ -4472,10 +4519,15 @@ export interface HubPricingInterpretResult {
      * @pattern ^\d{1,20}$
      */
   quoteNumber: string | null;
-  /** Explicitly stated garment cost per piece; null if not stated */
+  /** Explicitly stated cost or resolved current standard-size vendor cost */
   garmentCost: number | null;
-  /** Explicitly stated markup multiplier; null falls back to calculator default */
-  markup: number | null;
+  /** Resolved live vendor product and regular/sale pricing details */
+  garmentMatch: HubPricingGarmentMatch | null;
+  /**
+     * Explicit markup multiplier, or the calculator's automatic 1.75x default
+     * @minimum 0.01
+     */
+  markup: number;
   /**
      * Up to 4 matched decoration matrix columns
      * @maxItems 4

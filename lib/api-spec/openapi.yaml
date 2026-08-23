@@ -10150,9 +10150,37 @@ components:
           type: string
           minLength: 8
           maxLength: 10000
+    HubPricingGarmentMatch:
+      type: object
+      required:
+        [vendor, matchType, styleName, brand, title, colorName, regularCost, saleCost, appliedPriceType]
+      properties:
+        vendor:
+          type: string
+          enum: [sanmar, ss]
+        matchType:
+          type: string
+          enum: [exact, closest]
+        styleName: { type: string }
+        brand:
+          type: ["string", "null"]
+        title:
+          type: ["string", "null"]
+        colorName: { type: string }
+        regularCost:
+          type: number
+          minimum: 0
+          description: Regular vendor cost from a standard XS–XL size
+        saleCost:
+          type: ["number", "null"]
+          minimum: 0
+          description: Active dated sale cost for the same standard size, when available
+        appliedPriceType:
+          type: string
+          enum: [regular, sale]
     HubPricingInterpretResult:
       type: object
-      required: [quoteNumber, garmentCost, markup, decorations, warnings]
+      required: [quoteNumber, garmentCost, garmentMatch, markup, decorations, warnings]
       properties:
         quoteNumber:
           type: string
@@ -10163,11 +10191,16 @@ components:
         garmentCost:
           type: number
           nullable: true
-          description: Explicitly stated garment cost per piece; null if not stated
+          description: Explicitly stated cost or resolved current standard-size vendor cost
+        garmentMatch:
+          oneOf:
+            - $ref: "#/components/schemas/HubPricingGarmentMatch"
+            - type: "null"
+          description: Resolved live vendor product and regular/sale pricing details
         markup:
           type: number
-          nullable: true
-          description: Explicitly stated markup multiplier; null falls back to calculator default
+          minimum: 0.01
+          description: Explicit markup multiplier, or the calculator's automatic 1.75x default
         decorations:
           type: array
           maxItems: 4
