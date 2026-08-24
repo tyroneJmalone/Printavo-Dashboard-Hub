@@ -104,6 +104,10 @@ export function QuoteCalculator({
   const [markupSel, setMarkupSel] = useState(String(DEFAULT_MARKUP));
   const [customMarkupStr, setCustomMarkupStr] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
+  const quoteNumberValid = /^\d{1,20}$/.test(quoteNumber.trim());
+  // Tracks a quote number derived from the selected push target, so clearing
+  // the selection can clear it without discarding manual entries.
+  const autoFilledQuoteNumberRef = useRef<string | null>(null);
   const [rows, setRows] = useState<LocationRow[]>([
     { matrixId: "", columnIndex: 0 },
   ]);
@@ -127,6 +131,11 @@ export function QuoteCalculator({
   const [debouncedQ, setDebouncedQ] = useState("");
   const [selectedInvoice, setSelectedInvoice] =
     useState<HubInvoiceSearchItem | null>(null);
+  // Mirrors selectedInvoice for async callbacks (e.g. a late AI response).
+  const selectedInvoiceRef = useRef<HubInvoiceSearchItem | null>(null);
+  useEffect(() => {
+    selectedInvoiceRef.current = selectedInvoice;
+  }, [selectedInvoice]);
 
   const [isPushing, setIsPushing] = useState(false);
   const [pushOutcome, setPushOutcome] = useState<{
@@ -252,8 +261,11 @@ export function QuoteCalculator({
               setCustomMarkupStr(String(res.markup));
             }
           }
-          if (res.quoteNumber !== null) {
+          if (res.quoteNumber !== null && !selectedInvoiceRef.current) {
+            // A selected push target owns the quote number — ignore AI fills
+            // that resolve after an order was selected.
             setQuoteNumber(res.quoteNumber);
+            autoFilledQuoteNumberRef.current = null;
           }
           if (res.decorations && res.decorations.length > 0) {
             const newRows = res.decorations.slice(0, MAX_LOCATIONS).map((d) => ({
@@ -618,9 +630,13 @@ export function QuoteCalculator({
                 id="quote-number"
                 type="text"
                 value={quoteNumber}
-                onChange={(e) =>
-                  setQuoteNumber(e.target.value.replace(/\D/g, "").slice(0, 20))
-                }
+                onChange={(e) => {
+                  setQuoteNumber(
+                    e.target.value.replace(/\D/g, "").slice(0, 20),
+                  );
+                  // Manual edits take ownership of the field.
+                  autoFilledQuoteNumberRef.current = null;
+                }}
                 inputMode="numeric"
                 placeholder="e.g. 12345"
                 className={inputCls}
@@ -1034,6 +1050,15 @@ export function QuoteCalculator({
                   onChange={(e) => {
                     setSearchQ(e.target.value);
                     setSelectedInvoice(null);
+                    // Clear a selection-derived quote number along with the
+                    // selection; keep manually entered values.
+                    if (
+                      autoFilledQuoteNumberRef.current !== null &&
+                      quoteNumber === autoFilledQuoteNumberRef.current
+                    ) {
+                      setQuoteNumber("");
+                    }
+                    autoFilledQuoteNumberRef.current = null;
                   }}
                   placeholder="Type invoice or quote number..."
                   className={`${inputCls} pl-9`}
@@ -1060,6 +1085,13 @@ export function QuoteCalculator({
                         onClick={() => {
                           setSelectedInvoice(inv);
                           setSearchQ(String(inv.visualId));
+                          // Auto-fill the Printavo Quote # field from the
+                          // selected order so it doesn't need manual entry.
+                          const autoFilled = String(inv.visualId)
+                            .replace(/\D/g, "")
+                            .slice(0, 20);
+                          setQuoteNumber(autoFilled);
+                          autoFilledQuoteNumberRef.current = autoFilled;
                         }}
                         className="w-full text-left px-3 py-2 hover:bg-slate-800 border-b border-slate-800 last:border-0 transition-colors"
                         data-testid={`invoice-result-${inv.visualId}`}
@@ -1127,7 +1159,7 @@ export function QuoteCalculator({
                    </div>
                   <button
                     onClick={handlePush}
-                     disabled={isPushing || !quoteNumber}
+                     disabled={isPushing || !quoteNumberValid}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-white text-xs font-bold transition-colors disabled:opacity-50"
                     data-testid="button-push-printavo"
                   >
@@ -1138,7 +1170,7 @@ export function QuoteCalculator({
                     )}
                     Confirm & Push
                   </button>
-                   {!quoteNumber && (
+                   {!quoteNumberValid && (
                      <div className="text-[10px] text-amber-400">
                        Enter the Printavo Quote Number above before pushing.
                      </div>
