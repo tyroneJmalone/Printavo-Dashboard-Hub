@@ -326,7 +326,11 @@ export function QuoteCalculator({
       ),
     );
     const sourceWidth = Math.ceil(node.getBoundingClientRect().width);
-    const captureWidth = Math.max(sourceWidth, fullTableWidth + 32);
+    // Buffer covers the export container's p-4 (32px) plus the results card's
+    // 1px borders and a little slack, so a wide table never overhangs the
+    // card edge in the capture. (The results card is full-width below the
+    // input grid, so no grid-column offset needs to be added.)
+    const captureWidth = Math.max(sourceWidth, fullTableWidth + 40);
 
     const captureNode = node.cloneNode(true) as HTMLDivElement;
     captureNode.setAttribute("aria-hidden", "true");
@@ -357,7 +361,10 @@ export function QuoteCalculator({
       captureTable.style.maxWidth = "none";
     }
 
-    document.body.appendChild(captureNode);
+    // Append next to the original node (not document.body) so the clone keeps
+    // inherited styles — text color, font family, etc. Appending to body made
+    // any inherited-color text render in the body default (near-invisible).
+    (node.parentElement ?? document.body).appendChild(captureNode);
 
     let dataUrl: string;
     try {
@@ -369,6 +376,17 @@ export function QuoteCalculator({
         height: captureHeight,
         backgroundColor: "#020617",
         skipFonts: true,
+        // The capture node is parked off-screen (position:absolute, negative
+        // left) so the user never sees it — but html-to-image copies those
+        // computed styles onto its internal render clone, which pushes all
+        // content outside the SVG viewport and yields a background-only PNG.
+        // Reset the offsets on the render clone so it draws at the origin.
+        style: {
+          position: "static",
+          left: "0",
+          top: "0",
+          margin: "0",
+        },
       });
     } finally {
       captureNode.remove();
