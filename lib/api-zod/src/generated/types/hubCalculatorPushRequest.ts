@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HubCalculatorLineItemRequest } from './hubCalculatorLineItemRequest';
 import type { HubCalculatorPriceRow } from './hubCalculatorPriceRow';
 import type { HubCalculatorPushRequestRangeKey } from './hubCalculatorPushRequestRangeKey';
 
@@ -24,4 +25,5 @@ export interface HubCalculatorPushRequest {
      * @pattern ^\d{1,20}$
      */
   quoteNumber: string;
+  lineItem?: HubCalculatorLineItemRequest | null;
 }

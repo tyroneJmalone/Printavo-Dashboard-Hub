@@ -165,6 +165,7 @@ import type {
   ListGroup,
   ListGroupInput,
   ListGroupUpdate,
+  ListHubCalculatorCategories200,
   ListInput,
   ListInsightsPresetsParams,
   ListListsParams,
@@ -8399,7 +8400,7 @@ export const getPushHubCalculatorUrl = () => {
 }
 
 /**
- * Re-reads the live invoice productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls invoiceUpdate and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. Never modifies line items, totals, customer notes, statuses, or other files.
+ * Re-reads the live invoice productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls invoiceUpdate and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. When an explicit invoice-only lineItem snapshot is included, also creates one line-item group exactly once.
  * @summary Push pricing calculator results to a Printavo invoice
  */
 export const pushHubCalculator = async (hubCalculatorPushRequest: HubCalculatorPushRequest, options?: RequestInit): Promise<HubCalculatorPushResult> => {
@@ -8460,6 +8461,83 @@ export const usePushHubCalculator = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getPushHubCalculatorMutationOptions(options));
     }
+
+export const getListHubCalculatorCategoriesUrl = () => {
+
+
+
+
+  return `/api/hub/calculator/categories`
+}
+
+/**
+ * @summary List Printavo line-item categories available to the calculator
+ */
+export const listHubCalculatorCategories = async ( options?: RequestInit): Promise<ListHubCalculatorCategories200> => {
+
+  return customFetch<ListHubCalculatorCategories200>(getListHubCalculatorCategoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHubCalculatorCategoriesQueryKey = () => {
+    return [
+    `/api/hub/calculator/categories`
+    ] as const;
+    }
+
+
+export const getListHubCalculatorCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listHubCalculatorCategories>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHubCalculatorCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHubCalculatorCategoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHubCalculatorCategories>>> = ({ signal }) => listHubCalculatorCategories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHubCalculatorCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListHubCalculatorCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listHubCalculatorCategories>>>
+export type ListHubCalculatorCategoriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List Printavo line-item categories available to the calculator
+ */
+
+export function useListHubCalculatorCategories<TData = Awaited<ReturnType<typeof listHubCalculatorCategories>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHubCalculatorCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListHubCalculatorCategoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListPrintQueueOrdersUrl = (params: ListPrintQueueOrdersParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -4573,6 +4573,34 @@ export interface HubCalculatorPriceRow {
   unitPrice: number;
 }
 
+export interface HubCalculatorLineItemRequest {
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  categoryId: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  itemNumber: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  color: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  brand: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  description: string;
+}
+
 export interface HubPngUploadRequest {
   /** Internal Printavo invoice id (validated against local mirror) */
   invoiceId: string;
@@ -4587,6 +4615,7 @@ export interface HubPngUploadRequest {
      * @pattern ^\d{1,20}$
      */
   quoteNumber: string;
+  lineItem?: HubCalculatorLineItemRequest | null;
   /** @maxLength 2000 */
   note?: string | null;
   /**
@@ -4608,6 +4637,11 @@ export interface HubPngUploadResponse {
   publicUrl: string;
   /** True when an existing identical snapshot row was reused */
   dedupe: boolean;
+}
+
+export interface HubCalculatorCategory {
+  id: string;
+  name: string;
 }
 
 /**
@@ -4642,6 +4676,7 @@ export interface HubCalculatorPushRequest {
      * @pattern ^\d{1,20}$
      */
   quoteNumber: string;
+  lineItem?: HubCalculatorLineItemRequest | null;
 }
 
 /**
@@ -4674,12 +4709,22 @@ export type HubCalculatorPushResultFileOutcome = {
   error?: string | null;
 };
 
+export type HubCalculatorPushResultLineItemOutcome = {
+  requested: boolean;
+  ok: boolean;
+  locked?: boolean;
+  lineItemGroupId?: string | null;
+  lineItemId?: string | null;
+  error?: string | null;
+};
+
 export interface HubCalculatorPushResult {
   uploadId: string;
   /** file_locked means productionFileCreate was attempted but the outcome is ambiguous — manual verification required, no retry allowed. */
   status: HubCalculatorPushResultStatus;
   noteOutcome: HubCalculatorPushResultNoteOutcome;
   fileOutcome: HubCalculatorPushResultFileOutcome;
+  lineItemOutcome: HubCalculatorPushResultLineItemOutcome;
 }
 
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
@@ -5318,6 +5363,10 @@ q: string;
  * @maximum 20
  */
 limit?: number;
+};
+
+export type ListHubCalculatorCategories200 = {
+  categories: HubCalculatorCategory[];
 };
 
 export type ListPrintQueueOrdersParams = {

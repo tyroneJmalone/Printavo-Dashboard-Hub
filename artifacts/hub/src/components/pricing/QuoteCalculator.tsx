@@ -24,6 +24,7 @@ import {
   getSearchHubInvoicesQueryKey,
   useRequestHubPngUploadUrl,
   usePushHubCalculator,
+  useListHubCalculatorCategories,
   type DecorationMatrix,
   type HubPricingGarmentMatch,
   type HubInvoiceSearchItem,
@@ -138,13 +139,26 @@ export function QuoteCalculator({
   }, [selectedInvoice]);
 
   const [isPushing, setIsPushing] = useState(false);
+  const [addLineItem, setAddLineItem] = useState(false);
+  const [lineItemCategoryId, setLineItemCategoryId] = useState("");
+  const [lineItemStyle, setLineItemStyle] = useState("");
+  const [lineItemColor, setLineItemColor] = useState("");
+  const [lineItemBrand, setLineItemBrand] = useState("");
+  const [lineItemDescription, setLineItemDescription] = useState("");
   const [pushOutcome, setPushOutcome] = useState<{
     noteOutcome: { ok: boolean; error?: string | null; locked?: boolean };
     fileOutcome: { ok: boolean; error?: string | null; locked?: boolean };
+    lineItemOutcome: {
+      requested: boolean;
+      ok: boolean;
+      error?: string | null;
+      locked?: boolean;
+    };
   } | null>(null);
 
   const requestUrlMutation = useRequestHubPngUploadUrl();
   const pushMutation = usePushHubCalculator();
+  const { data: categoryData } = useListHubCalculatorCategories();
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(searchQ), 300);
@@ -448,6 +462,32 @@ export function QuoteCalculator({
     ) {
       return;
     }
+    const lineItem =
+      addLineItem && selectedInvoice.orderType === "invoice"
+        ? {
+            categoryId: lineItemCategoryId.trim(),
+            itemNumber: lineItemStyle.trim(),
+            color: lineItemColor.trim(),
+            brand: lineItemBrand.trim(),
+            description: lineItemDescription.trim(),
+          }
+        : null;
+    if (addLineItem && selectedInvoice.orderType !== "invoice") {
+      toast({
+        title: "Line items require an invoice",
+        description: "Quotes can still receive Production Notes and the PNG.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (lineItem && Object.values(lineItem).some((value) => !value)) {
+      toast({
+        title: "Complete the line-item fields",
+        description: "Category, style, color, brand, and description are required.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsPushing(true);
     setPushOutcome(null);
 
@@ -480,6 +520,7 @@ export function QuoteCalculator({
           priceRows,
           quoteNumber: normalizedQuoteNumber,
           fileSizeBytes: blob.size,
+          lineItem,
         },
       });
 
@@ -500,21 +541,27 @@ export function QuoteCalculator({
           rangeKey,
           priceRows,
           quoteNumber: normalizedQuoteNumber,
+          lineItem,
         },
       });
 
       setPushOutcome({
         noteOutcome: pushRes.noteOutcome,
         fileOutcome: pushRes.fileOutcome,
+        lineItemOutcome: pushRes.lineItemOutcome,
       });
 
       const fullyComplete =
-        pushRes.noteOutcome.ok && pushRes.fileOutcome.ok;
+        pushRes.noteOutcome.ok &&
+        pushRes.fileOutcome.ok &&
+        (!pushRes.lineItemOutcome.requested || pushRes.lineItemOutcome.ok);
       toast({
         title: fullyComplete ? "Push completed" : "Push partially completed",
         description: fullyComplete
-          ? "Production Notes and the PNG were added to Printavo."
-          : "Review the separate Production Notes and Production File results below.",
+          ? pushRes.lineItemOutcome.requested
+            ? "Production Notes, PNG, and quoted line item were added to Printavo."
+            : "Production Notes and the PNG were added to Printavo."
+          : "Review the separate push results below.",
         variant: fullyComplete ? "default" : "destructive",
       });
     } catch (error: unknown) {
@@ -1054,6 +1101,75 @@ export function QuoteCalculator({
             Push to Printavo
           </div>
 
+          {selectedInvoice?.orderType === "invoice" && (
+            <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={addLineItem}
+                  onChange={(event) => setAddLineItem(event.target.checked)}
+                  className="accent-[#3b82f6]"
+                  data-testid="add-calculator-line-item"
+                />
+                Add quoted style as a new invoice line item
+              </label>
+              {addLineItem && (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div>
+                      <label className={labelCls}>Category / Decoration Method</label>
+                      <select
+                        value={lineItemCategoryId}
+                        onChange={(event) => setLineItemCategoryId(event.target.value)}
+                        className={inputCls}
+                        data-testid="line-item-category"
+                      >
+                        <option value="">Select category…</option>
+                        {(categoryData?.categories ?? []).map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Item / Style #</label>
+                      <input value={lineItemStyle} onChange={(e) => setLineItemStyle(e.target.value.slice(0, 100))} className={inputCls} data-testid="line-item-style" />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Color</label>
+                      <input value={lineItemColor} onChange={(e) => setLineItemColor(e.target.value.slice(0, 100))} className={inputCls} data-testid="line-item-color" />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Brand</label>
+                      <input value={lineItemBrand} onChange={(e) => setLineItemBrand(e.target.value.slice(0, 120))} className={inputCls} data-testid="line-item-brand" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className={labelCls}>Product Description</label>
+                      <input value={lineItemDescription} onChange={(e) => setLineItemDescription(e.target.value.slice(0, 500))} className={inputCls} data-testid="line-item-description" />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Price Range in Description</label>
+                      <select value={rangeKey} onChange={(e) => setRangeKey(e.target.value as RangeKey)} className={inputCls} data-testid="line-item-range">
+                        {RANGES.map((range) => <option key={range.key} value={range.key}>{range.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <pre className="whitespace-pre-wrap rounded bg-slate-950 border border-slate-800 p-3 text-[11px] text-slate-300">
+                    {`${lineItemBrand.trim()} ${lineItemDescription.trim()}`.trim() || "Brand Product description"}
+                    {"\n\nQTY = PRICE\n"}
+                    {quote.filter((row) => activeRange.filter(row.qty)).map((row) => `${row.qty}+ = $${money(row.unitPrice)}`).join("\n")}
+                  </pre>
+                </>
+              )}
+            </div>
+          )}
+          {selectedInvoice?.orderType === "quote" && (
+            <div className="text-[11px] text-amber-400">
+              Product line items can only be added after the quote is converted to an invoice. Notes and PNG push remain available.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <label className={labelCls}>Search Invoice / Quote</label>
@@ -1102,6 +1218,7 @@ export function QuoteCalculator({
                         key={inv.id}
                         onClick={() => {
                           setSelectedInvoice(inv);
+                          if (inv.orderType === "quote") setAddLineItem(false);
                           setSearchQ(String(inv.visualId));
                           // Auto-fill the Printavo Quote # field from the
                           // selected order so it doesn't need manual entry.
@@ -1278,6 +1395,16 @@ export function QuoteCalculator({
                   )}
                 </div>
               </div>
+              {pushOutcome.lineItemOutcome.requested && (
+                <div className={`p-2.5 rounded-lg flex items-start gap-2.5 ${pushOutcome.lineItemOutcome.ok ? "bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981]" : "bg-amber-500/10 border border-amber-500/20 text-amber-500"}`}>
+                  {pushOutcome.lineItemOutcome.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                  <div>
+                    <div className="text-xs font-bold">{pushOutcome.lineItemOutcome.ok ? "Line Item Added" : "Line Item Failed"}</div>
+                    {pushOutcome.lineItemOutcome.error && <div className="text-[11px] mt-0.5">{pushOutcome.lineItemOutcome.error}</div>}
+                    {pushOutcome.lineItemOutcome.locked && <div className="text-[10px] mt-1 font-bold uppercase">Manual Verification Required - Do Not Retry</div>}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

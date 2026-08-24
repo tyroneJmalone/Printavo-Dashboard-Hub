@@ -14,7 +14,11 @@ import {
   computeDedupeKey,
   sanitizeFilename,
   VALID_RANGE_KEYS,
+  buildLineItemDescription,
+  validateLineItemInput,
+  normalizeLineItemInput,
 } from "../src/lib/hub/pureHelpers.ts";
+import { lineItemSnapshotsEqual } from "../src/lib/hub/calcLineItems.ts";
 
 // Pure helpers from calcPush.ts (exported for testing)
 import {
@@ -31,7 +35,97 @@ import {
   invoiceUpdateMutation,
   quoteByIdQuery,
   quoteUpdateMutation,
+  calculatorLineItemGroupCreateMutation,
 } from "../../../lib/printavo/src/queries.ts";
+
+test("buildLineItemDescription: includes brand, blank line, and concise selected breaks", () => {
+  assert.equal(
+    buildLineItemDescription(
+      { brand: "Port & Company", description: "Core Cotton Tee" },
+      [
+        { qty: 12, unitPrice: 18.5 },
+        { qty: 24, unitPrice: 16 },
+      ],
+    ),
+    "Port & Company Core Cotton Tee\n\nQTY = PRICE\n12+ = $18.50\n24+ = $16.00",
+  );
+});
+
+test("validateLineItemInput: requires every reviewed field", () => {
+  assert.equal(
+    validateLineItemInput({
+      categoryId: "20421",
+      itemNumber: "PC54",
+      color: "Jet Black",
+      brand: "Port & Company",
+      description: "",
+    }),
+    "description is required when adding a line item",
+  );
+});
+
+test("normalizeLineItemInput: trims and reconstructs the canonical field order", () => {
+  assert.deepEqual(
+    normalizeLineItemInput({
+      description: " Tee ",
+      brand: " Brand ",
+      color: " Black ",
+      itemNumber: " PC54 ",
+      categoryId: " 20421 ",
+    }),
+    {
+      categoryId: "20421",
+      itemNumber: "PC54",
+      color: "Black",
+      brand: "Brand",
+      description: "Tee",
+    },
+  );
+});
+
+test("line-item canonicalization: formatting variants share dedupe identity and snapshot equality", () => {
+  const canonical = {
+    categoryId: "20421",
+    itemNumber: "PC54",
+    color: "Black",
+    brand: "Port & Company",
+    description: "Core Cotton Tee",
+  };
+  const variant = {
+    description: " Core Cotton Tee ",
+    brand: " Port & Company ",
+    color: " Black ",
+    itemNumber: " PC54 ",
+    categoryId: " 20421 ",
+  };
+  const base = {
+    invoiceId: "invoice-1",
+    visualId: 22779,
+    rangeKey: "12-48",
+    priceRows: [{ qty: 12, unitPrice: 18.5 }],
+    quoteNumber: "22779",
+  };
+  assert.equal(
+    computeDedupeKey({ ...base, lineItem: canonical }),
+    computeDedupeKey({ ...base, lineItem: variant }),
+  );
+  assert.equal(lineItemSnapshotsEqual(canonical, variant), true);
+});
+
+test("calculatorLineItemGroupCreateMutation: safely emits category and description", () => {
+  const mutation = calculatorLineItemGroupCreateMutation("inv-1", {
+    position: 3,
+    categoryId: "20421",
+    itemNumber: "PC54",
+    color: "Black",
+    description: 'Port & Company "Core"\n\nQTY = PRICE\n12+ = $18.50',
+  });
+  assert.match(mutation, /lineItemGroupCreate/);
+  assert.match(mutation, /position: 3/);
+  assert.match(mutation, /category: \{ id: "20421" \}/);
+  assert.match(mutation, /productStatus: need_ordering/);
+  assert.match(mutation, /Port & Company \\"Core\\"\\n\\nQTY = PRICE/);
+});
 import {
   resolveStandardSizeGarmentPricing,
 } from "../src/lib/hub/pricingProductResolver.ts";

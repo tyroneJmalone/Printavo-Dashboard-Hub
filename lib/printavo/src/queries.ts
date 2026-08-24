@@ -425,6 +425,71 @@ export function lineItemUpdateMutation(
   }`;
 }
 
+/**
+ * Read current group positions before appending a calculator-created group.
+ * The caller fails closed if Printavo reports more than 100 groups.
+ */
+export function invoiceLineItemGroupPositionsQuery(invoiceId: string): string {
+  return `query {
+    invoice(id: ${lit(invoiceId)}) {
+      id
+      visualId
+      lineItemGroups(first: 100) {
+        nodes { id position }
+        pageInfo { hasNextPage }
+      }
+    }
+  }`;
+}
+
+export interface CalculatorLineItemCreateInput {
+  position: number;
+  categoryId: string;
+  itemNumber: string;
+  color: string;
+  description: string;
+}
+
+/**
+ * Appends one new line-item group containing one quoted garment.
+ * Shape verified through live Printavo schema introspection August 2026:
+ * lineItemGroupCreate(parentId: ID!, input: LineItemGroupCreateInput!).
+ */
+export function calculatorLineItemGroupCreateMutation(
+  invoiceId: string,
+  input: CalculatorLineItemCreateInput,
+): string {
+  return `mutation {
+    lineItemGroupCreate(
+      parentId: ${lit(invoiceId)}
+      input: {
+        position: ${Math.trunc(input.position)}
+        lineItems: [{
+          position: 0
+          category: { id: ${lit(input.categoryId)} }
+          itemNumber: ${lit(input.itemNumber)}
+          color: ${lit(input.color)}
+          description: ${lit(input.description)}
+          productStatus: need_ordering
+          taxed: true
+        }]
+      }
+    ) {
+      id
+      position
+      lineItems(first: 10) {
+        nodes {
+          id
+          itemNumber
+          color
+          description
+          category { id name }
+        }
+      }
+    }
+  }`;
+}
+
 export interface QuoteCreateLineItem {
   position: number;
   itemNumber: string;

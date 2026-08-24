@@ -4,14 +4,23 @@ import {
   getPrivateObjectDir,
   parseObjectPath,
 } from "../objectStorage";
-import { db, hubCalcUploadsTable, pvOrdersTable, type InsertHubCalcUpload } from "@workspace/db";
+import {
+  db,
+  hubCalcUploadsTable,
+  pvLineItemsTable,
+  pvOrdersTable,
+  type InsertHubCalcUpload,
+} from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { publicBaseUrl } from "../publicUrl";
 import {
   validatePriceRows,
+  validateLineItemInput,
+  normalizeLineItemInput,
   computeDedupeKey,
   sanitizeFilename,
   VALID_RANGE_KEYS,
+  type HubCalculatorLineItemInput,
 } from "./pureHelpers";
 
 export { validatePriceRows, computeDedupeKey, sanitizeFilename, VALID_RANGE_KEYS };
@@ -82,9 +91,13 @@ export interface PngUploadSlot {
 async function validateInvoiceMirror(
   invoiceId: string,
   visualId: number,
-): Promise<void> {
+): Promise<"invoice" | "quote"> {
   const [row] = await db
-    .select({ printavoId: pvOrdersTable.printavoId, visualId: pvOrdersTable.visualId })
+    .select({
+      printavoId: pvOrdersTable.printavoId,
+      visualId: pvOrdersTable.visualId,
+      orderType: pvOrdersTable.orderType,
+    })
     .from(pvOrdersTable)
     .where(
       and(
@@ -105,6 +118,7 @@ async function validateInvoiceMirror(
       "invalid",
     );
   }
+  return row.orderType as "invoice" | "quote";
 }
 
 /**
@@ -122,6 +136,7 @@ export async function reservePngUploadSlot(opts: {
   priceRows: Array<{ qty: number; unitPrice: number }>;
   quoteNumber: string;
   note?: string | null;
+  lineItem?: HubCalculatorLineItemInput | null;
 }): Promise<PngUploadSlot> {
   const quoteNumber = opts.quoteNumber.trim();
   if (!/^\d{1,20}$/.test(quoteNumber)) {
@@ -135,7 +150,29 @@ export async function reservePngUploadSlot(opts: {
   if (rowError) throw new HubUploadError(rowError, "invalid");
 
   // Validate invoice against local mirror
-  await validateInvoiceMirror(opts.invoiceId, opts.visualId);
+  const orderType = await validateInvoiceMirror(opts.invoiceId, opts.visualId);
+  const lineItem = opts.lineItem ? normalizeLineItemInput(opts.lineItem) : null;
+  if (lineItem) {
+    const lineItemError = validateLineItemInput(lineItem);
+    if (lineItemError) throw new HubUploadError(lineItemError, "invalid");
+    if (orderType !== "invoice") {
+      throw new HubUploadError(
+        "Calculator line items can only be added to invoices",
+        "invalid",
+      );
+    }
+    const [category] = await db
+      .select({ id: pvLineItemsTable.categoryId })
+      .from(pvLineItemsTable)
+      .where(eq(pvLineItemsTable.categoryId, lineItem.categoryId))
+      .limit(1);
+    if (!category?.id) {
+      throw new HubUploadError(
+        "The selected Printavo category is not available",
+        "invalid",
+      );
+    }
+  }
 
   const dedupeKey = computeDedupeKey({
     invoiceId: opts.invoiceId,
@@ -143,6 +180,7 @@ export async function reservePngUploadSlot(opts: {
     quoteNumber,
     rangeKey: opts.rangeKey,
     priceRows: opts.priceRows,
+    lineItem,
   });
 
   // Check for existing dedupe row
@@ -190,6 +228,7 @@ export async function reservePngUploadSlot(opts: {
     note: opts.note ?? null,
     dedupeKey,
     priceRows: opts.priceRows,
+    lineItemSnapshot: lineItem,
   };
 
   let created: typeof row & { id: string } | undefined;

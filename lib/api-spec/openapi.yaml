@@ -2747,8 +2747,8 @@ paths:
         quote/range marker, then calls invoiceUpdate and productionFileCreate
         exactly once. Persists state before/between mutations. Idempotent for
         identical confirmed requests — will not duplicate the note block or
-        attachment. Never modifies line items, totals, customer notes,
-        statuses, or other files.
+        attachment. When an explicit invoice-only lineItem snapshot is
+        included, also creates one line-item group exactly once.
       requestBody:
         required: true
         content:
@@ -2780,6 +2780,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /hub/calculator/categories:
+    get:
+      operationId: listHubCalculatorCategories
+      tags: [hub]
+      summary: List Printavo line-item categories available to the calculator
+      responses:
+        "200":
+          description: Categories mirrored from Printavo, most-used first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [categories]
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HubCalculatorCategory"
   /print-queue/orders:
     get:
       operationId: listPrintQueueOrders
@@ -10243,6 +10261,10 @@ components:
           type: string
           pattern: '^\d{1,20}$'
           maxLength: 20
+        lineItem:
+          oneOf:
+            - $ref: "#/components/schemas/HubCalculatorLineItemRequest"
+            - type: "null"
         note:
           type: string
           nullable: true
@@ -10281,6 +10303,21 @@ components:
       properties:
         qty: { type: integer, minimum: 1 }
         unitPrice: { type: number, minimum: 0 }
+    HubCalculatorCategory:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    HubCalculatorLineItemRequest:
+      type: object
+      required: [categoryId, itemNumber, color, brand, description]
+      properties:
+        categoryId: { type: string, minLength: 1, maxLength: 40 }
+        itemNumber: { type: string, minLength: 1, maxLength: 100 }
+        color: { type: string, minLength: 1, maxLength: 100 }
+        brand: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, minLength: 1, maxLength: 500 }
     HubCalculatorPushRequest:
       type: object
       required: [uploadId, invoiceId, visualId, rangeKey, priceRows, quoteNumber]
@@ -10307,9 +10344,13 @@ components:
           type: string
           pattern: '^\d{1,20}$'
           maxLength: 20
+        lineItem:
+          oneOf:
+            - $ref: "#/components/schemas/HubCalculatorLineItemRequest"
+            - type: "null"
     HubCalculatorPushResult:
       type: object
-      required: [noteOutcome, fileOutcome, uploadId, status]
+      required: [noteOutcome, fileOutcome, lineItemOutcome, uploadId, status]
       properties:
         uploadId: { type: string }
         status:
@@ -10332,4 +10373,14 @@ components:
             ok: { type: boolean }
             locked: { type: boolean, description: "True when file mutation is locked pending verification" }
             productionFileId: { type: string, nullable: true }
+            error: { type: string, nullable: true }
+        lineItemOutcome:
+          type: object
+          required: [requested, ok]
+          properties:
+            requested: { type: boolean }
+            ok: { type: boolean }
+            locked: { type: boolean }
+            lineItemGroupId: { type: string, nullable: true }
+            lineItemId: { type: string, nullable: true }
             error: { type: string, nullable: true }

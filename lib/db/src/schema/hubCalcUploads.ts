@@ -110,10 +110,27 @@ export const hubCalcUploadsTable = pgTable(
     priceRows: jsonb("price_rows"),
 
     /**
+     * Optional validated line-item snapshot reviewed with this calculator push.
+     * Null means the push only updates Production Notes + the PNG.
+     */
+    lineItemSnapshot: jsonb("line_item_snapshot"),
+
+    /**
      * Printavo productionFile id, set once after a successful
      * productionFileCreate and never overwritten (prevents duplicate attaches).
      */
     productionFileId: text("production_file_id"),
+
+    /** Set once immediately before the non-idempotent lineItemGroupCreate call. */
+    lineItemAttemptedAt: timestamp("line_item_attempted_at", { withTimezone: true }),
+
+    /** Confirmed ids returned by Printavo after creating the group + line item. */
+    lineItemGroupId: text("line_item_group_id"),
+    lineItemId: text("line_item_id"),
+
+    /** Ambiguous/confirmed error from line-item creation; an attempted row is never retried. */
+    lineItemError: text("line_item_error"),
+    lineItemErrorAt: timestamp("line_item_error_at", { withTimezone: true }),
 
     /**
      * Set atomically (via conditional UPDATE … WHERE note_attempted_at IS NULL)

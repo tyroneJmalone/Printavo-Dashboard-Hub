@@ -81,6 +81,13 @@ export function computeDedupeKey(opts: {
   quoteNumber: string | null;
   rangeKey: string;
   priceRows: Array<{ qty: number; unitPrice: number }>;
+  lineItem?: {
+    categoryId: string;
+    itemNumber: string;
+    color: string;
+    brand: string;
+    description: string;
+  } | null;
 }): string {
   const sorted = [...opts.priceRows].sort((a, b) => a.qty - b.qty);
   const canonical = JSON.stringify({
@@ -89,8 +96,63 @@ export function computeDedupeKey(opts: {
     quoteNumber: opts.quoteNumber ?? null,
     rangeKey: opts.rangeKey,
     priceRows: sorted.map((r) => ({ qty: r.qty, unitPrice: r.unitPrice })),
+    lineItem: opts.lineItem ? normalizeLineItemInput(opts.lineItem) : null,
   });
   return createHash("sha256").update(canonical).digest("hex");
+}
+
+export interface HubCalculatorLineItemInput {
+  categoryId: string;
+  itemNumber: string;
+  color: string;
+  brand: string;
+  description: string;
+}
+
+/** Stable field order + trimmed values for hashing, storage, comparison, and writes. */
+export function normalizeLineItemInput(
+  input: HubCalculatorLineItemInput,
+): HubCalculatorLineItemInput {
+  return {
+    categoryId: input.categoryId.trim(),
+    itemNumber: input.itemNumber.trim(),
+    color: input.color.trim(),
+    brand: input.brand.trim(),
+    description: input.description.trim(),
+  };
+}
+
+export function validateLineItemInput(
+  input: HubCalculatorLineItemInput,
+): string | null {
+  const fields: Array<[keyof HubCalculatorLineItemInput, number]> = [
+    ["categoryId", 40],
+    ["itemNumber", 100],
+    ["color", 100],
+    ["brand", 120],
+    ["description", 500],
+  ];
+  for (const [field, max] of fields) {
+    const value = input[field].trim();
+    if (!value) return `${field} is required when adding a line item`;
+    if (value.length > max) return `${field} must be ${max} characters or fewer`;
+  }
+  return null;
+}
+
+/**
+ * Printavo line-item description requested by staff:
+ * product description including brand, blank line, then concise price breaks.
+ */
+export function buildLineItemDescription(
+  input: Pick<HubCalculatorLineItemInput, "brand" | "description">,
+  priceRows: Array<{ qty: number; unitPrice: number }>,
+): string {
+  const product = `${input.brand.trim()} ${input.description.trim()}`.trim();
+  const rows = priceRows.map(
+    (row) => `${row.qty}+ = $${row.unitPrice.toFixed(2)}`,
+  );
+  return [product, "", "QTY = PRICE", ...rows].join("\n");
 }
 
 /** Sanitize a string for use in a public filename (no path traversal). */

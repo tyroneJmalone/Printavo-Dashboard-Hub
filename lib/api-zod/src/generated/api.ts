@@ -4942,6 +4942,16 @@ export const requestHubPngUploadUrlBodyQuoteNumberMax = 20;
 
 
 export const requestHubPngUploadUrlBodyQuoteNumberRegExp = new RegExp('^\\d{1,20}$');
+export const requestHubPngUploadUrlBodyLineItemOneCategoryIdMax = 40;
+
+export const requestHubPngUploadUrlBodyLineItemOneItemNumberMax = 100;
+
+export const requestHubPngUploadUrlBodyLineItemOneColorMax = 100;
+
+export const requestHubPngUploadUrlBodyLineItemOneBrandMax = 120;
+
+export const requestHubPngUploadUrlBodyLineItemOneDescriptionMax = 500;
+
 export const requestHubPngUploadUrlBodyNoteMax = 2000;
 
 export const requestHubPngUploadUrlBodyFileSizeBytesMax = 10485760;
@@ -4957,6 +4967,13 @@ export const RequestHubPngUploadUrlBody = zod.object({
   "unitPrice": zod.number().min(requestHubPngUploadUrlBodyPriceRowsItemUnitPriceMin)
 })).describe('Price rows for this snapshot. Unique ascending qtys, finite unit prices >=0. Used for dedupe hash and stored in the upload row.\n'),
   "quoteNumber": zod.string().max(requestHubPngUploadUrlBodyQuoteNumberMax).regex(requestHubPngUploadUrlBodyQuoteNumberRegExp),
+  "lineItem": zod.union([zod.object({
+  "categoryId": zod.string().min(1).max(requestHubPngUploadUrlBodyLineItemOneCategoryIdMax),
+  "itemNumber": zod.string().min(1).max(requestHubPngUploadUrlBodyLineItemOneItemNumberMax),
+  "color": zod.string().min(1).max(requestHubPngUploadUrlBodyLineItemOneColorMax),
+  "brand": zod.string().min(1).max(requestHubPngUploadUrlBodyLineItemOneBrandMax),
+  "description": zod.string().min(1).max(requestHubPngUploadUrlBodyLineItemOneDescriptionMax)
+}),zod.null()]).optional(),
   "note": zod.string().max(requestHubPngUploadUrlBodyNoteMax).nullish(),
   "fileSizeBytes": zod.number().min(1).max(requestHubPngUploadUrlBodyFileSizeBytesMax).optional().describe('Declared file size (unused for server-side GCS verification but informational)')
 })
@@ -4983,7 +5000,7 @@ export const GetHubCalcPngResponse = zod.unknown()
 
 
 /**
- * Re-reads the live invoice productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls invoiceUpdate and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. Never modifies line items, totals, customer notes, statuses, or other files.
+ * Re-reads the live invoice productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls invoiceUpdate and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. When an explicit invoice-only lineItem snapshot is included, also creates one line-item group exactly once.
  * @summary Push pricing calculator results to a Printavo invoice
  */
 
@@ -4993,6 +5010,16 @@ export const pushHubCalculatorBodyQuoteNumberMax = 20;
 
 
 export const pushHubCalculatorBodyQuoteNumberRegExp = new RegExp('^\\d{1,20}$');
+export const pushHubCalculatorBodyLineItemOneCategoryIdMax = 40;
+
+export const pushHubCalculatorBodyLineItemOneItemNumberMax = 100;
+
+export const pushHubCalculatorBodyLineItemOneColorMax = 100;
+
+export const pushHubCalculatorBodyLineItemOneBrandMax = 120;
+
+export const pushHubCalculatorBodyLineItemOneDescriptionMax = 500;
+
 
 
 export const PushHubCalculatorBody = zod.object({
@@ -5004,7 +5031,14 @@ export const PushHubCalculatorBody = zod.object({
   "qty": zod.number().min(1),
   "unitPrice": zod.number().min(pushHubCalculatorBodyPriceRowsItemUnitPriceMin)
 })).describe('Price rows — must match the snapshot stored in the upload row'),
-  "quoteNumber": zod.string().max(pushHubCalculatorBodyQuoteNumberMax).regex(pushHubCalculatorBodyQuoteNumberRegExp)
+  "quoteNumber": zod.string().max(pushHubCalculatorBodyQuoteNumberMax).regex(pushHubCalculatorBodyQuoteNumberRegExp),
+  "lineItem": zod.union([zod.object({
+  "categoryId": zod.string().min(1).max(pushHubCalculatorBodyLineItemOneCategoryIdMax),
+  "itemNumber": zod.string().min(1).max(pushHubCalculatorBodyLineItemOneItemNumberMax),
+  "color": zod.string().min(1).max(pushHubCalculatorBodyLineItemOneColorMax),
+  "brand": zod.string().min(1).max(pushHubCalculatorBodyLineItemOneBrandMax),
+  "description": zod.string().min(1).max(pushHubCalculatorBodyLineItemOneDescriptionMax)
+}),zod.null()]).optional()
 })
 
 export const PushHubCalculatorResponse = zod.object({
@@ -5020,7 +5054,26 @@ export const PushHubCalculatorResponse = zod.object({
   "locked": zod.boolean().optional().describe('True when file mutation is locked pending verification'),
   "productionFileId": zod.string().nullish(),
   "error": zod.string().nullish()
+}),
+  "lineItemOutcome": zod.object({
+  "requested": zod.boolean(),
+  "ok": zod.boolean(),
+  "locked": zod.boolean().optional(),
+  "lineItemGroupId": zod.string().nullish(),
+  "lineItemId": zod.string().nullish(),
+  "error": zod.string().nullish()
 })
+})
+
+
+/**
+ * @summary List Printavo line-item categories available to the calculator
+ */
+export const ListHubCalculatorCategoriesResponse = zod.object({
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+}))
 })
 
 

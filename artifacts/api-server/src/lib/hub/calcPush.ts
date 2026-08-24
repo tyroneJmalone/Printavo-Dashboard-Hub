@@ -31,6 +31,14 @@ import {
   productionFileCreateMutation,
 } from "@workspace/printavo";
 import { hubCalcPngPublicUrl, verifyAndConfirmPngUploaded } from "./pngStorage";
+import {
+  lineItemSnapshotsEqual,
+  pushCalculatorLineItem,
+  type LineItemPushOutcome,
+} from "./calcLineItems";
+import type { HubCalculatorLineItemInput } from "./pureHelpers";
+import { CalcPushError } from "./calcPushError";
+export { CalcPushError } from "./calcPushError";
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -47,6 +55,7 @@ export interface CalcPushResult {
   status: CalcPushStatus;
   noteOutcome: { ok: boolean; locked?: boolean; error?: string };
   fileOutcome: { ok: boolean; locked?: boolean; productionFileId?: string; error?: string };
+  lineItemOutcome: LineItemPushOutcome;
 }
 
 export interface CalcPushRequest {
@@ -56,21 +65,7 @@ export interface CalcPushRequest {
   rangeKey: string;
   priceRows: Array<{ qty: number; unitPrice: number }>;
   quoteNumber: string;
-}
-
-export class CalcPushError extends Error {
-  constructor(
-    message: string,
-    public readonly kind:
-      | "not_found"
-      | "invalid"
-      | "conflict"
-      | "locked"
-      | "upload_not_ready",
-  ) {
-    super(message);
-    this.name = "CalcPushError";
-  }
+  lineItem?: HubCalculatorLineItemInput | null;
 }
 
 async function assertFinalizedPngReady(uploadId: string): Promise<void> {
@@ -326,6 +321,14 @@ export async function pushCalcToInvoice(
       "invalid",
     );
   }
+  const storedLineItem =
+    (upload.lineItemSnapshot as HubCalculatorLineItemInput | null) ?? null;
+  if (!lineItemSnapshotsEqual(req.lineItem, storedLineItem)) {
+    throw new CalcPushError(
+      "Submitted lineItem does not match the stored upload snapshot",
+      "invalid",
+    );
+  }
 
   // ── 3. Validate order (invoice or quote) against local mirror ──────────
   const mirror = await fetchMirrorOrder(req.invoiceId);
@@ -384,12 +387,22 @@ export async function pushCalcToInvoice(
       );
     }
     const noteAlreadyPresent = noteContainsBlock(live?.productionNote, newBlock);
-    if (noteAlreadyPresent) {
+    const lineItemAlreadyComplete =
+      !storedLineItem || Boolean(upload.lineItemGroupId && upload.lineItemId);
+    if (noteAlreadyPresent && lineItemAlreadyComplete) {
       return {
         uploadId: req.uploadId,
         status: "file_ok",
         noteOutcome: { ok: true },
         fileOutcome: { ok: true, productionFileId: upload.productionFileId! },
+        lineItemOutcome: storedLineItem
+          ? {
+              requested: true,
+              ok: true,
+              lineItemGroupId: upload.lineItemGroupId!,
+              lineItemId: upload.lineItemId!,
+            }
+          : { requested: false, ok: false },
       };
     }
     // The file is confirmed, but the deterministic note block is missing.
@@ -645,7 +658,20 @@ export async function pushCalcToInvoice(
       "Production file was not attempted because the Production Notes update was not confirmed.";
   }
 
-  // ── 9. Final status ────────────────────────────────────────────────────
+  // ── 9. Optional invoice-only line item (independent one-attempt write) ──
+  const lineItemOutcome = await pushCalculatorLineItem({
+    uploadId: req.uploadId,
+    invoiceId: req.invoiceId,
+    visualId: req.visualId,
+    snapshot: storedLineItem,
+    priceRows: req.priceRows,
+    attemptedAt: upload.lineItemAttemptedAt,
+    existingGroupId: upload.lineItemGroupId,
+    existingLineItemId: upload.lineItemId,
+    existingError: upload.lineItemError,
+  });
+
+  // ── 10. Final status ───────────────────────────────────────────────────
   const finalStatus: CalcPushStatus =
     noteLocked
       ? "note_failed"
@@ -667,5 +693,6 @@ export async function pushCalcToInvoice(
       productionFileId,
       error: fileError,
     },
+    lineItemOutcome,
   };
 }

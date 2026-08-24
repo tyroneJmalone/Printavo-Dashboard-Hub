@@ -29,8 +29,18 @@ import {
   HubUploadError,
 } from "../lib/hub/pngStorage";
 import { pushCalcToInvoice, CalcPushError } from "../lib/hub/calcPush";
+import { listHubCalculatorCategories } from "../lib/hub/calcLineItems";
 
 const router: IRouter = Router();
+
+router.get("/hub/calculator/categories", async (req, res) => {
+  try {
+    res.json({ categories: await listHubCalculatorCategories() });
+  } catch (err) {
+    req.log.error({ err }, "Hub calculator category listing failed");
+    res.status(500).json({ error: "Failed to list Printavo categories" });
+  }
+});
 
 // ── Invoice search ─────────────────────────────────────────────────────
 
@@ -91,6 +101,7 @@ router.post("/hub/uploads/request-png-url", async (req, res) => {
       priceRows: parsed.data.priceRows,
       quoteNumber: parsed.data.quoteNumber,
       note: parsed.data.note ?? null,
+      lineItem: parsed.data.lineItem ?? null,
     });
     res.json({
       uploadId: slot.uploadId,
@@ -134,6 +145,7 @@ router.post("/hub/calculator/push", async (req, res) => {
       rangeKey: body.rangeKey,
       priceRows: body.priceRows,
       quoteNumber: body.quoteNumber,
+      lineItem: body.lineItem ?? null,
     });
     res.json(result);
   } catch (err) {

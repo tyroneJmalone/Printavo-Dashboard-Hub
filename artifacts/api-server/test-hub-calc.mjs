@@ -25,6 +25,7 @@ await build({
 export const db = null;
 export const hubCalcUploadsTable = {};
 export const pvOrdersTable = {};
+export const pvLineItemsTable = {};
 `,
           loader: "js",
         }));
@@ -87,6 +88,8 @@ export const eq = () => {};
 export const and = () => {};
 export const inArray = () => {};
 export const isNull = () => {};
+export const isNotNull = () => {};
+export const desc = () => {};
 export const sql = (s) => s;
 `,
           loader: "js",

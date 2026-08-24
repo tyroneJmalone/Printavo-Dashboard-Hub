@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HubCalculatorPushResultFileOutcome } from './hubCalculatorPushResultFileOutcome';
+import type { HubCalculatorPushResultLineItemOutcome } from './hubCalculatorPushResultLineItemOutcome';
 import type { HubCalculatorPushResultNoteOutcome } from './hubCalculatorPushResultNoteOutcome';
 import type { HubCalculatorPushResultStatus } from './hubCalculatorPushResultStatus';
 
@@ -15,4 +16,5 @@ export interface HubCalculatorPushResult {
   status: HubCalculatorPushResultStatus;
   noteOutcome: HubCalculatorPushResultNoteOutcome;
   fileOutcome: HubCalculatorPushResultFileOutcome;
+  lineItemOutcome: HubCalculatorPushResultLineItemOutcome;
 }

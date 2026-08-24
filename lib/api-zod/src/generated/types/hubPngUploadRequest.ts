@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HubCalculatorLineItemRequest } from './hubCalculatorLineItemRequest';
 import type { HubCalculatorPriceRow } from './hubCalculatorPriceRow';
 import type { HubPngUploadRequestRangeKey } from './hubPngUploadRequestRangeKey';
 
@@ -22,6 +23,7 @@ export interface HubPngUploadRequest {
      * @pattern ^\d{1,20}$
      */
   quoteNumber: string;
+  lineItem?: HubCalculatorLineItemRequest | null;
   /** @maxLength 2000 */
   note?: string | null;
   /**
