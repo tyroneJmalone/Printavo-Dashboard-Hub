@@ -26,14 +26,17 @@ const ExtractedCalcSchema = z.object({
   decorations: z
     .array(
       z.object({
-        location: z.string().max(100),
-        method: z.string().max(100),
+        location: z.string().max(100).nullable(),
+        method: z.string().max(100).nullable(),
         colorCount: z.number().int().min(1).max(20).nullable(),
         details: z.string().max(500).nullable(),
       }),
     )
     .max(20),
-  uncertainties: z.array(z.string().max(500)).max(20),
+  uncertainties: z
+    .array(z.string().max(500).nullable())
+    .max(20)
+    .transform((items) => items.filter((item): item is string => item !== null)),
 });
 
 type ExtractedCalc = z.infer<typeof ExtractedCalcSchema>;
@@ -96,10 +99,16 @@ Rules:
   } catch {
     throw new PricingInterpretError("AI returned invalid JSON");
   }
+  return parseExtractedCalcResponse(parsed);
+}
+
+export function parseExtractedCalcResponse(parsed: unknown): ExtractedCalc {
   const validated = ExtractedCalcSchema.safeParse(parsed);
   if (!validated.success) {
+    const issue = validated.error.issues[0];
+    const path = issue?.path.length ? ` at ${issue.path.join(".")}` : "";
     throw new PricingInterpretError(
-      `AI response did not match schema: ${validated.error.issues[0]?.message ?? "invalid"}`,
+      `AI response did not match schema${path}: ${issue?.message ?? "invalid"}`,
     );
   }
   return validated.data;
@@ -118,7 +127,8 @@ function matchDecoration(
   index: number,
   matrices: Awaited<ReturnType<typeof listDecorationMatrices>>,
 ): DecorationFill | null {
-  const method = decoration.method.toLowerCase();
+  const method = decoration.method?.toLowerCase() ?? "";
+  if (!method) return null;
   let matrix: (typeof matrices)[0] | null = null;
 
   if (method.includes("screen") || method.includes("print")) {
@@ -134,7 +144,14 @@ function matchDecoration(
 
   if (!matrix) return null;
 
-  const columnIndex = automaticMatrixColumnIndex(decoration, matrix.data.xValues);
+  const columnIndex = automaticMatrixColumnIndex(
+    {
+      method: decoration.method ?? "",
+      colorCount: decoration.colorCount,
+      details: decoration.details,
+    },
+    matrix.data.xValues,
+  );
   if (columnIndex === null) return null;
 
   const column = matrix.data.xValues[columnIndex];
@@ -211,8 +228,10 @@ export async function interpretPricingPrompt(
     .flatMap((decoration, index) => {
       const fill = matchDecoration(decoration, index, matrices);
       if (!fill) {
+        const location = decoration.location || "Unspecified location";
+        const method = decoration.method || "unspecified method";
         warnings.push(
-          `Decoration "${decoration.location} / ${decoration.method}": could not match to a pricing matrix column.`,
+          `Decoration "${location} / ${method}": could not match to a pricing matrix column.`,
         );
         return [];
       }

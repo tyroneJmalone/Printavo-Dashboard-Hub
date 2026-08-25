@@ -26,6 +26,7 @@ export const db = null;
 export const hubCalcUploadsTable = {};
 export const pvOrdersTable = {};
 export const pvLineItemsTable = {};
+export const decorationMatricesTable = {};
 `,
           loader: "js",
         }));

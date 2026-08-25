@@ -19,6 +19,7 @@ import {
   normalizeLineItemInput,
 } from "../src/lib/hub/pureHelpers.ts";
 import { lineItemSnapshotsEqual } from "../src/lib/hub/calcLineItems.ts";
+import { parseExtractedCalcResponse } from "../src/lib/hub/pricingInterpreter.ts";
 
 // Pure helpers from calcPush.ts (exported for testing)
 import {
@@ -135,6 +136,45 @@ test("orderLineItemGroupPositionsQuery: supports invoice and quote roots behind 
   assert.match(quote, /order: quote\(id: "quote-1"\)/);
   assert.match(invoice, /lineItemGroups\(first: 100\)/);
   assert.match(quote, /lineItemGroups\(first: 100\)/);
+});
+
+test("parseExtractedCalcResponse: accepts null AI text for an unspecified decoration", () => {
+  assert.deepEqual(
+    parseExtractedCalcResponse({
+      quoteNumber: null,
+      garmentStyle: "PC54",
+      garmentColor: null,
+      explicitGarmentCostPerPiece: null,
+      explicitMarkup: null,
+      sizes: [],
+      decorations: [
+        {
+          location: null,
+          method: "Screen print",
+          colorCount: 2,
+          details: null,
+        },
+      ],
+      uncertainties: [null, "Decoration location was not specified."],
+    }),
+    {
+      quoteNumber: null,
+      garmentStyle: "PC54",
+      garmentColor: null,
+      explicitGarmentCostPerPiece: null,
+      explicitMarkup: null,
+      sizes: [],
+      decorations: [
+        {
+          location: null,
+          method: "Screen print",
+          colorCount: 2,
+          details: null,
+        },
+      ],
+      uncertainties: ["Decoration location was not specified."],
+    },
+  );
 });
 import {
   resolveStandardSizeGarmentPricing,
