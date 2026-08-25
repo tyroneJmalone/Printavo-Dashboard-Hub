@@ -75,6 +75,38 @@ interface LocationRow {
   columnIndex: number;
 }
 
+interface SelectedProduct {
+  style: string;
+  color: string;
+  brand: string;
+  description: string;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function cleanProductDescription(product: SelectedProduct): string {
+  let description = product.description.trim();
+  if (!description) return "";
+  if (product.brand.trim()) {
+    description = description.replace(
+      new RegExp(`^${escapeRegExp(product.brand.trim())}\\s*[-–—.:]*\\s*`, "i"),
+      "",
+    );
+  }
+  if (product.style.trim()) {
+    description = description.replace(
+      new RegExp(
+        `\\s*[.·|\\-–—:]*\\s*${escapeRegExp(product.style.trim())}\\s*$`,
+        "i",
+      ),
+      "",
+    );
+  }
+  return description.trim() || product.description.trim();
+}
+
 const inputCls =
   "w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#059669]";
 const labelCls =
@@ -145,6 +177,7 @@ export function QuoteCalculator({
   const [lineItemColor, setLineItemColor] = useState("");
   const [lineItemBrand, setLineItemBrand] = useState("");
   const [lineItemDescription, setLineItemDescription] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
   const [pushOutcome, setPushOutcome] = useState<{
     noteOutcome: { ok: boolean; error?: string | null; locked?: boolean };
     fileOutcome: { ok: boolean; error?: string | null; locked?: boolean };
@@ -210,6 +243,65 @@ export function QuoteCalculator({
     [rows, byId]
   );
 
+  const suggestedCategoryId = useMemo(() => {
+    const matrixName =
+      rowStates.find((state) => state.status === "ok")?.mx.name.toLowerCase() ?? "";
+    const categories = categoryData?.categories ?? [];
+    if (!matrixName || categories.length === 0) return "";
+
+    const preferredTerm = matrixName.includes("embro")
+      ? "embro"
+      : matrixName.includes("print")
+        ? "screen print"
+        : "";
+    const preferred = preferredTerm
+      ? categories.find((category) =>
+          category.name.toLowerCase().includes(preferredTerm),
+        )
+      : undefined;
+    if (preferred) return preferred.id;
+
+    const matrixWords = matrixName
+      .replace(/\b(1st|first|addnl|additional|location|loc)\b/g, " ")
+      .split(/\W+/)
+      .filter((word) => word.length >= 4);
+    return (
+      categories.find((category) => {
+        const name = category.name.toLowerCase();
+        return matrixWords.some((word) => name.includes(word));
+      })?.id ?? ""
+    );
+  }, [categoryData?.categories, rowStates]);
+
+  const applySelectedProduct = (product: SelectedProduct | null) => {
+    const normalized = product
+      ? { ...product, description: cleanProductDescription(product) }
+      : null;
+    setSelectedProduct(normalized);
+    setLineItemStyle(normalized?.style ?? "");
+    setLineItemColor(normalized?.color ?? "");
+    setLineItemBrand(normalized?.brand ?? "");
+    setLineItemDescription(normalized?.description ?? "");
+  };
+
+  const prefillLineItemDraft = () => {
+    if (selectedProduct) {
+      setLineItemStyle((value) => value || selectedProduct.style);
+      setLineItemColor((value) => value || selectedProduct.color);
+      setLineItemBrand((value) => value || selectedProduct.brand);
+      setLineItemDescription((value) => value || selectedProduct.description);
+    }
+    if (suggestedCategoryId) {
+      setLineItemCategoryId((value) => value || suggestedCategoryId);
+    }
+  };
+
+  useEffect(() => {
+    if (addLineItem && !lineItemCategoryId && suggestedCategoryId) {
+      setLineItemCategoryId(suggestedCategoryId);
+    }
+  }, [addLineItem, lineItemCategoryId, suggestedCategoryId]);
+
   const validEntries = useMemo(
     () =>
       rowStates.flatMap((s, i) =>
@@ -255,6 +347,16 @@ export function QuoteCalculator({
       {
         onSuccess: (res) => {
           setAiGarmentMatch(res.garmentMatch);
+          applySelectedProduct(
+            res.garmentMatch
+              ? {
+                  style: res.garmentMatch.styleName,
+                  color: res.garmentMatch.colorName,
+                  brand: res.garmentMatch.brand ?? "",
+                  description: res.garmentMatch.title ?? "",
+                }
+              : null,
+          );
           if (res.garmentCost !== null) {
             setGarmentCostStr(res.garmentCost.toFixed(2));
             garmentCostSourceRef.current = "ai";
@@ -718,10 +820,16 @@ export function QuoteCalculator({
             </div>
             <div className="border-t border-slate-800 -mx-4 px-4 pt-4">
               <VendorCostLookup
-                onApply={(cost) => {
-                  setGarmentCostStr(cost.toFixed(2));
+                onApply={(selection) => {
+                  setGarmentCostStr(selection.cost.toFixed(2));
                   garmentCostSourceRef.current = "vendor";
                   setAiGarmentMatch(null);
+                  applySelectedProduct(selection);
+                  setLabelHint(
+                    [selection.brand, selection.style, selection.color]
+                      .filter(Boolean)
+                      .join(" · "),
+                  );
                 }}
               />
             </div>
@@ -743,6 +851,7 @@ export function QuoteCalculator({
                     garmentCostSourceRef.current =
                       e.target.value.trim() === "" ? "empty" : "manual";
                     setAiGarmentMatch(null);
+                    applySelectedProduct(null);
                     if (labelHint) setLabelHint("");
                   }}
                   placeholder="0.00"
@@ -1109,7 +1218,11 @@ export function QuoteCalculator({
                 <input
                   type="checkbox"
                   checked={addLineItem}
-                  onChange={(event) => setAddLineItem(event.target.checked)}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setAddLineItem(checked);
+                    if (checked) prefillLineItemDraft();
+                  }}
                   className="accent-[#3b82f6]"
                   data-testid="add-calculator-line-item"
                 />

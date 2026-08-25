@@ -130,8 +130,14 @@ function ProductThumb({ src, alt }: { src: string | null; alt: string }) {
 export function VendorCostLookup({
   onApply,
 }: {
-  /** Called with the chosen per-piece garment cost when the user applies a price. */
-  onApply: (cost: number) => void;
+  /** Called with the chosen product and per-piece cost when the user applies a price. */
+  onApply: (selection: {
+    cost: number;
+    style: string;
+    color: string;
+    brand: string;
+    description: string;
+  }) => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -230,8 +236,14 @@ export function VendorCostLookup({
   };
 
   const apply = () => {
-    if (chosenPrice === null) return;
-    onApply(chosenPrice);
+    if (chosenPrice === null || !result || !selectedColor) return;
+    onApply({
+      cost: chosenPrice,
+      style: result.styleName ?? result.styleQueried,
+      color: selectedColor.colorName,
+      brand: result.brand ?? "",
+      description: result.title ?? "",
+    });
     setOpen(false);
     toast({
       title: `Garment cost set to $${money(chosenPrice)}`,
