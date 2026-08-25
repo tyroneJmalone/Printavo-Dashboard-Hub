@@ -427,11 +427,16 @@ export function lineItemUpdateMutation(
 
 /**
  * Read current group positions before appending a calculator-created group.
+ * Both Quote and Invoice expose lineItemGroups; alias the selected root to a
+ * stable response key so callers never need to trust a client-supplied type.
  * The caller fails closed if Printavo reports more than 100 groups.
  */
-export function invoiceLineItemGroupPositionsQuery(invoiceId: string): string {
+export function orderLineItemGroupPositionsQuery(
+  orderId: string,
+  orderType: "invoice" | "quote",
+): string {
   return `query {
-    invoice(id: ${lit(invoiceId)}) {
+    order: ${orderType}(id: ${lit(orderId)}) {
       id
       visualId
       lineItemGroups(first: 100) {
@@ -456,12 +461,12 @@ export interface CalculatorLineItemCreateInput {
  * lineItemGroupCreate(parentId: ID!, input: LineItemGroupCreateInput!).
  */
 export function calculatorLineItemGroupCreateMutation(
-  invoiceId: string,
+  parentId: string,
   input: CalculatorLineItemCreateInput,
 ): string {
   return `mutation {
     lineItemGroupCreate(
-      parentId: ${lit(invoiceId)}
+      parentId: ${lit(parentId)}
       input: {
         position: ${Math.trunc(input.position)}
         lineItems: [{

@@ -4959,8 +4959,8 @@ export const requestHubPngUploadUrlBodyFileSizeBytesMax = 10485760;
 
 
 export const RequestHubPngUploadUrlBody = zod.object({
-  "invoiceId": zod.string().describe('Internal Printavo invoice id (validated against local mirror)'),
-  "visualId": zod.number().describe('Visible invoice number (validated against local mirror)'),
+  "invoiceId": zod.string().describe('Internal Printavo invoice or quote id (validated against local mirror)'),
+  "visualId": zod.number().describe('Visible invoice or quote number (validated against local mirror)'),
   "rangeKey": zod.enum(['all', '12-48', '36-72', '60-96', '84-120', '108-144', '144-288']).describe('Validated range key — one of: all, 12-48, 36-72, 60-96, 84-120, 108-144, 144-288. Submitted qtys must fall within the inclusive range (all accepts any positive qty).\n'),
   "priceRows": zod.array(zod.object({
   "qty": zod.number().min(1),
@@ -5000,8 +5000,8 @@ export const GetHubCalcPngResponse = zod.unknown()
 
 
 /**
- * Re-reads the live invoice productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls invoiceUpdate and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. When an explicit invoice-only lineItem snapshot is included, also creates one line-item group exactly once.
- * @summary Push pricing calculator results to a Printavo invoice
+ * Re-reads the live invoice or quote productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls the matching order update and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. When an explicit lineItem snapshot is included, also creates one line-item group exactly once.
+ * @summary Push pricing calculator results to a Printavo invoice or quote
  */
 
 export const pushHubCalculatorBodyPriceRowsItemUnitPriceMin = 0;
@@ -5024,8 +5024,8 @@ export const pushHubCalculatorBodyLineItemOneDescriptionMax = 500;
 
 export const PushHubCalculatorBody = zod.object({
   "uploadId": zod.string().describe('Upload row UUID from requestHubPngUploadUrl'),
-  "invoiceId": zod.string().describe('Internal Printavo invoice id (must match upload row and live invoice)'),
-  "visualId": zod.number().describe('Visible invoice number (must match upload row and live invoice)'),
+  "invoiceId": zod.string().describe('Internal Printavo invoice or quote id (must match upload row and live order)'),
+  "visualId": zod.number().describe('Visible invoice or quote number (must match upload row and live order)'),
   "rangeKey": zod.enum(['all', '12-48', '36-72', '60-96', '84-120', '108-144', '144-288']).describe('Range key (must match upload row)'),
   "priceRows": zod.array(zod.object({
   "qty": zod.number().min(1),

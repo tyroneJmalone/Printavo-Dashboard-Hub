@@ -7,7 +7,7 @@ import {
 } from "@workspace/db";
 import {
   calculatorLineItemGroupCreateMutation,
-  invoiceLineItemGroupPositionsQuery,
+  orderLineItemGroupPositionsQuery,
 } from "@workspace/printavo";
 import { getPrintavoClient } from "../printavoGateway";
 import {
@@ -121,7 +121,7 @@ export async function pushCalculatorLineItem(opts: {
       locked: true,
       error:
         opts.existingError ??
-        "Line-item creation was previously attempted with an ambiguous outcome — verify the invoice manually.",
+        "Line-item creation was previously attempted with an ambiguous outcome — verify the selected Printavo order manually.",
     };
   }
 
@@ -134,35 +134,39 @@ export async function pushCalculatorLineItem(opts: {
     .where(eq(pvOrdersTable.printavoId, opts.invoiceId))
     .limit(1);
   if (!mirror || mirror.visualId !== opts.visualId) {
-    throw new CalcPushError("Selected invoice no longer matches the local mirror", "not_found");
+    throw new CalcPushError("Selected order no longer matches the local mirror", "not_found");
   }
-  if (mirror.orderType !== "invoice") {
-    throw new CalcPushError("Calculator line items can only be added to invoices", "invalid");
+  if (mirror.orderType !== "invoice" && mirror.orderType !== "quote") {
+    throw new CalcPushError("Selected Printavo record is not an invoice or quote", "invalid");
   }
+  const orderType = mirror.orderType;
 
   await validateLineItemCategory(snapshot.categoryId);
   const client = getPrintavoClient();
   const live = await client.query<{
-    invoice: {
+    order: {
       id: string;
-      visualId: number;
+      visualId: number | string;
       lineItemGroups: {
         nodes: Array<{ id: string; position: number | null }>;
         pageInfo: { hasNextPage: boolean };
       };
     } | null;
-  }>(invoiceLineItemGroupPositionsQuery(opts.invoiceId));
-  if (!live.invoice || Number(live.invoice.visualId) !== opts.visualId) {
-    throw new CalcPushError("Live Printavo invoice was not found or changed", "not_found");
-  }
-  if (live.invoice.lineItemGroups.pageInfo.hasNextPage) {
+  }>(orderLineItemGroupPositionsQuery(opts.invoiceId, orderType));
+  if (!live.order || Number(live.order.visualId) !== opts.visualId) {
     throw new CalcPushError(
-      "Invoice has more than 100 line-item groups; no safe append position could be determined",
+      `Live Printavo ${orderType} was not found or changed`,
+      "not_found",
+    );
+  }
+  if (live.order.lineItemGroups.pageInfo.hasNextPage) {
+    throw new CalcPushError(
+      `${orderType === "quote" ? "Quote" : "Invoice"} has more than 100 line-item groups; no safe append position could be determined`,
       "invalid",
     );
   }
   const nextPosition =
-    Math.max(-1, ...live.invoice.lineItemGroups.nodes.map((g) => g.position ?? -1)) + 1;
+    Math.max(-1, ...live.order.lineItemGroups.nodes.map((g) => g.position ?? -1)) + 1;
 
   const claim = await db
     .update(hubCalcUploadsTable)

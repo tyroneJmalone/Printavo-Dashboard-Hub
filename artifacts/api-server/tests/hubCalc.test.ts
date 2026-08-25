@@ -36,6 +36,7 @@ import {
   quoteByIdQuery,
   quoteUpdateMutation,
   calculatorLineItemGroupCreateMutation,
+  orderLineItemGroupPositionsQuery,
 } from "../../../lib/printavo/src/queries.ts";
 
 test("buildLineItemDescription: includes brand, blank line, and concise selected breaks", () => {
@@ -125,6 +126,15 @@ test("calculatorLineItemGroupCreateMutation: safely emits category and descripti
   assert.match(mutation, /category: \{ id: "20421" \}/);
   assert.match(mutation, /productStatus: need_ordering/);
   assert.match(mutation, /Port & Company \\"Core\\"\\n\\nQTY = PRICE/);
+});
+
+test("orderLineItemGroupPositionsQuery: supports invoice and quote roots behind a stable alias", () => {
+  const invoice = orderLineItemGroupPositionsQuery("inv-1", "invoice");
+  const quote = orderLineItemGroupPositionsQuery("quote-1", "quote");
+  assert.match(invoice, /order: invoice\(id: "inv-1"\)/);
+  assert.match(quote, /order: quote\(id: "quote-1"\)/);
+  assert.match(invoice, /lineItemGroups\(first: 100\)/);
+  assert.match(quote, /lineItemGroups\(first: 100\)/);
 });
 import {
   resolveStandardSizeGarmentPricing,

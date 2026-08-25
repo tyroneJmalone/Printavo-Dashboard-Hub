@@ -10,9 +10,9 @@ import type { HubCalculatorPriceRow } from './hubCalculatorPriceRow';
 import type { HubPngUploadRequestRangeKey } from './hubPngUploadRequestRangeKey';
 
 export interface HubPngUploadRequest {
-  /** Internal Printavo invoice id (validated against local mirror) */
+  /** Internal Printavo invoice or quote id (validated against local mirror) */
   invoiceId: string;
-  /** Visible invoice number (validated against local mirror) */
+  /** Visible invoice or quote number (validated against local mirror) */
   visualId: number;
   /** Validated range key — one of: all, 12-48, 36-72, 60-96, 84-120, 108-144, 144-288. Submitted qtys must fall within the inclusive range (all accepts any positive qty). */
   rangeKey: HubPngUploadRequestRangeKey;

@@ -8400,8 +8400,8 @@ export const getPushHubCalculatorUrl = () => {
 }
 
 /**
- * Re-reads the live invoice productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls invoiceUpdate and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. When an explicit invoice-only lineItem snapshot is included, also creates one line-item group exactly once.
- * @summary Push pricing calculator results to a Printavo invoice
+ * Re-reads the live invoice or quote productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls the matching order update and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. When an explicit lineItem snapshot is included, also creates one line-item group exactly once.
+ * @summary Push pricing calculator results to a Printavo invoice or quote
  */
 export const pushHubCalculator = async (hubCalculatorPushRequest: HubCalculatorPushRequest, options?: RequestInit): Promise<HubCalculatorPushResult> => {
 
@@ -8449,7 +8449,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PushHubCalculatorMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Push pricing calculator results to a Printavo invoice
+ * @summary Push pricing calculator results to a Printavo invoice or quote
  */
 export const usePushHubCalculator = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pushHubCalculator>>, TError,{data: BodyType<HubCalculatorPushRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}

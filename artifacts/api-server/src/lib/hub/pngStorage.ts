@@ -150,17 +150,11 @@ export async function reservePngUploadSlot(opts: {
   if (rowError) throw new HubUploadError(rowError, "invalid");
 
   // Validate invoice against local mirror
-  const orderType = await validateInvoiceMirror(opts.invoiceId, opts.visualId);
+  await validateInvoiceMirror(opts.invoiceId, opts.visualId);
   const lineItem = opts.lineItem ? normalizeLineItemInput(opts.lineItem) : null;
   if (lineItem) {
     const lineItemError = validateLineItemInput(lineItem);
     if (lineItemError) throw new HubUploadError(lineItemError, "invalid");
-    if (orderType !== "invoice") {
-      throw new HubUploadError(
-        "Calculator line items can only be added to invoices",
-        "invalid",
-      );
-    }
     const [category] = await db
       .select({ id: pvLineItemsTable.categoryId })
       .from(pvLineItemsTable)

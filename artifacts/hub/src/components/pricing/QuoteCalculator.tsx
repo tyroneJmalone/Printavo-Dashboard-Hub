@@ -160,6 +160,16 @@ export function QuoteCalculator({
   const pushMutation = usePushHubCalculator();
   const { data: categoryData } = useListHubCalculatorCategories();
 
+  const resetLineItemForTargetChange = () => {
+    setAddLineItem(false);
+    setLineItemCategoryId("");
+    setLineItemStyle("");
+    setLineItemColor("");
+    setLineItemBrand("");
+    setLineItemDescription("");
+    setPushOutcome(null);
+  };
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(searchQ), 300);
     return () => clearTimeout(t);
@@ -463,7 +473,7 @@ export function QuoteCalculator({
       return;
     }
     const lineItem =
-      addLineItem && selectedInvoice.orderType === "invoice"
+      addLineItem
         ? {
             categoryId: lineItemCategoryId.trim(),
             itemNumber: lineItemStyle.trim(),
@@ -472,14 +482,6 @@ export function QuoteCalculator({
             description: lineItemDescription.trim(),
           }
         : null;
-    if (addLineItem && selectedInvoice.orderType !== "invoice") {
-      toast({
-        title: "Line items require an invoice",
-        description: "Quotes can still receive Production Notes and the PNG.",
-        variant: "destructive",
-      });
-      return;
-    }
     if (lineItem && Object.values(lineItem).some((value) => !value)) {
       toast({
         title: "Complete the line-item fields",
@@ -1101,7 +1103,7 @@ export function QuoteCalculator({
             Push to Printavo
           </div>
 
-          {selectedInvoice?.orderType === "invoice" && (
+          {selectedInvoice && (
             <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3">
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-200">
                 <input
@@ -1111,7 +1113,7 @@ export function QuoteCalculator({
                   className="accent-[#3b82f6]"
                   data-testid="add-calculator-line-item"
                 />
-                Add quoted style as a new invoice line item
+                Add quoted style as a new {selectedInvoice.orderType} line item
               </label>
               {addLineItem && (
                 <>
@@ -1164,11 +1166,6 @@ export function QuoteCalculator({
               )}
             </div>
           )}
-          {selectedInvoice?.orderType === "quote" && (
-            <div className="text-[11px] text-amber-400">
-              Product line items can only be added after the quote is converted to an invoice. Notes and PNG push remain available.
-            </div>
-          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
@@ -1184,6 +1181,7 @@ export function QuoteCalculator({
                   onChange={(e) => {
                     setSearchQ(e.target.value);
                     setSelectedInvoice(null);
+                    resetLineItemForTargetChange();
                     // Clear a selection-derived quote number along with the
                     // selection; keep manually entered values.
                     if (
@@ -1218,8 +1216,8 @@ export function QuoteCalculator({
                         key={inv.id}
                         onClick={() => {
                           setSelectedInvoice(inv);
-                          if (inv.orderType === "quote") setAddLineItem(false);
                           setSearchQ(String(inv.visualId));
+                          resetLineItemForTargetChange();
                           // Auto-fill the Printavo Quote # field from the
                           // selected order so it doesn't need manual entry.
                           const autoFilled = String(inv.visualId)

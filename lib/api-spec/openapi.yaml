@@ -2740,14 +2740,15 @@ paths:
     post:
       operationId: pushHubCalculator
       tags: [hub]
-      summary: Push pricing calculator results to a Printavo invoice
+      summary: Push pricing calculator results to a Printavo invoice or quote
       description: >
-        Re-reads the live invoice productionNote, replaces only the
+        Re-reads the live invoice or quote productionNote, replaces only the
         deterministic [Hub Price Calculator ...] block for the same
-        quote/range marker, then calls invoiceUpdate and productionFileCreate
-        exactly once. Persists state before/between mutations. Idempotent for
+        quote/range marker, then calls the matching order update and
+        productionFileCreate exactly once. Persists state before/between
+        mutations. Idempotent for
         identical confirmed requests — will not duplicate the note block or
-        attachment. When an explicit invoice-only lineItem snapshot is
+        attachment. When an explicit lineItem snapshot is
         included, also creates one line-item group exactly once.
       requestBody:
         required: true
@@ -10239,10 +10240,10 @@ components:
       properties:
         invoiceId:
           type: string
-          description: Internal Printavo invoice id (validated against local mirror)
+          description: Internal Printavo invoice or quote id (validated against local mirror)
         visualId:
           type: integer
-          description: Visible invoice number (validated against local mirror)
+          description: Visible invoice or quote number (validated against local mirror)
         rangeKey:
           type: string
           description: >
@@ -10327,10 +10328,10 @@ components:
           description: Upload row UUID from requestHubPngUploadUrl
         invoiceId:
           type: string
-          description: Internal Printavo invoice id (must match upload row and live invoice)
+          description: Internal Printavo invoice or quote id (must match upload row and live order)
         visualId:
           type: integer
-          description: Visible invoice number (must match upload row and live invoice)
+          description: Visible invoice or quote number (must match upload row and live order)
         rangeKey:
           type: string
           description: Range key (must match upload row)

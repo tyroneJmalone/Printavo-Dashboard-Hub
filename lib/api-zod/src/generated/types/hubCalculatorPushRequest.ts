@@ -12,9 +12,9 @@ import type { HubCalculatorPushRequestRangeKey } from './hubCalculatorPushReques
 export interface HubCalculatorPushRequest {
   /** Upload row UUID from requestHubPngUploadUrl */
   uploadId: string;
-  /** Internal Printavo invoice id (must match upload row and live invoice) */
+  /** Internal Printavo invoice or quote id (must match upload row and live order) */
   invoiceId: string;
-  /** Visible invoice number (must match upload row and live invoice) */
+  /** Visible invoice or quote number (must match upload row and live order) */
   visualId: number;
   /** Range key (must match upload row) */
   rangeKey: HubCalculatorPushRequestRangeKey;
