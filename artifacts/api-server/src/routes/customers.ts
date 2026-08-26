@@ -186,12 +186,16 @@ router.get("/customers", async (req, res) => {
   const params: unknown[] = [];
   if (search) {
     params.push(`%${escapeLike(search)}%`);
-    // Match the customer's name/email OR keywords in their order nicknames —
-    // lets staff find e.g. every customer who ordered "soccer" gear even when
-    // the company name doesn't contain the word.
+    // Match the company/primary contact, any linked contact, or keywords in
+    // order nicknames. A secondary contact search still returns the parent
+    // customer account (for example, Pat Traynor → MYA Baseball).
     where.push(
       `(${DISPLAY_NAME_SQL} ILIKE $${params.length}
         OR c.data->'primaryContact'->>'email' ILIKE $${params.length}
+        OR EXISTS (SELECT 1 FROM pv_contacts ct
+                    WHERE ct.customer_id = c.printavo_id
+                      AND (ct.full_name ILIKE $${params.length}
+                           OR ct.email ILIKE $${params.length}))
         OR EXISTS (SELECT 1 FROM pv_orders om
                     WHERE om.customer_id = c.printavo_id
                       AND om.nickname ILIKE $${params.length}))`,
