@@ -328,6 +328,8 @@ async function hydrateConversation(
     "messages",
     "delivered_at",
   );
+  const mailboxId = await findMailboxId(listedMessages);
+  if (!mailboxId) return false;
   const messages: Json[] = [];
   for (const listed of listedMessages) {
     const id = stringValue(listed.id);
@@ -339,8 +341,6 @@ async function hydrateConversation(
     messages.push(full);
   }
   if (messages.length === 0) return false;
-  const mailboxId = await findMailboxId(messages);
-  if (!mailboxId) return false;
 
   const comments = await listTimed(
     `/v1/conversations/${encodeURIComponent(providerThreadId)}/comments`,
@@ -497,6 +497,30 @@ async function hydrateConversation(
   return true;
 }
 
+async function conversationIsCurrent(conversation: Json): Promise<boolean> {
+  const providerThreadId = stringValue(conversation.id);
+  const sourceUpdatedAt = numberValue(conversation.last_activity_at);
+  if (!providerThreadId || sourceUpdatedAt == null) return false;
+  const [existing] = await db
+    .select({
+      hydrationState: correspondenceThreadsTable.hydrationState,
+      sourceUpdatedAt: correspondenceThreadsTable.sourceUpdatedAt,
+    })
+    .from(correspondenceThreadsTable)
+    .where(
+      and(
+        eq(correspondenceThreadsTable.provider, "missive"),
+        eq(correspondenceThreadsTable.providerThreadId, providerThreadId),
+      ),
+    )
+    .limit(1);
+  return (
+    existing?.hydrationState === "complete" &&
+    existing.sourceUpdatedAt != null &&
+    existing.sourceUpdatedAt.getTime() >= epochDate(sourceUpdatedAt).getTime()
+  );
+}
+
 async function ensureState() {
   await db
     .insert(correspondenceSyncStateTable)
@@ -514,7 +538,7 @@ export async function runMissiveSync(
     return {
       ran: false,
       conversations: 0,
-      message: "Missive connector routing is temporarily unavailable",
+      message: "Missive API transport is temporarily unavailable",
     };
   }
   active = true;
@@ -547,6 +571,9 @@ export async function runMissiveSync(
         const searchable = JSON.stringify(safeMetadata(conversation)).toLowerCase();
         const requested = requestedEmails.some((email) => searchable.includes(email.toLowerCase()));
         if (activityAt < cutoff && !requested) continue;
+        if (!options.fullHistoryForEmails?.length && await conversationIsCurrent(conversation)) {
+          continue;
+        }
         if (
           await hydrateConversation(
             conversation,
@@ -563,7 +590,10 @@ export async function runMissiveSync(
       if (conversations.length < CONVERSATION_LIMIT || conversations.length === 0) break;
       const oldest = numberValue(conversations[conversations.length - 1]?.last_activity_at);
       if (oldest == null || oldest === until) break;
-      if (oldest * 1000 < cutoff && !options.fullHistoryForEmails?.length) break;
+      if (
+        oldest * 1000 < cutoff &&
+        (Number.isFinite(requestedFrom) || !options.fullHistoryForEmails?.length)
+      ) break;
       until = oldest;
     }
     await purgeCorrespondenceRetention();

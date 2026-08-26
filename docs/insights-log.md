@@ -1,3 +1,6 @@
+### Aug 26 — Missive live sync restored through direct public API transport
+The managed Replit Missive connector still routes `/v1` requests to the public website host and returns HTML 404 pages; its server-side base URL cannot be overridden by application code. Tyler approved a direct transport using a Missive API token stored in Replit Secrets. The Hub now calls the fixed `public.missiveapp.com` origin, paces requests, honors `Retry-After`, stops bounded imports at their requested date, skips already-current conversations, and rejects conversations outside tracked Hub mailboxes before downloading bodies. Live verification completed successfully with messages, internal comments, and conversation grants persisted.
+
 ### Aug 26 — Email access correction: Admin sees all; Managers use selected groups
 Tyler corrected the correspondence access model after rollout: **Admin must have full access to all email accounts and all customer thread history. Managers must be limited to explicitly selected mailbox Groups** (while owner and explicit conversation grants still apply). Customer profiles should aggregate and display thread history across every mailbox the current user is authorized to read, rather than requiring a mailbox query parameter that the customer page does not provide.
 

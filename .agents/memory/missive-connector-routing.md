@@ -1,19 +1,21 @@
 ---
-name: Missive connector routing
-description: Known Replit connector behavior that blocks live Missive API verification
+name: Missive API transport
+description: Managed connector routing defect and the approved direct API transport
 ---
 
-The installed Missive connector currently routes documented API paths to the
-public `missiveapp.com` website instead of the JSON API host
-`public.missiveapp.com`. Both sandbox connection calls and the application
-connector SDK return HTML 404 pages, so this is routing—not an authentication
-failure. Reauthorization does not repair it.
+The managed Missive connector routes documented API paths to the public
+website instead of the JSON API host. Reauthorization does not repair this
+server-side base URL.
 
-**Why:** Treating the HTML response as an empty API result could falsely mark a
-sync successful and hide that correspondence and grants were never reconciled.
+The approved Hub transport uses a Missive API token stored only in Replit
+Secrets and sends requests directly to the fixed public API origin. Requests
+are paced, honor provider retry timing, skip already-current conversations, and
+reject untracked-mailbox conversations before downloading full bodies.
 
-**How to apply:** Fail closed on HTML/non-JSON responses, keep the error visible,
-and suppress frequent retries. Do not ask for or add a pasted-token fallback.
-When platform routing is repaired, live-verify pagination, message bodies,
-comments, mailbox attribution fields, users, and grant reconciliation before
-declaring Missive synchronization operational.
+**Why:** The managed route repeatedly returned HTML 404 responses, while the
+direct API completed a live sync of messages, internal comments, and access
+grants. Unpaced body hydration also exhausted Missive's request quota.
+
+**How to apply:** Never expose or log the token. Keep the origin fixed, paths
+limited to the versioned API, and fail closed on non-JSON responses. Preserve
+rate-limit handling and incremental hydration in every Missive read path.

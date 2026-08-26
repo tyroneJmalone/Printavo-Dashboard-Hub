@@ -46,6 +46,10 @@ import {
   filterAuthorizedSearchResults,
   filterAuthorizedCitationSources,
 } from "../src/lib/missive/accessPolicy.ts";
+import {
+  missiveApiUrl,
+  retryDelay,
+} from "../src/lib/missive/client.ts";
 
 type Capability = "read" | "search" | "cite" | "manage";
 
@@ -53,6 +57,38 @@ const now = new Date("2026-02-20T12:00:00.000Z");
 const actor = { id: "user-alice" };
 const protectedMailbox = { id: "mailbox-exec", isProtected: true };
 const salesMailbox = { id: "mailbox-sales", isProtected: false };
+
+test("Missive API URL validation stays within the resolved /v1 path", () => {
+  assert.equal(
+    missiveApiUrl("/v1/organizations?limit=2").href,
+    "https://public.missiveapp.com/v1/organizations?limit=2",
+  );
+  for (const path of [
+    "/organizations",
+    "/v1/../organizations",
+    "/v1/%2e%2e/organizations",
+    "/v1/%2E%2E/organizations",
+    "/v1/..\\organizations",
+  ]) {
+    assert.throws(() => missiveApiUrl(path), /must stay within/);
+  }
+});
+
+test("Missive Retry-After supports delta seconds", () => {
+  assert.equal(
+    retryDelay(new Response(null, { headers: { "Retry-After": "3" } }), 0),
+    3_000,
+  );
+});
+
+test("Missive Retry-After supports HTTP dates", () => {
+  const retryAt = new Date(Date.now() + 10_000);
+  const delay = retryDelay(
+    new Response(null, { headers: { "Retry-After": retryAt.toUTCString() } }),
+    0,
+  );
+  assert.ok(delay >= 8_000 && delay <= 10_000);
+});
 const mailboxes = [protectedMailbox, salesMailbox];
 
 function grant(
