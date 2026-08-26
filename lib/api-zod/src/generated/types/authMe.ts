@@ -10,4 +10,5 @@ import type { AuthMeRole } from './authMeRole';
 export interface AuthMe {
   email: string;
   role: AuthMeRole;
+  capabilities: string[];
 }

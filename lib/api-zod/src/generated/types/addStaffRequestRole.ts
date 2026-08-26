@@ -11,5 +11,6 @@ export type AddStaffRequestRole = typeof AddStaffRequestRole[keyof typeof AddSta
 
 export const AddStaffRequestRole = {
   admin: 'admin',
+  manager: 'manager',
   staff: 'staff',
 } as const;

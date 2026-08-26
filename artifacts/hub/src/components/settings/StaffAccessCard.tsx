@@ -167,6 +167,7 @@ export function StaffAccessCard() {
                   }
                 >
                   <option value="staff">Staff</option>
+                  <option value="manager">Manager</option>
                   <option value="admin">Admin</option>
                 </select>
                 {isSelf ? (
@@ -212,6 +213,7 @@ export function StaffAccessCard() {
           onChange={(e) => setNewRole(e.target.value as StaffMemberRole)}
         >
           <option value="staff">Staff</option>
+          <option value="manager">Manager</option>
           <option value="admin">Admin</option>
         </select>
         <button

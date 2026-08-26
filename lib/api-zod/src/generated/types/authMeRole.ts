@@ -11,5 +11,6 @@ export type AuthMeRole = typeof AuthMeRole[keyof typeof AuthMeRole];
 
 export const AuthMeRole = {
   admin: 'admin',
+  manager: 'manager',
   staff: 'staff',
 } as const;

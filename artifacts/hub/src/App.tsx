@@ -41,6 +41,8 @@ import AiQuoteDetail from "./pages/AiQuoteDetail";
 import EmailActivity from "./pages/EmailActivity";
 import EmailDealsReport from "./pages/EmailDealsReport";
 import EmailActivitySettings from "./pages/EmailActivitySettings";
+import EmailAccess from "./pages/EmailAccess";
+import Correspondence from "./pages/Correspondence";
 import ProductFinder from "./pages/ProductFinder";
 import Collections from "./pages/Collections";
 import CollectionDetail from "./pages/CollectionDetail";
@@ -200,8 +202,10 @@ function HubRoutes() {
       <Route path="/ai-quotes/:id" component={AiQuoteDetail} />
       <Route path="/ai-quotes" component={AiQuotesList} />
       <Route path="/email-activity/settings" component={EmailActivitySettings} />
+      <Route path="/email-activity/access" component={EmailAccess} />
       <Route path="/email-activity/deals" component={EmailDealsReport} />
       <Route path="/email-activity" component={EmailActivity} />
+      <Route path="/correspondence" component={Correspondence} />
       <Route path="/product-finder" component={ProductFinder} />
       <Route path="/collections/:id" component={CollectionDetail} />
       <Route path="/collections" component={Collections} />

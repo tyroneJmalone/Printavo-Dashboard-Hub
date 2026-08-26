@@ -1,6 +1,12 @@
 import type { Logger } from "pino";
 import { runEmailSync, isEmailSyncActive } from "./sync";
 import { gmailConfigured } from "./gmail";
+import {
+  runMissiveSync,
+  isMissiveSyncActive,
+  isMissiveConnectorReady,
+  purgeCorrespondenceRetention,
+} from "../missive/sync";
 
 /**
  * Email activity sync scheduler — same shape as the catalog scheduler:
@@ -19,9 +25,15 @@ export function startEmailActivityScheduler(log: Logger): void {
   started = true;
   const tick = async () => {
     try {
-      if (!gmailConfigured() || isEmailSyncActive()) return;
-      const result = await runEmailSync(log);
-      if (result.ran) log.info({ result: result.message }, "email activity sync tick done");
+      await purgeCorrespondenceRetention();
+      if (gmailConfigured() && !isEmailSyncActive()) {
+        const result = await runEmailSync(log);
+        if (result.ran) log.info({ result: result.message }, "email activity sync tick done");
+      }
+      if (!isMissiveSyncActive() && isMissiveConnectorReady()) {
+        const result = await runMissiveSync(log);
+        if (result.ran) log.info({ result: result.message }, "Missive sync tick done");
+      }
     } catch (err) {
       log.error({ err }, "email activity sync tick failed");
     }

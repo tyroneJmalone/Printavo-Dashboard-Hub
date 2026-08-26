@@ -3,6 +3,44 @@ import { getAuth, clerkClient } from "@clerk/express";
 import { db, staffUsersTable, type StaffUser } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
+export type StaffCapability =
+  | "manage_staff"
+  | "manage_email_configuration"
+  | "manage_email_access"
+  | "view_email_activity";
+
+const ROLE_CAPABILITIES: Record<string, readonly StaffCapability[]> = {
+  staff: [],
+  manager: ["view_email_activity"],
+  admin: [
+    "manage_staff",
+    "manage_email_configuration",
+    "manage_email_access",
+    "view_email_activity",
+  ],
+};
+
+export function capabilitiesForRole(role: string): StaffCapability[] {
+  return [...(ROLE_CAPABILITIES[role] ?? [])];
+}
+
+export function hasStaffCapability(
+  staff: StaffUser | undefined,
+  capability: StaffCapability,
+): boolean {
+  return Boolean(staff && capabilitiesForRole(staff.role).includes(capability));
+}
+
+export function requireCapability(capability: StaffCapability) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!hasStaffCapability(req.staff, capability)) {
+      res.status(403).json({ error: "Permission denied", code: "missing_capability" });
+      return;
+    }
+    next();
+  };
+}
+
 declare global {
   namespace Express {
     interface Request {
@@ -100,7 +138,7 @@ export function requireAdmin(
   res: Response,
   next: NextFunction,
 ): void {
-  if (req.staff?.role !== "admin") {
+  if (!hasStaffCapability(req.staff, "manage_staff")) {
     res.status(403).json({ error: "Admin access required", code: "not_admin" });
     return;
   }

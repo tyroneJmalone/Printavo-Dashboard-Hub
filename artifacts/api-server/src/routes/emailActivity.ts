@@ -12,7 +12,8 @@ import {
   AddEmailExclusionBody,
   UpdateEmailActivitySettingsBody,
 } from "@workspace/api-zod";
-import { requireAdmin } from "../middlewares/requireStaff";
+import { requireCapability } from "../middlewares/requireStaff";
+import { authorizedMailboxIds, canReadMailbox } from "../lib/emailAccess/authorization";
 import { logger } from "../lib/logger";
 import { gmailConfigured, serviceAccountEmail } from "../lib/emailActivity/gmail";
 import {
@@ -41,12 +42,10 @@ import {
 import { pool } from "@workspace/db";
 
 /**
- * Email activity tracker — Gmail metadata sync config + team stats.
- * Whole module is admin-only (staff performance data).
+ * Email activity tracker — Gmail metadata sync config + mailbox-scoped stats.
  */
 
 const router: IRouter = Router();
-router.use("/email-activity", requireAdmin);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DOMAIN_RE = /^[a-z0-9.-]+\.[a-z]{2,}$/;
@@ -102,19 +101,51 @@ function parseRange(req: Request, res: Response): { start: Date; end: Date; mail
   return { start, end, mailboxId };
 }
 
+async function authorizedMailboxId(
+  req: Request,
+  res: Response,
+  mailboxId: string | undefined,
+): Promise<string | null> {
+  if (!mailboxId) {
+    res.status(400).json({ error: "mailboxId is required" });
+    return null;
+  }
+  // Avoid passing malformed IDs to the UUID casts in the query services.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(mailboxId)) {
+    res.status(404).json({ error: "Mailbox not found" });
+    return null;
+  }
+  if (!req.staff || !(await canReadMailbox(req.staff, mailboxId))) {
+    res.status(404).json({ error: "Mailbox not found" });
+    return null;
+  }
+  return mailboxId;
+}
+
 // ── Status / setup ───────────────────────────────────────────────────
 
-router.get("/email-activity/status", async (_req, res) => {
+router.get("/email-activity/status", requireCapability("view_email_activity"), async (req, res) => {
   const [mailboxes, counts, settings] = await Promise.all([
-    db.select().from(emailMailboxesTable).orderBy(asc(emailMailboxesTable.createdAt)),
+    db
+      .select()
+      .from(emailMailboxesTable)
+      .orderBy(asc(emailMailboxesTable.createdAt)),
     messageCounts(),
     getEmailSettings(),
   ]);
+  const readableMailboxIds = new Set(await authorizedMailboxIds(req.staff!));
+  const visibleMailboxes =
+    req.staff?.role === "admin"
+      ? mailboxes
+      : mailboxes.filter((mailbox) => readableMailboxIds.has(mailbox.id));
   res.json({
     credentialsConfigured: gmailConfigured(),
     serviceAccountEmail: serviceAccountEmail(),
     syncActive: isEmailSyncActive(),
-    mailboxes: mailboxes.map((m) => mailboxJson(m, counts)),
+    mailboxes: visibleMailboxes.map((m) => ({
+      ...mailboxJson(m, counts),
+      readable: readableMailboxIds.has(m.id),
+    })),
     settings: {
       unansweredThresholdHours: settings.unansweredThresholdHours,
       backfillDays: settings.backfillDays,
@@ -122,7 +153,7 @@ router.get("/email-activity/status", async (_req, res) => {
   });
 });
 
-router.post("/email-activity/mailboxes", async (req, res) => {
+router.post("/email-activity/mailboxes", requireCapability("manage_email_configuration"), async (req, res) => {
   const parsed = AddEmailMailboxBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
   const email = parsed.data.email.trim().toLowerCase();
@@ -136,7 +167,7 @@ router.post("/email-activity/mailboxes", async (req, res) => {
   return res.status(201).json(mailboxJson(row!, new Map()));
 });
 
-router.patch("/email-activity/mailboxes/:id", async (req, res) => {
+router.patch("/email-activity/mailboxes/:id", requireCapability("manage_email_configuration"), async (req, res) => {
   const parsed = UpdateEmailMailboxBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
   const updates: Partial<{ displayName: string | null; active: boolean }> = {};
@@ -145,33 +176,33 @@ router.patch("/email-activity/mailboxes/:id", async (req, res) => {
   const [row] = await db
     .update(emailMailboxesTable)
     .set(updates)
-    .where(eq(emailMailboxesTable.id, req.params.id))
+    .where(eq(emailMailboxesTable.id, String(req.params.id)))
     .returning();
   if (!row) return res.status(404).json({ error: "Mailbox not found" });
   const counts = await messageCounts();
   return res.json(mailboxJson(row, counts));
 });
 
-router.delete("/email-activity/mailboxes/:id", async (req, res) => {
+router.delete("/email-activity/mailboxes/:id", requireCapability("manage_email_configuration"), async (req, res) => {
   const [row] = await db
     .delete(emailMailboxesTable)
-    .where(eq(emailMailboxesTable.id, req.params.id))
+    .where(eq(emailMailboxesTable.id, String(req.params.id)))
     .returning({ id: emailMailboxesTable.id });
   if (!row) return res.status(404).json({ error: "Mailbox not found" });
   return res.status(204).end();
 });
 
-router.post("/email-activity/mailboxes/:id/verify", async (req, res) => {
+router.post("/email-activity/mailboxes/:id/verify", requireCapability("manage_email_configuration"), async (req, res) => {
   const [row] = await db
     .select()
     .from(emailMailboxesTable)
-    .where(eq(emailMailboxesTable.id, req.params.id))
+    .where(eq(emailMailboxesTable.id, String(req.params.id)))
     .limit(1);
   if (!row) return res.status(404).json({ error: "Mailbox not found" });
   return res.json(await verifyMailbox(row.email));
 });
 
-router.post("/email-activity/sync", async (_req, res) => {
+router.post("/email-activity/sync", requireCapability("manage_email_configuration"), async (_req, res) => {
   if (isEmailSyncActive()) return res.json({ ran: false, message: "Email sync already running" });
   // Kick off in the background; the status endpoint reports progress.
   const promise = runEmailSync(logger);
@@ -183,7 +214,7 @@ router.post("/email-activity/sync", async (_req, res) => {
 
 // ── Exclusions ───────────────────────────────────────────────────────
 
-router.get("/email-activity/exclusions", async (_req, res) => {
+router.get("/email-activity/exclusions", requireCapability("manage_email_configuration"), async (_req, res) => {
   const rules = await db
     .select()
     .from(emailExclusionRulesTable)
@@ -200,7 +231,7 @@ router.get("/email-activity/exclusions", async (_req, res) => {
   );
 });
 
-router.post("/email-activity/exclusions", async (req, res) => {
+router.post("/email-activity/exclusions", requireCapability("manage_email_configuration"), async (req, res) => {
   const parsed = AddEmailExclusionBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
   const kind = parsed.data.kind;
@@ -230,10 +261,10 @@ router.post("/email-activity/exclusions", async (req, res) => {
   }
 });
 
-router.delete("/email-activity/exclusions/:id", async (req, res) => {
+router.delete("/email-activity/exclusions/:id", requireCapability("manage_email_configuration"), async (req, res) => {
   const [row] = await db
     .delete(emailExclusionRulesTable)
-    .where(eq(emailExclusionRulesTable.id, req.params.id))
+    .where(eq(emailExclusionRulesTable.id, String(req.params.id)))
     .returning({ id: emailExclusionRulesTable.id });
   if (!row) return res.status(404).json({ error: "Rule not found" });
   const reclassified = await reclassifyAll();
@@ -243,7 +274,7 @@ router.delete("/email-activity/exclusions/:id", async (req, res) => {
 
 // ── Settings ─────────────────────────────────────────────────────────
 
-router.put("/email-activity/settings", async (req, res) => {
+router.put("/email-activity/settings", requireCapability("manage_email_configuration"), async (req, res) => {
   const parsed = UpdateEmailActivitySettingsBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid body" });
   await getEmailSettings(); // ensure the row exists
@@ -261,9 +292,12 @@ router.put("/email-activity/settings", async (req, res) => {
 
 // ── Stats ────────────────────────────────────────────────────────────
 
-router.get("/email-activity/stats", async (req, res) => {
+router.get("/email-activity/stats", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
+  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
+  if (!mailboxId) return;
+  range.mailboxId = mailboxId;
   const granularity = String(req.query.granularity ?? "daily") as "daily" | "weekly" | "monthly";
   if (!["daily", "weekly", "monthly"].includes(granularity))
     return res.status(400).json({ error: "Invalid granularity" });
@@ -306,9 +340,12 @@ router.get("/email-activity/stats", async (req, res) => {
   });
 });
 
-router.get("/email-activity/response-times", async (req, res) => {
+router.get("/email-activity/response-times", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
+  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
+  if (!mailboxId) return;
+  range.mailboxId = mailboxId;
   const [rows, lookup] = await Promise.all([responseTimeStats(range), mailboxLookup()]);
   // The pooled row (mailbox_id null) is a true team percentile over the same
   // filtered thread population — it honors any mailboxId filter.
@@ -341,9 +378,14 @@ router.get("/email-activity/response-times", async (req, res) => {
   });
 });
 
-router.get("/email-activity/unanswered", async (req, res) => {
+router.get("/email-activity/unanswered", requireCapability("view_email_activity"), async (req, res) => {
   const settings = await getEmailSettings();
-  const mailboxId = typeof req.query.mailboxId === "string" && req.query.mailboxId ? req.query.mailboxId : undefined;
+  const mailboxId = await authorizedMailboxId(
+    req,
+    res,
+    typeof req.query.mailboxId === "string" && req.query.mailboxId ? req.query.mailboxId : undefined,
+  );
+  if (!mailboxId) return;
   const [rows, lookup] = await Promise.all([
     unansweredThreads(settings.unansweredThresholdHours, mailboxId),
     mailboxLookup(),
@@ -363,16 +405,22 @@ router.get("/email-activity/unanswered", async (req, res) => {
   });
 });
 
-router.get("/email-activity/heatmap", async (req, res) => {
+router.get("/email-activity/heatmap", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
+  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
+  if (!mailboxId) return;
+  range.mailboxId = mailboxId;
   const cells = await heatmapStats(range);
   res.json({ cells: cells.map((c) => ({ dow: c.dow, hour: c.hour, sent: c.sent, received: c.received })) });
 });
 
-router.get("/email-activity/filtered", async (req, res) => {
+router.get("/email-activity/filtered", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
+  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
+  if (!mailboxId) return;
+  range.mailboxId = mailboxId;
   const [{ breakdown, sample }, lookup] = await Promise.all([filteredStats(range), mailboxLookup()]);
   res.json({
     total: breakdown.reduce((s, b) => s + b.count, 0),
@@ -391,14 +439,17 @@ router.get("/email-activity/filtered", async (req, res) => {
 
 // ── Customer / invoice correlation ───────────────────────────────────
 
-router.post("/email-activity/match", async (_req, res) => {
+router.post("/email-activity/match", requireCapability("manage_email_configuration"), async (_req, res) => {
   const result = await runEmailMatching(logger);
   res.json(result);
 });
 
-router.get("/email-activity/customers", async (req, res) => {
+router.get("/email-activity/customers", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
+  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
+  if (!mailboxId) return;
+  range.mailboxId = mailboxId;
   const rows = await emailCustomersList(range);
   res.json({
     customers: rows.map((r) => ({
@@ -413,12 +464,18 @@ router.get("/email-activity/customers", async (req, res) => {
   });
 });
 
-router.get("/email-activity/customers/:customerId", async (req, res) => {
+router.get("/email-activity/customers/:customerId", requireCapability("view_email_activity"), async (req, res) => {
   const customerId = String(req.params.customerId);
   if (!/^\d+$/.test(customerId)) return res.status(404).json({ error: "Customer not found" });
+  const mailboxId = await authorizedMailboxId(
+    req,
+    res,
+    typeof req.query.mailboxId === "string" && req.query.mailboxId ? req.query.mailboxId : undefined,
+  );
+  if (!mailboxId) return;
   const [threads, stats, lookup] = await Promise.all([
-    customerThreads(customerId),
-    customerEmailStats(customerId),
+    customerThreads(customerId, mailboxId),
+    customerEmailStats(customerId, mailboxId),
     mailboxLookup(),
   ]);
   const links = await threadOrderLinks(
@@ -467,7 +524,7 @@ router.get("/email-activity/customers/:customerId", async (req, res) => {
   });
 });
 
-router.post("/email-activity/thread-links", async (req, res) => {
+router.post("/email-activity/thread-links", requireCapability("manage_email_configuration"), async (req, res) => {
   const mailboxId = typeof req.body?.mailboxId === "string" ? req.body.mailboxId : "";
   const gmailThreadId = typeof req.body?.gmailThreadId === "string" ? req.body.gmailThreadId : "";
   const visualId = Number(req.body?.visualId);
@@ -505,7 +562,7 @@ router.post("/email-activity/thread-links", async (req, res) => {
   });
 });
 
-router.delete("/email-activity/thread-links/:id", async (req, res) => {
+router.delete("/email-activity/thread-links/:id", requireCapability("manage_email_configuration"), async (req, res) => {
   // Auto links are suppressed (so the matching pass can't re-add them);
   // manual links are deleted outright.
   const r = await pool.query(
@@ -521,9 +578,12 @@ router.delete("/email-activity/thread-links/:id", async (req, res) => {
   return res.status(204).end();
 });
 
-router.get("/email-activity/deals-report", async (req, res) => {
+router.get("/email-activity/deals-report", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
+  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
+  if (!mailboxId) return;
+  range.mailboxId = mailboxId;
   const rows = await dealsReport(range);
   const totalEmails = rows.reduce((s, r) => s + r.emails, 0);
   const totalWon = rows.reduce((s, r) => s + r.invoices_won, 0);

@@ -23,7 +23,8 @@ export const HealthCheckResponse = zod.object({
  */
 export const GetAuthMeResponse = zod.object({
   "email": zod.string(),
-  "role": zod.enum(['admin', 'staff'])
+  "role": zod.enum(['admin', 'manager', 'staff']),
+  "capabilities": zod.array(zod.string())
 })
 
 
@@ -34,7 +35,7 @@ export const ListStaffResponse = zod.object({
   "staff": zod.array(zod.object({
   "id": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'staff']),
+  "role": zod.enum(['admin', 'manager', 'staff']),
   "addedByEmail": zod.string().nullable(),
   "linked": zod.boolean().describe('Whether this person has signed in at least once in this environment'),
   "createdAt": zod.string()
@@ -52,13 +53,13 @@ export const addStaffBodyEmailMax = 254;
 
 export const AddStaffBody = zod.object({
   "email": zod.string().min(addStaffBodyEmailMin).max(addStaffBodyEmailMax),
-  "role": zod.enum(['admin', 'staff'])
+  "role": zod.enum(['admin', 'manager', 'staff'])
 })
 
 export const AddStaffResponse = zod.object({
   "id": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'staff']),
+  "role": zod.enum(['admin', 'manager', 'staff']),
   "addedByEmail": zod.string().nullable(),
   "linked": zod.boolean().describe('Whether this person has signed in at least once in this environment'),
   "createdAt": zod.string()
@@ -73,13 +74,13 @@ export const UpdateStaffRoleParams = zod.object({
 })
 
 export const UpdateStaffRoleBody = zod.object({
-  "role": zod.enum(['admin', 'staff'])
+  "role": zod.enum(['admin', 'manager', 'staff'])
 })
 
 export const UpdateStaffRoleResponse = zod.object({
   "id": zod.string(),
   "email": zod.string(),
-  "role": zod.enum(['admin', 'staff']),
+  "role": zod.enum(['admin', 'manager', 'staff']),
   "addedByEmail": zod.string().nullable(),
   "linked": zod.boolean().describe('Whether this person has signed in at least once in this environment'),
   "createdAt": zod.string()
@@ -7668,6 +7669,289 @@ export const GetRewardsPipelineResponse = zod.object({
 
 
 /**
+ * @summary List email access groups (admin only)
+ */
+export const ListEmailAccessGroupsResponse = zod.object({
+  "groups": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "members": zod.array(zod.string()),
+  "mailboxes": zod.array(zod.string()),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Create an email access group (admin only)
+ */
+export const createEmailAccessGroupBodyNameMax = 120;
+
+export const createEmailAccessGroupBodyDescriptionMax = 2000;
+
+
+
+export const CreateEmailAccessGroupBody = zod.object({
+  "name": zod.string().min(1).max(createEmailAccessGroupBodyNameMax),
+  "description": zod.string().max(createEmailAccessGroupBodyDescriptionMax).optional(),
+  "members": zod.array(zod.string()).optional(),
+  "mailboxes": zod.array(zod.string()).optional()
+})
+
+export const CreateEmailAccessGroupResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "members": zod.array(zod.string()),
+  "mailboxes": zod.array(zod.string()),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update an email access group (admin only)
+ */
+export const UpdateEmailAccessGroupParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updateEmailAccessGroupBodyNameMax = 120;
+
+export const updateEmailAccessGroupBodyDescriptionMax = 2000;
+
+
+
+export const UpdateEmailAccessGroupBody = zod.object({
+  "name": zod.string().min(1).max(updateEmailAccessGroupBodyNameMax),
+  "description": zod.string().max(updateEmailAccessGroupBodyDescriptionMax).optional(),
+  "members": zod.array(zod.string()).optional(),
+  "mailboxes": zod.array(zod.string()).optional()
+})
+
+export const UpdateEmailAccessGroupResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "members": zod.array(zod.string()),
+  "mailboxes": zod.array(zod.string()),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Delete an email access group (admin only)
+ */
+export const DeleteEmailAccessGroupParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteEmailAccessGroupResponse = zod.void()
+
+
+/**
+ * @summary List tracked mailboxes and content policies (admin only)
+ */
+export const ListEmailMailboxPoliciesResponse = zod.object({
+  "mailboxes": zod.array(zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "displayName": zod.string().nullish(),
+  "policy": zod.object({
+  "mailboxId": zod.string(),
+  "ownerStaffId": zod.string().nullable(),
+  "visibility": zod.enum(['private', 'group', 'workspace']),
+  "protected": zod.boolean()
+}).nullable()
+})),
+  "staff": zod.array(zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'manager', 'staff'])
+}))
+})
+
+
+/**
+ * @summary Set mailbox owner and privacy (admin only)
+ */
+export const UpdateEmailMailboxPolicyParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateEmailMailboxPolicyBody = zod.object({
+  "ownerStaffId": zod.string().nullable(),
+  "visibility": zod.enum(['private', 'group', 'workspace']),
+  "protected": zod.boolean()
+})
+
+export const UpdateEmailMailboxPolicyResponse = zod.object({
+  "mailboxId": zod.string(),
+  "ownerStaffId": zod.string().nullable(),
+  "visibility": zod.enum(['private', 'group', 'workspace']),
+  "protected": zod.boolean()
+})
+
+
+/**
+ * @summary Get global correspondence policy (admin only)
+ */
+export const GetEmailAccessPolicyResponse = zod.object({
+  "defaultAccess": zod.enum(['deny']),
+  "retentionDays": zod.number(),
+  "aiProcessingEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Update global correspondence policy (admin only)
+ */
+export const updateEmailAccessPolicyBodyRetentionDaysMax = 36500;
+
+
+
+export const UpdateEmailAccessPolicyBody = zod.object({
+  "defaultAccess": zod.enum(['deny']).optional(),
+  "retentionDays": zod.number().min(1).max(updateEmailAccessPolicyBodyRetentionDaysMax).optional(),
+  "aiProcessingEnabled": zod.boolean().optional()
+})
+
+export const UpdateEmailAccessPolicyResponse = zod.object({
+  "defaultAccess": zod.enum(['deny']),
+  "retentionDays": zod.number(),
+  "aiProcessingEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary List only correspondence visible to the current staff member
+ */
+export const ListCorrespondenceThreadsQueryParams = zod.object({
+  "query": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().optional(),
+  "offset": zod.coerce.number().optional()
+})
+
+export const ListCorrespondenceThreadsResponse = zod.object({
+  "threads": zod.array(zod.object({
+  "id": zod.string(),
+  "mailboxId": zod.string().optional(),
+  "gmailThreadId": zod.string().optional(),
+  "subject": zod.string(),
+  "counterpart": zod.string(),
+  "counterpartEmail": zod.string().optional(),
+  "lastMessageAt": zod.string(),
+  "messageCount": zod.number(),
+  "snippet": zod.string().optional(),
+  "status": zod.enum(['open', 'archived', 'snoozed']),
+  "participants": zod.array(zod.string())
+})),
+  "total": zod.number(),
+  "hasMore": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Get an authorized correspondence thread
+ */
+export const GetCorrespondenceThreadParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetCorrespondenceThreadResponse = zod.object({
+  "thread": zod.object({
+  "id": zod.string(),
+  "mailboxId": zod.string().optional(),
+  "gmailThreadId": zod.string().optional(),
+  "subject": zod.string(),
+  "counterpart": zod.string(),
+  "counterpartEmail": zod.string().optional(),
+  "lastMessageAt": zod.string(),
+  "messageCount": zod.number(),
+  "snippet": zod.string().optional(),
+  "status": zod.enum(['open', 'archived', 'snoozed']),
+  "participants": zod.array(zod.string())
+}),
+  "messages": zod.array(zod.object({
+  "id": zod.string(),
+  "threadId": zod.string(),
+  "from": zod.string(),
+  "to": zod.array(zod.string()),
+  "cc": zod.array(zod.string()),
+  "bcc": zod.array(zod.string()),
+  "subject": zod.string(),
+  "date": zod.string(),
+  "snippet": zod.string(),
+  "bodyText": zod.string()
+})),
+  "comments": zod.array(zod.record(zod.string(), zod.unknown())),
+  "orderLinks": zod.array(zod.record(zod.string(), zod.unknown()))
+})
+
+
+/**
+ * @summary Search only authorized correspondence
+ */
+export const SearchCorrespondenceBody = zod.object({
+  "query": zod.string(),
+  "limit": zod.number().optional(),
+  "offset": zod.number().optional()
+})
+
+export const SearchCorrespondenceResponse = zod.object({
+  "threads": zod.array(zod.object({
+  "id": zod.string(),
+  "mailboxId": zod.string().optional(),
+  "gmailThreadId": zod.string().optional(),
+  "subject": zod.string(),
+  "counterpart": zod.string(),
+  "counterpartEmail": zod.string().optional(),
+  "lastMessageAt": zod.string(),
+  "messageCount": zod.number(),
+  "snippet": zod.string().optional(),
+  "status": zod.enum(['open', 'archived', 'snoozed']),
+  "participants": zod.array(zod.string())
+})),
+  "total": zod.number(),
+  "hasMore": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Answer from pre-authorized correspondence with validated citations
+ */
+export const AiSearchCorrespondenceBody = zod.object({
+  "query": zod.string(),
+  "customerId": zod.string().optional()
+})
+
+export const AiSearchCorrespondenceResponse = zod.object({
+  "summary": zod.string(),
+  "results": zod.array(zod.object({
+  "id": zod.string(),
+  "threadId": zod.string(),
+  "subject": zod.string(),
+  "content": zod.string()
+}))
+})
+
+
+/**
+ * @summary Import older history for mailboxes the caller may read
+ */
+export const ImportCorrespondenceHistoryBody = zod.object({
+  "emails": zod.array(zod.string()),
+  "fromDate": zod.string().optional(),
+  "toDate": zod.string().optional()
+})
+
+export const ImportCorrespondenceHistoryResponse = zod.object({
+  "started": zod.boolean(),
+  "job_id": zod.string()
+})
+
+
+/**
  * @summary Email tracker setup + sync status (admin only)
  */
 export const GetEmailActivityStatusResponse = zod.object({
@@ -7675,6 +7959,7 @@ export const GetEmailActivityStatusResponse = zod.object({
   "serviceAccountEmail": zod.string().nullable().describe('The service account\'s client_email — needed for the Admin-console DWD setup'),
   "syncActive": zod.boolean(),
   "mailboxes": zod.array(zod.object({
+  "readable": zod.boolean().optional().describe('Whether the current staff member may read this mailbox\'s content.'),
   "id": zod.string(),
   "email": zod.string(),
   "displayName": zod.string().nullable(),
@@ -7702,6 +7987,7 @@ export const AddEmailMailboxBody = zod.object({
 })
 
 export const AddEmailMailboxResponse = zod.object({
+  "readable": zod.boolean().optional().describe('Whether the current staff member may read this mailbox\'s content.'),
   "id": zod.string(),
   "email": zod.string(),
   "displayName": zod.string().nullable(),
@@ -7728,6 +8014,7 @@ export const UpdateEmailMailboxBody = zod.object({
 })
 
 export const UpdateEmailMailboxResponse = zod.object({
+  "readable": zod.boolean().optional().describe('Whether the current staff member may read this mailbox\'s content.'),
   "id": zod.string(),
   "email": zod.string(),
   "displayName": zod.string().nullable(),

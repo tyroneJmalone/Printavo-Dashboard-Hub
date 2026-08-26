@@ -40,3 +40,4 @@
 - [Printavo quote vs invoice identity](printavo-quote-vs-invoice-ids.md) — conversion issues a NEW printavo id (visual number survives); Quote.visualId is a String; quoteUpdate input type is QuoteInput.
 - [html-to-image off-screen capture](html-to-image-offscreen-capture.md) — off-screen clone captures need a style offset reset in toPng options AND parent (not body) appending, or PNGs come out blank/textless.
 - [Fireflies Hub integration](fireflies-hub-integration.md) — deferred plan is documented; Business Team Admin needs a read-only visibility audit before choosing central vs per-user access.
+- [Missive connector routing](missive-connector-routing.md) — connector currently sends API paths to the public website host; fail closed and retry slowly until it routes to public.missiveapp.com.

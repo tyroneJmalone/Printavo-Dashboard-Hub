@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useGetEmailActivityStatus,
@@ -31,7 +31,7 @@ import {
 import { Mail, Clock, Flame, Filter, AlertTriangle, Settings2, Users, TrendingUp } from "lucide-react";
 
 /**
- * Email Activity dashboard (admin only). Sent/received/thread stats per
+ * Email Activity dashboard for staff with the analytics capability. Sent/received/thread stats per
  * person, response times, unanswered threads, hot-zone heatmap, and the
  * filtered bucket for spot-checking the bulk-mail exclusion system.
  */
@@ -108,8 +108,8 @@ function Heatmap({ cells, mode }: { cells: { dow: number; hour: number; sent: nu
             </div>
           ))}
           {grid.map((row, dow) => (
-            <>
-              <div key={`d${dow}`} className="text-[10px] text-slate-400 pr-1 flex items-center">
+            <div className="contents" key={`row-${dow}`}>
+              <div className="text-[10px] text-slate-400 pr-1 flex items-center">
                 {DOW[dow]}
               </div>
               {row.map((v, h) => {
@@ -125,7 +125,7 @@ function Heatmap({ cells, mode }: { cells: { dow: number; hour: number; sent: nu
                   />
                 );
               })}
-            </>
+            </div>
           ))}
         </div>
       </div>
@@ -134,7 +134,7 @@ function Heatmap({ cells, mode }: { cells: { dow: number; hour: number; sent: nu
 }
 
 export default function EmailActivity() {
-  const { role } = useStaff();
+  const { role, capabilities } = useStaff();
   const [preset, setPreset] = useState<RangePreset>("30d");
   const [granularity, setGranularity] = useState<"daily" | "weekly" | "monthly">("daily");
   const [mailboxId, setMailboxId] = useState<string>("");
@@ -148,31 +148,40 @@ export default function EmailActivity() {
   }, [preset]);
 
   const isAdmin = role === "admin";
-  const common = { start, end, ...(mailboxId ? { mailboxId } : {}) };
+  const canViewAnalytics = capabilities.includes("view_email_activity");
+  const common = { start, end, mailboxId };
   const statsParams = { granularity, ...common };
-  const unansweredParams = mailboxId ? { mailboxId } : {};
+  const unansweredParams = { mailboxId };
   const { data: status } = useGetEmailActivityStatus({
-    query: { enabled: isAdmin, queryKey: getGetEmailActivityStatusQueryKey() },
+    query: { enabled: canViewAnalytics, queryKey: getGetEmailActivityStatusQueryKey() },
   });
   const { data: stats, isLoading } = useGetEmailActivityStats(statsParams, {
-    query: { enabled: isAdmin, queryKey: getGetEmailActivityStatsQueryKey(statsParams) },
+    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailActivityStatsQueryKey(statsParams) },
   });
   const { data: responseTimes } = useGetEmailResponseTimes(common, {
-    query: { enabled: isAdmin, queryKey: getGetEmailResponseTimesQueryKey(common) },
+    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailResponseTimesQueryKey(common) },
   });
   const { data: unanswered } = useGetEmailUnansweredThreads(unansweredParams, {
-    query: { enabled: isAdmin, queryKey: getGetEmailUnansweredThreadsQueryKey(unansweredParams) },
+    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailUnansweredThreadsQueryKey(unansweredParams) },
   });
   const { data: heatmap } = useGetEmailHeatmap(common, {
-    query: { enabled: isAdmin, queryKey: getGetEmailHeatmapQueryKey(common) },
+    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailHeatmapQueryKey(common) },
   });
   const { data: filtered } = useGetEmailFilteredBucket(common, {
-    query: { enabled: isAdmin, queryKey: getGetEmailFilteredBucketQueryKey(common) },
+    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailFilteredBucketQueryKey(common) },
   });
-  const custParams = { start, end };
+  const custParams = { start, end, mailboxId };
   const { data: emailCustomers } = useListEmailCustomers(custParams, {
-    query: { enabled: isAdmin, queryKey: getListEmailCustomersQueryKey(custParams) },
+    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getListEmailCustomersQueryKey(custParams) },
   });
+
+  const readableMailboxes = useMemo(
+    () => status?.mailboxes.filter((mailbox) => mailbox.readable !== false) ?? [],
+    [status],
+  );
+  useEffect(() => {
+    if (!mailboxId && readableMailboxes[0]) setMailboxId(readableMailboxes[0].id);
+  }, [mailboxId, readableMailboxes]);
 
   const series = useMemo(() => {
     if (!stats) return [];
@@ -186,12 +195,12 @@ export default function EmailActivity() {
     return [...byBucket.values()].sort((a, b) => a.bucket.localeCompare(b.bucket));
   }, [stats]);
 
-  if (!isAdmin) {
+  if (!canViewAnalytics) {
     return (
       <AppShell>
         <div className="p-6 max-w-lg">
           <Card>
-            <div className="text-sm text-slate-300">Email Activity is admin-only — it contains staff performance data.</div>
+            <div className="text-sm text-slate-300">You do not have permission to view Email Activity analytics.</div>
           </Card>
         </div>
       </AppShell>
@@ -214,14 +223,16 @@ export default function EmailActivity() {
               <TrendingUp size={13} /> Email vs. Deals
             </div>
           </Link>
-          <Link href="/email-activity/settings">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-100 border border-slate-700 rounded-md px-2.5 py-1.5 cursor-pointer">
-              <Settings2 size={13} /> Mailboxes & exclusions
-            </div>
-          </Link>
+          {isAdmin && (
+            <Link href="/email-activity/settings">
+              <div className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-100 border border-slate-700 rounded-md px-2.5 py-1.5 cursor-pointer">
+                <Settings2 size={13} /> Mailboxes & exclusions
+              </div>
+            </Link>
+          )}
         </div>
 
-        {needsSetup && (
+        {isAdmin && needsSetup && (
           <Card className="border-amber-700/50">
             <div className="flex items-start gap-3">
               <AlertTriangle size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
@@ -273,8 +284,7 @@ export default function EmailActivity() {
             onChange={(e) => setMailboxId(e.target.value)}
             className="text-xs bg-[#1e293b] border border-slate-700 rounded-md px-2 py-1.5 text-slate-200"
           >
-            <option value="">Whole team</option>
-            {status?.mailboxes.map((m) => (
+             {readableMailboxes.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.displayName || m.email}
               </option>

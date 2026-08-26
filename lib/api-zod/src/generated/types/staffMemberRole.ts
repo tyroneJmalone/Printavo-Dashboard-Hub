@@ -11,5 +11,6 @@ export type StaffMemberRole = typeof StaffMemberRole[keyof typeof StaffMemberRol
 
 export const StaffMemberRole = {
   admin: 'admin',
+  manager: 'manager',
   staff: 'staff',
 } as const;

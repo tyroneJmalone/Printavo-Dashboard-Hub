@@ -140,7 +140,7 @@ router.patch("/auth/staff/:id", requireAdmin, async (req, res) => {
     }
     if (
       target.role === "admin" &&
-      parsed.data.role === "staff" &&
+      parsed.data.role !== "admin" &&
       !(await otherAdminExists(target.id))
     ) {
       res.status(409).json({

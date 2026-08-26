@@ -118,7 +118,7 @@ export interface CustomerThreadRow {
   last_at: string | Date;
 }
 
-export async function customerThreads(customerId: string, limit = 25): Promise<CustomerThreadRow[]> {
+export async function customerThreads(customerId: string, mailboxId: string, limit = 25): Promise<CustomerThreadRow[]> {
   return (
     (await db.execute(sql`
       SELECT m.mailbox_id, m.gmail_thread_id,
@@ -134,6 +134,7 @@ export async function customerThreads(customerId: string, limit = 25): Promise<C
         ON m.mailbox_id = tc.mailbox_id AND m.gmail_thread_id = tc.gmail_thread_id
       WHERE tc.printavo_customer_id = ${customerId}
         AND m.excluded_reason IS NULL
+        AND m.mailbox_id = ${mailboxId}::uuid
       GROUP BY m.mailbox_id, m.gmail_thread_id
       ORDER BY max(m.internal_date) DESC
       LIMIT ${limit}
@@ -152,7 +153,7 @@ export interface CustomerEmailStatsRow {
   p90_secs: number | null;
 }
 
-export async function customerEmailStats(customerId: string): Promise<CustomerEmailStatsRow> {
+export async function customerEmailStats(customerId: string, mailboxId: string): Promise<CustomerEmailStatsRow> {
   const totals = (
     (await db.execute(sql`
       SELECT count(DISTINCT (m.mailbox_id, m.gmail_thread_id))::int AS thread_count,
@@ -165,6 +166,7 @@ export async function customerEmailStats(customerId: string): Promise<CustomerEm
         ON m.mailbox_id = tc.mailbox_id AND m.gmail_thread_id = tc.gmail_thread_id
       WHERE tc.printavo_customer_id = ${customerId}
         AND m.excluded_reason IS NULL
+        AND m.mailbox_id = ${mailboxId}::uuid
     `)) as unknown as Rows<Omit<CustomerEmailStatsRow, "replied_threads" | "median_secs" | "p90_secs">>
   ).rows[0]!;
   const timing = (
@@ -175,7 +177,9 @@ export async function customerEmailStats(customerId: string): Promise<CustomerEm
         FROM email_thread_customers tc
         JOIN email_messages m
           ON m.mailbox_id = tc.mailbox_id AND m.gmail_thread_id = tc.gmail_thread_id
-        WHERE tc.printavo_customer_id = ${customerId} AND m.excluded_reason IS NULL
+        WHERE tc.printavo_customer_id = ${customerId}
+          AND m.excluded_reason IS NULL
+          AND m.mailbox_id = ${mailboxId}::uuid
         GROUP BY 1, 2
       ),
       timed AS (
@@ -245,7 +249,10 @@ export interface EmailCustomerRow {
 }
 
 /** Per-customer email volume in a range — the dashboard drill-down list. */
-export async function emailCustomersList(range: { start: Date; end: Date }, limit = 100): Promise<EmailCustomerRow[]> {
+export async function emailCustomersList(
+  range: { start: Date; end: Date; mailboxId?: string },
+  limit = 100,
+): Promise<EmailCustomerRow[]> {
   return (
     (await db.execute(sql`
       SELECT tc.printavo_customer_id AS customer_id,
@@ -261,6 +268,7 @@ export async function emailCustomersList(range: { start: Date; end: Date }, limi
       LEFT JOIN pv_customers c ON c.printavo_id = tc.printavo_customer_id
       WHERE m.excluded_reason IS NULL
         AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
+        AND m.mailbox_id = ${range.mailboxId}::uuid
       GROUP BY 1, 2
       ORDER BY count(*) DESC
       LIMIT ${limit}
@@ -284,7 +292,7 @@ export interface DealsReportRow {
  * revenue is never part of this. last_invoice_at is all-time (for the
  * time-sink test), while invoices_won/revenue honor the range.
  */
-export async function dealsReport(range: { start: Date; end: Date }): Promise<DealsReportRow[]> {
+export async function dealsReport(range: { start: Date; end: Date; mailboxId?: string }): Promise<DealsReportRow[]> {
   return (
     (await db.execute(sql`
       WITH mail AS (
@@ -296,6 +304,7 @@ export async function dealsReport(range: { start: Date; end: Date }): Promise<De
           ON m.mailbox_id = tc.mailbox_id AND m.gmail_thread_id = tc.gmail_thread_id
         WHERE m.excluded_reason IS NULL
           AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
+          AND m.mailbox_id = ${range.mailboxId}::uuid
         GROUP BY 1
       ),
       won AS (

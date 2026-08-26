@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useGetEmailDealsReport,
   getGetEmailDealsReportQueryKey,
+  useGetEmailActivityStatus,
+  getGetEmailActivityStatusQueryKey,
 } from "@workspace/api-client-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
@@ -10,7 +12,7 @@ import { ArrowLeft, TrendingUp, AlertTriangle } from "lucide-react";
 import { formatMoney, formatNumber } from "@/lib/format";
 
 /**
- * Email vs. Deals report (admin only). Correlates correspondence volume
+ * Email vs. Deals report for staff with the analytics capability. Correlates correspondence volume
  * with Printavo invoices won per customer over a period, plus the
  * "high email volume, no recent invoice" time-sink list. Chipply revenue
  * is never part of this — Printavo invoices only.
@@ -35,28 +37,43 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 }
 
 export default function EmailDealsReport() {
-  const { role } = useStaff();
-  const isAdmin = role === "admin";
+  const { capabilities } = useStaff();
+  const canViewAnalytics = capabilities.includes("view_email_activity");
   const [preset, setPreset] = useState<RangePreset>("90d");
+  const [mailboxId, setMailboxId] = useState("");
+  const { data: status } = useGetEmailActivityStatus({
+    query: {
+      enabled: canViewAnalytics,
+      queryKey: getGetEmailActivityStatusQueryKey(),
+    },
+  });
+  const readableMailboxes = useMemo(
+    () => status?.mailboxes.filter((mailbox) => mailbox.readable !== false) ?? [],
+    [status],
+  );
+  useEffect(() => {
+    if (!mailboxId && readableMailboxes[0]) setMailboxId(readableMailboxes[0].id);
+  }, [mailboxId, readableMailboxes]);
 
   const params = useMemo(() => {
     const days = PRESETS.find((p) => p.id === preset)!.days;
     return {
       start: isoDay(new Date(Date.now() - days * 86400_000)),
       end: isoDay(new Date()),
+      mailboxId,
     };
-  }, [preset]);
+  }, [preset, mailboxId]);
 
   const { data, isLoading } = useGetEmailDealsReport(params, {
-    query: { enabled: isAdmin, queryKey: getGetEmailDealsReportQueryKey(params) },
+    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailDealsReportQueryKey(params) },
   });
 
-  if (!isAdmin) {
+  if (!canViewAnalytics) {
     return (
       <AppShell>
         <div className="p-6 max-w-lg">
           <Card>
-            <div className="text-sm text-slate-300">This report is admin-only.</div>
+            <div className="text-sm text-slate-300">You do not have permission to view this report.</div>
           </Card>
         </div>
       </AppShell>
@@ -80,6 +97,17 @@ export default function EmailDealsReport() {
           </div>
           <span className="text-xs text-slate-500">Printavo invoices only — Chipply revenue excluded</span>
           <div className="flex-1" />
+          <select
+            value={mailboxId}
+            onChange={(event) => setMailboxId(event.target.value)}
+            className="text-xs bg-[#1e293b] border border-slate-700 rounded-md px-2 py-1.5 text-slate-200"
+          >
+            {readableMailboxes.map((mailbox) => (
+              <option key={mailbox.id} value={mailbox.id}>
+                {mailbox.displayName || mailbox.email}
+              </option>
+            ))}
+          </select>
           {PRESETS.map((p) => (
             <button
               key={p.id}

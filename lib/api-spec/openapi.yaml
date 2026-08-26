@@ -5072,6 +5072,218 @@ paths:
         "502":
           description: Failed to fetch from Printavo
 
+  /email-access/groups:
+    get:
+      operationId: listEmailAccessGroups
+      tags: [emailAccess]
+      summary: List email access groups (admin only)
+      responses:
+        "200":
+          description: Access groups
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [groups]
+                properties:
+                  groups:
+                    type: array
+                    items: { $ref: "#/components/schemas/EmailAccessGroup" }
+    post:
+      operationId: createEmailAccessGroup
+      tags: [emailAccess]
+      summary: Create an email access group (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailAccessGroupRequest" }
+      responses:
+        "201":
+          description: Created group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmailAccessGroup" }
+  /email-access/groups/{id}:
+    patch:
+      operationId: updateEmailAccessGroup
+      tags: [emailAccess]
+      summary: Update an email access group (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailAccessGroupRequest" }
+      responses:
+        "200":
+          description: Updated group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmailAccessGroup" }
+    delete:
+      operationId: deleteEmailAccessGroup
+      tags: [emailAccess]
+      summary: Delete an email access group (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Deleted }
+  /email-access/mailboxes:
+    get:
+      operationId: listEmailMailboxPolicies
+      tags: [emailAccess]
+      summary: List tracked mailboxes and content policies (admin only)
+      responses:
+        "200":
+          description: Mailboxes and policies
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mailboxes, staff]
+                properties:
+                  mailboxes:
+                    type: array
+                    items: { $ref: "#/components/schemas/EmailMailboxAccess" }
+                  staff:
+                    type: array
+                    items: { $ref: "#/components/schemas/EmailAccessStaff" }
+  /email-access/mailboxes/{id}/policy:
+    put:
+      operationId: updateEmailMailboxPolicy
+      tags: [emailAccess]
+      summary: Set mailbox owner and privacy (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailMailboxPolicyRequest" }
+      responses:
+        "200":
+          description: Updated mailbox policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmailMailboxPolicy" }
+  /email-access/policy:
+    get:
+      operationId: getEmailAccessPolicy
+      tags: [emailAccess]
+      summary: Get global correspondence policy (admin only)
+      responses:
+        "200":
+          description: Policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmailAccessPolicy" }
+    put:
+      operationId: updateEmailAccessPolicy
+      tags: [emailAccess]
+      summary: Update global correspondence policy (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailAccessPolicyRequest" }
+      responses:
+        "200":
+          description: Updated policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmailAccessPolicy" }
+  /correspondence/threads:
+    get:
+      operationId: listCorrespondenceThreads
+      tags: [correspondence]
+      summary: List only correspondence visible to the current staff member
+      parameters:
+        - { name: query, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Authorized threads
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CorrespondenceThreadList" }
+  /correspondence/threads/{id}:
+    get:
+      operationId: getCorrespondenceThread
+      tags: [correspondence]
+      summary: Get an authorized correspondence thread
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Authorized thread content
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CorrespondenceThreadDetail" }
+        "404": { description: Not found or inaccessible }
+  /correspondence/search:
+    post:
+      operationId: searchCorrespondence
+      tags: [correspondence]
+      summary: Search only authorized correspondence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CorrespondenceSearchRequest" }
+      responses:
+        "200":
+          description: Authorized matches
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CorrespondenceThreadList" }
+  /correspondence/ai-search:
+    post:
+      operationId: aiSearchCorrespondence
+      tags: [correspondence]
+      summary: Answer from pre-authorized correspondence with validated citations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CorrespondenceAiSearchRequest" }
+      responses:
+        "200":
+          description: Answer and authorized sources
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CorrespondenceAiSearchResponse" }
+  /correspondence/history-import:
+    post:
+      operationId: importCorrespondenceHistory
+      tags: [correspondence]
+      summary: Import older history for mailboxes the caller may read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CorrespondenceHistoryImportRequest" }
+      responses:
+        "202":
+          description: Import started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CorrespondenceHistoryImportResponse" }
+
   /email-activity/status:
     get:
       operationId: getEmailActivityStatus
@@ -5692,8 +5904,11 @@ components:
       type: object
       properties:
         email: { type: string }
-        role: { type: string, enum: [admin, staff] }
-      required: [email, role]
+        role: { type: string, enum: [admin, manager, staff] }
+        capabilities:
+          type: array
+          items: { type: string }
+      required: [email, role, capabilities]
     AuthForbidden:
       type: object
       properties:
@@ -5705,7 +5920,7 @@ components:
       properties:
         id: { type: string }
         email: { type: string }
-        role: { type: string, enum: [admin, staff] }
+        role: { type: string, enum: [admin, manager, staff] }
         addedByEmail: { type: string, nullable: true }
         linked:
           type: boolean
@@ -5724,12 +5939,12 @@ components:
       type: object
       properties:
         email: { type: string, minLength: 3, maxLength: 254 }
-        role: { type: string, enum: [admin, staff] }
+        role: { type: string, enum: [admin, manager, staff] }
       required: [email, role]
     UpdateStaffRoleRequest:
       type: object
       properties:
-        role: { type: string, enum: [admin, staff] }
+        role: { type: string, enum: [admin, manager, staff] }
       required: [role]
     AdminPinStatus:
       type: object
@@ -9743,10 +9958,167 @@ components:
           items:
             $ref: "#/components/schemas/NicheReportRow"
 
+    EmailAccessGroup:
+      type: object
+      required: [id, name, description, members, mailboxes, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        members: { type: array, items: { type: string } }
+        mailboxes: { type: array, items: { type: string } }
+        createdAt: { type: string }
+    EmailAccessGroupRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+        members: { type: array, items: { type: string } }
+        mailboxes: { type: array, items: { type: string } }
+    EmailMailboxPolicy:
+      type: object
+      required: [mailboxId, ownerStaffId, visibility, protected]
+      properties:
+        mailboxId: { type: string }
+        ownerStaffId: { type: string, nullable: true }
+        visibility: { type: string, enum: [private, group, workspace] }
+        protected: { type: boolean }
+    EmailMailboxPolicyRequest:
+      type: object
+      required: [ownerStaffId, visibility, protected]
+      properties:
+        ownerStaffId: { type: string, nullable: true }
+        visibility: { type: string, enum: [private, group, workspace] }
+        protected: { type: boolean }
+    EmailMailboxAccess:
+      type: object
+      required: [id, email, policy]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        displayName: { type: string, nullable: true }
+        policy:
+          allOf: [{ $ref: "#/components/schemas/EmailMailboxPolicy" }]
+          nullable: true
+    EmailAccessStaff:
+      type: object
+      required: [id, email, role]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [admin, manager, staff] }
+    EmailAccessPolicy:
+      type: object
+      required: [defaultAccess, retentionDays, aiProcessingEnabled]
+      properties:
+        defaultAccess: { type: string, enum: [deny] }
+        retentionDays: { type: integer }
+        aiProcessingEnabled: { type: boolean }
+    EmailAccessPolicyRequest:
+      type: object
+      properties:
+        defaultAccess: { type: string, enum: [deny] }
+        retentionDays: { type: integer, minimum: 1, maximum: 36500 }
+        aiProcessingEnabled: { type: boolean }
+    CorrespondenceThread:
+      type: object
+      required: [id, subject, counterpart, lastMessageAt, messageCount, status, participants]
+      properties:
+        id: { type: string }
+        mailboxId: { type: string }
+        gmailThreadId: { type: string }
+        subject: { type: string }
+        counterpart: { type: string }
+        counterpartEmail: { type: string }
+        lastMessageAt: { type: string }
+        messageCount: { type: integer }
+        snippet: { type: string }
+        status: { type: string, enum: [open, archived, snoozed] }
+        participants: { type: array, items: { type: string } }
+    CorrespondenceThreadList:
+      type: object
+      required: [threads, total]
+      properties:
+        threads:
+          type: array
+          items: { $ref: "#/components/schemas/CorrespondenceThread" }
+        total: { type: integer }
+        hasMore: { type: boolean }
+    CorrespondenceMessage:
+      type: object
+      required: [id, threadId, from, to, cc, bcc, subject, date, snippet, bodyText]
+      properties:
+        id: { type: string }
+        threadId: { type: string }
+        from: { type: string }
+        to: { type: array, items: { type: string } }
+        cc: { type: array, items: { type: string } }
+        bcc: { type: array, items: { type: string } }
+        subject: { type: string }
+        date: { type: string }
+        snippet: { type: string }
+        bodyText: { type: string }
+    CorrespondenceThreadDetail:
+      type: object
+      required: [thread, messages, comments, orderLinks]
+      properties:
+        thread: { $ref: "#/components/schemas/CorrespondenceThread" }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/CorrespondenceMessage" }
+        comments: { type: array, items: { type: object, additionalProperties: true } }
+        orderLinks: { type: array, items: { type: object, additionalProperties: true } }
+    CorrespondenceSearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        limit: { type: integer }
+        offset: { type: integer }
+    CorrespondenceAiSearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        customerId: { type: string }
+    CorrespondenceAiSource:
+      type: object
+      required: [id, threadId, subject, content]
+      properties:
+        id: { type: string }
+        threadId: { type: string }
+        subject: { type: string }
+        content: { type: string }
+    CorrespondenceAiSearchResponse:
+      type: object
+      required: [summary, results]
+      properties:
+        summary: { type: string }
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/CorrespondenceAiSource" }
+    CorrespondenceHistoryImportRequest:
+      type: object
+      required: [emails]
+      properties:
+        emails: { type: array, items: { type: string } }
+        fromDate: { type: string }
+        toDate: { type: string }
+    CorrespondenceHistoryImportResponse:
+      type: object
+      required: [started, job_id]
+      properties:
+        started: { type: boolean }
+        job_id: { type: string }
+
     EmailMailboxStatus:
       type: object
       required: [id, email, displayName, active, backfillComplete, lastSyncAt, lastSyncStatus, lastSyncError, messageCount, filteredCount]
       properties:
+        readable:
+          type: boolean
+          description: Whether the current staff member may read this mailbox's content.
         id: { type: string }
         email: { type: string }
         displayName: { type: string, nullable: true }

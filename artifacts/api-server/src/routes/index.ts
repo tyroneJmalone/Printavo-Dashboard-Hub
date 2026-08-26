@@ -23,6 +23,8 @@ import pipelineRouter from "./pipeline";
 import statusActivityRouter from "./statusActivity";
 import emailActivityRouter from "./emailActivity";
 import aiQuotesRouter from "./aiQuotes";
+import emailAccessRouter from "./emailAccess";
+import correspondenceRouter from "./correspondence";
 import hubRouter from "./hub";
 import { isMomintumConfigured } from "@workspace/momintum-db";
 import momintumRouter from "../momintum";
@@ -67,8 +69,10 @@ router.use(shippingRouter);
 router.use(customersRouter); // category manage routes are admin-only inside
 router.use(pipelineRouter);
 router.use(statusActivityRouter);
-router.use(emailActivityRouter); // admin-only inside (staff performance data)
+router.use(emailActivityRouter); // config is admin-only; analytics are mailbox-ACL scoped
 router.use(aiQuotesRouter);
+router.use(emailAccessRouter);
+router.use(correspondenceRouter);
 router.use(hubRouter);
 
 // moMINTum task management — shared LIVE database with the standalone app.

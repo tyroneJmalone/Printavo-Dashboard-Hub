@@ -8,6 +8,8 @@
 import type { EmailMailboxStatusLastSyncStatus } from './emailMailboxStatusLastSyncStatus';
 
 export interface EmailMailboxStatus {
+  /** Whether the current staff member may read this mailbox's content. */
+  readable?: boolean;
   id: string;
   email: string;
   displayName: string | null;

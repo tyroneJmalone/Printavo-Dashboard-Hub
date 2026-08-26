@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { capabilitiesForRole } from "../middlewares/requireStaff";
 
 /**
  * Auth/session routes. Mounted AFTER requireStaff, so req.staff is always
@@ -11,6 +12,7 @@ router.get("/auth/me", (req, res) => {
   res.json({
     email: staff.email,
     role: staff.role,
+    capabilities: capabilitiesForRole(staff.role),
   });
 });
 

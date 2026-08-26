@@ -115,7 +115,7 @@ export const emailActivitySettingsTable = pgTable("email_activity_settings", {
   /** Threads with no reply past this many hours show as "unanswered". */
   unansweredThresholdHours: integer("unanswered_threshold_hours").notNull().default(24),
   /** First-run backfill horizon. */
-  backfillDays: integer("backfill_days").notNull().default(365),
+  backfillDays: integer("backfill_days").notNull().default(30),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

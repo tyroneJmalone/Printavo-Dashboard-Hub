@@ -18,6 +18,7 @@ interface NavItem {
   external?: boolean;
   /** Hidden from non-admin staff. */
   adminOnly?: boolean;
+  requiredCapability?: string;
 }
 
 interface NavGroup {
@@ -38,7 +39,9 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "reports", label: "Reports", href: "/orders", icon: FileSpreadsheet },
       { id: "payments", label: "Payments", href: "/payments", icon: CreditCard },
       { id: "ai", label: "Ask AI", href: "/ask", icon: Sparkles },
-      { id: "email-activity", label: "Email Activity", href: "/email-activity", icon: Mail, adminOnly: true },
+      { id: "email-activity", label: "Email Activity", href: "/email-activity", icon: Mail, requiredCapability: "view_email_activity" },
+      { id: "email-access", label: "Email Access", href: "/email-activity/access", icon: Shield, adminOnly: true },
+      { id: "correspondence", label: "Correspondence", href: "/correspondence", icon: Inbox },
     ],
   },
   {
@@ -164,7 +167,7 @@ function StaffChip() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { role } = useStaff();
+  const { role, capabilities } = useStaff();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsedGroups);
   /** Mobile drawer state — the sidebar is hidden by default below lg. */
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -234,7 +237,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {NAV_GROUPS.map((rawGroup, gi) => {
             const group = {
               ...rawGroup,
-              items: rawGroup.items.filter((item) => !item.adminOnly || role === "admin"),
+              items: rawGroup.items.filter(
+                (item) =>
+                  (!item.adminOnly || role === "admin") &&
+                  (!item.requiredCapability || capabilities.includes(item.requiredCapability)),
+              ),
             };
             if (group.items.length === 0) return null;
             const isCollapsed = group.heading ? !!collapsedGroups[group.heading] : false;

@@ -35,12 +35,14 @@ export type AuthMeRole = typeof AuthMeRole[keyof typeof AuthMeRole];
 
 export const AuthMeRole = {
   admin: 'admin',
+  manager: 'manager',
   staff: 'staff',
 } as const;
 
 export interface AuthMe {
   email: string;
   role: AuthMeRole;
+  capabilities: string[];
 }
 
 export interface AuthForbidden {
@@ -53,6 +55,7 @@ export type StaffMemberRole = typeof StaffMemberRole[keyof typeof StaffMemberRol
 
 export const StaffMemberRole = {
   admin: 'admin',
+  manager: 'manager',
   staff: 'staff',
 } as const;
 
@@ -75,6 +78,7 @@ export type AddStaffRequestRole = typeof AddStaffRequestRole[keyof typeof AddSta
 
 export const AddStaffRequestRole = {
   admin: 'admin',
+  manager: 'manager',
   staff: 'staff',
 } as const;
 
@@ -92,6 +96,7 @@ export type UpdateStaffRoleRequestRole = typeof UpdateStaffRoleRequestRole[keyof
 
 export const UpdateStaffRoleRequestRole = {
   admin: 'admin',
+  manager: 'manager',
   staff: 'staff',
 } as const;
 
@@ -4064,6 +4069,197 @@ export interface NicheReportResponse {
   rows: NicheReportRow[];
 }
 
+export interface EmailAccessGroup {
+  id: string;
+  name: string;
+  description: string;
+  members: string[];
+  mailboxes: string[];
+  createdAt: string;
+}
+
+export interface EmailAccessGroupRequest {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 2000 */
+  description?: string;
+  members?: string[];
+  mailboxes?: string[];
+}
+
+export type EmailMailboxPolicyVisibility = typeof EmailMailboxPolicyVisibility[keyof typeof EmailMailboxPolicyVisibility];
+
+
+export const EmailMailboxPolicyVisibility = {
+  private: 'private',
+  group: 'group',
+  workspace: 'workspace',
+} as const;
+
+export interface EmailMailboxPolicy {
+  mailboxId: string;
+  ownerStaffId: string | null;
+  visibility: EmailMailboxPolicyVisibility;
+  protected: boolean;
+}
+
+export type EmailMailboxPolicyRequestVisibility = typeof EmailMailboxPolicyRequestVisibility[keyof typeof EmailMailboxPolicyRequestVisibility];
+
+
+export const EmailMailboxPolicyRequestVisibility = {
+  private: 'private',
+  group: 'group',
+  workspace: 'workspace',
+} as const;
+
+export interface EmailMailboxPolicyRequest {
+  ownerStaffId: string | null;
+  visibility: EmailMailboxPolicyRequestVisibility;
+  protected: boolean;
+}
+
+export interface EmailMailboxAccess {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  policy: EmailMailboxPolicy | null;
+}
+
+export type EmailAccessStaffRole = typeof EmailAccessStaffRole[keyof typeof EmailAccessStaffRole];
+
+
+export const EmailAccessStaffRole = {
+  admin: 'admin',
+  manager: 'manager',
+  staff: 'staff',
+} as const;
+
+export interface EmailAccessStaff {
+  id: string;
+  email: string;
+  role: EmailAccessStaffRole;
+}
+
+export type EmailAccessPolicyDefaultAccess = typeof EmailAccessPolicyDefaultAccess[keyof typeof EmailAccessPolicyDefaultAccess];
+
+
+export const EmailAccessPolicyDefaultAccess = {
+  deny: 'deny',
+} as const;
+
+export interface EmailAccessPolicy {
+  defaultAccess: EmailAccessPolicyDefaultAccess;
+  retentionDays: number;
+  aiProcessingEnabled: boolean;
+}
+
+export type EmailAccessPolicyRequestDefaultAccess = typeof EmailAccessPolicyRequestDefaultAccess[keyof typeof EmailAccessPolicyRequestDefaultAccess];
+
+
+export const EmailAccessPolicyRequestDefaultAccess = {
+  deny: 'deny',
+} as const;
+
+export interface EmailAccessPolicyRequest {
+  defaultAccess?: EmailAccessPolicyRequestDefaultAccess;
+  /**
+     * @minimum 1
+     * @maximum 36500
+     */
+  retentionDays?: number;
+  aiProcessingEnabled?: boolean;
+}
+
+export type CorrespondenceThreadStatus = typeof CorrespondenceThreadStatus[keyof typeof CorrespondenceThreadStatus];
+
+
+export const CorrespondenceThreadStatus = {
+  open: 'open',
+  archived: 'archived',
+  snoozed: 'snoozed',
+} as const;
+
+export interface CorrespondenceThread {
+  id: string;
+  mailboxId?: string;
+  gmailThreadId?: string;
+  subject: string;
+  counterpart: string;
+  counterpartEmail?: string;
+  lastMessageAt: string;
+  messageCount: number;
+  snippet?: string;
+  status: CorrespondenceThreadStatus;
+  participants: string[];
+}
+
+export interface CorrespondenceThreadList {
+  threads: CorrespondenceThread[];
+  total: number;
+  hasMore?: boolean;
+}
+
+export interface CorrespondenceMessage {
+  id: string;
+  threadId: string;
+  from: string;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  date: string;
+  snippet: string;
+  bodyText: string;
+}
+
+export type CorrespondenceThreadDetailCommentsItem = { [key: string]: unknown };
+
+export type CorrespondenceThreadDetailOrderLinksItem = { [key: string]: unknown };
+
+export interface CorrespondenceThreadDetail {
+  thread: CorrespondenceThread;
+  messages: CorrespondenceMessage[];
+  comments: CorrespondenceThreadDetailCommentsItem[];
+  orderLinks: CorrespondenceThreadDetailOrderLinksItem[];
+}
+
+export interface CorrespondenceSearchRequest {
+  query: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CorrespondenceAiSearchRequest {
+  query: string;
+  customerId?: string;
+}
+
+export interface CorrespondenceAiSource {
+  id: string;
+  threadId: string;
+  subject: string;
+  content: string;
+}
+
+export interface CorrespondenceAiSearchResponse {
+  summary: string;
+  results: CorrespondenceAiSource[];
+}
+
+export interface CorrespondenceHistoryImportRequest {
+  emails: string[];
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface CorrespondenceHistoryImportResponse {
+  started: boolean;
+  job_id: string;
+}
+
 export type EmailMailboxStatusLastSyncStatus = typeof EmailMailboxStatusLastSyncStatus[keyof typeof EmailMailboxStatusLastSyncStatus];
 
 
@@ -4074,6 +4270,8 @@ export const EmailMailboxStatusLastSyncStatus = {
 } as const;
 
 export interface EmailMailboxStatus {
+  /** Whether the current staff member may read this mailbox's content. */
+  readable?: boolean;
   id: string;
   email: string;
   displayName: string | null;
@@ -5515,6 +5713,21 @@ export type RequestMbUploadUrl200 = {
 export type ListRewardAwardsParams = {
 status?: string;
 limit?: string;
+};
+
+export type ListEmailAccessGroups200 = {
+  groups: EmailAccessGroup[];
+};
+
+export type ListEmailMailboxPolicies200 = {
+  mailboxes: EmailMailboxAccess[];
+  staff: EmailAccessStaff[];
+};
+
+export type ListCorrespondenceThreadsParams = {
+query?: string;
+limit?: number;
+offset?: number;
 };
 
 export type GetEmailActivityStatsParams = {

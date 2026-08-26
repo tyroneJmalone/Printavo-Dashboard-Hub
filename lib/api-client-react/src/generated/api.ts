@@ -63,6 +63,13 @@ import type {
   CollectionDetail,
   Comment,
   CommentInput,
+  CorrespondenceAiSearchRequest,
+  CorrespondenceAiSearchResponse,
+  CorrespondenceHistoryImportRequest,
+  CorrespondenceHistoryImportResponse,
+  CorrespondenceSearchRequest,
+  CorrespondenceThreadDetail,
+  CorrespondenceThreadList,
   CreateChipplyStoreRequest,
   CreateCollectionRequest,
   CreateEmailThreadLinkRequest,
@@ -91,6 +98,10 @@ import type {
   DeleteCollection200,
   DetectedChipplyStoresResponse,
   DirectoryCustomersResponse,
+  EmailAccessGroup,
+  EmailAccessGroupRequest,
+  EmailAccessPolicy,
+  EmailAccessPolicyRequest,
   EmailActivitySettings,
   EmailActivityStatus,
   EmailCustomerCorrespondence,
@@ -99,6 +110,8 @@ import type {
   EmailExclusionRule,
   EmailFilteredResponse,
   EmailHeatmapResponse,
+  EmailMailboxPolicy,
+  EmailMailboxPolicyRequest,
   EmailMailboxStatus,
   EmailMailboxVerifyResult,
   EmailMatchResult,
@@ -158,10 +171,13 @@ import type {
   ListChipplyStoresParams,
   ListCollections200,
   ListCollectionsParams,
+  ListCorrespondenceThreadsParams,
   ListCreditsParams,
   ListCustomersParams,
   ListDirectoryCustomersParams,
+  ListEmailAccessGroups200,
   ListEmailCustomersParams,
+  ListEmailMailboxPolicies200,
   ListGroup,
   ListGroupInput,
   ListGroupUpdate,
@@ -16907,6 +16923,960 @@ export function useGetRewardsPipeline<TData = Awaited<ReturnType<typeof getRewar
 
 
 
+
+export const getListEmailAccessGroupsUrl = () => {
+
+
+
+
+  return `/api/email-access/groups`
+}
+
+/**
+ * @summary List email access groups (admin only)
+ */
+export const listEmailAccessGroups = async ( options?: RequestInit): Promise<ListEmailAccessGroups200> => {
+
+  return customFetch<ListEmailAccessGroups200>(getListEmailAccessGroupsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmailAccessGroupsQueryKey = () => {
+    return [
+    `/api/email-access/groups`
+    ] as const;
+    }
+
+
+export const getListEmailAccessGroupsQueryOptions = <TData = Awaited<ReturnType<typeof listEmailAccessGroups>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailAccessGroups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmailAccessGroupsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmailAccessGroups>>> = ({ signal }) => listEmailAccessGroups({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmailAccessGroups>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmailAccessGroupsQueryResult = NonNullable<Awaited<ReturnType<typeof listEmailAccessGroups>>>
+export type ListEmailAccessGroupsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List email access groups (admin only)
+ */
+
+export function useListEmailAccessGroups<TData = Awaited<ReturnType<typeof listEmailAccessGroups>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailAccessGroups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmailAccessGroupsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateEmailAccessGroupUrl = () => {
+
+
+
+
+  return `/api/email-access/groups`
+}
+
+/**
+ * @summary Create an email access group (admin only)
+ */
+export const createEmailAccessGroup = async (emailAccessGroupRequest: EmailAccessGroupRequest, options?: RequestInit): Promise<EmailAccessGroup> => {
+
+  return customFetch<EmailAccessGroup>(getCreateEmailAccessGroupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(emailAccessGroupRequest)
+  }
+);}
+
+
+
+
+export const getCreateEmailAccessGroupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmailAccessGroup>>, TError,{data: BodyType<EmailAccessGroupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEmailAccessGroup>>, TError,{data: BodyType<EmailAccessGroupRequest>}, TContext> => {
+
+const mutationKey = ['createEmailAccessGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEmailAccessGroup>>, {data: BodyType<EmailAccessGroupRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createEmailAccessGroup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEmailAccessGroupMutationResult = NonNullable<Awaited<ReturnType<typeof createEmailAccessGroup>>>
+    export type CreateEmailAccessGroupMutationBody = BodyType<EmailAccessGroupRequest>
+    export type CreateEmailAccessGroupMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create an email access group (admin only)
+ */
+export const useCreateEmailAccessGroup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEmailAccessGroup>>, TError,{data: BodyType<EmailAccessGroupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createEmailAccessGroup>>,
+        TError,
+        {data: BodyType<EmailAccessGroupRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateEmailAccessGroupMutationOptions(options));
+    }
+
+export const getUpdateEmailAccessGroupUrl = (id: string,) => {
+
+
+
+
+  return `/api/email-access/groups/${id}`
+}
+
+/**
+ * @summary Update an email access group (admin only)
+ */
+export const updateEmailAccessGroup = async (id: string,
+    emailAccessGroupRequest: EmailAccessGroupRequest, options?: RequestInit): Promise<EmailAccessGroup> => {
+
+  return customFetch<EmailAccessGroup>(getUpdateEmailAccessGroupUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(emailAccessGroupRequest)
+  }
+);}
+
+
+
+
+export const getUpdateEmailAccessGroupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailAccessGroup>>, TError,{id: string;data: BodyType<EmailAccessGroupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEmailAccessGroup>>, TError,{id: string;data: BodyType<EmailAccessGroupRequest>}, TContext> => {
+
+const mutationKey = ['updateEmailAccessGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEmailAccessGroup>>, {id: string;data: BodyType<EmailAccessGroupRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateEmailAccessGroup(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEmailAccessGroupMutationResult = NonNullable<Awaited<ReturnType<typeof updateEmailAccessGroup>>>
+    export type UpdateEmailAccessGroupMutationBody = BodyType<EmailAccessGroupRequest>
+    export type UpdateEmailAccessGroupMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update an email access group (admin only)
+ */
+export const useUpdateEmailAccessGroup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailAccessGroup>>, TError,{id: string;data: BodyType<EmailAccessGroupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEmailAccessGroup>>,
+        TError,
+        {id: string;data: BodyType<EmailAccessGroupRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateEmailAccessGroupMutationOptions(options));
+    }
+
+export const getDeleteEmailAccessGroupUrl = (id: string,) => {
+
+
+
+
+  return `/api/email-access/groups/${id}`
+}
+
+/**
+ * @summary Delete an email access group (admin only)
+ */
+export const deleteEmailAccessGroup = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteEmailAccessGroupUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteEmailAccessGroupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEmailAccessGroup>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteEmailAccessGroup>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteEmailAccessGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteEmailAccessGroup>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteEmailAccessGroup(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteEmailAccessGroupMutationResult = NonNullable<Awaited<ReturnType<typeof deleteEmailAccessGroup>>>
+
+    export type DeleteEmailAccessGroupMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete an email access group (admin only)
+ */
+export const useDeleteEmailAccessGroup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEmailAccessGroup>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteEmailAccessGroup>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteEmailAccessGroupMutationOptions(options));
+    }
+
+export const getListEmailMailboxPoliciesUrl = () => {
+
+
+
+
+  return `/api/email-access/mailboxes`
+}
+
+/**
+ * @summary List tracked mailboxes and content policies (admin only)
+ */
+export const listEmailMailboxPolicies = async ( options?: RequestInit): Promise<ListEmailMailboxPolicies200> => {
+
+  return customFetch<ListEmailMailboxPolicies200>(getListEmailMailboxPoliciesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmailMailboxPoliciesQueryKey = () => {
+    return [
+    `/api/email-access/mailboxes`
+    ] as const;
+    }
+
+
+export const getListEmailMailboxPoliciesQueryOptions = <TData = Awaited<ReturnType<typeof listEmailMailboxPolicies>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailMailboxPolicies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmailMailboxPoliciesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmailMailboxPolicies>>> = ({ signal }) => listEmailMailboxPolicies({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmailMailboxPolicies>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmailMailboxPoliciesQueryResult = NonNullable<Awaited<ReturnType<typeof listEmailMailboxPolicies>>>
+export type ListEmailMailboxPoliciesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List tracked mailboxes and content policies (admin only)
+ */
+
+export function useListEmailMailboxPolicies<TData = Awaited<ReturnType<typeof listEmailMailboxPolicies>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailMailboxPolicies>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmailMailboxPoliciesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateEmailMailboxPolicyUrl = (id: string,) => {
+
+
+
+
+  return `/api/email-access/mailboxes/${id}/policy`
+}
+
+/**
+ * @summary Set mailbox owner and privacy (admin only)
+ */
+export const updateEmailMailboxPolicy = async (id: string,
+    emailMailboxPolicyRequest: EmailMailboxPolicyRequest, options?: RequestInit): Promise<EmailMailboxPolicy> => {
+
+  return customFetch<EmailMailboxPolicy>(getUpdateEmailMailboxPolicyUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(emailMailboxPolicyRequest)
+  }
+);}
+
+
+
+
+export const getUpdateEmailMailboxPolicyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailMailboxPolicy>>, TError,{id: string;data: BodyType<EmailMailboxPolicyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEmailMailboxPolicy>>, TError,{id: string;data: BodyType<EmailMailboxPolicyRequest>}, TContext> => {
+
+const mutationKey = ['updateEmailMailboxPolicy'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEmailMailboxPolicy>>, {id: string;data: BodyType<EmailMailboxPolicyRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateEmailMailboxPolicy(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEmailMailboxPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof updateEmailMailboxPolicy>>>
+    export type UpdateEmailMailboxPolicyMutationBody = BodyType<EmailMailboxPolicyRequest>
+    export type UpdateEmailMailboxPolicyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Set mailbox owner and privacy (admin only)
+ */
+export const useUpdateEmailMailboxPolicy = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailMailboxPolicy>>, TError,{id: string;data: BodyType<EmailMailboxPolicyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEmailMailboxPolicy>>,
+        TError,
+        {id: string;data: BodyType<EmailMailboxPolicyRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateEmailMailboxPolicyMutationOptions(options));
+    }
+
+export const getGetEmailAccessPolicyUrl = () => {
+
+
+
+
+  return `/api/email-access/policy`
+}
+
+/**
+ * @summary Get global correspondence policy (admin only)
+ */
+export const getEmailAccessPolicy = async ( options?: RequestInit): Promise<EmailAccessPolicy> => {
+
+  return customFetch<EmailAccessPolicy>(getGetEmailAccessPolicyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailAccessPolicyQueryKey = () => {
+    return [
+    `/api/email-access/policy`
+    ] as const;
+    }
+
+
+export const getGetEmailAccessPolicyQueryOptions = <TData = Awaited<ReturnType<typeof getEmailAccessPolicy>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailAccessPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailAccessPolicyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailAccessPolicy>>> = ({ signal }) => getEmailAccessPolicy({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailAccessPolicy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailAccessPolicyQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailAccessPolicy>>>
+export type GetEmailAccessPolicyQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get global correspondence policy (admin only)
+ */
+
+export function useGetEmailAccessPolicy<TData = Awaited<ReturnType<typeof getEmailAccessPolicy>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailAccessPolicy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailAccessPolicyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateEmailAccessPolicyUrl = () => {
+
+
+
+
+  return `/api/email-access/policy`
+}
+
+/**
+ * @summary Update global correspondence policy (admin only)
+ */
+export const updateEmailAccessPolicy = async (emailAccessPolicyRequest: EmailAccessPolicyRequest, options?: RequestInit): Promise<EmailAccessPolicy> => {
+
+  return customFetch<EmailAccessPolicy>(getUpdateEmailAccessPolicyUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(emailAccessPolicyRequest)
+  }
+);}
+
+
+
+
+export const getUpdateEmailAccessPolicyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailAccessPolicy>>, TError,{data: BodyType<EmailAccessPolicyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEmailAccessPolicy>>, TError,{data: BodyType<EmailAccessPolicyRequest>}, TContext> => {
+
+const mutationKey = ['updateEmailAccessPolicy'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEmailAccessPolicy>>, {data: BodyType<EmailAccessPolicyRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateEmailAccessPolicy(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEmailAccessPolicyMutationResult = NonNullable<Awaited<ReturnType<typeof updateEmailAccessPolicy>>>
+    export type UpdateEmailAccessPolicyMutationBody = BodyType<EmailAccessPolicyRequest>
+    export type UpdateEmailAccessPolicyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update global correspondence policy (admin only)
+ */
+export const useUpdateEmailAccessPolicy = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEmailAccessPolicy>>, TError,{data: BodyType<EmailAccessPolicyRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEmailAccessPolicy>>,
+        TError,
+        {data: BodyType<EmailAccessPolicyRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateEmailAccessPolicyMutationOptions(options));
+    }
+
+export const getListCorrespondenceThreadsUrl = (params?: ListCorrespondenceThreadsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/correspondence/threads?${stringifiedParams}` : `/api/correspondence/threads`
+}
+
+/**
+ * @summary List only correspondence visible to the current staff member
+ */
+export const listCorrespondenceThreads = async (params?: ListCorrespondenceThreadsParams, options?: RequestInit): Promise<CorrespondenceThreadList> => {
+
+  return customFetch<CorrespondenceThreadList>(getListCorrespondenceThreadsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCorrespondenceThreadsQueryKey = (params?: ListCorrespondenceThreadsParams,) => {
+    return [
+    `/api/correspondence/threads`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCorrespondenceThreadsQueryOptions = <TData = Awaited<ReturnType<typeof listCorrespondenceThreads>>, TError = ErrorType<unknown>>(params?: ListCorrespondenceThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCorrespondenceThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCorrespondenceThreadsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCorrespondenceThreads>>> = ({ signal }) => listCorrespondenceThreads(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCorrespondenceThreads>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCorrespondenceThreadsQueryResult = NonNullable<Awaited<ReturnType<typeof listCorrespondenceThreads>>>
+export type ListCorrespondenceThreadsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List only correspondence visible to the current staff member
+ */
+
+export function useListCorrespondenceThreads<TData = Awaited<ReturnType<typeof listCorrespondenceThreads>>, TError = ErrorType<unknown>>(
+ params?: ListCorrespondenceThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCorrespondenceThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCorrespondenceThreadsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCorrespondenceThreadUrl = (id: string,) => {
+
+
+
+
+  return `/api/correspondence/threads/${id}`
+}
+
+/**
+ * @summary Get an authorized correspondence thread
+ */
+export const getCorrespondenceThread = async (id: string, options?: RequestInit): Promise<CorrespondenceThreadDetail> => {
+
+  return customFetch<CorrespondenceThreadDetail>(getGetCorrespondenceThreadUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCorrespondenceThreadQueryKey = (id: string,) => {
+    return [
+    `/api/correspondence/threads/${id}`
+    ] as const;
+    }
+
+
+export const getGetCorrespondenceThreadQueryOptions = <TData = Awaited<ReturnType<typeof getCorrespondenceThread>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCorrespondenceThread>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCorrespondenceThreadQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCorrespondenceThread>>> = ({ signal }) => getCorrespondenceThread(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCorrespondenceThread>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCorrespondenceThreadQueryResult = NonNullable<Awaited<ReturnType<typeof getCorrespondenceThread>>>
+export type GetCorrespondenceThreadQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get an authorized correspondence thread
+ */
+
+export function useGetCorrespondenceThread<TData = Awaited<ReturnType<typeof getCorrespondenceThread>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCorrespondenceThread>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCorrespondenceThreadQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSearchCorrespondenceUrl = () => {
+
+
+
+
+  return `/api/correspondence/search`
+}
+
+/**
+ * @summary Search only authorized correspondence
+ */
+export const searchCorrespondence = async (correspondenceSearchRequest: CorrespondenceSearchRequest, options?: RequestInit): Promise<CorrespondenceThreadList> => {
+
+  return customFetch<CorrespondenceThreadList>(getSearchCorrespondenceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(correspondenceSearchRequest)
+  }
+);}
+
+
+
+
+export const getSearchCorrespondenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof searchCorrespondence>>, TError,{data: BodyType<CorrespondenceSearchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof searchCorrespondence>>, TError,{data: BodyType<CorrespondenceSearchRequest>}, TContext> => {
+
+const mutationKey = ['searchCorrespondence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof searchCorrespondence>>, {data: BodyType<CorrespondenceSearchRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  searchCorrespondence(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SearchCorrespondenceMutationResult = NonNullable<Awaited<ReturnType<typeof searchCorrespondence>>>
+    export type SearchCorrespondenceMutationBody = BodyType<CorrespondenceSearchRequest>
+    export type SearchCorrespondenceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Search only authorized correspondence
+ */
+export const useSearchCorrespondence = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof searchCorrespondence>>, TError,{data: BodyType<CorrespondenceSearchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof searchCorrespondence>>,
+        TError,
+        {data: BodyType<CorrespondenceSearchRequest>},
+        TContext
+      > => {
+      return useMutation(getSearchCorrespondenceMutationOptions(options));
+    }
+
+export const getAiSearchCorrespondenceUrl = () => {
+
+
+
+
+  return `/api/correspondence/ai-search`
+}
+
+/**
+ * @summary Answer from pre-authorized correspondence with validated citations
+ */
+export const aiSearchCorrespondence = async (correspondenceAiSearchRequest: CorrespondenceAiSearchRequest, options?: RequestInit): Promise<CorrespondenceAiSearchResponse> => {
+
+  return customFetch<CorrespondenceAiSearchResponse>(getAiSearchCorrespondenceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(correspondenceAiSearchRequest)
+  }
+);}
+
+
+
+
+export const getAiSearchCorrespondenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiSearchCorrespondence>>, TError,{data: BodyType<CorrespondenceAiSearchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof aiSearchCorrespondence>>, TError,{data: BodyType<CorrespondenceAiSearchRequest>}, TContext> => {
+
+const mutationKey = ['aiSearchCorrespondence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof aiSearchCorrespondence>>, {data: BodyType<CorrespondenceAiSearchRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  aiSearchCorrespondence(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AiSearchCorrespondenceMutationResult = NonNullable<Awaited<ReturnType<typeof aiSearchCorrespondence>>>
+    export type AiSearchCorrespondenceMutationBody = BodyType<CorrespondenceAiSearchRequest>
+    export type AiSearchCorrespondenceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Answer from pre-authorized correspondence with validated citations
+ */
+export const useAiSearchCorrespondence = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof aiSearchCorrespondence>>, TError,{data: BodyType<CorrespondenceAiSearchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof aiSearchCorrespondence>>,
+        TError,
+        {data: BodyType<CorrespondenceAiSearchRequest>},
+        TContext
+      > => {
+      return useMutation(getAiSearchCorrespondenceMutationOptions(options));
+    }
+
+export const getImportCorrespondenceHistoryUrl = () => {
+
+
+
+
+  return `/api/correspondence/history-import`
+}
+
+/**
+ * @summary Import older history for mailboxes the caller may read
+ */
+export const importCorrespondenceHistory = async (correspondenceHistoryImportRequest: CorrespondenceHistoryImportRequest, options?: RequestInit): Promise<CorrespondenceHistoryImportResponse> => {
+
+  return customFetch<CorrespondenceHistoryImportResponse>(getImportCorrespondenceHistoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(correspondenceHistoryImportRequest)
+  }
+);}
+
+
+
+
+export const getImportCorrespondenceHistoryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importCorrespondenceHistory>>, TError,{data: BodyType<CorrespondenceHistoryImportRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importCorrespondenceHistory>>, TError,{data: BodyType<CorrespondenceHistoryImportRequest>}, TContext> => {
+
+const mutationKey = ['importCorrespondenceHistory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importCorrespondenceHistory>>, {data: BodyType<CorrespondenceHistoryImportRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importCorrespondenceHistory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportCorrespondenceHistoryMutationResult = NonNullable<Awaited<ReturnType<typeof importCorrespondenceHistory>>>
+    export type ImportCorrespondenceHistoryMutationBody = BodyType<CorrespondenceHistoryImportRequest>
+    export type ImportCorrespondenceHistoryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import older history for mailboxes the caller may read
+ */
+export const useImportCorrespondenceHistory = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importCorrespondenceHistory>>, TError,{data: BodyType<CorrespondenceHistoryImportRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importCorrespondenceHistory>>,
+        TError,
+        {data: BodyType<CorrespondenceHistoryImportRequest>},
+        TContext
+      > => {
+      return useMutation(getImportCorrespondenceHistoryMutationOptions(options));
+    }
 
 export const getGetEmailActivityStatusUrl = () => {
 
