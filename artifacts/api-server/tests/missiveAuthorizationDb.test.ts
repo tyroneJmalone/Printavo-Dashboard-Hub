@@ -8,6 +8,10 @@ import {
   canReadMailbox,
   canReadThread,
 } from "../src/lib/emailAccess/authorization.ts";
+import {
+  customerEmailStats,
+  customerThreads,
+} from "../src/lib/emailActivity/matching.ts";
 import { hasStaffCapability } from "../src/middlewares/requireStaff.ts";
 
 const suffix = randomUUID().slice(0, 8);
@@ -21,7 +25,11 @@ const ids = {
   workspaceMailbox: randomUUID(),
   group: randomUUID(),
   thread: randomUUID(),
+  hiddenThread: randomUUID(),
 };
+const customerId = `customer-${suffix}`;
+const visibleGmailThreadId = `gmail-visible-${suffix}`;
+const hiddenGmailThreadId = `gmail-hidden-${suffix}`;
 
 const users: Record<"owner" | "admin" | "manager" | "staff", StaffUser> = {
   owner: {
@@ -108,9 +116,44 @@ before(async () => {
   );
   await pool.query(
     `INSERT INTO correspondence_threads
-       (id, mailbox_id, provider, provider_thread_id, subject, last_message_at)
-     VALUES ($1,$2,'fixture',$3,'Protected fixture thread',now())`,
-    [ids.thread, ids.protectedMailbox, `thread-${suffix}`],
+       (id, mailbox_id, provider, provider_thread_id, gmail_thread_id, subject, last_message_at)
+     VALUES
+       ($1,$2,'fixture',$3,$4,'Protected fixture thread',now()),
+       ($5,$2,'fixture',$6,$7,'Hidden fixture thread',now())`,
+    [
+      ids.thread,
+      ids.protectedMailbox,
+      `thread-${suffix}`,
+      visibleGmailThreadId,
+      ids.hiddenThread,
+      `hidden-thread-${suffix}`,
+      hiddenGmailThreadId,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO email_messages
+       (mailbox_id, gmail_id, gmail_thread_id, direction, subject, internal_date)
+     VALUES
+       ($1,$2,$3,'inbound','Grant visible customer thread',now()),
+       ($1,$4,$5,'inbound','Hidden customer thread',now())`,
+    [
+      ids.protectedMailbox,
+      `message-visible-${suffix}`,
+      visibleGmailThreadId,
+      `message-hidden-${suffix}`,
+      hiddenGmailThreadId,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO email_thread_customers
+       (mailbox_id, gmail_thread_id, printavo_customer_id, source)
+     VALUES ($1,$2,$4,'manual'), ($1,$3,$4,'manual')`,
+    [
+      ids.protectedMailbox,
+      visibleGmailThreadId,
+      hiddenGmailThreadId,
+      customerId,
+    ],
   );
 });
 
@@ -124,9 +167,13 @@ after(async () => {
   ]);
 });
 
-test("admin role does not bypass a protected mailbox", async () => {
-  assert.equal(await canReadMailbox(users.admin, ids.protectedMailbox), false);
-  assert.equal(await canReadThread(users.admin, ids.thread), false);
+test("admin role has full access to every mailbox and thread", async () => {
+  assert.equal(await canReadMailbox(users.admin, ids.protectedMailbox), true);
+  assert.equal(await canReadThread(users.admin, ids.thread), true);
+  const visible = await authorizedMailboxIds(users.admin);
+  assert.equal(visible.includes(ids.protectedMailbox), true);
+  assert.equal(visible.includes(ids.groupMailbox), true);
+  assert.equal(visible.includes(ids.workspaceMailbox), true);
 });
 
 test("Email Activity analytics capability excludes staff and includes manager/admin", () => {
@@ -144,7 +191,6 @@ test("every analytics route registers the capability gate", async () => {
     "/email-activity/heatmap",
     "/email-activity/filtered",
     "/email-activity/customers",
-    "/email-activity/customers/:customerId",
     "/email-activity/deals-report",
   ];
   for (const path of paths) {
@@ -166,6 +212,7 @@ test("mailbox owner can read protected content", async () => {
 test("group membership grants only its configured mailbox", async () => {
   assert.equal(await canReadMailbox(users.manager, ids.groupMailbox), true);
   assert.equal(await canReadMailbox(users.manager, ids.protectedMailbox), false);
+  assert.equal(await canReadMailbox(users.manager, ids.workspaceMailbox), false);
   const visible = await authorizedMailboxIds(users.manager);
   assert.equal(visible.includes(ids.groupMailbox), true);
   assert.equal(visible.includes(ids.protectedMailbox), false);
@@ -201,4 +248,27 @@ test("thread grants grant, expire, and revoke without opening the mailbox", asyn
     [ids.thread, ids.staff],
   );
   assert.equal(await canReadThread(users.staff, ids.thread), false);
+});
+
+test("customer history includes only the explicitly granted thread", async () => {
+  await pool.query(
+    `INSERT INTO correspondence_thread_grants
+       (thread_id, staff_id, source, capabilities, active)
+     VALUES ($1,$2,'customer-fixture',ARRAY['read'],true)`,
+    [ids.thread, ids.staff],
+  );
+
+  const threads = await customerThreads(customerId, ids.staff, []);
+  assert.deepEqual(threads.map((thread) => thread.gmail_thread_id), [
+    visibleGmailThreadId,
+  ]);
+  const stats = await customerEmailStats(customerId, ids.staff, []);
+  assert.equal(stats.thread_count, 1);
+  assert.equal(stats.message_count, 1);
+
+  await pool.query(
+    `DELETE FROM correspondence_thread_grants
+      WHERE thread_id=$1 AND staff_id=$2 AND source='customer-fixture'`,
+    [ids.thread, ids.staff],
+  );
 });

@@ -1,17 +1,18 @@
 import { pool, type StaffUser } from "@workspace/db";
 
-/**
- * Content access never follows role rank. Admins can configure access but
- * cannot read a protected mailbox unless they own it, receive it through an
- * access group, or are granted one conversation by Missive.
- */
 export async function authorizedMailboxIds(staff: StaffUser): Promise<string[]> {
+  if (staff.role === "admin") {
+    const all = await pool.query<{ mailbox_id: string }>(
+      "SELECT id AS mailbox_id FROM email_mailboxes",
+    );
+    return all.rows.map((row) => row.mailbox_id);
+  }
   const result = await pool.query<{ mailbox_id: string }>(
     `
       SELECT DISTINCT p.mailbox_id
       FROM email_mailbox_policies p
       WHERE p.owner_staff_id = $1::uuid
-         OR (p.protected = false AND p.visibility = 'workspace')
+         OR ($2::text = 'staff' AND p.protected = false AND p.visibility = 'workspace')
          OR (
            p.visibility IN ('group', 'workspace')
            AND EXISTS (
@@ -23,12 +24,19 @@ export async function authorizedMailboxIds(staff: StaffUser): Promise<string[]> 
            )
          )
     `,
-    [staff.id],
+    [staff.id, staff.role],
   );
   return result.rows.map((row) => row.mailbox_id);
 }
 
 export async function canReadMailbox(staff: StaffUser, mailboxId: string): Promise<boolean> {
+  if (staff.role === "admin") {
+    const mailbox = await pool.query(
+      "SELECT 1 FROM email_mailboxes WHERE id=$1::uuid LIMIT 1",
+      [mailboxId],
+    );
+    return mailbox.rowCount === 1;
+  }
   const result = await pool.query(
     `
       SELECT 1
@@ -36,7 +44,7 @@ export async function canReadMailbox(staff: StaffUser, mailboxId: string): Promi
       WHERE p.mailbox_id = $2::uuid
         AND (
           p.owner_staff_id = $1::uuid
-          OR (p.protected = false AND p.visibility = 'workspace')
+           OR ($3::text = 'staff' AND p.protected = false AND p.visibility = 'workspace')
           OR (
             p.visibility IN ('group', 'workspace')
             AND EXISTS (
@@ -50,12 +58,19 @@ export async function canReadMailbox(staff: StaffUser, mailboxId: string): Promi
         )
       LIMIT 1
     `,
-    [staff.id, mailboxId],
+    [staff.id, mailboxId, staff.role],
   );
   return result.rowCount === 1;
 }
 
 export async function canReadThread(staff: StaffUser, threadId: string): Promise<boolean> {
+  if (staff.role === "admin") {
+    const thread = await pool.query(
+      "SELECT 1 FROM correspondence_threads WHERE id=$1::uuid LIMIT 1",
+      [threadId],
+    );
+    return thread.rowCount === 1;
+  }
   const result = await pool.query(
     `
       SELECT 1
@@ -64,7 +79,7 @@ export async function canReadThread(staff: StaffUser, threadId: string): Promise
       WHERE t.id = $2::uuid
         AND (
           p.owner_staff_id = $1::uuid
-          OR (p.protected = false AND p.visibility = 'workspace')
+           OR ($3::text = 'staff' AND p.protected = false AND p.visibility = 'workspace')
           OR (
             p.visibility IN ('group', 'workspace')
             AND EXISTS (
@@ -88,7 +103,7 @@ export async function canReadThread(staff: StaffUser, threadId: string): Promise
         )
       LIMIT 1
     `,
-    [staff.id, threadId],
+    [staff.id, threadId, staff.role],
   );
   return result.rowCount === 1;
 }

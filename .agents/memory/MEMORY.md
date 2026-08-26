@@ -41,3 +41,4 @@
 - [html-to-image off-screen capture](html-to-image-offscreen-capture.md) — off-screen clone captures need a style offset reset in toPng options AND parent (not body) appending, or PNGs come out blank/textless.
 - [Fireflies Hub integration](fireflies-hub-integration.md) — deferred plan is documented; Business Team Admin needs a read-only visibility audit before choosing central vs per-user access.
 - [Missive connector routing](missive-connector-routing.md) — connector currently sends API paths to the public website host; fail closed and retry slowly until it routes to public.missiveapp.com.
+- [Email access role model](email-access-role-model.md) — Admin reads every mailbox; Managers are limited to selected groups/ownership/thread grants; customer history aggregates authorized mailboxes.

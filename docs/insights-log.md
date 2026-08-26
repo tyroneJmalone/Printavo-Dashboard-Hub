@@ -1,3 +1,6 @@
+### Aug 26 — Email access correction: Admin sees all; Managers use selected groups
+Tyler corrected the correspondence access model after rollout: **Admin must have full access to all email accounts and all customer thread history. Managers must be limited to explicitly selected mailbox Groups** (while owner and explicit conversation grants still apply). Customer profiles should aggregate and display thread history across every mailbox the current user is authorized to read, rather than requiring a mailbox query parameter that the customer page does not provide.
+
 # Insights & Ideas Log
 
 A curated, dated log of explanations, insights, and decisions from our build chats — the stuff worth coming back to. This includes every **feasibility question** ("could we do X?", "is Y possible?") along with the answer and the reasoning — even when the answer was no or the idea was shelved. Newest entries at the top of each month. Say **"log that"** after any explanation you want captured, and new entries are also added automatically whenever a substantive insight comes up.

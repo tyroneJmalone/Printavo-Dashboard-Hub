@@ -464,18 +464,13 @@ router.get("/email-activity/customers", requireCapability("view_email_activity")
   });
 });
 
-router.get("/email-activity/customers/:customerId", requireCapability("view_email_activity"), async (req, res) => {
+router.get("/email-activity/customers/:customerId", async (req, res) => {
   const customerId = String(req.params.customerId);
   if (!/^\d+$/.test(customerId)) return res.status(404).json({ error: "Customer not found" });
-  const mailboxId = await authorizedMailboxId(
-    req,
-    res,
-    typeof req.query.mailboxId === "string" && req.query.mailboxId ? req.query.mailboxId : undefined,
-  );
-  if (!mailboxId) return;
+  const mailboxIds = await authorizedMailboxIds(req.staff!);
   const [threads, stats, lookup] = await Promise.all([
-    customerThreads(customerId, mailboxId),
-    customerEmailStats(customerId, mailboxId),
+    customerThreads(customerId, req.staff!.id, mailboxIds),
+    customerEmailStats(customerId, req.staff!.id, mailboxIds),
     mailboxLookup(),
   ]);
   const links = await threadOrderLinks(

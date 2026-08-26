@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
+import { useStaff } from "@/components/auth/StaffGate";
 import { useToast } from "@/hooks/use-toast";
 import {
   useGetCustomerProfile,
@@ -67,10 +68,10 @@ function fmtDur(secs: number | null | undefined): string {
 }
 
 /**
- * Correspondence section — admin-only data (email tracker). The query 403s
- * for non-admin staff, in which case the section silently hides.
+ * Correspondence section scoped by the current user's mailbox access.
  */
 function CorrespondenceSection({ customerId }: { customerId: string }) {
+  const { role } = useStaff();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [linkingThread, setLinkingThread] = useState<string | null>(null);
@@ -180,7 +181,7 @@ function CorrespondenceSection({ customerId }: { customerId: string }) {
                           </button>
                         </span>
                       ))}
-                      {linkingThread === key ? (
+                      {role === "admin" && linkingThread === key ? (
                         <form
                           className="inline-flex items-center gap-1"
                           onSubmit={(e) => {
@@ -206,7 +207,7 @@ function CorrespondenceSection({ customerId }: { customerId: string }) {
                             <X size={12} />
                           </button>
                         </form>
-                      ) : (
+                      ) : role === "admin" ? (
                         <button
                           onClick={() => {
                             setLinkingThread(key);
@@ -217,7 +218,7 @@ function CorrespondenceSection({ customerId }: { customerId: string }) {
                         >
                           <Link2 size={11} /> link
                         </button>
-                      )}
+                      ) : null}
                     </div>
                   </td>
                 </tr>

@@ -118,7 +118,34 @@ export interface CustomerThreadRow {
   last_at: string | Date;
 }
 
-export async function customerThreads(customerId: string, mailboxId: string, limit = 25): Promise<CustomerThreadRow[]> {
+function customerThreadAcl(staffId: string, mailboxIds: string[]) {
+  const mailboxAccess = mailboxIds.length
+    ? sql`m.mailbox_id IN (${sql.join(mailboxIds.map((id) => sql`${id}::uuid`), sql`, `)})`
+    : sql`false`;
+  return sql`(
+    ${mailboxAccess}
+    OR EXISTS (
+      SELECT 1
+      FROM correspondence_threads ct
+      JOIN correspondence_thread_grants tg ON tg.thread_id=ct.id
+      WHERE ct.mailbox_id=m.mailbox_id
+        AND ct.gmail_thread_id=m.gmail_thread_id
+        AND tg.staff_id=${staffId}::uuid
+        AND tg.active=true
+        AND tg.revoked_at IS NULL
+        AND (tg.expires_at IS NULL OR tg.expires_at > now())
+        AND 'read'=ANY(tg.capabilities)
+    )
+  )`;
+}
+
+export async function customerThreads(
+  customerId: string,
+  staffId: string,
+  mailboxIds: string[],
+  limit = 25,
+): Promise<CustomerThreadRow[]> {
+  const access = customerThreadAcl(staffId, mailboxIds);
   return (
     (await db.execute(sql`
       SELECT m.mailbox_id, m.gmail_thread_id,
@@ -134,7 +161,7 @@ export async function customerThreads(customerId: string, mailboxId: string, lim
         ON m.mailbox_id = tc.mailbox_id AND m.gmail_thread_id = tc.gmail_thread_id
       WHERE tc.printavo_customer_id = ${customerId}
         AND m.excluded_reason IS NULL
-        AND m.mailbox_id = ${mailboxId}::uuid
+        AND ${access}
       GROUP BY m.mailbox_id, m.gmail_thread_id
       ORDER BY max(m.internal_date) DESC
       LIMIT ${limit}
@@ -153,7 +180,12 @@ export interface CustomerEmailStatsRow {
   p90_secs: number | null;
 }
 
-export async function customerEmailStats(customerId: string, mailboxId: string): Promise<CustomerEmailStatsRow> {
+export async function customerEmailStats(
+  customerId: string,
+  staffId: string,
+  mailboxIds: string[],
+): Promise<CustomerEmailStatsRow> {
+  const access = customerThreadAcl(staffId, mailboxIds);
   const totals = (
     (await db.execute(sql`
       SELECT count(DISTINCT (m.mailbox_id, m.gmail_thread_id))::int AS thread_count,
@@ -166,7 +198,7 @@ export async function customerEmailStats(customerId: string, mailboxId: string):
         ON m.mailbox_id = tc.mailbox_id AND m.gmail_thread_id = tc.gmail_thread_id
       WHERE tc.printavo_customer_id = ${customerId}
         AND m.excluded_reason IS NULL
-        AND m.mailbox_id = ${mailboxId}::uuid
+        AND ${access}
     `)) as unknown as Rows<Omit<CustomerEmailStatsRow, "replied_threads" | "median_secs" | "p90_secs">>
   ).rows[0]!;
   const timing = (
@@ -179,7 +211,7 @@ export async function customerEmailStats(customerId: string, mailboxId: string):
           ON m.mailbox_id = tc.mailbox_id AND m.gmail_thread_id = tc.gmail_thread_id
         WHERE tc.printavo_customer_id = ${customerId}
           AND m.excluded_reason IS NULL
-          AND m.mailbox_id = ${mailboxId}::uuid
+          AND ${access}
         GROUP BY 1, 2
       ),
       timed AS (

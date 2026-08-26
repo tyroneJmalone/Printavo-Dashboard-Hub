@@ -20,7 +20,14 @@ function authorizedSql(capabilities: readonly ("read" | "search" | "cite")[]) {
     .join("\n");
   return `(
   p.owner_staff_id = $1::uuid
-  OR (p.protected = false AND p.visibility = 'workspace')
+  OR (
+    p.protected = false
+    AND p.visibility = 'workspace'
+    AND EXISTS (
+      SELECT 1 FROM staff_users su
+      WHERE su.id=$1::uuid AND su.role='staff'
+    )
+  )
   OR (
     p.visibility IN ('group','workspace')
     AND EXISTS (
@@ -69,17 +76,23 @@ function threadJson(row: Record<string, unknown>) {
 
 async function authorizedThreads(
   staffId: string,
+  isAdmin: boolean,
   query: string,
   limit: number,
   offset: number,
   status = "",
 ) {
   const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+  const authorization = isAdmin
+    ? "($1::uuid IS NOT NULL)"
+    : query
+      ? AUTHORIZED_SEARCH_SQL
+      : AUTHORIZED_READ_SQL;
   const result = await pool.query(
     `SELECT t.*, count(*) OVER()::int AS total
        FROM correspondence_threads t
        LEFT JOIN email_mailbox_policies p ON p.mailbox_id = t.mailbox_id
-      WHERE ${query ? AUTHORIZED_SEARCH_SQL : AUTHORIZED_READ_SQL}
+      WHERE ${authorization}
         AND ($2 = '' OR t.subject ILIKE $3 ESCAPE '\\'
           OR t.counterpart ILIKE $3 ESCAPE '\\'
           OR t.counterpart_email ILIKE $3 ESCAPE '\\'
@@ -105,7 +118,14 @@ router.get("/correspondence/threads", async (req, res) => {
         : "";
     const limit = limitOf(req.query.limit);
     const offset = offsetOf(req.query.offset);
-    const data = await authorizedThreads(req.staff!.id, query, limit, offset, status);
+    const data = await authorizedThreads(
+      req.staff!.id,
+      req.staff!.role === "admin",
+      query,
+      limit,
+      offset,
+      status,
+    );
     res.json({ ...data, hasMore: offset + data.threads.length < data.total });
   } catch (err) {
     req.log.error({ err }, "Correspondence thread list failed");
@@ -121,6 +141,7 @@ router.post("/correspondence/search", async (req, res) => {
     res.json(
       await authorizedThreads(
         req.staff!.id,
+        req.staff!.role === "admin",
         query,
         limitOf(req.body?.limit),
         offsetOf(req.body?.offset),
@@ -208,13 +229,17 @@ router.post("/correspondence/ai-search", async (req, res) => {
       return void res.status(403).json({ error: "AI correspondence search is disabled" });
     }
     const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+    const authorization =
+      req.staff!.role === "admin"
+        ? "($1::uuid IS NOT NULL)"
+        : AUTHORIZED_AI_SQL;
     const rows = await pool.query(
       `SELECT m.id AS source_id, t.id AS thread_id, t.subject, t.counterpart,
               m.from_address, m.delivered_at, left(m.body_text, 5000) AS content
          FROM correspondence_threads t
          LEFT JOIN email_mailbox_policies p ON p.mailbox_id=t.mailbox_id
          JOIN correspondence_messages m ON m.thread_id=t.id
-        WHERE ${AUTHORIZED_AI_SQL}
+        WHERE ${authorization}
           AND (t.subject ILIKE $2 ESCAPE '\\' OR t.counterpart ILIKE $2 ESCAPE '\\'
             OR m.body_text ILIKE $2 ESCAPE '\\' OR m.subject ILIKE $2 ESCAPE '\\')
         ORDER BY m.delivered_at DESC LIMIT 40`,
