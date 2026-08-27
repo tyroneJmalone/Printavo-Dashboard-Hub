@@ -47,7 +47,10 @@ const REASON_LABELS: Record<string, string> = {
 };
 
 function isoDay(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function fmtDur(secs: number | null | undefined): string {
@@ -64,10 +67,12 @@ function personLabel(p: { displayName?: string | null; email?: string | null }):
 
 const CHART_COLORS = ["#10b981", "#38bdf8", "#f59e0b", "#a78bfa", "#f472b6", "#facc15"];
 
-type RangePreset = "7d" | "30d" | "90d" | "12m";
-const PRESETS: { id: RangePreset; label: string; days: number }[] = [
+type RangePreset = "today" | "7d" | "30d" | "60d" | "90d" | "12m" | "custom";
+const PRESETS: { id: Exclude<RangePreset, "custom">; label: string; days: number }[] = [
+  { id: "today", label: "Today", days: 0 },
   { id: "7d", label: "7 days", days: 7 },
   { id: "30d", label: "30 days", days: 30 },
+  { id: "60d", label: "60 days", days: 60 },
   { id: "90d", label: "90 days", days: 90 },
   { id: "12m", label: "12 months", days: 365 },
 ];
@@ -136,16 +141,19 @@ function Heatmap({ cells, mode }: { cells: { dow: number; hour: number; sent: nu
 export default function EmailActivity() {
   const { role, capabilities } = useStaff();
   const [preset, setPreset] = useState<RangePreset>("30d");
+  const [customStart, setCustomStart] = useState(() => isoDay(new Date(Date.now() - 30 * 86400_000)));
+  const [customEnd, setCustomEnd] = useState(() => isoDay(new Date()));
   const [granularity, setGranularity] = useState<"daily" | "weekly" | "monthly">("daily");
   const [mailboxId, setMailboxId] = useState<string>("");
   const [heatMode, setHeatMode] = useState<"all" | "sent" | "received">("all");
 
   const { start, end } = useMemo(() => {
+    if (preset === "custom") return { start: customStart, end: customEnd };
     const days = PRESETS.find((p) => p.id === preset)!.days;
     const endD = new Date();
     const startD = new Date(Date.now() - days * 86400_000);
     return { start: isoDay(startD), end: isoDay(endD) };
-  }, [preset]);
+  }, [customEnd, customStart, preset]);
 
   const isAdmin = role === "admin";
   const canViewAnalytics = capabilities.includes("view_email_activity");
@@ -264,6 +272,48 @@ export default function EmailActivity() {
               {p.label}
             </button>
           ))}
+          <button
+            onClick={() => setPreset("custom")}
+            className={`text-xs px-2.5 py-1.5 rounded-md border ${
+              preset === "custom"
+                ? "bg-[#059669]/10 text-[#10b981] border-[#059669]/30"
+                : "text-slate-400 border-slate-700 hover:text-slate-200"
+            }`}
+          >
+            Custom
+          </button>
+          {preset === "custom" && (
+            <div className="flex items-center gap-1.5">
+              <label className="sr-only" htmlFor="email-activity-start-date">
+                Start date
+              </label>
+              <input
+                id="email-activity-start-date"
+                type="date"
+                value={customStart}
+                max={customEnd}
+                onChange={(event) => {
+                  if (event.target.value) setCustomStart(event.target.value);
+                }}
+                className="text-xs bg-[#1e293b] border border-slate-700 rounded-md px-2 py-1.5 text-slate-200 [color-scheme:dark]"
+              />
+              <span className="text-xs text-slate-500">to</span>
+              <label className="sr-only" htmlFor="email-activity-end-date">
+                End date
+              </label>
+              <input
+                id="email-activity-end-date"
+                type="date"
+                value={customEnd}
+                min={customStart}
+                max={isoDay(new Date())}
+                onChange={(event) => {
+                  if (event.target.value) setCustomEnd(event.target.value);
+                }}
+                className="text-xs bg-[#1e293b] border border-slate-700 rounded-md px-2 py-1.5 text-slate-200 [color-scheme:dark]"
+              />
+            </div>
+          )}
           <div className="w-px h-5 bg-slate-800 mx-1 hidden sm:block" />
           {(["daily", "weekly", "monthly"] as const).map((g) => (
             <button
