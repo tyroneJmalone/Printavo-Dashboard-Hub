@@ -76,6 +76,7 @@ import type {
   CorrespondenceThreadDetail,
   CorrespondenceThreadList,
   CreateChipplyStoreRequest,
+  CreateCollectionFromSuggestionRequest,
   CreateCollectionRequest,
   CreateEmailThreadLinkRequest,
   CreateInsightsPresetRequest,
@@ -220,6 +221,8 @@ import type {
   NicheReportResponse,
   NotificationLogItem,
   OrdersReport,
+  PaletteCollectionPreviewRequest,
+  PaletteCollectionPreviewResponse,
   ParseChipplyEmailRequest,
   ParseChipplyEmailResponse,
   ParseChipplyFileRequest,
@@ -4423,6 +4426,147 @@ export const useDeleteCollection = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteCollectionMutationOptions(options));
+    }
+
+export const getPreviewCollectionPaletteUrl = () => {
+
+
+
+
+  return `/api/collections/palette-preview`
+}
+
+/**
+ * Staff-only, read-only. Styles resolve only by exact case-insensitive style name; an unprefixed cross-vendor match is returned as ambiguous.
+ * @summary Preview exact catalog garment colors ranked against a customer's branding palette
+ */
+export const previewCollectionPalette = async (paletteCollectionPreviewRequest: PaletteCollectionPreviewRequest, options?: RequestInit): Promise<PaletteCollectionPreviewResponse> => {
+
+  return customFetch<PaletteCollectionPreviewResponse>(getPreviewCollectionPaletteUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(paletteCollectionPreviewRequest)
+  }
+);}
+
+
+
+
+export const getPreviewCollectionPaletteMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewCollectionPalette>>, TError,{data: BodyType<PaletteCollectionPreviewRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewCollectionPalette>>, TError,{data: BodyType<PaletteCollectionPreviewRequest>}, TContext> => {
+
+const mutationKey = ['previewCollectionPalette'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewCollectionPalette>>, {data: BodyType<PaletteCollectionPreviewRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewCollectionPalette(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewCollectionPaletteMutationResult = NonNullable<Awaited<ReturnType<typeof previewCollectionPalette>>>
+    export type PreviewCollectionPaletteMutationBody = BodyType<PaletteCollectionPreviewRequest>
+    export type PreviewCollectionPaletteMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Preview exact catalog garment colors ranked against a customer's branding palette
+ */
+export const usePreviewCollectionPalette = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewCollectionPalette>>, TError,{data: BodyType<PaletteCollectionPreviewRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewCollectionPalette>>,
+        TError,
+        {data: BodyType<PaletteCollectionPreviewRequest>},
+        TContext
+      > => {
+      return useMutation(getPreviewCollectionPaletteMutationOptions(options));
+    }
+
+export const getCreateCollectionFromSuggestionUrl = () => {
+
+
+
+
+  return `/api/collections/from-suggestion`
+}
+
+/**
+ * @summary Atomically save reviewed palette suggestion selections as a collection
+ */
+export const createCollectionFromSuggestion = async (createCollectionFromSuggestionRequest: CreateCollectionFromSuggestionRequest, options?: RequestInit): Promise<CollectionDetail> => {
+
+  return customFetch<CollectionDetail>(getCreateCollectionFromSuggestionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createCollectionFromSuggestionRequest)
+  }
+);}
+
+
+
+
+export const getCreateCollectionFromSuggestionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCollectionFromSuggestion>>, TError,{data: BodyType<CreateCollectionFromSuggestionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCollectionFromSuggestion>>, TError,{data: BodyType<CreateCollectionFromSuggestionRequest>}, TContext> => {
+
+const mutationKey = ['createCollectionFromSuggestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCollectionFromSuggestion>>, {data: BodyType<CreateCollectionFromSuggestionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCollectionFromSuggestion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCollectionFromSuggestionMutationResult = NonNullable<Awaited<ReturnType<typeof createCollectionFromSuggestion>>>
+    export type CreateCollectionFromSuggestionMutationBody = BodyType<CreateCollectionFromSuggestionRequest>
+    export type CreateCollectionFromSuggestionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Atomically save reviewed palette suggestion selections as a collection
+ */
+export const useCreateCollectionFromSuggestion = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCollectionFromSuggestion>>, TError,{data: BodyType<CreateCollectionFromSuggestionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCollectionFromSuggestion>>,
+        TError,
+        {data: BodyType<CreateCollectionFromSuggestionRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateCollectionFromSuggestionMutationOptions(options));
     }
 
 export const getAddCollectionItemsUrl = (id: string,) => {

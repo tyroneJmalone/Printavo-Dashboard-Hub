@@ -1,10 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, Star, Plus, Folder, Clock, User, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Search, Star, Plus, Folder, Clock, User, Trash2, Palette } from "lucide-react";
+import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -13,16 +13,30 @@ import {
   useCreateCollection,
   useDeleteCollection
 } from "@workspace/api-client-react";
+import SuggestCollectionWorkflow from "@/components/collections/SuggestCollectionWorkflow";
 
 export default function Collections() {
+  const [location, setLocation] = useLocation();
   const [q, setQ] = useState("");
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [initialCustId, setInitialCustId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cId = params.get('customerId');
+    if (cId) {
+      setInitialCustId(cId);
+      setSuggestOpen(true);
+      setLocation(location, { replace: true });
+    }
+  }, [location, setLocation]);
   const { data, isLoading } = useListCollections(undefined, {
     query: { queryKey: getListCollectionsQueryKey() }
   });
-  
+
   const collections = data?.collections ?? [];
-  const filtered = collections.filter(c => 
-    c.name.toLowerCase().includes(q.toLowerCase()) || 
+  const filtered = collections.filter(c =>
+    c.name.toLowerCase().includes(q.toLowerCase()) ||
     (c.customerName && c.customerName.toLowerCase().includes(q.toLowerCase()))
   );
 
@@ -81,14 +95,18 @@ export default function Collections() {
             <div className="flex items-center gap-3">
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                <Input 
-                  placeholder="Search collections..." 
+                <Input
+                  placeholder="Search collections..."
                   value={q}
                   onChange={e => setQ(e.target.value)}
                   className="pl-9 h-9 bg-slate-900 border-slate-700"
                 />
               </div>
-              <Button onClick={handleCreate} disabled={createMut.isPending} className="h-9 bg-[#059669] hover:bg-[#047857] text-white text-xs px-4">
+              <Button onClick={() => setSuggestOpen(true)} className="h-9 bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 shadow-sm" data-testid="button-suggest-palette">
+                <Palette className="w-4 h-4 mr-2" />
+                Suggest from Palette
+              </Button>
+              <Button onClick={handleCreate} disabled={createMut.isPending} className="h-9 bg-[#059669] hover:bg-[#047857] text-white text-xs px-4 shadow-sm">
                 {createMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                 New Collection
               </Button>
@@ -126,7 +144,7 @@ export default function Collections() {
                      <div className="p-4 flex-1">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <h3 className="font-bold text-white text-lg truncate" title={c.name}>{c.name}</h3>
-                          <button 
+                          <button
                             onClick={(e) => handleDelete(e, c.id, c.name)}
                             className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -142,7 +160,7 @@ export default function Collections() {
                         <div className="text-xs font-medium text-slate-400 mb-4">
                            {c.itemCount} item{c.itemCount !== 1 && 's'}
                         </div>
-                        
+
                         {c.previewImages.length > 0 && (
                           <div className="flex gap-2">
                              {c.previewImages.map((img, i) => (
@@ -168,6 +186,12 @@ export default function Collections() {
           )}
         </div>
       </div>
+
+      <SuggestCollectionWorkflow
+        open={suggestOpen}
+        onOpenChange={setSuggestOpen}
+        initialCustomerId={initialCustId}
+      />
     </AppShell>
   );
 }

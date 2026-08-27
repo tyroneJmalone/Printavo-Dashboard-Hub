@@ -1076,6 +1076,169 @@ export interface CreateCollectionRequest {
   items?: NewCollectionItem[];
 }
 
+export interface PaletteCollectionPreviewRequest {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  printavoCustomerId: string;
+  /**
+     * @minItems 1
+     * @maxItems 30
+     * @items.minLength 1
+     * @items.maxLength 100
+     */
+  styles: string[];
+}
+
+export interface PaletteCustomerColor {
+  id: string;
+  role: string;
+  name: string;
+  /** @nullable */
+  hex: string | null;
+  families?: string[];
+}
+
+export type PaletteColorSuggestionMatchMethod = typeof PaletteColorSuggestionMatchMethod[keyof typeof PaletteColorSuggestionMatchMethod];
+
+
+export const PaletteColorSuggestionMatchMethod = {
+  exact_name: 'exact_name',
+  family: 'family',
+  unknown: 'unknown',
+} as const;
+
+export type PaletteColorSuggestionConfidence = typeof PaletteColorSuggestionConfidence[keyof typeof PaletteColorSuggestionConfidence];
+
+
+export const PaletteColorSuggestionConfidence = {
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+} as const;
+
+export interface PaletteColorSuggestion {
+  colorName: string;
+  /** @nullable */
+  swatchImage: string | null;
+  /** @nullable */
+  productImage: string | null;
+  families: string[];
+  matchedCustomer: PaletteCustomerColor;
+  matchMethod: PaletteColorSuggestionMatchMethod;
+  reason: string;
+  confidence: PaletteColorSuggestionConfidence;
+  score: number;
+}
+
+export type PaletteStyleSuggestionVendor = typeof PaletteStyleSuggestionVendor[keyof typeof PaletteStyleSuggestionVendor];
+
+
+export const PaletteStyleSuggestionVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface PaletteStyleSuggestion {
+  input: string;
+  vendor: PaletteStyleSuggestionVendor;
+  styleName: string;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  styleImage: string | null;
+  /** @maxItems 5 */
+  colors: PaletteColorSuggestion[];
+  /** @maxItems 100 */
+  alternatives: PaletteColorSuggestion[];
+}
+
+export type PaletteCollectionPreviewResponseUnresolvedItem = {
+  input: string;
+  reason: string;
+};
+
+export type PaletteCollectionPreviewResponseAmbiguousItemCandidatesItemVendor = typeof PaletteCollectionPreviewResponseAmbiguousItemCandidatesItemVendor[keyof typeof PaletteCollectionPreviewResponseAmbiguousItemCandidatesItemVendor];
+
+
+export const PaletteCollectionPreviewResponseAmbiguousItemCandidatesItemVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export type PaletteCollectionPreviewResponseAmbiguousItemCandidatesItem = {
+  vendor: PaletteCollectionPreviewResponseAmbiguousItemCandidatesItemVendor;
+  styleName: string;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+};
+
+export type PaletteCollectionPreviewResponseAmbiguousItem = {
+  input: string;
+  candidates: PaletteCollectionPreviewResponseAmbiguousItemCandidatesItem[];
+};
+
+export interface PaletteCollectionPreviewResponse {
+  printavoCustomerId: string;
+  palette: PaletteCustomerColor[];
+  /** @maxItems 30 */
+  suggestions: PaletteStyleSuggestion[];
+  unresolved: PaletteCollectionPreviewResponseUnresolvedItem[];
+  ambiguous: PaletteCollectionPreviewResponseAmbiguousItem[];
+}
+
+export type ReviewedPaletteItemRequestVendor = typeof ReviewedPaletteItemRequestVendor[keyof typeof ReviewedPaletteItemRequestVendor];
+
+
+export const ReviewedPaletteItemRequestVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface ReviewedPaletteItemRequest {
+  vendor: ReviewedPaletteItemRequestVendor;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  styleName: string;
+  /**
+     * @minItems 1
+     * @maxItems 100
+     * @items.minLength 1
+     * @items.maxLength 100
+     */
+  colors: string[];
+}
+
+export interface CreateCollectionFromSuggestionRequest {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  printavoCustomerId: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+  /**
+     * @minItems 1
+     * @maxItems 30
+     */
+  items: ReviewedPaletteItemRequest[];
+}
+
 export interface UpdateCollectionRequest {
   /**
      * @minLength 1

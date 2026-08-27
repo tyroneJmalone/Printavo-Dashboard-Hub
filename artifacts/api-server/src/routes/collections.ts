@@ -14,6 +14,9 @@ import {
   type Collection,
 } from "@workspace/db";
 import { and, desc, eq, sql, inArray } from "drizzle-orm";
+import { pool } from "@workspace/db";
+import { PreviewCollectionPaletteBody, CreateCollectionFromSuggestionBody } from "@workspace/api-zod";
+import { dedupeStyleInputs, rankPaletteColor, type PaletteColor } from "../lib/catalog/paletteSuggestions";
 
 /**
  * Curation collections (Product Finder phase 3).
@@ -24,6 +27,7 @@ import { and, desc, eq, sql, inArray } from "drizzle-orm";
  */
 
 const router: IRouter = Router();
+type SqlClient = { query: (...args: unknown[]) => Promise<any>; release: () => void };
 
 /** Same display-name rule as the customer directory routes. */
 const CUSTOMER_NAME_SQL = sql<string | null>`COALESCE(
@@ -103,6 +107,32 @@ async function loadDetail(id: string): Promise<Record<string, unknown> | null> {
   };
 }
 
+/** Transaction-client detail load so a successful commit always has a response ready. */
+async function loadDetailWithClient(client: SqlClient, id: string): Promise<Record<string, unknown>> {
+  const coll = await client.query(
+    `SELECT c.*, COALESCE(NULLIF(p.company_name, ''), p.data -> 'primaryContact' ->> 'fullName') customer_name
+       FROM collections c LEFT JOIN pv_customers p ON p.printavo_id = c.printavo_customer_id WHERE c.id = $1`, [id],
+  );
+  if (!coll.rows[0]) throw new Error("Created collection could not be loaded");
+  const row = coll.rows[0];
+  const itemRows = await client.query(
+    `SELECT ci.id, ci.vendor, ci.style_name, ci.colors, ci.note, ci.created_at,
+            cp.brand, cp.title, cp.style_image, cp.price_min, cp.price_max, cp.discontinued, cp.id catalog_id
+       FROM collection_items ci LEFT JOIN catalog_products cp ON cp.vendor = ci.vendor AND cp.style_name = ci.style_name
+      WHERE ci.collection_id = $1 ORDER BY ci.created_at`, [id],
+  );
+  return {
+    id: row.id, name: row.name, printavoCustomerId: row.printavo_customer_id, customerName: row.customer_name,
+    notes: row.notes, createdByEmail: row.created_by_email, createdAt: row.created_at.toISOString(), updatedAt: row.updated_at.toISOString(),
+    items: itemRows.rows.map((item: any) => ({
+      id: item.id, vendor: item.vendor, styleName: item.style_name, colors: item.colors, note: item.note,
+      brand: item.brand, title: item.title, styleImage: item.style_image,
+      priceMin: item.price_min == null ? null : Number(item.price_min), priceMax: item.price_max == null ? null : Number(item.price_max),
+      discontinued: item.discontinued ?? false, inCatalog: item.catalog_id != null, createdAt: item.created_at.toISOString(),
+    })),
+  };
+}
+
 function sendDetail(res: Response, detail: Record<string, unknown> | null): void {
   if (!detail) {
     res.status(404).json({ error: "Collection not found" });
@@ -117,6 +147,7 @@ type NewItem = {
   colors?: string[] | undefined;
   note?: string | null | undefined;
 };
+class ReviewValidationError extends Error {}
 
 /** Insert items, merging into existing (colors unioned; note kept unless new). */
 async function mergeItems(collectionId: string, items: NewItem[]): Promise<void> {
@@ -275,6 +306,96 @@ router.post("/collections", (req: Request, res) => {
       req.log.error({ err }, "Collection create failed");
       res.status(500).json({ error: "Failed to create collection" });
     });
+});
+
+router.post("/collections/palette-preview", async (req: Request, res): Promise<void> => {
+  const parsed = PreviewCollectionPaletteBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid palette preview payload" }); return; }
+  try {
+    const customerId = parsed.data.printavoCustomerId.trim();
+    const customer = await pool.query("SELECT 1 FROM pv_customers WHERE printavo_id = $1", [customerId]);
+    if (!customer.rowCount) { res.status(404).json({ error: "Customer not found" }); return; }
+    const paletteResult = await pool.query(
+      `SELECT c.id, a.role, c.name, c.hex, c.rgb FROM customer_branding_colors a
+       JOIN branding_colors c ON c.id = a.color_id WHERE a.printavo_customer_id = $1 AND c.active = true ORDER BY a.role`, [customerId]);
+    const palette = paletteResult.rows as PaletteColor[];
+    if (!palette.length) { res.status(400).json({ error: "Customer has no configured active branding colors" }); return; }
+    const suggestions: unknown[] = [], unresolved: unknown[] = [], ambiguous: unknown[] = [];
+    for (const input of dedupeStyleInputs(parsed.data.styles)) {
+      const match = /^(sanmar|ss)\s*:\s*(.+)$/i.exec(input);
+      const vendor = match?.[1]?.toLowerCase() ?? null, style = (match?.[2] ?? input).trim();
+      const products = await pool.query(
+        `SELECT id, vendor, style_name, brand, title, style_image FROM catalog_products
+         WHERE discontinued = false AND lower(style_name) = lower($1) ${vendor ? "AND vendor = $2" : ""} ORDER BY vendor`,
+        vendor ? [style, vendor] : [style]);
+      if (!products.rowCount) { unresolved.push({ input, reason: "No active exact style match." }); continue; }
+      if (!vendor && products.rowCount > 1) { ambiguous.push({ input, candidates: products.rows.map((p) => ({ vendor: p.vendor, styleName: p.style_name, brand: p.brand, title: p.title })) }); continue; }
+      const product = products.rows[0]!;
+      const colors = await pool.query(
+        `SELECT cc.color_name, cc.norm_name, cc.swatch_image, cc.product_image, COALESCE(cf.families, '{}'::text[]) families
+         FROM catalog_colors cc LEFT JOIN catalog_color_families cf ON cf.norm_name = cc.norm_name
+         WHERE cc.product_id = $1 ORDER BY cc.color_name LIMIT 100`, [product.id]);
+      const alternatives = colors.rows.map((c) => rankPaletteColor({ colorName: c.color_name, normName: c.norm_name, swatchImage: c.swatch_image, productImage: c.product_image, families: c.families }, palette));
+      const ranked = [...alternatives].sort((a, b) => b.score - a.score || a.colorName.localeCompare(b.colorName));
+      suggestions.push({ input, vendor: product.vendor, styleName: product.style_name, brand: product.brand, title: product.title, styleImage: product.style_image, colors: ranked.slice(0, 5), alternatives });
+    }
+    res.json({ printavoCustomerId: customerId, palette: palette.map((c) => ({ id: c.id, role: c.role, name: c.name, hex: c.hex })), suggestions, unresolved, ambiguous });
+  } catch (err) { req.log.error({ err }, "Palette preview failed"); res.status(500).json({ error: "Failed to preview palette suggestions" }); }
+});
+
+router.post("/collections/from-suggestion", async (req: Request, res: Response): Promise<void> => {
+  const parsed = CreateCollectionFromSuggestionBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid reviewed suggestion payload" }); return; }
+  const data = parsed.data;
+  const reviewedItems = new Map<string, { vendor: "sanmar" | "ss"; styleName: string; colors: string[] }>();
+  for (const item of data.items) {
+    const styleName = item.styleName.trim(), key = `${item.vendor}|${styleName.toLowerCase()}`;
+    const current = reviewedItems.get(key);
+    if (current) current.colors = [...new Set([...current.colors, ...item.colors.map((color) => color.trim()).filter(Boolean)])];
+    else reviewedItems.set(key, { vendor: item.vendor, styleName, colors: [...new Set(item.colors.map((color) => color.trim()).filter(Boolean))] });
+  }
+  let client: SqlClient | undefined;
+  let committed = false;
+  let savedDetail: Record<string, unknown> | undefined;
+  try {
+    client = await pool.connect();
+    await client.query("BEGIN");
+    if (!(await client.query("SELECT 1 FROM pv_customers WHERE printavo_id = $1", [data.printavoCustomerId])).rowCount) {
+      await client.query("ROLLBACK"); res.status(404).json({ error: "Customer not found" }); return;
+    }
+    if (!(await client.query(
+      `SELECT 1 FROM customer_branding_colors a JOIN branding_colors c ON c.id = a.color_id
+       WHERE a.printavo_customer_id = $1 AND c.active = true LIMIT 1`, [data.printavoCustomerId],
+    )).rowCount) throw new ReviewValidationError("Customer has no configured active branding colors");
+    for (const item of reviewedItems.values()) {
+      const product = await client.query("SELECT id, style_name FROM catalog_products WHERE vendor = $1 AND lower(style_name) = lower($2) AND discontinued = false", [item.vendor, item.styleName]);
+      if (product.rowCount !== 1) throw new ReviewValidationError(`Reviewed style is unavailable: ${item.vendor}:${item.styleName}`);
+      item.styleName = product.rows[0].style_name;
+      const valid = await client.query("SELECT count(*)::int count FROM catalog_colors WHERE product_id = $1 AND color_name = ANY($2::text[])", [product.rows[0].id, item.colors]);
+      if (valid.rows[0].count !== item.colors.length) throw new ReviewValidationError(`Reviewed color is unavailable: ${item.vendor}:${item.styleName}`);
+    }
+    const provenance = `Palette suggestions reviewed for customer ${data.printavoCustomerId}.`;
+    const notes = [data.notes?.trim(), provenance].filter(Boolean).join("\n");
+    const created = await client.query("INSERT INTO collections (name, printavo_customer_id, notes, created_by_email) VALUES ($1,$2,$3,$4) RETURNING id", [data.name.trim(), data.printavoCustomerId, notes, req.staff?.email ?? null]);
+    for (const item of reviewedItems.values()) await client.query("INSERT INTO collection_items (collection_id,vendor,style_name,colors) VALUES ($1,$2,$3,$4)", [created.rows[0].id, item.vendor, item.styleName, item.colors]);
+    savedDetail = await loadDetailWithClient(client, created.rows[0].id);
+    await client.query("COMMIT");
+    committed = true;
+  } catch (err) {
+    if (!committed) await client?.query("ROLLBACK").catch(() => undefined);
+    if (err instanceof ReviewValidationError) { res.status(400).json({ error: err.message }); return; }
+    req.log.error({ err }, "Reviewed palette collection save failed");
+    res.status(500).json({ error: "Failed to save reviewed suggestion" });
+    return;
+  } finally { client?.release(); }
+  // Deliberately outside the transaction error boundary: persistence has
+  // committed and the complete response was already built from that snapshot.
+  if (!committed || !savedDetail) {
+    req.log.error("Committed palette collection has no response snapshot");
+    res.status(500).json({ error: "Failed to save reviewed suggestion" });
+    return;
+  }
+  res.status(201).json(savedDetail);
 });
 
 router.get("/collections/:id", (req, res) => {

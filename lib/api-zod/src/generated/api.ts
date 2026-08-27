@@ -1589,6 +1589,155 @@ export const DeleteCollectionResponse = zod.object({
 
 
 /**
+ * Staff-only, read-only. Styles resolve only by exact case-insensitive style name; an unprefixed cross-vendor match is returned as ambiguous.
+ * @summary Preview exact catalog garment colors ranked against a customer's branding palette
+ */
+export const previewCollectionPaletteBodyPrintavoCustomerIdMax = 100;
+
+export const previewCollectionPaletteBodyStylesItemMax = 100;
+
+export const previewCollectionPaletteBodyStylesMax = 30;
+
+
+
+export const PreviewCollectionPaletteBody = zod.object({
+  "printavoCustomerId": zod.string().min(1).max(previewCollectionPaletteBodyPrintavoCustomerIdMax),
+  "styles": zod.array(zod.string().min(1).max(previewCollectionPaletteBodyStylesItemMax)).min(1).max(previewCollectionPaletteBodyStylesMax)
+})
+
+export const previewCollectionPaletteResponseSuggestionsItemColorsMax = 5;
+
+export const previewCollectionPaletteResponseSuggestionsItemAlternativesMax = 100;
+
+export const previewCollectionPaletteResponseSuggestionsMax = 30;
+
+
+
+export const PreviewCollectionPaletteResponse = zod.object({
+  "printavoCustomerId": zod.string(),
+  "palette": zod.array(zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "families": zod.array(zod.string()).optional()
+})),
+  "suggestions": zod.array(zod.object({
+  "input": zod.string(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "colors": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number()
+})).max(previewCollectionPaletteResponseSuggestionsItemColorsMax),
+  "alternatives": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number()
+})).max(previewCollectionPaletteResponseSuggestionsItemAlternativesMax)
+})).max(previewCollectionPaletteResponseSuggestionsMax),
+  "unresolved": zod.array(zod.object({
+  "input": zod.string(),
+  "reason": zod.string()
+})),
+  "ambiguous": zod.array(zod.object({
+  "input": zod.string(),
+  "candidates": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable()
+}))
+}))
+})
+
+
+/**
+ * @summary Atomically save reviewed palette suggestion selections as a collection
+ */
+export const createCollectionFromSuggestionBodyNameMax = 200;
+
+export const createCollectionFromSuggestionBodyPrintavoCustomerIdMax = 100;
+
+export const createCollectionFromSuggestionBodyNotesMax = 2000;
+
+export const createCollectionFromSuggestionBodyItemsItemStyleNameMax = 100;
+
+export const createCollectionFromSuggestionBodyItemsItemColorsItemMax = 100;
+
+export const createCollectionFromSuggestionBodyItemsItemColorsMax = 100;
+
+export const createCollectionFromSuggestionBodyItemsMax = 30;
+
+
+
+export const CreateCollectionFromSuggestionBody = zod.object({
+  "name": zod.string().min(1).max(createCollectionFromSuggestionBodyNameMax),
+  "printavoCustomerId": zod.string().min(1).max(createCollectionFromSuggestionBodyPrintavoCustomerIdMax),
+  "notes": zod.string().max(createCollectionFromSuggestionBodyNotesMax).nullish(),
+  "items": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string().min(1).max(createCollectionFromSuggestionBodyItemsItemStyleNameMax),
+  "colors": zod.array(zod.string().min(1).max(createCollectionFromSuggestionBodyItemsItemColorsItemMax)).min(1).max(createCollectionFromSuggestionBodyItemsItemColorsMax)
+})).min(1).max(createCollectionFromSuggestionBodyItemsMax)
+})
+
+export const CreateCollectionFromSuggestionResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "printavoCustomerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdByEmail": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colors": zod.array(zod.string()),
+  "note": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "priceMin": zod.number().nullable(),
+  "priceMax": zod.number().nullable(),
+  "discontinued": zod.boolean().describe('True when the style has dropped off the vendor\'s sellable list since it was saved.'),
+  "inCatalog": zod.boolean().describe('False when the style is no longer present in the local catalog at all.'),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
  * Styles already in the collection are merged (colors unioned, note kept unless a new one is given) rather than duplicated.
  * @summary Add one or more styles to a collection
  */

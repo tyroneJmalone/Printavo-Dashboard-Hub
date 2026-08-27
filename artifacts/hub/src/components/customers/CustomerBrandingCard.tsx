@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import {
   useGetCustomerBranding,
   getGetCustomerBrandingQueryKey,
@@ -22,6 +23,7 @@ import {
 import { Palette, Plus, Trash2, Edit2, Check, X, Type, FileText } from "lucide-react";
 
 export function CustomerBrandingCard({ customerId }: { customerId: string }) {
+  const [, setLocation] = useLocation();
   const { role } = useStaff();
   const isAdmin = role === "admin";
   const { toast } = useToast();
@@ -59,8 +61,9 @@ export function CustomerBrandingCard({ customerId }: { customerId: string }) {
         setIsEditing(false);
         qc.invalidateQueries({ queryKey });
       },
-      onError: (e: any) => {
-        toast({ title: "Update failed", description: e.error || "Please try again.", variant: "destructive" });
+      onError: (e: unknown) => {
+        const err = e as { error?: string };
+        toast({ title: "Update failed", description: err.error || "Please try again.", variant: "destructive" });
       }
     }
   });
@@ -225,7 +228,7 @@ export function CustomerBrandingCard({ customerId }: { customerId: string }) {
                     </div>
                   </div>
                 )}
-                
+
                 {branding.fonts && branding.fonts.length > 0 && (
                   <div>
                     <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5"><Type size={12} /> Fonts</h3>
@@ -245,6 +248,20 @@ export function CustomerBrandingCard({ customerId }: { customerId: string }) {
                     <p className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed bg-slate-800/20 p-3 rounded-lg border border-slate-800/50">
                       {branding.notes}
                     </p>
+                  </div>
+                )}
+
+                {branding.colors && branding.colors.length > 0 && (
+                  <div className="mt-6 pt-5 border-t border-slate-800/80">
+                    <Button
+                      variant="outline"
+                      onClick={() => setLocation(`/collections?customerId=${customerId}`)}
+                      className="w-full text-blue-400 border-blue-500/30 hover:bg-blue-500/10 hover:text-blue-300 shadow-sm"
+                      data-testid={`button-suggest-collection-${customerId}`}
+                    >
+                      <Palette size={14} className="mr-2" />
+                      Build Collection from Palette
+                    </Button>
                   </div>
                 )}
               </>
