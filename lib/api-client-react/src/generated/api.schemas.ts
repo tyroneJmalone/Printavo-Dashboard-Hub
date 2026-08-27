@@ -5734,6 +5734,9 @@ export type GetEmailActivityStatsParams = {
 granularity: GetEmailActivityStatsGranularity;
 start: string;
 end: string;
+/**
+ * Omit to aggregate all mailboxes the current staff member is authorized to view.
+ */
 mailboxId?: string;
 };
 
@@ -5749,28 +5752,44 @@ export const GetEmailActivityStatsGranularity = {
 export type GetEmailResponseTimesParams = {
 start: string;
 end: string;
+/**
+ * Omit to aggregate all mailboxes the current staff member is authorized to view.
+ */
 mailboxId?: string;
 };
 
 export type GetEmailUnansweredThreadsParams = {
+/**
+ * Omit to include all mailboxes the current staff member is authorized to view.
+ */
 mailboxId?: string;
 };
 
 export type GetEmailHeatmapParams = {
 start: string;
 end: string;
+/**
+ * Omit to aggregate all mailboxes the current staff member is authorized to view.
+ */
 mailboxId?: string;
 };
 
 export type GetEmailFilteredBucketParams = {
 start: string;
 end: string;
+/**
+ * Omit to aggregate all mailboxes the current staff member is authorized to view.
+ */
 mailboxId?: string;
 };
 
 export type ListEmailCustomersParams = {
 start: string;
 end: string;
+/**
+ * Omit to aggregate all mailboxes the current staff member is authorized to view.
+ */
+mailboxId?: string;
 };
 
 export type GetEmailDealsReportParams = {

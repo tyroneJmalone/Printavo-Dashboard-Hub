@@ -18609,7 +18609,7 @@ export const getGetEmailActivityStatsUrl = (params: GetEmailActivityStatsParams,
 }
 
 /**
- * @summary Sent/received/thread counts + series + thread depth (admin only)
+ * @summary Sent/received/thread counts + series + thread depth for authorized mailboxes
  */
 export const getEmailActivityStats = async (params: GetEmailActivityStatsParams, options?: RequestInit): Promise<EmailStatsResponse> => {
 
@@ -18656,7 +18656,7 @@ export type GetEmailActivityStatsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Sent/received/thread counts + series + thread depth (admin only)
+ * @summary Sent/received/thread counts + series + thread depth for authorized mailboxes
  */
 
 export function useGetEmailActivityStats<TData = Awaited<ReturnType<typeof getEmailActivityStats>>, TError = ErrorType<unknown>>(
@@ -18693,7 +18693,7 @@ export const getGetEmailResponseTimesUrl = (params: GetEmailResponseTimesParams,
 }
 
 /**
- * @summary Inbound → first-reply timing per mailbox (admin only)
+ * @summary Inbound → first-reply timing for authorized mailboxes
  */
 export const getEmailResponseTimes = async (params: GetEmailResponseTimesParams, options?: RequestInit): Promise<EmailResponseTimesResponse> => {
 
@@ -18740,7 +18740,7 @@ export type GetEmailResponseTimesQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Inbound → first-reply timing per mailbox (admin only)
+ * @summary Inbound → first-reply timing for authorized mailboxes
  */
 
 export function useGetEmailResponseTimes<TData = Awaited<ReturnType<typeof getEmailResponseTimes>>, TError = ErrorType<unknown>>(
@@ -18777,7 +18777,7 @@ export const getGetEmailUnansweredThreadsUrl = (params?: GetEmailUnansweredThrea
 }
 
 /**
- * @summary Threads unanswered past the configured threshold (admin only)
+ * @summary Threads unanswered past the configured threshold for authorized mailboxes
  */
 export const getEmailUnansweredThreads = async (params?: GetEmailUnansweredThreadsParams, options?: RequestInit): Promise<EmailUnansweredResponse> => {
 
@@ -18824,7 +18824,7 @@ export type GetEmailUnansweredThreadsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Threads unanswered past the configured threshold (admin only)
+ * @summary Threads unanswered past the configured threshold for authorized mailboxes
  */
 
 export function useGetEmailUnansweredThreads<TData = Awaited<ReturnType<typeof getEmailUnansweredThreads>>, TError = ErrorType<unknown>>(
@@ -18861,7 +18861,7 @@ export const getGetEmailHeatmapUrl = (params: GetEmailHeatmapParams,) => {
 }
 
 /**
- * @summary Day-of-week × hour-of-day activity (shop-local time, admin only)
+ * @summary Day-of-week × hour-of-day activity for authorized mailboxes
  */
 export const getEmailHeatmap = async (params: GetEmailHeatmapParams, options?: RequestInit): Promise<EmailHeatmapResponse> => {
 
@@ -18908,7 +18908,7 @@ export type GetEmailHeatmapQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Day-of-week × hour-of-day activity (shop-local time, admin only)
+ * @summary Day-of-week × hour-of-day activity for authorized mailboxes
  */
 
 export function useGetEmailHeatmap<TData = Awaited<ReturnType<typeof getEmailHeatmap>>, TError = ErrorType<unknown>>(
@@ -18945,7 +18945,7 @@ export const getGetEmailFilteredBucketUrl = (params: GetEmailFilteredBucketParam
 }
 
 /**
- * @summary Filtered-mail breakdown + spot-check sample (admin only)
+ * @summary Filtered-mail breakdown + spot-check sample for authorized mailboxes
  */
 export const getEmailFilteredBucket = async (params: GetEmailFilteredBucketParams, options?: RequestInit): Promise<EmailFilteredResponse> => {
 
@@ -18992,7 +18992,7 @@ export type GetEmailFilteredBucketQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Filtered-mail breakdown + spot-check sample (admin only)
+ * @summary Filtered-mail breakdown + spot-check sample for authorized mailboxes
  */
 
 export function useGetEmailFilteredBucket<TData = Awaited<ReturnType<typeof getEmailFilteredBucket>>, TError = ErrorType<unknown>>(
@@ -19099,7 +19099,7 @@ export const getListEmailCustomersUrl = (params: ListEmailCustomersParams,) => {
 }
 
 /**
- * @summary Per-customer email volume in a range — dashboard drill-down (admin only)
+ * @summary Per-customer email volume across authorized mailboxes
  */
 export const listEmailCustomers = async (params: ListEmailCustomersParams, options?: RequestInit): Promise<EmailCustomersResponse> => {
 
@@ -19146,7 +19146,7 @@ export type ListEmailCustomersQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Per-customer email volume in a range — dashboard drill-down (admin only)
+ * @summary Per-customer email volume across authorized mailboxes
  */
 
 export function useListEmailCustomers<TData = Awaited<ReturnType<typeof listEmailCustomers>>, TError = ErrorType<unknown>>(

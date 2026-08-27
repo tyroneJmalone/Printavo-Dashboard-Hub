@@ -101,6 +101,18 @@ function parseRange(req: Request, res: Response): { start: Date; end: Date; mail
   return { start, end, mailboxId };
 }
 
+async function authorizedMailboxScope(
+  req: Request,
+  res: Response,
+  mailboxId: string | undefined,
+): Promise<string[] | null> {
+  if (mailboxId) {
+    const authorized = await authorizedMailboxId(req, res, mailboxId);
+    return authorized ? [authorized] : null;
+  }
+  return authorizedMailboxIds(req.staff!);
+}
+
 async function authorizedMailboxId(
   req: Request,
   res: Response,
@@ -295,14 +307,13 @@ router.put("/email-activity/settings", requireCapability("manage_email_configura
 router.get("/email-activity/stats", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
-  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
-  if (!mailboxId) return;
-  range.mailboxId = mailboxId;
+  const mailboxIds = await authorizedMailboxScope(req, res, range.mailboxId);
+  if (!mailboxIds) return;
   const granularity = String(req.query.granularity ?? "daily") as "daily" | "weekly" | "monthly";
   if (!["daily", "weekly", "monthly"].includes(granularity))
     return res.status(400).json({ error: "Invalid granularity" });
   const [{ perMailbox, series, depth }, lookup] = await Promise.all([
-    overviewStats(range, granularity),
+    overviewStats({ ...range, mailboxIds }, granularity),
     mailboxLookup(),
   ]);
   const depthByMailbox = new Map(depth.map((d) => [d.mailbox_id, d]));
@@ -343,10 +354,9 @@ router.get("/email-activity/stats", requireCapability("view_email_activity"), as
 router.get("/email-activity/response-times", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
-  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
-  if (!mailboxId) return;
-  range.mailboxId = mailboxId;
-  const [rows, lookup] = await Promise.all([responseTimeStats(range), mailboxLookup()]);
+  const mailboxIds = await authorizedMailboxScope(req, res, range.mailboxId);
+  if (!mailboxIds) return;
+  const [rows, lookup] = await Promise.all([responseTimeStats({ ...range, mailboxIds }), mailboxLookup()]);
   // The pooled row (mailbox_id null) is a true team percentile over the same
   // filtered thread population — it honors any mailboxId filter.
   const pooledRow = rows.find((r) => r.mailbox_id == null);
@@ -380,14 +390,14 @@ router.get("/email-activity/response-times", requireCapability("view_email_activ
 
 router.get("/email-activity/unanswered", requireCapability("view_email_activity"), async (req, res) => {
   const settings = await getEmailSettings();
-  const mailboxId = await authorizedMailboxId(
+  const mailboxIds = await authorizedMailboxScope(
     req,
     res,
     typeof req.query.mailboxId === "string" && req.query.mailboxId ? req.query.mailboxId : undefined,
   );
-  if (!mailboxId) return;
+  if (!mailboxIds) return;
   const [rows, lookup] = await Promise.all([
-    unansweredThreads(settings.unansweredThresholdHours, mailboxId),
+    unansweredThreads(settings.unansweredThresholdHours, mailboxIds),
     mailboxLookup(),
   ]);
   res.json({
@@ -408,20 +418,21 @@ router.get("/email-activity/unanswered", requireCapability("view_email_activity"
 router.get("/email-activity/heatmap", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
-  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
-  if (!mailboxId) return;
-  range.mailboxId = mailboxId;
-  const cells = await heatmapStats(range);
+  const mailboxIds = await authorizedMailboxScope(req, res, range.mailboxId);
+  if (!mailboxIds) return;
+  const cells = await heatmapStats({ ...range, mailboxIds });
   res.json({ cells: cells.map((c) => ({ dow: c.dow, hour: c.hour, sent: c.sent, received: c.received })) });
 });
 
 router.get("/email-activity/filtered", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
-  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
-  if (!mailboxId) return;
-  range.mailboxId = mailboxId;
-  const [{ breakdown, sample }, lookup] = await Promise.all([filteredStats(range), mailboxLookup()]);
+  const mailboxIds = await authorizedMailboxScope(req, res, range.mailboxId);
+  if (!mailboxIds) return;
+  const [{ breakdown, sample }, lookup] = await Promise.all([
+    filteredStats({ ...range, mailboxIds }),
+    mailboxLookup(),
+  ]);
   res.json({
     total: breakdown.reduce((s, b) => s + b.count, 0),
     breakdown: breakdown.map((b) => ({ reason: b.reason, count: b.count })),
@@ -447,10 +458,9 @@ router.post("/email-activity/match", requireCapability("manage_email_configurati
 router.get("/email-activity/customers", requireCapability("view_email_activity"), async (req, res) => {
   const range = parseRange(req, res);
   if (!range) return;
-  const mailboxId = await authorizedMailboxId(req, res, range.mailboxId);
-  if (!mailboxId) return;
-  range.mailboxId = mailboxId;
-  const rows = await emailCustomersList(range);
+  const mailboxIds = await authorizedMailboxScope(req, res, range.mailboxId);
+  if (!mailboxIds) return;
+  const rows = await emailCustomersList({ ...range, mailboxIds });
   res.json({
     customers: rows.map((r) => ({
       customerId: r.customer_id,

@@ -9,4 +9,8 @@
 export type ListEmailCustomersParams = {
 start: string;
 end: string;
+/**
+ * Omit to aggregate all mailboxes the current staff member is authorized to view.
+ */
+mailboxId?: string;
 };

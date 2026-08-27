@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   useGetEmailActivityStatus,
@@ -157,39 +157,35 @@ export default function EmailActivity() {
 
   const isAdmin = role === "admin";
   const canViewAnalytics = capabilities.includes("view_email_activity");
-  const common = { start, end, mailboxId };
+  const common = { start, end, ...(mailboxId ? { mailboxId } : {}) };
   const statsParams = { granularity, ...common };
-  const unansweredParams = { mailboxId };
+  const unansweredParams = mailboxId ? { mailboxId } : {};
   const { data: status } = useGetEmailActivityStatus({
     query: { enabled: canViewAnalytics, queryKey: getGetEmailActivityStatusQueryKey() },
   });
-  const { data: stats, isLoading } = useGetEmailActivityStats(statsParams, {
-    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailActivityStatsQueryKey(statsParams) },
-  });
-  const { data: responseTimes } = useGetEmailResponseTimes(common, {
-    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailResponseTimesQueryKey(common) },
-  });
-  const { data: unanswered } = useGetEmailUnansweredThreads(unansweredParams, {
-    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailUnansweredThreadsQueryKey(unansweredParams) },
-  });
-  const { data: heatmap } = useGetEmailHeatmap(common, {
-    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailHeatmapQueryKey(common) },
-  });
-  const { data: filtered } = useGetEmailFilteredBucket(common, {
-    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getGetEmailFilteredBucketQueryKey(common) },
-  });
-  const custParams = { start, end, mailboxId };
-  const { data: emailCustomers } = useListEmailCustomers(custParams, {
-    query: { enabled: canViewAnalytics && !!mailboxId, queryKey: getListEmailCustomersQueryKey(custParams) },
-  });
-
   const readableMailboxes = useMemo(
     () => status?.mailboxes.filter((mailbox) => mailbox.readable !== false) ?? [],
     [status],
   );
-  useEffect(() => {
-    if (!mailboxId && readableMailboxes[0]) setMailboxId(readableMailboxes[0].id);
-  }, [mailboxId, readableMailboxes]);
+  const { data: stats, isLoading } = useGetEmailActivityStats(statsParams, {
+    query: { enabled: canViewAnalytics && readableMailboxes.length > 0, queryKey: getGetEmailActivityStatsQueryKey(statsParams) },
+  });
+  const { data: responseTimes } = useGetEmailResponseTimes(common, {
+    query: { enabled: canViewAnalytics && readableMailboxes.length > 0, queryKey: getGetEmailResponseTimesQueryKey(common) },
+  });
+  const { data: unanswered } = useGetEmailUnansweredThreads(unansweredParams, {
+    query: { enabled: canViewAnalytics && readableMailboxes.length > 0, queryKey: getGetEmailUnansweredThreadsQueryKey(unansweredParams) },
+  });
+  const { data: heatmap } = useGetEmailHeatmap(common, {
+    query: { enabled: canViewAnalytics && readableMailboxes.length > 0, queryKey: getGetEmailHeatmapQueryKey(common) },
+  });
+  const { data: filtered } = useGetEmailFilteredBucket(common, {
+    query: { enabled: canViewAnalytics && readableMailboxes.length > 0, queryKey: getGetEmailFilteredBucketQueryKey(common) },
+  });
+  const custParams = { start, end, ...(mailboxId ? { mailboxId } : {}) };
+  const { data: emailCustomers } = useListEmailCustomers(custParams, {
+    query: { enabled: canViewAnalytics && readableMailboxes.length > 0, queryKey: getListEmailCustomersQueryKey(custParams) },
+  });
 
   const series = useMemo(() => {
     if (!stats) return [];
@@ -334,6 +330,7 @@ export default function EmailActivity() {
             onChange={(e) => setMailboxId(e.target.value)}
             className="text-xs bg-[#1e293b] border border-slate-700 rounded-md px-2 py-1.5 text-slate-200"
           >
+            <option value="">All mailboxes</option>
              {readableMailboxes.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.displayName || m.email}

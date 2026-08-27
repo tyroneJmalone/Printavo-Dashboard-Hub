@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import express from "express";
 import { pool, type StaffUser } from "@workspace/db";
 import {
   authorizedMailboxIds,
@@ -13,12 +14,14 @@ import {
   customerThreads,
 } from "../src/lib/emailActivity/matching.ts";
 import { hasStaffCapability } from "../src/middlewares/requireStaff.ts";
+import emailActivityRouter from "../src/routes/emailActivity.ts";
 
 const suffix = randomUUID().slice(0, 8);
 const ids = {
   owner: randomUUID(),
   admin: randomUUID(),
   manager: randomUUID(),
+  emptyManager: randomUUID(),
   staff: randomUUID(),
   protectedMailbox: randomUUID(),
   groupMailbox: randomUUID(),
@@ -26,12 +29,19 @@ const ids = {
   group: randomUUID(),
   thread: randomUUID(),
   hiddenThread: randomUUID(),
+  groupThread: randomUUID(),
 };
 const customerId = `customer-${suffix}`;
 const visibleGmailThreadId = `gmail-visible-${suffix}`;
 const hiddenGmailThreadId = `gmail-hidden-${suffix}`;
 
-const users: Record<"owner" | "admin" | "manager" | "staff", StaffUser> = {
+function isoOffset(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+const users: Record<"owner" | "admin" | "manager" | "emptyManager" | "staff", StaffUser> = {
   owner: {
     id: ids.owner,
     email: `acl-owner-${suffix}@example.test`,
@@ -53,6 +63,13 @@ const users: Record<"owner" | "admin" | "manager" | "staff", StaffUser> = {
     addedByEmail: null,
     createdAt: new Date(),
   },
+  emptyManager: {
+    id: ids.emptyManager,
+    email: `acl-empty-manager-${suffix}@example.test`,
+    role: "manager",
+    addedByEmail: null,
+    createdAt: new Date(),
+  },
   staff: {
     id: ids.staff,
     email: `acl-staff-${suffix}@example.test`,
@@ -65,7 +82,8 @@ const users: Record<"owner" | "admin" | "manager" | "staff", StaffUser> = {
 before(async () => {
   await pool.query(
     `INSERT INTO staff_users (id, email, role)
-     VALUES ($1,$2,'staff'), ($3,$4,'admin'), ($5,$6,'manager'), ($7,$8,'staff')`,
+     VALUES ($1,$2,'staff'), ($3,$4,'admin'), ($5,$6,'manager'), ($7,$8,'staff'),
+            ($9,$10,'manager')`,
     [
       ids.owner,
       users.owner.email,
@@ -75,6 +93,8 @@ before(async () => {
       users.manager.email,
       ids.staff,
       users.staff.email,
+      ids.emptyManager,
+      users.emptyManager.email,
     ],
   );
   await pool.query(
@@ -90,6 +110,49 @@ before(async () => {
       `acl-group-${suffix}@example.test`,
       ids.workspaceMailbox,
       `acl-workspace-${suffix}@example.test`,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO email_messages
+       (mailbox_id, gmail_id, gmail_thread_id, direction, subject, internal_date, excluded_reason)
+     VALUES
+       ($1,$2,$3,'inbound','Authorized aggregate fixture',now()-interval '3 days',NULL),
+       ($1,$4,$3,'outbound','Authorized aggregate fixture',now()-interval '2 days',NULL),
+       ($1,$5,$6,'inbound','Authorized unanswered fixture',now()-interval '4 days',NULL),
+       ($1,$7,$8,'outbound','Authorized filtered fixture',now()-interval '1 day','fixture-authorized'),
+       ($9,$10,$11,'inbound','Unauthorized aggregate fixture',now()-interval '3 days',NULL),
+       ($9,$12,$11,'outbound','Unauthorized aggregate fixture',now()-interval '2 days',NULL),
+       ($9,$13,$14,'inbound','Unauthorized unanswered fixture',now()-interval '4 days',NULL),
+       ($9,$15,$16,'outbound','Unauthorized filtered fixture',now()-interval '1 day','fixture-unauthorized')`,
+    [
+      ids.groupMailbox,
+      `aggregate-auth-in-${suffix}`,
+      `aggregate-auth-thread-${suffix}`,
+      `aggregate-auth-out-${suffix}`,
+      `aggregate-auth-unanswered-${suffix}`,
+      `aggregate-auth-unanswered-thread-${suffix}`,
+      `aggregate-auth-filtered-${suffix}`,
+      `aggregate-auth-filtered-thread-${suffix}`,
+      ids.protectedMailbox,
+      `aggregate-hidden-in-${suffix}`,
+      `aggregate-hidden-thread-${suffix}`,
+      `aggregate-hidden-out-${suffix}`,
+      `aggregate-hidden-unanswered-${suffix}`,
+      `aggregate-hidden-unanswered-thread-${suffix}`,
+      `aggregate-hidden-filtered-${suffix}`,
+      `aggregate-hidden-filtered-thread-${suffix}`,
+    ],
+  );
+  await pool.query(
+    `INSERT INTO email_thread_customers
+       (mailbox_id, gmail_thread_id, printavo_customer_id, source)
+     VALUES ($1,$2,$4,'fixture'), ($3,$5,$4,'fixture')`,
+    [
+      ids.groupMailbox,
+      `aggregate-auth-thread-${suffix}`,
+      ids.protectedMailbox,
+      customerId,
+      `aggregate-hidden-thread-${suffix}`,
     ],
   );
   await pool.query(
@@ -163,7 +226,7 @@ after(async () => {
   ]);
   await pool.query("DELETE FROM email_access_groups WHERE id=$1", [ids.group]);
   await pool.query("DELETE FROM staff_users WHERE id = ANY($1::uuid[])", [
-    [ids.owner, ids.admin, ids.manager, ids.staff],
+    [ids.owner, ids.admin, ids.manager, ids.emptyManager, ids.staff],
   ]);
 });
 
@@ -216,6 +279,69 @@ test("group membership grants only its configured mailbox", async () => {
   const visible = await authorizedMailboxIds(users.manager);
   assert.equal(visible.includes(ids.groupMailbox), true);
   assert.equal(visible.includes(ids.protectedMailbox), false);
+});
+
+test("all-mailbox analytics endpoints stay inside the server-derived ACL scope", async () => {
+  let actor = users.manager;
+  const app = express();
+  app.use((req, _res, next) => {
+    req.staff = actor;
+    next();
+  });
+  app.use(emailActivityRouter);
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const base = `http://127.0.0.1:${address.port}`;
+  const range = `start=${isoOffset(-10)}&end=${isoOffset(0)}`;
+  const paths = [
+    `/email-activity/stats?granularity=daily&${range}`,
+    `/email-activity/response-times?${range}`,
+    "/email-activity/unanswered",
+    `/email-activity/heatmap?${range}`,
+    `/email-activity/filtered?${range}`,
+    `/email-activity/customers?${range}`,
+  ];
+
+  try {
+    const responses = await Promise.all(paths.map((path) => fetch(`${base}${path}`)));
+    assert.deepEqual(responses.map((response) => response.status), [200, 200, 200, 200, 200, 200]);
+    const [stats, responseTimes, unanswered, heatmap, filtered, customers] =
+      await Promise.all(responses.map((response) => response.json())) as any[];
+
+    assert.deepEqual(stats.people.map((row: any) => row.mailboxId), [ids.groupMailbox]);
+    assert.equal(stats.series.every((row: any) => row.mailboxId === ids.groupMailbox), true);
+    assert.deepEqual(responseTimes.people.map((row: any) => row.mailboxId), [ids.groupMailbox]);
+    assert.equal(unanswered.threads.length > 0, true);
+    assert.equal(unanswered.threads.every((row: any) => row.mailboxId === ids.groupMailbox), true);
+    assert.equal(heatmap.cells.reduce((sum: number, cell: any) => sum + cell.sent + cell.received, 0), 3);
+    assert.deepEqual(filtered.breakdown, [{ reason: "fixture-authorized", count: 1 }]);
+    assert.equal(filtered.sample.every((row: any) => row.mailboxId === ids.groupMailbox), true);
+    assert.equal(customers.customers.length, 1);
+    assert.equal(customers.customers[0].messages, 2);
+
+    const denied = await fetch(
+      `${base}/email-activity/stats?granularity=daily&${range}&mailboxId=${ids.protectedMailbox}`,
+    );
+    assert.equal(denied.status, 404);
+
+    actor = users.emptyManager;
+    const emptyResponses = await Promise.all(paths.map((path) => fetch(`${base}${path}`)));
+    assert.deepEqual(emptyResponses.map((response) => response.status), [200, 200, 200, 200, 200, 200]);
+    const [emptyStats, emptyResponseTimes, emptyUnanswered, emptyHeatmap, emptyFiltered, emptyCustomers] =
+      await Promise.all(emptyResponses.map((response) => response.json())) as any[];
+    assert.deepEqual(emptyStats.people, []);
+    assert.deepEqual(emptyResponseTimes.people, []);
+    assert.deepEqual(emptyUnanswered.threads, []);
+    assert.deepEqual(emptyHeatmap.cells, []);
+    assert.equal(emptyFiltered.total, 0);
+    assert.deepEqual(emptyCustomers.customers, []);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
 });
 
 test("non-protected workspace mailbox is visible to staff", async () => {

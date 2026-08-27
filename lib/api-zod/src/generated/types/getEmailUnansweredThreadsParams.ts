@@ -7,5 +7,8 @@
  */
 
 export type GetEmailUnansweredThreadsParams = {
+/**
+ * Omit to include all mailboxes the current staff member is authorized to view.
+ */
 mailboxId?: string;
 };

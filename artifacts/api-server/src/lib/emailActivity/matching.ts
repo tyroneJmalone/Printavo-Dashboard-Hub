@@ -282,9 +282,10 @@ export interface EmailCustomerRow {
 
 /** Per-customer email volume in a range — the dashboard drill-down list. */
 export async function emailCustomersList(
-  range: { start: Date; end: Date; mailboxId?: string },
+  range: { start: Date; end: Date; mailboxIds: string[] },
   limit = 100,
 ): Promise<EmailCustomerRow[]> {
+  if (range.mailboxIds.length === 0) return [];
   return (
     (await db.execute(sql`
       SELECT tc.printavo_customer_id AS customer_id,
@@ -300,7 +301,7 @@ export async function emailCustomersList(
       LEFT JOIN pv_customers c ON c.printavo_id = tc.printavo_customer_id
       WHERE m.excluded_reason IS NULL
         AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
-        AND m.mailbox_id = ${range.mailboxId}::uuid
+        AND m.mailbox_id IN (${sql.join(range.mailboxIds.map((id) => sql`${id}::uuid`), sql`, `)})
       GROUP BY 1, 2
       ORDER BY count(*) DESC
       LIMIT ${limit}

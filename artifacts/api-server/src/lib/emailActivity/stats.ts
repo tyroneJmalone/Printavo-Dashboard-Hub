@@ -15,11 +15,12 @@ const TZ = "America/Chicago";
 export interface StatsRange {
   start: Date;
   end: Date;
-  mailboxId?: string;
+  mailboxIds: string[];
 }
 
-function mailboxFilter(mailboxId?: string) {
-  return mailboxId ? sql`AND m.mailbox_id = ${mailboxId}::uuid` : sql``;
+function mailboxFilter(mailboxIds: string[]) {
+  if (mailboxIds.length === 0) return sql`AND false`;
+  return sql`AND m.mailbox_id IN (${sql.join(mailboxIds.map((id) => sql`${id}::uuid`), sql`, `)})`;
 }
 
 type Rows<T> = { rows: T[] };
@@ -28,7 +29,7 @@ export async function overviewStats(range: StatsRange, granularity: "daily" | "w
   const trunc = granularity === "daily" ? "day" : granularity === "weekly" ? "week" : "month";
   const base = sql`
     m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
-    ${mailboxFilter(range.mailboxId)}
+    ${mailboxFilter(range.mailboxIds)}
   `;
   const perMailbox = (
     (await db.execute(sql`
@@ -97,7 +98,7 @@ export async function responseTimeStats(range: StatsRange) {
         FROM email_messages m
         WHERE m.excluded_reason IS NULL
           AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
-          ${mailboxFilter(range.mailboxId)}
+          ${mailboxFilter(range.mailboxIds)}
         GROUP BY 1, 2
       ),
       replies AS (
@@ -139,7 +140,7 @@ export async function responseTimeStats(range: StatsRange) {
 }
 
 /** Threads whose latest counted message is inbound and older than the threshold. */
-export async function unansweredThreads(thresholdHours: number, mailboxId?: string, limit = 100) {
+export async function unansweredThreads(thresholdHours: number, mailboxIds: string[], limit = 100) {
   const rows = (
     (await db.execute(sql`
       WITH last_msg AS (
@@ -150,7 +151,7 @@ export async function unansweredThreads(thresholdHours: number, mailboxId?: stri
         FROM email_messages m
         WHERE m.excluded_reason IS NULL
           AND m.internal_date >= now() - interval '90 days'
-          ${mailboxFilter(mailboxId)}
+          ${mailboxFilter(mailboxIds)}
         ORDER BY m.mailbox_id, m.gmail_thread_id, m.internal_date DESC
       )
       SELECT mailbox_id, gmail_thread_id, subject, counterpart_address,
@@ -186,7 +187,7 @@ export async function heatmapStats(range: StatsRange) {
       FROM email_messages m
       WHERE m.excluded_reason IS NULL
         AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
-        ${mailboxFilter(range.mailboxId)}
+        ${mailboxFilter(range.mailboxIds)}
       GROUP BY 1, 2
     `)) as unknown as Rows<{ dow: number; hour: number; sent: number; received: number }>
   ).rows;
@@ -201,7 +202,7 @@ export async function filteredStats(range: StatsRange, sampleLimit = 50) {
       FROM email_messages m
       WHERE m.excluded_reason IS NOT NULL
         AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
-        ${mailboxFilter(range.mailboxId)}
+        ${mailboxFilter(range.mailboxIds)}
       GROUP BY 1 ORDER BY 2 DESC
     `)) as unknown as Rows<{ reason: string; count: number }>
   ).rows;
@@ -212,7 +213,7 @@ export async function filteredStats(range: StatsRange, sampleLimit = 50) {
       FROM email_messages m
       WHERE m.excluded_reason IS NOT NULL
         AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
-        ${mailboxFilter(range.mailboxId)}
+        ${mailboxFilter(range.mailboxIds)}
       ORDER BY m.internal_date DESC
       LIMIT ${sampleLimit}
     `)) as unknown as Rows<{

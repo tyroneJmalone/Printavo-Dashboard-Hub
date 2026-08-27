@@ -8126,13 +8126,13 @@ export const UpdateEmailActivitySettingsResponse = zod.object({
 
 
 /**
- * @summary Sent/received/thread counts + series + thread depth (admin only)
+ * @summary Sent/received/thread counts + series + thread depth for authorized mailboxes
  */
 export const GetEmailActivityStatsQueryParams = zod.object({
   "granularity": zod.enum(['daily', 'weekly', 'monthly']),
   "start": zod.coerce.string(),
   "end": zod.coerce.string(),
-  "mailboxId": zod.coerce.string().optional()
+  "mailboxId": zod.coerce.string().optional().describe('Omit to aggregate all mailboxes the current staff member is authorized to view.')
 })
 
 export const GetEmailActivityStatsResponse = zod.object({
@@ -8169,12 +8169,12 @@ export const GetEmailActivityStatsResponse = zod.object({
 
 
 /**
- * @summary Inbound → first-reply timing per mailbox (admin only)
+ * @summary Inbound → first-reply timing for authorized mailboxes
  */
 export const GetEmailResponseTimesQueryParams = zod.object({
   "start": zod.coerce.string(),
   "end": zod.coerce.string(),
-  "mailboxId": zod.coerce.string().optional()
+  "mailboxId": zod.coerce.string().optional().describe('Omit to aggregate all mailboxes the current staff member is authorized to view.')
 })
 
 export const GetEmailResponseTimesResponse = zod.object({
@@ -8200,10 +8200,10 @@ export const GetEmailResponseTimesResponse = zod.object({
 
 
 /**
- * @summary Threads unanswered past the configured threshold (admin only)
+ * @summary Threads unanswered past the configured threshold for authorized mailboxes
  */
 export const GetEmailUnansweredThreadsQueryParams = zod.object({
-  "mailboxId": zod.coerce.string().optional()
+  "mailboxId": zod.coerce.string().optional().describe('Omit to include all mailboxes the current staff member is authorized to view.')
 })
 
 export const GetEmailUnansweredThreadsResponse = zod.object({
@@ -8222,12 +8222,12 @@ export const GetEmailUnansweredThreadsResponse = zod.object({
 
 
 /**
- * @summary Day-of-week × hour-of-day activity (shop-local time, admin only)
+ * @summary Day-of-week × hour-of-day activity for authorized mailboxes
  */
 export const GetEmailHeatmapQueryParams = zod.object({
   "start": zod.coerce.string(),
   "end": zod.coerce.string(),
-  "mailboxId": zod.coerce.string().optional()
+  "mailboxId": zod.coerce.string().optional().describe('Omit to aggregate all mailboxes the current staff member is authorized to view.')
 })
 
 export const GetEmailHeatmapResponse = zod.object({
@@ -8241,12 +8241,12 @@ export const GetEmailHeatmapResponse = zod.object({
 
 
 /**
- * @summary Filtered-mail breakdown + spot-check sample (admin only)
+ * @summary Filtered-mail breakdown + spot-check sample for authorized mailboxes
  */
 export const GetEmailFilteredBucketQueryParams = zod.object({
   "start": zod.coerce.string(),
   "end": zod.coerce.string(),
-  "mailboxId": zod.coerce.string().optional()
+  "mailboxId": zod.coerce.string().optional().describe('Omit to aggregate all mailboxes the current staff member is authorized to view.')
 })
 
 export const GetEmailFilteredBucketResponse = zod.object({
@@ -8277,11 +8277,12 @@ export const RunEmailMatchingResponse = zod.object({
 
 
 /**
- * @summary Per-customer email volume in a range — dashboard drill-down (admin only)
+ * @summary Per-customer email volume across authorized mailboxes
  */
 export const ListEmailCustomersQueryParams = zod.object({
   "start": zod.coerce.string(),
-  "end": zod.coerce.string()
+  "end": zod.coerce.string(),
+  "mailboxId": zod.coerce.string().optional().describe('Omit to aggregate all mailboxes the current staff member is authorized to view.')
 })
 
 export const ListEmailCustomersResponse = zod.object({

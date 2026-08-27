@@ -5492,7 +5492,7 @@ paths:
     get:
       operationId: getEmailActivityStats
       tags: [emailActivity]
-      summary: Sent/received/thread counts + series + thread depth (admin only)
+      summary: Sent/received/thread counts + series + thread depth for authorized mailboxes
       parameters:
         - name: granularity
           in: query
@@ -5508,6 +5508,7 @@ paths:
           schema: { type: string }
         - name: mailboxId
           in: query
+          description: Omit to aggregate all mailboxes the current staff member is authorized to view.
           schema: { type: string }
       responses:
         "200":
@@ -5520,7 +5521,7 @@ paths:
     get:
       operationId: getEmailResponseTimes
       tags: [emailActivity]
-      summary: Inbound → first-reply timing per mailbox (admin only)
+      summary: Inbound → first-reply timing for authorized mailboxes
       parameters:
         - name: start
           in: query
@@ -5532,6 +5533,7 @@ paths:
           schema: { type: string }
         - name: mailboxId
           in: query
+          description: Omit to aggregate all mailboxes the current staff member is authorized to view.
           schema: { type: string }
       responses:
         "200":
@@ -5544,10 +5546,11 @@ paths:
     get:
       operationId: getEmailUnansweredThreads
       tags: [emailActivity]
-      summary: Threads unanswered past the configured threshold (admin only)
+      summary: Threads unanswered past the configured threshold for authorized mailboxes
       parameters:
         - name: mailboxId
           in: query
+          description: Omit to include all mailboxes the current staff member is authorized to view.
           schema: { type: string }
       responses:
         "200":
@@ -5560,7 +5563,7 @@ paths:
     get:
       operationId: getEmailHeatmap
       tags: [emailActivity]
-      summary: Day-of-week × hour-of-day activity (shop-local time, admin only)
+      summary: Day-of-week × hour-of-day activity for authorized mailboxes
       parameters:
         - name: start
           in: query
@@ -5572,6 +5575,7 @@ paths:
           schema: { type: string }
         - name: mailboxId
           in: query
+          description: Omit to aggregate all mailboxes the current staff member is authorized to view.
           schema: { type: string }
       responses:
         "200":
@@ -5584,7 +5588,7 @@ paths:
     get:
       operationId: getEmailFilteredBucket
       tags: [emailActivity]
-      summary: Filtered-mail breakdown + spot-check sample (admin only)
+      summary: Filtered-mail breakdown + spot-check sample for authorized mailboxes
       parameters:
         - name: start
           in: query
@@ -5596,6 +5600,7 @@ paths:
           schema: { type: string }
         - name: mailboxId
           in: query
+          description: Omit to aggregate all mailboxes the current staff member is authorized to view.
           schema: { type: string }
       responses:
         "200":
@@ -5620,7 +5625,7 @@ paths:
     get:
       operationId: listEmailCustomers
       tags: [emailActivity]
-      summary: Per-customer email volume in a range — dashboard drill-down (admin only)
+      summary: Per-customer email volume across authorized mailboxes
       parameters:
         - name: start
           in: query
@@ -5629,6 +5634,10 @@ paths:
         - name: end
           in: query
           required: true
+          schema: { type: string }
+        - name: mailboxId
+          in: query
+          description: Omit to aggregate all mailboxes the current staff member is authorized to view.
           schema: { type: string }
       responses:
         "200":
