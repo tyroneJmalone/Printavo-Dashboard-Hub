@@ -42,3 +42,5 @@
 - [Fireflies Hub integration](fireflies-hub-integration.md) — deferred plan is documented; Business Team Admin needs a read-only visibility audit before choosing central vs per-user access.
 - [Missive API transport](missive-connector-routing.md) — managed connector still uses the wrong host; Hub uses a secret-backed direct public API transport with pacing and incremental hydration.
 - [Email access role model](email-access-role-model.md) — Admin reads every mailbox; Managers are limited to selected groups/ownership/thread grants; customer history aggregates authorized mailboxes.
+- [Dropbox customer artwork boundaries](dropbox-customer-artwork-boundaries.md) — Hub artwork is read-only; revalidate stable Dropbox IDs against the current linked customer root before access.
+- [Shared production color catalog](shared-production-color-catalog.md) — Hub and BreezyTweak should consume one catalog for Pantone, ink, thread, conversions, and stock notes.

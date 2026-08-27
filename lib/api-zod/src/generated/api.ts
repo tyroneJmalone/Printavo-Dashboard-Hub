@@ -406,6 +406,475 @@ export const GetNicheReportResponse = zod.object({
 
 
 /**
+ * @summary List the shared Hub-owned branding color catalog
+ */
+export const listBrandingColorsResponseColorsItemHexRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const listBrandingColorsResponseColorsItemCmykItemMin = 0;
+export const listBrandingColorsResponseColorsItemCmykItemMax = 100;
+
+export const listBrandingColorsResponseColorsItemCmykMin = 4;
+export const listBrandingColorsResponseColorsItemCmykMax = 4;
+
+export const listBrandingColorsResponseColorsItemRgbItemMin = 0;
+export const listBrandingColorsResponseColorsItemRgbItemMax = 255;
+
+export const listBrandingColorsResponseColorsItemRgbMin = 3;
+export const listBrandingColorsResponseColorsItemRgbMax = 3;
+
+export const listBrandingColorsResponseColorsMax = 500;
+
+
+
+export const ListBrandingColorsResponse = zod.object({
+  "colors": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "hex": zod.string().regex(listBrandingColorsResponseColorsItemHexRegExp),
+  "active": zod.boolean(),
+  "pantoneCode": zod.string().nullish(),
+  "cmyk": zod.array(zod.number().min(listBrandingColorsResponseColorsItemCmykItemMin).max(listBrandingColorsResponseColorsItemCmykItemMax)).min(listBrandingColorsResponseColorsItemCmykMin).max(listBrandingColorsResponseColorsItemCmykMax).nullish(),
+  "rgb": zod.array(zod.number().min(listBrandingColorsResponseColorsItemRgbItemMin).max(listBrandingColorsResponseColorsItemRgbItemMax)).min(listBrandingColorsResponseColorsItemRgbMin).max(listBrandingColorsResponseColorsItemRgbMax).nullish(),
+  "inkReferences": zod.array(zod.string()).nullish(),
+  "threadReferences": zod.array(zod.string()).nullish(),
+  "inkStockNotes": zod.array(zod.unknown()).nullish(),
+  "threadStockNotes": zod.array(zod.unknown()).nullish(),
+  "createdByEmail": zod.string().optional(),
+  "updatedByEmail": zod.string().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})).max(listBrandingColorsResponseColorsMax)
+})
+
+
+/**
+ * @summary Get customer branding notes, fonts, and assigned catalog colors
+ */
+export const getCustomerBrandingPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const GetCustomerBrandingParams = zod.object({
+  "id": zod.coerce.string().regex(getCustomerBrandingPathIdRegExp)
+})
+
+export const GetCustomerBrandingResponse = zod.object({
+  "configured": zod.boolean(),
+  "notes": zod.string().nullable(),
+  "fonts": zod.array(zod.string()),
+  "colors": zod.array(zod.object({
+  "role": zod.string(),
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "hex": zod.string()
+})),
+  "audit": zod.union([zod.object({
+  "createdByEmail": zod.string(),
+  "updatedByEmail": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Replace customer branding selections (admin only)
+ */
+export const updateCustomerBrandingPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const UpdateCustomerBrandingParams = zod.object({
+  "id": zod.coerce.string().regex(updateCustomerBrandingPathIdRegExp)
+})
+
+export const updateCustomerBrandingBodyNotesMax = 10000;
+
+export const updateCustomerBrandingBodyFontsItemMax = 120;
+
+export const updateCustomerBrandingBodyFontsMax = 20;
+
+export const updateCustomerBrandingBodyColorsItemRoleMax = 80;
+
+export const updateCustomerBrandingBodyColorsMax = 20;
+
+
+
+export const UpdateCustomerBrandingBody = zod.object({
+  "notes": zod.string().max(updateCustomerBrandingBodyNotesMax).nullable(),
+  "fonts": zod.array(zod.string().min(1).max(updateCustomerBrandingBodyFontsItemMax)).max(updateCustomerBrandingBodyFontsMax),
+  "colors": zod.array(zod.object({
+  "role": zod.string().min(1).max(updateCustomerBrandingBodyColorsItemRoleMax),
+  "colorId": zod.string().uuid()
+})).max(updateCustomerBrandingBodyColorsMax)
+})
+
+export const UpdateCustomerBrandingResponse = zod.object({
+  "updated": zod.boolean()
+})
+
+
+/**
+ * @summary Get linked Dropbox folder and staple artwork bookmarks
+ */
+export const getCustomerArtworkPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const GetCustomerArtworkParams = zod.object({
+  "id": zod.coerce.string().regex(getCustomerArtworkPathIdRegExp)
+})
+
+export const getCustomerArtworkResponseBookmarksMax = 250;
+
+
+
+export const GetCustomerArtworkResponse = zod.object({
+  "linked": zod.boolean(),
+  "folder": zod.union([zod.object({
+  "dropboxId": zod.string(),
+  "pathLower": zod.string(),
+  "pathDisplay": zod.string(),
+  "name": zod.string(),
+  "createdByEmail": zod.string(),
+  "updatedByEmail": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),zod.null()]),
+  "bookmarks": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "dropboxId": zod.string(),
+  "pathLower": zod.string(),
+  "pathDisplay": zod.string(),
+  "name": zod.string(),
+  "label": zod.string(),
+  "notes": zod.string().nullish(),
+  "preferred": zod.boolean(),
+  "retired": zod.boolean(),
+  "createdByEmail": zod.string().optional(),
+  "updatedByEmail": zod.string().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})).max(getCustomerArtworkResponseBookmarksMax)
+})
+
+
+/**
+ * @summary Link one Dropbox root folder to a customer (admin only)
+ */
+export const linkCustomerArtworkFolderPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const LinkCustomerArtworkFolderParams = zod.object({
+  "id": zod.coerce.string().regex(linkCustomerArtworkFolderPathIdRegExp)
+})
+
+export const linkCustomerArtworkFolderBodyPathMax = 1000;
+
+
+
+export const LinkCustomerArtworkFolderBody = zod.object({
+  "path": zod.string().min(1).max(linkCustomerArtworkFolderBodyPathMax).describe('Dropbox folder path or id; resolved and canonicalized server-side')
+})
+
+export const LinkCustomerArtworkFolderResponse = zod.object({
+  "linked": zod.boolean(),
+  "folder": zod.object({
+  "type": zod.enum(['file', 'folder']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "pathLower": zod.string().nullable(),
+  "pathDisplay": zod.string().nullable(),
+  "size": zod.number().nullable(),
+  "modifiedAt": zod.coerce.date().nullable()
+})
+})
+
+
+/**
+ * @summary Remove the customer folder link and its bookmarks (admin only)
+ */
+export const unlinkCustomerArtworkFolderPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const UnlinkCustomerArtworkFolderParams = zod.object({
+  "id": zod.coerce.string().regex(unlinkCustomerArtworkFolderPathIdRegExp)
+})
+
+export const UnlinkCustomerArtworkFolderResponse = zod.void()
+
+
+/**
+ * Returns folders only. An omitted or empty path means the Dropbox account root.
+ * @summary Browse Dropbox folders before linking a customer root (admin only)
+ */
+export const pickCustomerArtworkFolderPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const PickCustomerArtworkFolderParams = zod.object({
+  "id": zod.coerce.string().regex(pickCustomerArtworkFolderPathIdRegExp)
+})
+
+export const pickCustomerArtworkFolderQueryPathMax = 1000;
+
+
+
+export const PickCustomerArtworkFolderQueryParams = zod.object({
+  "path": zod.coerce.string().max(pickCustomerArtworkFolderQueryPathMax).optional(),
+  "cursor": zod.coerce.string().uuid().optional().describe('Opaque, short-lived cursor returned by this picker for the same customer, path, and staff user')
+})
+
+export const pickCustomerArtworkFolderResponseFoldersMax = 100;
+
+
+
+export const PickCustomerArtworkFolderResponse = zod.object({
+  "folders": zod.array(zod.object({
+  "type": zod.enum(['file', 'folder']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "pathLower": zod.string().nullable(),
+  "pathDisplay": zod.string().nullable(),
+  "size": zod.number().nullable(),
+  "modifiedAt": zod.coerce.date().nullable()
+})).max(pickCustomerArtworkFolderResponseFoldersMax),
+  "truncated": zod.boolean(),
+  "cursor": zod.string().uuid().nullable()
+})
+
+
+/**
+ * @summary Browse one bounded page under the linked customer root
+ */
+export const browseCustomerArtworkPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const BrowseCustomerArtworkParams = zod.object({
+  "id": zod.coerce.string().regex(browseCustomerArtworkPathIdRegExp)
+})
+
+export const browseCustomerArtworkQueryLimitDefault = 100;
+export const browseCustomerArtworkQueryLimitMax = 100;
+
+
+
+export const BrowseCustomerArtworkQueryParams = zod.object({
+  "path": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().min(1).max(browseCustomerArtworkQueryLimitMax).default(browseCustomerArtworkQueryLimitDefault),
+  "cursor": zod.coerce.string().uuid().optional()
+})
+
+export const browseCustomerArtworkResponseEntriesMax = 100;
+
+
+
+export const BrowseCustomerArtworkResponse = zod.object({
+  "linked": zod.boolean(),
+  "entries": zod.array(zod.object({
+  "type": zod.enum(['file', 'folder']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "pathLower": zod.string().nullable(),
+  "pathDisplay": zod.string().nullable(),
+  "size": zod.number().nullable(),
+  "modifiedAt": zod.coerce.date().nullable()
+})).max(browseCustomerArtworkResponseEntriesMax),
+  "truncated": zod.boolean(),
+  "cursor": zod.string().uuid().nullable()
+})
+
+
+/**
+ * @summary Search within the linked customer root
+ */
+export const searchCustomerArtworkPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const SearchCustomerArtworkParams = zod.object({
+  "id": zod.coerce.string().regex(searchCustomerArtworkPathIdRegExp)
+})
+
+export const searchCustomerArtworkQueryQMax = 200;
+
+export const searchCustomerArtworkQueryLimitDefault = 25;
+export const searchCustomerArtworkQueryLimitMax = 50;
+
+
+
+export const SearchCustomerArtworkQueryParams = zod.object({
+  "q": zod.coerce.string().min(1).max(searchCustomerArtworkQueryQMax),
+  "limit": zod.coerce.number().min(1).max(searchCustomerArtworkQueryLimitMax).default(searchCustomerArtworkQueryLimitDefault)
+})
+
+export const searchCustomerArtworkResponseEntriesMax = 100;
+
+
+
+export const SearchCustomerArtworkResponse = zod.object({
+  "linked": zod.boolean(),
+  "entries": zod.array(zod.object({
+  "type": zod.enum(['file', 'folder']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "pathLower": zod.string().nullable(),
+  "pathDisplay": zod.string().nullable(),
+  "size": zod.number().nullable(),
+  "modifiedAt": zod.coerce.date().nullable()
+})).max(searchCustomerArtworkResponseEntriesMax),
+  "truncated": zod.boolean(),
+  "cursor": zod.string().uuid().nullable()
+})
+
+
+/**
+ * @summary Read metadata after server-side linked-root authorization
+ */
+export const getCustomerArtworkMetadataPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const GetCustomerArtworkMetadataParams = zod.object({
+  "id": zod.coerce.string().regex(getCustomerArtworkMetadataPathIdRegExp)
+})
+
+export const getCustomerArtworkMetadataQueryLocatorMax = 1000;
+
+
+
+export const GetCustomerArtworkMetadataQueryParams = zod.object({
+  "locator": zod.coerce.string().min(1).max(getCustomerArtworkMetadataQueryLocatorMax).describe('A contained Dropbox path, the linked root id, or an id already bookmarked for this customer')
+})
+
+export const GetCustomerArtworkMetadataResponse = zod.object({
+  "type": zod.enum(['file', 'folder']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "pathLower": zod.string().nullable(),
+  "pathDisplay": zod.string().nullable(),
+  "size": zod.number().nullable(),
+  "modifiedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Get a temporary original-file download link
+ */
+export const getCustomerArtworkTemporaryLinkPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const GetCustomerArtworkTemporaryLinkParams = zod.object({
+  "id": zod.coerce.string().regex(getCustomerArtworkTemporaryLinkPathIdRegExp)
+})
+
+export const getCustomerArtworkTemporaryLinkQueryLocatorMax = 1000;
+
+
+
+export const GetCustomerArtworkTemporaryLinkQueryParams = zod.object({
+  "locator": zod.coerce.string().min(1).max(getCustomerArtworkTemporaryLinkQueryLocatorMax).describe('A contained Dropbox path, the linked root id, or an id already bookmarked for this customer')
+})
+
+export const GetCustomerArtworkTemporaryLinkResponse = zod.object({
+  "link": zod.string().url(),
+  "expires": zod.enum(['temporary'])
+})
+
+
+/**
+ * @summary Bookmark a staple artwork item (admin only)
+ */
+export const createCustomerArtworkBookmarkPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const CreateCustomerArtworkBookmarkParams = zod.object({
+  "id": zod.coerce.string().regex(createCustomerArtworkBookmarkPathIdRegExp)
+})
+
+export const createCustomerArtworkBookmarkBodyPathMax = 1000;
+
+export const createCustomerArtworkBookmarkBodyLabelMax = 160;
+
+export const createCustomerArtworkBookmarkBodyNotesMax = 5000;
+
+export const createCustomerArtworkBookmarkBodyPreferredDefault = false;
+export const createCustomerArtworkBookmarkBodyRetiredDefault = false;
+
+export const CreateCustomerArtworkBookmarkBody = zod.object({
+  "path": zod.string().min(1).max(createCustomerArtworkBookmarkBodyPathMax),
+  "label": zod.string().min(1).max(createCustomerArtworkBookmarkBodyLabelMax),
+  "notes": zod.string().max(createCustomerArtworkBookmarkBodyNotesMax).nullish(),
+  "preferred": zod.boolean().default(createCustomerArtworkBookmarkBodyPreferredDefault),
+  "retired": zod.boolean().default(createCustomerArtworkBookmarkBodyRetiredDefault)
+})
+
+export const CreateCustomerArtworkBookmarkResponse = zod.object({
+  "id": zod.string().uuid(),
+  "dropboxId": zod.string(),
+  "pathLower": zod.string(),
+  "pathDisplay": zod.string(),
+  "name": zod.string(),
+  "label": zod.string(),
+  "notes": zod.string().nullish(),
+  "preferred": zod.boolean(),
+  "retired": zod.boolean(),
+  "createdByEmail": zod.string().optional(),
+  "updatedByEmail": zod.string().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Update bookmark label, notes, preferred, or retired state (admin only)
+ */
+export const updateCustomerArtworkBookmarkPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const UpdateCustomerArtworkBookmarkParams = zod.object({
+  "id": zod.coerce.string().regex(updateCustomerArtworkBookmarkPathIdRegExp),
+  "bookmarkId": zod.coerce.string().uuid()
+})
+
+export const updateCustomerArtworkBookmarkBodyLabelMax = 160;
+
+export const updateCustomerArtworkBookmarkBodyNotesMax = 5000;
+
+
+
+export const UpdateCustomerArtworkBookmarkBody = zod.object({
+  "label": zod.string().min(1).max(updateCustomerArtworkBookmarkBodyLabelMax).optional(),
+  "notes": zod.string().max(updateCustomerArtworkBookmarkBodyNotesMax).nullish(),
+  "preferred": zod.boolean().optional(),
+  "retired": zod.boolean().optional()
+})
+
+export const UpdateCustomerArtworkBookmarkResponse = zod.object({
+  "id": zod.string().uuid(),
+  "dropboxId": zod.string(),
+  "pathLower": zod.string(),
+  "pathDisplay": zod.string(),
+  "name": zod.string(),
+  "label": zod.string(),
+  "notes": zod.string().nullish(),
+  "preferred": zod.boolean(),
+  "retired": zod.boolean(),
+  "createdByEmail": zod.string().optional(),
+  "updatedByEmail": zod.string().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Delete an artwork bookmark (admin only)
+ */
+export const deleteCustomerArtworkBookmarkPathIdRegExp = new RegExp('^\\d+$');
+
+
+export const DeleteCustomerArtworkBookmarkParams = zod.object({
+  "id": zod.coerce.string().regex(deleteCustomerArtworkBookmarkPathIdRegExp),
+  "bookmarkId": zod.coerce.string().uuid()
+})
+
+export const DeleteCustomerArtworkBookmarkResponse = zod.void()
+
+
+/**
  * @summary Customer profile — contact info, category, spend stats, recent orders
  */
 export const GetCustomerProfileParams = zod.object({

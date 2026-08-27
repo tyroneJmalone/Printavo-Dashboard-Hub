@@ -17,6 +17,23 @@ export type {
   RunInsightsPresetResponse as RunInsightsPresetResponseType,
 } from "./generated/types";
 
+// Artwork operations combine path and query parameters. Keep the generated
+// path-param Zod schemas on the bare names and alias the query TS types.
+export {
+  BrowseCustomerArtworkParams,
+  SearchCustomerArtworkParams,
+  GetCustomerArtworkMetadataParams,
+  GetCustomerArtworkTemporaryLinkParams,
+  PickCustomerArtworkFolderParams,
+} from "./generated/api";
+export type {
+  BrowseCustomerArtworkParams as BrowseCustomerArtworkQueryParamsType,
+  SearchCustomerArtworkParams as SearchCustomerArtworkQueryParamsType,
+  GetCustomerArtworkMetadataParams as GetCustomerArtworkMetadataQueryParamsType,
+  GetCustomerArtworkTemporaryLinkParams as GetCustomerArtworkTemporaryLinkQueryParamsType,
+  PickCustomerArtworkFolderParams as PickCustomerArtworkFolderQueryParamsType,
+} from "./generated/types";
+
 // Same collision for the chipply parse-email response (inline allOf for the
 // nullable existingStore ref): bare name = zod schema; TS type aliased.
 export { ParseChipplyEmailResponse } from "./generated/api";

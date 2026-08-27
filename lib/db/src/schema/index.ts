@@ -62,3 +62,4 @@ export * from "./correspondence";
 export * from "./aiQuoteDrafts";
 export * from "./aiQuoteDraftEvents";
 export * from "./hubCalcUploads";
+export * from "./customerBranding";

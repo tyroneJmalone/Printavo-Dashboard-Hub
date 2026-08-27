@@ -33,6 +33,9 @@ import type {
   AiQuoteDraftListResponse,
   AppendPoLineItemsRequest,
   ApplyStatusSuggestionError,
+  ArtworkBookmark,
+  ArtworkBookmarkRequest,
+  ArtworkBookmarkUpdate,
   AskInsightsRequest,
   AskInsightsResponse,
   AssignCustomerCategory200,
@@ -46,7 +49,9 @@ import type {
   AutoPrintRun,
   AutoPrintRunsResponse,
   BackupStatus,
+  BrandingColorList,
   BreakdownReport,
+  BrowseCustomerArtworkParams,
   BulkDeleteTasksInput,
   BulkUpdateTasksInput,
   CatalogColorFamilyRequest,
@@ -84,6 +89,9 @@ import type {
   CreditTimePoint,
   CreditUpdate,
   Customer,
+  CustomerArtwork,
+  CustomerBranding,
+  CustomerBrandingUpdate,
   CustomerCategoriesResponse,
   CustomerCategory,
   CustomerCategoryInput,
@@ -98,6 +106,9 @@ import type {
   DeleteCollection200,
   DetectedChipplyStoresResponse,
   DirectoryCustomersResponse,
+  DropboxEntry,
+  DropboxEntryList,
+  DropboxFolderLinkRequest,
   EmailAccessGroup,
   EmailAccessGroupRequest,
   EmailAccessPolicy,
@@ -129,6 +140,9 @@ import type {
   GetCombinedPackingSlipsHtmlParams,
   GetCombinedWorkordersHtmlParams,
   GetCreditsOverTimeParams,
+  GetCustomerArtworkMetadataParams,
+  GetCustomerArtworkTemporaryLink200,
+  GetCustomerArtworkTemporaryLinkParams,
   GetCustomerProfileParams,
   GetDashboardSummaryParams,
   GetEmailActivityStatsParams,
@@ -164,6 +178,7 @@ import type {
   InsightsPresetEnvelope,
   InsightsPresetsResponse,
   InterpretAiQuotePromptRequest,
+  LinkCustomerArtworkFolder200,
   List,
   ListAutoPrintJobsParams,
   ListAutoPrintRunsParams,
@@ -211,6 +226,8 @@ import type {
   ParseChipplyFileResponse,
   PaymentsReport,
   PaymentsStats,
+  PickCustomerArtworkFolder200,
+  PickCustomerArtworkFolderParams,
   PipelineReport,
   PoFile,
   PoFileList,
@@ -258,6 +275,7 @@ import type {
   RewardsSummary,
   RunInsightsPresetResponse,
   SearchAiQuoteCustomersParams,
+  SearchCustomerArtworkParams,
   SearchHubInvoicesParams,
   SeedStartResult,
   SendTestRewardEmail200,
@@ -296,6 +314,7 @@ import type {
   UpdateChipplyStoreRequest,
   UpdateCollectionItemRequest,
   UpdateCollectionRequest,
+  UpdateCustomerBranding200,
   UpdateEmailMailboxRequest,
   UpdateEmailSettingsRequest,
   UpdateInsightsPresetRequest,
@@ -1851,6 +1870,1111 @@ export function useGetNicheReport<TData = Awaited<ReturnType<typeof getNicheRepo
 
 
 
+
+export const getListBrandingColorsUrl = () => {
+
+
+
+
+  return `/api/branding/colors`
+}
+
+/**
+ * @summary List the shared Hub-owned branding color catalog
+ */
+export const listBrandingColors = async ( options?: RequestInit): Promise<BrandingColorList> => {
+
+  return customFetch<BrandingColorList>(getListBrandingColorsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBrandingColorsQueryKey = () => {
+    return [
+    `/api/branding/colors`
+    ] as const;
+    }
+
+
+export const getListBrandingColorsQueryOptions = <TData = Awaited<ReturnType<typeof listBrandingColors>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBrandingColors>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBrandingColorsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBrandingColors>>> = ({ signal }) => listBrandingColors({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBrandingColors>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBrandingColorsQueryResult = NonNullable<Awaited<ReturnType<typeof listBrandingColors>>>
+export type ListBrandingColorsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the shared Hub-owned branding color catalog
+ */
+
+export function useListBrandingColors<TData = Awaited<ReturnType<typeof listBrandingColors>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBrandingColors>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBrandingColorsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCustomerBrandingUrl = (id: string,) => {
+
+
+
+
+  return `/api/customers/${id}/branding`
+}
+
+/**
+ * @summary Get customer branding notes, fonts, and assigned catalog colors
+ */
+export const getCustomerBranding = async (id: string, options?: RequestInit): Promise<CustomerBranding> => {
+
+  return customFetch<CustomerBranding>(getGetCustomerBrandingUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerBrandingQueryKey = (id: string,) => {
+    return [
+    `/api/customers/${id}/branding`
+    ] as const;
+    }
+
+
+export const getGetCustomerBrandingQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerBranding>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerBranding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerBrandingQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerBranding>>> = ({ signal }) => getCustomerBranding(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerBranding>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerBrandingQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerBranding>>>
+export type GetCustomerBrandingQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get customer branding notes, fonts, and assigned catalog colors
+ */
+
+export function useGetCustomerBranding<TData = Awaited<ReturnType<typeof getCustomerBranding>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerBranding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerBrandingQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateCustomerBrandingUrl = (id: string,) => {
+
+
+
+
+  return `/api/customers/${id}/branding`
+}
+
+/**
+ * @summary Replace customer branding selections (admin only)
+ */
+export const updateCustomerBranding = async (id: string,
+    customerBrandingUpdate: CustomerBrandingUpdate, options?: RequestInit): Promise<UpdateCustomerBranding200> => {
+
+  return customFetch<UpdateCustomerBranding200>(getUpdateCustomerBrandingUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(customerBrandingUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateCustomerBrandingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCustomerBranding>>, TError,{id: string;data: BodyType<CustomerBrandingUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCustomerBranding>>, TError,{id: string;data: BodyType<CustomerBrandingUpdate>}, TContext> => {
+
+const mutationKey = ['updateCustomerBranding'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCustomerBranding>>, {id: string;data: BodyType<CustomerBrandingUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateCustomerBranding(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCustomerBrandingMutationResult = NonNullable<Awaited<ReturnType<typeof updateCustomerBranding>>>
+    export type UpdateCustomerBrandingMutationBody = BodyType<CustomerBrandingUpdate>
+    export type UpdateCustomerBrandingMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Replace customer branding selections (admin only)
+ */
+export const useUpdateCustomerBranding = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCustomerBranding>>, TError,{id: string;data: BodyType<CustomerBrandingUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCustomerBranding>>,
+        TError,
+        {id: string;data: BodyType<CustomerBrandingUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCustomerBrandingMutationOptions(options));
+    }
+
+export const getGetCustomerArtworkUrl = (id: string,) => {
+
+
+
+
+  return `/api/customers/${id}/artwork`
+}
+
+/**
+ * @summary Get linked Dropbox folder and staple artwork bookmarks
+ */
+export const getCustomerArtwork = async (id: string, options?: RequestInit): Promise<CustomerArtwork> => {
+
+  return customFetch<CustomerArtwork>(getGetCustomerArtworkUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerArtworkQueryKey = (id: string,) => {
+    return [
+    `/api/customers/${id}/artwork`
+    ] as const;
+    }
+
+
+export const getGetCustomerArtworkQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerArtwork>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerArtworkQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerArtwork>>> = ({ signal }) => getCustomerArtwork(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtwork>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerArtworkQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerArtwork>>>
+export type GetCustomerArtworkQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get linked Dropbox folder and staple artwork bookmarks
+ */
+
+export function useGetCustomerArtwork<TData = Awaited<ReturnType<typeof getCustomerArtwork>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerArtworkQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLinkCustomerArtworkFolderUrl = (id: string,) => {
+
+
+
+
+  return `/api/customers/${id}/artwork/folder`
+}
+
+/**
+ * @summary Link one Dropbox root folder to a customer (admin only)
+ */
+export const linkCustomerArtworkFolder = async (id: string,
+    dropboxFolderLinkRequest: DropboxFolderLinkRequest, options?: RequestInit): Promise<LinkCustomerArtworkFolder200> => {
+
+  return customFetch<LinkCustomerArtworkFolder200>(getLinkCustomerArtworkFolderUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dropboxFolderLinkRequest)
+  }
+);}
+
+
+
+
+export const getLinkCustomerArtworkFolderMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkCustomerArtworkFolder>>, TError,{id: string;data: BodyType<DropboxFolderLinkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkCustomerArtworkFolder>>, TError,{id: string;data: BodyType<DropboxFolderLinkRequest>}, TContext> => {
+
+const mutationKey = ['linkCustomerArtworkFolder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkCustomerArtworkFolder>>, {id: string;data: BodyType<DropboxFolderLinkRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  linkCustomerArtworkFolder(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkCustomerArtworkFolderMutationResult = NonNullable<Awaited<ReturnType<typeof linkCustomerArtworkFolder>>>
+    export type LinkCustomerArtworkFolderMutationBody = BodyType<DropboxFolderLinkRequest>
+    export type LinkCustomerArtworkFolderMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Link one Dropbox root folder to a customer (admin only)
+ */
+export const useLinkCustomerArtworkFolder = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkCustomerArtworkFolder>>, TError,{id: string;data: BodyType<DropboxFolderLinkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkCustomerArtworkFolder>>,
+        TError,
+        {id: string;data: BodyType<DropboxFolderLinkRequest>},
+        TContext
+      > => {
+      return useMutation(getLinkCustomerArtworkFolderMutationOptions(options));
+    }
+
+export const getUnlinkCustomerArtworkFolderUrl = (id: string,) => {
+
+
+
+
+  return `/api/customers/${id}/artwork/folder`
+}
+
+/**
+ * @summary Remove the customer folder link and its bookmarks (admin only)
+ */
+export const unlinkCustomerArtworkFolder = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUnlinkCustomerArtworkFolderUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getUnlinkCustomerArtworkFolderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkCustomerArtworkFolder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkCustomerArtworkFolder>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['unlinkCustomerArtworkFolder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkCustomerArtworkFolder>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  unlinkCustomerArtworkFolder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlinkCustomerArtworkFolderMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkCustomerArtworkFolder>>>
+
+    export type UnlinkCustomerArtworkFolderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove the customer folder link and its bookmarks (admin only)
+ */
+export const useUnlinkCustomerArtworkFolder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkCustomerArtworkFolder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlinkCustomerArtworkFolder>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getUnlinkCustomerArtworkFolderMutationOptions(options));
+    }
+
+export const getPickCustomerArtworkFolderUrl = (id: string,
+    params?: PickCustomerArtworkFolderParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers/${id}/artwork/folder-picker?${stringifiedParams}` : `/api/customers/${id}/artwork/folder-picker`
+}
+
+/**
+ * Returns folders only. An omitted or empty path means the Dropbox account root.
+ * @summary Browse Dropbox folders before linking a customer root (admin only)
+ */
+export const pickCustomerArtworkFolder = async (id: string,
+    params?: PickCustomerArtworkFolderParams, options?: RequestInit): Promise<PickCustomerArtworkFolder200> => {
+
+  return customFetch<PickCustomerArtworkFolder200>(getPickCustomerArtworkFolderUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPickCustomerArtworkFolderQueryKey = (id: string,
+    params?: PickCustomerArtworkFolderParams,) => {
+    return [
+    `/api/customers/${id}/artwork/folder-picker`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getPickCustomerArtworkFolderQueryOptions = <TData = Awaited<ReturnType<typeof pickCustomerArtworkFolder>>, TError = ErrorType<ErrorResponse>>(id: string,
+    params?: PickCustomerArtworkFolderParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof pickCustomerArtworkFolder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPickCustomerArtworkFolderQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof pickCustomerArtworkFolder>>> = ({ signal }) => pickCustomerArtworkFolder(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof pickCustomerArtworkFolder>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type PickCustomerArtworkFolderQueryResult = NonNullable<Awaited<ReturnType<typeof pickCustomerArtworkFolder>>>
+export type PickCustomerArtworkFolderQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Browse Dropbox folders before linking a customer root (admin only)
+ */
+
+export function usePickCustomerArtworkFolder<TData = Awaited<ReturnType<typeof pickCustomerArtworkFolder>>, TError = ErrorType<ErrorResponse>>(
+ id: string,
+    params?: PickCustomerArtworkFolderParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof pickCustomerArtworkFolder>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getPickCustomerArtworkFolderQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getBrowseCustomerArtworkUrl = (id: string,
+    params?: BrowseCustomerArtworkParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers/${id}/artwork/browse?${stringifiedParams}` : `/api/customers/${id}/artwork/browse`
+}
+
+/**
+ * @summary Browse one bounded page under the linked customer root
+ */
+export const browseCustomerArtwork = async (id: string,
+    params?: BrowseCustomerArtworkParams, options?: RequestInit): Promise<DropboxEntryList> => {
+
+  return customFetch<DropboxEntryList>(getBrowseCustomerArtworkUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getBrowseCustomerArtworkQueryKey = (id: string,
+    params?: BrowseCustomerArtworkParams,) => {
+    return [
+    `/api/customers/${id}/artwork/browse`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getBrowseCustomerArtworkQueryOptions = <TData = Awaited<ReturnType<typeof browseCustomerArtwork>>, TError = ErrorType<unknown>>(id: string,
+    params?: BrowseCustomerArtworkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof browseCustomerArtwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBrowseCustomerArtworkQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof browseCustomerArtwork>>> = ({ signal }) => browseCustomerArtwork(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof browseCustomerArtwork>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type BrowseCustomerArtworkQueryResult = NonNullable<Awaited<ReturnType<typeof browseCustomerArtwork>>>
+export type BrowseCustomerArtworkQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Browse one bounded page under the linked customer root
+ */
+
+export function useBrowseCustomerArtwork<TData = Awaited<ReturnType<typeof browseCustomerArtwork>>, TError = ErrorType<unknown>>(
+ id: string,
+    params?: BrowseCustomerArtworkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof browseCustomerArtwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getBrowseCustomerArtworkQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSearchCustomerArtworkUrl = (id: string,
+    params: SearchCustomerArtworkParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers/${id}/artwork/search?${stringifiedParams}` : `/api/customers/${id}/artwork/search`
+}
+
+/**
+ * @summary Search within the linked customer root
+ */
+export const searchCustomerArtwork = async (id: string,
+    params: SearchCustomerArtworkParams, options?: RequestInit): Promise<DropboxEntryList> => {
+
+  return customFetch<DropboxEntryList>(getSearchCustomerArtworkUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchCustomerArtworkQueryKey = (id: string,
+    params?: SearchCustomerArtworkParams,) => {
+    return [
+    `/api/customers/${id}/artwork/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchCustomerArtworkQueryOptions = <TData = Awaited<ReturnType<typeof searchCustomerArtwork>>, TError = ErrorType<unknown>>(id: string,
+    params: SearchCustomerArtworkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchCustomerArtwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchCustomerArtworkQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchCustomerArtwork>>> = ({ signal }) => searchCustomerArtwork(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchCustomerArtwork>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchCustomerArtworkQueryResult = NonNullable<Awaited<ReturnType<typeof searchCustomerArtwork>>>
+export type SearchCustomerArtworkQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Search within the linked customer root
+ */
+
+export function useSearchCustomerArtwork<TData = Awaited<ReturnType<typeof searchCustomerArtwork>>, TError = ErrorType<unknown>>(
+ id: string,
+    params: SearchCustomerArtworkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchCustomerArtwork>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchCustomerArtworkQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCustomerArtworkMetadataUrl = (id: string,
+    params: GetCustomerArtworkMetadataParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers/${id}/artwork/metadata?${stringifiedParams}` : `/api/customers/${id}/artwork/metadata`
+}
+
+/**
+ * @summary Read metadata after server-side linked-root authorization
+ */
+export const getCustomerArtworkMetadata = async (id: string,
+    params: GetCustomerArtworkMetadataParams, options?: RequestInit): Promise<DropboxEntry> => {
+
+  return customFetch<DropboxEntry>(getGetCustomerArtworkMetadataUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerArtworkMetadataQueryKey = (id: string,
+    params?: GetCustomerArtworkMetadataParams,) => {
+    return [
+    `/api/customers/${id}/artwork/metadata`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCustomerArtworkMetadataQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerArtworkMetadata>>, TError = ErrorType<unknown>>(id: string,
+    params: GetCustomerArtworkMetadataParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtworkMetadata>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerArtworkMetadataQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerArtworkMetadata>>> = ({ signal }) => getCustomerArtworkMetadata(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtworkMetadata>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerArtworkMetadataQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerArtworkMetadata>>>
+export type GetCustomerArtworkMetadataQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read metadata after server-side linked-root authorization
+ */
+
+export function useGetCustomerArtworkMetadata<TData = Awaited<ReturnType<typeof getCustomerArtworkMetadata>>, TError = ErrorType<unknown>>(
+ id: string,
+    params: GetCustomerArtworkMetadataParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtworkMetadata>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerArtworkMetadataQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCustomerArtworkTemporaryLinkUrl = (id: string,
+    params: GetCustomerArtworkTemporaryLinkParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers/${id}/artwork/temporary-link?${stringifiedParams}` : `/api/customers/${id}/artwork/temporary-link`
+}
+
+/**
+ * @summary Get a temporary original-file download link
+ */
+export const getCustomerArtworkTemporaryLink = async (id: string,
+    params: GetCustomerArtworkTemporaryLinkParams, options?: RequestInit): Promise<GetCustomerArtworkTemporaryLink200> => {
+
+  return customFetch<GetCustomerArtworkTemporaryLink200>(getGetCustomerArtworkTemporaryLinkUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerArtworkTemporaryLinkQueryKey = (id: string,
+    params?: GetCustomerArtworkTemporaryLinkParams,) => {
+    return [
+    `/api/customers/${id}/artwork/temporary-link`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCustomerArtworkTemporaryLinkQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError = ErrorType<unknown>>(id: string,
+    params: GetCustomerArtworkTemporaryLinkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerArtworkTemporaryLinkQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>> = ({ signal }) => getCustomerArtworkTemporaryLink(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomerArtworkTemporaryLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>>
+export type GetCustomerArtworkTemporaryLinkQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a temporary original-file download link
+ */
+
+export function useGetCustomerArtworkTemporaryLink<TData = Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError = ErrorType<unknown>>(
+ id: string,
+    params: GetCustomerArtworkTemporaryLinkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomerArtworkTemporaryLinkQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCustomerArtworkBookmarkUrl = (id: string,) => {
+
+
+
+
+  return `/api/customers/${id}/artwork/bookmarks`
+}
+
+/**
+ * @summary Bookmark a staple artwork item (admin only)
+ */
+export const createCustomerArtworkBookmark = async (id: string,
+    artworkBookmarkRequest: ArtworkBookmarkRequest, options?: RequestInit): Promise<ArtworkBookmark> => {
+
+  return customFetch<ArtworkBookmark>(getCreateCustomerArtworkBookmarkUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(artworkBookmarkRequest)
+  }
+);}
+
+
+
+
+export const getCreateCustomerArtworkBookmarkMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomerArtworkBookmark>>, TError,{id: string;data: BodyType<ArtworkBookmarkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCustomerArtworkBookmark>>, TError,{id: string;data: BodyType<ArtworkBookmarkRequest>}, TContext> => {
+
+const mutationKey = ['createCustomerArtworkBookmark'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCustomerArtworkBookmark>>, {id: string;data: BodyType<ArtworkBookmarkRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createCustomerArtworkBookmark(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCustomerArtworkBookmarkMutationResult = NonNullable<Awaited<ReturnType<typeof createCustomerArtworkBookmark>>>
+    export type CreateCustomerArtworkBookmarkMutationBody = BodyType<ArtworkBookmarkRequest>
+    export type CreateCustomerArtworkBookmarkMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Bookmark a staple artwork item (admin only)
+ */
+export const useCreateCustomerArtworkBookmark = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCustomerArtworkBookmark>>, TError,{id: string;data: BodyType<ArtworkBookmarkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCustomerArtworkBookmark>>,
+        TError,
+        {id: string;data: BodyType<ArtworkBookmarkRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateCustomerArtworkBookmarkMutationOptions(options));
+    }
+
+export const getUpdateCustomerArtworkBookmarkUrl = (id: string,
+    bookmarkId: string,) => {
+
+
+
+
+  return `/api/customers/${id}/artwork/bookmarks/${bookmarkId}`
+}
+
+/**
+ * @summary Update bookmark label, notes, preferred, or retired state (admin only)
+ */
+export const updateCustomerArtworkBookmark = async (id: string,
+    bookmarkId: string,
+    artworkBookmarkUpdate: ArtworkBookmarkUpdate, options?: RequestInit): Promise<ArtworkBookmark> => {
+
+  return customFetch<ArtworkBookmark>(getUpdateCustomerArtworkBookmarkUrl(id,bookmarkId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(artworkBookmarkUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateCustomerArtworkBookmarkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCustomerArtworkBookmark>>, TError,{id: string;bookmarkId: string;data: BodyType<ArtworkBookmarkUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateCustomerArtworkBookmark>>, TError,{id: string;bookmarkId: string;data: BodyType<ArtworkBookmarkUpdate>}, TContext> => {
+
+const mutationKey = ['updateCustomerArtworkBookmark'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCustomerArtworkBookmark>>, {id: string;bookmarkId: string;data: BodyType<ArtworkBookmarkUpdate>}> = (props) => {
+          const {id,bookmarkId,data} = props ?? {};
+
+          return  updateCustomerArtworkBookmark(id,bookmarkId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCustomerArtworkBookmarkMutationResult = NonNullable<Awaited<ReturnType<typeof updateCustomerArtworkBookmark>>>
+    export type UpdateCustomerArtworkBookmarkMutationBody = BodyType<ArtworkBookmarkUpdate>
+    export type UpdateCustomerArtworkBookmarkMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update bookmark label, notes, preferred, or retired state (admin only)
+ */
+export const useUpdateCustomerArtworkBookmark = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCustomerArtworkBookmark>>, TError,{id: string;bookmarkId: string;data: BodyType<ArtworkBookmarkUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateCustomerArtworkBookmark>>,
+        TError,
+        {id: string;bookmarkId: string;data: BodyType<ArtworkBookmarkUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateCustomerArtworkBookmarkMutationOptions(options));
+    }
+
+export const getDeleteCustomerArtworkBookmarkUrl = (id: string,
+    bookmarkId: string,) => {
+
+
+
+
+  return `/api/customers/${id}/artwork/bookmarks/${bookmarkId}`
+}
+
+/**
+ * @summary Delete an artwork bookmark (admin only)
+ */
+export const deleteCustomerArtworkBookmark = async (id: string,
+    bookmarkId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteCustomerArtworkBookmarkUrl(id,bookmarkId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteCustomerArtworkBookmarkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomerArtworkBookmark>>, TError,{id: string;bookmarkId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCustomerArtworkBookmark>>, TError,{id: string;bookmarkId: string}, TContext> => {
+
+const mutationKey = ['deleteCustomerArtworkBookmark'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCustomerArtworkBookmark>>, {id: string;bookmarkId: string}> = (props) => {
+          const {id,bookmarkId} = props ?? {};
+
+          return  deleteCustomerArtworkBookmark(id,bookmarkId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCustomerArtworkBookmarkMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCustomerArtworkBookmark>>>
+
+    export type DeleteCustomerArtworkBookmarkMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete an artwork bookmark (admin only)
+ */
+export const useDeleteCustomerArtworkBookmark = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomerArtworkBookmark>>, TError,{id: string;bookmarkId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCustomerArtworkBookmark>>,
+        TError,
+        {id: string;bookmarkId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteCustomerArtworkBookmarkMutationOptions(options));
+    }
 
 export const getGetCustomerProfileUrl = (id: string,
     params?: GetCustomerProfileParams,) => {

@@ -488,6 +488,272 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NicheReportResponse"
+  /branding/colors:
+    get:
+      operationId: listBrandingColors
+      tags: [clients]
+      summary: List the shared Hub-owned branding color catalog
+      responses:
+        "200":
+          description: Bounded color catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandingColorList"
+  /customers/{id}/branding:
+    get:
+      operationId: getCustomerBranding
+      tags: [clients]
+      summary: Get customer branding notes, fonts, and assigned catalog colors
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+      responses:
+        "200":
+          description: Customer branding
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerBranding" }
+        "404":
+          description: Customer not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    put:
+      operationId: updateCustomerBranding
+      tags: [clients]
+      summary: Replace customer branding selections (admin only)
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomerBrandingUpdate" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updated]
+                properties:
+                  updated: { type: boolean }
+  /customers/{id}/artwork:
+    get:
+      operationId: getCustomerArtwork
+      tags: [clients]
+      summary: Get linked Dropbox folder and staple artwork bookmarks
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+      responses:
+        "200":
+          description: Artwork state; linked=false is a normal supported response
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerArtwork" }
+  /customers/{id}/artwork/folder:
+    put:
+      operationId: linkCustomerArtworkFolder
+      tags: [clients]
+      summary: Link one Dropbox root folder to a customer (admin only)
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DropboxFolderLinkRequest" }
+      responses:
+        "200":
+          description: Linked folder
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [linked, folder]
+                properties:
+                  linked: { type: boolean }
+                  folder: { $ref: "#/components/schemas/DropboxEntry" }
+        "503":
+          description: Dropbox connection unavailable or lacks required read scope
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    delete:
+      operationId: unlinkCustomerArtworkFolder
+      tags: [clients]
+      summary: Remove the customer folder link and its bookmarks (admin only)
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+      responses:
+        "204": { description: Unlinked }
+  /customers/{id}/artwork/folder-picker:
+    get:
+      operationId: pickCustomerArtworkFolder
+      tags: [clients]
+      summary: Browse Dropbox folders before linking a customer root (admin only)
+      description: Returns folders only. An omitted or empty path means the Dropbox account root.
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+        - name: path
+          in: query
+          required: false
+          schema: { type: string, maxLength: 1000 }
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque, short-lived cursor returned by this picker for the same customer, path, and staff user
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Bounded folder-picker page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [folders, truncated, cursor]
+                properties:
+                  folders:
+                    type: array
+                    maxItems: 100
+                    items: { $ref: "#/components/schemas/DropboxEntry" }
+                  truncated: { type: boolean }
+                  cursor: { type: [string, "null"], format: uuid }
+        "503":
+          description: Dropbox connection unavailable or lacks metadata scope
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /customers/{id}/artwork/browse:
+    get:
+      operationId: browseCustomerArtwork
+      tags: [clients]
+      summary: Browse one bounded page under the linked customer root
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+        - name: path
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 100 }
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: uuid
+            description: Opaque, short-lived cursor bound to this customer root and requested path
+      responses:
+        "200":
+          description: Folder entries or a graceful unlinked state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DropboxEntryList" }
+  /customers/{id}/artwork/search:
+    get:
+      operationId: searchCustomerArtwork
+      tags: [clients]
+      summary: Search within the linked customer root
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 25 }
+      responses:
+        "200":
+          description: Search results or a graceful unlinked state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DropboxEntryList" }
+  /customers/{id}/artwork/metadata:
+    get:
+      operationId: getCustomerArtworkMetadata
+      tags: [clients]
+      summary: Read metadata after server-side linked-root authorization
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+        - $ref: "#/components/parameters/DropboxLocatorParam"
+      responses:
+        "200":
+          description: Dropbox metadata
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DropboxEntry" }
+  /customers/{id}/artwork/temporary-link:
+    get:
+      operationId: getCustomerArtworkTemporaryLink
+      tags: [clients]
+      summary: Get a temporary original-file download link
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+        - $ref: "#/components/parameters/DropboxLocatorParam"
+      responses:
+        "200":
+          description: Temporary provider link
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [link, expires]
+                properties:
+                  link: { type: string, format: uri }
+                  expires: { type: string, enum: [temporary] }
+  /customers/{id}/artwork/bookmarks:
+    post:
+      operationId: createCustomerArtworkBookmark
+      tags: [clients]
+      summary: Bookmark a staple artwork item (admin only)
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ArtworkBookmarkRequest" }
+      responses:
+        "201":
+          description: Created bookmark
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArtworkBookmark" }
+        "409":
+          description: Item is already bookmarked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /customers/{id}/artwork/bookmarks/{bookmarkId}:
+    patch:
+      operationId: updateCustomerArtworkBookmark
+      tags: [clients]
+      summary: Update bookmark label, notes, preferred, or retired state (admin only)
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+        - $ref: "#/components/parameters/ArtworkBookmarkIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ArtworkBookmarkUpdate" }
+      responses:
+        "200":
+          description: Updated bookmark
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArtworkBookmark" }
+    delete:
+      operationId: deleteCustomerArtworkBookmark
+      tags: [clients]
+      summary: Delete an artwork bookmark (admin only)
+      parameters:
+        - $ref: "#/components/parameters/CustomerIdParam"
+        - $ref: "#/components/parameters/ArtworkBookmarkIdParam"
+      responses:
+        "204": { description: Deleted }
   /customers/{id}:
     get:
       operationId: getCustomerProfile
@@ -5780,6 +6046,22 @@ paths:
                 $ref: "#/components/schemas/StatusActivityOrdersResponse"
 components:
   parameters:
+    CustomerIdParam:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^\d+$' }
+    ArtworkBookmarkIdParam:
+      name: bookmarkId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DropboxLocatorParam:
+      name: locator
+      in: query
+      required: true
+      description: A contained Dropbox path, the linked root id, or an id already bookmarked for this customer
+      schema: { type: string, minLength: 1, maxLength: 1000 }
     OrderTypeParam:
       name: orderType
       in: query
@@ -5887,6 +6169,189 @@ components:
       description: "||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)"
       schema: { type: string }
   schemas:
+    AuditFields:
+      type: object
+      required: [createdByEmail, updatedByEmail, createdAt, updatedAt]
+      properties:
+        createdByEmail: { type: string }
+        updatedByEmail: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    BrandingColor:
+      type: object
+      required: [id, name, hex, active]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        hex: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+        active: { type: boolean }
+        pantoneCode: { type: [string, "null"] }
+        cmyk:
+          type: [array, "null"]
+          minItems: 4
+          maxItems: 4
+          items: { type: integer, minimum: 0, maximum: 100 }
+        rgb:
+          type: [array, "null"]
+          minItems: 3
+          maxItems: 3
+          items: { type: integer, minimum: 0, maximum: 255 }
+        inkReferences:
+          type: [array, "null"]
+          items: { type: string }
+        threadReferences:
+          type: [array, "null"]
+          items: { type: string }
+        inkStockNotes:
+          type: [array, "null"]
+          items: {}
+        threadStockNotes:
+          type: [array, "null"]
+          items: {}
+        createdByEmail: { type: string }
+        updatedByEmail: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    BrandingColorList:
+      type: object
+      required: [colors]
+      properties:
+        colors:
+          type: array
+          maxItems: 500
+          items: { $ref: "#/components/schemas/BrandingColor" }
+    CustomerBrandingColorAssignment:
+      type: object
+      required: [role, colorId]
+      properties:
+        role: { type: string, minLength: 1, maxLength: 80 }
+        colorId: { type: string, format: uuid }
+    CustomerBranding:
+      type: object
+      required: [configured, notes, fonts, colors, audit]
+      properties:
+        configured: { type: boolean }
+        notes: { type: [string, "null"] }
+        fonts:
+          type: array
+          items: { type: string }
+        colors:
+          type: array
+          items:
+            type: object
+            required: [role, id, name, hex]
+            properties:
+              role: { type: string }
+              id: { type: string, format: uuid }
+              name: { type: string }
+              hex: { type: string }
+        audit:
+          oneOf:
+            - $ref: "#/components/schemas/AuditFields"
+            - type: "null"
+    CustomerBrandingUpdate:
+      type: object
+      required: [notes, fonts, colors]
+      properties:
+        notes: { type: [string, "null"], maxLength: 10000 }
+        fonts:
+          type: array
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 120 }
+        colors:
+          type: array
+          maxItems: 20
+          items: { $ref: "#/components/schemas/CustomerBrandingColorAssignment" }
+    DropboxFolderLinkRequest:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Dropbox folder path or id; resolved and canonicalized server-side
+    DropboxEntry:
+      type: object
+      required: [type, id, name, pathLower, pathDisplay, size, modifiedAt]
+      properties:
+        type: { type: string, enum: [file, folder] }
+        id: { type: string }
+        name: { type: string }
+        pathLower: { type: [string, "null"] }
+        pathDisplay: { type: [string, "null"] }
+        size: { type: [integer, "null"] }
+        modifiedAt: { type: [string, "null"], format: date-time }
+    DropboxEntryList:
+      type: object
+      required: [linked, entries, truncated, cursor]
+      properties:
+        linked: { type: boolean }
+        entries:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/DropboxEntry" }
+        truncated: { type: boolean }
+        cursor: { type: [string, "null"], format: uuid }
+    ArtworkBookmarkRequest:
+      type: object
+      required: [path, label]
+      properties:
+        path: { type: string, minLength: 1, maxLength: 1000 }
+        label: { type: string, minLength: 1, maxLength: 160 }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        preferred: { type: boolean, default: false }
+        retired: { type: boolean, default: false }
+    ArtworkBookmarkUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        label: { type: string, minLength: 1, maxLength: 160 }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        preferred: { type: boolean }
+        retired: { type: boolean }
+    ArtworkBookmark:
+      type: object
+      required: [id, dropboxId, pathLower, pathDisplay, name, label, preferred, retired]
+      properties:
+        id: { type: string, format: uuid }
+        dropboxId: { type: string }
+        pathLower: { type: string }
+        pathDisplay: { type: string }
+        name: { type: string }
+        label: { type: string }
+        notes: { type: [string, "null"] }
+        preferred: { type: boolean }
+        retired: { type: boolean }
+        createdByEmail: { type: string }
+        updatedByEmail: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CustomerDropboxFolder:
+      type: object
+      required: [dropboxId, pathLower, pathDisplay, name, createdByEmail, updatedByEmail, createdAt, updatedAt]
+      properties:
+        dropboxId: { type: string }
+        pathLower: { type: string }
+        pathDisplay: { type: string }
+        name: { type: string }
+        createdByEmail: { type: string }
+        updatedByEmail: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CustomerArtwork:
+      type: object
+      required: [linked, folder, bookmarks]
+      properties:
+        linked: { type: boolean }
+        folder:
+          oneOf:
+            - $ref: "#/components/schemas/CustomerDropboxFolder"
+            - type: "null"
+        bookmarks:
+          type: array
+          maxItems: 250
+          items: { $ref: "#/components/schemas/ArtworkBookmark" }
     PrintavoLinkStatus:
       type: object
       properties:

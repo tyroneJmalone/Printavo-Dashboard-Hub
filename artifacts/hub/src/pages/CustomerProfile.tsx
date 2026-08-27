@@ -47,6 +47,9 @@ import {
   useRemoveEmailThreadLink,
 } from "@workspace/api-client-react";
 
+import { CustomerBrandingCard } from "@/components/customers/CustomerBrandingCard";
+import { CustomerArtworkCard } from "@/components/customers/CustomerArtworkCard";
+
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
@@ -434,6 +437,11 @@ export default function CustomerProfile() {
             value={s.lastOrderAt ?? "—"}
             sub={s.firstOrderAt ? `first ${s.firstOrderAt}` : undefined}
           />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CustomerBrandingCard customerId={id} />
+          <CustomerArtworkCard customerId={id} />
         </div>
 
         {data.methodBreakdown.length > 0 ? (

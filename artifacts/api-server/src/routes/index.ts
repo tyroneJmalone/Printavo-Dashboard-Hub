@@ -19,6 +19,7 @@ import printQueueRouter from "./printQueue";
 import sorterRouter from "./sorter";
 import shippingRouter from "./shipping";
 import customersRouter from "./customers";
+import customerBrandingRouter from "./customerBranding";
 import pipelineRouter from "./pipeline";
 import statusActivityRouter from "./statusActivity";
 import emailActivityRouter from "./emailActivity";
@@ -67,6 +68,7 @@ router.use(printQueueRouter);
 router.use(sorterRouter);
 router.use(shippingRouter);
 router.use(customersRouter); // category manage routes are admin-only inside
+router.use(customerBrandingRouter); // branding/artwork writes are admin-only inside
 router.use(pipelineRouter);
 router.use(statusActivityRouter);
 router.use(emailActivityRouter); // config is admin-only; analytics are mailbox-ACL scoped

@@ -5,6 +5,207 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface AuditFields {
+  createdByEmail: string;
+  updatedByEmail: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BrandingColor {
+  id: string;
+  name: string;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  hex: string;
+  active: boolean;
+  /** @nullable */
+  pantoneCode?: string | null;
+  /**
+     * @minItems 4
+     * @maxItems 4
+     * @nullable
+     * @items.minimum 0
+     * @items.maximum 100
+     */
+  cmyk?: number[] | null;
+  /**
+     * @minItems 3
+     * @maxItems 3
+     * @nullable
+     * @items.minimum 0
+     * @items.maximum 255
+     */
+  rgb?: number[] | null;
+  /** @nullable */
+  inkReferences?: string[] | null;
+  /** @nullable */
+  threadReferences?: string[] | null;
+  /** @nullable */
+  inkStockNotes?: unknown[] | null;
+  /** @nullable */
+  threadStockNotes?: unknown[] | null;
+  createdByEmail?: string;
+  updatedByEmail?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BrandingColorList {
+  /** @maxItems 500 */
+  colors: BrandingColor[];
+}
+
+export interface CustomerBrandingColorAssignment {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  role: string;
+  colorId: string;
+}
+
+export type CustomerBrandingColorsItem = {
+  role: string;
+  id: string;
+  name: string;
+  hex: string;
+};
+
+export interface CustomerBranding {
+  configured: boolean;
+  /** @nullable */
+  notes: string | null;
+  fonts: string[];
+  colors: CustomerBrandingColorsItem[];
+  audit: AuditFields | null;
+}
+
+export interface CustomerBrandingUpdate {
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  notes: string | null;
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 120
+     */
+  fonts: string[];
+  /** @maxItems 20 */
+  colors: CustomerBrandingColorAssignment[];
+}
+
+export interface DropboxFolderLinkRequest {
+  /**
+     * Dropbox folder path or id; resolved and canonicalized server-side
+     * @minLength 1
+     * @maxLength 1000
+     */
+  path: string;
+}
+
+export type DropboxEntryType = typeof DropboxEntryType[keyof typeof DropboxEntryType];
+
+
+export const DropboxEntryType = {
+  file: 'file',
+  folder: 'folder',
+} as const;
+
+export interface DropboxEntry {
+  type: DropboxEntryType;
+  id: string;
+  name: string;
+  /** @nullable */
+  pathLower: string | null;
+  /** @nullable */
+  pathDisplay: string | null;
+  /** @nullable */
+  size: number | null;
+  /** @nullable */
+  modifiedAt: string | null;
+}
+
+export interface DropboxEntryList {
+  linked: boolean;
+  /** @maxItems 100 */
+  entries: DropboxEntry[];
+  truncated: boolean;
+  /** @nullable */
+  cursor: string | null;
+}
+
+export interface ArtworkBookmarkRequest {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  path: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  label: string;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  notes?: string | null;
+  preferred?: boolean;
+  retired?: boolean;
+}
+
+export interface ArtworkBookmarkUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  label?: string;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  notes?: string | null;
+  preferred?: boolean;
+  retired?: boolean;
+}
+
+export interface ArtworkBookmark {
+  id: string;
+  dropboxId: string;
+  pathLower: string;
+  pathDisplay: string;
+  name: string;
+  label: string;
+  /** @nullable */
+  notes?: string | null;
+  preferred: boolean;
+  retired: boolean;
+  createdByEmail?: string;
+  updatedByEmail?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustomerDropboxFolder {
+  dropboxId: string;
+  pathLower: string;
+  pathDisplay: string;
+  name: string;
+  createdByEmail: string;
+  updatedByEmail: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerArtwork {
+  linked: boolean;
+  folder: CustomerDropboxFolder | null;
+  /** @maxItems 250 */
+  bookmarks: ArtworkBookmark[];
+}
+
 export type PrintavoLinkStatusOrigin = typeof PrintavoLinkStatusOrigin[keyof typeof PrintavoLinkStatusOrigin] | null;
 
 
@@ -4925,6 +5126,11 @@ export interface HubCalculatorPushResult {
   lineItemOutcome: HubCalculatorPushResultLineItemOutcome;
 }
 
+/**
+ * A contained Dropbox path, the linked root id, or an id already bookmarked for this customer
+ */
+export type DropboxLocatorParamParameter = string;
+
 export type OrderTypeParamParameter = typeof OrderTypeParamParameter[keyof typeof OrderTypeParamParameter];
 
 
@@ -5044,6 +5250,90 @@ export const GetNicheReportRange = {
   last12: 'last12',
   custom: 'custom',
 } as const;
+
+export type UpdateCustomerBranding200 = {
+  updated: boolean;
+};
+
+export type LinkCustomerArtworkFolder200 = {
+  linked: boolean;
+  folder: DropboxEntry;
+};
+
+export type PickCustomerArtworkFolderParams = {
+/**
+ * @maxLength 1000
+ */
+path?: string;
+/**
+ * Opaque, short-lived cursor returned by this picker for the same customer, path, and staff user
+ */
+cursor?: string;
+};
+
+export type PickCustomerArtworkFolder200 = {
+  /** @maxItems 100 */
+  folders: DropboxEntry[];
+  truncated: boolean;
+  /** @nullable */
+  cursor: string | null;
+};
+
+export type BrowseCustomerArtworkParams = {
+path?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * Opaque, short-lived cursor bound to this customer root and requested path
+ */
+cursor?: string;
+};
+
+export type SearchCustomerArtworkParams = {
+/**
+ * @minLength 1
+ * @maxLength 200
+ */
+q: string;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+limit?: number;
+};
+
+export type GetCustomerArtworkMetadataParams = {
+/**
+ * A contained Dropbox path, the linked root id, or an id already bookmarked for this customer
+ * @minLength 1
+ * @maxLength 1000
+ */
+locator: DropboxLocatorParamParameter;
+};
+
+export type GetCustomerArtworkTemporaryLinkParams = {
+/**
+ * A contained Dropbox path, the linked root id, or an id already bookmarked for this customer
+ * @minLength 1
+ * @maxLength 1000
+ */
+locator: DropboxLocatorParamParameter;
+};
+
+export type GetCustomerArtworkTemporaryLink200Expires = typeof GetCustomerArtworkTemporaryLink200Expires[keyof typeof GetCustomerArtworkTemporaryLink200Expires];
+
+
+export const GetCustomerArtworkTemporaryLink200Expires = {
+  temporary: 'temporary',
+} as const;
+
+export type GetCustomerArtworkTemporaryLink200 = {
+  link: string;
+  expires: GetCustomerArtworkTemporaryLink200Expires;
+};
 
 export type GetCustomerProfileParams = {
 /**
