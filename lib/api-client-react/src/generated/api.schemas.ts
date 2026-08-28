@@ -992,6 +992,140 @@ export const CollectionItemDetailVendor = {
   ss: 'ss',
 } as const;
 
+export interface PaletteCustomerColor {
+  id: string;
+  role: string;
+  name: string;
+  /** @nullable */
+  hex: string | null;
+  /**
+     * Customer-maintained Pantone reference
+     * @nullable
+     */
+  pantoneCode: string | null;
+  families?: string[];
+}
+
+export type PaletteMatchProductContextVendor = typeof PaletteMatchProductContextVendor[keyof typeof PaletteMatchProductContextVendor];
+
+
+export const PaletteMatchProductContextVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export interface PaletteMatchProductContext {
+  vendor: PaletteMatchProductContextVendor;
+  styleName: string;
+  /** @nullable */
+  styleId: string | null;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  styleImage: string | null;
+  sizes: string[];
+  /** @nullable */
+  sizeRange: string | null;
+}
+
+export type PaletteColorSuggestionMatchMethod = typeof PaletteColorSuggestionMatchMethod[keyof typeof PaletteColorSuggestionMatchMethod];
+
+
+export const PaletteColorSuggestionMatchMethod = {
+  exact_name: 'exact_name',
+  visual_delta_e: 'visual_delta_e',
+  family: 'family',
+  unknown: 'unknown',
+} as const;
+
+export type PaletteColorSuggestionConfidence = typeof PaletteColorSuggestionConfidence[keyof typeof PaletteColorSuggestionConfidence];
+
+
+export const PaletteColorSuggestionConfidence = {
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+} as const;
+
+export type PaletteColorEvidenceStatus = typeof PaletteColorEvidenceStatus[keyof typeof PaletteColorEvidenceStatus];
+
+
+export const PaletteColorEvidenceStatus = {
+  pending: 'pending',
+  measured: 'measured',
+  rejected: 'rejected',
+  unavailable: 'unavailable',
+  error: 'error',
+} as const;
+
+export interface PaletteColorEvidence {
+  status: PaletteColorEvidenceStatus;
+  /**
+     * @minItems 3
+     * @maxItems 3
+     * @nullable
+     * @items.minimum 0
+     * @items.maximum 255
+     */
+  rgb: number[] | null;
+  /** @nullable */
+  sourceSwatchUrl: string | null;
+  /** @nullable */
+  sourceSwatchHash: string | null;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  profile: string | null;
+  /** @nullable */
+  illuminant: string | null;
+  /** @nullable */
+  measuredAt: string | null;
+  /** @nullable */
+  confidence: string | null;
+  /** @nullable */
+  quality: string | null;
+  /** @nullable */
+  method: string | null;
+  /** @nullable */
+  algorithmVersion: string | null;
+}
+
+export interface PaletteColorSuggestion {
+  colorName: string;
+  /** @nullable */
+  swatchImage: string | null;
+  /** @nullable */
+  productImage: string | null;
+  families: string[];
+  matchedCustomer: PaletteCustomerColor;
+  matchMethod: PaletteColorSuggestionMatchMethod;
+  reason: string;
+  confidence: PaletteColorSuggestionConfidence;
+  score: number;
+  /** @nullable */
+  deltaE: number | null;
+  /** Vendor web-swatch evidence metadata; not a calibrated fabric measurement. */
+  evidence: PaletteColorEvidence | null;
+  /**
+     * Verified vendor/staff garment Pantone only; never estimated.
+     * @nullable
+     */
+  garmentPantoneCode: string | null;
+  /** @nullable */
+  garmentPantoneSource: string | null;
+}
+
+export interface PaletteMatchSnapshot {
+  version: string;
+  customerPalette: PaletteCustomerColor[];
+  product: PaletteMatchProductContext;
+  matches: PaletteColorSuggestion[];
+}
+
 export interface CollectionItemDetail {
   id: string;
   vendor: CollectionItemDetailVendor;
@@ -999,6 +1133,8 @@ export interface CollectionItemDetail {
   colors: string[];
   /** @nullable */
   note: string | null;
+  /** Immutable server-recomputed palette evidence; null for manual or legacy items. */
+  paletteMatchSnapshot: PaletteMatchSnapshot | null;
   /** @nullable */
   brand: string | null;
   /** @nullable */
@@ -1091,47 +1227,6 @@ export interface PaletteCollectionPreviewRequest {
   styles: string[];
 }
 
-export interface PaletteCustomerColor {
-  id: string;
-  role: string;
-  name: string;
-  /** @nullable */
-  hex: string | null;
-  families?: string[];
-}
-
-export type PaletteColorSuggestionMatchMethod = typeof PaletteColorSuggestionMatchMethod[keyof typeof PaletteColorSuggestionMatchMethod];
-
-
-export const PaletteColorSuggestionMatchMethod = {
-  exact_name: 'exact_name',
-  family: 'family',
-  unknown: 'unknown',
-} as const;
-
-export type PaletteColorSuggestionConfidence = typeof PaletteColorSuggestionConfidence[keyof typeof PaletteColorSuggestionConfidence];
-
-
-export const PaletteColorSuggestionConfidence = {
-  high: 'high',
-  medium: 'medium',
-  low: 'low',
-} as const;
-
-export interface PaletteColorSuggestion {
-  colorName: string;
-  /** @nullable */
-  swatchImage: string | null;
-  /** @nullable */
-  productImage: string | null;
-  families: string[];
-  matchedCustomer: PaletteCustomerColor;
-  matchMethod: PaletteColorSuggestionMatchMethod;
-  reason: string;
-  confidence: PaletteColorSuggestionConfidence;
-  score: number;
-}
-
 export type PaletteStyleSuggestionVendor = typeof PaletteStyleSuggestionVendor[keyof typeof PaletteStyleSuggestionVendor];
 
 
@@ -1145,12 +1240,19 @@ export interface PaletteStyleSuggestion {
   vendor: PaletteStyleSuggestionVendor;
   styleName: string;
   /** @nullable */
+  styleId: string | null;
+  /** @nullable */
   brand: string | null;
   /** @nullable */
   title: string | null;
   /** @nullable */
+  description: string | null;
+  /** @nullable */
   styleImage: string | null;
-  /** @maxItems 5 */
+  sizes: string[];
+  /** @nullable */
+  sizeRange: string | null;
+  /** @maxItems 12 */
   colors: PaletteColorSuggestion[];
   /** @maxItems 100 */
   alternatives: PaletteColorSuggestion[];

@@ -11,6 +11,7 @@ import { ensureInsightsRole } from "./lib/insights/guard";
 import { isMintbucksConfigured } from "@workspace/mintbucks-db";
 import { startPoller as startMintbucksPoller } from "./mintbucks/lib/poller";
 import { startTaskSyncPoller } from "./printavoTasks/poller";
+import { startColorEvidenceWorker } from "./lib/catalog/evidenceWorker";
 
 const rawPort = process.env["PORT"];
 
@@ -46,6 +47,7 @@ app.listen(port, (err) => {
   startFileMirror(logger);
   startAutoPrintScheduler(logger);
   startCatalogScheduler(logger);
+  startColorEvidenceWorker(logger);
   // Email activity tracker — dormant until GOOGLE_SERVICE_ACCOUNT_JSON is set.
   startEmailActivityScheduler(logger);
   // Mint Bucks poller: dormant unless MINTBUCKS_POLLER_ENABLED=true (phased

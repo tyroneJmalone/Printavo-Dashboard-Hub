@@ -11,6 +11,7 @@ export type PaletteColorSuggestionMatchMethod = typeof PaletteColorSuggestionMat
 
 export const PaletteColorSuggestionMatchMethod = {
   exact_name: 'exact_name',
+  visual_delta_e: 'visual_delta_e',
   family: 'family',
   unknown: 'unknown',
 } as const;

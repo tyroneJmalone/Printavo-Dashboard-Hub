@@ -7139,6 +7139,11 @@ components:
           type: array
           items: { type: string }
         note: { type: ["string", "null"] }
+        paletteMatchSnapshot:
+          oneOf:
+            - $ref: "#/components/schemas/PaletteMatchSnapshot"
+            - type: "null"
+          description: Immutable server-recomputed palette evidence; null for manual or legacy items.
         brand: { type: ["string", "null"] }
         title: { type: ["string", "null"] }
         styleImage: { type: ["string", "null"] }
@@ -7151,7 +7156,7 @@ components:
           type: boolean
           description: False when the style is no longer present in the local catalog at all.
         createdAt: { type: string }
-      required: [id, vendor, styleName, colors, note, brand, title, styleImage, priceMin, priceMax, discontinued, inCatalog, createdAt]
+      required: [id, vendor, styleName, colors, note, paletteMatchSnapshot, brand, title, styleImage, priceMin, priceMax, discontinued, inCatalog, createdAt]
     CollectionDetail:
       type: object
       properties:
@@ -7203,37 +7208,95 @@ components:
           items: { type: string, minLength: 1, maxLength: 100 }
     PaletteCustomerColor:
       type: object
-      required: [id, role, name, hex]
+      required: [id, role, name, hex, pantoneCode]
       properties:
         id: { type: string }
         role: { type: string }
         name: { type: string }
         hex: { type: ["string", "null"] }
+        pantoneCode: { type: ["string", "null"], description: Customer-maintained Pantone reference, if any. }
         families: { type: array, items: { type: string } }
     PaletteColorSuggestion:
       type: object
-      required: [colorName, swatchImage, productImage, families, matchedCustomer, matchMethod, reason, confidence, score]
+      required: [colorName, swatchImage, productImage, families, matchedCustomer, matchMethod, reason, confidence, score, deltaE, evidence, garmentPantoneCode, garmentPantoneSource]
       properties:
         colorName: { type: string }
         swatchImage: { type: ["string", "null"] }
         productImage: { type: ["string", "null"] }
         families: { type: array, items: { type: string } }
         matchedCustomer: { $ref: "#/components/schemas/PaletteCustomerColor" }
-        matchMethod: { type: string, enum: [exact_name, family, unknown] }
+        matchMethod: { type: string, enum: [exact_name, visual_delta_e, family, unknown] }
         reason: { type: string }
         confidence: { type: string, enum: [high, medium, low] }
         score: { type: number }
+        deltaE: { type: ["number", "null"] }
+        evidence:
+          oneOf:
+            - $ref: "#/components/schemas/PaletteColorEvidence"
+            - type: "null"
+          description: Vendor web-swatch evidence metadata; not a calibrated fabric measurement.
+        garmentPantoneCode: { type: ["string", "null"], description: Verified vendor/staff garment Pantone only; never estimated. }
+        garmentPantoneSource: { type: ["string", "null"] }
+    PaletteColorEvidence:
+      type: object
+      required: [status, rgb, sourceSwatchUrl, sourceSwatchHash, reason, profile, illuminant, measuredAt, confidence, quality, method, algorithmVersion]
+      properties:
+        status: { type: string, enum: [pending, measured, rejected, unavailable, error] }
+        rgb:
+          type: ["array", "null"]
+          minItems: 3
+          maxItems: 3
+          items: { type: integer, minimum: 0, maximum: 255 }
+        sourceSwatchUrl: { type: ["string", "null"] }
+        sourceSwatchHash: { type: ["string", "null"] }
+        reason: { type: ["string", "null"] }
+        profile: { type: ["string", "null"] }
+        illuminant: { type: ["string", "null"] }
+        measuredAt: { type: ["string", "null"] }
+        confidence: { type: ["string", "null"] }
+        quality: { type: ["string", "null"] }
+        method: { type: ["string", "null"] }
+        algorithmVersion: { type: ["string", "null"] }
+    PaletteMatchProductContext:
+      type: object
+      required: [vendor, styleName, styleId, brand, title, description, styleImage, sizes, sizeRange]
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleName: { type: string }
+        styleId: { type: ["string", "null"] }
+        brand: { type: ["string", "null"] }
+        title: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        styleImage: { type: ["string", "null"] }
+        sizes: { type: array, items: { type: string } }
+        sizeRange: { type: ["string", "null"] }
+    PaletteMatchSnapshot:
+      type: object
+      required: [version, customerPalette, product, matches]
+      properties:
+        version: { type: string }
+        customerPalette:
+          type: array
+          items: { $ref: "#/components/schemas/PaletteCustomerColor" }
+        product: { $ref: "#/components/schemas/PaletteMatchProductContext" }
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/PaletteColorSuggestion" }
     PaletteStyleSuggestion:
       type: object
-      required: [input, vendor, styleName, brand, title, styleImage, colors, alternatives]
+      required: [input, vendor, styleName, styleId, brand, title, description, styleImage, sizes, sizeRange, colors, alternatives]
       properties:
         input: { type: string }
         vendor: { type: string, enum: [sanmar, ss] }
         styleName: { type: string }
+        styleId: { type: ["string", "null"] }
         brand: { type: ["string", "null"] }
         title: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
         styleImage: { type: ["string", "null"] }
-        colors: { type: array, maxItems: 5, items: { $ref: "#/components/schemas/PaletteColorSuggestion" } }
+        sizes: { type: array, items: { type: string } }
+        sizeRange: { type: ["string", "null"] }
+        colors: { type: array, maxItems: 12, items: { $ref: "#/components/schemas/PaletteColorSuggestion" } }
         alternatives: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/PaletteColorSuggestion" } }
     PaletteCollectionPreviewResponse:
       type: object

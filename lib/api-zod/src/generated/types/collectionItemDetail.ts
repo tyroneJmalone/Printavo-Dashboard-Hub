@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CollectionItemDetailVendor } from './collectionItemDetailVendor';
+import type { PaletteMatchSnapshot } from './paletteMatchSnapshot';
 
 export interface CollectionItemDetail {
   id: string;
@@ -14,6 +15,8 @@ export interface CollectionItemDetail {
   colors: string[];
   /** @nullable */
   note: string | null;
+  /** Immutable server-recomputed palette evidence; null for manual or legacy items. */
+  paletteMatchSnapshot: PaletteMatchSnapshot | null;
   /** @nullable */
   brand: string | null;
   /** @nullable */

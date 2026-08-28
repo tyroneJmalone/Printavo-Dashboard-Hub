@@ -5,6 +5,7 @@ import {
   uniqueIndex,
   index,
   uuid,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -48,6 +49,8 @@ export const collectionItemsTable = pgTable(
     /** Chosen color names for this style within the collection. */
     colors: text("colors").array().notNull().default([]),
     note: text("note"),
+    /** Immutable server-recomputed palette match context; null for manual/legacy rows. */
+    paletteMatchSnapshot: jsonb("palette_match_snapshot"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

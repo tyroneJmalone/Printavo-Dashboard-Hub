@@ -40,3 +40,13 @@ test("family aliases use token and phrase boundaries, not substrings", () => {
   assert.deepEqual(derivePaletteFamilies({ name: "Light Blue Heather", hex: null, rgb: null }), ["blue", "light blue"]);
   assert.deepEqual(derivePaletteFamilies({ name: "Warm Gray", hex: null, rgb: null }), ["grey"]);
 });
+test("measured visual match exposes web-swatch provenance", () => {
+  const hit = rankPaletteColor(
+    { ...garment("Ocean"), evidence: { status: "measured", lab: [53.24, 80.09, 67.2], rgb: [255, 0, 0], sourceSwatchUrl: "https://cdnm.sanmar.com/red.png", sourceSwatchHash: "hash", reason: "web swatch", profile: "sRGB", illuminant: "D65", measuredAt: "2026-01-01T00:00:00.000Z", confidence: "medium", quality: "uniform", method: "central", algorithmVersion: "v1" } },
+    [{ id: "red", role: "primary", name: "Brand red", hex: "#ff0000", rgb: null, pantoneCode: "TEST-PMS-RED" }],
+  );
+  assert.equal(hit.matchMethod, "visual_delta_e");
+  assert.equal(hit.matchedCustomer.pantoneCode, "TEST-PMS-RED");
+  assert.equal(hit.evidence?.sourceSwatchHash, "hash");
+  assert.equal(hit.evidence?.illuminant, "D65");
+});

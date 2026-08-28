@@ -5,6 +5,7 @@ import {
   boolean,
   integer,
   numeric,
+  real,
   timestamp,
   uniqueIndex,
   index,
@@ -70,6 +71,56 @@ export const catalogColorsTable = pgTable(
   (t) => [
     uniqueIndex("catalog_colors_product_color_ux").on(t.productId, t.colorName),
     index("catalog_colors_norm_ix").on(t.normName),
+  ],
+);
+
+/**
+ * Hub-owned evidence from a vendor's *web swatch*.  This intentionally does
+ * not reference catalog_colors: import rows are replaceable, whereas a
+ * (vendor, style, color) identity and any subsequently verified Pantone value
+ * must survive a catalog refresh.
+ *
+ * Web swatches are not calibrated fabric measurements.  `measurementMethod`
+ * and the quality/confidence fields are retained so consumers can say exactly
+ * what a colour match represents.
+ */
+export const catalogColorEvidenceTable = pgTable(
+  "catalog_color_evidence",
+  {
+    id: serial("id").primaryKey(),
+    vendor: text("vendor").notNull(),
+    styleName: text("style_name").notNull(),
+    colorName: text("color_name").notNull(),
+    status: text("status").notNull().default("pending"), // pending | measured | rejected | unavailable | error
+    sourceSwatchUrl: text("source_swatch_url"),
+    /** SHA-256 of the downloaded swatch bytes, never a made-up Pantone value. */
+    sourceSwatchHash: text("source_swatch_hash"),
+    rgbR: integer("rgb_r"),
+    rgbG: integer("rgb_g"),
+    rgbB: integer("rgb_b"),
+    labL: real("lab_l"),
+    labA: real("lab_a"),
+    labB: real("lab_b"),
+    measurementMethod: text("measurement_method"),
+    colorProfile: text("color_profile"),
+    illuminant: text("illuminant"),
+    confidence: text("confidence"),
+    quality: text("quality"),
+    reason: text("reason"),
+    algorithmVersion: text("algorithm_version"),
+    /** Interactive palette previews are processed ahead of the catalog backfill. */
+    priority: integer("priority").notNull().default(0),
+    attempts: integer("attempts").notNull().default(0),
+    retryAt: timestamp("retry_at", { withTimezone: true }),
+    measuredAt: timestamp("measured_at", { withTimezone: true }),
+    /** Staff/vendor verified only; never inferred from RGB/Lab. */
+    verifiedPantoneCode: text("verified_pantone_code"),
+    verifiedPantoneSource: text("verified_pantone_source"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("catalog_color_evidence_vendor_style_color_ux").on(t.vendor, t.styleName, t.colorName),
+    index("catalog_color_evidence_work_ix").on(t.status, t.priority, t.retryAt),
   ],
 );
 

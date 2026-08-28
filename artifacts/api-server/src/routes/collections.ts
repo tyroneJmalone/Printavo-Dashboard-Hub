@@ -29,6 +29,21 @@ import { dedupeStyleInputs, rankPaletteColor, type PaletteColor } from "../lib/c
 const router: IRouter = Router();
 type SqlClient = { query: (...args: unknown[]) => Promise<any>; release: () => void };
 
+const SIZE_ORDER = [
+  "XXS", "XS", "XS/S", "S", "S/M", "M", "M/L", "L", "L/XL", "XL",
+  "XL/2XL", "2XL", "XXL", "2/3XL", "3XL", "XXXL", "3/4XL", "4XL", "5XL", "6XL",
+];
+export function orderedSizes(sizes: string[]): string[] {
+  return [...new Set(sizes)].sort((a, b) => {
+    const ai = SIZE_ORDER.indexOf(a.toUpperCase()), bi = SIZE_ORDER.indexOf(b.toUpperCase());
+    return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi) || a.localeCompare(b);
+  });
+}
+export function sizeRange(sizes: string[]): string | null {
+  const ordered = orderedSizes(sizes);
+  return ordered.length ? ordered.length === 1 ? ordered[0]! : `${ordered[0]}–${ordered.at(-1)}` : null;
+}
+
 /** Same display-name rule as the customer directory routes. */
 const CUSTOMER_NAME_SQL = sql<string | null>`COALESCE(
   NULLIF(${pvCustomersTable.companyName}, ''),
@@ -60,6 +75,7 @@ async function loadDetail(id: string): Promise<Record<string, unknown> | null> {
       styleName: collectionItemsTable.styleName,
       colors: collectionItemsTable.colors,
       note: collectionItemsTable.note,
+      paletteMatchSnapshot: collectionItemsTable.paletteMatchSnapshot,
       createdAt: collectionItemsTable.createdAt,
       brand: catalogProductsTable.brand,
       title: catalogProductsTable.title,
@@ -95,6 +111,7 @@ async function loadDetail(id: string): Promise<Record<string, unknown> | null> {
       styleName: it.styleName,
       colors: it.colors,
       note: it.note,
+       paletteMatchSnapshot: it.paletteMatchSnapshot ?? null,
       brand: it.brand,
       title: it.title,
       styleImage: it.styleImage,
@@ -116,7 +133,7 @@ async function loadDetailWithClient(client: SqlClient, id: string): Promise<Reco
   if (!coll.rows[0]) throw new Error("Created collection could not be loaded");
   const row = coll.rows[0];
   const itemRows = await client.query(
-    `SELECT ci.id, ci.vendor, ci.style_name, ci.colors, ci.note, ci.created_at,
+     `SELECT ci.id, ci.vendor, ci.style_name, ci.colors, ci.note, ci.palette_match_snapshot, ci.created_at,
             cp.brand, cp.title, cp.style_image, cp.price_min, cp.price_max, cp.discontinued, cp.id catalog_id
        FROM collection_items ci LEFT JOIN catalog_products cp ON cp.vendor = ci.vendor AND cp.style_name = ci.style_name
       WHERE ci.collection_id = $1 ORDER BY ci.created_at`, [id],
@@ -125,7 +142,7 @@ async function loadDetailWithClient(client: SqlClient, id: string): Promise<Reco
     id: row.id, name: row.name, printavoCustomerId: row.printavo_customer_id, customerName: row.customer_name,
     notes: row.notes, createdByEmail: row.created_by_email, createdAt: row.created_at.toISOString(), updatedAt: row.updated_at.toISOString(),
     items: itemRows.rows.map((item: any) => ({
-      id: item.id, vendor: item.vendor, styleName: item.style_name, colors: item.colors, note: item.note,
+       id: item.id, vendor: item.vendor, styleName: item.style_name, colors: item.colors, note: item.note, paletteMatchSnapshot: item.palette_match_snapshot ?? null,
       brand: item.brand, title: item.title, styleImage: item.style_image,
       priceMin: item.price_min == null ? null : Number(item.price_min), priceMax: item.price_max == null ? null : Number(item.price_max),
       discontinued: item.discontinued ?? false, inCatalog: item.catalog_id != null, createdAt: item.created_at.toISOString(),
@@ -316,7 +333,7 @@ router.post("/collections/palette-preview", async (req: Request, res): Promise<v
     const customer = await pool.query("SELECT 1 FROM pv_customers WHERE printavo_id = $1", [customerId]);
     if (!customer.rowCount) { res.status(404).json({ error: "Customer not found" }); return; }
     const paletteResult = await pool.query(
-      `SELECT c.id, a.role, c.name, c.hex, c.rgb FROM customer_branding_colors a
+       `SELECT c.id, a.role, c.name, c.hex, c.rgb, c.pantone_code AS "pantoneCode" FROM customer_branding_colors a
        JOIN branding_colors c ON c.id = a.color_id WHERE a.printavo_customer_id = $1 AND c.active = true ORDER BY a.role`, [customerId]);
     const palette = paletteResult.rows as PaletteColor[];
     if (!palette.length) { res.status(400).json({ error: "Customer has no configured active branding colors" }); return; }
@@ -325,21 +342,53 @@ router.post("/collections/palette-preview", async (req: Request, res): Promise<v
       const match = /^(sanmar|ss)\s*:\s*(.+)$/i.exec(input);
       const vendor = match?.[1]?.toLowerCase() ?? null, style = (match?.[2] ?? input).trim();
       const products = await pool.query(
-        `SELECT id, vendor, style_name, brand, title, style_image FROM catalog_products
+         `SELECT id, vendor, style_name, style_id, brand, title, description, style_image, sizes FROM catalog_products
          WHERE discontinued = false AND lower(style_name) = lower($1) ${vendor ? "AND vendor = $2" : ""} ORDER BY vendor`,
         vendor ? [style, vendor] : [style]);
       if (!products.rowCount) { unresolved.push({ input, reason: "No active exact style match." }); continue; }
       if (!vendor && products.rowCount > 1) { ambiguous.push({ input, candidates: products.rows.map((p) => ({ vendor: p.vendor, styleName: p.style_name, brand: p.brand, title: p.title })) }); continue; }
       const product = products.rows[0]!;
       const colors = await pool.query(
-        `SELECT cc.color_name, cc.norm_name, cc.swatch_image, cc.product_image, COALESCE(cf.families, '{}'::text[]) families
-         FROM catalog_colors cc LEFT JOIN catalog_color_families cf ON cf.norm_name = cc.norm_name
-         WHERE cc.product_id = $1 ORDER BY cc.color_name LIMIT 100`, [product.id]);
-      const alternatives = colors.rows.map((c) => rankPaletteColor({ colorName: c.color_name, normName: c.norm_name, swatchImage: c.swatch_image, productImage: c.product_image, families: c.families }, palette));
+         `SELECT cc.color_name, cc.norm_name, cc.swatch_image, cc.product_image, COALESCE(cf.families, '{}'::text[]) families,
+                 e.status evidence_status, e.lab_l, e.lab_a, e.lab_b, e.rgb_r,e.rgb_g,e.rgb_b,e.source_swatch_url,e.source_swatch_hash,e.reason,e.color_profile,e.illuminant,e.measured_at,e.confidence evidence_confidence,
+                 e.quality evidence_quality, e.measurement_method, e.algorithm_version,
+                 e.verified_pantone_code, e.verified_pantone_source
+          FROM catalog_colors cc LEFT JOIN catalog_color_families cf ON cf.norm_name = cc.norm_name
+          LEFT JOIN catalog_color_evidence e ON e.vendor=$2 AND e.style_name=$3 AND e.color_name=cc.color_name
+          WHERE cc.product_id = $1 ORDER BY cc.color_name LIMIT 100`, [product.id, product.vendor, product.style_name]);
+       const alternatives = colors.rows.map((c) => {
+         const x = rankPaletteColor({ colorName: c.color_name, normName: c.norm_name, swatchImage: c.swatch_image, productImage: c.product_image, families: c.families,
+           evidence: c.evidence_status ? { status: c.evidence_status, lab: c.lab_l == null ? null : [Number(c.lab_l), Number(c.lab_a), Number(c.lab_b)], rgb: c.rgb_r == null ? null : [c.rgb_r,c.rgb_g,c.rgb_b], sourceSwatchUrl:c.source_swatch_url,sourceSwatchHash:c.source_swatch_hash,reason:c.reason,profile:c.color_profile,illuminant:c.illuminant,measuredAt:c.measured_at?.toISOString?.() ?? c.measured_at ?? null, confidence: c.evidence_confidence, quality: c.evidence_quality, method: c.measurement_method, algorithmVersion: c.algorithm_version } : null }, palette);
+         return { ...x, garmentPantoneCode: c.verified_pantone_code ?? null, garmentPantoneSource: c.verified_pantone_source ?? null };
+       });
       const ranked = [...alternatives].sort((a, b) => b.score - a.score || a.colorName.localeCompare(b.colorName));
-      suggestions.push({ input, vendor: product.vendor, styleName: product.style_name, brand: product.brand, title: product.title, styleImage: product.style_image, colors: ranked.slice(0, 5), alternatives });
+       // Preview remains read-fast. It prioritizes the most relevant missing
+       // swatches for the paced worker instead of downloading vendor images
+       // inside this request.
+       const queuedEvidence = ranked
+         .filter((c) => c.swatchImage && (!c.evidence || c.evidence.status === "pending" || c.evidence.status === "error"))
+         .map((c, index) => ({ colorName: c.colorName, swatchImage: c.swatchImage, priority: index < 12 ? 100 : 20 }));
+       if (queuedEvidence.length > 0) {
+         await pool.query(
+           `INSERT INTO catalog_color_evidence (vendor,style_name,color_name,status,source_swatch_url,priority)
+            SELECT $1,$2,q.color_name,'pending',q.swatch_image,q.priority
+            FROM jsonb_to_recordset($3::jsonb) AS q(color_name text,swatch_image text,priority integer)
+            ON CONFLICT (vendor,style_name,color_name) DO UPDATE SET
+              priority=CASE WHEN catalog_color_evidence.status IN ('pending','error')
+                THEN GREATEST(catalog_color_evidence.priority,EXCLUDED.priority)
+                ELSE catalog_color_evidence.priority END,
+              updated_at=CASE WHEN catalog_color_evidence.status IN ('pending','error')
+                THEN now() ELSE catalog_color_evidence.updated_at END`,
+           [product.vendor, product.style_name, JSON.stringify(queuedEvidence.map((item) => ({
+             color_name: item.colorName,
+             swatch_image: item.swatchImage,
+             priority: item.priority,
+           })))],
+         );
+       }
+       suggestions.push({ input, vendor: product.vendor, styleName: product.style_name, styleId: product.style_id, brand: product.brand, title: product.title, description: product.description, styleImage: product.style_image, sizes: orderedSizes(product.sizes ?? []), sizeRange: sizeRange(product.sizes ?? []), colors: ranked.slice(0, 12), alternatives: ranked.slice(0, 100) });
     }
-    res.json({ printavoCustomerId: customerId, palette: palette.map((c) => ({ id: c.id, role: c.role, name: c.name, hex: c.hex })), suggestions, unresolved, ambiguous });
+    res.json({ printavoCustomerId: customerId, palette: palette.map((c) => ({ id: c.id, role: c.role, name: c.name, hex: c.hex, pantoneCode: c.pantoneCode ?? null })), suggestions, unresolved, ambiguous });
   } catch (err) { req.log.error({ err }, "Palette preview failed"); res.status(500).json({ error: "Failed to preview palette suggestions" }); }
 });
 
@@ -367,17 +416,42 @@ router.post("/collections/from-suggestion", async (req: Request, res: Response):
       `SELECT 1 FROM customer_branding_colors a JOIN branding_colors c ON c.id = a.color_id
        WHERE a.printavo_customer_id = $1 AND c.active = true LIMIT 1`, [data.printavoCustomerId],
     )).rowCount) throw new ReviewValidationError("Customer has no configured active branding colors");
+    const paletteRows = (await client.query(
+       `SELECT c.id,a.role,c.name,c.hex,c.rgb,c.pantone_code AS "pantoneCode" FROM customer_branding_colors a
+       JOIN branding_colors c ON c.id=a.color_id WHERE a.printavo_customer_id=$1 AND c.active=true ORDER BY a.role`,
+      [data.printavoCustomerId],
+    )).rows as PaletteColor[];
+    const snapshots = new Map<string, unknown>();
     for (const item of reviewedItems.values()) {
-      const product = await client.query("SELECT id, style_name FROM catalog_products WHERE vendor = $1 AND lower(style_name) = lower($2) AND discontinued = false", [item.vendor, item.styleName]);
+      const product = await client.query("SELECT id, style_name, style_id, brand, title, description, style_image, sizes FROM catalog_products WHERE vendor = $1 AND lower(style_name) = lower($2) AND discontinued = false", [item.vendor, item.styleName]);
       if (product.rowCount !== 1) throw new ReviewValidationError(`Reviewed style is unavailable: ${item.vendor}:${item.styleName}`);
       item.styleName = product.rows[0].style_name;
       const valid = await client.query("SELECT count(*)::int count FROM catalog_colors WHERE product_id = $1 AND color_name = ANY($2::text[])", [product.rows[0].id, item.colors]);
       if (valid.rows[0].count !== item.colors.length) throw new ReviewValidationError(`Reviewed color is unavailable: ${item.vendor}:${item.styleName}`);
+      const chosen = await client.query(
+        `SELECT cc.color_name,cc.norm_name,cc.swatch_image,cc.product_image,COALESCE(cf.families,'{}'::text[]) families,
+          e.status,e.lab_l,e.lab_a,e.lab_b,e.rgb_r,e.rgb_g,e.rgb_b,e.source_swatch_url,e.source_swatch_hash,e.reason,e.color_profile,e.illuminant,e.measured_at,e.confidence,e.quality,e.measurement_method,e.algorithm_version,e.verified_pantone_code,e.verified_pantone_source
+         FROM catalog_colors cc LEFT JOIN catalog_color_families cf ON cf.norm_name=cc.norm_name
+         LEFT JOIN catalog_color_evidence e ON e.vendor=$2 AND e.style_name=$3 AND e.color_name=cc.color_name
+         WHERE cc.product_id=$1 AND cc.color_name=ANY($4::text[]) ORDER BY cc.color_name`,
+        [product.rows[0].id, item.vendor, item.styleName, item.colors],
+      );
+      const matches = chosen.rows.map((c: any) => {
+        const match = rankPaletteColor({ colorName: c.color_name, normName: c.norm_name, swatchImage: c.swatch_image, productImage: c.product_image, families: c.families,
+          evidence: c.status ? { status: c.status, lab: c.lab_l == null ? null : [Number(c.lab_l), Number(c.lab_a), Number(c.lab_b)], rgb:c.rgb_r == null ? null : [c.rgb_r,c.rgb_g,c.rgb_b],sourceSwatchUrl:c.source_swatch_url,sourceSwatchHash:c.source_swatch_hash,reason:c.reason,profile:c.color_profile,illuminant:c.illuminant,measuredAt:c.measured_at?.toISOString?.() ?? c.measured_at ?? null, confidence: c.confidence, quality: c.quality, method: c.measurement_method, algorithmVersion: c.algorithm_version } : null }, paletteRows);
+        return { ...match, garmentPantoneCode: c.verified_pantone_code ?? null, garmentPantoneSource: c.verified_pantone_source ?? null };
+      });
+      snapshots.set(`${item.vendor}|${item.styleName.toLowerCase()}`, {
+        version: "palette-suggestion-v1",
+        customerPalette: paletteRows.map((c) => ({ id: c.id, role: c.role, name: c.name, hex: c.hex, pantoneCode: c.pantoneCode ?? null })),
+        product: { vendor: item.vendor, styleName: item.styleName, styleId: product.rows[0].style_id, brand: product.rows[0].brand, title: product.rows[0].title, description: product.rows[0].description, styleImage: product.rows[0].style_image, sizes: orderedSizes(product.rows[0].sizes ?? []), sizeRange: sizeRange(product.rows[0].sizes ?? []) },
+        matches,
+      });
     }
     const provenance = `Palette suggestions reviewed for customer ${data.printavoCustomerId}.`;
     const notes = [data.notes?.trim(), provenance].filter(Boolean).join("\n");
     const created = await client.query("INSERT INTO collections (name, printavo_customer_id, notes, created_by_email) VALUES ($1,$2,$3,$4) RETURNING id", [data.name.trim(), data.printavoCustomerId, notes, req.staff?.email ?? null]);
-    for (const item of reviewedItems.values()) await client.query("INSERT INTO collection_items (collection_id,vendor,style_name,colors) VALUES ($1,$2,$3,$4)", [created.rows[0].id, item.vendor, item.styleName, item.colors]);
+    for (const item of reviewedItems.values()) await client.query("INSERT INTO collection_items (collection_id,vendor,style_name,colors,palette_match_snapshot) VALUES ($1,$2,$3,$4,$5::jsonb)", [created.rows[0].id, item.vendor, item.styleName, item.colors, JSON.stringify(snapshots.get(`${item.vendor}|${item.styleName.toLowerCase()}`) ?? null)]);
     savedDetail = await loadDetailWithClient(client, created.rows[0].id);
     await client.query("COMMIT");
     committed = true;

@@ -1,6 +1,9 @@
-export type PaletteColor = { id: string; role: string; name: string; hex: string | null; rgb: unknown };
+import { cieDe2000, rgbToLab, visualScore, type Lab } from "./colorMeasurement";
+
+export type PaletteColor = { id: string; role: string; name: string; hex: string | null; rgb: unknown; pantoneCode?: string | null };
 export type CatalogPaletteColor = {
   colorName: string; normName: string; swatchImage: string | null; productImage: string | null; families: string[];
+  evidence?: { status: string; lab: Lab | null; rgb?: readonly [number, number, number] | null; sourceSwatchUrl?: string | null; sourceSwatchHash?: string | null; reason?: string | null; profile?: string | null; illuminant?: string | null; measuredAt?: string | null; confidence?: string | null; quality?: string | null; method?: string | null; algorithmVersion?: string | null } | null;
 };
 
 export function normalizeColorName(value: string): string {
@@ -14,11 +17,18 @@ const CANONICAL_FAMILIES = new Set([
   "charcoal", "camo", "multi", "neon",
 ]);
 
-function numericRgb(value: unknown): [number, number, number] | null {
+export function numericRgb(value: unknown): [number, number, number] | null {
   const candidate = Array.isArray(value) ? value :
     value && typeof value === "object" ? [(value as Record<string, unknown>).r, (value as Record<string, unknown>).g, (value as Record<string, unknown>).b] : null;
   return candidate && candidate.length === 3 && candidate.every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 255)
     ? candidate as [number, number, number] : null;
+}
+
+export function customerRgb(color: Pick<PaletteColor, "hex" | "rgb">): [number, number, number] | null {
+  const hex = typeof color.hex === "string" ? color.hex.replace(/^#/, "") : "";
+  return /^([0-9a-f]{6})$/i.test(hex)
+    ? [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
+    : numericRgb(color.rgb);
 }
 
 function rgbToHsl([r0, g0, b0]: [number, number, number]): [number, number, number] {
@@ -49,10 +59,7 @@ export function derivePaletteFamilies(color: Pick<PaletteColor, "name" | "hex" |
       families.add(family);
     }
   }
-  const hex = typeof color.hex === "string" ? color.hex.replace(/^#/, "") : "";
-  const rgb = /^([0-9a-f]{6})$/i.test(hex)
-    ? [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
-    : numericRgb(color.rgb);
+  const rgb = customerRgb(color);
   if (rgb) {
     const [h, s, l] = rgbToHsl(rgb as [number, number, number]);
     if (l < .12) families.add("black");
@@ -87,15 +94,28 @@ export function rankPaletteColor(garment: CatalogPaletteColor, palette: PaletteC
   const ranked = palette.map((customer) => {
     const customerFamilies = derivePaletteFamilies(customer);
     if (exact === normalizeColorName(customer.name)) {
-      return { customer, customerFamilies, matchMethod: "exact_name" as const, confidence: "high" as const, score: 100, reason: "Exact normalized color-name match." };
+      return { customer, customerFamilies, matchMethod: "exact_name" as const, confidence: "high" as const, score: 100, deltaE: null, reason: "Exact normalized color-name match." };
+    }
+    const rgb = customerRgb(customer);
+    const lab = garment.evidence?.status === "measured" ? garment.evidence.lab : null;
+    if (rgb && lab) {
+      const deltaE = cieDe2000(lab, rgbToLab(rgb));
+      return {
+        customer, customerFamilies, matchMethod: "visual_delta_e" as const,
+        // This is deliberately not "high": vendor web swatches are not
+        // calibrated garment fabric, regardless of a close numeric result.
+        confidence: garment.evidence?.confidence === "medium" ? "medium" as const : "low" as const,
+        score: visualScore(deltaE), deltaE, reason: "CIEDE2000 comparison to a representative vendor web-swatch sample.",
+      };
     }
     const overlap = garment.families.filter((f) => customerFamilies.includes(f)).sort();
     if (overlap.length) {
-      return { customer, customerFamilies, matchMethod: "family" as const, confidence: "medium" as const, score: 60 + Math.min(10, overlap.length), reason: `Shared color family: ${overlap.join(", ")}.` };
+      return { customer, customerFamilies, matchMethod: "family" as const, confidence: "medium" as const, score: 60 + Math.min(10, overlap.length), deltaE: null, reason: `Shared color family: ${overlap.join(", ")}.` };
     }
-    return { customer, customerFamilies, matchMethod: "unknown" as const, confidence: "low" as const, score: 0, reason: "No exact name or catalog-family match." };
+    return { customer, customerFamilies, matchMethod: "unknown" as const, confidence: "low" as const, score: 0, deltaE: null, reason: "No exact name, measured web-swatch, or catalog-family match." };
   });
   ranked.sort((a, b) => b.score - a.score || a.customer.role.localeCompare(b.customer.role) || a.customer.name.localeCompare(b.customer.name));
   const best = ranked[0]!;
-  return { ...garment, matchedCustomer: { id: best.customer.id, role: best.customer.role, name: best.customer.name, hex: best.customer.hex, families: best.customerFamilies }, matchMethod: best.matchMethod, confidence: best.confidence, score: best.score, reason: best.reason };
+  return { ...garment, matchedCustomer: { id: best.customer.id, role: best.customer.role, name: best.customer.name, hex: best.customer.hex, pantoneCode: best.customer.pantoneCode ?? null, families: best.customerFamilies }, matchMethod: best.matchMethod, confidence: best.confidence, score: best.score, deltaE: best.deltaE, reason: best.reason,
+    evidence: garment.evidence ? { status: garment.evidence.status, rgb: garment.evidence.rgb ?? null, sourceSwatchUrl: garment.evidence.sourceSwatchUrl ?? null, sourceSwatchHash: garment.evidence.sourceSwatchHash ?? null, reason: garment.evidence.reason ?? null, profile: garment.evidence.profile ?? null, illuminant: garment.evidence.illuminant ?? null, measuredAt: garment.evidence.measuredAt ?? null, confidence: garment.evidence.confidence ?? null, quality: garment.evidence.quality ?? null, method: garment.evidence.method ?? null, algorithmVersion: garment.evidence.algorithmVersion ?? null } : null };
 }

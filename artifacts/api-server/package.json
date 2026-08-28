@@ -10,6 +10,7 @@
     "test:quote-matrices": "node ./test-quote-matrices.mjs",
     "test:hub-calc": "node ./test-hub-calc.mjs",
     "test:palette-suggestions": "node ./test-palette-suggestions.mjs",
+    "test:color-measurement": "node ./test-color-measurement.mjs",
     "test:missive-access-policy": "node ./test-missive-access-policy.mjs",
     "test:missive-authorization-db": "node ./test-missive-authorization-db.mjs",
     "test:dropbox-policy": "node ./test-dropbox-policy.mjs",
@@ -44,6 +45,7 @@
     "pino-http": "^10.5.0",
     "puppeteer-core": "^25.3.0",
     "qrcode": "^1.5.4",
+    "sharp": "^0.35.4",
     "uuid": "^14.0.1",
     "zod": "catalog:"
   },

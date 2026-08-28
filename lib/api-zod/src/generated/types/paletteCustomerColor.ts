@@ -12,5 +12,10 @@ export interface PaletteCustomerColor {
   name: string;
   /** @nullable */
   hex: string | null;
+  /**
+     * Customer-maintained Pantone reference
+     * @nullable
+     */
+  pantoneCode: string | null;
   families?: string[];
 }

@@ -13,12 +13,19 @@ export interface PaletteStyleSuggestion {
   vendor: PaletteStyleSuggestionVendor;
   styleName: string;
   /** @nullable */
+  styleId: string | null;
+  /** @nullable */
   brand: string | null;
   /** @nullable */
   title: string | null;
   /** @nullable */
+  description: string | null;
+  /** @nullable */
   styleImage: string | null;
-  /** @maxItems 5 */
+  sizes: string[];
+  /** @nullable */
+  sizeRange: string | null;
+  /** @maxItems 12 */
   colors: PaletteColorSuggestion[];
   /** @maxItems 100 */
   alternatives: PaletteColorSuggestion[];

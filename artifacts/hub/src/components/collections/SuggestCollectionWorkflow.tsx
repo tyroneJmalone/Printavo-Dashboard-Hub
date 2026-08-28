@@ -10,13 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
   Palette, Wand2, Loader2, Check, ChevronRight,
-  CheckCircle2, AlertCircle, Trash2, Save, Image as ImageIcon
+  CheckCircle2, AlertCircle, Save, Trash2, RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -34,9 +32,12 @@ import {
   PaletteCollectionPreviewResponseAmbiguousItem,
   PaletteCollectionPreviewResponseAmbiguousItemCandidatesItem,
   PaletteCollectionPreviewResponseUnresolvedItem,
-  ReviewedPaletteItemRequestVendor
+  ReviewedPaletteItemRequestVendor,
+  getListCollectionsQueryKey
 } from "@workspace/api-client-react";
-import { getListCollectionsQueryKey } from "@workspace/api-client-react";
+
+import { ColorCard } from "./ColorCard";
+import { AlternativeColorPicker } from "./AlternativeColorPicker";
 
 // ----------------------------------------------------------------------
 // SUB-COMPONENTS
@@ -136,8 +137,8 @@ function CustomerSearchComboBox({ value, onChange, initialId }: CustomerSearchCo
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4 shrink-0",
-                      value?.printavoId === customer.printavoId ? "opacity-100 text-emerald-500" : "opacity-0"
+                      "mr-2 h-4 w-4 shrink-0 text-emerald-500",
+                      value?.printavoId === customer.printavoId ? "opacity-100" : "opacity-0"
                     )}
                   />
                   <div className="flex flex-col min-w-0">
@@ -151,72 +152,6 @@ function CustomerSearchComboBox({ value, onChange, initialId }: CustomerSearchCo
         </Command>
       </PopoverContent>
     </Popover>
-  );
-}
-
-function ColorCard({ styleKey, color, isSelected, onToggle }: { styleKey: string, color: PaletteColorSuggestion, isSelected: boolean, onToggle: () => void }) {
-  const safeStyleKey = styleKey.replace(/[^a-zA-Z0-9]/g, '-');
-  const safeColorName = color.colorName.replace(/[^a-zA-Z0-9]/g, '-');
-
-  return (
-    <button
-      type="button"
-      aria-pressed={isSelected}
-      onClick={onToggle}
-      className={cn(
-        "relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all h-full w-full text-left",
-        isSelected
-          ? "border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.05)]"
-          : "border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/80"
-      )}
-      data-testid={`card-color-${safeStyleKey}-${safeColorName}`}
-    >
-      <div className="flex gap-3 w-full">
-        {color.swatchImage ? (
-          <img src={color.swatchImage} alt={color.colorName} className="w-10 h-10 rounded-md object-cover shadow-sm bg-slate-950 border border-slate-800 flex-shrink-0" />
-        ) : (
-          <div className="w-10 h-10 rounded-md bg-slate-950 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500 text-center leading-none p-1 flex-shrink-0">No Swatch</div>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start">
-            <h4 className="text-sm font-bold text-slate-200 truncate pr-6" title={color.colorName}>{color.colorName}</h4>
-            <div className={cn(
-              "absolute right-3 top-3 w-4 h-4 rounded-full border flex items-center justify-center transition-colors shadow-sm",
-              isSelected ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-600 bg-slate-900/50"
-            )}>
-              {isSelected && <Check size={10} strokeWidth={4} />}
-            </div>
-          </div>
-
-          <div className="mt-1 space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full shadow-[0_0_0_1px_rgba(255,255,255,0.1)] flex-shrink-0" style={{ backgroundColor: color.matchedCustomer.hex || '#000' }} />
-              <span className="text-[11px] text-slate-300 truncate" title={color.matchedCustomer.name}>
-                <span className="text-slate-500">For:</span> {color.matchedCustomer.role}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              <Badge variant="outline" className="text-[9px] uppercase tracking-wider py-0 px-1 h-4 bg-slate-900 border-slate-700 text-slate-400">
-                {color.matchMethod.replace('_', ' ')}
-              </Badge>
-              <Badge variant="outline" className={cn(
-                "text-[9px] uppercase tracking-wider py-0 px-1 h-4 border",
-                color.confidence === 'high' ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" :
-                color.confidence === 'medium' ? "text-amber-400 border-amber-500/30 bg-amber-500/10" :
-                "text-slate-400 border-slate-700 bg-slate-800"
-              )}>
-                {color.confidence}
-              </Badge>
-            </div>
-          </div>
-        </div>
-      </div>
-      {color.reason && (
-        <div className="mt-3 text-[10px] text-slate-400 bg-slate-950/50 p-2 rounded-lg border border-slate-800/50 leading-relaxed italic border-l-2 border-l-slate-700 w-full">
-          "{color.reason}"
-        </div>
-      )}
-    </button>
   );
 }
 
@@ -258,6 +193,9 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
   const [collectionNotes, setCollectionNotes] = useState("");
 
   const [previewData, setPreviewData] = useState<PaletteCollectionPreviewResponse | null>(null);
+
+  // Custom added alternatives map: { styleKey: PaletteColorSuggestion[] }
+  const [addedAlternatives, setAddedAlternatives] = useState<Record<string, PaletteColorSuggestion[]>>({});
   const [selectedColors, setSelectedColors] = useState<Record<string, string[]>>({});
 
   const previewReqIdRef = useRef(0);
@@ -271,6 +209,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
     setPreviewData(null);
     setPreviewSnapshot(null);
     setSelectedColors({});
+    setAddedAlternatives({});
   };
 
   const handleCustomerChange = (c: CustomerOption | null) => {
@@ -318,7 +257,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
 
   const runPreview = (customerId: string, styles: string[]) => {
     const reqId = ++previewReqIdRef.current;
-    
+
     // Ensure signature reflects the requested preview
     inputSignatureRef.current = { customerId, styles };
 
@@ -327,11 +266,11 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
       {
         onSuccess: (data) => {
           if (previewReqIdRef.current !== reqId) return;
-          
+
           const sig = inputSignatureRef.current;
           if (
-            sig.customerId !== customerId || 
-            sig.styles.length !== styles.length || 
+            sig.customerId !== customerId ||
+            sig.styles.length !== styles.length ||
             sig.styles.some((s, i) => s !== styles[i])
           ) {
             return; // Ignore if current input signature has diverged
@@ -356,6 +295,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
             }
           });
           setSelectedColors(initialSelected);
+          setAddedAlternatives({});
         },
         onError: (err: unknown) => {
           if (previewReqIdRef.current !== reqId) return;
@@ -392,12 +332,12 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
   ) : false;
 
   // Immediately clear on stale to prevent saving invalid states
-  // We keep this to clear the view on generic changes, though Save is now synchronously blocked.
   useEffect(() => {
     if (isStale) {
       setPreviewData(null);
       setPreviewSnapshot(null);
       setSelectedColors({});
+      setAddedAlternatives({});
     }
   }, [isStale]);
 
@@ -429,23 +369,15 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
   };
 
   const removeStyle = (inputVal: string) => {
-    const lowerInput = inputVal.toLowerCase();
-    const current = parseStyles(stylesInput).filter(s => s.toLowerCase() !== lowerInput);
-    const newStr = current.join('\n');
-    setStylesInput(newStr);
-    inputSignatureRef.current = { customerId: selectedCustomer!.printavoId, styles: current };
-
+    if (!selectedCustomer) return;
+    const current = parseStyles(stylesInput).filter(style => style.toLowerCase() !== inputVal.toLowerCase());
+    setStylesInput(current.join('\n'));
+    inputSignatureRef.current = { customerId: selectedCustomer.printavoId, styles: current };
     if (current.length === 0) {
       invalidatePreview();
       return;
     }
-
-    if (current.length <= 30) {
-      // Auto re-run
-      runPreview(selectedCustomer!.printavoId, current);
-    } else {
-      invalidatePreview();
-    }
+    runPreview(selectedCustomer.printavoId, current);
   };
 
   const toggleColor = (styleKey: string, colorName: string) => {
@@ -459,13 +391,23 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
     });
   };
 
+  const handleAddAlternative = (styleKey: string, alt: PaletteColorSuggestion) => {
+    setAddedAlternatives(prev => {
+      const current = prev[styleKey] || [];
+      if (current.some(c => c.colorName === alt.colorName)) return prev;
+      return { ...prev, [styleKey]: [...current, alt] };
+    });
+    // Auto-select when added
+    toggleColor(styleKey, alt.colorName);
+  };
+
   const handleSave = () => {
     if (!selectedCustomer || !previewData || !previewSnapshot) return;
     if (isStale) {
       toast({ title: "Stale preview", description: "Please generate a new preview before saving.", variant: "destructive" });
       return;
     }
-    
+
     const items = previewData.suggestions.map(s => {
       const styleKey = `${s.vendor}:${s.styleName}`;
       const selected = selectedColors[styleKey] || [];
@@ -494,7 +436,6 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
   // Reset state when fully closed
   useEffect(() => {
     if (!open) {
-      // Small timeout to allow transition to finish
       const t = setTimeout(() => {
         invalidatePreview();
         setStylesInput("");
@@ -519,7 +460,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
         <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-800 bg-slate-900/50 flex flex-col flex-shrink-0 z-10 shadow-lg min-h-0 md:min-h-full">
           <div className="p-4 md:p-5 border-b border-slate-800 bg-slate-900/80">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Palette className="text-blue-400" size={18} />
+              <Palette className="text-emerald-400" size={18} />
               Palette Match
             </h2>
             <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
@@ -546,7 +487,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
               </div>
               <Textarea
                 placeholder="Paste styles... e.g. 8000, 3001C, sanmar:PC54"
-                className="flex-1 resize-none bg-slate-950 border-slate-800 text-sm font-mono text-slate-300 placeholder:text-slate-600 placeholder:font-sans focus-visible:ring-blue-500/50 shadow-inner"
+                className="flex-1 resize-none bg-slate-950 border-slate-800 text-sm font-mono text-slate-300 placeholder:text-slate-600 placeholder:font-sans focus-visible:ring-emerald-500/50 shadow-inner"
                 value={stylesInput}
                 onChange={handleStylesChange}
                 data-testid="textarea-styles-input"
@@ -580,10 +521,19 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
           </div>
 
           <div className="p-4 md:p-5 border-t border-slate-800 bg-slate-900/80">
-            <Button
+                  <Button
+                    variant="outline"
+                    onClick={handlePreview}
+                    disabled={previewMut.isPending}
+                    className="h-10 w-full shrink-0 border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800 md:w-auto"
+                  >
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    Refresh scores
+                  </Button>
+                  <Button
               onClick={handlePreview}
               disabled={!selectedCustomer || stylesCount === 0 || previewMut.isPending || stylesCount > 30}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold h-10 shadow-lg shadow-blue-500/10"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 shadow-lg shadow-emerald-500/10"
               data-testid="button-generate-preview"
             >
               {previewMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wand2 className="w-4 h-4 mr-2" />}
@@ -607,8 +557,8 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
           ) : previewMut.isPending ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-slate-400">
               <div className="relative">
-                <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full"></div>
-                <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-6 relative z-10" />
+                <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full"></div>
+                <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-6 relative z-10" />
               </div>
               <p className="animate-pulse font-medium">Matching palette and evaluating alternatives...</p>
             </div>
@@ -622,7 +572,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
                         value={collectionName}
                         onChange={handleNameChange}
                         placeholder="Collection Name"
-                        className="bg-slate-950 border-slate-700 font-bold text-slate-200 h-10"
+                        className="bg-slate-950 border-slate-700 font-bold text-slate-200 h-10 focus-visible:ring-emerald-500/50"
                         data-testid="input-collection-name"
                       />
                     </div>
@@ -631,7 +581,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
                         value={collectionNotes}
                         onChange={e => setCollectionNotes(e.target.value)}
                         placeholder="Optional notes for this collection..."
-                        className="bg-slate-950 border-slate-700 text-slate-300 h-10"
+                        className="bg-slate-950 border-slate-700 text-slate-300 h-10 focus-visible:ring-emerald-500/50"
                         data-testid="input-collection-notes"
                       />
                     </div>
@@ -639,7 +589,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
                  <Button
                    onClick={handleSave}
                    disabled={createMut.isPending || !hasSelectedColors || !previewSnapshot || isStale}
-                   className="bg-[#059669] hover:bg-[#047857] text-white w-full md:w-auto flex-shrink-0 font-bold h-10 px-6 shadow-lg shadow-emerald-500/10"
+                   className="bg-emerald-600 hover:bg-emerald-500 text-white w-full md:w-auto flex-shrink-0 font-bold h-10 px-6 shadow-lg shadow-emerald-500/10"
                    data-testid="button-save-collection"
                  >
                    {createMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
@@ -648,7 +598,7 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
               </div>
 
               {/* Review Content */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 md:space-y-10 custom-scrollbar relative">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 md:space-y-12 custom-scrollbar relative">
 
                 {/* Needs Attention */}
                 {(previewData.unresolved.length > 0 || previewData.ambiguous.length > 0) && (
@@ -673,129 +623,137 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
                                 className="w-full flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-500/50 hover:bg-slate-800 transition-all text-left group"
                                 data-testid={`button-resolve-${cand.vendor}-${cand.styleName}`}
                               >
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-sm font-bold text-slate-200 truncate group-hover:text-amber-400 transition-colors">
-                                    {cand.styleName} <span className="text-slate-500 font-normal ml-1">{cand.brand || cand.vendor}</span>
+                                <div>
+                                  <div className="font-bold text-slate-200 text-sm group-hover:text-amber-400 transition-colors">
+                                    {cand.styleName} <span className="text-slate-500 font-normal ml-1">({cand.brand || 'Unknown'})</span>
                                   </div>
-                                  {cand.title && <div className="text-[10px] text-slate-400 truncate mt-0.5">{cand.title}</div>}
+                                  <div className="text-[10px] text-slate-500 truncate max-w-[200px] mt-0.5">{cand.title}</div>
                                 </div>
-                                <ChevronRight size={14} className="text-slate-500 ml-3 flex-shrink-0 group-hover:text-amber-400 transition-colors" />
+                                <span className="text-[9px] uppercase tracking-wider font-bold text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800 group-hover:border-amber-500/30">
+                                  {cand.vendor}
+                                </span>
                               </button>
                             ))}
                           </div>
                         </div>
                       ))}
 
-                      {previewData.unresolved.map((unres: PaletteCollectionPreviewResponseUnresolvedItem, i: number) => (
-                        <div key={`unres-${i}`} className="bg-red-500/5 border border-red-500/20 rounded-xl p-5 flex flex-col shadow-sm">
-                          <div className="text-sm font-bold text-slate-200 mb-1">
-                            Could not resolve <span className="text-red-400 font-mono bg-red-500/10 px-1.5 py-0.5 rounded ml-1 border border-red-500/20">{unres.input}</span>
-                          </div>
-                          <p className="text-xs text-red-400/80 mb-5 flex-1 leading-relaxed">{unres.reason}</p>
-                          <Button
-                            variant="outline"
-                            onClick={() => removeStyle(unres.input)}
-                            className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/50 transition-colors"
-                            data-testid={`button-remove-unresolved-${unres.input.replace(/[^a-zA-Z0-9]/g, '-')}`}
-                          >
-                            <Trash2 size={14} className="mr-1.5" /> Remove from list
-                          </Button>
+                      {previewData.unresolved.length > 0 && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                           <div className="text-sm font-bold text-slate-200 mb-2">Unrecognized Styles</div>
+                           <div className="space-y-2 mb-4">
+                             {previewData.unresolved.map((u: PaletteCollectionPreviewResponseUnresolvedItem, i: number) => (
+                                <div key={`u-${i}`} className="flex items-center justify-between gap-3 rounded border border-slate-700 bg-slate-950 px-2 py-1.5" title={u.reason}>
+                                  <span className="truncate font-mono text-xs text-slate-300">{u.input}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeStyle(u.input)}
+                                    className="h-6 shrink-0 px-2 text-[10px] text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                                    data-testid={`button-remove-unresolved-${u.input.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                                  >
+                                    <Trash2 className="mr-1 h-3 w-3" /> Remove
+                                  </Button>
+                               </div>
+                             ))}
+                           </div>
+                           <p className="text-[11px] text-slate-500 leading-relaxed">
+                              These inputs didn't match any catalog styles. Check your spelling or ensure they are present in the synced catalogs.
+                             They will be skipped if you save.
+                           </p>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Suggestions */}
+                {/* Suggestions Grid */}
                 {previewData.suggestions.length > 0 && (
-                  <div className="space-y-5" data-testid="section-suggestions">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                      <CheckCircle2 size={14} className="text-emerald-500" /> Matched Styles ({previewData.suggestions.length})
-                    </h3>
+                  <div className="space-y-8" data-testid="section-suggestions">
+                    {previewData.suggestions.map((suggestion) => {
+                      const styleKey = `${suggestion.vendor}:${suggestion.styleName}`;
+                       const selectedForStyle = selectedColors[styleKey] || [];
 
-                    <div className="space-y-6">
-                      {previewData.suggestions.map((sug) => {
-                        const styleKey = `${sug.vendor}:${sug.styleName}`;
-                        const selectedForStyle = selectedColors[styleKey] || [];
+                      const baseColors = suggestion.colors || [];
+                      const altColors = addedAlternatives[styleKey] || [];
 
-                        return (
-                          <div key={styleKey} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl shadow-black/50">
-                            {/* Style Header */}
-                            <div className="p-4 md:p-5 border-b border-slate-800 bg-slate-900/60 flex items-center gap-4">
-                               {sug.styleImage ? (
-                                 <img src={sug.styleImage} alt={sug.styleName} className="w-16 h-16 rounded-lg object-contain bg-white/5 p-1 flex-shrink-0 border border-white/5 shadow-sm" />
-                               ) : (
-                                 <div className="w-16 h-16 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center flex-shrink-0 text-slate-500 shadow-sm"><ImageIcon size={24} /></div>
-                               )}
-                               <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <Badge variant="secondary" className="bg-slate-800 text-slate-300 hover:bg-slate-700 uppercase text-[9px] font-bold tracking-wider py-0.5 px-2 rounded-md shadow-sm border border-slate-700/50">{sug.vendor}</Badge>
-                                    <span className="text-xs font-medium text-slate-400 truncate">{sug.brand}</span>
-                                  </div>
-                                  <h4 className="text-lg font-bold text-white truncate tracking-tight">{sug.styleName} {sug.title && <span className="font-normal text-slate-400">· {sug.title}</span>}</h4>
-                               </div>
-                               <Button
-                                 variant="ghost"
-                                 size="icon"
-                                 onClick={() => removeStyle(sug.input)}
-                                 className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 flex-shrink-0 transition-colors"
-                                 title="Remove style"
-                                 data-testid={`button-remove-style-${sug.styleName}`}
-                               >
-                                 <Trash2 size={18} />
-                               </Button>
-                            </div>
+                      // Combine without duplicates
+                      const displayColors = [...baseColors];
+                      altColors.forEach(ac => {
+                        if (!displayColors.some(dc => dc.colorName === ac.colorName)) {
+                          displayColors.push(ac);
+                        }
+                      });
 
-                            {/* Colors Grid */}
-                            <div className="p-4 md:p-5">
-                              <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-4">Recommended Matches</h5>
-                              {sug.colors.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                                  {sug.colors.map(color => (
-                                    <ColorCard
-                                      key={color.colorName}
-                                      styleKey={styleKey}
-                                      color={color}
-                                      isSelected={selectedForStyle.includes(color.colorName)}
-                                      onToggle={() => toggleColor(styleKey, color.colorName)}
-                                    />
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="text-sm text-slate-400 bg-slate-950 p-6 rounded-xl border border-slate-800 text-center flex flex-col items-center">
-                                  <AlertCircle size={24} className="text-slate-600 mb-3" />
-                                  <span className="font-medium">No direct matches found.</span>
-                                  <span className="text-xs text-slate-500 mt-1">This product may not offer colors close to the brand palette.</span>
-                                </div>
+                      return (
+                        <div key={styleKey} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm">
+                          {/* Style Header */}
+                          <div className="flex gap-4 md:gap-6 mb-6">
+                            {suggestion.styleImage ? (
+                              <img src={suggestion.styleImage} className="w-16 h-16 md:w-20 md:h-20 object-contain bg-white/5 border border-white/5 rounded-xl shadow-sm" alt={suggestion.styleName} />
+                            ) : (
+                              <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-xs text-slate-600 flex-shrink-0">
+                                No Image
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <h3 className="text-lg md:text-xl font-bold text-white tracking-tight">{suggestion.styleName}</h3>
+                                {suggestion.brand && (
+                                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                                    {suggestion.brand}
+                                  </span>
+                                )}
+                                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-slate-400">
+                                  {suggestion.vendor}
+                                </span>
+                              </div>
+                              <p className="text-sm text-slate-300 mb-1">{suggestion.title}</p>
+                              {suggestion.description && (
+                                <p className="text-xs text-slate-500 line-clamp-2 md:line-clamp-none">{suggestion.description}</p>
                               )}
-
-                              {sug.alternatives && sug.alternatives.length > 0 && (
-                                <Accordion type="single" collapsible className="mt-5 border-t border-slate-800/50 pt-2">
-                                  <AccordionItem value="alts" className="border-0">
-                                    <AccordionTrigger className="text-xs font-medium text-slate-400 hover:text-slate-300 py-3 hover:no-underline rounded-lg px-2 hover:bg-slate-800/30 transition-colors">
-                                      View Alternative Colors ({sug.alternatives.length})
-                                    </AccordionTrigger>
-                                    <AccordionContent className="pt-4 pb-2 px-2">
-                                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                                        {sug.alternatives.map(color => (
-                                          <ColorCard
-                                            key={color.colorName}
-                                            styleKey={styleKey}
-                                            color={color}
-                                            isSelected={selectedForStyle.includes(color.colorName)}
-                                            onToggle={() => toggleColor(styleKey, color.colorName)}
-                                          />
-                                        ))}
-                                      </div>
-                                    </AccordionContent>
-                                  </AccordionItem>
-                                </Accordion>
-                              )}
+                              <div className="text-[11px] text-slate-400 mt-2 font-mono bg-slate-950/50 inline-block px-2 py-1 rounded border border-slate-800/50">
+                                Sizes: <span className="text-slate-300">{suggestion.sizeRange || suggestion.sizes.join(', ')}</span>
+                              </div>
                             </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeStyle(suggestion.input)}
+                              className="h-8 w-8 shrink-0 text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+                              title="Remove style"
+                              data-testid={`button-remove-style-${suggestion.styleName}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                        );
-                      })}
-                    </div>
+
+                          {/* Color Options */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {displayColors.map(color => (
+                              <ColorCard
+                                key={color.colorName}
+                                styleSuggestion={suggestion}
+                                color={color}
+                                isSelected={selectedForStyle.includes(color.colorName)}
+                                onToggle={() => toggleColor(styleKey, color.colorName)}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Alternative picker if none selected or want more */}
+                          <div className="mt-4 md:w-1/3">
+                            <AlternativeColorPicker
+                              alternatives={suggestion.alternatives || []}
+                              onSelect={(c) => handleAddAlternative(styleKey, c)}
+                              selectedColorNames={displayColors.map(c => c.colorName)}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 

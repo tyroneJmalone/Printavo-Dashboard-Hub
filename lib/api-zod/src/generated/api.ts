@@ -1469,6 +1469,14 @@ export const CreateCollectionBody = zod.object({
 })).max(createCollectionBodyItemsMax).optional()
 })
 
+export const createCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin = 0;
+export const createCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax = 255;
+
+export const createCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin = 3;
+export const createCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax = 3;
+
+
+
 export const CreateCollectionResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1484,6 +1492,63 @@ export const CreateCollectionResponse = zod.object({
   "styleName": zod.string(),
   "colors": zod.array(zod.string()),
   "note": zod.string().nullable(),
+  "paletteMatchSnapshot": zod.union([zod.object({
+  "version": zod.string(),
+  "customerPalette": zod.array(zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+})),
+  "product": zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "styleId": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "sizes": zod.array(zod.string()),
+  "sizeRange": zod.string().nullable()
+}),
+  "matches": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(createCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin).max(createCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax)).min(createCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin).max(createCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
+}))
+}),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
   "styleImage": zod.string().nullable(),
@@ -1503,6 +1568,14 @@ export const GetCollectionParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const getCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin = 0;
+export const getCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax = 255;
+
+export const getCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin = 3;
+export const getCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax = 3;
+
+
+
 export const GetCollectionResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1518,6 +1591,63 @@ export const GetCollectionResponse = zod.object({
   "styleName": zod.string(),
   "colors": zod.array(zod.string()),
   "note": zod.string().nullable(),
+  "paletteMatchSnapshot": zod.union([zod.object({
+  "version": zod.string(),
+  "customerPalette": zod.array(zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+})),
+  "product": zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "styleId": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "sizes": zod.array(zod.string()),
+  "sizeRange": zod.string().nullable()
+}),
+  "matches": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(getCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin).max(getCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax)).min(getCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin).max(getCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
+}))
+}),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
   "styleImage": zod.string().nullable(),
@@ -1549,6 +1679,14 @@ export const UpdateCollectionBody = zod.object({
   "notes": zod.string().max(updateCollectionBodyNotesMax).nullish()
 })
 
+export const updateCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin = 0;
+export const updateCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax = 255;
+
+export const updateCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin = 3;
+export const updateCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax = 3;
+
+
+
 export const UpdateCollectionResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1564,6 +1702,63 @@ export const UpdateCollectionResponse = zod.object({
   "styleName": zod.string(),
   "colors": zod.array(zod.string()),
   "note": zod.string().nullable(),
+  "paletteMatchSnapshot": zod.union([zod.object({
+  "version": zod.string(),
+  "customerPalette": zod.array(zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+})),
+  "product": zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "styleId": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "sizes": zod.array(zod.string()),
+  "sizeRange": zod.string().nullable()
+}),
+  "matches": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(updateCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin).max(updateCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax)).min(updateCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin).max(updateCollectionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
+}))
+}),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
   "styleImage": zod.string().nullable(),
@@ -1605,7 +1800,19 @@ export const PreviewCollectionPaletteBody = zod.object({
   "styles": zod.array(zod.string().min(1).max(previewCollectionPaletteBodyStylesItemMax)).min(1).max(previewCollectionPaletteBodyStylesMax)
 })
 
-export const previewCollectionPaletteResponseSuggestionsItemColorsMax = 5;
+export const previewCollectionPaletteResponseSuggestionsItemColorsItemEvidenceOneRgbItemMin = 0;
+export const previewCollectionPaletteResponseSuggestionsItemColorsItemEvidenceOneRgbItemMax = 255;
+
+export const previewCollectionPaletteResponseSuggestionsItemColorsItemEvidenceOneRgbMin = 3;
+export const previewCollectionPaletteResponseSuggestionsItemColorsItemEvidenceOneRgbMax = 3;
+
+export const previewCollectionPaletteResponseSuggestionsItemColorsMax = 12;
+
+export const previewCollectionPaletteResponseSuggestionsItemAlternativesItemEvidenceOneRgbItemMin = 0;
+export const previewCollectionPaletteResponseSuggestionsItemAlternativesItemEvidenceOneRgbItemMax = 255;
+
+export const previewCollectionPaletteResponseSuggestionsItemAlternativesItemEvidenceOneRgbMin = 3;
+export const previewCollectionPaletteResponseSuggestionsItemAlternativesItemEvidenceOneRgbMax = 3;
 
 export const previewCollectionPaletteResponseSuggestionsItemAlternativesMax = 100;
 
@@ -1620,15 +1827,20 @@ export const PreviewCollectionPaletteResponse = zod.object({
   "role": zod.string(),
   "name": zod.string(),
   "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
   "families": zod.array(zod.string()).optional()
 })),
   "suggestions": zod.array(zod.object({
   "input": zod.string(),
   "vendor": zod.enum(['sanmar', 'ss']),
   "styleName": zod.string(),
+  "styleId": zod.string().nullable(),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
   "styleImage": zod.string().nullable(),
+  "sizes": zod.array(zod.string()),
+  "sizeRange": zod.string().nullable(),
   "colors": zod.array(zod.object({
   "colorName": zod.string(),
   "swatchImage": zod.string().nullable(),
@@ -1639,12 +1851,30 @@ export const PreviewCollectionPaletteResponse = zod.object({
   "role": zod.string(),
   "name": zod.string(),
   "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
   "families": zod.array(zod.string()).optional()
 }),
-  "matchMethod": zod.enum(['exact_name', 'family', 'unknown']),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
   "reason": zod.string(),
   "confidence": zod.enum(['high', 'medium', 'low']),
-  "score": zod.number()
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(previewCollectionPaletteResponseSuggestionsItemColorsItemEvidenceOneRgbItemMin).max(previewCollectionPaletteResponseSuggestionsItemColorsItemEvidenceOneRgbItemMax)).min(previewCollectionPaletteResponseSuggestionsItemColorsItemEvidenceOneRgbMin).max(previewCollectionPaletteResponseSuggestionsItemColorsItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
 })).max(previewCollectionPaletteResponseSuggestionsItemColorsMax),
   "alternatives": zod.array(zod.object({
   "colorName": zod.string(),
@@ -1656,12 +1886,30 @@ export const PreviewCollectionPaletteResponse = zod.object({
   "role": zod.string(),
   "name": zod.string(),
   "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
   "families": zod.array(zod.string()).optional()
 }),
-  "matchMethod": zod.enum(['exact_name', 'family', 'unknown']),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
   "reason": zod.string(),
   "confidence": zod.enum(['high', 'medium', 'low']),
-  "score": zod.number()
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(previewCollectionPaletteResponseSuggestionsItemAlternativesItemEvidenceOneRgbItemMin).max(previewCollectionPaletteResponseSuggestionsItemAlternativesItemEvidenceOneRgbItemMax)).min(previewCollectionPaletteResponseSuggestionsItemAlternativesItemEvidenceOneRgbMin).max(previewCollectionPaletteResponseSuggestionsItemAlternativesItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
 })).max(previewCollectionPaletteResponseSuggestionsItemAlternativesMax)
 })).max(previewCollectionPaletteResponseSuggestionsMax),
   "unresolved": zod.array(zod.object({
@@ -1710,6 +1958,14 @@ export const CreateCollectionFromSuggestionBody = zod.object({
 })).min(1).max(createCollectionFromSuggestionBodyItemsMax)
 })
 
+export const createCollectionFromSuggestionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin = 0;
+export const createCollectionFromSuggestionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax = 255;
+
+export const createCollectionFromSuggestionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin = 3;
+export const createCollectionFromSuggestionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax = 3;
+
+
+
 export const CreateCollectionFromSuggestionResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1725,6 +1981,63 @@ export const CreateCollectionFromSuggestionResponse = zod.object({
   "styleName": zod.string(),
   "colors": zod.array(zod.string()),
   "note": zod.string().nullable(),
+  "paletteMatchSnapshot": zod.union([zod.object({
+  "version": zod.string(),
+  "customerPalette": zod.array(zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+})),
+  "product": zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "styleId": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "sizes": zod.array(zod.string()),
+  "sizeRange": zod.string().nullable()
+}),
+  "matches": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(createCollectionFromSuggestionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin).max(createCollectionFromSuggestionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax)).min(createCollectionFromSuggestionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin).max(createCollectionFromSuggestionResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
+}))
+}),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
   "styleImage": zod.string().nullable(),
@@ -1766,6 +2079,14 @@ export const AddCollectionItemsBody = zod.object({
 })).min(1).max(addCollectionItemsBodyItemsMax)
 })
 
+export const addCollectionItemsResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin = 0;
+export const addCollectionItemsResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax = 255;
+
+export const addCollectionItemsResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin = 3;
+export const addCollectionItemsResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax = 3;
+
+
+
 export const AddCollectionItemsResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1781,6 +2102,63 @@ export const AddCollectionItemsResponse = zod.object({
   "styleName": zod.string(),
   "colors": zod.array(zod.string()),
   "note": zod.string().nullable(),
+  "paletteMatchSnapshot": zod.union([zod.object({
+  "version": zod.string(),
+  "customerPalette": zod.array(zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+})),
+  "product": zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "styleId": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "sizes": zod.array(zod.string()),
+  "sizeRange": zod.string().nullable()
+}),
+  "matches": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(addCollectionItemsResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin).max(addCollectionItemsResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax)).min(addCollectionItemsResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin).max(addCollectionItemsResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
+}))
+}),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
   "styleImage": zod.string().nullable(),
@@ -1814,6 +2192,14 @@ export const UpdateCollectionItemBody = zod.object({
   "note": zod.string().max(updateCollectionItemBodyNoteMax).nullish()
 })
 
+export const updateCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin = 0;
+export const updateCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax = 255;
+
+export const updateCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin = 3;
+export const updateCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax = 3;
+
+
+
 export const UpdateCollectionItemResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1829,6 +2215,63 @@ export const UpdateCollectionItemResponse = zod.object({
   "styleName": zod.string(),
   "colors": zod.array(zod.string()),
   "note": zod.string().nullable(),
+  "paletteMatchSnapshot": zod.union([zod.object({
+  "version": zod.string(),
+  "customerPalette": zod.array(zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+})),
+  "product": zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "styleId": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "sizes": zod.array(zod.string()),
+  "sizeRange": zod.string().nullable()
+}),
+  "matches": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(updateCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin).max(updateCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax)).min(updateCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin).max(updateCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
+}))
+}),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
   "styleImage": zod.string().nullable(),
@@ -1849,6 +2292,14 @@ export const RemoveCollectionItemParams = zod.object({
   "itemId": zod.coerce.string()
 })
 
+export const removeCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin = 0;
+export const removeCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax = 255;
+
+export const removeCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin = 3;
+export const removeCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax = 3;
+
+
+
 export const RemoveCollectionItemResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -1864,6 +2315,63 @@ export const RemoveCollectionItemResponse = zod.object({
   "styleName": zod.string(),
   "colors": zod.array(zod.string()),
   "note": zod.string().nullable(),
+  "paletteMatchSnapshot": zod.union([zod.object({
+  "version": zod.string(),
+  "customerPalette": zod.array(zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+})),
+  "product": zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "styleId": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "styleImage": zod.string().nullable(),
+  "sizes": zod.array(zod.string()),
+  "sizeRange": zod.string().nullable()
+}),
+  "matches": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string()),
+  "matchedCustomer": zod.object({
+  "id": zod.string(),
+  "role": zod.string(),
+  "name": zod.string(),
+  "hex": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Customer-maintained Pantone reference'),
+  "families": zod.array(zod.string()).optional()
+}),
+  "matchMethod": zod.enum(['exact_name', 'visual_delta_e', 'family', 'unknown']),
+  "reason": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "score": zod.number(),
+  "deltaE": zod.number().nullable(),
+  "evidence": zod.union([zod.object({
+  "status": zod.enum(['pending', 'measured', 'rejected', 'unavailable', 'error']),
+  "rgb": zod.array(zod.number().min(removeCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMin).max(removeCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbItemMax)).min(removeCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMin).max(removeCollectionItemResponseItemsItemPaletteMatchSnapshotOneMatchesItemEvidenceOneRgbMax).nullable(),
+  "sourceSwatchUrl": zod.string().nullable(),
+  "sourceSwatchHash": zod.string().nullable(),
+  "reason": zod.string().nullable(),
+  "profile": zod.string().nullable(),
+  "illuminant": zod.string().nullable(),
+  "measuredAt": zod.string().nullable(),
+  "confidence": zod.string().nullable(),
+  "quality": zod.string().nullable(),
+  "method": zod.string().nullable(),
+  "algorithmVersion": zod.string().nullable()
+}),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
+  "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
+  "garmentPantoneSource": zod.string().nullable()
+}))
+}),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
   "styleImage": zod.string().nullable(),

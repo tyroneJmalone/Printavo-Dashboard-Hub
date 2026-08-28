@@ -1,4 +1,4 @@
-import { db, catalogProductsTable, catalogColorsTable } from "@workspace/db";
+import { db, catalogProductsTable, catalogColorsTable, catalogColorEvidenceTable } from "@workspace/db";
 import { sql, eq, and } from "drizzle-orm";
 import { SanMarClient } from "@workspace/sanmar";
 import { SSClient } from "@workspace/ss-activewear";
@@ -116,6 +116,50 @@ async function upsertProduct(p: ProductUpsert): Promise<void> {
         productImage: c.productImage,
       })),
     );
+  }
+  // Evidence is Hub-owned and keyed independently of the replaceable import
+  // rows. A URL change deliberately schedules a fresh measurement; an
+  // unchanged measured result (and any verified Pantone) is retained.
+  for (const color of p.colors) {
+    const swatch = color.swatchImage?.trim() || null;
+    await db.insert(catalogColorEvidenceTable).values({
+      vendor: p.vendor,
+      styleName: p.styleName,
+      colorName: color.colorName,
+      status: swatch ? "pending" : "unavailable",
+      sourceSwatchUrl: swatch,
+      updatedAt: now,
+    }).onConflictDoUpdate({
+      target: [catalogColorEvidenceTable.vendor, catalogColorEvidenceTable.styleName, catalogColorEvidenceTable.colorName],
+      set: {
+        sourceSwatchUrl: swatch,
+        status: sql`CASE
+          WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch}
+            THEN ${catalogColorEvidenceTable.status}
+          WHEN ${swatch} IS NULL THEN 'unavailable'
+          ELSE 'pending' END`,
+        sourceSwatchHash: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch}
+          THEN ${catalogColorEvidenceTable.sourceSwatchHash} ELSE NULL END`,
+        rgbR: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.rgbR} ELSE NULL END`,
+        rgbG: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.rgbG} ELSE NULL END`,
+        rgbB: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.rgbB} ELSE NULL END`,
+        labL: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.labL} ELSE NULL END`,
+        labA: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.labA} ELSE NULL END`,
+        labB: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.labB} ELSE NULL END`,
+        measurementMethod: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.measurementMethod} ELSE NULL END`,
+        colorProfile: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.colorProfile} ELSE NULL END`,
+        illuminant: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.illuminant} ELSE NULL END`,
+        confidence: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.confidence} ELSE NULL END`,
+        quality: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.quality} ELSE NULL END`,
+        reason: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.reason} ELSE NULL END`,
+        algorithmVersion: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.algorithmVersion} ELSE NULL END`,
+        attempts: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.attempts} ELSE 0 END`,
+        priority: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.priority} ELSE 0 END`,
+        retryAt: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.retryAt} ELSE NULL END`,
+        measuredAt: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch} THEN ${catalogColorEvidenceTable.measuredAt} ELSE NULL END`,
+        updatedAt: now,
+      },
+    });
   }
 }
 

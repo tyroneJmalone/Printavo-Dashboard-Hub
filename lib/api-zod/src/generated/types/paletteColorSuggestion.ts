@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PaletteColorEvidence } from './paletteColorEvidence';
 import type { PaletteColorSuggestionConfidence } from './paletteColorSuggestionConfidence';
 import type { PaletteColorSuggestionMatchMethod } from './paletteColorSuggestionMatchMethod';
 import type { PaletteCustomerColor } from './paletteCustomerColor';
@@ -21,4 +22,15 @@ export interface PaletteColorSuggestion {
   reason: string;
   confidence: PaletteColorSuggestionConfidence;
   score: number;
+  /** @nullable */
+  deltaE: number | null;
+  /** Vendor web-swatch evidence metadata; not a calibrated fabric measurement. */
+  evidence: PaletteColorEvidence | null;
+  /**
+     * Verified vendor/staff garment Pantone only; never estimated.
+     * @nullable
+     */
+  garmentPantoneCode: string | null;
+  /** @nullable */
+  garmentPantoneSource: string | null;
 }
