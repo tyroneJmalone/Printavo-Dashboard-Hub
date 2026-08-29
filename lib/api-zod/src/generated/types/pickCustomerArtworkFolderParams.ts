@@ -8,6 +8,11 @@
 
 export type PickCustomerArtworkFolderParams = {
 /**
+ * Search all Dropbox folders recursively by name
+ * @maxLength 200
+ */
+q?: string;
+/**
  * @maxLength 1000
  */
 path?: string;

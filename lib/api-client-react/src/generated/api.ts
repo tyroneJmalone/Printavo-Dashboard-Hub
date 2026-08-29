@@ -2338,7 +2338,7 @@ export const getPickCustomerArtworkFolderUrl = (id: string,
 }
 
 /**
- * Returns folders only. An omitted or empty path means the Dropbox account root.
+ * Returns folders only. An omitted or empty path means the Dropbox account root. When q is provided, searches folders recursively across the Dropbox account.
  * @summary Browse Dropbox folders before linking a customer root (admin only)
  */
 export const pickCustomerArtworkFolder = async (id: string,

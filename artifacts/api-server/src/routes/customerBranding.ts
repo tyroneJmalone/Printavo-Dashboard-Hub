@@ -454,6 +454,11 @@ router.get(
   async (req, res): Promise<void> => {
     const id = customerId(req, res);
     if (!id) return;
+    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    if (query.length > 200) {
+      res.status(400).json({ error: "q must be 200 characters or fewer" });
+      return;
+    }
     const path = typeof req.query.path === "string" ? req.query.path.trim() : "";
     if (normalizeDropboxPath(path) === null) {
       res.status(400).json({ error: "path must be an absolute Dropbox path or empty" });
@@ -462,6 +467,19 @@ router.get(
     try {
       if (!(await customerExists(id))) {
         res.status(404).json({ error: "Customer not found" });
+        return;
+      }
+      if (query) {
+        const result = await searchDropbox("", query, 50);
+        const folders = result.matches
+          .map((match) => match.metadata?.metadata)
+          .filter((entry): entry is DropboxMetadata => Boolean(entry))
+          .filter((entry) => entry[".tag"] === "folder");
+        res.json({
+          folders: folders.map(metadataJson),
+          truncated: result.has_more,
+          cursor: null,
+        });
         return;
       }
       const context: PageContext = {

@@ -177,6 +177,7 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
   const [currentPath, setCurrentPath] = useState("");
   const [manualPath, setManualPath] = useState("");
   const [folderSearch, setFolderSearch] = useState("");
+  const [debouncedFolderSearch, setDebouncedFolderSearch] = useState("");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [accumulated, setAccumulated] = useState<{ path: string, folders: DropboxEntry[] }>({ path: "", folders: [] });
   
@@ -186,19 +187,32 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
       setCurrentPath("");
       setManualPath("");
       setFolderSearch("");
+      setDebouncedFolderSearch("");
       setCursor(undefined);
       setAccumulated({ path: "", folders: [] });
     }
   }, [open]);
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedFolderSearch(folderSearch.trim());
+      setCursor(undefined);
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [folderSearch]);
+
   const { data, isFetching } = usePickCustomerArtworkFolder(
     customerId, 
-    { path: currentPath || undefined, cursor }, 
-    { query: { enabled: open, queryKey: getPickCustomerArtworkFolderQueryKey(customerId, { path: currentPath || undefined, cursor }) } }
+    debouncedFolderSearch
+      ? { q: debouncedFolderSearch }
+      : { path: currentPath || undefined, cursor },
+    { query: { enabled: open, queryKey: getPickCustomerArtworkFolderQueryKey(customerId, debouncedFolderSearch
+      ? { q: debouncedFolderSearch }
+      : { path: currentPath || undefined, cursor }) } }
   );
 
   useEffect(() => {
-    if (data?.folders) {
+    if (!debouncedFolderSearch && data?.folders) {
       setAccumulated(prev => {
         if (prev.path !== currentPath) return { path: currentPath, folders: data.folders };
         if (!cursor) return { path: currentPath, folders: data.folders };
@@ -207,7 +221,7 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
         return { path: currentPath, folders: [...prev.folders, ...newFolders] };
       });
     }
-  }, [data, currentPath, cursor]);
+  }, [data, currentPath, cursor, debouncedFolderSearch]);
 
   const linkFolder = useLinkCustomerArtworkFolder({
     mutation: {
@@ -225,10 +239,8 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
   };
 
   const visibleFolders = useMemo(() => {
-    const query = folderSearch.trim().toLocaleLowerCase();
-    const sorted = alphabetizeDropboxEntries(accumulated.folders);
-    return query ? sorted.filter((folder) => folder.name.toLocaleLowerCase().includes(query)) : sorted;
-  }, [accumulated.folders, folderSearch]);
+    return alphabetizeDropboxEntries(debouncedFolderSearch ? (data?.folders || []) : accumulated.folders);
+  }, [accumulated.folders, data?.folders, debouncedFolderSearch]);
 
   const parts = currentPath.split("/").filter(Boolean);
   const handleNav = (index: number) => {
@@ -277,8 +289,8 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
             <Input
               value={folderSearch}
               onChange={(event) => setFolderSearch(event.target.value)}
-              placeholder="Filter folders by name..."
-              aria-label="Filter Dropbox folders by name"
+              placeholder="Search all Dropbox folders..."
+              aria-label="Search all Dropbox folders"
               data-testid="input-filter-dropbox-folders"
               className="h-9 pl-9 bg-slate-900 border-slate-700"
             />
@@ -286,17 +298,17 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 min-h-[300px]">
-          {isFetching && accumulated.folders.length === 0 ? (
+          {(isFetching || folderSearch.trim() !== debouncedFolderSearch) && visibleFolders.length === 0 ? (
             <div className="flex items-center justify-center py-20 text-slate-500">
-              <Loader2 size={18} className="animate-spin mr-2" /> Loading...
+              <Loader2 size={18} className="animate-spin mr-2" /> {folderSearch.trim() ? "Searching Dropbox..." : "Loading..."}
             </div>
-          ) : accumulated.folders.length === 0 ? (
+          ) : !debouncedFolderSearch && accumulated.folders.length === 0 ? (
             <div className="text-center py-20 text-slate-500 text-sm">
               No subfolders found here.
             </div>
           ) : visibleFolders.length === 0 ? (
             <div className="text-center py-20 text-slate-500 text-sm">
-              No folders match “{folderSearch.trim()}”.
+              No Dropbox folders match “{debouncedFolderSearch}”.
             </div>
           ) : (
             <div className="space-y-0.5">
@@ -304,7 +316,11 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
                 <div 
                   key={folder.id} 
                   className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-slate-800/60 cursor-pointer group transition-colors"
-                  onClick={() => setCurrentPath(folder.pathLower || "")}
+                  onClick={() => {
+                    setCurrentPath(folder.pathLower || "");
+                    setFolderSearch("");
+                    setDebouncedFolderSearch("");
+                  }}
                 >
                   <Folder size={16} className="text-blue-400 fill-blue-400/20 shrink-0" />
                   <p className="text-sm truncate text-slate-200 font-medium flex-1">{folder.name}</p>
@@ -318,7 +334,7 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
                   </Button>
                 </div>
               ))}
-              {data?.truncated && data?.cursor && (
+              {!debouncedFolderSearch && data?.truncated && data?.cursor && (
                 <div className="pt-2 pb-1 text-center">
                   <Button 
                     variant="outline" 

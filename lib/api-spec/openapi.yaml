@@ -593,9 +593,14 @@ paths:
       operationId: pickCustomerArtworkFolder
       tags: [clients]
       summary: Browse Dropbox folders before linking a customer root (admin only)
-      description: Returns folders only. An omitted or empty path means the Dropbox account root.
+      description: Returns folders only. An omitted or empty path means the Dropbox account root. When q is provided, searches folders recursively across the Dropbox account.
       parameters:
         - $ref: "#/components/parameters/CustomerIdParam"
+        - name: q
+          in: query
+          required: false
+          description: Search all Dropbox folders recursively by name
+          schema: { type: string, maxLength: 200 }
         - name: path
           in: query
           required: false

@@ -601,7 +601,7 @@ export const UnlinkCustomerArtworkFolderResponse = zod.void()
 
 
 /**
- * Returns folders only. An omitted or empty path means the Dropbox account root.
+ * Returns folders only. An omitted or empty path means the Dropbox account root. When q is provided, searches folders recursively across the Dropbox account.
  * @summary Browse Dropbox folders before linking a customer root (admin only)
  */
 export const pickCustomerArtworkFolderPathIdRegExp = new RegExp('^\\d+$');
@@ -611,11 +611,14 @@ export const PickCustomerArtworkFolderParams = zod.object({
   "id": zod.coerce.string().regex(pickCustomerArtworkFolderPathIdRegExp)
 })
 
+export const pickCustomerArtworkFolderQueryQMax = 200;
+
 export const pickCustomerArtworkFolderQueryPathMax = 1000;
 
 
 
 export const PickCustomerArtworkFolderQueryParams = zod.object({
+  "q": zod.coerce.string().max(pickCustomerArtworkFolderQueryQMax).optional().describe('Search all Dropbox folders recursively by name'),
   "path": zod.coerce.string().max(pickCustomerArtworkFolderQueryPathMax).optional(),
   "cursor": zod.coerce.string().uuid().optional().describe('Opaque, short-lived cursor returned by this picker for the same customer, path, and staff user')
 })
