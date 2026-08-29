@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Folder, Image as ImageIcon, Link as LinkIcon, Unlink, Search, Star, Archive, Edit2, Loader2, File, ChevronRight, Trash2, ExternalLink } from "lucide-react";
+import { Folder, Link as LinkIcon, Unlink, Search, Star, Archive, Edit2, Loader2, File, ChevronRight, Trash2, ExternalLink, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 function alphabetizeDropboxEntries(entries: DropboxEntry[]): DropboxEntry[] {
@@ -197,7 +197,7 @@ export function CustomerArtworkCard({ customerId }: { customerId: string }) {
         ) : (
           <div className="space-y-4">
             {artwork.bookmarks && artwork.bookmarks.length > 0 ? (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {artwork.bookmarks.map((b: ArtworkBookmark) => (
                   <BookmarkRow key={b.id} bookmark={b} customerId={customerId} isAdmin={isAdmin} onEdit={() => setBookmarkToEdit(b)} />
                 ))}
@@ -452,60 +452,100 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
 function BookmarkRow({ bookmark, customerId, isAdmin, onEdit }: { bookmark: ArtworkBookmark, customerId: string, isAdmin: boolean, onEdit: () => void }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const canPreview = canPreviewArtwork(bookmark.name);
+  const canThumbnail = canThumbnailArtwork(bookmark.name);
+  const isPdf = /\.pdf$/i.test(bookmark.name);
   const invoiceMatch = bookmark.name.match(/(?:inv|invoice)?[ -_]?#?(\d{4,6})/i);
   const invoiceNum = invoiceMatch ? invoiceMatch[1] : null;
+  const locator = bookmark.pathLower || bookmark.dropboxId || "";
+  const extension = bookmark.name.includes(".")
+    ? bookmark.name.split(".").pop()?.slice(0, 4).toUpperCase()
+    : "FILE";
 
   return (
     <>
-      <div className={`flex items-start gap-3 p-3 rounded-lg border bg-slate-800/30 group transition-colors hover:bg-slate-800/50 ${bookmark.retired ? 'border-slate-800/50 opacity-60' : bookmark.preferred ? 'border-purple-500/30 bg-purple-950/10' : 'border-slate-800'}`}>
-      <div className="shrink-0 pt-0.5">
-        {bookmark.retired ? <Archive size={16} className="text-slate-500" /> : <ImageIcon size={16} className={bookmark.preferred ? "text-purple-400" : "text-slate-400"} />}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 mb-0.5">
-          <p className="text-sm font-medium text-slate-200 whitespace-normal break-all">{bookmark.label}</p>
-          {bookmark.preferred && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
-          {bookmark.retired && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-medium tracking-wide uppercase">Retired</span>}
-        </div>
-        <p className="text-xs text-slate-500 whitespace-normal break-all" title={bookmark.name}>
-          {bookmark.name} 
-          {invoiceNum && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/30 text-emerald-400 border border-emerald-800/50 uppercase tracking-wider">inv #{invoiceNum}</span>}
-        </p>
-        {bookmark.notes && (
-          <p className="text-xs text-slate-300 mt-2 bg-slate-900/60 p-2 rounded border border-slate-800/50 leading-relaxed whitespace-pre-wrap">{bookmark.notes}</p>
-        )}
-      </div>
-      <div className="shrink-0 flex items-center gap-1">
+      <div className={`rounded-lg border overflow-hidden bg-slate-800/30 transition-colors hover:bg-slate-800/50 ${bookmark.retired ? 'border-slate-800/50 opacity-60' : bookmark.preferred ? 'border-purple-500/30 bg-purple-950/10' : 'border-slate-800'}`}>
         {canPreview ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-slate-300 hover:text-white"
+          <button
+            type="button"
+            className="relative block w-full h-44 bg-slate-950 overflow-hidden border-b border-slate-800 cursor-zoom-in"
             onClick={() => setPreviewOpen(true)}
             aria-label={`Preview ${bookmark.name}`}
           >
-            <ExternalLink size={14} className="sm:mr-1.5" />
-            <span className="hidden sm:inline">Preview</span>
-          </Button>
+            {canThumbnail ? (
+              <img
+                src={artworkPreviewUrl(customerId, locator)}
+                alt={`Preview of ${bookmark.name}`}
+                loading="lazy"
+                className="h-full w-full object-contain bg-white"
+              />
+            ) : isPdf ? (
+              <iframe
+                src={artworkPreviewUrl(customerId, locator)}
+                title={`Preview of ${bookmark.name}`}
+                loading="lazy"
+                tabIndex={-1}
+                className="h-full w-full pointer-events-none bg-white"
+              />
+            ) : null}
+            <span className="absolute inset-x-0 bottom-0 py-2 text-[11px] font-medium text-white bg-gradient-to-t from-black/80 to-transparent opacity-0 hover:opacity-100 transition-opacity">
+              View larger
+            </span>
+            {bookmark.preferred && (
+              <span className="absolute top-2 right-2 h-7 w-7 rounded-full bg-slate-950/90 border border-yellow-500/30 flex items-center justify-center">
+                <Star size={13} className="text-yellow-400 fill-yellow-400" />
+              </span>
+            )}
+          </button>
         ) : (
-          <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-slate-300 hover:text-white">
-            <a
-              href={artworkOpenUrl(customerId, bookmark.pathLower || bookmark.dropboxId || "")}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`Open ${bookmark.name}`}
-            >
-              <ExternalLink size={14} className="sm:mr-1.5" />
-              <span className="hidden sm:inline">Open</span>
-            </a>
-          </Button>
+          <a
+            href={artworkOpenUrl(customerId, locator)}
+            target="_blank"
+            rel="noreferrer"
+            className="h-44 bg-slate-950 border-b border-slate-800 flex flex-col items-center justify-center gap-2 hover:bg-slate-900 transition-colors"
+            aria-label={`Open ${bookmark.name}`}
+          >
+            <File size={42} className="text-slate-500" />
+            <span className="text-xs font-bold tracking-wider text-slate-500">{extension}</span>
+          </a>
         )}
-        {isAdmin && (
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={onEdit}>
-            <Edit2 size={14} />
-          </Button>
-        )}
-      </div>
+
+        <div className="p-3">
+          <div className="flex items-start gap-2">
+            <p className="text-sm font-medium text-slate-200 leading-5 break-all flex-1" title={bookmark.name}>
+              {bookmark.name}
+            </p>
+            {bookmark.retired && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-medium tracking-wide uppercase shrink-0">Retired</span>}
+          </div>
+          {bookmark.label && bookmark.label !== bookmark.name.replace(/\.[^/.]+$/, "") && (
+            <p className="text-xs text-slate-500 mt-1 break-words">{bookmark.label}</p>
+          )}
+          {invoiceNum && (
+            <span className="inline-block mt-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/30 text-emerald-400 border border-emerald-800/50 uppercase tracking-wider">
+              inv #{invoiceNum}
+            </span>
+          )}
+          {bookmark.notes && (
+            <p className="text-xs text-slate-300 mt-2 bg-slate-900/60 p-2 rounded border border-slate-800/50 leading-relaxed whitespace-pre-wrap">{bookmark.notes}</p>
+          )}
+          <div className="flex items-center justify-end gap-1 mt-2 pt-2 border-t border-slate-800/70">
+            {canPreview ? (
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-slate-300 hover:text-white" onClick={() => setPreviewOpen(true)}>
+                <ExternalLink size={14} className="mr-1.5" /> Preview
+              </Button>
+            ) : (
+              <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-slate-300 hover:text-white">
+                <a href={artworkOpenUrl(customerId, locator)} target="_blank" rel="noreferrer">
+                  <ExternalLink size={14} className="mr-1.5" /> Open
+                </a>
+              </Button>
+            )}
+            {isAdmin && (
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-slate-300 hover:text-white" onClick={onEdit}>
+                <Edit2 size={14} className="mr-1.5" /> Edit
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
       {canPreview && (
         <ArtworkPreviewDialog
@@ -606,6 +646,13 @@ function CustomerArtworkBrowserDialog({ customerId, open, onOpenChange, bookmark
     setCursor(undefined);
   };
 
+  const handleBack = () => {
+    if (relativeParts.length === 0) return;
+    setSearchQ("");
+    setDebouncedQ("");
+    handleNav(relativeParts.length - 2);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl bg-slate-950 border-slate-800 flex flex-col max-h-[85vh] p-0 overflow-hidden">
@@ -613,8 +660,19 @@ function CustomerArtworkBrowserDialog({ customerId, open, onOpenChange, bookmark
           <DialogTitle className="text-slate-200">Browse Artwork</DialogTitle>
         </DialogHeader>
         
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/50">
-          <div className="flex-1 flex items-center gap-1 text-sm overflow-x-auto text-slate-400 whitespace-nowrap scrollbar-hide font-medium">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 border-b border-slate-800 bg-slate-900/50">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBack}
+              disabled={relativeParts.length === 0}
+              className="h-8 px-2.5 shrink-0 border-slate-700 bg-slate-900 text-slate-300"
+              aria-label="Back one folder"
+            >
+              <ArrowLeft size={14} className="mr-1.5" /> Back
+            </Button>
+            <div className="min-w-0 flex-1 flex items-center gap-1 text-sm overflow-x-auto text-slate-400 whitespace-nowrap scrollbar-hide font-medium">
             <button onClick={() => handleNav(-1)} className="hover:text-white shrink-0 flex items-center gap-1.5">
               <Folder size={14} className="text-blue-400" /> Root
             </button>
@@ -624,8 +682,9 @@ function CustomerArtworkBrowserDialog({ customerId, open, onOpenChange, bookmark
                 <button onClick={() => handleNav(i)} className="hover:text-white">{p}</button>
               </div>
             ))}
+            </div>
           </div>
-          <div className="relative w-56 shrink-0">
+          <div className="relative w-full sm:w-56 shrink-0">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
             <Input 
               value={searchQ}
