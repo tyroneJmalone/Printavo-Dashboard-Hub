@@ -1,0 +1,71 @@
+#44 - Build the Company Context Layer (any AI platform, Missive first)
+
+What & Why
+
+Build one consumer-agnostic "context layer" in the Hub: a single service that answers questions with verified company knowledge — Printavo facts (customers, orders, invoices, payments, mockups, artwork, brand standards, links) plus a company knowledge base (policies, FAQs, SOPs fed from the website, Google Docs, and other company sources). Any AI surface can then plug into it: Missive's assistant, a future customer chatbot, JustCall's virtual agent, Zapier automations, and the Hub's own modules.
+
+Strategic framing (Tyler, Aug 2026): don't build a Missive-only integration — build for now and the future, nimble across changing agentic platforms, with AI serving both team members and customers seamlessly.
+
+Architecture: ONE core, MANY thin doors.
+
+Core context service (plain internal code, no protocol lock-in): customer matching with confidence scoring, verified Printavo fact lookups, knowledge search, audit logging. All business logic lives here exactly once.
+Doors (protocol adapters), each a thin translation over the same core:
+MCP endpoint — for assistant platforms that speak MCP (Missive today; Claude/ChatGPT-class assistants and future agent platforms tomorrow)
+Key-authed REST API — for Zapier, JustCall, webhooks, and any platform that speaks plain HTTP
+Direct internal calls — for Hub modules (Ask AI, AI quote drafts, correspondence AI can consume the same functions)
+Per-consumer credentials and scopes: each consumer gets its own token, its own allowed tool list, rate limits, and audit trail. Revoking one platform never affects the others.
+Two trust tiers, enforced from day one:
+Internal tier (staff-facing: Missive, Hub, Zapier internal automations) — may see any customer's data, because a staff member is always in the loop.
+External tier (customer-facing: chatbot, JustCall answering customers) — may only ever see the verified caller's own data plus public knowledge. External-tier consumers are NOT built in this task, but the scope model must exist so adding them later is safe and easy.
+Verified constraints (Missive docs, Aug 2026): Missive AI Rules cannot call MCP tools (only four fixed AI actions); MCP is available to the interactive assistant. So Missive Pattern A ships first (rule drafts → staff runs a saved assistant command → assistant calls Hub tools and revises), Pattern B (webhook → Hub posts context note → rule drafts from it) is a timing spike. Missive must reach the endpoint over the public internet → serve from the published production deployment.
+
+Done looks like
+
+A core context service exists in the API server with all logic protocol-independent; the MCP door and REST door are thin adapters over identical functions
+Customer matching returns explicit confidence (exact email = high; ambiguous returns candidates; below threshold returns "no confident match" — never a silent best guess)
+Read-only fact tools cover: customer summary, recent orders, order status/dates, invoice details, payment/outstanding status, mockup/production-file links, artwork bookmarks, brand standards, direct Hub/Printavo links
+A knowledge base exists in the Hub (Hub-native storage): entries with title/body/tags/source/review-status; staff can create, edit, and mark entries stale; a knowledge-search tool returns quotable-verbatim answers with source attribution
+Initial knowledge ingestion path works for Tyler's sources: paste/upload (docs, website text) with a review step before entries go live; Google Docs import assisted where practical
+Per-consumer token management: issue/revoke tokens, per-token scopes and rate limits, every call logged with consumer identity, tool, inputs, and result summary
+Missive is connected as the first consumer (Custom MCP integration) and Pattern A works end-to-end on a real conversation with correct facts, links, and knowledge answers
+Pattern B spike-tested with documented findings
+The trust-tier scope model is implemented and documented, with only internal-tier consumers enabled
+(After Pattern A is stable) one safe action tool: create a Hub AI Quote Draft entering the existing review/CONFIRM flow — never a live Printavo quote
+Out of scope (deliberately, to stay focused — all enabled by this architecture)
+
+Building the customer-facing chatbot, JustCall virtual agent, or Zapier recipes themselves (each is its own future task; they consume the doors built here)
+External-tier (customer-facing) consumers going live — the scope model ships, the consumers don't
+Sending email from Hub or any AI send capability
+Live Printavo writes from any assistant (quotes remain Hub drafts requiring explicit staff confirmation)
+Exposing correspondence/mailbox content through any door (mailbox ACLs are per-staff; shared consumer credentials cannot honor them)
+Automated continuous crawling of the website / Google Drive (start with reviewed imports; scheduled re-sync can come later)
+Rebuilding Missive's reply detection or draft generation
+Steps
+
+Core service + matching — Build the context core: reuse existing email→customer matching with confidence thresholds; implement fact-lookup functions with structured, quotable responses; audit-log every call.
+Consumer registry + doors — Per-consumer tokens with scopes/tiers/rate limits; MCP adapter (Streamable HTTP) and REST adapter exposing the same tool set; verify reachability at the production URL.
+Knowledge base — Hub-native KB tables + staff editing UI + review workflow + knowledge-search tool (exposed through both doors and to Hub modules); import Tyler's initial content (website, Google Docs, other docs) via paste/upload with review.
+Missive as first consumer — Add Custom MCP integration, saved assistant command, validate Pattern A end-to-end on real conversations; staff score fact accuracy.
+Pattern B spike — Webhook → context note → rule timing; document verdict.
+Safe action: quote draft — create_quote_draft through the existing draft/review/CONFIRM pipeline, returning the Hub draft link.
+Feedback + docs — Track used/accepted/edited/rejected outcomes; write a short "how to connect a new platform" doc so future consumers (chatbot, JustCall, Zapier) are a config exercise, not a build.
+Critical constraints: consumer credentials are org-level, so internal-tier tools must only expose data safe for any staff-facing assistant (Printavo/branding/knowledge — never mailbox content). All writes stay human-confirmed via existing idempotent pipelines. Knowledge answers must be verbatim-quotable with source attribution so assistants don't paraphrase policy into errors.
+
+Relevant files
+
+artifacts/api-server/src/lib/emailActivity/matching.ts
+artifacts/api-server/src/routes/customers.ts
+artifacts/api-server/src/routes/customerBranding.ts
+artifacts/api-server/src/lib/quoteDrafts/service.ts
+artifacts/api-server/src/routes/aiQuotes.ts
+artifacts/api-server/src/lib/insights/ (guarded AI patterns to reuse)
+artifacts/api-server/src/lib/missive/client.ts
+lib/db/src/schema/pvOrders.ts
+lib/db/src/schema/aiQuoteDrafts.ts
+lib/db/src/schema/appSettings.ts
+External references
+
+https://missiveapp.com/docs/ai/mcp/integrations
+https://missiveapp.com/docs/advanced-features/rules/ai-rules
+https://missiveapp.com/docs/developers/webhooks
+https://modelcontextprotocol.io/docs/getting-started/intro
