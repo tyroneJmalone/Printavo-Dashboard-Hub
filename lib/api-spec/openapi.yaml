@@ -697,6 +697,16 @@ paths:
       parameters:
         - $ref: "#/components/parameters/CustomerIdParam"
         - $ref: "#/components/parameters/DropboxLocatorParam"
+        - name: redirect
+          in: query
+          required: false
+          description: Redirect directly to the temporary Dropbox URL instead of returning JSON
+          schema: { type: boolean, default: false }
+        - name: inline
+          in: query
+          required: false
+          description: Proxy a browser-safe PDF or raster image for an in-app preview
+          schema: { type: boolean, default: false }
       responses:
         "200":
           description: Temporary provider link
@@ -708,6 +718,13 @@ paths:
                 properties:
                   link: { type: string, format: uri }
                   expires: { type: string, enum: [temporary] }
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "302":
+          description: Redirect to the temporary Dropbox file URL
+          headers:
+            Location:
+              schema: { type: string, format: uri }
   /customers/{id}/artwork/bookmarks:
     post:
       operationId: createCustomerArtworkBookmark

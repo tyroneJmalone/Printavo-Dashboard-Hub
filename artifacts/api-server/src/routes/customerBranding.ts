@@ -16,6 +16,15 @@ import {
 
 const router: IRouter = Router();
 const PAGE_TOKEN_TTL_MS = 5 * 60_000;
+const MAX_ARTWORK_PREVIEW_BYTES = 25 * 1024 * 1024;
+const ARTWORK_PREVIEW_TYPES: Record<string, string> = {
+  ".gif": "image/gif",
+  ".jpeg": "image/jpeg",
+  ".jpg": "image/jpeg",
+  ".pdf": "application/pdf",
+  ".png": "image/png",
+  ".webp": "image/webp",
+};
 type PageContext = {
   customerId: string;
   rootDropboxId: string | null;
@@ -611,7 +620,53 @@ async function metadataOrLink(req: Request, res: Response, temporaryLink: boolea
         return;
       }
       const link = await getDropboxTemporaryLink(allowed.locator);
-      res.json({ link, expires: "temporary" });
+      if (req.query.inline === "true") {
+        const extension = metadata.name.slice(metadata.name.lastIndexOf(".")).toLowerCase();
+        const contentType = ARTWORK_PREVIEW_TYPES[extension];
+        if (!contentType) {
+          res.status(415).json({ error: "In-app preview is available for PDF, PNG, JPG, GIF, and WebP files" });
+          return;
+        }
+        if (metadata.size && metadata.size > MAX_ARTWORK_PREVIEW_BYTES) {
+          res.status(413).json({ error: "This file is too large to preview in Hub" });
+          return;
+        }
+        const temporaryUrl = new URL(link);
+        if (
+          temporaryUrl.protocol !== "https:" ||
+          !(temporaryUrl.hostname === "dropbox.com" ||
+            temporaryUrl.hostname.endsWith(".dropbox.com") ||
+            temporaryUrl.hostname.endsWith(".dropboxusercontent.com"))
+        ) {
+          throw new DropboxError(502, "Dropbox returned an invalid temporary link");
+        }
+        const upstream = await fetch(temporaryUrl, {
+          redirect: "follow",
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (!upstream.ok) {
+          throw new DropboxError(upstream.status, `Dropbox preview returned ${upstream.status}`);
+        }
+        const declaredSize = Number(upstream.headers.get("content-length"));
+        if (Number.isFinite(declaredSize) && declaredSize > MAX_ARTWORK_PREVIEW_BYTES) {
+          res.status(413).json({ error: "This file is too large to preview in Hub" });
+          return;
+        }
+        const body = Buffer.from(await upstream.arrayBuffer());
+        if (body.byteLength > MAX_ARTWORK_PREVIEW_BYTES) {
+          res.status(413).json({ error: "This file is too large to preview in Hub" });
+          return;
+        }
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(metadata.name)}`);
+        res.setHeader("Cache-Control", "private, no-store");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.send(body);
+      } else if (req.query.redirect === "true") {
+        res.redirect(302, link);
+      } else {
+        res.json({ link, expires: "temporary" });
+      }
     } else {
       res.json(metadataJson(allowed.metadata ?? (await getDropboxMetadata(allowed.locator))));
     }

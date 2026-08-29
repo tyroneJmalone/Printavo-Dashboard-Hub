@@ -14,4 +14,12 @@ export type GetCustomerArtworkTemporaryLinkParams = {
  * @maxLength 1000
  */
 locator: DropboxLocatorParamParameter;
+/**
+ * Redirect directly to the temporary Dropbox URL instead of returning JSON
+ */
+redirect?: boolean;
+/**
+ * Proxy a browser-safe PDF or raster image for an in-app preview
+ */
+inline?: boolean;
 };

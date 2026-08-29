@@ -4,8 +4,6 @@ import {
   getGetCustomerArtworkQueryKey,
   useLinkCustomerArtworkFolder,
   useUnlinkCustomerArtworkFolder,
-  useGetCustomerArtworkTemporaryLink,
-  getGetCustomerArtworkTemporaryLinkQueryKey,
   useBrowseCustomerArtwork,
   getBrowseCustomerArtworkQueryKey,
   useSearchCustomerArtwork,
@@ -25,13 +23,61 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Folder, Image as ImageIcon, Link as LinkIcon, Unlink, Download, Search, Star, Archive, Edit2, Loader2, Plus, File, ChevronRight, Trash2, ExternalLink } from "lucide-react";
+import { Folder, Image as ImageIcon, Link as LinkIcon, Unlink, Search, Star, Archive, Edit2, Loader2, File, ChevronRight, Trash2, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 function alphabetizeDropboxEntries(entries: DropboxEntry[]): DropboxEntry[] {
   return [...entries].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }) ||
     a.id.localeCompare(b.id),
+  );
+}
+
+function artworkOpenUrl(customerId: string, locator: string): string {
+  return `/api/customers/${encodeURIComponent(customerId)}/artwork/temporary-link?locator=${encodeURIComponent(locator)}&redirect=true`;
+}
+
+function artworkPreviewUrl(customerId: string, locator: string): string {
+  return `/api/customers/${encodeURIComponent(customerId)}/artwork/temporary-link?locator=${encodeURIComponent(locator)}&inline=true`;
+}
+
+function canPreviewArtwork(name: string): boolean {
+  return /\.(?:gif|jpe?g|pdf|png|webp)$/i.test(name);
+}
+
+function ArtworkPreviewDialog({ customerId, entryName, locator, open, onOpenChange }: {
+  customerId: string;
+  entryName: string;
+  locator: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const previewUrl = artworkPreviewUrl(customerId, locator);
+  const originalUrl = artworkOpenUrl(customerId, locator);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-5xl h-[88vh] bg-slate-950 border-slate-800 flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-4 py-3 border-b border-slate-800">
+          <DialogTitle className="text-sm text-slate-200 break-all pr-8">{entryName}</DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">
+            Previewing the original file from the linked Dropbox folder.
+          </DialogDescription>
+        </DialogHeader>
+        <iframe
+          src={previewUrl}
+          title={`Preview ${entryName}`}
+          className="w-full flex-1 min-h-0 bg-white"
+          data-testid="dropbox-file-preview-frame"
+        />
+        <div className="px-4 py-3 border-t border-slate-800 flex justify-end">
+          <Button asChild variant="outline" size="sm" className="border-slate-700">
+            <a href={originalUrl} target="_blank" rel="noreferrer">
+              <ExternalLink size={14} className="mr-1.5" /> Open original
+            </a>
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -372,43 +418,24 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
 }
 
 function BookmarkRow({ bookmark, customerId, isAdmin, onEdit }: { bookmark: ArtworkBookmark, customerId: string, isAdmin: boolean, onEdit: () => void }) {
-  const { toast } = useToast();
-  
-  const { refetch: fetchLink, isFetching: downloading } = useGetCustomerArtworkTemporaryLink(
-    customerId, 
-    { locator: bookmark.pathLower || bookmark.dropboxId || "" }, 
-    { query: { enabled: false, queryKey: getGetCustomerArtworkTemporaryLinkQueryKey(customerId, { locator: bookmark.pathLower || bookmark.dropboxId || "" }) } }
-  );
-
-  const handleOpen = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const res = await fetchLink();
-      if (res.data?.link) {
-        window.open(res.data.link, "_blank");
-      } else if (res.error) {
-        toast({ title: "Failed to open file", description: (res.error as any)?.error || "Unknown error", variant: "destructive" });
-      }
-    } catch (err: any) {
-      toast({ title: "Failed to open file", description: err.message, variant: "destructive" });
-    }
-  };
-
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const canPreview = canPreviewArtwork(bookmark.name);
   const invoiceMatch = bookmark.name.match(/(?:inv|invoice)?[ -_]?#?(\d{4,6})/i);
   const invoiceNum = invoiceMatch ? invoiceMatch[1] : null;
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg border bg-slate-800/30 group transition-colors hover:bg-slate-800/50 ${bookmark.retired ? 'border-slate-800/50 opacity-60' : bookmark.preferred ? 'border-purple-500/30 bg-purple-950/10' : 'border-slate-800'}`}>
+    <>
+      <div className={`flex items-start gap-3 p-3 rounded-lg border bg-slate-800/30 group transition-colors hover:bg-slate-800/50 ${bookmark.retired ? 'border-slate-800/50 opacity-60' : bookmark.preferred ? 'border-purple-500/30 bg-purple-950/10' : 'border-slate-800'}`}>
       <div className="shrink-0 pt-0.5">
         {bookmark.retired ? <Archive size={16} className="text-slate-500" /> : <ImageIcon size={16} className={bookmark.preferred ? "text-purple-400" : "text-slate-400"} />}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-0.5">
-          <p className="text-sm font-medium text-slate-200 truncate">{bookmark.label}</p>
+          <p className="text-sm font-medium text-slate-200 whitespace-normal break-all">{bookmark.label}</p>
           {bookmark.preferred && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
           {bookmark.retired && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-medium tracking-wide uppercase">Retired</span>}
         </div>
-        <p className="text-xs text-slate-500 truncate" title={bookmark.name}>
+        <p className="text-xs text-slate-500 whitespace-normal break-all" title={bookmark.name}>
           {bookmark.name} 
           {invoiceNum && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/30 text-emerald-400 border border-emerald-800/50 uppercase tracking-wider">inv #{invoiceNum}</span>}
         </p>
@@ -416,17 +443,48 @@ function BookmarkRow({ bookmark, customerId, isAdmin, onEdit }: { bookmark: Artw
           <p className="text-xs text-slate-300 mt-2 bg-slate-900/60 p-2 rounded border border-slate-800/50 leading-relaxed whitespace-pre-wrap">{bookmark.notes}</p>
         )}
       </div>
-      <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-400 hover:text-white" onClick={handleOpen} disabled={downloading}>
-          {downloading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <ExternalLink size={14} className="mr-1.5" />} View
-        </Button>
+      <div className="shrink-0 flex items-center gap-1">
+        {canPreview ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-slate-300 hover:text-white"
+            onClick={() => setPreviewOpen(true)}
+            aria-label={`Preview ${bookmark.name}`}
+          >
+            <ExternalLink size={14} className="sm:mr-1.5" />
+            <span className="hidden sm:inline">Preview</span>
+          </Button>
+        ) : (
+          <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-slate-300 hover:text-white">
+            <a
+              href={artworkOpenUrl(customerId, bookmark.pathLower || bookmark.dropboxId || "")}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Open ${bookmark.name}`}
+            >
+              <ExternalLink size={14} className="sm:mr-1.5" />
+              <span className="hidden sm:inline">Open</span>
+            </a>
+          </Button>
+        )}
         {isAdmin && (
           <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={onEdit}>
             <Edit2 size={14} />
           </Button>
         )}
       </div>
-    </div>
+      </div>
+      {canPreview && (
+        <ArtworkPreviewDialog
+          customerId={customerId}
+          entryName={bookmark.name}
+          locator={bookmark.pathLower || bookmark.dropboxId || ""}
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+        />
+      )}
+    </>
   );
 }
 
@@ -511,6 +569,8 @@ function CustomerArtworkBrowserDialog({ customerId, open, onOpenChange, bookmark
 
   const handleEntryNav = (pathLower: string) => {
     setCurrentPath(pathLower);
+    setSearchQ("");
+    setDebouncedQ("");
     setCursor(undefined);
   };
 
@@ -604,12 +664,8 @@ function EntryRow({ entry, customerId, onNavigate, isBookmarked, isAdmin }: { en
   const { toast } = useToast();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
-
-  const { refetch: fetchLink, isFetching: downloading } = useGetCustomerArtworkTemporaryLink(
-    customerId, 
-    { locator: entry.pathLower || entry.id || "" }, 
-    { query: { enabled: false, queryKey: getGetCustomerArtworkTemporaryLinkQueryKey(customerId, { locator: entry.pathLower || entry.id || "" }) } }
-  );
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const canPreview = canPreviewArtwork(entry.name);
 
   const createBookmark = useCreateCustomerArtworkBookmark({
     mutation: {
@@ -621,20 +677,6 @@ function EntryRow({ entry, customerId, onNavigate, isBookmarked, isAdmin }: { en
       onSettled: () => setAdding(false)
     }
   });
-
-  const handleOpen = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const res = await fetchLink();
-      if (res.data?.link) {
-        window.open(res.data.link, "_blank");
-      } else if (res.error) {
-        toast({ title: "Failed to open file", description: (res.error as any)?.error || "Unknown error", variant: "destructive" });
-      }
-    } catch (err: any) {
-      toast({ title: "Failed to open file", description: err.message, variant: "destructive" });
-    }
-  };
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -653,39 +695,85 @@ function EntryRow({ entry, customerId, onNavigate, isBookmarked, isAdmin }: { en
   const invoiceNum = invoiceMatch ? invoiceMatch[1] : null;
 
   return (
-    <div 
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-slate-800/60 group transition-colors ${isFolder ? "cursor-pointer" : ""}`}
+    <>
+      <div
+      className={`flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-slate-800/60 group transition-colors ${isFolder ? "cursor-pointer" : ""}`}
       onClick={isFolder ? onNavigate : undefined}
     >
-      <div className="shrink-0">
+      <div className="shrink-0 pt-0.5">
         {isFolder ? <Folder size={16} className="text-blue-400 fill-blue-400/20" /> : <File size={16} className="text-slate-400" />}
       </div>
-      <div className="min-w-0 flex-1 flex items-center gap-2">
-        <p className={`text-sm truncate ${isFolder ? "text-blue-100 font-medium" : "text-slate-300"}`}>{entry.name}</p>
+      <div className="min-w-0 flex-1 flex items-start gap-2">
+        <p
+          className={`text-sm leading-5 whitespace-normal break-all ${isFolder ? "text-blue-100 font-medium" : "text-slate-300"}`}
+          title={entry.name}
+          data-testid={`dropbox-entry-name-${entry.id}`}
+        >
+          {entry.name}
+        </p>
         {invoiceNum && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/30 text-emerald-400 border border-emerald-800/50 uppercase tracking-wider shrink-0">inv #{invoiceNum}</span>}
       </div>
-      <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="shrink-0 flex items-center gap-1">
         {!isFolder && (
           <>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-400 hover:text-white bg-slate-800/50" onClick={handleOpen} disabled={downloading}>
-              {downloading ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <ExternalLink size={14} className="mr-1.5" />} View
-            </Button>
+            {canPreview ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-slate-300 hover:text-white bg-slate-800/70"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setPreviewOpen(true);
+                }}
+                title={`Preview ${entry.name}`}
+                data-testid={`button-preview-dropbox-file-${entry.id}`}
+                aria-label={`Preview ${entry.name}`}
+              >
+                <ExternalLink size={14} className="sm:mr-1.5" />
+                <span className="hidden sm:inline">Preview</span>
+              </Button>
+            ) : (
+              <Button asChild variant="ghost" size="sm" className="h-8 px-2 text-slate-300 hover:text-white bg-slate-800/70">
+                <a
+                  href={artworkOpenUrl(customerId, entry.pathLower || entry.id || "")}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => event.stopPropagation()}
+                  aria-label={`Open ${entry.name}`}
+                >
+                  <ExternalLink size={14} className="sm:mr-1.5" />
+                  <span className="hidden sm:inline">Open</span>
+                </a>
+              </Button>
+            )}
             {isAdmin && (
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className={`h-7 w-7 bg-slate-800/50 ${isBookmarked ? "text-purple-400" : "text-slate-400 hover:text-purple-400 hover:bg-purple-900/30"}`} 
+                className={`h-8 w-8 bg-slate-800/70 ${isBookmarked ? "text-yellow-400" : "text-slate-300 hover:text-yellow-400 hover:bg-yellow-900/30"}`}
                 onClick={handleAdd} 
                 disabled={adding || isBookmarked}
-                title={isBookmarked ? "Already bookmarked" : "Add bookmark"}
+                title={isBookmarked ? "Already pinned" : `Pin ${entry.name}`}
+                aria-label={isBookmarked ? `${entry.name} is pinned` : `Pin ${entry.name}`}
+                data-testid={`button-pin-dropbox-file-${entry.id}`}
               >
-                {adding ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                {adding ? <Loader2 size={14} className="animate-spin" /> : <Star size={15} className={isBookmarked ? "fill-yellow-400" : ""} />}
               </Button>
             )}
           </>
         )}
       </div>
-    </div>
+      </div>
+      {!isFolder && canPreview && (
+        <ArtworkPreviewDialog
+          customerId={customerId}
+          entryName={entry.name}
+          locator={entry.pathLower || entry.id || ""}
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+        />
+      )}
+    </>
   );
 }
 

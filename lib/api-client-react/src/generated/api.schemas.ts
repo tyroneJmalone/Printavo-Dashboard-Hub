@@ -5699,18 +5699,26 @@ export type GetCustomerArtworkTemporaryLinkParams = {
  * @maxLength 1000
  */
 locator: DropboxLocatorParamParameter;
+/**
+ * Redirect directly to the temporary Dropbox URL instead of returning JSON
+ */
+redirect?: boolean;
+/**
+ * Proxy a browser-safe PDF or raster image for an in-app preview
+ */
+inline?: boolean;
 };
 
-export type GetCustomerArtworkTemporaryLink200Expires = typeof GetCustomerArtworkTemporaryLink200Expires[keyof typeof GetCustomerArtworkTemporaryLink200Expires];
+export type GetCustomerArtworkTemporaryLink200OneExpires = typeof GetCustomerArtworkTemporaryLink200OneExpires[keyof typeof GetCustomerArtworkTemporaryLink200OneExpires];
 
 
-export const GetCustomerArtworkTemporaryLink200Expires = {
+export const GetCustomerArtworkTemporaryLink200OneExpires = {
   temporary: 'temporary',
 } as const;
 
-export type GetCustomerArtworkTemporaryLink200 = {
+export type GetCustomerArtworkTemporaryLink200One = {
   link: string;
-  expires: GetCustomerArtworkTemporaryLink200Expires;
+  expires: GetCustomerArtworkTemporaryLink200OneExpires;
 };
 
 export type GetCustomerProfileParams = {

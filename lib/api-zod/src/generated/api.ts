@@ -766,10 +766,13 @@ export const GetCustomerArtworkTemporaryLinkParams = zod.object({
 
 export const getCustomerArtworkTemporaryLinkQueryLocatorMax = 1000;
 
-
+export const getCustomerArtworkTemporaryLinkQueryRedirectDefault = false;
+export const getCustomerArtworkTemporaryLinkQueryInlineDefault = false;
 
 export const GetCustomerArtworkTemporaryLinkQueryParams = zod.object({
-  "locator": zod.coerce.string().min(1).max(getCustomerArtworkTemporaryLinkQueryLocatorMax).describe('A contained Dropbox path, the linked root id, or an id already bookmarked for this customer')
+  "locator": zod.coerce.string().min(1).max(getCustomerArtworkTemporaryLinkQueryLocatorMax).describe('A contained Dropbox path, the linked root id, or an id already bookmarked for this customer'),
+  "redirect": zod.coerce.boolean().default(getCustomerArtworkTemporaryLinkQueryRedirectDefault).describe('Redirect directly to the temporary Dropbox URL instead of returning JSON'),
+  "inline": zod.coerce.boolean().default(getCustomerArtworkTemporaryLinkQueryInlineDefault).describe('Proxy a browser-safe PDF or raster image for an in-app preview')
 })
 
 export const GetCustomerArtworkTemporaryLinkResponse = zod.object({

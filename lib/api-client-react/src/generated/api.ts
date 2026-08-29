@@ -145,7 +145,7 @@ import type {
   GetCombinedWorkordersHtmlParams,
   GetCreditsOverTimeParams,
   GetCustomerArtworkMetadataParams,
-  GetCustomerArtworkTemporaryLink200,
+  GetCustomerArtworkTemporaryLink200One,
   GetCustomerArtworkTemporaryLinkParams,
   GetCustomerProfileParams,
   GetDashboardSummaryParams,
@@ -2698,9 +2698,9 @@ export const getGetCustomerArtworkTemporaryLinkUrl = (id: string,
  * @summary Get a temporary original-file download link
  */
 export const getCustomerArtworkTemporaryLink = async (id: string,
-    params: GetCustomerArtworkTemporaryLinkParams, options?: RequestInit): Promise<GetCustomerArtworkTemporaryLink200> => {
+    params: GetCustomerArtworkTemporaryLinkParams, options?: RequestInit): Promise<GetCustomerArtworkTemporaryLink200One | Blob> => {
 
-  return customFetch<GetCustomerArtworkTemporaryLink200>(getGetCustomerArtworkTemporaryLinkUrl(id,params),
+  return customFetch<GetCustomerArtworkTemporaryLink200One | Blob>(getGetCustomerArtworkTemporaryLinkUrl(id,params),
   {
     ...options,
     method: 'GET'
@@ -2721,7 +2721,7 @@ export const getGetCustomerArtworkTemporaryLinkQueryKey = (id: string,
     }
 
 
-export const getGetCustomerArtworkTemporaryLinkQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError = ErrorType<unknown>>(id: string,
+export const getGetCustomerArtworkTemporaryLinkQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError = ErrorType<void>>(id: string,
     params: GetCustomerArtworkTemporaryLinkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
@@ -2741,14 +2741,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetCustomerArtworkTemporaryLinkQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>>
-export type GetCustomerArtworkTemporaryLinkQueryError = ErrorType<unknown>
+export type GetCustomerArtworkTemporaryLinkQueryError = ErrorType<void>
 
 
 /**
  * @summary Get a temporary original-file download link
  */
 
-export function useGetCustomerArtworkTemporaryLink<TData = Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError = ErrorType<unknown>>(
+export function useGetCustomerArtworkTemporaryLink<TData = Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError = ErrorType<void>>(
  id: string,
     params: GetCustomerArtworkTemporaryLinkParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomerArtworkTemporaryLink>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 

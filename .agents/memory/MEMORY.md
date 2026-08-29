@@ -43,4 +43,5 @@
 - [Missive API transport](missive-connector-routing.md) — managed connector still uses the wrong host; Hub uses a secret-backed direct public API transport with pacing and incremental hydration.
 - [Email access role model](email-access-role-model.md) — Admin reads every mailbox; Managers are limited to selected groups/ownership/thread grants; customer history aggregates authorized mailboxes.
 - [Dropbox customer artwork boundaries](dropbox-customer-artwork-boundaries.md) — Hub artwork is read-only; revalidate stable Dropbox IDs against the current linked customer root before access.
+- [Dropbox artwork previews](dropbox-artwork-previews.md) — temporary links do not embed reliably; proxy only allowlisted browser-safe files through the authorized Hub route.
 - [Shared production color catalog](shared-production-color-catalog.md) — Hub and BreezyTweak should consume one catalog for Pantone, ink, thread, conversions, and stock notes.
