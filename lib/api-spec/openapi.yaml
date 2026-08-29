@@ -1092,6 +1092,64 @@ paths:
                 properties:
                   ok: { type: boolean }
                 required: [ok]
+  /purchasing/catalog/pantones:
+    get:
+      operationId: listCatalogPantones
+      tags: [purchasing]
+      summary: List imported vendor/style/color identities and verified garment Pantones
+      description: Staff-only bounded search over exact imported catalog identities. Null means the vendor has not provided a verified garment Pantone.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: vendor
+          in: query
+          schema: { type: string, enum: [sanmar, ss] }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Imported color identity page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogPantoneList"
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+    put:
+      operationId: setCatalogPantone
+      tags: [purchasing]
+      summary: Attach, correct, or remove a verified garment Pantone
+      description: Upserts evidence by exact vendor/style/color without changing web-swatch measurement fields. Code and source must either both be null or both be provided.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CatalogPantoneUpdate"
+      responses:
+        "200":
+          description: Saved imported color identity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CatalogPantoneIdentity" }
+        "400":
+          description: Invalid code/source pairing
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Exact imported identity not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
   /collections:
     get:
       operationId: listCollections
@@ -7236,7 +7294,9 @@ components:
             - type: "null"
           description: Vendor web-swatch evidence metadata; not a calibrated fabric measurement.
         garmentPantoneCode: { type: ["string", "null"], description: Verified vendor/staff garment Pantone only; never estimated. }
-        garmentPantoneSource: { type: ["string", "null"] }
+        garmentPantoneSource:
+          type: ["string", "null"]
+          enum: [vendor_documentation, staff_verification, null]
     PaletteColorEvidence:
       type: object
       required: [status, rgb, sourceSwatchUrl, sourceSwatchHash, reason, profile, illuminant, measuredAt, confidence, quality, method, algorithmVersion]
@@ -7405,6 +7465,48 @@ components:
           items:
             $ref: "#/components/schemas/ProductSearchVendorError"
       required: [query, aliasesTried, vendors, vendorErrors]
+    CatalogPantoneIdentity:
+      type: object
+      required: [vendor, styleName, colorName, brand, title, swatchImage, productImage, pantoneCode, pantoneSource, updatedAt]
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleName: { type: string }
+        colorName: { type: string }
+        brand: { type: ["string", "null"] }
+        title: { type: ["string", "null"] }
+        swatchImage: { type: ["string", "null"] }
+        productImage: { type: ["string", "null"] }
+        pantoneCode: { type: ["string", "null"], description: Verified garment Pantone only; never inferred from RGB or Lab. }
+        pantoneSource:
+          type: ["string", "null"]
+          enum: [vendor_documentation, staff_verification, null]
+        updatedAt: { type: ["string", "null"], format: date-time }
+    CatalogPantoneList:
+      type: object
+      required: [items, total, limit, offset]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CatalogPantoneIdentity" }
+        total: { type: integer, minimum: 0 }
+        limit: { type: integer, minimum: 1, maximum: 100 }
+        offset: { type: integer, minimum: 0 }
+    CatalogPantoneUpdate:
+      type: object
+      additionalProperties: false
+      required: [vendor, styleName, colorName, pantoneCode, pantoneSource]
+      properties:
+        vendor: { type: string, enum: [sanmar, ss] }
+        styleName: { type: string, minLength: 1, maxLength: 100 }
+        colorName: { type: string, minLength: 1, maxLength: 100 }
+        pantoneCode:
+          type: ["string", "null"]
+          minLength: 1
+          maxLength: 64
+          pattern: '^[A-Za-z0-9][A-Za-z0-9 .#/-]*$'
+        pantoneSource:
+          type: ["string", "null"]
+          enum: [vendor_documentation, staff_verification, null]
     AiQuoteSize:
       type: object
       properties:

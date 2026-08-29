@@ -1094,6 +1094,17 @@ export interface PaletteColorEvidence {
   algorithmVersion: string | null;
 }
 
+/**
+ * @nullable
+ */
+export type PaletteColorSuggestionGarmentPantoneSource = typeof PaletteColorSuggestionGarmentPantoneSource[keyof typeof PaletteColorSuggestionGarmentPantoneSource] | null;
+
+
+export const PaletteColorSuggestionGarmentPantoneSource = {
+  vendor_documentation: 'vendor_documentation',
+  staff_verification: 'staff_verification',
+} as const;
+
 export interface PaletteColorSuggestion {
   colorName: string;
   /** @nullable */
@@ -1116,7 +1127,7 @@ export interface PaletteColorSuggestion {
      */
   garmentPantoneCode: string | null;
   /** @nullable */
-  garmentPantoneSource: string | null;
+  garmentPantoneSource: PaletteColorSuggestionGarmentPantoneSource;
 }
 
 export interface PaletteMatchSnapshot {
@@ -1415,6 +1426,103 @@ export interface ProductSearchResult {
   aliasesTried: string[];
   vendors: ProductSearchVendorResult[];
   vendorErrors: ProductSearchVendorError[];
+}
+
+export type CatalogPantoneIdentityVendor = typeof CatalogPantoneIdentityVendor[keyof typeof CatalogPantoneIdentityVendor];
+
+
+export const CatalogPantoneIdentityVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CatalogPantoneIdentityPantoneSource = typeof CatalogPantoneIdentityPantoneSource[keyof typeof CatalogPantoneIdentityPantoneSource] | null;
+
+
+export const CatalogPantoneIdentityPantoneSource = {
+  vendor_documentation: 'vendor_documentation',
+  staff_verification: 'staff_verification',
+} as const;
+
+export interface CatalogPantoneIdentity {
+  vendor: CatalogPantoneIdentityVendor;
+  styleName: string;
+  colorName: string;
+  /** @nullable */
+  brand: string | null;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  swatchImage: string | null;
+  /** @nullable */
+  productImage: string | null;
+  /**
+     * Verified garment Pantone only; never inferred from RGB or Lab.
+     * @nullable
+     */
+  pantoneCode: string | null;
+  /** @nullable */
+  pantoneSource: CatalogPantoneIdentityPantoneSource;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export interface CatalogPantoneList {
+  items: CatalogPantoneIdentity[];
+  /** @minimum 0 */
+  total: number;
+  /**
+     * @minimum 1
+     * @maximum 100
+     */
+  limit: number;
+  /** @minimum 0 */
+  offset: number;
+}
+
+export type CatalogPantoneUpdateVendor = typeof CatalogPantoneUpdateVendor[keyof typeof CatalogPantoneUpdateVendor];
+
+
+export const CatalogPantoneUpdateVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CatalogPantoneUpdatePantoneSource = typeof CatalogPantoneUpdatePantoneSource[keyof typeof CatalogPantoneUpdatePantoneSource] | null;
+
+
+export const CatalogPantoneUpdatePantoneSource = {
+  vendor_documentation: 'vendor_documentation',
+  staff_verification: 'staff_verification',
+} as const;
+
+export interface CatalogPantoneUpdate {
+  vendor: CatalogPantoneUpdateVendor;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  styleName: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  colorName: string;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     * @nullable
+     * @pattern ^[A-Za-z0-9][A-Za-z0-9 .#/-]*$
+     */
+  pantoneCode: string | null;
+  /** @nullable */
+  pantoneSource: CatalogPantoneUpdatePantoneSource;
 }
 
 export interface AiQuoteSize {
@@ -5705,6 +5813,31 @@ export type SetCatalogTagOverride200 = {
 export type SetCatalogColorFamily200 = {
   ok: boolean;
 };
+
+export type ListCatalogPantonesParams = {
+/**
+ * @maxLength 200
+ */
+q?: string;
+vendor?: ListCatalogPantonesVendor;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListCatalogPantonesVendor = typeof ListCatalogPantonesVendor[keyof typeof ListCatalogPantonesVendor];
+
+
+export const ListCatalogPantonesVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
 
 export type ListCollectionsParams = {
 /**

@@ -48,6 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
     heading: "Sales",
     items: [
       { id: "product-finder", label: "Product Finder", href: "/product-finder", icon: Search },
+      { id: "garment-pantones", label: "Garment Pantones", href: "/garment-pantones", icon: Palette },
       { id: "collections", label: "Collections", href: "/collections", icon: Star },
       { id: "pipeline", label: "Pipeline", href: "/pipeline", icon: Filter },
       { id: "status-activity", label: "Status Activity", href: "/status-activity", icon: Activity },

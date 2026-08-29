@@ -57,6 +57,9 @@ import type {
   CatalogColorFamilyRequest,
   CatalogFilters,
   CatalogHealth,
+  CatalogPantoneIdentity,
+  CatalogPantoneList,
+  CatalogPantoneUpdate,
   CatalogSearchParams,
   CatalogSearchResult,
   CatalogTagOverrideRequest,
@@ -183,6 +186,7 @@ import type {
   List,
   ListAutoPrintJobsParams,
   ListAutoPrintRunsParams,
+  ListCatalogPantonesParams,
   ListChangeEventsParams,
   ListChipplyStoresParams,
   ListCollections200,
@@ -4054,6 +4058,162 @@ export const useSetCatalogColorFamily = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSetCatalogColorFamilyMutationOptions(options));
+    }
+
+export const getListCatalogPantonesUrl = (params?: ListCatalogPantonesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/purchasing/catalog/pantones?${stringifiedParams}` : `/api/purchasing/catalog/pantones`
+}
+
+/**
+ * Staff-only bounded search over exact imported catalog identities. Null means the vendor has not provided a verified garment Pantone.
+ * @summary List imported vendor/style/color identities and verified garment Pantones
+ */
+export const listCatalogPantones = async (params?: ListCatalogPantonesParams, options?: RequestInit): Promise<CatalogPantoneList> => {
+
+  return customFetch<CatalogPantoneList>(getListCatalogPantonesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCatalogPantonesQueryKey = (params?: ListCatalogPantonesParams,) => {
+    return [
+    `/api/purchasing/catalog/pantones`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCatalogPantonesQueryOptions = <TData = Awaited<ReturnType<typeof listCatalogPantones>>, TError = ErrorType<ErrorResponse>>(params?: ListCatalogPantonesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCatalogPantones>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCatalogPantonesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCatalogPantones>>> = ({ signal }) => listCatalogPantones(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCatalogPantones>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCatalogPantonesQueryResult = NonNullable<Awaited<ReturnType<typeof listCatalogPantones>>>
+export type ListCatalogPantonesQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List imported vendor/style/color identities and verified garment Pantones
+ */
+
+export function useListCatalogPantones<TData = Awaited<ReturnType<typeof listCatalogPantones>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListCatalogPantonesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCatalogPantones>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCatalogPantonesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetCatalogPantoneUrl = () => {
+
+
+
+
+  return `/api/purchasing/catalog/pantones`
+}
+
+/**
+ * Upserts evidence by exact vendor/style/color without changing web-swatch measurement fields. Code and source must either both be null or both be provided.
+ * @summary Attach, correct, or remove a verified garment Pantone
+ */
+export const setCatalogPantone = async (catalogPantoneUpdate: CatalogPantoneUpdate, options?: RequestInit): Promise<CatalogPantoneIdentity> => {
+
+  return customFetch<CatalogPantoneIdentity>(getSetCatalogPantoneUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(catalogPantoneUpdate)
+  }
+);}
+
+
+
+
+export const getSetCatalogPantoneMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCatalogPantone>>, TError,{data: BodyType<CatalogPantoneUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setCatalogPantone>>, TError,{data: BodyType<CatalogPantoneUpdate>}, TContext> => {
+
+const mutationKey = ['setCatalogPantone'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setCatalogPantone>>, {data: BodyType<CatalogPantoneUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setCatalogPantone(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetCatalogPantoneMutationResult = NonNullable<Awaited<ReturnType<typeof setCatalogPantone>>>
+    export type SetCatalogPantoneMutationBody = BodyType<CatalogPantoneUpdate>
+    export type SetCatalogPantoneMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Attach, correct, or remove a verified garment Pantone
+ */
+export const useSetCatalogPantone = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCatalogPantone>>, TError,{data: BodyType<CatalogPantoneUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setCatalogPantone>>,
+        TError,
+        {data: BodyType<CatalogPantoneUpdate>},
+        TContext
+      > => {
+      return useMutation(getSetCatalogPantoneMutationOptions(options));
     }
 
 export const getListCollectionsUrl = (params?: ListCollectionsParams,) => {

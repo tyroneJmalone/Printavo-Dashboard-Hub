@@ -46,6 +46,7 @@ import Correspondence from "./pages/Correspondence";
 import ProductFinder from "./pages/ProductFinder";
 import Collections from "./pages/Collections";
 import CollectionDetail from "./pages/CollectionDetail";
+import GarmentPantones from "./pages/GarmentPantones";
 import ChipplyStores from "./pages/ChipplyStores";
 import ChipplyStoreDetail from "./pages/ChipplyStoreDetail";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
@@ -207,6 +208,7 @@ function HubRoutes() {
       <Route path="/email-activity" component={EmailActivity} />
       <Route path="/correspondence" component={Correspondence} />
       <Route path="/product-finder" component={ProductFinder} />
+      <Route path="/garment-pantones" component={GarmentPantones} />
       <Route path="/collections/:id" component={CollectionDetail} />
       <Route path="/collections" component={Collections} />
       <Route path="/chipply/:id" component={ChipplyStoreDetail} />

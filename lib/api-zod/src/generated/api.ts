@@ -1416,6 +1416,90 @@ export const SetCatalogColorFamilyResponse = zod.object({
 
 
 /**
+ * Staff-only bounded search over exact imported catalog identities. Null means the vendor has not provided a verified garment Pantone.
+ * @summary List imported vendor/style/color identities and verified garment Pantones
+ */
+export const listCatalogPantonesQueryQMax = 200;
+
+export const listCatalogPantonesQueryLimitDefault = 50;
+export const listCatalogPantonesQueryLimitMax = 100;
+
+export const listCatalogPantonesQueryOffsetDefault = 0;
+export const listCatalogPantonesQueryOffsetMin = 0;
+
+
+
+export const ListCatalogPantonesQueryParams = zod.object({
+  "q": zod.coerce.string().max(listCatalogPantonesQueryQMax).optional(),
+  "vendor": zod.enum(['sanmar', 'ss']).optional(),
+  "limit": zod.coerce.number().min(1).max(listCatalogPantonesQueryLimitMax).default(listCatalogPantonesQueryLimitDefault),
+  "offset": zod.coerce.number().min(listCatalogPantonesQueryOffsetMin).default(listCatalogPantonesQueryOffsetDefault)
+})
+
+export const listCatalogPantonesResponseTotalMin = 0;
+
+export const listCatalogPantonesResponseLimitMax = 100;
+
+export const listCatalogPantonesResponseOffsetMin = 0;
+
+
+
+export const ListCatalogPantonesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colorName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Verified garment Pantone only; never inferred from RGB or Lab.'),
+  "pantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable(),
+  "updatedAt": zod.coerce.date().nullable()
+})),
+  "total": zod.number().min(listCatalogPantonesResponseTotalMin),
+  "limit": zod.number().min(1).max(listCatalogPantonesResponseLimitMax),
+  "offset": zod.number().min(listCatalogPantonesResponseOffsetMin)
+})
+
+
+/**
+ * Upserts evidence by exact vendor/style/color without changing web-swatch measurement fields. Code and source must either both be null or both be provided.
+ * @summary Attach, correct, or remove a verified garment Pantone
+ */
+export const setCatalogPantoneBodyStyleNameMax = 100;
+
+export const setCatalogPantoneBodyColorNameMax = 100;
+
+export const setCatalogPantoneBodyPantoneCodeMax = 64;
+
+
+export const setCatalogPantoneBodyPantoneCodeRegExp = new RegExp('^[A-Za-z0-9][A-Za-z0-9 .#/-]*$');
+
+
+export const SetCatalogPantoneBody = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string().min(1).max(setCatalogPantoneBodyStyleNameMax),
+  "colorName": zod.string().min(1).max(setCatalogPantoneBodyColorNameMax),
+  "pantoneCode": zod.string().min(1).max(setCatalogPantoneBodyPantoneCodeMax).regex(setCatalogPantoneBodyPantoneCodeRegExp).nullable(),
+  "pantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
+})
+
+export const SetCatalogPantoneResponse = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "styleName": zod.string(),
+  "colorName": zod.string(),
+  "brand": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "pantoneCode": zod.string().nullable().describe('Verified garment Pantone only; never inferred from RGB or Lab.'),
+  "pantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable(),
+  "updatedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary List curation collections (newest first)
  */
 export const ListCollectionsQueryParams = zod.object({
@@ -1546,7 +1630,7 @@ export const CreateCollectionResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 }))
 }),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
@@ -1645,7 +1729,7 @@ export const GetCollectionResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 }))
 }),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
@@ -1756,7 +1840,7 @@ export const UpdateCollectionResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 }))
 }),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
@@ -1874,7 +1958,7 @@ export const PreviewCollectionPaletteResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 })).max(previewCollectionPaletteResponseSuggestionsItemColorsMax),
   "alternatives": zod.array(zod.object({
   "colorName": zod.string(),
@@ -1909,7 +1993,7 @@ export const PreviewCollectionPaletteResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 })).max(previewCollectionPaletteResponseSuggestionsItemAlternativesMax)
 })).max(previewCollectionPaletteResponseSuggestionsMax),
   "unresolved": zod.array(zod.object({
@@ -2035,7 +2119,7 @@ export const CreateCollectionFromSuggestionResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 }))
 }),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
@@ -2156,7 +2240,7 @@ export const AddCollectionItemsResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 }))
 }),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
@@ -2269,7 +2353,7 @@ export const UpdateCollectionItemResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 }))
 }),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),
@@ -2369,7 +2453,7 @@ export const RemoveCollectionItemResponse = zod.object({
   "algorithmVersion": zod.string().nullable()
 }),zod.null()]).describe('Vendor web-swatch evidence metadata; not a calibrated fabric measurement.'),
   "garmentPantoneCode": zod.string().nullable().describe('Verified vendor\/staff garment Pantone only; never estimated.'),
-  "garmentPantoneSource": zod.string().nullable()
+  "garmentPantoneSource": zod.union([zod.literal('vendor_documentation'),zod.literal('staff_verification'),zod.literal(null)]).nullable()
 }))
 }),zod.null()]).describe('Immutable server-recomputed palette evidence; null for manual or legacy items.'),
   "brand": zod.string().nullable(),

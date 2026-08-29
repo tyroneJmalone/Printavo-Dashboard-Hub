@@ -10,6 +10,8 @@
     "test:quote-matrices": "node ./test-quote-matrices.mjs",
     "test:hub-calc": "node ./test-hub-calc.mjs",
     "test:palette-suggestions": "node ./test-palette-suggestions.mjs",
+    "test:pantone-verification": "node ./test-pantone-verification.mjs",
+    "test:pantone-verification-integration": "node ./test-pantone-verification-integration.mjs",
     "test:color-measurement": "node ./test-color-measurement.mjs",
     "test:missive-access-policy": "node ./test-missive-access-policy.mjs",
     "test:missive-authorization-db": "node ./test-missive-authorization-db.mjs",

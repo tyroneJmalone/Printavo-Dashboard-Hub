@@ -7,6 +7,7 @@
  */
 import type { PaletteColorEvidence } from './paletteColorEvidence';
 import type { PaletteColorSuggestionConfidence } from './paletteColorSuggestionConfidence';
+import type { PaletteColorSuggestionGarmentPantoneSource } from './paletteColorSuggestionGarmentPantoneSource';
 import type { PaletteColorSuggestionMatchMethod } from './paletteColorSuggestionMatchMethod';
 import type { PaletteCustomerColor } from './paletteCustomerColor';
 
@@ -32,5 +33,5 @@ export interface PaletteColorSuggestion {
      */
   garmentPantoneCode: string | null;
   /** @nullable */
-  garmentPantoneSource: string | null;
+  garmentPantoneSource: PaletteColorSuggestionGarmentPantoneSource;
 }

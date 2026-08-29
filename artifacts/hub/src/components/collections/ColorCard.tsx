@@ -113,6 +113,11 @@ export function ColorCard({ styleSuggestion, color, isSelected, onToggle }: Colo
             <span className={cn("font-mono mt-0.5", color.garmentPantoneCode ? "text-slate-300" : "text-slate-600")}>
               {color.garmentPantoneCode ?? "Not provided."}
             </span>
+            {color.garmentPantoneSource && (
+              <span className="mt-0.5 text-[8px] capitalize text-slate-600">
+                {color.garmentPantoneSource.replaceAll("_", " ")}
+              </span>
+            )}
           </div>
           {color.matchedCustomer.pantoneCode && (
             <div className="flex flex-col text-right">

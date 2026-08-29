@@ -270,6 +270,9 @@ function ItemCard({ item, collectionId }: { item: CollectionItemDetail; collecti
                                    <div className="flex flex-col">
                                      <span className="text-slate-500">Garment PMS</span>
                                      <span className="font-mono text-slate-300">{match.garmentPantoneCode ?? "Not provided."}</span>
+                                      {match.garmentPantoneSource && (
+                                        <span className="capitalize text-slate-600">{match.garmentPantoneSource.replaceAll("_", " ")}</span>
+                                      )}
                                    </div>
                                    {match.matchedCustomer.pantoneCode && (
                                      <div className="flex flex-col text-right">

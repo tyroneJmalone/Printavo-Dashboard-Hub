@@ -9,7 +9,9 @@ import {
   timestamp,
   uniqueIndex,
   index,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Local vendor product catalog (Product Finder phase 2).
@@ -121,6 +123,16 @@ export const catalogColorEvidenceTable = pgTable(
   (t) => [
     uniqueIndex("catalog_color_evidence_vendor_style_color_ux").on(t.vendor, t.styleName, t.colorName),
     index("catalog_color_evidence_work_ix").on(t.status, t.priority, t.retryAt),
+    check(
+      "catalog_color_evidence_pantone_provenance_v2_ck",
+      sql`(
+        (${t.verifiedPantoneCode} IS NULL AND ${t.verifiedPantoneSource} IS NULL)
+        OR
+        (NULLIF(btrim(${t.verifiedPantoneCode}), '') IS NOT NULL
+          AND ${t.verifiedPantoneSource} IS NOT NULL
+          AND ${t.verifiedPantoneSource} IN ('vendor_documentation', 'staff_verification'))
+      )`,
+    ),
   ],
 );
 
