@@ -46,3 +46,10 @@ uri = "file://docs/hub-status-and-roadmap.pdf"
 type = "pdf"
 title = "Hub Status & Roadmap (PDF)"
 description = "Printable/forwardable export of the Aug 7 status snapshot: modules built, drafted curation tasks, assessed ideas backlog, and suggested sequencing."
+
+[[outputs]]
+id = "s3Hz9RF1kzkNXRwcbMOAb"
+uri = "file://exports/printavo-hub-architecture-overview.pdf"
+type = "pdf"
+title = "Printavo Hub — Architecture & Systems Overview"
+description = "Shareable technical brief: platform architecture, sync foundation, current modules, integrations, safety guardrails, and roadmap (including the Missive AI context layer direction)."

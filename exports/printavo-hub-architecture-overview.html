@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Printavo Hub — Architecture &amp; Systems Overview</title>
+<style>
+  @page { size: Letter; margin: 0.42in 0.45in; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: #1a2332; font-size: 8.6px; line-height: 1.35; }
+  h1 { font-size: 17px; letter-spacing: -0.02em; }
+  .sub { color: #5b6b7d; font-size: 9.5px; margin-top: 2px; margin-bottom: 8px; }
+  .cols { column-count: 2; column-gap: 16px; }
+  .section { break-inside: avoid; margin-bottom: 9px; }
+  .section h2 { font-size: 10.3px; border-bottom: 1.4px solid #1a2332; padding-bottom: 2px; margin-bottom: 4px; letter-spacing: 0.01em; }
+  .section h3 { font-size: 8.9px; margin: 4px 0 2px; color: #1a2332; }
+  .section p, .section li { color: #47586b; margin-bottom: 2.5px; }
+  .section ul { margin-left: 12px; }
+  .section li { margin-bottom: 2px; }
+  .section b { color: #1a2332; }
+  .callout { background: #f2f5f9; border-radius: 5px; padding: 6px 8px; margin-bottom: 9px; break-inside: avoid; }
+  .callout h2 { font-size: 10.3px; margin-bottom: 3px; border: none; padding: 0; }
+  .callout p { color: #47586b; }
+  table { width: 100%; border-collapse: collapse; font-size: 8px; }
+  th { text-align: left; font-size: 7.4px; letter-spacing: 0.04em; text-transform: uppercase; color: #5b6b7d; border-bottom: 1px solid #d7dee7; padding: 2px 4px 2px 0; }
+  td { padding: 2.5px 4px 2.5px 0; border-bottom: 1px solid #eef2f6; vertical-align: top; color: #47586b; }
+  td b { color: #1a2332; }
+  .pill { display: inline-block; background: #e0e7ff; color: #3730a3; font-size: 6.8px; font-weight: 700; padding: 0.5px 4px; border-radius: 3px; letter-spacing: 0.04em; }
+  .pill.now { background: #dcfce7; color: #15803d; }
+  .pill.next { background: #dbeafe; color: #1d4ed8; }
+  .pill.later { background: #f1f5f9; color: #64748b; }
+  .rule { color: #b91c1c; font-weight: 700; }
+  .foot { margin-top: 7px; padding-top: 5px; border-top: 1px solid #d7dee7; color: #5b6b7d; font-size: 7.6px; }
+</style>
+</head>
+<body>
+
+<h1>Printavo Hub — Architecture &amp; Systems Overview</h1>
+<div class="sub">Mint Printworks · August 29, 2026 · Prepared for external technical review · Companion to the Project Plan &amp; Status sheet</div>
+
+<div class="callout">
+  <h2>What this is</h2>
+  <p><b>Printavo Hub</b> is one consolidated internal platform for Mint Printworks (screen printing / embroidery shop) replacing 11 separate Printavo-connected apps. Printavo is the shop's system of record (quotes, invoices, customers, payments, production statuses); the Hub continuously mirrors it into its own Postgres database and builds every module on that local mirror — reporting, purchasing, production printing, quoting, client intelligence, email correspondence, and AI assistance. Core design stance: <b>Printavo's API is slow and rate-limited, so read paths never touch it live; write paths are few, guarded, and human-confirmed.</b></p>
+</div>
+
+<div class="cols">
+
+<div class="section">
+  <h2>Platform Architecture</h2>
+  <ul>
+    <li><b>Monorepo</b> (pnpm workspaces, Node 24, TypeScript): <b>Hub</b> — React 18 + Vite SPA (staff-facing); <b>API server</b> — Express 5, all business logic and background schedulers; <b>moMINTum</b> — ported task-app frontend served alongside; shared libs for DB schema, Printavo client, API spec.</li>
+    <li><b>Data</b>: PostgreSQL + Drizzle ORM. ~40 schema modules: <code>pv_*</code> Printavo mirror tables, sync bookkeeping (runs, checkpoints, watermarks, change events), plus Hub-owned domains (purchasing, print queue, catalog, branding, correspondence, AI drafts…). Hub-owned data is <b>never</b> written into mirror tables — enrichment lives in separate tables keyed by Printavo ID.</li>
+    <li><b>API contract</b>: OpenAPI spec is the source of truth; Orval codegen produces typed React Query hooks + Zod schemas consumed by the frontend. No hand-written fetch calls.</li>
+    <li><b>Auth</b>: Clerk (Google/email sign-in) + server-side staff allowlist. Roles: admin vs staff, plus per-capability grants (e.g. email activity). Sensitive actions add an admin PIN. Every API route sits behind staff auth; email/correspondence adds a per-mailbox ACL layer.</li>
+    <li><b>Hosting</b>: Replit (dev + published production as separate environments, separate databases). Files (mirrored Printavo attachments, PNGs, email images) live in object storage.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>Foundation — Printavo Sync Engine</h2>
+  <ul>
+    <li>Printavo GraphQL v2 has <b>no updated-after filter</b>, so incremental sync re-crawls invoices+quotes every 5 min (rolling 12-month window) and detects changes by <b>content hash</b> after timestamp normalization (Printavo renders the same instant in varying timezones). ~2.3 min per poll, ~23% of the account-wide 10 req/5s budget.</li>
+    <li>Detail backfill (line items, imprints), payments history (2017→today), messages, inquiries, merch stores, reference data, and order files mirrored to object storage. Full-history backup to Feb 2018 (~19k orders) with one-click portable ZIP export.</li>
+    <li>Self-healing scheduler: interrupted runs resume at boot; deep re-checks nightly; global sync bar + manual "Sync Now" on every page.</li>
+    <li>Change events (created / updated / status_change / converted) feed downstream automation like status rules and task sync.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>Functional Modules (current)</h2>
+  <h3>Analyze</h3>
+  <p>Reports API replicating legacy Insights formulas (invoice-only revenue, cash-basis payments) · Orders &amp; Payments explorers · Pipeline and Status Activity (arrivals, dwell, occupancy) · <b>Ask AI</b>: plain-English questions → guarded LLM-written SQL (details under Safety), answer shown with table + SQL, saveable as deterministic presets.</p>
+  <h3>Clients (Client 360)</h3>
+  <p>~3,565-customer directory ranked by spend, niche categories + niche report, customer profiles (lifetime/YTD spend, frequency, top styles, decoration mix, contacts, order history) · <b>Brand standards</b>: brand colors (Pantone/hex), logo assets, artwork bookmarks pulled read-only from the shop's Dropbox with invoice-number links back to Printavo · Garment-color collections with Pantone catalog + palette suggestions.</p>
+  <h3>Purchasing / Vendor Orders</h3>
+  <p>Needs-ordering scan of open orders → cart → PO builder with live SanMar + S&amp;S pricing and warehouse auto-pick → push line-item updates + PO PDF back to Printavo → <b>electronic order submission to both vendors (live-proven)</b> with PIN gate, kill switch, and anti-double-order guards → tracking dashboard. Status-rules engine suggests order-status moves; staff confirm each.</p>
+  <h3>Production — Print Queue</h3>
+  <p>Status-filtered workorder printing with presets and combined previews · bulk status changes with stale-order guards · auto-print to physical printers via PrintNode (dry-run default, double-print protection) · in-house packing slips / box labels rendered from local data (near-clone of Printavo's template).</p>
+  <h3>Quoting</h3>
+  <p>Price Calculator (faithful port of the legacy Breezy Quote tool: decoration matrices, exact legacy math, PNG export) · <b>AI Quote Drafts</b>: paste a customer request, AI extracts a structured draft quote priced from live matrices; staff review/edit; creating the real Printavo quote requires an explicit typed confirmation, idempotency-keyed, one attempt only.</p>
+  <h3>Email &amp; Correspondence</h3>
+  <p>Read-only Gmail monitoring of CSR mailboxes (service-account, metadata-only) mapped to customers/invoices; reply-tracking instead of read receipts; email-effort deals report · Missive correspondence sync into a per-customer communication timeline · AI search over correspondence with citation validation — <b>ACL is applied before any AI retrieval</b>, plus an AI kill switch.</p>
+  <h3>Shared-DB sister apps</h3>
+  <p><b>moMINTum</b> (task manager) and <b>Mint Bucks</b> (store credit) run inside the Hub against the standalone apps' <b>live production databases</b> — email-only identity mapping, additive-only hub-owned tables, advisory-lock JIT creation, write-blocked shared settings, and phased ownership of pollers (dormant until flipped). Two-way Printavo ⇄ moMINTum task sync with twin routing and completion reconciliation.</p>
+  <h3>Also</h3>
+  <p>Chipply web-store imports (revenue kept strictly separate from Printavo revenue; invoices link themselves via nickname convention) · Shipping rate estimator (ShipStation + EasyPost side-by-side) and packing-slip/label sorter · Product Finder (cross-vendor stock/catalog search) · Backup dashboard.</p>
+</div>
+
+<div class="section">
+  <h2>Integrations</h2>
+  <table>
+    <tr><th>Service</th><th>Used for</th><th>Access model</th></tr>
+    <tr><td><b>Printavo</b> (GraphQL v2)</td><td>System of record — sync, write-backs, quotes, tasks</td><td>API token · throttled shared gateway (account-wide 10 req/5s)</td></tr>
+    <tr><td><b>SanMar</b></td><td>Live pricing/inventory, catalog import, electronic POs</td><td>SOAP, account credentials</td></tr>
+    <tr><td><b>S&amp;S Activewear</b></td><td>Live pricing/inventory, catalog import, electronic POs</td><td>REST, API key</td></tr>
+    <tr><td><b>Gmail</b> (Workspace)</td><td>Mailbox activity monitoring</td><td>Service account, domain-wide delegation, <b>gmail.readonly + metadata-only</b> — no compose/send</td></tr>
+    <tr><td><b>Missive</b></td><td>Correspondence sync; team's actual email client</td><td>Direct API token, paced ~1 req/s, GET-only today</td></tr>
+    <tr><td><b>Dropbox</b></td><td>Customer artwork discovery/preview</td><td>Managed OAuth connector, read-only, path-authorized</td></tr>
+    <tr><td><b>OpenAI</b></td><td>Ask AI, quote extraction, correspondence search</td><td>Managed proxy today; swap to own key = env change only</td></tr>
+    <tr><td><b>PrintNode</b></td><td>Auto-printing workorders</td><td>API key</td></tr>
+    <tr><td><b>ShipStation / EasyPost</b></td><td>Shipping rate quotes</td><td>API keys</td></tr>
+    <tr><td><b>Resend</b></td><td>Mint Bucks customer emails</td><td>Managed connector; test-mode redirect until go-live</td></tr>
+    <tr><td><b>Clerk</b></td><td>Staff sign-in</td><td>Managed tenant + server-side allowlist/roles</td></tr>
+    <tr><td><b>Chipply</b></td><td>Web-store results</td><td>No API — email/CSV parsing with mandatory review</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>Safety &amp; Guardrail Principles</h2>
+  <ul>
+    <li><b>AI reads are sandboxed</b>: Ask AI runs SELECT-only validated SQL as a dedicated no-login DB role that can see only 18 whitelisted tables, inside a read-only transaction with timeout and row caps. Correspondence AI applies mailbox ACLs before retrieval and validates citations.</li>
+    <li><b>AI never writes to live systems</b>: quote drafts, suggestions, and enrichment always land in a review queue; a human types an explicit confirmation to execute.</li>
+    <li><b>Non-idempotent Printavo writes get one attempt</b>; ambiguous results lock for manual verification rather than retrying.</li>
+    <li><b>Kill switches and phased ownership</b> on every automation (auto-print, status rules, pollers, email mode) — everything ships OFF/dry-run and is flipped deliberately, one environment at a time.</li>
+    <li><b>Module isolation</b> is a hard requirement: each module is independently tunable without breaking others; Reports reads Postgres only, never the Printavo API.</li>
+    <li class="rule">Real-write testing uses designated test order #22251 exclusively — status changes are customer-visible in Printavo.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2>Roadmap</h2>
+  <h3><span class="pill next">NEXT — drafted, awaiting acceptance</span></h3>
+  <ul>
+    <li><b>Missive AI context layer (Task #44)</b> — the current focus and the reason for this review. Missive's native AI already triages and drafts replies well; the Hub will supply <b>verified Printavo knowledge</b> behind it via a Hub-hosted MCP server that Missive's assistant calls: confidence-scored customer matching (never a silent guess), read-only tools for orders/invoices/payments/mockups/artwork/brand standards/links, full tool-call audit logging, conversation-contact scoping. Verified constraints: Missive AI Rules cannot call MCP tools (only four fixed AI actions), so Pattern A ships first — rule drafts, staff runs a saved assistant command that enriches the draft with Hub facts; Pattern B (webhook → Hub posts a context note → rule drafts from it) is a timing spike. Phase 3 adds one safe action: create a Hub AI Quote Draft (enters the existing review/confirm flow — never a live Printavo quote). Explicitly excluded: sending email, live Printavo writes, exposing mailbox content through the shared MCP credential.</li>
+    <li><b>Complete customer Brand Standards (Task #45)</b> — copyable Pantone/HEX/RGB/CMYK + ink/thread values, structured typography, logo usage rules, approval history, printable standards sheet.</li>
+  </ul>
+  <h3><span class="pill later">LOGGED — not scheduled</span></h3>
+  <ul>
+    <li><b>Shop knowledge base</b> (FAQ, SOPs, policies) structured for both humans and AI — the natural second context source for the Missive assistant; location (Hub-native vs Notion) undecided.</li>
+    <li><b>CFO AI assistant</b> — analyst agent over Printavo mirror + imported payroll/labor + email-effort data; tunable cost model; advisory digests on the Ask AI guardrails.</li>
+    <li><b>Sales &amp; follow-up tools</b> — proactive follow-up reminders, receivables tracking, customer-activity alerts (get much smarter once correspondence data matures).</li>
+    <li><b>External analytics hub</b> — Fireflies, JustCall, Google Analytics, Meta, RB2B, etc. behind the existing role tiers.</li>
+    <li>Offsite backup copies (Drive/NAS) · preset reports library · shared color catalog / key-authed catalog API for the sister BreezyTweak SaaS · outgoing-activity audit log · maintenance log · public reorder portal (last, after internal modules settle).</li>
+  </ul>
+</div>
+
+</div>
+
+<div class="foot">
+  Prepared Aug 29, 2026 for external technical review of the Missive AI direction. Companion documents: Project Plan &amp; Status sheet (module-by-module test status) · Missive/Printavo MCP architecture review (reviewed and folded into Task #44 with corrections: MCP endpoint must be served from the published deployment; the shared org-level MCP credential cannot honor per-staff mailbox ACLs, so tools expose Printavo/branding data only; existing customer-matching and quote-draft safety rails will be reused rather than rebuilt).
+</div>
+
+</body>
+</html>
