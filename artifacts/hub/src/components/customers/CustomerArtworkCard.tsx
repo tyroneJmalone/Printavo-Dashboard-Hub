@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   useGetCustomerArtwork,
   getGetCustomerArtworkQueryKey,
@@ -27,6 +27,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Folder, Image as ImageIcon, Link as LinkIcon, Unlink, Download, Search, Star, Archive, Edit2, Loader2, Plus, File, ChevronRight, Trash2, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
+
+function alphabetizeDropboxEntries(entries: DropboxEntry[]): DropboxEntry[] {
+  return [...entries].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }) ||
+    a.id.localeCompare(b.id),
+  );
+}
 
 export function CustomerArtworkCard({ customerId }: { customerId: string }) {
   const { role } = useStaff();
@@ -169,6 +176,7 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
   const qc = useQueryClient();
   const [currentPath, setCurrentPath] = useState("");
   const [manualPath, setManualPath] = useState("");
+  const [folderSearch, setFolderSearch] = useState("");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [accumulated, setAccumulated] = useState<{ path: string, folders: DropboxEntry[] }>({ path: "", folders: [] });
   
@@ -177,6 +185,7 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
     if (open) {
       setCurrentPath("");
       setManualPath("");
+      setFolderSearch("");
       setCursor(undefined);
       setAccumulated({ path: "", folders: [] });
     }
@@ -214,6 +223,12 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
   const handleLink = (path: string) => {
     linkFolder.mutate({ id: customerId, data: { path } });
   };
+
+  const visibleFolders = useMemo(() => {
+    const query = folderSearch.trim().toLocaleLowerCase();
+    const sorted = alphabetizeDropboxEntries(accumulated.folders);
+    return query ? sorted.filter((folder) => folder.name.toLocaleLowerCase().includes(query)) : sorted;
+  }, [accumulated.folders, folderSearch]);
 
   const parts = currentPath.split("/").filter(Boolean);
   const handleNav = (index: number) => {
@@ -256,6 +271,20 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
           )}
         </div>
 
+        <div className="px-4 py-3 border-b border-slate-800">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Input
+              value={folderSearch}
+              onChange={(event) => setFolderSearch(event.target.value)}
+              placeholder="Filter folders by name..."
+              aria-label="Filter Dropbox folders by name"
+              data-testid="input-filter-dropbox-folders"
+              className="h-9 pl-9 bg-slate-900 border-slate-700"
+            />
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-2 min-h-[300px]">
           {isFetching && accumulated.folders.length === 0 ? (
             <div className="flex items-center justify-center py-20 text-slate-500">
@@ -265,9 +294,13 @@ function FolderPicker({ customerId, open, onOpenChange }: { customerId: string, 
             <div className="text-center py-20 text-slate-500 text-sm">
               No subfolders found here.
             </div>
+          ) : visibleFolders.length === 0 ? (
+            <div className="text-center py-20 text-slate-500 text-sm">
+              No folders match “{folderSearch.trim()}”.
+            </div>
           ) : (
             <div className="space-y-0.5">
-              {accumulated.folders.map(folder => (
+              {visibleFolders.map(folder => (
                 <div 
                   key={folder.id} 
                   className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-slate-800/60 cursor-pointer group transition-colors"
@@ -436,7 +469,10 @@ function CustomerArtworkBrowserDialog({ customerId, open, onOpenChange, bookmark
     }
   }, [browseData, currentPath, debouncedQ, cursor]);
 
-  const entries = debouncedQ ? (searchData?.entries || []) : accumulated.entries;
+  const entries = useMemo(
+    () => alphabetizeDropboxEntries(debouncedQ ? (searchData?.entries || []) : accumulated.entries),
+    [accumulated.entries, debouncedQ, searchData?.entries],
+  );
   const isLoading = isBrowsing || isSearching;
 
   // Breadcrumbs: only show parts that are beyond the rootPath.
