@@ -45,6 +45,38 @@ function canPreviewArtwork(name: string): boolean {
   return /\.(?:gif|jpe?g|pdf|png|webp)$/i.test(name);
 }
 
+function canThumbnailArtwork(name: string): boolean {
+  return /\.(?:gif|jpe?g|png|webp)$/i.test(name);
+}
+
+function ArtworkThumbnail({ customerId, entry }: { customerId: string; entry: DropboxEntry }) {
+  const [failed, setFailed] = useState(false);
+  if (entry.type === "folder") {
+    return <Folder size={18} className="text-blue-400 fill-blue-400/20" />;
+  }
+  if (canThumbnailArtwork(entry.name) && !failed) {
+    return (
+      <img
+        src={artworkPreviewUrl(customerId, entry.pathLower || entry.id || "")}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="h-12 w-12 rounded border border-slate-700/80 bg-white object-contain"
+        data-testid={`dropbox-thumbnail-${entry.id}`}
+      />
+    );
+  }
+  const extension = entry.name.includes(".")
+    ? entry.name.split(".").pop()?.slice(0, 4).toUpperCase()
+    : "FILE";
+  return (
+    <div className="h-12 w-12 rounded border border-slate-700/80 bg-slate-900 flex flex-col items-center justify-center gap-0.5">
+      <File size={17} className="text-slate-400" />
+      <span className="text-[8px] font-bold tracking-wide text-slate-500">{extension}</span>
+    </div>
+  );
+}
+
 function ArtworkPreviewDialog({ customerId, entryName, locator, open, onOpenChange }: {
   customerId: string;
   entryName: string;
@@ -700,8 +732,8 @@ function EntryRow({ entry, customerId, onNavigate, isBookmarked, isAdmin }: { en
       className={`flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-slate-800/60 group transition-colors ${isFolder ? "cursor-pointer" : ""}`}
       onClick={isFolder ? onNavigate : undefined}
     >
-      <div className="shrink-0 pt-0.5">
-        {isFolder ? <Folder size={16} className="text-blue-400 fill-blue-400/20" /> : <File size={16} className="text-slate-400" />}
+      <div className={`shrink-0 ${isFolder ? "pt-0.5" : ""}`}>
+        <ArtworkThumbnail customerId={customerId} entry={entry} />
       </div>
       <div className="min-w-0 flex-1 flex items-start gap-2">
         <p
