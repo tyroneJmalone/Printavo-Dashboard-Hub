@@ -1,0 +1,150 @@
+I agree: rebuilding Missive’s reply detection and drafting would mostly be redundant—especially since you have tested it and the output is already good.
+
+The stronger opportunity is to make **Hub the trusted Printavo knowledge and action layer behind Missive**, rather than another inbox.
+
+## Recommended division of responsibilities
+
+### Missive should own
+
+- Monitoring incoming messages
+- Deciding whether a response is warranted
+- Generating the initial response
+- Team assignment and collaboration
+- Draft editing and human approval
+- Sending the final email
+
+### Hub should supply
+
+- Customer identification
+- Customer profile links
+- Recent and historical Printavo orders
+- Current invoice status and important dates
+- Outstanding balances
+- Mockups, proofs, and production-file links
+- Artwork bookmarks and Brand Standards
+- Shipping or product information
+- Safe quote-draft creation
+- Verified facts and warnings the AI must not invent
+
+That would make Hub complementary rather than competitive.
+
+## Best integration approach
+
+There are two different MCP directions in Missive’s documentation:
+
+1. **Missive’s MCP server** gives an outside AI application access to Missive.
+2. **Missive MCP integrations** let Missive’s own assistant access an outside system.
+
+For this use case, we primarily want the second direction: a **Hub MCP integration available to Missive AI**.
+
+Potential Hub tools could include:
+
+- `find_customer`
+- `get_customer_summary`
+- `get_recent_orders`
+- `get_order_status`
+- `get_invoice_details`
+- `get_payment_status`
+- `get_order_mockups`
+- `get_customer_artwork`
+- `get_brand_standards`
+- `build_customer_link`
+- `build_order_link`
+- `create_quote_draft`
+
+Each result should provide verified facts and direct Hub or Printavo links—not just unstructured text.
+
+## Important limitation to test
+
+We need to determine whether **Missive AI Rules can call connected MCP tools**, or whether MCP tools are available only to the manually invoked Missive assistant.
+
+If AI Rules cannot use MCP, there are still two good options:
+
+### Option A: “Enrich this reply” command
+
+Missive’s rule creates the initial draft automatically. A staff member then runs a reusable assistant command such as:
+
+> Check Hub and Printavo for this customer and revise the draft using verified order information.
+
+This keeps the workflow simple while eliminating most manual Printavo research.
+
+### Option B: Automatic Hub context note
+
+When a new customer message arrives:
+
+1. Missive sends Hub a webhook.
+2. Hub identifies the customer and likely order.
+3. Hub posts an internal Missive note containing:
+   - Customer link
+   - Likely invoice/order
+   - Status and relevant dates
+   - Last order
+   - Outstanding amount
+   - Mockup/proof links
+   - Any uncertainties or multiple possible matches
+4. Missive’s AI Rule uses that conversation context when creating its draft.
+
+We would need to test whether rule-generated drafts reliably include internal notes and whether ordering guarantees that the note arrives before the AI rule runs.
+
+## Quote creation
+
+This could be especially useful, but it should remain carefully gated.
+
+A customer might email:
+
+> Can you quote 75 more of the navy shirts from our last order?
+
+Missive AI could use Hub to:
+
+1. Find the customer.
+2. Identify the prior order.
+3. Retrieve the relevant products, colors, sizes, imprints, and pricing context.
+4. Create a **Hub AI Quote Draft**.
+5. Return a link to the draft in the Missive conversation.
+6. Let staff review and explicitly create the Printavo quote from Hub.
+
+The email assistant should not directly create a live Printavo quote or promise pricing without the existing Hub review and confirmation process.
+
+## Suggested rollout
+
+### Phase 1: Read-only Printavo knowledge
+
+Give Missive AI access to customer, order, invoice, payment, artwork, mockup, and Brand Standards information, with direct links.
+
+This provides significant value with very little external-write risk.
+
+### Phase 2: Incoming-email enrichment
+
+Use Missive webhooks to identify the customer/order and add a concise internal context note or label.
+
+### Phase 3: Safe actions
+
+Allow Missive AI to create recoverable Hub objects, such as:
+
+- AI quote drafts
+- Follow-up tasks
+- Customer/order link suggestions
+- Artwork association suggestions
+
+All meaningful actions remain reviewable.
+
+### Phase 4: Quality feedback
+
+Track whether staff:
+
+- Used the suggested context
+- Accepted the draft
+- Heavily edited it
+- Rejected it
+- Corrected the customer or order match
+- Created a quote from it
+
+That feedback could improve prompts and matching without trying to replace Missive’s existing AI.
+
+## My recommendation
+
+I would revise **Task #44 (Draft client email replies intelligently)** around this strategy:
+
+> **Keep Missive’s native AI drafting and give it verified Hub/Printavo knowledge plus safe, reviewable actions.**
+
+The first investigation should be whether Missive AI Rules can access custom MCP integrations. That answer determines whether Hub context can enter fully automatic rule-generated drafts or initially works as an interactive “enrich this response” capability.
