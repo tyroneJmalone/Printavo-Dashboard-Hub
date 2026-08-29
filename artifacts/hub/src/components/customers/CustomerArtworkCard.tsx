@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Folder, Link as LinkIcon, Unlink, Search, Star, Archive, Edit2, Loader2, File, ChevronRight, Trash2, ExternalLink, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 
 function alphabetizeDropboxEntries(entries: DropboxEntry[]): DropboxEntry[] {
   return [...entries].sort((a, b) =>
@@ -520,9 +521,14 @@ function BookmarkRow({ bookmark, customerId, isAdmin, onEdit }: { bookmark: Artw
             <p className="text-xs text-slate-500 mt-1 break-words">{bookmark.label}</p>
           )}
           {invoiceNum && (
-            <span className="inline-block mt-2 text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/30 text-emerald-400 border border-emerald-800/50 uppercase tracking-wider">
-              inv #{invoiceNum}
-            </span>
+            <div className="mt-2">
+              <PrintavoOrderLink
+                orderId={bookmark.printavoOrderId}
+                visualId={invoiceNum}
+                prefix="inv #"
+                className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/30 text-emerald-400 border border-emerald-800/50 uppercase tracking-wider"
+              />
+            </div>
           )}
           {bookmark.notes && (
             <p className="text-xs text-slate-300 mt-2 bg-slate-900/60 p-2 rounded border border-slate-800/50 leading-relaxed whitespace-pre-wrap">{bookmark.notes}</p>

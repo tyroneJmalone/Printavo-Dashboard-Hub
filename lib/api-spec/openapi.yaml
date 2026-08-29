@@ -6435,7 +6435,7 @@ components:
         retired: { type: boolean }
     ArtworkBookmark:
       type: object
-      required: [id, dropboxId, pathLower, pathDisplay, name, label, preferred, retired]
+      required: [id, dropboxId, pathLower, pathDisplay, name, label, preferred, retired, printavoOrderId]
       properties:
         id: { type: string, format: uuid }
         dropboxId: { type: string }
@@ -6446,6 +6446,7 @@ components:
         notes: { type: [string, "null"] }
         preferred: { type: boolean }
         retired: { type: boolean }
+        printavoOrderId: { type: [string, "null"] }
         createdByEmail: { type: string }
         updatedByEmail: { type: string }
         createdAt: { type: string, format: date-time }

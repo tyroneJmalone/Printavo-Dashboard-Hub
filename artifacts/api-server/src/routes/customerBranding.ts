@@ -122,6 +122,7 @@ function bookmarkJson(row: Record<string, unknown>) {
     notes: row.notes ?? null,
     preferred: row.preferred,
     retired: row.retired,
+    printavoOrderId: row.printavo_order_id ?? null,
     createdByEmail: row.created_by_email,
     updatedByEmail: row.updated_by_email,
     createdAt: row.created_at,
@@ -370,10 +371,40 @@ router.get("/customers/:id/artwork", async (req, res): Promise<void> => {
         ORDER BY retired ASC, preferred DESC, label ASC LIMIT 250`,
       [id],
     );
+    const invoiceVisualIds = [
+      ...new Set(
+        bookmarks.rows
+          .map((bookmark) => {
+            const match = String(bookmark.name).match(/(?:inv|invoice)?[ -_]?#?(\d{4,6})/i);
+            return match ? Number(match[1]) : null;
+          })
+          .filter((visualId): visualId is number => visualId !== null),
+      ),
+    ];
+    const matchingOrders = invoiceVisualIds.length
+      ? await pool.query(
+          `SELECT DISTINCT ON (visual_id) visual_id, printavo_id
+             FROM pv_orders
+            WHERE customer_id = $1
+              AND visual_id = ANY($2::int[])
+            ORDER BY visual_id, (order_type = 'invoice') DESC,
+                     printavo_updated_at DESC NULLS LAST`,
+          [id, invoiceVisualIds],
+        )
+      : { rows: [] };
+    const orderIdByVisualId = new Map<number, string>(
+      matchingOrders.rows.map((order) => [Number(order.visual_id), String(order.printavo_id)]),
+    );
     res.json({
       linked: true,
       folder: folderJson(root),
-      bookmarks: bookmarks.rows.map((bookmark) => bookmarkJson(bookmark)),
+      bookmarks: bookmarks.rows.map((bookmark) => {
+        const match = String(bookmark.name).match(/(?:inv|invoice)?[ -_]?#?(\d{4,6})/i);
+        return bookmarkJson({
+          ...bookmark,
+          printavo_order_id: match ? orderIdByVisualId.get(Number(match[1])) ?? null : null,
+        });
+      }),
     });
   } catch (err) {
     dropboxFailure(req, res, err);

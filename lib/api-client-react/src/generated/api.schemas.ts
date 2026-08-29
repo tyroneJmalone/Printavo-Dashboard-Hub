@@ -182,6 +182,8 @@ export interface ArtworkBookmark {
   notes?: string | null;
   preferred: boolean;
   retired: boolean;
+  /** @nullable */
+  printavoOrderId: string | null;
   createdByEmail?: string;
   updatedByEmail?: string;
   createdAt?: string;
