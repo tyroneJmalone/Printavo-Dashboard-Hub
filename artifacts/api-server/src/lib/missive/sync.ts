@@ -609,7 +609,10 @@ export async function runMissiveSync(
         for (let page = 0; page < MAX_PAGES; page++) {
           const payload = await missiveGet<Json>(
             missivePath("/v1/conversations", {
-              inbox: "true",
+              // "all" covers inbox + archived (closed) + sent-only
+              // conversations; trash and junk stay excluded. Inbox-only
+              // listing silently missed teammates' archived history.
+              all: "true",
               limit: CONVERSATION_LIMIT,
               until,
             }),
