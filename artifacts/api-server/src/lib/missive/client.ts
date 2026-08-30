@@ -20,6 +20,34 @@ export function missiveTransport(): "direct" | "connector" {
   return process.env.MISSIVE_API_TOKEN?.trim() ? "direct" : "connector";
 }
 
+export interface MissiveAccount {
+  /** Human-readable label derived from the secret name — for logs/status only. */
+  label: string;
+  /** Bearer token. Undefined means "use the managed connector transport". */
+  token: string | undefined;
+}
+
+/**
+ * Every configured Missive account. Each team member's personal token is
+ * stored as its own Replit Secret: MISSIVE_API_TOKEN is the primary account,
+ * and MISSIVE_API_TOKEN_<NAME> (e.g. MISSIVE_API_TOKEN_ANDREW) adds a
+ * teammate. Missive tokens only see conversations their own account can see,
+ * so syncing every mailbox requires one token per person.
+ */
+export function missiveAccounts(): MissiveAccount[] {
+  const accounts: MissiveAccount[] = [];
+  const primary = process.env.MISSIVE_API_TOKEN?.trim();
+  if (primary) accounts.push({ label: "primary", token: primary });
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!key.startsWith("MISSIVE_API_TOKEN_")) continue;
+    const token = value?.trim();
+    if (!token) continue;
+    accounts.push({ label: key.slice("MISSIVE_API_TOKEN_".length).toLowerCase(), token });
+  }
+  if (accounts.length === 0) accounts.push({ label: "connector", token: undefined });
+  return accounts;
+}
+
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export function retryDelay(response: Response, attempt: number): number {
@@ -64,10 +92,13 @@ async function scheduledRequest(work: () => Promise<Response>): Promise<Response
  * Prefer Missive's public API directly when a token is stored in Replit
  * Secrets. The managed connector remains available for environments without
  * that secret, but its server-side base URL cannot be overridden here.
+ *
+ * `accountToken` selects which configured Missive account performs the
+ * request (see missiveAccounts). Omitted = the primary token / connector.
  */
-export async function missiveGet<T>(path: string): Promise<T> {
+export async function missiveGet<T>(path: string, accountToken?: string): Promise<T> {
   const url = missiveApiUrl(path);
-  const token = process.env.MISSIVE_API_TOKEN?.trim();
+  const token = accountToken?.trim() || process.env.MISSIVE_API_TOKEN?.trim();
   for (let attempt = 0; attempt < MISSIVE_MAX_ATTEMPTS; attempt++) {
     const response = await scheduledRequest(() =>
       token

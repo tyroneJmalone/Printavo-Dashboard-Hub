@@ -13,7 +13,7 @@ import {
 } from "@workspace/db";
 import { and, asc, eq } from "drizzle-orm";
 import type { Logger } from "pino";
-import { missiveGet, missivePath } from "./client";
+import { missiveAccounts, missiveGet, missivePath } from "./client";
 import { normalizeMessageId } from "./accessPolicy";
 
 type Json = Record<string, unknown>;
@@ -120,12 +120,14 @@ async function listTimed(
   basePath: string,
   rootKey: string,
   timestampKey: string,
+  accountToken?: string,
 ): Promise<Json[]> {
   const rows: Json[] = [];
   let until: number | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
     const payload = await missiveGet<Json>(
       missivePath(basePath, { limit: ITEM_LIMIT, until }),
+      accountToken,
     );
     const items = itemArray(payload[rootKey]);
     rows.push(...items);
@@ -137,8 +139,11 @@ async function listTimed(
   return rows;
 }
 
-async function fullMessage(messageId: string): Promise<Json | null> {
-  const payload = await missiveGet<Json>(`/v1/messages/${encodeURIComponent(messageId)}`);
+async function fullMessage(messageId: string, accountToken?: string): Promise<Json | null> {
+  const payload = await missiveGet<Json>(
+    `/v1/messages/${encodeURIComponent(messageId)}`,
+    accountToken,
+  );
   const messages = payload.messages;
   if (Array.isArray(messages)) return itemArray(messages)[0] ?? null;
   return typeof messages === "object" && messages !== null ? (messages as Json) : null;
@@ -166,8 +171,10 @@ function extractMentionIds(comment: Json): string[] {
   return [...ids];
 }
 
-async function syncDirectory(): Promise<Map<string, string>> {
-  const organizations = itemArray((await missiveGet<Json>("/v1/organizations")).organizations);
+async function syncDirectory(accountToken?: string): Promise<Map<string, string>> {
+  const organizations = itemArray(
+    (await missiveGet<Json>("/v1/organizations", accountToken)).organizations,
+  );
   const staffRows = await db.select().from(staffUsersTable);
   const staffByEmail = new Map(staffRows.map((row) => [row.email.toLowerCase(), row.id]));
   const staffByProviderId = new Map<string, string>();
@@ -218,6 +225,13 @@ async function syncDirectory(): Promise<Map<string, string>> {
     }
   }
   return staffByProviderId;
+}
+
+/** Merge missive user→staff mappings discovered through each account. */
+function mergeDirectories(target: Map<string, string>, source: Map<string, string>): void {
+  for (const [providerId, staffId] of source) {
+    if (!target.has(providerId)) target.set(providerId, staffId);
+  }
 }
 
 async function findMailboxId(messages: Json[]): Promise<string | null> {
@@ -320,6 +334,7 @@ async function hydrateConversation(
   conversation: Json,
   staffByProviderId: Map<string, string>,
   bounds?: { from?: number; to?: number },
+  accountToken?: string,
 ): Promise<boolean> {
   const providerThreadId = stringValue(conversation.id);
   if (!providerThreadId) return false;
@@ -327,6 +342,7 @@ async function hydrateConversation(
     `/v1/conversations/${encodeURIComponent(providerThreadId)}/messages`,
     "messages",
     "delivered_at",
+    accountToken,
   );
   const mailboxId = await findMailboxId(listedMessages);
   if (!mailboxId) return false;
@@ -334,7 +350,7 @@ async function hydrateConversation(
   for (const listed of listedMessages) {
     const id = stringValue(listed.id);
     if (!id) continue;
-    const full = (await fullMessage(id)) ?? listed;
+    const full = (await fullMessage(id, accountToken)) ?? listed;
     const delivered = epochDate(full.delivered_at ?? full.created_at).getTime();
     if (bounds?.from != null && delivered < bounds.from) continue;
     if (bounds?.to != null && delivered >= bounds.to) continue;
@@ -346,6 +362,7 @@ async function hydrateConversation(
     `/v1/conversations/${encodeURIComponent(providerThreadId)}/comments`,
     "comments",
     "created_at",
+    accountToken,
   );
   const newest = messages[0] ?? {};
   const oldest = messages[messages.length - 1] ?? newest;
@@ -548,66 +565,102 @@ export async function runMissiveSync(
     .set({ syncActive: true, updatedAt: new Date() })
     .where(eq(correspondenceSyncStateTable.id, 1));
   try {
-    const staffByProviderId = await syncDirectory();
+    // One token per team member: each Missive token only sees its own
+    // account's conversations, so every configured account is synced in turn.
+    // Conversations visible to several accounts dedupe naturally via the
+    // (provider, provider_thread_id) upsert and the conversationIsCurrent
+    // short-circuit.
+    const accounts = missiveAccounts();
     const requestedFrom = options.fromDate ? new Date(options.fromDate).getTime() : Number.NaN;
     const requestedTo = options.toDate ? new Date(options.toDate).getTime() : Number.NaN;
     const cutoff = Number.isFinite(requestedFrom)
       ? requestedFrom
       : Date.now() - state.initialBackfillDays * 86_400_000;
-    let until: number | undefined;
+    const staffByProviderId = new Map<string, string>();
+    const accountSummaries: string[] = [];
+    const accountErrors: string[] = [];
     let hydrated = 0;
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const payload = await missiveGet<Json>(
-        missivePath("/v1/conversations", {
-          inbox: "true",
-          limit: CONVERSATION_LIMIT,
-          until,
-        }),
-      );
-      const conversations = itemArray(payload.conversations);
-      for (const conversation of conversations) {
-        const activityAt = epochDate(conversation.last_activity_at).getTime();
-        const requestedEmails = options.fullHistoryForEmails ?? [];
-        const searchable = JSON.stringify(safeMetadata(conversation)).toLowerCase();
-        const requested = requestedEmails.some((email) => searchable.includes(email.toLowerCase()));
-        if (activityAt < cutoff && !requested) continue;
-        if (!options.fullHistoryForEmails?.length && await conversationIsCurrent(conversation)) {
-          continue;
+    for (const account of accounts) {
+      try {
+        mergeDirectories(staffByProviderId, await syncDirectory(account.token));
+        let accountHydrated = 0;
+        let until: number | undefined;
+        for (let page = 0; page < MAX_PAGES; page++) {
+          const payload = await missiveGet<Json>(
+            missivePath("/v1/conversations", {
+              inbox: "true",
+              limit: CONVERSATION_LIMIT,
+              until,
+            }),
+            account.token,
+          );
+          const conversations = itemArray(payload.conversations);
+          for (const conversation of conversations) {
+            const activityAt = epochDate(conversation.last_activity_at).getTime();
+            const requestedEmails = options.fullHistoryForEmails ?? [];
+            const searchable = JSON.stringify(safeMetadata(conversation)).toLowerCase();
+            const requested = requestedEmails.some((email) =>
+              searchable.includes(email.toLowerCase()),
+            );
+            if (activityAt < cutoff && !requested) continue;
+            if (!options.fullHistoryForEmails?.length && await conversationIsCurrent(conversation)) {
+              continue;
+            }
+            if (
+              await hydrateConversation(
+                conversation,
+                staffByProviderId,
+                options.fullHistoryForEmails?.length
+                  ? {
+                      from: Number.isFinite(requestedFrom) ? requestedFrom : undefined,
+                      to: Number.isFinite(requestedTo) ? requestedTo : undefined,
+                    }
+                  : undefined,
+                account.token,
+              )
+            ) accountHydrated++;
+          }
+          if (conversations.length < CONVERSATION_LIMIT || conversations.length === 0) break;
+          const oldest = numberValue(conversations[conversations.length - 1]?.last_activity_at);
+          if (oldest == null || oldest === until) break;
+          if (
+            oldest * 1000 < cutoff &&
+            (Number.isFinite(requestedFrom) || !options.fullHistoryForEmails?.length)
+          ) break;
+          until = oldest;
         }
-        if (
-          await hydrateConversation(
-            conversation,
-            staffByProviderId,
-            options.fullHistoryForEmails?.length
-              ? {
-                  from: Number.isFinite(requestedFrom) ? requestedFrom : undefined,
-                  to: Number.isFinite(requestedTo) ? requestedTo : undefined,
-                }
-              : undefined,
-          )
-        ) hydrated++;
+        hydrated += accountHydrated;
+        accountSummaries.push(`${account.label}: ${accountHydrated}`);
+      } catch (error) {
+        // A bad/revoked token for one person must not block the others.
+        const message =
+          error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
+        if (/connector returned HTML|non-JSON response/i.test(message)) {
+          connectorBlockedUntil = Date.now() + 60 * 60 * 1000;
+        }
+        log.error({ err: error, account: account.label }, "Missive sync failed for account");
+        accountErrors.push(`${account.label}: ${message}`);
       }
-      if (conversations.length < CONVERSATION_LIMIT || conversations.length === 0) break;
-      const oldest = numberValue(conversations[conversations.length - 1]?.last_activity_at);
-      if (oldest == null || oldest === until) break;
-      if (
-        oldest * 1000 < cutoff &&
-        (Number.isFinite(requestedFrom) || !options.fullHistoryForEmails?.length)
-      ) break;
-      until = oldest;
+    }
+    if (accountErrors.length === accounts.length) {
+      throw new Error(`All Missive accounts failed — ${accountErrors.join("; ")}`);
     }
     await purgeCorrespondenceRetention();
+    const summary =
+      `Hydrated ${hydrated} Missive conversation(s)` +
+      (accounts.length > 1 ? ` (${accountSummaries.join(", ")})` : "") +
+      (accountErrors.length ? `; failed accounts — ${accountErrors.join("; ")}` : "");
     await db
       .update(correspondenceSyncStateTable)
       .set({
         syncActive: false,
         lastSyncAt: new Date(),
-        lastSyncStatus: "ok",
-        lastSyncError: null,
+        lastSyncStatus: accountErrors.length ? "partial" : "ok",
+        lastSyncError: accountErrors.length ? accountErrors.join("; ").slice(0, 2000) : null,
         updatedAt: new Date(),
       })
       .where(eq(correspondenceSyncStateTable.id, 1));
-    return { ran: true, conversations: hydrated, message: `Hydrated ${hydrated} Missive conversation(s)` };
+    return { ran: true, conversations: hydrated, message: summary };
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 2000) : String(error).slice(0, 2000);
     if (/connector returned HTML|non-JSON response/i.test(message)) {
