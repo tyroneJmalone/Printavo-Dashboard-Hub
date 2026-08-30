@@ -9681,3 +9681,409 @@ export const GetStatusActivityOrdersResponse = zod.object({
 })
 
 
+/**
+ * @summary List knowledge base entries (staff)
+ */
+export const ListKnowledgeEntriesQueryParams = zod.object({
+  "status": zod.enum(['draft', 'approved', 'archived']).optional(),
+  "category": zod.coerce.string().optional(),
+  "q": zod.coerce.string().optional()
+})
+
+export const ListKnowledgeEntriesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "tags": zod.array(zod.string()),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "effectiveDate": zod.string().nullish(),
+  "expiresDate": zod.string().nullish(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "approvedByEmail": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "lastReviewedAt": zod.coerce.date().nullish(),
+  "createdByEmail": zod.string().nullish(),
+  "updatedByEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListKnowledgeEntriesResponse = zod.array(ListKnowledgeEntriesResponseItem)
+
+
+/**
+ * @summary Create a knowledge base entry (starts as draft)
+ */
+export const createKnowledgeEntryBodyTitleMin = 3;
+export const createKnowledgeEntryBodyTitleMax = 200;
+
+export const createKnowledgeEntryBodyBodyMax = 20000;
+
+export const createKnowledgeEntryBodyCategoryMax = 50;
+
+export const createKnowledgeEntryBodyTagsItemMax = 50;
+
+export const createKnowledgeEntryBodyTagsMax = 20;
+
+export const createKnowledgeEntryBodySourceNameMax = 300;
+
+export const createKnowledgeEntryBodySourceUrlMax = 1000;
+
+export const createKnowledgeEntryBodyEffectiveDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const createKnowledgeEntryBodyExpiresDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const CreateKnowledgeEntryBody = zod.object({
+  "title": zod.string().min(createKnowledgeEntryBodyTitleMin).max(createKnowledgeEntryBodyTitleMax),
+  "body": zod.string().min(1).max(createKnowledgeEntryBodyBodyMax),
+  "category": zod.string().max(createKnowledgeEntryBodyCategoryMax).optional(),
+  "tags": zod.array(zod.string().max(createKnowledgeEntryBodyTagsItemMax)).max(createKnowledgeEntryBodyTagsMax).optional(),
+  "sourceName": zod.string().max(createKnowledgeEntryBodySourceNameMax).optional(),
+  "sourceUrl": zod.string().max(createKnowledgeEntryBodySourceUrlMax).optional(),
+  "effectiveDate": zod.string().regex(createKnowledgeEntryBodyEffectiveDateRegExp).nullish(),
+  "expiresDate": zod.string().regex(createKnowledgeEntryBodyExpiresDateRegExp).nullish()
+})
+
+export const CreateKnowledgeEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "tags": zod.array(zod.string()),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "effectiveDate": zod.string().nullish(),
+  "expiresDate": zod.string().nullish(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "approvedByEmail": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "lastReviewedAt": zod.coerce.date().nullish(),
+  "createdByEmail": zod.string().nullish(),
+  "updatedByEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a knowledge base entry (any AI-visible edit demotes an approved entry to draft)
+ */
+export const UpdateKnowledgeEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateKnowledgeEntryBodyTitleMin = 3;
+export const updateKnowledgeEntryBodyTitleMax = 200;
+
+export const updateKnowledgeEntryBodyBodyMax = 20000;
+
+export const updateKnowledgeEntryBodyCategoryMax = 50;
+
+export const updateKnowledgeEntryBodyTagsItemMax = 50;
+
+export const updateKnowledgeEntryBodyTagsMax = 20;
+
+export const updateKnowledgeEntryBodySourceNameMax = 300;
+
+export const updateKnowledgeEntryBodySourceUrlMax = 1000;
+
+export const updateKnowledgeEntryBodyEffectiveDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const updateKnowledgeEntryBodyExpiresDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const UpdateKnowledgeEntryBody = zod.object({
+  "title": zod.string().min(updateKnowledgeEntryBodyTitleMin).max(updateKnowledgeEntryBodyTitleMax).optional(),
+  "body": zod.string().min(1).max(updateKnowledgeEntryBodyBodyMax).optional(),
+  "category": zod.string().max(updateKnowledgeEntryBodyCategoryMax).optional(),
+  "tags": zod.array(zod.string().max(updateKnowledgeEntryBodyTagsItemMax)).max(updateKnowledgeEntryBodyTagsMax).optional(),
+  "sourceName": zod.string().max(updateKnowledgeEntryBodySourceNameMax).optional(),
+  "sourceUrl": zod.string().max(updateKnowledgeEntryBodySourceUrlMax).optional(),
+  "effectiveDate": zod.string().regex(updateKnowledgeEntryBodyEffectiveDateRegExp).nullish(),
+  "expiresDate": zod.string().regex(updateKnowledgeEntryBodyExpiresDateRegExp).nullish()
+})
+
+export const UpdateKnowledgeEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "tags": zod.array(zod.string()),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "effectiveDate": zod.string().nullish(),
+  "expiresDate": zod.string().nullish(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "approvedByEmail": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "lastReviewedAt": zod.coerce.date().nullish(),
+  "createdByEmail": zod.string().nullish(),
+  "updatedByEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a knowledge base entry (admin only)
+ */
+export const DeleteKnowledgeEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteKnowledgeEntryResponse = zod.void()
+
+
+/**
+ * @summary Approve, archive, or re-draft an entry (records reviewer + time)
+ */
+export const ReviewKnowledgeEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ReviewKnowledgeEntryBody = zod.object({
+  "action": zod.enum(['approve', 'archive', 'redraft'])
+})
+
+export const ReviewKnowledgeEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "tags": zod.array(zod.string()),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "effectiveDate": zod.string().nullish(),
+  "expiresDate": zod.string().nullish(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "approvedByEmail": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "lastReviewedAt": zod.coerce.date().nullish(),
+  "createdByEmail": zod.string().nullish(),
+  "updatedByEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List registered AI context consumers (admin)
+ */
+export const ListAiConsumersResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "platform": zod.string(),
+  "tokenPrefix": zod.string(),
+  "tier": zod.enum(['internal', 'external']),
+  "scopes": zod.array(zod.string()),
+  "rateLimitPerMin": zod.number(),
+  "active": zod.boolean(),
+  "createdByEmail": zod.string().nullish(),
+  "lastUsedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAiConsumersResponse = zod.array(ListAiConsumersResponseItem)
+
+
+/**
+ * @summary Register a consumer and mint its bearer token (shown once)
+ */
+export const createAiConsumerBodyNameMin = 2;
+export const createAiConsumerBodyNameMax = 100;
+
+export const createAiConsumerBodyPlatformMax = 50;
+
+export const createAiConsumerBodyTierDefault = `internal`;
+export const createAiConsumerBodyScopesItemMax = 60;
+
+export const createAiConsumerBodyScopesMax = 30;
+
+export const createAiConsumerBodyRateLimitPerMinMax = 600;
+
+
+
+export const CreateAiConsumerBody = zod.object({
+  "name": zod.string().min(createAiConsumerBodyNameMin).max(createAiConsumerBodyNameMax),
+  "platform": zod.string().max(createAiConsumerBodyPlatformMax).optional(),
+  "tier": zod.enum(['internal', 'external']).default(createAiConsumerBodyTierDefault),
+  "scopes": zod.array(zod.string().max(createAiConsumerBodyScopesItemMax)).max(createAiConsumerBodyScopesMax).optional().describe('Tool names this token may call; [\"\*\"] allows every tier-eligible tool.'),
+  "rateLimitPerMin": zod.number().min(1).max(createAiConsumerBodyRateLimitPerMinMax).optional()
+})
+
+export const CreateAiConsumerResponse = zod.object({
+  "consumer": zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "platform": zod.string(),
+  "tokenPrefix": zod.string(),
+  "tier": zod.enum(['internal', 'external']),
+  "scopes": zod.array(zod.string()),
+  "rateLimitPerMin": zod.number(),
+  "active": zod.boolean(),
+  "createdByEmail": zod.string().nullish(),
+  "lastUsedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}),
+  "token": zod.string().describe('The raw bearer token — shown exactly once; only its hash is stored.')
+})
+
+
+/**
+ * @summary Update a consumer (scopes, rate limit, active flag)
+ */
+export const UpdateAiConsumerParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateAiConsumerBodyPlatformMax = 50;
+
+export const updateAiConsumerBodyScopesItemMax = 60;
+
+export const updateAiConsumerBodyScopesMax = 30;
+
+export const updateAiConsumerBodyRateLimitPerMinMax = 600;
+
+
+
+export const UpdateAiConsumerBody = zod.object({
+  "platform": zod.string().max(updateAiConsumerBodyPlatformMax).optional(),
+  "scopes": zod.array(zod.string().max(updateAiConsumerBodyScopesItemMax)).max(updateAiConsumerBodyScopesMax).optional(),
+  "rateLimitPerMin": zod.number().min(1).max(updateAiConsumerBodyRateLimitPerMinMax).optional(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateAiConsumerResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "platform": zod.string(),
+  "tokenPrefix": zod.string(),
+  "tier": zod.enum(['internal', 'external']),
+  "scopes": zod.array(zod.string()),
+  "rateLimitPerMin": zod.number(),
+  "active": zod.boolean(),
+  "createdByEmail": zod.string().nullish(),
+  "lastUsedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Permanently revoke a consumer's token
+ */
+export const RevokeAiConsumerParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RevokeAiConsumerResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "platform": zod.string(),
+  "tokenPrefix": zod.string(),
+  "tier": zod.enum(['internal', 'external']),
+  "scopes": zod.array(zod.string()),
+  "rateLimitPerMin": zod.number(),
+  "active": zod.boolean(),
+  "createdByEmail": zod.string().nullish(),
+  "lastUsedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Recent AI tool-call audit events (admin)
+ */
+export const listAiAuditEventsQueryLimitDefault = 50;
+export const listAiAuditEventsQueryLimitMax = 200;
+
+
+
+export const ListAiAuditEventsQueryParams = zod.object({
+  "consumerId": zod.coerce.string().uuid().optional(),
+  "tool": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().min(1).max(listAiAuditEventsQueryLimitMax).default(listAiAuditEventsQueryLimitDefault)
+})
+
+export const ListAiAuditEventsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "surface": zod.string(),
+  "consumerId": zod.string().uuid().nullish(),
+  "consumerName": zod.string(),
+  "staffEmail": zod.string().nullish(),
+  "tool": zod.string(),
+  "input": zod.string(),
+  "ok": zod.boolean(),
+  "errorCode": zod.string().nullish(),
+  "resultSummary": zod.string(),
+  "latencyMs": zod.number(),
+  "accuracy": zod.union([zod.literal('correct'),zod.literal('wrong_fact'),zod.literal('wrong_customer'),zod.literal('missing_data'),zod.literal(null)]).nullish(),
+  "feedbackOutcome": zod.union([zod.literal('used'),zod.literal('accepted'),zod.literal('edited'),zod.literal('rejected'),zod.literal('ignored'),zod.literal(null)]).nullish(),
+  "feedbackNote": zod.string(),
+  "reviewedByEmail": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAiAuditEventsResponse = zod.array(ListAiAuditEventsResponseItem)
+
+
+/**
+ * @summary Score a tool call's fact accuracy and record usage feedback
+ */
+export const ReviewAiAuditEventParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const reviewAiAuditEventBodyFeedbackNoteMax = 2000;
+
+
+
+export const ReviewAiAuditEventBody = zod.object({
+  "accuracy": zod.union([zod.literal('correct'),zod.literal('wrong_fact'),zod.literal('wrong_customer'),zod.literal('missing_data'),zod.literal(null)]).nullish(),
+  "feedbackOutcome": zod.union([zod.literal('used'),zod.literal('accepted'),zod.literal('edited'),zod.literal('rejected'),zod.literal('ignored'),zod.literal(null)]).nullish(),
+  "feedbackNote": zod.string().max(reviewAiAuditEventBodyFeedbackNoteMax).optional()
+})
+
+export const ReviewAiAuditEventResponse = zod.object({
+  "id": zod.string().uuid(),
+  "surface": zod.string(),
+  "consumerId": zod.string().uuid().nullish(),
+  "consumerName": zod.string(),
+  "staffEmail": zod.string().nullish(),
+  "tool": zod.string(),
+  "input": zod.string(),
+  "ok": zod.boolean(),
+  "errorCode": zod.string().nullish(),
+  "resultSummary": zod.string(),
+  "latencyMs": zod.number(),
+  "accuracy": zod.union([zod.literal('correct'),zod.literal('wrong_fact'),zod.literal('wrong_customer'),zod.literal('missing_data'),zod.literal(null)]).nullish(),
+  "feedbackOutcome": zod.union([zod.literal('used'),zod.literal('accepted'),zod.literal('edited'),zod.literal('rejected'),zod.literal('ignored'),zod.literal(null)]).nullish(),
+  "feedbackNote": zod.string(),
+  "reviewedByEmail": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary AI guardrail settings (kill switch state)
+ */
+export const GetAiContextSettingsResponse = zod.object({
+  "contextLayerEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Update AI guardrail settings (admin)
+ */
+export const UpdateAiContextSettingsBody = zod.object({
+  "contextLayerEnabled": zod.boolean()
+})
+
+export const UpdateAiContextSettingsResponse = zod.object({
+  "contextLayerEnabled": zod.boolean()
+})
+
+

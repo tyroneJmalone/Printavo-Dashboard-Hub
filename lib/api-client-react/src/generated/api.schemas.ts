@@ -5501,6 +5501,299 @@ export interface HubCalculatorPushResult {
   lineItemOutcome: HubCalculatorPushResultLineItemOutcome;
 }
 
+export type KnowledgeEntryReviewStatus = typeof KnowledgeEntryReviewStatus[keyof typeof KnowledgeEntryReviewStatus];
+
+
+export const KnowledgeEntryReviewStatus = {
+  draft: 'draft',
+  approved: 'approved',
+  archived: 'archived',
+} as const;
+
+export interface KnowledgeEntry {
+  id: string;
+  title: string;
+  body: string;
+  category: string;
+  tags: string[];
+  sourceName: string;
+  sourceUrl: string;
+  /** @nullable */
+  effectiveDate?: string | null;
+  /** @nullable */
+  expiresDate?: string | null;
+  reviewStatus: KnowledgeEntryReviewStatus;
+  /** @nullable */
+  approvedByEmail?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  /** @nullable */
+  lastReviewedAt?: string | null;
+  /** @nullable */
+  createdByEmail?: string | null;
+  /** @nullable */
+  updatedByEmail?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgeEntryInput {
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  body: string;
+  /** @maxLength 50 */
+  category?: string;
+  /**
+     * @maxItems 20
+     * @items.maxLength 50
+     */
+  tags?: string[];
+  /** @maxLength 300 */
+  sourceName?: string;
+  /** @maxLength 1000 */
+  sourceUrl?: string;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  effectiveDate?: string | null;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  expiresDate?: string | null;
+}
+
+export interface KnowledgeEntryUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  body?: string;
+  /** @maxLength 50 */
+  category?: string;
+  /**
+     * @maxItems 20
+     * @items.maxLength 50
+     */
+  tags?: string[];
+  /** @maxLength 300 */
+  sourceName?: string;
+  /** @maxLength 1000 */
+  sourceUrl?: string;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  effectiveDate?: string | null;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  expiresDate?: string | null;
+}
+
+export type KnowledgeEntryReviewAction = typeof KnowledgeEntryReviewAction[keyof typeof KnowledgeEntryReviewAction];
+
+
+export const KnowledgeEntryReviewAction = {
+  approve: 'approve',
+  archive: 'archive',
+  redraft: 'redraft',
+} as const;
+
+export interface KnowledgeEntryReview {
+  action: KnowledgeEntryReviewAction;
+}
+
+export type AiConsumerRecordTier = typeof AiConsumerRecordTier[keyof typeof AiConsumerRecordTier];
+
+
+export const AiConsumerRecordTier = {
+  internal: 'internal',
+  external: 'external',
+} as const;
+
+export interface AiConsumerRecord {
+  id: string;
+  name: string;
+  platform: string;
+  tokenPrefix: string;
+  tier: AiConsumerRecordTier;
+  scopes: string[];
+  rateLimitPerMin: number;
+  active: boolean;
+  /** @nullable */
+  createdByEmail?: string | null;
+  /** @nullable */
+  lastUsedAt?: string | null;
+  /** @nullable */
+  revokedAt?: string | null;
+  createdAt: string;
+}
+
+export type AiConsumerInputTier = typeof AiConsumerInputTier[keyof typeof AiConsumerInputTier];
+
+
+export const AiConsumerInputTier = {
+  internal: 'internal',
+  external: 'external',
+} as const;
+
+export interface AiConsumerInput {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+  /** @maxLength 50 */
+  platform?: string;
+  tier?: AiConsumerInputTier;
+  /**
+     * Tool names this token may call; ["*"] allows every tier-eligible tool.
+     * @maxItems 30
+     * @items.maxLength 60
+     */
+  scopes?: string[];
+  /**
+     * @minimum 1
+     * @maximum 600
+     */
+  rateLimitPerMin?: number;
+}
+
+export interface AiConsumerUpdate {
+  /** @maxLength 50 */
+  platform?: string;
+  /**
+     * @maxItems 30
+     * @items.maxLength 60
+     */
+  scopes?: string[];
+  /**
+     * @minimum 1
+     * @maximum 600
+     */
+  rateLimitPerMin?: number;
+  active?: boolean;
+}
+
+export interface AiConsumerCreated {
+  consumer: AiConsumerRecord;
+  /** The raw bearer token — shown exactly once; only its hash is stored. */
+  token: string;
+}
+
+/**
+ * @nullable
+ */
+export type AiAuditEventRecordAccuracy = typeof AiAuditEventRecordAccuracy[keyof typeof AiAuditEventRecordAccuracy] | null;
+
+
+export const AiAuditEventRecordAccuracy = {
+  correct: 'correct',
+  wrong_fact: 'wrong_fact',
+  wrong_customer: 'wrong_customer',
+  missing_data: 'missing_data',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AiAuditEventRecordFeedbackOutcome = typeof AiAuditEventRecordFeedbackOutcome[keyof typeof AiAuditEventRecordFeedbackOutcome] | null;
+
+
+export const AiAuditEventRecordFeedbackOutcome = {
+  used: 'used',
+  accepted: 'accepted',
+  edited: 'edited',
+  rejected: 'rejected',
+  ignored: 'ignored',
+} as const;
+
+export interface AiAuditEventRecord {
+  id: string;
+  surface: string;
+  /** @nullable */
+  consumerId?: string | null;
+  consumerName: string;
+  /** @nullable */
+  staffEmail?: string | null;
+  tool: string;
+  input: string;
+  ok: boolean;
+  /** @nullable */
+  errorCode?: string | null;
+  resultSummary: string;
+  latencyMs: number;
+  /** @nullable */
+  accuracy?: AiAuditEventRecordAccuracy;
+  /** @nullable */
+  feedbackOutcome?: AiAuditEventRecordFeedbackOutcome;
+  feedbackNote: string;
+  /** @nullable */
+  reviewedByEmail?: string | null;
+  /** @nullable */
+  reviewedAt?: string | null;
+  createdAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type AiAuditReviewAccuracy = typeof AiAuditReviewAccuracy[keyof typeof AiAuditReviewAccuracy] | null;
+
+
+export const AiAuditReviewAccuracy = {
+  correct: 'correct',
+  wrong_fact: 'wrong_fact',
+  wrong_customer: 'wrong_customer',
+  missing_data: 'missing_data',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AiAuditReviewFeedbackOutcome = typeof AiAuditReviewFeedbackOutcome[keyof typeof AiAuditReviewFeedbackOutcome] | null;
+
+
+export const AiAuditReviewFeedbackOutcome = {
+  used: 'used',
+  accepted: 'accepted',
+  edited: 'edited',
+  rejected: 'rejected',
+  ignored: 'ignored',
+} as const;
+
+export interface AiAuditReview {
+  /** @nullable */
+  accuracy?: AiAuditReviewAccuracy;
+  /** @nullable */
+  feedbackOutcome?: AiAuditReviewFeedbackOutcome;
+  /** @maxLength 2000 */
+  feedbackNote?: string;
+}
+
+export interface AiContextSettings {
+  contextLayerEnabled: boolean;
+}
+
+export interface AiContextSettingsUpdate {
+  contextLayerEnabled: boolean;
+}
+
 /**
  * A contained Dropbox path, the linked root id, or an id already bookmarked for this customer
  */
@@ -6525,4 +6818,29 @@ export const GetStatusActivityOrdersMode = {
   arrivals: 'arrivals',
   current: 'current',
 } as const;
+
+export type ListKnowledgeEntriesParams = {
+status?: ListKnowledgeEntriesStatus;
+category?: string;
+q?: string;
+};
+
+export type ListKnowledgeEntriesStatus = typeof ListKnowledgeEntriesStatus[keyof typeof ListKnowledgeEntriesStatus];
+
+
+export const ListKnowledgeEntriesStatus = {
+  draft: 'draft',
+  approved: 'approved',
+  archived: 'archived',
+} as const;
+
+export type ListAiAuditEventsParams = {
+consumerId?: string;
+tool?: string;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+};
 

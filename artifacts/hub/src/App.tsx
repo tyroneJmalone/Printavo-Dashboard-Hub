@@ -49,6 +49,8 @@ import CollectionDetail from "./pages/CollectionDetail";
 import GarmentPantones from "./pages/GarmentPantones";
 import ChipplyStores from "./pages/ChipplyStores";
 import ChipplyStoreDetail from "./pages/ChipplyStoreDetail";
+import KnowledgeBase from "./pages/KnowledgeBase";
+import AiContext from "./pages/AiContext";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
 import { Customers as MintBucksCustomers } from "./pages/mintbucks/Customers";
 import { CustomerDetail as MintBucksCustomerDetail } from "./pages/mintbucks/CustomerDetail";
@@ -202,6 +204,8 @@ function HubRoutes() {
       <Route path="/ask" component={AskAI} />
       <Route path="/ai-quotes/:id" component={AiQuoteDetail} />
       <Route path="/ai-quotes" component={AiQuotesList} />
+      <Route path="/knowledge" component={KnowledgeBase} />
+      <Route path="/ai-connections" component={AiContext} />
       <Route path="/email-activity/settings" component={EmailActivitySettings} />
       <Route path="/email-activity/access" component={EmailAccess} />
       <Route path="/email-activity/deals" component={EmailDealsReport} />

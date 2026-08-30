@@ -35,6 +35,9 @@ import mintbucksRouter from "../mintbucks/routes";
 import mintbucksPublicRouter from "./mintbucksPublic";
 import { printavoConfigured } from "../lib/printavoGateway";
 import printavoTasksRouter from "../printavoTasks/routes";
+import contextDoorsRouter from "./contextDoors";
+import knowledgeBaseRouter from "./knowledgeBase";
+import aiConsumersRouter from "./aiConsumers";
 
 const router: IRouter = Router();
 
@@ -50,6 +53,10 @@ router.use(hubPublicRouter);
 if (isMintbucksConfigured()) {
   router.use(mintbucksPublicRouter);
 }
+// AI context layer doors (MCP + REST) — authenticated by per-consumer
+// bearer tokens, not Clerk sessions; tiers/scopes/rate limits/kill switch
+// enforced inside. Admin management routes live below the staff gate.
+router.use(contextDoorsRouter);
 
 // ── Staff-only ───────────────────────────────────────────────────────
 router.use(requireStaff);
@@ -78,6 +85,8 @@ router.use(aiQuotesRouter);
 router.use(emailAccessRouter);
 router.use(correspondenceRouter);
 router.use(hubRouter);
+router.use(knowledgeBaseRouter);
+router.use(aiConsumersRouter); // admin-only inside (token + audit management)
 
 // moMINTum task management — shared LIVE database with the standalone app.
 // Only mounted when MOMINTUM_DATABASE_URL is set (removing the secret is the

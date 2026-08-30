@@ -6167,6 +6167,264 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StatusActivityOrdersResponse"
+  /knowledge/entries:
+    get:
+      operationId: listKnowledgeEntries
+      tags: [knowledge]
+      summary: List knowledge base entries (staff)
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, approved, archived] }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Knowledge entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KnowledgeEntry"
+    post:
+      operationId: createKnowledgeEntry
+      tags: [knowledge]
+      summary: Create a knowledge base entry (starts as draft)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeEntryInput"
+      responses:
+        "201":
+          description: Created entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeEntry"
+  /knowledge/entries/{id}:
+    patch:
+      operationId: updateKnowledgeEntry
+      tags: [knowledge]
+      summary: Update a knowledge base entry (any AI-visible edit demotes an approved entry to draft)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeEntryUpdate"
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeEntry"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteKnowledgeEntry
+      tags: [knowledge]
+      summary: Delete a knowledge base entry (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /knowledge/entries/{id}/review:
+    post:
+      operationId: reviewKnowledgeEntry
+      tags: [knowledge]
+      summary: Approve, archive, or re-draft an entry (records reviewer + time)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeEntryReview"
+      responses:
+        "200":
+          description: Reviewed entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeEntry"
+        "404":
+          description: Not found
+  /ai-context/consumers:
+    get:
+      operationId: listAiConsumers
+      tags: [aiContext]
+      summary: List registered AI context consumers (admin)
+      responses:
+        "200":
+          description: Consumers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiConsumerRecord"
+    post:
+      operationId: createAiConsumer
+      tags: [aiContext]
+      summary: Register a consumer and mint its bearer token (shown once)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiConsumerInput"
+      responses:
+        "201":
+          description: Created consumer with one-time token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiConsumerCreated"
+  /ai-context/consumers/{id}:
+    patch:
+      operationId: updateAiConsumer
+      tags: [aiContext]
+      summary: Update a consumer (scopes, rate limit, active flag)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiConsumerUpdate"
+      responses:
+        "200":
+          description: Updated consumer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiConsumerRecord"
+        "404":
+          description: Not found
+  /ai-context/consumers/{id}/revoke:
+    post:
+      operationId: revokeAiConsumer
+      tags: [aiContext]
+      summary: Permanently revoke a consumer's token
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Revoked consumer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiConsumerRecord"
+        "404":
+          description: Not found
+  /ai-context/audit:
+    get:
+      operationId: listAiAuditEvents
+      tags: [aiContext]
+      summary: Recent AI tool-call audit events (admin)
+      parameters:
+        - name: consumerId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: tool
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        "200":
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiAuditEventRecord"
+  /ai-context/audit/{id}/review:
+    post:
+      operationId: reviewAiAuditEvent
+      tags: [aiContext]
+      summary: Score a tool call's fact accuracy and record usage feedback
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiAuditReview"
+      responses:
+        "200":
+          description: Reviewed event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiAuditEventRecord"
+        "404":
+          description: Not found
+  /ai-context/settings:
+    get:
+      operationId: getAiContextSettings
+      tags: [aiContext]
+      summary: AI guardrail settings (kill switch state)
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiContextSettings"
+    put:
+      operationId: updateAiContextSettings
+      tags: [aiContext]
+      summary: Update AI guardrail settings (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiContextSettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiContextSettings"
 components:
   parameters:
     CustomerIdParam:
@@ -11551,3 +11809,170 @@ components:
             lineItemGroupId: { type: string, nullable: true }
             lineItemId: { type: string, nullable: true }
             error: { type: string, nullable: true }
+    KnowledgeEntry:
+      type: object
+      required:
+        [
+          id,
+          title,
+          body,
+          category,
+          tags,
+          sourceName,
+          sourceUrl,
+          reviewStatus,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        category: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        sourceName: { type: string }
+        sourceUrl: { type: string }
+        effectiveDate: { type: ["string", "null"] }
+        expiresDate: { type: ["string", "null"] }
+        reviewStatus: { type: string, enum: [draft, approved, archived] }
+        approvedByEmail: { type: ["string", "null"] }
+        approvedAt: { type: ["string", "null"], format: date-time }
+        lastReviewedAt: { type: ["string", "null"], format: date-time }
+        createdByEmail: { type: ["string", "null"] }
+        updatedByEmail: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    KnowledgeEntryInput:
+      type: object
+      required: [title, body]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 20000 }
+        category: { type: string, maxLength: 50 }
+        tags:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 50 }
+        sourceName: { type: string, maxLength: 300 }
+        sourceUrl: { type: string, maxLength: 1000 }
+        effectiveDate: { type: ["string", "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+        expiresDate: { type: ["string", "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+    KnowledgeEntryUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 3, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 20000 }
+        category: { type: string, maxLength: 50 }
+        tags:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 50 }
+        sourceName: { type: string, maxLength: 300 }
+        sourceUrl: { type: string, maxLength: 1000 }
+        effectiveDate: { type: ["string", "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+        expiresDate: { type: ["string", "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+    KnowledgeEntryReview:
+      type: object
+      required: [action]
+      properties:
+        action: { type: string, enum: [approve, archive, redraft] }
+    AiConsumerRecord:
+      type: object
+      required:
+        [
+          id,
+          name,
+          platform,
+          tokenPrefix,
+          tier,
+          scopes,
+          rateLimitPerMin,
+          active,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        platform: { type: string }
+        tokenPrefix: { type: string }
+        tier: { type: string, enum: [internal, external] }
+        scopes:
+          type: array
+          items: { type: string }
+        rateLimitPerMin: { type: integer }
+        active: { type: boolean }
+        createdByEmail: { type: ["string", "null"] }
+        lastUsedAt: { type: ["string", "null"], format: date-time }
+        revokedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    AiConsumerInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        platform: { type: string, maxLength: 50 }
+        tier: { type: string, enum: [internal, external], default: internal }
+        scopes:
+          type: array
+          maxItems: 30
+          items: { type: string, maxLength: 60 }
+          description: Tool names this token may call; ["*"] allows every tier-eligible tool.
+        rateLimitPerMin: { type: integer, minimum: 1, maximum: 600 }
+    AiConsumerUpdate:
+      type: object
+      properties:
+        platform: { type: string, maxLength: 50 }
+        scopes:
+          type: array
+          maxItems: 30
+          items: { type: string, maxLength: 60 }
+        rateLimitPerMin: { type: integer, minimum: 1, maximum: 600 }
+        active: { type: boolean }
+    AiConsumerCreated:
+      type: object
+      required: [consumer, token]
+      properties:
+        consumer:
+          $ref: "#/components/schemas/AiConsumerRecord"
+        token:
+          type: string
+          description: The raw bearer token — shown exactly once; only its hash is stored.
+    AiAuditEventRecord:
+      type: object
+      required: [id, surface, consumerName, tool, input, ok, resultSummary, latencyMs, feedbackNote, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        surface: { type: string }
+        consumerId: { type: ["string", "null"], format: uuid }
+        consumerName: { type: string }
+        staffEmail: { type: ["string", "null"] }
+        tool: { type: string }
+        input: { type: string }
+        ok: { type: boolean }
+        errorCode: { type: ["string", "null"] }
+        resultSummary: { type: string }
+        latencyMs: { type: integer }
+        accuracy: { type: ["string", "null"], enum: [correct, wrong_fact, wrong_customer, missing_data, null] }
+        feedbackOutcome: { type: ["string", "null"], enum: [used, accepted, edited, rejected, ignored, null] }
+        feedbackNote: { type: string }
+        reviewedByEmail: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    AiAuditReview:
+      type: object
+      properties:
+        accuracy: { type: ["string", "null"], enum: [correct, wrong_fact, wrong_customer, missing_data, null] }
+        feedbackOutcome: { type: ["string", "null"], enum: [used, accepted, edited, rejected, ignored, null] }
+        feedbackNote: { type: string, maxLength: 2000 }
+    AiContextSettings:
+      type: object
+      required: [contextLayerEnabled]
+      properties:
+        contextLayerEnabled: { type: boolean }
+    AiContextSettingsUpdate:
+      type: object
+      required: [contextLayerEnabled]
+      properties:
+        contextLayerEnabled: { type: boolean }
