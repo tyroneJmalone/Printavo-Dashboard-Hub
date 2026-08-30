@@ -19,3 +19,22 @@ grants. Unpaced body hydration also exhausted Missive's request quota.
 **How to apply:** Never expose or log the token. Keep the origin fixed, paths
 limited to the versioned API, and fail closed on non-JSON responses. Preserve
 rate-limit handling and incremental hydration in every Missive read path.
+
+## Multi-account sync (one token per teammate)
+
+A Missive token only sees its own account's conversations — team-wide coverage
+of personal mailboxes requires one token per person (`MISSIVE_API_TOKEN` +
+`MISSIVE_API_TOKEN_<NAME>` secrets, auto-discovered by prefix). The sync loops
+accounts in two phases: directory discovery across ALL usable accounts first
+(so user→staff mappings visible only through a later account still apply to
+threads hydrated under an earlier one), then per-account conversation
+hydration. Per-account try/catch: one revoked token records a `partial` sync
+status, never kills the pass. Dedupe across tokens is the
+(provider, provider_thread_id) upsert + already-hydrated short-circuit.
+
+**Traps:** every request inside a per-account helper must receive the account
+token explicitly — a missed parameter silently falls back to the primary token
+(this bug shipped once in the /v1/users pager). The single pacing queue stays
+shared across all tokens. One-time deep backfills: temporarily raise
+`initial_backfill_days` on the sync-state row, let a tick run, restore it —
+the tick restarts safely mid-pass after a server restart.

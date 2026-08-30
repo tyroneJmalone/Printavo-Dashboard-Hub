@@ -186,6 +186,7 @@ async function syncDirectory(accountToken?: string): Promise<Map<string, string>
     for (;;) {
       const payload = await missiveGet<Json>(
         missivePath("/v1/users", { organization: organizationId, limit: 200, offset }),
+        accountToken,
       );
       const users = itemArray(payload.users);
       for (const user of users) {
@@ -580,9 +581,29 @@ export async function runMissiveSync(
     const accountSummaries: string[] = [];
     const accountErrors: string[] = [];
     let hydrated = 0;
+    // Phase 1 — directory discovery across ALL usable accounts first, so a
+    // user→staff mapping only visible through a later account still applies
+    // to conversations hydrated under an earlier one (thread grants are
+    // computed at hydration time and hydrated threads are skipped later).
+    const usableAccounts: typeof accounts = [];
     for (const account of accounts) {
       try {
         mergeDirectories(staffByProviderId, await syncDirectory(account.token));
+        usableAccounts.push(account);
+      } catch (error) {
+        // A bad/revoked token for one person must not block the others.
+        const message =
+          error instanceof Error ? error.message.slice(0, 300) : String(error).slice(0, 300);
+        if (/connector returned HTML|non-JSON response/i.test(message)) {
+          connectorBlockedUntil = Date.now() + 60 * 60 * 1000;
+        }
+        log.error({ err: error, account: account.label }, "Missive directory sync failed for account");
+        accountErrors.push(`${account.label}: ${message}`);
+      }
+    }
+    // Phase 2 — conversation hydration per usable account.
+    for (const account of usableAccounts) {
+      try {
         let accountHydrated = 0;
         let until: number | undefined;
         for (let page = 0; page < MAX_PAGES; page++) {

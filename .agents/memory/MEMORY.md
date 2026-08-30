@@ -40,7 +40,7 @@
 - [Printavo quote vs invoice identity](printavo-quote-vs-invoice-ids.md) — conversion issues a NEW printavo id (visual number survives); Quote.visualId is a String; quoteUpdate input type is QuoteInput.
 - [html-to-image off-screen capture](html-to-image-offscreen-capture.md) — off-screen clone captures need a style offset reset in toPng options AND parent (not body) appending, or PNGs come out blank/textless.
 - [Fireflies Hub integration](fireflies-hub-integration.md) — deferred plan is documented; Business Team Admin needs a read-only visibility audit before choosing central vs per-user access.
-- [Missive API transport](missive-connector-routing.md) — managed connector still uses the wrong host; Hub uses a secret-backed direct public API transport with pacing and incremental hydration.
+- [Missive API transport](missive-connector-routing.md) — direct secret-backed transport (connector host broken); one token per teammate, two-phase multi-account sync, shared pacing queue.
 - [Email access role model](email-access-role-model.md) — Admin reads every mailbox; Managers are limited to selected groups/ownership/thread grants; customer history aggregates authorized mailboxes.
 - [Dropbox customer artwork boundaries](dropbox-customer-artwork-boundaries.md) — Hub artwork is read-only; revalidate stable Dropbox IDs against the current linked customer root before access.
 - [Dropbox artwork previews](dropbox-artwork-previews.md) — temporary links do not embed reliably; proxy only allowlisted browser-safe files through the authorized Hub route.
