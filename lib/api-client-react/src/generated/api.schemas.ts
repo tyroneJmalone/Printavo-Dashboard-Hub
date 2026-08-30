@@ -19,31 +19,20 @@ export interface BrandingColor {
   hex: string;
   active: boolean;
   /** @nullable */
-  pantoneCode?: string | null;
+  pantoneCode: string | null;
   /**
-     * @minItems 4
-     * @maxItems 4
+     * Free-text CMYK breakdown, e.g. "60, 0, 100, 7"
      * @nullable
-     * @items.minimum 0
-     * @items.maximum 100
      */
-  cmyk?: number[] | null;
-  /**
-     * @minItems 3
-     * @maxItems 3
-     * @nullable
-     * @items.minimum 0
-     * @items.maximum 255
-     */
-  rgb?: number[] | null;
+  cmyk: string | null;
   /** @nullable */
-  inkReferences?: string[] | null;
+  inkReferences: string | null;
   /** @nullable */
-  threadReferences?: string[] | null;
+  threadReferences: string | null;
   /** @nullable */
-  inkStockNotes?: unknown[] | null;
+  inkStockNotes: string | null;
   /** @nullable */
-  threadStockNotes?: unknown[] | null;
+  threadStockNotes: string | null;
   createdByEmail?: string;
   updatedByEmail?: string;
   createdAt?: string;
@@ -55,6 +44,87 @@ export interface BrandingColorList {
   colors: BrandingColor[];
 }
 
+export interface CreateBrandingColorRequest {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  hex: string;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  pantoneCode?: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  cmyk?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  inkReferences?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  threadReferences?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  inkStockNotes?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  threadStockNotes?: string | null;
+}
+
+export interface UpdateBrandingColorRequest {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  /** @pattern ^#[0-9A-Fa-f]{6}$ */
+  hex?: string;
+  active?: boolean;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  pantoneCode?: string | null;
+  /**
+     * @maxLength 60
+     * @nullable
+     */
+  cmyk?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  inkReferences?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  threadReferences?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  inkStockNotes?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  threadStockNotes?: string | null;
+}
+
 export interface CustomerBrandingColorAssignment {
   /**
      * @minLength 1
@@ -64,19 +134,118 @@ export interface CustomerBrandingColorAssignment {
   colorId: string;
 }
 
-export type CustomerBrandingColorsItem = {
+export interface BrandingTypographyInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
   role: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  fontName: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  capitalization?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  usageNotes?: string | null;
+}
+
+export type BrandingTypographyEntryStatus = typeof BrandingTypographyEntryStatus[keyof typeof BrandingTypographyEntryStatus];
+
+
+export const BrandingTypographyEntryStatus = {
+  current: 'current',
+  retired: 'retired',
+} as const;
+
+export interface BrandingTypographyEntry {
   id: string;
+  role: string;
+  fontName: string;
+  /** @nullable */
+  capitalization: string | null;
+  /** @nullable */
+  usageNotes: string | null;
+  status: BrandingTypographyEntryStatus;
+  updatedByEmail: string;
+  updatedAt: string;
+  /** @nullable */
+  retiredAt: string | null;
+  /** @nullable */
+  retiredByEmail: string | null;
+}
+
+export type CustomerBrandingColorStatus = typeof CustomerBrandingColorStatus[keyof typeof CustomerBrandingColorStatus];
+
+
+export const CustomerBrandingColorStatus = {
+  current: 'current',
+  retired: 'retired',
+} as const;
+
+export interface CustomerBrandingColor {
+  assignmentId: string;
+  role: string;
+  status: CustomerBrandingColorStatus;
+  colorId: string;
   name: string;
   hex: string;
-};
+  /** @nullable */
+  pantoneCode: string | null;
+  /** @nullable */
+  cmyk: string | null;
+  /** @nullable */
+  inkReferences: string | null;
+  /** @nullable */
+  threadReferences: string | null;
+  /** @nullable */
+  inkStockNotes: string | null;
+  /** @nullable */
+  threadStockNotes: string | null;
+  colorActive: boolean;
+  updatedByEmail: string;
+  updatedAt: string;
+  /** @nullable */
+  retiredAt: string | null;
+  /** @nullable */
+  retiredByEmail: string | null;
+}
+
+export type BrandingEventArea = typeof BrandingEventArea[keyof typeof BrandingEventArea];
+
+
+export const BrandingEventArea = {
+  colors: 'colors',
+  typography: 'typography',
+  notes: 'notes',
+  logos: 'logos',
+} as const;
+
+export interface BrandingEvent {
+  id: string;
+  area: BrandingEventArea;
+  summary: string;
+  actorEmail: string;
+  createdAt: string;
+}
 
 export interface CustomerBranding {
   configured: boolean;
   /** @nullable */
   notes: string | null;
-  fonts: string[];
-  colors: CustomerBrandingColorsItem[];
+  /** @maxItems 200 */
+  colors: CustomerBrandingColor[];
+  /** @maxItems 200 */
+  typography: BrandingTypographyEntry[];
+  /** @maxItems 50 */
+  events: BrandingEvent[];
   audit: AuditFields | null;
 }
 
@@ -86,14 +255,10 @@ export interface CustomerBrandingUpdate {
      * @nullable
      */
   notes: string | null;
-  /**
-     * @maxItems 20
-     * @items.minLength 1
-     * @items.maxLength 120
-     */
-  fonts: string[];
   /** @maxItems 20 */
   colors: CustomerBrandingColorAssignment[];
+  /** @maxItems 20 */
+  typography: BrandingTypographyInput[];
 }
 
 export interface DropboxFolderLinkRequest {
@@ -136,6 +301,18 @@ export interface DropboxEntryList {
   cursor: string | null;
 }
 
+export type ArtworkUseCase = typeof ArtworkUseCase[keyof typeof ArtworkUseCase];
+
+
+export const ArtworkUseCase = {
+  light_background: 'light_background',
+  dark_background: 'dark_background',
+  print: 'print',
+  embroidery: 'embroidery',
+  web: 'web',
+  restricted: 'restricted',
+} as const;
+
 export interface ArtworkBookmarkRequest {
   /**
      * @minLength 1
@@ -154,6 +331,8 @@ export interface ArtworkBookmarkRequest {
   notes?: string | null;
   preferred?: boolean;
   retired?: boolean;
+  /** @maxItems 6 */
+  useCases?: ArtworkUseCase[];
 }
 
 export interface ArtworkBookmarkUpdate {
@@ -169,6 +348,8 @@ export interface ArtworkBookmarkUpdate {
   notes?: string | null;
   preferred?: boolean;
   retired?: boolean;
+  /** @maxItems 6 */
+  useCases?: ArtworkUseCase[];
 }
 
 export interface ArtworkBookmark {
@@ -182,6 +363,8 @@ export interface ArtworkBookmark {
   notes?: string | null;
   preferred: boolean;
   retired: boolean;
+  /** @maxItems 6 */
+  useCases: ArtworkUseCase[];
   /** @nullable */
   printavoOrderId: string | null;
   createdByEmail?: string;

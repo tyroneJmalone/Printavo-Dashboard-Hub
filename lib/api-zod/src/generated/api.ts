@@ -409,18 +409,6 @@ export const GetNicheReportResponse = zod.object({
  * @summary List the shared Hub-owned branding color catalog
  */
 export const listBrandingColorsResponseColorsItemHexRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
-export const listBrandingColorsResponseColorsItemCmykItemMin = 0;
-export const listBrandingColorsResponseColorsItemCmykItemMax = 100;
-
-export const listBrandingColorsResponseColorsItemCmykMin = 4;
-export const listBrandingColorsResponseColorsItemCmykMax = 4;
-
-export const listBrandingColorsResponseColorsItemRgbItemMin = 0;
-export const listBrandingColorsResponseColorsItemRgbItemMax = 255;
-
-export const listBrandingColorsResponseColorsItemRgbMin = 3;
-export const listBrandingColorsResponseColorsItemRgbMax = 3;
-
 export const listBrandingColorsResponseColorsMax = 500;
 
 
@@ -431,18 +419,126 @@ export const ListBrandingColorsResponse = zod.object({
   "name": zod.string(),
   "hex": zod.string().regex(listBrandingColorsResponseColorsItemHexRegExp),
   "active": zod.boolean(),
-  "pantoneCode": zod.string().nullish(),
-  "cmyk": zod.array(zod.number().min(listBrandingColorsResponseColorsItemCmykItemMin).max(listBrandingColorsResponseColorsItemCmykItemMax)).min(listBrandingColorsResponseColorsItemCmykMin).max(listBrandingColorsResponseColorsItemCmykMax).nullish(),
-  "rgb": zod.array(zod.number().min(listBrandingColorsResponseColorsItemRgbItemMin).max(listBrandingColorsResponseColorsItemRgbItemMax)).min(listBrandingColorsResponseColorsItemRgbMin).max(listBrandingColorsResponseColorsItemRgbMax).nullish(),
-  "inkReferences": zod.array(zod.string()).nullish(),
-  "threadReferences": zod.array(zod.string()).nullish(),
-  "inkStockNotes": zod.array(zod.unknown()).nullish(),
-  "threadStockNotes": zod.array(zod.unknown()).nullish(),
+  "pantoneCode": zod.string().nullable(),
+  "cmyk": zod.string().nullable().describe('Free-text CMYK breakdown, e.g. \"60, 0, 100, 7\"'),
+  "inkReferences": zod.string().nullable(),
+  "threadReferences": zod.string().nullable(),
+  "inkStockNotes": zod.string().nullable(),
+  "threadStockNotes": zod.string().nullable(),
   "createdByEmail": zod.string().optional(),
   "updatedByEmail": zod.string().optional(),
   "createdAt": zod.coerce.date().optional(),
   "updatedAt": zod.coerce.date().optional()
 })).max(listBrandingColorsResponseColorsMax)
+})
+
+
+/**
+ * @summary Add a color to the shared catalog (admin only)
+ */
+export const createBrandingColorBodyNameMax = 120;
+
+export const createBrandingColorBodyHexRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const createBrandingColorBodyPantoneCodeMax = 60;
+
+export const createBrandingColorBodyCmykMax = 60;
+
+export const createBrandingColorBodyInkReferencesMax = 500;
+
+export const createBrandingColorBodyThreadReferencesMax = 500;
+
+export const createBrandingColorBodyInkStockNotesMax = 2000;
+
+export const createBrandingColorBodyThreadStockNotesMax = 2000;
+
+
+
+export const CreateBrandingColorBody = zod.object({
+  "name": zod.string().min(1).max(createBrandingColorBodyNameMax),
+  "hex": zod.string().regex(createBrandingColorBodyHexRegExp),
+  "pantoneCode": zod.string().max(createBrandingColorBodyPantoneCodeMax).nullish(),
+  "cmyk": zod.string().max(createBrandingColorBodyCmykMax).nullish(),
+  "inkReferences": zod.string().max(createBrandingColorBodyInkReferencesMax).nullish(),
+  "threadReferences": zod.string().max(createBrandingColorBodyThreadReferencesMax).nullish(),
+  "inkStockNotes": zod.string().max(createBrandingColorBodyInkStockNotesMax).nullish(),
+  "threadStockNotes": zod.string().max(createBrandingColorBodyThreadStockNotesMax).nullish()
+})
+
+export const createBrandingColorResponseHexRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+
+
+export const CreateBrandingColorResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "hex": zod.string().regex(createBrandingColorResponseHexRegExp),
+  "active": zod.boolean(),
+  "pantoneCode": zod.string().nullable(),
+  "cmyk": zod.string().nullable().describe('Free-text CMYK breakdown, e.g. \"60, 0, 100, 7\"'),
+  "inkReferences": zod.string().nullable(),
+  "threadReferences": zod.string().nullable(),
+  "inkStockNotes": zod.string().nullable(),
+  "threadStockNotes": zod.string().nullable(),
+  "createdByEmail": zod.string().optional(),
+  "updatedByEmail": zod.string().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Correct or deactivate a shared catalog color (admin only)
+ */
+export const UpdateBrandingColorParams = zod.object({
+  "colorId": zod.coerce.string().uuid()
+})
+
+export const updateBrandingColorBodyNameMax = 120;
+
+export const updateBrandingColorBodyHexRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+export const updateBrandingColorBodyPantoneCodeMax = 60;
+
+export const updateBrandingColorBodyCmykMax = 60;
+
+export const updateBrandingColorBodyInkReferencesMax = 500;
+
+export const updateBrandingColorBodyThreadReferencesMax = 500;
+
+export const updateBrandingColorBodyInkStockNotesMax = 2000;
+
+export const updateBrandingColorBodyThreadStockNotesMax = 2000;
+
+
+
+export const UpdateBrandingColorBody = zod.object({
+  "name": zod.string().min(1).max(updateBrandingColorBodyNameMax).optional(),
+  "hex": zod.string().regex(updateBrandingColorBodyHexRegExp).optional(),
+  "active": zod.boolean().optional(),
+  "pantoneCode": zod.string().max(updateBrandingColorBodyPantoneCodeMax).nullish(),
+  "cmyk": zod.string().max(updateBrandingColorBodyCmykMax).nullish(),
+  "inkReferences": zod.string().max(updateBrandingColorBodyInkReferencesMax).nullish(),
+  "threadReferences": zod.string().max(updateBrandingColorBodyThreadReferencesMax).nullish(),
+  "inkStockNotes": zod.string().max(updateBrandingColorBodyInkStockNotesMax).nullish(),
+  "threadStockNotes": zod.string().max(updateBrandingColorBodyThreadStockNotesMax).nullish()
+})
+
+export const updateBrandingColorResponseHexRegExp = new RegExp('^#[0-9A-Fa-f]{6}$');
+
+
+export const UpdateBrandingColorResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "hex": zod.string().regex(updateBrandingColorResponseHexRegExp),
+  "active": zod.boolean(),
+  "pantoneCode": zod.string().nullable(),
+  "cmyk": zod.string().nullable().describe('Free-text CMYK breakdown, e.g. \"60, 0, 100, 7\"'),
+  "inkReferences": zod.string().nullable(),
+  "threadReferences": zod.string().nullable(),
+  "inkStockNotes": zod.string().nullable(),
+  "threadStockNotes": zod.string().nullable(),
+  "createdByEmail": zod.string().optional(),
+  "updatedByEmail": zod.string().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
 })
 
 
@@ -456,16 +552,55 @@ export const GetCustomerBrandingParams = zod.object({
   "id": zod.coerce.string().regex(getCustomerBrandingPathIdRegExp)
 })
 
+export const getCustomerBrandingResponseColorsMax = 200;
+
+export const getCustomerBrandingResponseTypographyMax = 200;
+
+export const getCustomerBrandingResponseEventsMax = 50;
+
+
+
 export const GetCustomerBrandingResponse = zod.object({
   "configured": zod.boolean(),
   "notes": zod.string().nullable(),
-  "fonts": zod.array(zod.string()),
   "colors": zod.array(zod.object({
+  "assignmentId": zod.string().uuid(),
   "role": zod.string(),
-  "id": zod.string().uuid(),
+  "status": zod.enum(['current', 'retired']),
+  "colorId": zod.string().uuid(),
   "name": zod.string(),
-  "hex": zod.string()
-})),
+  "hex": zod.string(),
+  "pantoneCode": zod.string().nullable(),
+  "cmyk": zod.string().nullable(),
+  "inkReferences": zod.string().nullable(),
+  "threadReferences": zod.string().nullable(),
+  "inkStockNotes": zod.string().nullable(),
+  "threadStockNotes": zod.string().nullable(),
+  "colorActive": zod.boolean(),
+  "updatedByEmail": zod.string(),
+  "updatedAt": zod.coerce.date(),
+  "retiredAt": zod.coerce.date().nullable(),
+  "retiredByEmail": zod.string().nullable()
+})).max(getCustomerBrandingResponseColorsMax),
+  "typography": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "role": zod.string(),
+  "fontName": zod.string(),
+  "capitalization": zod.string().nullable(),
+  "usageNotes": zod.string().nullable(),
+  "status": zod.enum(['current', 'retired']),
+  "updatedByEmail": zod.string(),
+  "updatedAt": zod.coerce.date(),
+  "retiredAt": zod.coerce.date().nullable(),
+  "retiredByEmail": zod.string().nullable()
+})).max(getCustomerBrandingResponseTypographyMax),
+  "events": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "area": zod.enum(['colors', 'typography', 'notes', 'logos']),
+  "summary": zod.string(),
+  "actorEmail": zod.string(),
+  "createdAt": zod.coerce.date()
+})).max(getCustomerBrandingResponseEventsMax),
   "audit": zod.union([zod.object({
   "createdByEmail": zod.string(),
   "updatedByEmail": zod.string(),
@@ -487,23 +622,34 @@ export const UpdateCustomerBrandingParams = zod.object({
 
 export const updateCustomerBrandingBodyNotesMax = 10000;
 
-export const updateCustomerBrandingBodyFontsItemMax = 120;
-
-export const updateCustomerBrandingBodyFontsMax = 20;
-
 export const updateCustomerBrandingBodyColorsItemRoleMax = 80;
 
 export const updateCustomerBrandingBodyColorsMax = 20;
+
+export const updateCustomerBrandingBodyTypographyItemRoleMax = 80;
+
+export const updateCustomerBrandingBodyTypographyItemFontNameMax = 120;
+
+export const updateCustomerBrandingBodyTypographyItemCapitalizationMax = 120;
+
+export const updateCustomerBrandingBodyTypographyItemUsageNotesMax = 2000;
+
+export const updateCustomerBrandingBodyTypographyMax = 20;
 
 
 
 export const UpdateCustomerBrandingBody = zod.object({
   "notes": zod.string().max(updateCustomerBrandingBodyNotesMax).nullable(),
-  "fonts": zod.array(zod.string().min(1).max(updateCustomerBrandingBodyFontsItemMax)).max(updateCustomerBrandingBodyFontsMax),
   "colors": zod.array(zod.object({
   "role": zod.string().min(1).max(updateCustomerBrandingBodyColorsItemRoleMax),
   "colorId": zod.string().uuid()
-})).max(updateCustomerBrandingBodyColorsMax)
+})).max(updateCustomerBrandingBodyColorsMax),
+  "typography": zod.array(zod.object({
+  "role": zod.string().min(1).max(updateCustomerBrandingBodyTypographyItemRoleMax),
+  "fontName": zod.string().min(1).max(updateCustomerBrandingBodyTypographyItemFontNameMax),
+  "capitalization": zod.string().max(updateCustomerBrandingBodyTypographyItemCapitalizationMax).nullish(),
+  "usageNotes": zod.string().max(updateCustomerBrandingBodyTypographyItemUsageNotesMax).nullish()
+})).max(updateCustomerBrandingBodyTypographyMax)
 })
 
 export const UpdateCustomerBrandingResponse = zod.object({
@@ -520,6 +666,8 @@ export const getCustomerArtworkPathIdRegExp = new RegExp('^\\d+$');
 export const GetCustomerArtworkParams = zod.object({
   "id": zod.coerce.string().regex(getCustomerArtworkPathIdRegExp)
 })
+
+export const getCustomerArtworkResponseBookmarksItemUseCasesMax = 6;
 
 export const getCustomerArtworkResponseBookmarksMax = 250;
 
@@ -547,6 +695,7 @@ export const GetCustomerArtworkResponse = zod.object({
   "notes": zod.string().nullish(),
   "preferred": zod.boolean(),
   "retired": zod.boolean(),
+  "useCases": zod.array(zod.enum(['light_background', 'dark_background', 'print', 'embroidery', 'web', 'restricted'])).max(getCustomerArtworkResponseBookmarksItemUseCasesMax),
   "printavoOrderId": zod.string().nullable(),
   "createdByEmail": zod.string().optional(),
   "updatedByEmail": zod.string().optional(),
@@ -557,7 +706,7 @@ export const GetCustomerArtworkResponse = zod.object({
 
 
 /**
- * @summary Link one Dropbox root folder to a customer (admin only)
+ * @summary Link one Dropbox root folder to a customer; relinking to a different folder retires (never deletes) existing logo bookmarks (admin only)
  */
 export const linkCustomerArtworkFolderPathIdRegExp = new RegExp('^\\d+$');
 
@@ -589,7 +738,7 @@ export const LinkCustomerArtworkFolderResponse = zod.object({
 
 
 /**
- * @summary Remove the customer folder link and its bookmarks (admin only)
+ * @summary Remove the customer folder link; its logo bookmarks are retired, never deleted (admin only)
  */
 export const unlinkCustomerArtworkFolderPathIdRegExp = new RegExp('^\\d+$');
 
@@ -800,14 +949,22 @@ export const createCustomerArtworkBookmarkBodyNotesMax = 5000;
 
 export const createCustomerArtworkBookmarkBodyPreferredDefault = false;
 export const createCustomerArtworkBookmarkBodyRetiredDefault = false;
+export const createCustomerArtworkBookmarkBodyUseCasesMax = 6;
+
+
 
 export const CreateCustomerArtworkBookmarkBody = zod.object({
   "path": zod.string().min(1).max(createCustomerArtworkBookmarkBodyPathMax),
   "label": zod.string().min(1).max(createCustomerArtworkBookmarkBodyLabelMax),
   "notes": zod.string().max(createCustomerArtworkBookmarkBodyNotesMax).nullish(),
   "preferred": zod.boolean().default(createCustomerArtworkBookmarkBodyPreferredDefault),
-  "retired": zod.boolean().default(createCustomerArtworkBookmarkBodyRetiredDefault)
+  "retired": zod.boolean().default(createCustomerArtworkBookmarkBodyRetiredDefault),
+  "useCases": zod.array(zod.enum(['light_background', 'dark_background', 'print', 'embroidery', 'web', 'restricted'])).max(createCustomerArtworkBookmarkBodyUseCasesMax).optional()
 })
+
+export const createCustomerArtworkBookmarkResponseUseCasesMax = 6;
+
+
 
 export const CreateCustomerArtworkBookmarkResponse = zod.object({
   "id": zod.string().uuid(),
@@ -819,6 +976,7 @@ export const CreateCustomerArtworkBookmarkResponse = zod.object({
   "notes": zod.string().nullish(),
   "preferred": zod.boolean(),
   "retired": zod.boolean(),
+  "useCases": zod.array(zod.enum(['light_background', 'dark_background', 'print', 'embroidery', 'web', 'restricted'])).max(createCustomerArtworkBookmarkResponseUseCasesMax),
   "printavoOrderId": zod.string().nullable(),
   "createdByEmail": zod.string().optional(),
   "updatedByEmail": zod.string().optional(),
@@ -842,14 +1000,21 @@ export const updateCustomerArtworkBookmarkBodyLabelMax = 160;
 
 export const updateCustomerArtworkBookmarkBodyNotesMax = 5000;
 
+export const updateCustomerArtworkBookmarkBodyUseCasesMax = 6;
+
 
 
 export const UpdateCustomerArtworkBookmarkBody = zod.object({
   "label": zod.string().min(1).max(updateCustomerArtworkBookmarkBodyLabelMax).optional(),
   "notes": zod.string().max(updateCustomerArtworkBookmarkBodyNotesMax).nullish(),
   "preferred": zod.boolean().optional(),
-  "retired": zod.boolean().optional()
+  "retired": zod.boolean().optional(),
+  "useCases": zod.array(zod.enum(['light_background', 'dark_background', 'print', 'embroidery', 'web', 'restricted'])).max(updateCustomerArtworkBookmarkBodyUseCasesMax).optional()
 })
+
+export const updateCustomerArtworkBookmarkResponseUseCasesMax = 6;
+
+
 
 export const UpdateCustomerArtworkBookmarkResponse = zod.object({
   "id": zod.string().uuid(),
@@ -861,6 +1026,7 @@ export const UpdateCustomerArtworkBookmarkResponse = zod.object({
   "notes": zod.string().nullish(),
   "preferred": zod.boolean(),
   "retired": zod.boolean(),
+  "useCases": zod.array(zod.enum(['light_background', 'dark_background', 'print', 'embroidery', 'web', 'restricted'])).max(updateCustomerArtworkBookmarkResponseUseCasesMax),
   "printavoOrderId": zod.string().nullable(),
   "createdByEmail": zod.string().optional(),
   "updatedByEmail": zod.string().optional(),
@@ -870,7 +1036,7 @@ export const UpdateCustomerArtworkBookmarkResponse = zod.object({
 
 
 /**
- * @summary Delete an artwork bookmark (admin only)
+ * @summary Retire an artwork bookmark (admin only) — brand-standard history is retained, never deleted
  */
 export const deleteCustomerArtworkBookmarkPathIdRegExp = new RegExp('^\\d+$');
 

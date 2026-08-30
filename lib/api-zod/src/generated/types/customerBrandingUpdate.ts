@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BrandingTypographyInput } from './brandingTypographyInput';
 import type { CustomerBrandingColorAssignment } from './customerBrandingColorAssignment';
 
 export interface CustomerBrandingUpdate {
@@ -13,12 +14,8 @@ export interface CustomerBrandingUpdate {
      * @nullable
      */
   notes: string | null;
-  /**
-     * @maxItems 20
-     * @items.minLength 1
-     * @items.maxLength 120
-     */
-  fonts: string[];
   /** @maxItems 20 */
   colors: CustomerBrandingColorAssignment[];
+  /** @maxItems 20 */
+  typography: BrandingTypographyInput[];
 }

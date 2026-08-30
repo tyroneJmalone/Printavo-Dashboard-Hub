@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ArtworkUseCase } from './artworkUseCase';
 
 export interface ArtworkBookmark {
   id: string;
@@ -17,6 +18,8 @@ export interface ArtworkBookmark {
   notes?: string | null;
   preferred: boolean;
   retired: boolean;
+  /** @maxItems 6 */
+  useCases: ArtworkUseCase[];
   /** @nullable */
   printavoOrderId: string | null;
   createdByEmail?: string;

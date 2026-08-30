@@ -6,13 +6,19 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AuditFields } from './auditFields';
-import type { CustomerBrandingColorsItem } from './customerBrandingColorsItem';
+import type { BrandingEvent } from './brandingEvent';
+import type { BrandingTypographyEntry } from './brandingTypographyEntry';
+import type { CustomerBrandingColor } from './customerBrandingColor';
 
 export interface CustomerBranding {
   configured: boolean;
   /** @nullable */
   notes: string | null;
-  fonts: string[];
-  colors: CustomerBrandingColorsItem[];
+  /** @maxItems 200 */
+  colors: CustomerBrandingColor[];
+  /** @maxItems 200 */
+  typography: BrandingTypographyEntry[];
+  /** @maxItems 50 */
+  events: BrandingEvent[];
   audit: AuditFields | null;
 }

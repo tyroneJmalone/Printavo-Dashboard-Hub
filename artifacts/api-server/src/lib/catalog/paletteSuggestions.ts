@@ -1,6 +1,6 @@
 import { cieDe2000, rgbToLab, visualScore, type Lab } from "./colorMeasurement";
 
-export type PaletteColor = { id: string; role: string; name: string; hex: string | null; rgb: unknown; pantoneCode?: string | null };
+export type PaletteColor = { id: string; role: string; name: string; hex: string | null; pantoneCode?: string | null };
 export type CatalogPaletteColor = {
   colorName: string; normName: string; swatchImage: string | null; productImage: string | null; families: string[];
   evidence?: { status: string; lab: Lab | null; rgb?: readonly [number, number, number] | null; sourceSwatchUrl?: string | null; sourceSwatchHash?: string | null; reason?: string | null; profile?: string | null; illuminant?: string | null; measuredAt?: string | null; confidence?: string | null; quality?: string | null; method?: string | null; algorithmVersion?: string | null } | null;
@@ -24,11 +24,12 @@ export function numericRgb(value: unknown): [number, number, number] | null {
     ? candidate as [number, number, number] : null;
 }
 
-export function customerRgb(color: Pick<PaletteColor, "hex" | "rgb">): [number, number, number] | null {
+/** RGB is always derived from hex — the catalog stores no separate RGB value. */
+export function customerRgb(color: Pick<PaletteColor, "hex">): [number, number, number] | null {
   const hex = typeof color.hex === "string" ? color.hex.replace(/^#/, "") : "";
   return /^([0-9a-f]{6})$/i.test(hex)
     ? [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
-    : numericRgb(color.rgb);
+    : null;
 }
 
 function rgbToHsl([r0, g0, b0]: [number, number, number]): [number, number, number] {
@@ -41,7 +42,7 @@ function rgbToHsl([r0, g0, b0]: [number, number, number]): [number, number, numb
 }
 
 /** Conservative deterministic family hints. Catalog families remain authoritative for garments. */
-export function derivePaletteFamilies(color: Pick<PaletteColor, "name" | "hex" | "rgb">): string[] {
+export function derivePaletteFamilies(color: Pick<PaletteColor, "name" | "hex">): string[] {
   const name = normalizeColorName(color.name);
   const nameTokens = name.split(" ").filter(Boolean);
   const families = new Set<string>();

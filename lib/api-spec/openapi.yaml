@@ -500,6 +500,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BrandingColorList"
+    post:
+      operationId: createBrandingColor
+      tags: [clients]
+      summary: Add a color to the shared catalog (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateBrandingColorRequest" }
+      responses:
+        "201":
+          description: Created catalog color
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BrandingColor" }
+        "409":
+          description: A color with this name already exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /branding/colors/{colorId}:
+    patch:
+      operationId: updateBrandingColor
+      tags: [clients]
+      summary: Correct or deactivate a shared catalog color (admin only)
+      parameters:
+        - name: colorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateBrandingColorRequest" }
+      responses:
+        "200":
+          description: Updated catalog color
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BrandingColor" }
+        "404":
+          description: Color not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
   /customers/{id}/branding:
     get:
       operationId: getCustomerBranding
@@ -548,7 +594,7 @@ paths:
         - $ref: "#/components/parameters/CustomerIdParam"
       responses:
         "200":
-          description: Artwork state; linked=false is a normal supported response
+          description: Artwork state; linked=false is a normal supported response and still includes retired logo bookmarks (read-only brand-standard history; file access stays blocked)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CustomerArtwork" }
@@ -556,7 +602,7 @@ paths:
     put:
       operationId: linkCustomerArtworkFolder
       tags: [clients]
-      summary: Link one Dropbox root folder to a customer (admin only)
+      summary: Link one Dropbox root folder to a customer; relinking to a different folder retires (never deletes) existing logo bookmarks (admin only)
       parameters:
         - $ref: "#/components/parameters/CustomerIdParam"
       requestBody:
@@ -583,11 +629,11 @@ paths:
     delete:
       operationId: unlinkCustomerArtworkFolder
       tags: [clients]
-      summary: Remove the customer folder link and its bookmarks (admin only)
+      summary: Remove the customer folder link; its logo bookmarks are retired, never deleted (admin only)
       parameters:
         - $ref: "#/components/parameters/CustomerIdParam"
       responses:
-        "204": { description: Unlinked }
+        "204": { description: Unlinked (any active logo bookmarks were retired with a history event) }
   /customers/{id}/artwork/folder-picker:
     get:
       operationId: pickCustomerArtworkFolder
@@ -770,12 +816,12 @@ paths:
     delete:
       operationId: deleteCustomerArtworkBookmark
       tags: [clients]
-      summary: Delete an artwork bookmark (admin only)
+      summary: Retire an artwork bookmark (admin only) — brand-standard history is retained, never deleted
       parameters:
         - $ref: "#/components/parameters/CustomerIdParam"
         - $ref: "#/components/parameters/ArtworkBookmarkIdParam"
       responses:
-        "204": { description: Deleted }
+        "204": { description: Retired (idempotent; the bookmark row and its history are kept) }
   /customers/{id}:
     get:
       operationId: getCustomerProfile
@@ -6560,7 +6606,7 @@ components:
         updatedAt: { type: string, format: date-time }
     BrandingColor:
       type: object
-      required: [id, name, hex, active]
+      required: [id, name, hex, active, pantoneCode, cmyk, inkReferences, threadReferences, inkStockNotes, threadStockNotes]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -6568,27 +6614,12 @@ components:
         active: { type: boolean }
         pantoneCode: { type: [string, "null"] }
         cmyk:
-          type: [array, "null"]
-          minItems: 4
-          maxItems: 4
-          items: { type: integer, minimum: 0, maximum: 100 }
-        rgb:
-          type: [array, "null"]
-          minItems: 3
-          maxItems: 3
-          items: { type: integer, minimum: 0, maximum: 255 }
-        inkReferences:
-          type: [array, "null"]
-          items: { type: string }
-        threadReferences:
-          type: [array, "null"]
-          items: { type: string }
-        inkStockNotes:
-          type: [array, "null"]
-          items: {}
-        threadStockNotes:
-          type: [array, "null"]
-          items: {}
+          type: [string, "null"]
+          description: Free-text CMYK breakdown, e.g. "60, 0, 100, 7"
+        inkReferences: { type: [string, "null"] }
+        threadReferences: { type: [string, "null"] }
+        inkStockNotes: { type: [string, "null"] }
+        threadStockNotes: { type: [string, "null"] }
         createdByEmail: { type: string }
         updatedByEmail: { type: string }
         createdAt: { type: string, format: date-time }
@@ -6601,48 +6632,124 @@ components:
           type: array
           maxItems: 500
           items: { $ref: "#/components/schemas/BrandingColor" }
+    CreateBrandingColorRequest:
+      type: object
+      required: [name, hex]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        hex: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+        pantoneCode: { type: [string, "null"], maxLength: 60 }
+        cmyk: { type: [string, "null"], maxLength: 60 }
+        inkReferences: { type: [string, "null"], maxLength: 500 }
+        threadReferences: { type: [string, "null"], maxLength: 500 }
+        inkStockNotes: { type: [string, "null"], maxLength: 2000 }
+        threadStockNotes: { type: [string, "null"], maxLength: 2000 }
+    UpdateBrandingColorRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        hex: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+        active: { type: boolean }
+        pantoneCode: { type: [string, "null"], maxLength: 60 }
+        cmyk: { type: [string, "null"], maxLength: 60 }
+        inkReferences: { type: [string, "null"], maxLength: 500 }
+        threadReferences: { type: [string, "null"], maxLength: 500 }
+        inkStockNotes: { type: [string, "null"], maxLength: 2000 }
+        threadStockNotes: { type: [string, "null"], maxLength: 2000 }
     CustomerBrandingColorAssignment:
       type: object
       required: [role, colorId]
       properties:
         role: { type: string, minLength: 1, maxLength: 80 }
         colorId: { type: string, format: uuid }
+    BrandingTypographyInput:
+      type: object
+      required: [role, fontName]
+      properties:
+        role: { type: string, minLength: 1, maxLength: 80 }
+        fontName: { type: string, minLength: 1, maxLength: 120 }
+        capitalization: { type: [string, "null"], maxLength: 120 }
+        usageNotes: { type: [string, "null"], maxLength: 2000 }
+    BrandingTypographyEntry:
+      type: object
+      required: [id, role, fontName, capitalization, usageNotes, status, updatedByEmail, updatedAt, retiredAt, retiredByEmail]
+      properties:
+        id: { type: string, format: uuid }
+        role: { type: string }
+        fontName: { type: string }
+        capitalization: { type: [string, "null"] }
+        usageNotes: { type: [string, "null"] }
+        status: { type: string, enum: [current, retired] }
+        updatedByEmail: { type: string }
+        updatedAt: { type: string, format: date-time }
+        retiredAt: { type: [string, "null"], format: date-time }
+        retiredByEmail: { type: [string, "null"] }
+    CustomerBrandingColor:
+      type: object
+      required: [assignmentId, role, status, colorId, name, hex, pantoneCode, cmyk, inkReferences, threadReferences, inkStockNotes, threadStockNotes, colorActive, updatedByEmail, updatedAt, retiredAt, retiredByEmail]
+      properties:
+        assignmentId: { type: string, format: uuid }
+        role: { type: string }
+        status: { type: string, enum: [current, retired] }
+        colorId: { type: string, format: uuid }
+        name: { type: string }
+        hex: { type: string }
+        pantoneCode: { type: [string, "null"] }
+        cmyk: { type: [string, "null"] }
+        inkReferences: { type: [string, "null"] }
+        threadReferences: { type: [string, "null"] }
+        inkStockNotes: { type: [string, "null"] }
+        threadStockNotes: { type: [string, "null"] }
+        colorActive: { type: boolean }
+        updatedByEmail: { type: string }
+        updatedAt: { type: string, format: date-time }
+        retiredAt: { type: [string, "null"], format: date-time }
+        retiredByEmail: { type: [string, "null"] }
+    BrandingEvent:
+      type: object
+      required: [id, area, summary, actorEmail, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        area: { type: string, enum: [colors, typography, notes, logos] }
+        summary: { type: string }
+        actorEmail: { type: string }
+        createdAt: { type: string, format: date-time }
     CustomerBranding:
       type: object
-      required: [configured, notes, fonts, colors, audit]
+      required: [configured, notes, colors, typography, events, audit]
       properties:
         configured: { type: boolean }
         notes: { type: [string, "null"] }
-        fonts:
-          type: array
-          items: { type: string }
         colors:
           type: array
-          items:
-            type: object
-            required: [role, id, name, hex]
-            properties:
-              role: { type: string }
-              id: { type: string, format: uuid }
-              name: { type: string }
-              hex: { type: string }
+          maxItems: 200
+          items: { $ref: "#/components/schemas/CustomerBrandingColor" }
+        typography:
+          type: array
+          maxItems: 200
+          items: { $ref: "#/components/schemas/BrandingTypographyEntry" }
+        events:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/BrandingEvent" }
         audit:
           oneOf:
             - $ref: "#/components/schemas/AuditFields"
             - type: "null"
     CustomerBrandingUpdate:
       type: object
-      required: [notes, fonts, colors]
+      required: [notes, colors, typography]
       properties:
         notes: { type: [string, "null"], maxLength: 10000 }
-        fonts:
-          type: array
-          maxItems: 20
-          items: { type: string, minLength: 1, maxLength: 120 }
         colors:
           type: array
           maxItems: 20
           items: { $ref: "#/components/schemas/CustomerBrandingColorAssignment" }
+        typography:
+          type: array
+          maxItems: 20
+          items: { $ref: "#/components/schemas/BrandingTypographyInput" }
     DropboxFolderLinkRequest:
       type: object
       required: [path]
@@ -6674,6 +6781,9 @@ components:
           items: { $ref: "#/components/schemas/DropboxEntry" }
         truncated: { type: boolean }
         cursor: { type: [string, "null"], format: uuid }
+    ArtworkUseCase:
+      type: string
+      enum: [light_background, dark_background, print, embroidery, web, restricted]
     ArtworkBookmarkRequest:
       type: object
       required: [path, label]
@@ -6683,6 +6793,10 @@ components:
         notes: { type: [string, "null"], maxLength: 5000 }
         preferred: { type: boolean, default: false }
         retired: { type: boolean, default: false }
+        useCases:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/ArtworkUseCase" }
     ArtworkBookmarkUpdate:
       type: object
       minProperties: 1
@@ -6691,9 +6805,13 @@ components:
         notes: { type: [string, "null"], maxLength: 5000 }
         preferred: { type: boolean }
         retired: { type: boolean }
+        useCases:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/ArtworkUseCase" }
     ArtworkBookmark:
       type: object
-      required: [id, dropboxId, pathLower, pathDisplay, name, label, preferred, retired, printavoOrderId]
+      required: [id, dropboxId, pathLower, pathDisplay, name, label, preferred, retired, useCases, printavoOrderId]
       properties:
         id: { type: string, format: uuid }
         dropboxId: { type: string }
@@ -6704,6 +6822,10 @@ components:
         notes: { type: [string, "null"] }
         preferred: { type: boolean }
         retired: { type: boolean }
+        useCases:
+          type: array
+          maxItems: 6
+          items: { $ref: "#/components/schemas/ArtworkUseCase" }
         printavoOrderId: { type: [string, "null"] }
         createdByEmail: { type: string }
         updatedByEmail: { type: string }

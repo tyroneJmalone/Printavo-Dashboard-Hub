@@ -46,3 +46,4 @@
 - [Dropbox artwork previews](dropbox-artwork-previews.md) — temporary links do not embed reliably; proxy only allowlisted browser-safe files through the authorized Hub route.
 - [Shared production color catalog](shared-production-color-catalog.md) — Hub and BreezyTweak should consume one catalog for Pantone, ink, thread, conversions, and stock notes.
 - [AI context layer architecture](ai-context-layer.md) — one protocol-independent core, thin MCP/REST/internal doors, per-consumer tokens, internal vs external trust tiers from day one.
+- [Drizzle push misses index predicates](drizzle-push-index-predicates.md) — adding WHERE to an existing unique index silently no-ops on push; verify pg_indexes and recreate manually.

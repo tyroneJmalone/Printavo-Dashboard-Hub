@@ -333,8 +333,8 @@ router.post("/collections/palette-preview", async (req: Request, res): Promise<v
     const customer = await pool.query("SELECT 1 FROM pv_customers WHERE printavo_id = $1", [customerId]);
     if (!customer.rowCount) { res.status(404).json({ error: "Customer not found" }); return; }
     const paletteResult = await pool.query(
-       `SELECT c.id, a.role, c.name, c.hex, c.rgb, c.pantone_code AS "pantoneCode" FROM customer_branding_colors a
-       JOIN branding_colors c ON c.id = a.color_id WHERE a.printavo_customer_id = $1 AND c.active = true ORDER BY a.role`, [customerId]);
+       `SELECT c.id, a.role, c.name, c.hex, c.pantone_code AS "pantoneCode" FROM customer_branding_colors a
+       JOIN branding_colors c ON c.id = a.color_id WHERE a.printavo_customer_id = $1 AND a.status = 'current' AND c.active = true ORDER BY a.role`, [customerId]);
     const palette = paletteResult.rows as PaletteColor[];
     if (!palette.length) { res.status(400).json({ error: "Customer has no configured active branding colors" }); return; }
     const suggestions: unknown[] = [], unresolved: unknown[] = [], ambiguous: unknown[] = [];
@@ -414,11 +414,11 @@ router.post("/collections/from-suggestion", async (req: Request, res: Response):
     }
     if (!(await client.query(
       `SELECT 1 FROM customer_branding_colors a JOIN branding_colors c ON c.id = a.color_id
-       WHERE a.printavo_customer_id = $1 AND c.active = true LIMIT 1`, [data.printavoCustomerId],
+       WHERE a.printavo_customer_id = $1 AND a.status = 'current' AND c.active = true LIMIT 1`, [data.printavoCustomerId],
     )).rowCount) throw new ReviewValidationError("Customer has no configured active branding colors");
     const paletteRows = (await client.query(
-       `SELECT c.id,a.role,c.name,c.hex,c.rgb,c.pantone_code AS "pantoneCode" FROM customer_branding_colors a
-       JOIN branding_colors c ON c.id=a.color_id WHERE a.printavo_customer_id=$1 AND c.active=true ORDER BY a.role`,
+       `SELECT c.id,a.role,c.name,c.hex,c.pantone_code AS "pantoneCode" FROM customer_branding_colors a
+       JOIN branding_colors c ON c.id=a.color_id WHERE a.printavo_customer_id=$1 AND a.status='current' AND c.active=true ORDER BY a.role`,
       [data.printavoCustomerId],
     )).rows as PaletteColor[];
     const snapshots = new Map<string, unknown>();

@@ -14,8 +14,10 @@ import {
   usePickCustomerArtworkFolder,
   getPickCustomerArtworkFolderQueryKey,
   ArtworkBookmark,
+  ArtworkUseCase,
   DropboxEntry
 } from "@workspace/api-client-react";
+import { USE_CASE_LABELS, USE_CASE_ORDER } from "@/lib/branding";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useStaff } from "@/components/auth/StaffGate";
@@ -176,23 +178,55 @@ export function CustomerArtworkCard({ customerId }: { customerId: string }) {
 
       <div className="p-5 flex-1 flex flex-col">
         {!artwork.linked ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center flex-1">
-            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3">
-              <LinkIcon size={20} className="text-slate-500" />
+          <div className="flex flex-col flex-1">
+            <div className="flex flex-col items-center justify-center py-8 text-center flex-1">
+              <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3">
+                <LinkIcon size={20} className="text-slate-500" />
+              </div>
+              <h3 className="text-sm font-medium text-slate-200 mb-1">No Dropbox Folder</h3>
+              <p className="text-xs text-slate-500 max-w-[250px] mb-4">
+                Link a Dropbox folder to manage artwork for this customer.
+              </p>
+              {isAdmin ? (
+                <Button 
+                  onClick={() => setPickerOpen(true)}
+                  className="bg-purple-600 hover:bg-purple-500 text-white"
+                >
+                  Choose Folder
+                </Button>
+              ) : (
+                <p className="text-[11px] text-slate-500 italic bg-slate-800/50 px-3 py-1.5 rounded">Only admins can link folders.</p>
+              )}
             </div>
-            <h3 className="text-sm font-medium text-slate-200 mb-1">No Dropbox Folder</h3>
-            <p className="text-xs text-slate-500 max-w-[250px] mb-4">
-              Link a Dropbox folder to manage artwork for this customer.
-            </p>
-            {isAdmin ? (
-              <Button 
-                onClick={() => setPickerOpen(true)}
-                className="bg-purple-600 hover:bg-purple-500 text-white"
-              >
-                Choose Folder
-              </Button>
-            ) : (
-              <p className="text-[11px] text-slate-500 italic bg-slate-800/50 px-3 py-1.5 rounded">Only admins can link folders.</p>
+            {artwork.bookmarks && artwork.bookmarks.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-800" data-testid="retired-logo-history">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 inline-flex items-center gap-1.5">
+                  <Archive size={12} /> Retired Logos (kept for history)
+                </h4>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  These logos were retired when the folder was unlinked or changed. Their details are kept, but files can't be previewed without a linked folder.
+                </p>
+                <div className="space-y-2">
+                  {artwork.bookmarks.map((b: ArtworkBookmark) => (
+                    <div key={b.id} className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-slate-300">{b.label}</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-800 rounded px-1.5 py-0.5">Retired</span>
+                        {(b.useCases ?? []).map((useCase: string) => (
+                          <span
+                            key={useCase}
+                            className={`text-[10px] font-medium rounded px-1.5 py-0.5 ${useCase === "restricted" ? "bg-red-500/15 text-red-400" : "bg-slate-800 text-slate-400"}`}
+                          >
+                            {USE_CASE_LABELS[useCase as keyof typeof USE_CASE_LABELS] ?? useCase}
+                          </span>
+                        ))}
+                      </div>
+                      {b.notes && <p className="text-xs text-slate-500 mt-1">{b.notes}</p>}
+                      <p className="text-[10px] text-slate-600 mt-1 break-all">{b.pathDisplay}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ) : (
@@ -519,6 +553,23 @@ function BookmarkRow({ bookmark, customerId, isAdmin, onEdit }: { bookmark: Artw
           </div>
           {bookmark.label && bookmark.label !== bookmark.name.replace(/\.[^/.]+$/, "") && (
             <p className="text-xs text-slate-500 mt-1 break-words">{bookmark.label}</p>
+          )}
+          {bookmark.useCases && bookmark.useCases.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {bookmark.useCases.map((useCase) => (
+                <span
+                  key={useCase}
+                  className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                    useCase === "restricted"
+                      ? "bg-red-900/30 text-red-400 border-red-800/50"
+                      : "bg-slate-800/80 text-slate-300 border-slate-700"
+                  }`}
+                  data-testid={`use-case-badge-${useCase}`}
+                >
+                  {USE_CASE_LABELS[useCase]}
+                </span>
+              ))}
+            </div>
           )}
           {invoiceNum && (
             <div className="mt-2">
@@ -882,6 +933,7 @@ function ArtworkBookmarkDialog({ customerId, bookmark, open, onOpenChange }: { c
   const [notes, setNotes] = useState(bookmark.notes || "");
   const [preferred, setPreferred] = useState(bookmark.preferred || false);
   const [retired, setRetired] = useState(bookmark.retired || false);
+  const [useCases, setUseCases] = useState<ArtworkUseCase[]>(bookmark.useCases || []);
 
   useEffect(() => {
     if (open) {
@@ -889,6 +941,7 @@ function ArtworkBookmarkDialog({ customerId, bookmark, open, onOpenChange }: { c
       setNotes(bookmark.notes || "");
       setPreferred(bookmark.preferred || false);
       setRetired(bookmark.retired || false);
+      setUseCases(bookmark.useCases || []);
     }
   }, [open, bookmark]);
 
@@ -906,7 +959,7 @@ function ArtworkBookmarkDialog({ customerId, bookmark, open, onOpenChange }: { c
   const deleteBookmark = useDeleteCustomerArtworkBookmark({
     mutation: {
       onSuccess: () => {
-        toast({ title: "Bookmark removed" });
+        toast({ title: "Logo retired", description: "It moves to the retired list — nothing is deleted." });
         qc.invalidateQueries({ queryKey: getGetCustomerArtworkQueryKey(customerId) });
         onOpenChange(false);
       }
@@ -921,13 +974,14 @@ function ArtworkBookmarkDialog({ customerId, bookmark, open, onOpenChange }: { c
         label,
         notes: notes || null,
         preferred,
-        retired
+        retired,
+        useCases
       }
     });
   };
 
   const handleDelete = () => {
-    if (confirm("Remove this bookmark?")) {
+    if (confirm("Retire this logo? It will move to the retired list (its history is kept — nothing is deleted).")) {
       deleteBookmark.mutate({ id: customerId, bookmarkId: bookmark.id });
     }
   };
@@ -948,6 +1002,28 @@ function ArtworkBookmarkDialog({ customerId, bookmark, open, onOpenChange }: { c
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Notes & Usage</label>
             <Textarea value={notes} onChange={e => setNotes(e.target.value)} className="text-sm min-h-[80px] bg-slate-900 border-slate-700" placeholder="e.g. Only for dark backgrounds" />
           </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Approved Use</label>
+            <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-slate-900/50 border border-slate-800">
+              {USE_CASE_ORDER.map((useCase) => (
+                <label key={useCase} className="flex items-center gap-2 text-sm font-medium text-slate-300 cursor-pointer">
+                  <Checkbox
+                    checked={useCases.includes(useCase)}
+                    onCheckedChange={(checked) =>
+                      setUseCases((prev) =>
+                        checked
+                          ? USE_CASE_ORDER.filter((u) => prev.includes(u) || u === useCase)
+                          : prev.filter((u) => u !== useCase),
+                      )
+                    }
+                    className={`border-slate-600 ${useCase === "restricted" ? "data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" : ""}`}
+                    data-testid={`checkbox-use-case-${useCase}`}
+                  />
+                  {USE_CASE_LABELS[useCase]}
+                </label>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center gap-6 p-3 rounded-lg bg-slate-900/50 border border-slate-800">
             <label className="flex items-center gap-2.5 text-sm font-medium text-slate-300 cursor-pointer">
               <Checkbox checked={preferred} onCheckedChange={(c) => setPreferred(!!c)} className="border-slate-600 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600" />
@@ -966,7 +1042,7 @@ function ArtworkBookmarkDialog({ customerId, bookmark, open, onOpenChange }: { c
 
         <DialogFooter className="flex items-center justify-between sm:justify-between border-t border-slate-800 pt-4 mt-2">
           <Button variant="ghost" size="sm" onClick={handleDelete} className="text-red-400 hover:text-red-300 hover:bg-red-400/10">
-            <Trash2 size={14} className="mr-1.5" /> Remove
+            <Archive size={14} className="mr-1.5" /> Retire
           </Button>
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="text-slate-300">Cancel</Button>

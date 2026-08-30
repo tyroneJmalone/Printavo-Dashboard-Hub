@@ -57,6 +57,7 @@ import type {
   AutoPrintRun,
   AutoPrintRunsResponse,
   BackupStatus,
+  BrandingColor,
   BrandingColorList,
   BreakdownReport,
   BrowseCustomerArtworkParams,
@@ -86,6 +87,7 @@ import type {
   CorrespondenceSearchRequest,
   CorrespondenceThreadDetail,
   CorrespondenceThreadList,
+  CreateBrandingColorRequest,
   CreateChipplyStoreRequest,
   CreateCollectionFromSuggestionRequest,
   CreateCollectionRequest,
@@ -332,6 +334,7 @@ import type {
   TeamUpdate,
   TriggerCatalogRefresh200,
   UpdateAiQuoteDraftRequest,
+  UpdateBrandingColorRequest,
   UpdateChipplyStoreRequest,
   UpdateCollectionItemRequest,
   UpdateCollectionRequest,
@@ -1969,6 +1972,147 @@ export function useListBrandingColors<TData = Awaited<ReturnType<typeof listBran
 
 
 
+export const getCreateBrandingColorUrl = () => {
+
+
+
+
+  return `/api/branding/colors`
+}
+
+/**
+ * @summary Add a color to the shared catalog (admin only)
+ */
+export const createBrandingColor = async (createBrandingColorRequest: CreateBrandingColorRequest, options?: RequestInit): Promise<BrandingColor> => {
+
+  return customFetch<BrandingColor>(getCreateBrandingColorUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createBrandingColorRequest)
+  }
+);}
+
+
+
+
+export const getCreateBrandingColorMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBrandingColor>>, TError,{data: BodyType<CreateBrandingColorRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBrandingColor>>, TError,{data: BodyType<CreateBrandingColorRequest>}, TContext> => {
+
+const mutationKey = ['createBrandingColor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBrandingColor>>, {data: BodyType<CreateBrandingColorRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBrandingColor(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBrandingColorMutationResult = NonNullable<Awaited<ReturnType<typeof createBrandingColor>>>
+    export type CreateBrandingColorMutationBody = BodyType<CreateBrandingColorRequest>
+    export type CreateBrandingColorMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Add a color to the shared catalog (admin only)
+ */
+export const useCreateBrandingColor = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBrandingColor>>, TError,{data: BodyType<CreateBrandingColorRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBrandingColor>>,
+        TError,
+        {data: BodyType<CreateBrandingColorRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateBrandingColorMutationOptions(options));
+    }
+
+export const getUpdateBrandingColorUrl = (colorId: string,) => {
+
+
+
+
+  return `/api/branding/colors/${colorId}`
+}
+
+/**
+ * @summary Correct or deactivate a shared catalog color (admin only)
+ */
+export const updateBrandingColor = async (colorId: string,
+    updateBrandingColorRequest: UpdateBrandingColorRequest, options?: RequestInit): Promise<BrandingColor> => {
+
+  return customFetch<BrandingColor>(getUpdateBrandingColorUrl(colorId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateBrandingColorRequest)
+  }
+);}
+
+
+
+
+export const getUpdateBrandingColorMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBrandingColor>>, TError,{colorId: string;data: BodyType<UpdateBrandingColorRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBrandingColor>>, TError,{colorId: string;data: BodyType<UpdateBrandingColorRequest>}, TContext> => {
+
+const mutationKey = ['updateBrandingColor'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBrandingColor>>, {colorId: string;data: BodyType<UpdateBrandingColorRequest>}> = (props) => {
+          const {colorId,data} = props ?? {};
+
+          return  updateBrandingColor(colorId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBrandingColorMutationResult = NonNullable<Awaited<ReturnType<typeof updateBrandingColor>>>
+    export type UpdateBrandingColorMutationBody = BodyType<UpdateBrandingColorRequest>
+    export type UpdateBrandingColorMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Correct or deactivate a shared catalog color (admin only)
+ */
+export const useUpdateBrandingColor = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBrandingColor>>, TError,{colorId: string;data: BodyType<UpdateBrandingColorRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBrandingColor>>,
+        TError,
+        {colorId: string;data: BodyType<UpdateBrandingColorRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateBrandingColorMutationOptions(options));
+    }
+
 export const getGetCustomerBrandingUrl = (id: string,) => {
 
 
@@ -2203,7 +2347,7 @@ export const getLinkCustomerArtworkFolderUrl = (id: string,) => {
 }
 
 /**
- * @summary Link one Dropbox root folder to a customer (admin only)
+ * @summary Link one Dropbox root folder to a customer; relinking to a different folder retires (never deletes) existing logo bookmarks (admin only)
  */
 export const linkCustomerArtworkFolder = async (id: string,
     dropboxFolderLinkRequest: DropboxFolderLinkRequest, options?: RequestInit): Promise<LinkCustomerArtworkFolder200> => {
@@ -2252,7 +2396,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type LinkCustomerArtworkFolderMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Link one Dropbox root folder to a customer (admin only)
+ * @summary Link one Dropbox root folder to a customer; relinking to a different folder retires (never deletes) existing logo bookmarks (admin only)
  */
 export const useLinkCustomerArtworkFolder = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkCustomerArtworkFolder>>, TError,{id: string;data: BodyType<DropboxFolderLinkRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2274,7 +2418,7 @@ export const getUnlinkCustomerArtworkFolderUrl = (id: string,) => {
 }
 
 /**
- * @summary Remove the customer folder link and its bookmarks (admin only)
+ * @summary Remove the customer folder link; its logo bookmarks are retired, never deleted (admin only)
  */
 export const unlinkCustomerArtworkFolder = async (id: string, options?: RequestInit): Promise<void> => {
 
@@ -2322,7 +2466,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UnlinkCustomerArtworkFolderMutationError = ErrorType<unknown>
 
     /**
- * @summary Remove the customer folder link and its bookmarks (admin only)
+ * @summary Remove the customer folder link; its logo bookmarks are retired, never deleted (admin only)
  */
 export const useUnlinkCustomerArtworkFolder = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkCustomerArtworkFolder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2935,7 +3079,7 @@ export const getDeleteCustomerArtworkBookmarkUrl = (id: string,
 }
 
 /**
- * @summary Delete an artwork bookmark (admin only)
+ * @summary Retire an artwork bookmark (admin only) — brand-standard history is retained, never deleted
  */
 export const deleteCustomerArtworkBookmark = async (id: string,
     bookmarkId: string, options?: RequestInit): Promise<void> => {
@@ -2984,7 +3128,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteCustomerArtworkBookmarkMutationError = ErrorType<unknown>
 
     /**
- * @summary Delete an artwork bookmark (admin only)
+ * @summary Retire an artwork bookmark (admin only) — brand-standard history is retained, never deleted
  */
 export const useDeleteCustomerArtworkBookmark = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomerArtworkBookmark>>, TError,{id: string;bookmarkId: string}, TContext>, request?: SecondParameter<typeof customFetch>}

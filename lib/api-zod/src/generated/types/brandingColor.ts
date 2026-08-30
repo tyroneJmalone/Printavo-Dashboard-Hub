@@ -13,31 +13,20 @@ export interface BrandingColor {
   hex: string;
   active: boolean;
   /** @nullable */
-  pantoneCode?: string | null;
+  pantoneCode: string | null;
   /**
-     * @minItems 4
-     * @maxItems 4
+     * Free-text CMYK breakdown, e.g. "60, 0, 100, 7"
      * @nullable
-     * @items.minimum 0
-     * @items.maximum 100
      */
-  cmyk?: number[] | null;
-  /**
-     * @minItems 3
-     * @maxItems 3
-     * @nullable
-     * @items.minimum 0
-     * @items.maximum 255
-     */
-  rgb?: number[] | null;
+  cmyk: string | null;
   /** @nullable */
-  inkReferences?: string[] | null;
+  inkReferences: string | null;
   /** @nullable */
-  threadReferences?: string[] | null;
+  threadReferences: string | null;
   /** @nullable */
-  inkStockNotes?: unknown[] | null;
+  inkStockNotes: string | null;
   /** @nullable */
-  threadStockNotes?: unknown[] | null;
+  threadStockNotes: string | null;
   createdByEmail?: string;
   updatedByEmail?: string;
   createdAt?: Date;

@@ -504,10 +504,10 @@ export default function SuggestCollectionWorkflow({ open, onOpenChange, initialC
                   <CheckCircle2 size={12} className="text-emerald-500" />
                   Active Palette
                 </Label>
-                {branding.colors.length > 0 ? (
+                {branding.colors.filter(c => c.status === "current").length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {branding.colors.map(c => (
-                      <div key={c.id} className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded px-2 py-1 shadow-sm" title={`${c.role}: ${c.name}`}>
+                    {branding.colors.filter(c => c.status === "current").map(c => (
+                      <div key={c.assignmentId} className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded px-2 py-1 shadow-sm" title={`${c.role}: ${c.name}`}>
                         <div className="w-2.5 h-2.5 rounded-full border border-slate-700 shadow-[0_0_0_1px_rgba(255,255,255,0.05)]" style={{ backgroundColor: c.hex || 'transparent' }} />
                         <span className="text-[10px] font-medium text-slate-300 max-w-[80px] truncate">{c.role}</span>
                       </div>
