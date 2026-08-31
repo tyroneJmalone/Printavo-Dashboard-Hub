@@ -37,7 +37,7 @@ import { logger as rootLogger } from "../logger";
  * Andrew. Drafts only; a human always reviews and sends.
  */
 
-const DRAFT_MODEL = "gpt-5.6-terra";
+export const DRAFT_MODEL = "gpt-5.6-terra";
 const RULE_DRAFT_CHECK_DELAYS_MS = [4 * 60 * 1000, 12 * 60 * 1000];
 
 // ── Webhook signature secret (app_settings) ─────────────────────────────
@@ -82,7 +82,7 @@ export function verifyMissiveSignature(
 
 // ── Webhook payload parsing ──────────────────────────────────────────────
 
-interface ParsedWebhook {
+export interface ParsedWebhook {
   conversationId: string;
   subject: string;
   counterpartEmail: string;
@@ -183,22 +183,32 @@ export async function parseWebhookPayload(payload: unknown): Promise<ParsedWebho
 
 // ── Context facts ────────────────────────────────────────────────────────
 
-interface ContextFacts {
+export interface ContextFacts {
   customerId: string | null;
   customerName: string;
   noteMarkdown: string;
   factsForPrompt: string;
 }
 
-async function gatherContextFacts(
+/**
+ * "backtest" = the offline drafting backtest dry-running this pipeline over
+ * historical email. It audits on the context_internal surface so backtest
+ * tool calls never pollute the live Pattern B/C trial stats.
+ */
+export async function gatherContextFacts(
   parsed: ParsedWebhook,
-  pattern: "B" | "C",
+  pattern: "B" | "C" | "backtest",
 ): Promise<ContextFacts> {
   const caller = internalCaller(
     null,
-    pattern === "B" ? "Pattern B webhook" : "Pattern C voice draft",
+    pattern === "B"
+      ? "Pattern B webhook"
+      : pattern === "C"
+        ? "Pattern C voice draft"
+        : "Draft backtest",
   );
-  const surface = pattern === "B" ? "pattern_b" : "pattern_c";
+  const surface =
+    pattern === "B" ? "pattern_b" : pattern === "C" ? "pattern_c" : "context_internal";
   const lines: string[] = [];
   let customerId: string | null = null;
   let customerName = "";
@@ -555,7 +565,7 @@ async function checkRuleDraft(
   }
 }
 
-const DRAFT_SYSTEM_PROMPT = `You draft email replies for a screen-printing shop (MINT Prints). You are drafting AS the mailbox owner, in their personal writing voice.
+export const DRAFT_SYSTEM_PROMPT = `You draft email replies for a screen-printing shop (MINT Prints). You are drafting AS the mailbox owner, in their personal writing voice.
 
 Rules:
 - Use ONLY facts from CONTEXT FACTS. If the customer's question needs a fact you don't have, say the team will confirm it — never invent prices, dates, statuses, or policies.

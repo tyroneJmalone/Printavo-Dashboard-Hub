@@ -42,6 +42,7 @@ import aiConsumersRouter from "./aiConsumers";
 import missiveWebhooksRouter from "./missiveWebhooks";
 import voiceProfilesRouter from "./voiceProfiles";
 import aiPatternsRouter from "./aiPatterns";
+import aiBacktestRouter from "./aiBacktest";
 
 const router: IRouter = Router();
 
@@ -99,6 +100,7 @@ router.use(knowledgeBaseRouter);
 router.use(aiConsumersRouter); // admin-only inside (token + audit management)
 router.use(voiceProfilesRouter); // staff view/refresh — traits only, no mail content
 router.use(aiPatternsRouter); // admin-only inside (webhooks + pattern measurement)
+router.use(aiBacktestRouter); // admin-only inside (offline drafting backtest)
 
 // moMINTum task management — shared LIVE database with the standalone app.
 // Only mounted when MOMINTUM_DATABASE_URL is set (removing the secret is the

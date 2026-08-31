@@ -10480,3 +10480,141 @@ export const ReviewDraftPatternEventResponse = zod.object({
 })
 
 
+/**
+ * @summary Offline drafting backtest runs, newest first (admin)
+ */
+export const listDraftBacktestRunsQueryLimitDefault = 20;
+export const listDraftBacktestRunsQueryLimitMax = 100;
+
+
+
+export const ListDraftBacktestRunsQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listDraftBacktestRunsQueryLimitMax).default(listDraftBacktestRunsQueryLimitDefault)
+})
+
+export const ListDraftBacktestRunsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.string(),
+  "requestedByEmail": zod.string().nullable(),
+  "samplePerMailbox": zod.number(),
+  "itemsTotal": zod.number(),
+  "itemsDone": zod.number(),
+  "itemsFailed": zod.number(),
+  "skippedMailboxes": zod.array(zod.string()),
+  "model": zod.string(),
+  "error": zod.string().nullable(),
+  "startedAt": zod.string(),
+  "completedAt": zod.string().nullable()
+})
+export const ListDraftBacktestRunsResponse = zod.array(ListDraftBacktestRunsResponseItem)
+
+
+/**
+ * @summary Dry-run AI drafts over answered historical email — no Missive writes (admin)
+ */
+export const startDraftBacktestRunBodySamplePerMailboxMax = 25;
+
+
+
+export const StartDraftBacktestRunBody = zod.object({
+  "samplePerMailbox": zod.number().min(1).max(startDraftBacktestRunBodySamplePerMailboxMax)
+})
+
+export const StartDraftBacktestRunResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.string(),
+  "requestedByEmail": zod.string().nullable(),
+  "samplePerMailbox": zod.number(),
+  "itemsTotal": zod.number(),
+  "itemsDone": zod.number(),
+  "itemsFailed": zod.number(),
+  "skippedMailboxes": zod.array(zod.string()),
+  "model": zod.string(),
+  "error": zod.string().nullable(),
+  "startedAt": zod.string(),
+  "completedAt": zod.string().nullable()
+})
+
+
+/**
+ * @summary Backtest items — inbound email, real reply, and both AI drafts (admin)
+ */
+export const ListDraftBacktestItemsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ListDraftBacktestItemsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "runId": zod.string().uuid(),
+  "mailboxId": zod.string().uuid(),
+  "mailboxEmail": zod.string(),
+  "subject": zod.string(),
+  "counterpartEmail": zod.string(),
+  "counterpartName": zod.string(),
+  "customerId": zod.string().nullable(),
+  "customerName": zod.string(),
+  "inboundAt": zod.string(),
+  "inboundText": zod.string(),
+  "replyAt": zod.string(),
+  "replyText": zod.string(),
+  "factsMarkdown": zod.string(),
+  "voiceDraftBody": zod.string(),
+  "genericDraftBody": zod.string(),
+  "status": zod.string(),
+  "error": zod.string().nullable(),
+  "factAccuracy": zod.string().nullable(),
+  "voiceVerdict": zod.string().nullable(),
+  "wouldUse": zod.string().nullable(),
+  "reviewNote": zod.string(),
+  "reviewedByEmail": zod.string().nullable(),
+  "reviewedAt": zod.string().nullable()
+})
+export const ListDraftBacktestItemsResponse = zod.array(ListDraftBacktestItemsResponseItem)
+
+
+/**
+ * @summary Score a backtest item against the real reply (admin)
+ */
+export const ReviewDraftBacktestItemParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const reviewDraftBacktestItemBodyReviewNoteMax = 2000;
+
+
+
+export const ReviewDraftBacktestItemBody = zod.object({
+  "factAccuracy": zod.enum(['correct', 'wrong_fact', 'wrong_customer', 'missing_data']).nullish(),
+  "voiceVerdict": zod.enum(['voice', 'generic', 'both', 'neither']).nullish(),
+  "wouldUse": zod.enum(['as_is', 'with_edits', 'no']).nullish(),
+  "reviewNote": zod.string().max(reviewDraftBacktestItemBodyReviewNoteMax).optional()
+})
+
+export const ReviewDraftBacktestItemResponse = zod.object({
+  "id": zod.string().uuid(),
+  "runId": zod.string().uuid(),
+  "mailboxId": zod.string().uuid(),
+  "mailboxEmail": zod.string(),
+  "subject": zod.string(),
+  "counterpartEmail": zod.string(),
+  "counterpartName": zod.string(),
+  "customerId": zod.string().nullable(),
+  "customerName": zod.string(),
+  "inboundAt": zod.string(),
+  "inboundText": zod.string(),
+  "replyAt": zod.string(),
+  "replyText": zod.string(),
+  "factsMarkdown": zod.string(),
+  "voiceDraftBody": zod.string(),
+  "genericDraftBody": zod.string(),
+  "status": zod.string(),
+  "error": zod.string().nullable(),
+  "factAccuracy": zod.string().nullable(),
+  "voiceVerdict": zod.string().nullable(),
+  "wouldUse": zod.string().nullable(),
+  "reviewNote": zod.string(),
+  "reviewedByEmail": zod.string().nullable(),
+  "reviewedAt": zod.string().nullable()
+})
+
+

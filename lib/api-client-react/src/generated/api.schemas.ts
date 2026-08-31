@@ -6101,6 +6101,93 @@ export interface DraftPatternSummary {
   patternC: DraftPatternSummaryPatternC;
 }
 
+export interface DraftBacktestRunRecord {
+  id: string;
+  status: string;
+  requestedByEmail: string | null;
+  samplePerMailbox: number;
+  itemsTotal: number;
+  itemsDone: number;
+  itemsFailed: number;
+  skippedMailboxes: string[];
+  model: string;
+  error: string | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface StartDraftBacktestRequest {
+  /**
+     * @minimum 1
+     * @maximum 25
+     */
+  samplePerMailbox: number;
+}
+
+export interface DraftBacktestItemRecord {
+  id: string;
+  runId: string;
+  mailboxId: string;
+  mailboxEmail: string;
+  subject: string;
+  counterpartEmail: string;
+  counterpartName: string;
+  customerId: string | null;
+  customerName: string;
+  inboundAt: string;
+  inboundText: string;
+  replyAt: string;
+  replyText: string;
+  factsMarkdown: string;
+  voiceDraftBody: string;
+  genericDraftBody: string;
+  status: string;
+  error: string | null;
+  factAccuracy: string | null;
+  voiceVerdict: string | null;
+  wouldUse: string | null;
+  reviewNote: string;
+  reviewedByEmail: string | null;
+  reviewedAt: string | null;
+}
+
+export type ReviewDraftBacktestItemRequestFactAccuracy = typeof ReviewDraftBacktestItemRequestFactAccuracy[keyof typeof ReviewDraftBacktestItemRequestFactAccuracy] | null;
+
+
+export const ReviewDraftBacktestItemRequestFactAccuracy = {
+  correct: 'correct',
+  wrong_fact: 'wrong_fact',
+  wrong_customer: 'wrong_customer',
+  missing_data: 'missing_data',
+} as const;
+
+export type ReviewDraftBacktestItemRequestVoiceVerdict = typeof ReviewDraftBacktestItemRequestVoiceVerdict[keyof typeof ReviewDraftBacktestItemRequestVoiceVerdict] | null;
+
+
+export const ReviewDraftBacktestItemRequestVoiceVerdict = {
+  voice: 'voice',
+  generic: 'generic',
+  both: 'both',
+  neither: 'neither',
+} as const;
+
+export type ReviewDraftBacktestItemRequestWouldUse = typeof ReviewDraftBacktestItemRequestWouldUse[keyof typeof ReviewDraftBacktestItemRequestWouldUse] | null;
+
+
+export const ReviewDraftBacktestItemRequestWouldUse = {
+  as_is: 'as_is',
+  with_edits: 'with_edits',
+  no: 'no',
+} as const;
+
+export interface ReviewDraftBacktestItemRequest {
+  factAccuracy?: ReviewDraftBacktestItemRequestFactAccuracy;
+  voiceVerdict?: ReviewDraftBacktestItemRequestVoiceVerdict;
+  wouldUse?: ReviewDraftBacktestItemRequestWouldUse;
+  /** @maxLength 2000 */
+  reviewNote?: string;
+}
+
 /**
  * A contained Dropbox path, the linked root id, or an id already bookmarked for this customer
  */
@@ -7175,4 +7262,12 @@ export const ListDraftPatternEventsPattern = {
   B: 'B',
   C: 'C',
 } as const;
+
+export type ListDraftBacktestRunsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
 

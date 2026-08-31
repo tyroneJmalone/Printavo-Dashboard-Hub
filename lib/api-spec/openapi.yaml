@@ -6635,6 +6635,87 @@ paths:
                 $ref: "#/components/schemas/DraftPatternEventRecord"
         "404":
           description: Not found
+  /ai-context/backtest/runs:
+    get:
+      operationId: listDraftBacktestRuns
+      tags: [aiContext]
+      summary: Offline drafting backtest runs, newest first (admin)
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DraftBacktestRunRecord"
+    post:
+      operationId: startDraftBacktestRun
+      tags: [aiContext]
+      summary: Dry-run AI drafts over answered historical email — no Missive writes (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartDraftBacktestRequest"
+      responses:
+        "202":
+          description: Run started; drafts generate in the background
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftBacktestRunRecord"
+        "409":
+          description: A run is already in progress or no voice profiles are ready
+  /ai-context/backtest/runs/{id}/items:
+    get:
+      operationId: listDraftBacktestItems
+      tags: [aiContext]
+      summary: Backtest items — inbound email, real reply, and both AI drafts (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Items grouped by mailbox
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DraftBacktestItemRecord"
+  /ai-context/backtest/items/{id}:
+    patch:
+      operationId: reviewDraftBacktestItem
+      tags: [aiContext]
+      summary: Score a backtest item against the real reply (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewDraftBacktestItemRequest"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftBacktestItemRecord"
+        "404":
+          description: Not found
 components:
   parameters:
     CustomerIdParam:
@@ -12409,3 +12490,72 @@ components:
                 events: { type: integer }
                 draftsCreated: { type: integer }
                 errors: { type: integer }
+    DraftBacktestRunRecord:
+      type: object
+      required:
+        [id, status, requestedByEmail, samplePerMailbox, itemsTotal, itemsDone, itemsFailed, skippedMailboxes, model, error, startedAt, completedAt]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string }
+        requestedByEmail: { type: string, nullable: true }
+        samplePerMailbox: { type: integer }
+        itemsTotal: { type: integer }
+        itemsDone: { type: integer }
+        itemsFailed: { type: integer }
+        skippedMailboxes:
+          type: array
+          items: { type: string }
+        model: { type: string }
+        error: { type: string, nullable: true }
+        startedAt: { type: string }
+        completedAt: { type: string, nullable: true }
+    StartDraftBacktestRequest:
+      type: object
+      required: [samplePerMailbox]
+      properties:
+        samplePerMailbox: { type: integer, minimum: 1, maximum: 25 }
+    DraftBacktestItemRecord:
+      type: object
+      required:
+        [id, runId, mailboxId, mailboxEmail, subject, counterpartEmail, counterpartName, customerId, customerName, inboundAt, inboundText, replyAt, replyText, factsMarkdown, voiceDraftBody, genericDraftBody, status, error, factAccuracy, voiceVerdict, wouldUse, reviewNote, reviewedByEmail, reviewedAt]
+      properties:
+        id: { type: string, format: uuid }
+        runId: { type: string, format: uuid }
+        mailboxId: { type: string, format: uuid }
+        mailboxEmail: { type: string }
+        subject: { type: string }
+        counterpartEmail: { type: string }
+        counterpartName: { type: string }
+        customerId: { type: string, nullable: true }
+        customerName: { type: string }
+        inboundAt: { type: string }
+        inboundText: { type: string }
+        replyAt: { type: string }
+        replyText: { type: string }
+        factsMarkdown: { type: string }
+        voiceDraftBody: { type: string }
+        genericDraftBody: { type: string }
+        status: { type: string }
+        error: { type: string, nullable: true }
+        factAccuracy: { type: string, nullable: true }
+        voiceVerdict: { type: string, nullable: true }
+        wouldUse: { type: string, nullable: true }
+        reviewNote: { type: string }
+        reviewedByEmail: { type: string, nullable: true }
+        reviewedAt: { type: string, nullable: true }
+    ReviewDraftBacktestItemRequest:
+      type: object
+      properties:
+        factAccuracy:
+          type: string
+          enum: [correct, wrong_fact, wrong_customer, missing_data]
+          nullable: true
+        voiceVerdict:
+          type: string
+          enum: [voice, generic, both, neither]
+          nullable: true
+        wouldUse:
+          type: string
+          enum: [as_is, with_edits, no]
+          nullable: true
+        reviewNote: { type: string, maxLength: 2000 }

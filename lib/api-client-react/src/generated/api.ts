@@ -120,6 +120,8 @@ import type {
   DeleteCollection200,
   DetectedChipplyStoresResponse,
   DirectoryCustomersResponse,
+  DraftBacktestItemRecord,
+  DraftBacktestRunRecord,
   DraftPatternEventRecord,
   DraftPatternSummary,
   DropboxEntry,
@@ -213,6 +215,7 @@ import type {
   ListCreditsParams,
   ListCustomersParams,
   ListDirectoryCustomersParams,
+  ListDraftBacktestRunsParams,
   ListDraftPatternEventsParams,
   ListEmailAccessGroups200,
   ListEmailCustomersParams,
@@ -294,6 +297,7 @@ import type {
   ReportFilterOptions,
   ReportSummary,
   RequestMbUploadUrl200,
+  ReviewDraftBacktestItemRequest,
   ReviewDraftPatternEventRequest,
   RewardAward,
   RewardRule,
@@ -322,6 +326,7 @@ import type {
   StaffListResponse,
   StaffMember,
   StartAutoPrintRunRequest,
+  StartDraftBacktestRequest,
   StartPqStatusJobRequest,
   StatusActivityOrdersResponse,
   StatusActivityResponse,
@@ -22867,5 +22872,307 @@ export const useReviewDraftPatternEvent = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getReviewDraftPatternEventMutationOptions(options));
+    }
+
+export const getListDraftBacktestRunsUrl = (params?: ListDraftBacktestRunsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/ai-context/backtest/runs?${stringifiedParams}` : `/api/ai-context/backtest/runs`
+}
+
+/**
+ * @summary Offline drafting backtest runs, newest first (admin)
+ */
+export const listDraftBacktestRuns = async (params?: ListDraftBacktestRunsParams, options?: RequestInit): Promise<DraftBacktestRunRecord[]> => {
+
+  return customFetch<DraftBacktestRunRecord[]>(getListDraftBacktestRunsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDraftBacktestRunsQueryKey = (params?: ListDraftBacktestRunsParams,) => {
+    return [
+    `/api/ai-context/backtest/runs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListDraftBacktestRunsQueryOptions = <TData = Awaited<ReturnType<typeof listDraftBacktestRuns>>, TError = ErrorType<unknown>>(params?: ListDraftBacktestRunsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDraftBacktestRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDraftBacktestRunsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDraftBacktestRuns>>> = ({ signal }) => listDraftBacktestRuns(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDraftBacktestRuns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDraftBacktestRunsQueryResult = NonNullable<Awaited<ReturnType<typeof listDraftBacktestRuns>>>
+export type ListDraftBacktestRunsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Offline drafting backtest runs, newest first (admin)
+ */
+
+export function useListDraftBacktestRuns<TData = Awaited<ReturnType<typeof listDraftBacktestRuns>>, TError = ErrorType<unknown>>(
+ params?: ListDraftBacktestRunsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDraftBacktestRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDraftBacktestRunsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartDraftBacktestRunUrl = () => {
+
+
+
+
+  return `/api/ai-context/backtest/runs`
+}
+
+/**
+ * @summary Dry-run AI drafts over answered historical email — no Missive writes (admin)
+ */
+export const startDraftBacktestRun = async (startDraftBacktestRequest: StartDraftBacktestRequest, options?: RequestInit): Promise<DraftBacktestRunRecord> => {
+
+  return customFetch<DraftBacktestRunRecord>(getStartDraftBacktestRunUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(startDraftBacktestRequest)
+  }
+);}
+
+
+
+
+export const getStartDraftBacktestRunMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startDraftBacktestRun>>, TError,{data: BodyType<StartDraftBacktestRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startDraftBacktestRun>>, TError,{data: BodyType<StartDraftBacktestRequest>}, TContext> => {
+
+const mutationKey = ['startDraftBacktestRun'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startDraftBacktestRun>>, {data: BodyType<StartDraftBacktestRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  startDraftBacktestRun(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartDraftBacktestRunMutationResult = NonNullable<Awaited<ReturnType<typeof startDraftBacktestRun>>>
+    export type StartDraftBacktestRunMutationBody = BodyType<StartDraftBacktestRequest>
+    export type StartDraftBacktestRunMutationError = ErrorType<void>
+
+    /**
+ * @summary Dry-run AI drafts over answered historical email — no Missive writes (admin)
+ */
+export const useStartDraftBacktestRun = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startDraftBacktestRun>>, TError,{data: BodyType<StartDraftBacktestRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startDraftBacktestRun>>,
+        TError,
+        {data: BodyType<StartDraftBacktestRequest>},
+        TContext
+      > => {
+      return useMutation(getStartDraftBacktestRunMutationOptions(options));
+    }
+
+export const getListDraftBacktestItemsUrl = (id: string,) => {
+
+
+
+
+  return `/api/ai-context/backtest/runs/${id}/items`
+}
+
+/**
+ * @summary Backtest items — inbound email, real reply, and both AI drafts (admin)
+ */
+export const listDraftBacktestItems = async (id: string, options?: RequestInit): Promise<DraftBacktestItemRecord[]> => {
+
+  return customFetch<DraftBacktestItemRecord[]>(getListDraftBacktestItemsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDraftBacktestItemsQueryKey = (id: string,) => {
+    return [
+    `/api/ai-context/backtest/runs/${id}/items`
+    ] as const;
+    }
+
+
+export const getListDraftBacktestItemsQueryOptions = <TData = Awaited<ReturnType<typeof listDraftBacktestItems>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDraftBacktestItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDraftBacktestItemsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDraftBacktestItems>>> = ({ signal }) => listDraftBacktestItems(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDraftBacktestItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDraftBacktestItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listDraftBacktestItems>>>
+export type ListDraftBacktestItemsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Backtest items — inbound email, real reply, and both AI drafts (admin)
+ */
+
+export function useListDraftBacktestItems<TData = Awaited<ReturnType<typeof listDraftBacktestItems>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDraftBacktestItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDraftBacktestItemsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewDraftBacktestItemUrl = (id: string,) => {
+
+
+
+
+  return `/api/ai-context/backtest/items/${id}`
+}
+
+/**
+ * @summary Score a backtest item against the real reply (admin)
+ */
+export const reviewDraftBacktestItem = async (id: string,
+    reviewDraftBacktestItemRequest: ReviewDraftBacktestItemRequest, options?: RequestInit): Promise<DraftBacktestItemRecord> => {
+
+  return customFetch<DraftBacktestItemRecord>(getReviewDraftBacktestItemUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reviewDraftBacktestItemRequest)
+  }
+);}
+
+
+
+
+export const getReviewDraftBacktestItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewDraftBacktestItem>>, TError,{id: string;data: BodyType<ReviewDraftBacktestItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewDraftBacktestItem>>, TError,{id: string;data: BodyType<ReviewDraftBacktestItemRequest>}, TContext> => {
+
+const mutationKey = ['reviewDraftBacktestItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewDraftBacktestItem>>, {id: string;data: BodyType<ReviewDraftBacktestItemRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reviewDraftBacktestItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewDraftBacktestItemMutationResult = NonNullable<Awaited<ReturnType<typeof reviewDraftBacktestItem>>>
+    export type ReviewDraftBacktestItemMutationBody = BodyType<ReviewDraftBacktestItemRequest>
+    export type ReviewDraftBacktestItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Score a backtest item against the real reply (admin)
+ */
+export const useReviewDraftBacktestItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewDraftBacktestItem>>, TError,{id: string;data: BodyType<ReviewDraftBacktestItemRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewDraftBacktestItem>>,
+        TError,
+        {id: string;data: BodyType<ReviewDraftBacktestItemRequest>},
+        TContext
+      > => {
+      return useMutation(getReviewDraftBacktestItemMutationOptions(options));
     }
 

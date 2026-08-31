@@ -16,6 +16,7 @@ import {
 import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
 import { PatternsPanel } from "@/components/ai/PatternsPanel";
+import { BacktestPanel } from "@/components/ai/BacktestPanel";
 import { useToast } from "@/hooks/use-toast";
 import {
   Bot,
@@ -417,6 +418,7 @@ export default function AiContext() {
         </Card>
 
         <PatternsPanel />
+        <BacktestPanel />
       </div>
     </AppShell>
   );

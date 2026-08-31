@@ -35,3 +35,15 @@ production stops. Deployment must stay a Reserved VM or the scheduler idles.
 **Pattern B pass criteria (pre-agreed):** context note lands before the
 rule's draft in ≥95% of sampled conversations AND drafts demonstrably use
 note content; ordering/latency auto-scored, note usage human spot-checked.
+
+**Offline drafting backtest (Tyler-chosen substitute while go-live is
+deferred):** dry-runs the Pattern C pipeline over historical inbound emails
+that a teammate already answered — voice draft + generic baseline vs. the
+real reply, human-scored in the Hub (AI Connections → backtest panel).
+Rules: zero Missive writes; context tool calls audit on the
+`context_internal` surface so live Pattern A/B/C trial stats stay clean;
+draft-vs-real-reply comparison is HUMAN review only (mailbox content never
+goes to an LLM for judging). It cannot measure Pattern B's live ordering
+race or real accepted/edited rates — those still need a live week.
+Voice profiles are DATA, not schema: a dev-DB rollback wipes them; regenerate
+via `NODE_ENV=production node test-voice-profiles.mjs` in artifacts/api-server.
