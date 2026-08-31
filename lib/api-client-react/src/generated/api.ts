@@ -237,6 +237,7 @@ import type {
   MemberInput,
   MemberUpdate,
   MessageResult,
+  ModuleAccessResponse,
   NeedsOrderingResult,
   NicheReportResponse,
   NotificationLogItem,
@@ -342,6 +343,7 @@ import type {
   UpdateEmailMailboxRequest,
   UpdateEmailSettingsRequest,
   UpdateInsightsPresetRequest,
+  UpdateModuleAccessRequest,
   UpdatePoFileRequest,
   UpdatePqStatusRuleRequest,
   UpdateStaffRoleRequest,
@@ -542,6 +544,153 @@ export function useGetAuthMe<TData = Awaited<ReturnType<typeof getAuthMe>>, TErr
 
 
 
+
+export const getGetModuleAccessUrl = () => {
+
+
+
+
+  return `/api/auth/module-access`
+}
+
+/**
+ * @summary List module readiness switches (admin only)
+ */
+export const getModuleAccess = async ( options?: RequestInit): Promise<ModuleAccessResponse> => {
+
+  return customFetch<ModuleAccessResponse>(getGetModuleAccessUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetModuleAccessQueryKey = () => {
+    return [
+    `/api/auth/module-access`
+    ] as const;
+    }
+
+
+export const getGetModuleAccessQueryOptions = <TData = Awaited<ReturnType<typeof getModuleAccess>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModuleAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetModuleAccessQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getModuleAccess>>> = ({ signal }) => getModuleAccess({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getModuleAccess>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetModuleAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getModuleAccess>>>
+export type GetModuleAccessQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List module readiness switches (admin only)
+ */
+
+export function useGetModuleAccess<TData = Awaited<ReturnType<typeof getModuleAccess>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getModuleAccess>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetModuleAccessQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateModuleAccessUrl = () => {
+
+
+
+
+  return `/api/auth/module-access`
+}
+
+/**
+ * @summary Replace the set of enabled modules (admin only)
+ */
+export const updateModuleAccess = async (updateModuleAccessRequest: UpdateModuleAccessRequest, options?: RequestInit): Promise<ModuleAccessResponse> => {
+
+  return customFetch<ModuleAccessResponse>(getUpdateModuleAccessUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateModuleAccessRequest)
+  }
+);}
+
+
+
+
+export const getUpdateModuleAccessMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModuleAccess>>, TError,{data: BodyType<UpdateModuleAccessRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateModuleAccess>>, TError,{data: BodyType<UpdateModuleAccessRequest>}, TContext> => {
+
+const mutationKey = ['updateModuleAccess'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateModuleAccess>>, {data: BodyType<UpdateModuleAccessRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateModuleAccess(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateModuleAccessMutationResult = NonNullable<Awaited<ReturnType<typeof updateModuleAccess>>>
+    export type UpdateModuleAccessMutationBody = BodyType<UpdateModuleAccessRequest>
+    export type UpdateModuleAccessMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Replace the set of enabled modules (admin only)
+ */
+export const useUpdateModuleAccess = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModuleAccess>>, TError,{data: BodyType<UpdateModuleAccessRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateModuleAccess>>,
+        TError,
+        {data: BodyType<UpdateModuleAccessRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateModuleAccessMutationOptions(options));
+    }
 
 export const getListStaffUrl = () => {
 

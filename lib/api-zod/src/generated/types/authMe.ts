@@ -11,4 +11,6 @@ export interface AuthMe {
   email: string;
   role: AuthMeRole;
   capabilities: string[];
+  /** Module keys this user may see/use (admins get every key) */
+  enabledModules: string[];
 }

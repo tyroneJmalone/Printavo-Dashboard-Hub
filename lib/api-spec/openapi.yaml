@@ -75,6 +75,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthForbidden"
+  /auth/module-access:
+    get:
+      operationId: getModuleAccess
+      tags: [auth]
+      summary: List module readiness switches (admin only)
+      responses:
+        "200":
+          description: All modules with their enabled state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleAccessResponse"
+        "403":
+          description: Not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateModuleAccess
+      tags: [auth]
+      summary: Replace the set of enabled modules (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateModuleAccessRequest"
+      responses:
+        "200":
+          description: Updated module list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleAccessResponse"
+        "400":
+          description: Invalid payload or unknown module key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not an admin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /auth/staff:
     get:
       operationId: listStaff
@@ -6886,7 +6933,35 @@ components:
         capabilities:
           type: array
           items: { type: string }
-      required: [email, role, capabilities]
+        enabledModules:
+          type: array
+          items: { type: string }
+          description: Module keys this user may see/use (admins get every key)
+      required: [email, role, capabilities, enabledModules]
+    ModuleAccessModule:
+      type: object
+      properties:
+        key: { type: string }
+        label: { type: string }
+        group: { type: string }
+        enabled: { type: boolean }
+      required: [key, label, group, enabled]
+    ModuleAccessResponse:
+      type: object
+      properties:
+        modules:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModuleAccessModule"
+      required: [modules]
+    UpdateModuleAccessRequest:
+      type: object
+      properties:
+        enabled:
+          type: array
+          items: { type: string }
+          description: Full list of enabled module keys (replaces current set)
+      required: [enabled]
     AuthForbidden:
       type: object
       properties:

@@ -429,6 +429,24 @@ export interface AuthMe {
   email: string;
   role: AuthMeRole;
   capabilities: string[];
+  /** Module keys this user may see/use (admins get every key) */
+  enabledModules: string[];
+}
+
+export interface ModuleAccessModule {
+  key: string;
+  label: string;
+  group: string;
+  enabled: boolean;
+}
+
+export interface ModuleAccessResponse {
+  modules: ModuleAccessModule[];
+}
+
+export interface UpdateModuleAccessRequest {
+  /** Full list of enabled module keys (replaces current set) */
+  enabled: string[];
 }
 
 export interface AuthForbidden {

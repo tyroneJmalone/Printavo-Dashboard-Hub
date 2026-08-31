@@ -19,6 +19,46 @@ interface NavItem {
   /** Hidden from non-admin staff. */
   adminOnly?: boolean;
   requiredCapability?: string;
+  /** Module readiness key — hidden from non-admins unless the admin has
+   *  switched the module on (Settings → Module access). */
+  module?: string;
+}
+
+/**
+ * Page-route prefixes per module key (keys mirror the server registry in
+ * api-server/src/lib/auth/moduleAccess.ts). Used to block direct URL
+ * access to pages whose module is switched off for this user.
+ */
+const MODULE_PAGE_PREFIXES: Record<string, readonly string[]> = {
+  reports: ["/orders"],
+  payments: ["/payments"],
+  "ask-ai": ["/ask"],
+  knowledge: ["/knowledge"],
+  correspondence: ["/correspondence"],
+  "product-finder": ["/product-finder"],
+  "garment-pantones": ["/garment-pantones"],
+  collections: ["/collections"],
+  pipeline: ["/pipeline"],
+  "status-activity": ["/status-activity"],
+  chipply: ["/chipply"],
+  customers: ["/customers"],
+  purchasing: ["/vendor-orders", "/po-log", "/tracking", "/status-rules"],
+  production: ["/print-queue", "/print-queue-rules", "/auto-print"],
+  "ai-quotes": ["/ai-quotes"],
+  "price-calculator": ["/price-calculator"],
+  shipping: ["/rate-estimator", "/label-sorter"],
+  mintbucks: ["/mintbucks"],
+  backups: ["/backups"],
+};
+
+function moduleForPath(path: string): string | null {
+  if (path === "/") return "dashboard";
+  for (const [key, prefixes] of Object.entries(MODULE_PAGE_PREFIXES)) {
+    for (const prefix of prefixes) {
+      if (path === prefix || path.startsWith(prefix + "/")) return key;
+    }
+  }
+  return null;
 }
 
 interface NavGroup {
@@ -30,94 +70,94 @@ const NAV_GROUPS: NavGroup[] = [
   {
     heading: null,
     items: [
-      { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
+      { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard, module: "dashboard" },
     ],
   },
   {
     heading: "Analyze",
     items: [
-      { id: "reports", label: "Reports", href: "/orders", icon: FileSpreadsheet },
-      { id: "payments", label: "Payments", href: "/payments", icon: CreditCard },
-      { id: "ai", label: "Ask AI", href: "/ask", icon: Sparkles },
-      { id: "knowledge", label: "Knowledge Base", href: "/knowledge", icon: BookOpen },
+      { id: "reports", label: "Reports", href: "/orders", icon: FileSpreadsheet, module: "reports" },
+      { id: "payments", label: "Payments", href: "/payments", icon: CreditCard, module: "payments" },
+      { id: "ai", label: "Ask AI", href: "/ask", icon: Sparkles, module: "ask-ai" },
+      { id: "knowledge", label: "Knowledge Base", href: "/knowledge", icon: BookOpen, module: "knowledge" },
       { id: "ai-connections", label: "AI Connections", href: "/ai-connections", icon: Bot, adminOnly: true },
       { id: "email-activity", label: "Email Activity", href: "/email-activity", icon: Mail, requiredCapability: "view_email_activity" },
       { id: "email-access", label: "Email Access", href: "/email-activity/access", icon: Shield, adminOnly: true },
-      { id: "correspondence", label: "Correspondence", href: "/correspondence", icon: Inbox },
+      { id: "correspondence", label: "Correspondence", href: "/correspondence", icon: Inbox, module: "correspondence" },
     ],
   },
   {
     heading: "Sales",
     items: [
-      { id: "product-finder", label: "Product Finder", href: "/product-finder", icon: Search },
-      { id: "garment-pantones", label: "Garment Pantones", href: "/garment-pantones", icon: Palette },
-      { id: "collections", label: "Collections", href: "/collections", icon: Star },
-      { id: "pipeline", label: "Pipeline", href: "/pipeline", icon: Filter },
-      { id: "status-activity", label: "Status Activity", href: "/status-activity", icon: Activity },
-      { id: "chipply", label: "Chipply Stores", href: "/chipply", icon: Store },
+      { id: "product-finder", label: "Product Finder", href: "/product-finder", icon: Search, module: "product-finder" },
+      { id: "garment-pantones", label: "Garment Pantones", href: "/garment-pantones", icon: Palette, module: "garment-pantones" },
+      { id: "collections", label: "Collections", href: "/collections", icon: Star, module: "collections" },
+      { id: "pipeline", label: "Pipeline", href: "/pipeline", icon: Filter, module: "pipeline" },
+      { id: "status-activity", label: "Status Activity", href: "/status-activity", icon: Activity, module: "status-activity" },
+      { id: "chipply", label: "Chipply Stores", href: "/chipply", icon: Store, module: "chipply" },
       { id: "reorders", label: "Reorder Inbox", icon: Inbox, disabled: true },
     ],
   },
   {
     heading: "Clients",
     items: [
-      { id: "customers", label: "Directory", href: "/customers", icon: Users },
-      { id: "niche-report", label: "Niche Report", href: "/customers/report", icon: BarChart3 },
+      { id: "customers", label: "Directory", href: "/customers", icon: Users, module: "customers" },
+      { id: "niche-report", label: "Niche Report", href: "/customers/report", icon: BarChart3, module: "customers" },
     ],
   },
   {
     heading: "Purchasing",
     items: [
       { id: "reorder", label: "Reorder Scan", icon: Scan, disabled: true },
-      { id: "vendor", label: "Vendor Orders", href: "/vendor-orders", icon: Truck },
-      { id: "polog", label: "PO Log", href: "/po-log", icon: ClipboardList },
-      { id: "tracking", label: "Order Tracking", href: "/tracking", icon: PackageSearch },
-      { id: "statusrules", label: "Status Rules", href: "/status-rules", icon: Wand2 },
+      { id: "vendor", label: "Vendor Orders", href: "/vendor-orders", icon: Truck, module: "purchasing" },
+      { id: "polog", label: "PO Log", href: "/po-log", icon: ClipboardList, module: "purchasing" },
+      { id: "tracking", label: "Order Tracking", href: "/tracking", icon: PackageSearch, module: "purchasing" },
+      { id: "statusrules", label: "Status Rules", href: "/status-rules", icon: Wand2, module: "purchasing" },
     ],
   },
   {
     heading: "Production",
     items: [
-      { id: "print", label: "Print Queue", href: "/print-queue", icon: Printer },
-      { id: "pqrules", label: "Queue Rules", href: "/print-queue-rules", icon: Zap },
-      { id: "autoprint", label: "Auto-Print", href: "/auto-print", icon: Bot },
+      { id: "print", label: "Print Queue", href: "/print-queue", icon: Printer, module: "production" },
+      { id: "pqrules", label: "Queue Rules", href: "/print-queue-rules", icon: Zap, module: "production" },
+      { id: "autoprint", label: "Auto-Print", href: "/auto-print", icon: Bot, module: "production" },
       { id: "colors", label: "Color Library", icon: Palette, disabled: true },
     ],
   },
   {
     heading: "Quoting",
     items: [
-      { id: "ai-quotes", label: "AI Quote Drafts", href: "/ai-quotes", icon: Wand2 },
-      { id: "quote", label: "Price Calculator", href: "/price-calculator", icon: Calculator }
+      { id: "ai-quotes", label: "AI Quote Drafts", href: "/ai-quotes", icon: Wand2, module: "ai-quotes" },
+      { id: "quote", label: "Price Calculator", href: "/price-calculator", icon: Calculator, module: "price-calculator" }
     ],
   },
   {
     heading: "Team",
-    items: [{ id: "momintum", label: "Tasks (moMINTum)", href: "/momintum/", icon: ListChecks, external: true }],
+    items: [{ id: "momintum", label: "Tasks (moMINTum)", href: "/momintum/", icon: ListChecks, external: true, module: "momintum" }],
   },
   {
     heading: "Shipping",
     items: [
-      { id: "rates", label: "Rate Estimator", href: "/rate-estimator", icon: Package },
-      { id: "sorter", label: "Label Sorter", href: "/label-sorter", icon: FileText },
+      { id: "rates", label: "Rate Estimator", href: "/rate-estimator", icon: Package, module: "shipping" },
+      { id: "sorter", label: "Label Sorter", href: "/label-sorter", icon: FileText, module: "shipping" },
     ],
   },
   {
     heading: "Mint Bucks",
     items: [
-      { id: "mb-dashboard", label: "MB Dashboard", href: "/mintbucks", icon: BadgeDollarSign },
-      { id: "mb-customers", label: "Customers", href: "/mintbucks/customers", icon: Users },
-      { id: "mb-credits", label: "Credits", href: "/mintbucks/credits", icon: CreditCard },
-      { id: "mb-redemptions", label: "Redemptions", href: "/mintbucks/redemptions", icon: Gift },
-      { id: "mb-rewards", label: "Rewards", href: "/mintbucks/rewards", icon: Award },
-      { id: "mb-reports", label: "Reports", href: "/mintbucks/reports", icon: BarChart3 },
-      { id: "mb-check", label: "Check Credit", href: "/mintbucks/check", icon: QrCode },
-      { id: "mb-settings", label: "MB Settings", href: "/mintbucks/settings", icon: SlidersHorizontal },
+      { id: "mb-dashboard", label: "MB Dashboard", href: "/mintbucks", icon: BadgeDollarSign, module: "mintbucks" },
+      { id: "mb-customers", label: "Customers", href: "/mintbucks/customers", icon: Users, module: "mintbucks" },
+      { id: "mb-credits", label: "Credits", href: "/mintbucks/credits", icon: CreditCard, module: "mintbucks" },
+      { id: "mb-redemptions", label: "Redemptions", href: "/mintbucks/redemptions", icon: Gift, module: "mintbucks" },
+      { id: "mb-rewards", label: "Rewards", href: "/mintbucks/rewards", icon: Award, module: "mintbucks" },
+      { id: "mb-reports", label: "Reports", href: "/mintbucks/reports", icon: BarChart3, module: "mintbucks" },
+      { id: "mb-check", label: "Check Credit", href: "/mintbucks/check", icon: QrCode, module: "mintbucks" },
+      { id: "mb-settings", label: "MB Settings", href: "/mintbucks/settings", icon: SlidersHorizontal, module: "mintbucks" },
     ],
   },
   {
     heading: "Data",
-    items: [{ id: "backups", label: "Backups", href: "/backups", icon: Shield }],
+    items: [{ id: "backups", label: "Backups", href: "/backups", icon: Shield, module: "backups" }],
   },
 ];
 
@@ -170,7 +210,7 @@ function StaffChip() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { role, capabilities } = useStaff();
+  const { role, capabilities, enabledModules } = useStaff();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsedGroups);
   /** Mobile drawer state — the sidebar is hidden by default below lg. */
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -191,12 +231,27 @@ export function AppShell({ children }: { children: ReactNode }) {
       return next;
     });
   };
+  // The vendor badge polls /purchasing — skip it entirely when the
+  // Purchasing module is off for this user (the call would only 403).
+  const canPurchasing = role === "admin" || enabledModules.includes("purchasing");
   const { data: needsOrdering } = useGetNeedsOrdering({
-    query: { queryKey: getGetNeedsOrderingQueryKey(), staleTime: 60_000 },
+    query: {
+      queryKey: getGetNeedsOrderingQueryKey(),
+      staleTime: 60_000,
+      enabled: canPurchasing,
+    },
   });
   const vendorBadge = needsOrdering && needsOrdering.totalLineItems > 0
     ? String(needsOrdering.totalLineItems)
     : undefined;
+
+  // Direct-URL guard: pages of switched-off modules render a lock panel
+  // instead of the page (the API blocks their calls anyway).
+  const currentModule = moduleForPath(location);
+  const moduleLocked =
+    currentModule !== null &&
+    role !== "admin" &&
+    !enabledModules.includes(currentModule);
 
   return (
     <div className="flex h-dvh bg-[#020617] text-slate-100 font-sans overflow-hidden">
@@ -243,7 +298,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               items: rawGroup.items.filter(
                 (item) =>
                   (!item.adminOnly || role === "admin") &&
-                  (!item.requiredCapability || capabilities.includes(item.requiredCapability)),
+                  (!item.requiredCapability || capabilities.includes(item.requiredCapability)) &&
+                  (!item.module || role === "admin" || enabledModules.includes(item.module)),
               ),
             };
             if (group.items.length === 0) return null;
@@ -351,7 +407,23 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <PrintavoSyncBar />
         <main className="flex-1 overflow-y-auto bg-[#020617] relative custom-scrollbar">
-          {children}
+          {moduleLocked ? (
+            <div className="flex min-h-full items-center justify-center px-4">
+              <div className="w-full max-w-md rounded-xl border border-slate-800 bg-[#0f172a] p-8 text-center">
+                <Shield className="mx-auto text-slate-500" size={32} />
+                <h1 className="mt-4 text-lg font-semibold text-slate-100">
+                  This module isn't enabled yet
+                </h1>
+                <p className="mt-2 text-sm text-slate-400">
+                  An admin hasn't switched this part of the Hub on for your
+                  account. Use the menu to find your available tools, or ask
+                  an admin to enable it in Settings.
+                </p>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

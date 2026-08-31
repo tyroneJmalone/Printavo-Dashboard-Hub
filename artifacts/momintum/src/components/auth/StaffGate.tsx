@@ -122,5 +122,46 @@ export function StaffGate({ children }: { children: ReactNode }) {
     );
   }
 
+  // Module readiness gate: moMINTum can be switched off for non-admins in
+  // Hub Settings → Module access. Show a clear lock screen instead of a
+  // task app whose every API call would 403.
+  if (data.role !== "admin" && !data.enabledModules.includes("momintum")) {
+    return (
+      <FullScreen>
+        <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-lg">
+          <ShieldX className="mx-auto text-amber-500" size={36} />
+          <h1 className="mt-4 text-lg font-semibold text-foreground">
+            moMINTum isn't enabled yet
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            An admin hasn't switched moMINTum on for your account. Ask an
+            admin to enable it in Printavo Hub Settings → Module access.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            >
+              <RefreshCw
+                size={14}
+                className={isRefetching ? "animate-spin" : ""}
+              />
+              Check again
+            </button>
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="inline-flex items-center gap-2 rounded-md bg-muted px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/80"
+            >
+              <LogOut size={14} /> Sign out
+            </button>
+          </div>
+        </div>
+      </FullScreen>
+    );
+  }
+
   return <StaffContext.Provider value={data}>{children}</StaffContext.Provider>;
 }

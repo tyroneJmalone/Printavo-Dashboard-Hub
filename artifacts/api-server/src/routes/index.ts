@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import purchasingPublicRouter from "./purchasingPublic";
 import hubPublicRouter from "./hubPublic";
 import { requireStaff } from "../middlewares/requireStaff";
+import { moduleAccessGate } from "../lib/auth/moduleAccess";
 import authRouter from "./auth";
 import staffRouter from "./staff";
 import syncRouter from "./sync";
@@ -60,6 +61,10 @@ router.use(contextDoorsRouter);
 
 // ── Staff-only ───────────────────────────────────────────────────────
 router.use(requireStaff);
+// Module readiness gate: non-admin staff can only reach API families
+// claimed by admin-enabled modules. Unclaimed paths (/auth, /sync, staff
+// management, email-activity…) fall through to their existing guards.
+router.use(moduleAccessGate);
 router.use(authRouter);
 router.use(staffRouter); // admin-only routes — requireAdmin per route inside
 router.use(syncRouter);

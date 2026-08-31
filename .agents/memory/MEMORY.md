@@ -48,3 +48,4 @@
 - [AI context layer architecture](ai-context-layer.md) — one protocol-independent core, thin MCP/REST/internal doors, per-consumer tokens, internal vs external trust tiers from day one.
 - [Drizzle push misses index predicates](drizzle-push-index-predicates.md) — adding WHERE to an existing unique index silently no-ops on push; verify pg_indexes and recreate manually.
 - [KB learning filters](kb-learning-requirements.md) — future KB-suggestion analysis must only read customer-linked threads + skip bulk mail; filter at analysis, sync stores everything.
+- [Module access gating](module-access-gating.md) — new staff API prefixes must be claimed in the module registry (+ AppShell page map) or all staff can reach them; readiness gate, not security.

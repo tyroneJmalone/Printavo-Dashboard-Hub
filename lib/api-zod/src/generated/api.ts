@@ -24,7 +24,38 @@ export const HealthCheckResponse = zod.object({
 export const GetAuthMeResponse = zod.object({
   "email": zod.string(),
   "role": zod.enum(['admin', 'manager', 'staff']),
-  "capabilities": zod.array(zod.string())
+  "capabilities": zod.array(zod.string()),
+  "enabledModules": zod.array(zod.string()).describe('Module keys this user may see\/use (admins get every key)')
+})
+
+
+/**
+ * @summary List module readiness switches (admin only)
+ */
+export const GetModuleAccessResponse = zod.object({
+  "modules": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "group": zod.string(),
+  "enabled": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Replace the set of enabled modules (admin only)
+ */
+export const UpdateModuleAccessBody = zod.object({
+  "enabled": zod.array(zod.string()).describe('Full list of enabled module keys (replaces current set)')
+})
+
+export const UpdateModuleAccessResponse = zod.object({
+  "modules": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "group": zod.string(),
+  "enabled": zod.boolean()
+}))
 })
 
 

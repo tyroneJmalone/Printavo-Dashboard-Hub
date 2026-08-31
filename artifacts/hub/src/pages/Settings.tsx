@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useStaff } from "@/components/auth/StaffGate";
 import { StaffAccessCard } from "@/components/settings/StaffAccessCard";
+import { ModuleAccessCard } from "@/components/settings/ModuleAccessCard";
 import { AdminPinCard } from "@/components/settings/AdminPinCard";
 import { Settings as SettingsIcon, Loader2, Truck, Save } from "lucide-react";
 
@@ -75,8 +76,12 @@ export default function Settings() {
   const { toast } = useToast();
   const me = useStaff();
   const queryClient = useQueryClient();
+  // Ship-to lives under /purchasing — don't fetch (or render) it for staff
+  // whose Purchasing module is switched off, or the call just 403s.
+  const canPurchasing =
+    me.role === "admin" || me.enabledModules.includes("purchasing");
   const { data, isLoading } = useGetVendorShipTo({
-    query: { queryKey: getGetVendorShipToQueryKey() },
+    query: { queryKey: getGetVendorShipToQueryKey(), enabled: canPurchasing },
   });
 
   const [form, setForm] = useState<ShipToForm>(EMPTY_FORM);
@@ -157,10 +162,11 @@ export default function Settings() {
           {me.role === "admin" && (
             <div className="max-w-2xl flex flex-col gap-6 mb-6">
               <StaffAccessCard />
+              <ModuleAccessCard />
               <AdminPinCard />
             </div>
           )}
-          {isLoading ? (
+          {!canPurchasing ? null : isLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 size={22} className="animate-spin text-slate-500" />
             </div>
