@@ -39,6 +39,9 @@ import printavoTasksRouter from "../printavoTasks/routes";
 import contextDoorsRouter from "./contextDoors";
 import knowledgeBaseRouter from "./knowledgeBase";
 import aiConsumersRouter from "./aiConsumers";
+import missiveWebhooksRouter from "./missiveWebhooks";
+import voiceProfilesRouter from "./voiceProfiles";
+import aiPatternsRouter from "./aiPatterns";
 
 const router: IRouter = Router();
 
@@ -58,6 +61,8 @@ if (isMintbucksConfigured()) {
 // bearer tokens, not Clerk sessions; tiers/scopes/rate limits/kill switch
 // enforced inside. Admin management routes live below the staff gate.
 router.use(contextDoorsRouter);
+// Missive rule webhooks (Pattern B/C drafting) — HMAC-signed, no session.
+router.use(missiveWebhooksRouter);
 
 // ── Staff-only ───────────────────────────────────────────────────────
 router.use(requireStaff);
@@ -92,6 +97,8 @@ router.use(correspondenceRouter);
 router.use(hubRouter);
 router.use(knowledgeBaseRouter);
 router.use(aiConsumersRouter); // admin-only inside (token + audit management)
+router.use(voiceProfilesRouter); // staff view/refresh — traits only, no mail content
+router.use(aiPatternsRouter); // admin-only inside (webhooks + pattern measurement)
 
 // moMINTum task management — shared LIVE database with the standalone app.
 // Only mounted when MOMINTUM_DATABASE_URL is set (removing the secret is the

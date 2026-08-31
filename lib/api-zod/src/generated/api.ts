@@ -10284,3 +10284,199 @@ export const UpdateAiContextSettingsResponse = zod.object({
 })
 
 
+/**
+ * @summary Voice profiles for every tracked mailbox (staff)
+ */
+export const ListVoiceProfilesResponseItem = zod.object({
+  "mailboxId": zod.string().uuid(),
+  "mailboxEmail": zod.string(),
+  "mailboxName": zod.string().nullable(),
+  "status": zod.string().describe('none | pending | generating | ready | error'),
+  "traits": zod.record(zod.string(), zod.unknown()).nullable().describe('Distilled style traits only — never message content'),
+  "sampleMessageCount": zod.number(),
+  "sampleFrom": zod.string().nullable(),
+  "sampleTo": zod.string().nullable(),
+  "model": zod.string().nullable(),
+  "error": zod.string().nullable(),
+  "generatedAt": zod.string().nullable()
+})
+export const ListVoiceProfilesResponse = zod.array(ListVoiceProfilesResponseItem)
+
+
+/**
+ * @summary Regenerate a mailbox's voice profile from its sent mail (staff)
+ */
+export const RefreshVoiceProfileParams = zod.object({
+  "mailboxId": zod.coerce.string().uuid()
+})
+
+export const RefreshVoiceProfileResponse = zod.object({
+  "started": zod.boolean(),
+  "reason": zod.string().nullable()
+})
+
+
+/**
+ * @summary Missive webhook endpoints + signature secret (admin)
+ */
+export const GetMissiveWebhookSettingsResponse = zod.object({
+  "configured": zod.boolean(),
+  "secret": zod.string().nullable(),
+  "contextNoteUrl": zod.string(),
+  "voiceDraftUrl": zod.string()
+})
+
+
+/**
+ * @summary Generate/rotate the Missive webhook signature secret (admin)
+ */
+export const RotateMissiveWebhookSecretResponse = zod.object({
+  "secret": zod.string()
+})
+
+
+/**
+ * @summary Pattern A/B/C comparison stats (admin)
+ */
+export const getDraftPatternSummaryQuerySinceDaysDefault = 30;
+export const getDraftPatternSummaryQuerySinceDaysMax = 365;
+
+
+
+export const GetDraftPatternSummaryQueryParams = zod.object({
+  "sinceDays": zod.coerce.number().min(1).max(getDraftPatternSummaryQuerySinceDaysMax).default(getDraftPatternSummaryQuerySinceDaysDefault)
+})
+
+export const GetDraftPatternSummaryResponse = zod.object({
+  "sinceDays": zod.number(),
+  "patternA": zod.object({
+  "calls": zod.number(),
+  "okCalls": zod.number(),
+  "scored": zod.number(),
+  "correct": zod.number(),
+  "usedOrAccepted": zod.number(),
+  "edited": zod.number(),
+  "rejectedOrIgnored": zod.number()
+}),
+  "patternB": zod.object({
+  "calls": zod.number(),
+  "okCalls": zod.number(),
+  "scored": zod.number(),
+  "correct": zod.number(),
+  "usedOrAccepted": zod.number(),
+  "edited": zod.number(),
+  "rejectedOrIgnored": zod.number()
+}).and(zod.object({
+  "events": zod.number(),
+  "notesPosted": zod.number(),
+  "avgNoteLatencyMs": zod.number(),
+  "maxNoteLatencyMs": zod.number(),
+  "orderingKnown": zod.number(),
+  "orderingHeld": zod.number(),
+  "draftUsedNoteScored": zod.number(),
+  "draftUsedNoteYes": zod.number(),
+  "errors": zod.number()
+})),
+  "patternC": zod.object({
+  "calls": zod.number(),
+  "okCalls": zod.number(),
+  "scored": zod.number(),
+  "correct": zod.number(),
+  "usedOrAccepted": zod.number(),
+  "edited": zod.number(),
+  "rejectedOrIgnored": zod.number()
+}).and(zod.object({
+  "events": zod.number(),
+  "draftsCreated": zod.number(),
+  "errors": zod.number()
+}))
+})
+
+
+/**
+ * @summary Pattern B/C webhook drafting events (admin)
+ */
+export const listDraftPatternEventsQueryLimitDefault = 100;
+export const listDraftPatternEventsQueryLimitMax = 500;
+
+
+
+export const ListDraftPatternEventsQueryParams = zod.object({
+  "pattern": zod.enum(['B', 'C']).optional(),
+  "limit": zod.coerce.number().min(1).max(listDraftPatternEventsQueryLimitMax).default(listDraftPatternEventsQueryLimitDefault)
+})
+
+export const ListDraftPatternEventsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "pattern": zod.string(),
+  "providerConversationId": zod.string(),
+  "conversationSubject": zod.string(),
+  "mailboxId": zod.string().uuid().nullable(),
+  "counterpartEmail": zod.string(),
+  "customerId": zod.string().nullable(),
+  "customerName": zod.string(),
+  "receivedAt": zod.string(),
+  "notePostedAt": zod.string().nullable(),
+  "noteLatencyMs": zod.number().nullable(),
+  "noteBody": zod.string(),
+  "draftExistedBeforeNote": zod.boolean().nullable(),
+  "ruleDraftCreatedAt": zod.string().nullable(),
+  "ruleDraftCheckedAt": zod.string().nullable(),
+  "hubDraftCreatedAt": zod.string().nullable(),
+  "voiceProfileUsed": zod.boolean(),
+  "status": zod.string(),
+  "error": zod.string().nullable(),
+  "noteBeforeDraft": zod.boolean().nullable(),
+  "draftUsedNote": zod.boolean().nullable(),
+  "reviewNote": zod.string(),
+  "reviewedByEmail": zod.string().nullable(),
+  "reviewedAt": zod.string().nullable()
+})
+export const ListDraftPatternEventsResponse = zod.array(ListDraftPatternEventsResponseItem)
+
+
+/**
+ * @summary Score a Pattern B/C event against the pass criteria (admin)
+ */
+export const ReviewDraftPatternEventParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const reviewDraftPatternEventBodyReviewNoteMax = 2000;
+
+
+
+export const ReviewDraftPatternEventBody = zod.object({
+  "noteBeforeDraft": zod.boolean().nullish(),
+  "draftUsedNote": zod.boolean().nullish(),
+  "reviewNote": zod.string().max(reviewDraftPatternEventBodyReviewNoteMax).optional()
+})
+
+export const ReviewDraftPatternEventResponse = zod.object({
+  "id": zod.string().uuid(),
+  "pattern": zod.string(),
+  "providerConversationId": zod.string(),
+  "conversationSubject": zod.string(),
+  "mailboxId": zod.string().uuid().nullable(),
+  "counterpartEmail": zod.string(),
+  "customerId": zod.string().nullable(),
+  "customerName": zod.string(),
+  "receivedAt": zod.string(),
+  "notePostedAt": zod.string().nullable(),
+  "noteLatencyMs": zod.number().nullable(),
+  "noteBody": zod.string(),
+  "draftExistedBeforeNote": zod.boolean().nullable(),
+  "ruleDraftCreatedAt": zod.string().nullable(),
+  "ruleDraftCheckedAt": zod.string().nullable(),
+  "hubDraftCreatedAt": zod.string().nullable(),
+  "voiceProfileUsed": zod.boolean(),
+  "status": zod.string(),
+  "error": zod.string().nullable(),
+  "noteBeforeDraft": zod.boolean().nullable(),
+  "draftUsedNote": zod.boolean().nullable(),
+  "reviewNote": zod.string(),
+  "reviewedByEmail": zod.string().nullable(),
+  "reviewedAt": zod.string().nullable()
+})
+
+

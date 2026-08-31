@@ -8,6 +8,7 @@ import {
 } from "./facts";
 import { searchKnowledge } from "./knowledge";
 import { interpretAndCreateDraft } from "../quoteDrafts/service";
+import { getVoiceProfileFact } from "../voice/profiles";
 
 /**
  * The context layer's tool registry — the single protocol-independent
@@ -110,6 +111,23 @@ export const CONTEXT_TOOLS: ContextTool[] = [
         query: String(args.query),
         category: args.category ? String(args.category) : null,
       }),
+  },
+  {
+    name: "get_voice_profile",
+    title: "Get a teammate's voice profile",
+    description:
+      "Distilled writing-style profile for one of our team mailboxes, generated from that person's own sent email. Returns STRUCTURED STYLE TRAITS ONLY — typical greetings, sign-offs, formality, sentence rhythm, phrasing habits — never message content or excerpts. Use it when drafting a reply on someone's behalf so the draft sounds like them; combine with customer/order facts for substance.",
+    schema: z.object({
+      mailbox: z
+        .string()
+        .min(2)
+        .max(120)
+        .describe("Team mailbox address or first name, e.g. 'andrew' or 'andrew@mintprints.com'"),
+    }),
+    allowedTiers: ["internal"],
+    isAction: false,
+    cacheTtlSeconds: 120,
+    handler: async (args) => getVoiceProfileFact(String(args.mailbox)),
   },
   {
     name: "create_quote_draft",

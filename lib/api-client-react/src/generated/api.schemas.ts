@@ -5996,6 +5996,112 @@ export interface AiContextSettingsUpdate {
 }
 
 /**
+ * Distilled style traits only — never message content
+ */
+export type VoiceProfileRecordTraits = { [key: string]: unknown } | null;
+
+export interface VoiceProfileRecord {
+  mailboxId: string;
+  mailboxEmail: string;
+  mailboxName: string | null;
+  /** none | pending | generating | ready | error */
+  status: string;
+  /** Distilled style traits only — never message content */
+  traits: VoiceProfileRecordTraits;
+  sampleMessageCount: number;
+  sampleFrom: string | null;
+  sampleTo: string | null;
+  model: string | null;
+  error: string | null;
+  generatedAt: string | null;
+}
+
+export interface VoiceProfileRefreshStarted {
+  started: boolean;
+  reason: string | null;
+}
+
+export interface MissiveWebhookSettings {
+  configured: boolean;
+  secret: string | null;
+  contextNoteUrl: string;
+  voiceDraftUrl: string;
+}
+
+export interface MissiveWebhookSecret {
+  secret: string;
+}
+
+export interface DraftPatternEventRecord {
+  id: string;
+  pattern: string;
+  providerConversationId: string;
+  conversationSubject: string;
+  mailboxId: string | null;
+  counterpartEmail: string;
+  customerId: string | null;
+  customerName: string;
+  receivedAt: string;
+  notePostedAt: string | null;
+  noteLatencyMs: number | null;
+  noteBody: string;
+  draftExistedBeforeNote: boolean | null;
+  ruleDraftCreatedAt: string | null;
+  ruleDraftCheckedAt: string | null;
+  hubDraftCreatedAt: string | null;
+  voiceProfileUsed: boolean;
+  status: string;
+  error: string | null;
+  noteBeforeDraft: boolean | null;
+  draftUsedNote: boolean | null;
+  reviewNote: string;
+  reviewedByEmail: string | null;
+  reviewedAt: string | null;
+}
+
+export interface ReviewDraftPatternEventRequest {
+  noteBeforeDraft?: boolean | null;
+  draftUsedNote?: boolean | null;
+  /** @maxLength 2000 */
+  reviewNote?: string;
+}
+
+export interface DraftPatternAuditStats {
+  calls: number;
+  okCalls: number;
+  scored: number;
+  correct: number;
+  usedOrAccepted: number;
+  edited: number;
+  rejectedOrIgnored: number;
+}
+
+export type DraftPatternSummaryPatternB = DraftPatternAuditStats & {
+  events: number;
+  notesPosted: number;
+  avgNoteLatencyMs: number;
+  maxNoteLatencyMs: number;
+  orderingKnown: number;
+  orderingHeld: number;
+  draftUsedNoteScored: number;
+  draftUsedNoteYes: number;
+  errors: number;
+};
+
+export type DraftPatternSummaryPatternC = DraftPatternAuditStats & {
+  events: number;
+  draftsCreated: number;
+  errors: number;
+};
+
+export interface DraftPatternSummary {
+  sinceDays: number;
+  patternA: DraftPatternAuditStats;
+  patternB: DraftPatternSummaryPatternB;
+  patternC: DraftPatternSummaryPatternC;
+}
+
+/**
  * A contained Dropbox path, the linked root id, or an id already bookmarked for this customer
  */
 export type DropboxLocatorParamParameter = string;
@@ -7044,4 +7150,29 @@ tool?: string;
  */
 limit?: number;
 };
+
+export type GetDraftPatternSummaryParams = {
+/**
+ * @minimum 1
+ * @maximum 365
+ */
+sinceDays?: number;
+};
+
+export type ListDraftPatternEventsParams = {
+pattern?: ListDraftPatternEventsPattern;
+/**
+ * @minimum 1
+ * @maximum 500
+ */
+limit?: number;
+};
+
+export type ListDraftPatternEventsPattern = typeof ListDraftPatternEventsPattern[keyof typeof ListDraftPatternEventsPattern];
+
+
+export const ListDraftPatternEventsPattern = {
+  B: 'B',
+  C: 'C',
+} as const;
 

@@ -38,3 +38,17 @@ token explicitly — a missed parameter silently falls back to the primary token
 shared across all tokens. One-time deep backfills: temporarily raise
 `initial_backfill_days` on the sync-state row, let a tick run, restore it —
 the tick restarts safely mid-pass after a server restart.
+
+## Write-path quirks (posts & drafts)
+
+- Hub writes to Missive are allowlisted to `/v1/posts` and `/v1/drafts` only —
+  keep it that way; everything else stays read-only.
+- `POST /v1/posts` REQUIRES a `notification: {title, body}` object — omitting
+  it returns 400 "Validation failed: notification is required" (hit live).
+- `POST /v1/drafts`: `from_field` must be an address the token's own account
+  can send as → creating a draft in a teammate's mailbox requires THAT
+  teammate's token (`missiveAccountForMailbox` helper matches by label).
+- Rule webhook payload shape is `{rule, conversation, message?, comment?}`
+  with `message` at the TOP level (not nested under conversation). Signature:
+  `X-Hook-Signature: sha256=<HMAC-hex of raw body>` — capture the raw body in
+  the express.json verify hook or verification is impossible.

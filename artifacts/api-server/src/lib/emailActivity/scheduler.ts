@@ -7,6 +7,7 @@ import {
   isMissiveConnectorReady,
   purgeCorrespondenceRetention,
 } from "../missive/sync";
+import { claimEmailSyncWriter } from "./writerLock";
 
 /**
  * Email activity sync scheduler — same shape as the catalog scheduler:
@@ -25,6 +26,9 @@ export function startEmailActivityScheduler(log: Logger): void {
   started = true;
   const tick = async () => {
     try {
+      // Single-writer rule: when production runs 24/7 it owns the sync;
+      // a dev workspace tick stands down instead of double-syncing.
+      if (!(await claimEmailSyncWriter(log))) return;
       await purgeCorrespondenceRetention();
       if (gmailConfigured() && !isEmailSyncActive()) {
         const result = await runEmailSync(log);

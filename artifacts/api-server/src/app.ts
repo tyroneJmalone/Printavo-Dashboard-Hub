@@ -57,7 +57,18 @@ app.use(
     origin: (origin, cb) => cb(null, !origin || allowedOrigins.has(origin)),
   }),
 );
-app.use(express.json({ limit: "300kb" }));
+app.use(
+  express.json({
+    limit: "300kb",
+    // Missive webhooks are HMAC-signed over the raw bytes — keep them for
+    // signature verification on those routes only.
+    verify: (req, _res, buf) => {
+      if ((req as { url?: string }).url?.startsWith("/api/missive/")) {
+        (req as unknown as { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+      }
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 
 // Resolve the publishable key from the incoming request host so the same

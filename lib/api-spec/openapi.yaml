@@ -6518,6 +6518,123 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AiContextSettings"
+  /voice-profiles:
+    get:
+      operationId: listVoiceProfiles
+      tags: [voiceProfiles]
+      summary: Voice profiles for every tracked mailbox (staff)
+      responses:
+        "200":
+          description: Profiles (distilled style traits only)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VoiceProfileRecord"
+  /voice-profiles/{mailboxId}/refresh:
+    post:
+      operationId: refreshVoiceProfile
+      tags: [voiceProfiles]
+      summary: Regenerate a mailbox's voice profile from its sent mail (staff)
+      parameters:
+        - name: mailboxId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Refresh kicked off (runs in the background)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceProfileRefreshStarted"
+  /ai-context/webhooks:
+    get:
+      operationId: getMissiveWebhookSettings
+      tags: [aiContext]
+      summary: Missive webhook endpoints + signature secret (admin)
+      responses:
+        "200":
+          description: Webhook settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissiveWebhookSettings"
+  /ai-context/webhooks/rotate:
+    post:
+      operationId: rotateMissiveWebhookSecret
+      tags: [aiContext]
+      summary: Generate/rotate the Missive webhook signature secret (admin)
+      responses:
+        "200":
+          description: New secret
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissiveWebhookSecret"
+  /ai-context/patterns/summary:
+    get:
+      operationId: getDraftPatternSummary
+      tags: [aiContext]
+      summary: Pattern A/B/C comparison stats (admin)
+      parameters:
+        - name: sinceDays
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 365, default: 30 }
+      responses:
+        "200":
+          description: Comparison summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftPatternSummary"
+  /ai-context/patterns/events:
+    get:
+      operationId: listDraftPatternEvents
+      tags: [aiContext]
+      summary: Pattern B/C webhook drafting events (admin)
+      parameters:
+        - name: pattern
+          in: query
+          schema: { type: string, enum: [B, C] }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        "200":
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DraftPatternEventRecord"
+  /ai-context/patterns/events/{id}:
+    patch:
+      operationId: reviewDraftPatternEvent
+      tags: [aiContext]
+      summary: Score a Pattern B/C event against the pass criteria (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewDraftPatternEventRequest"
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DraftPatternEventRecord"
+        "404":
+          description: Not found
 components:
   parameters:
     CustomerIdParam:
@@ -12173,3 +12290,122 @@ components:
       required: [contextLayerEnabled]
       properties:
         contextLayerEnabled: { type: boolean }
+    VoiceProfileRecord:
+      type: object
+      required:
+        [mailboxId, mailboxEmail, mailboxName, status, traits, sampleMessageCount, sampleFrom, sampleTo, model, error, generatedAt]
+      properties:
+        mailboxId: { type: string, format: uuid }
+        mailboxEmail: { type: string }
+        mailboxName: { type: string, nullable: true }
+        status:
+          type: string
+          description: none | pending | generating | ready | error
+        traits:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Distilled style traits only — never message content
+        sampleMessageCount: { type: integer }
+        sampleFrom: { type: string, nullable: true }
+        sampleTo: { type: string, nullable: true }
+        model: { type: string, nullable: true }
+        error: { type: string, nullable: true }
+        generatedAt: { type: string, nullable: true }
+    VoiceProfileRefreshStarted:
+      type: object
+      required: [started, reason]
+      properties:
+        started: { type: boolean }
+        reason: { type: string, nullable: true }
+    MissiveWebhookSettings:
+      type: object
+      required: [configured, secret, contextNoteUrl, voiceDraftUrl]
+      properties:
+        configured: { type: boolean }
+        secret: { type: string, nullable: true }
+        contextNoteUrl: { type: string }
+        voiceDraftUrl: { type: string }
+    MissiveWebhookSecret:
+      type: object
+      required: [secret]
+      properties:
+        secret: { type: string }
+    DraftPatternEventRecord:
+      type: object
+      required:
+        [id, pattern, providerConversationId, conversationSubject, mailboxId, counterpartEmail, customerId, customerName, receivedAt, notePostedAt, noteLatencyMs, noteBody, draftExistedBeforeNote, ruleDraftCreatedAt, ruleDraftCheckedAt, hubDraftCreatedAt, voiceProfileUsed, status, error, noteBeforeDraft, draftUsedNote, reviewNote, reviewedByEmail, reviewedAt]
+      properties:
+        id: { type: string, format: uuid }
+        pattern: { type: string }
+        providerConversationId: { type: string }
+        conversationSubject: { type: string }
+        mailboxId: { type: string, format: uuid, nullable: true }
+        counterpartEmail: { type: string }
+        customerId: { type: string, nullable: true }
+        customerName: { type: string }
+        receivedAt: { type: string }
+        notePostedAt: { type: string, nullable: true }
+        noteLatencyMs: { type: integer, nullable: true }
+        noteBody: { type: string }
+        draftExistedBeforeNote: { type: boolean, nullable: true }
+        ruleDraftCreatedAt: { type: string, nullable: true }
+        ruleDraftCheckedAt: { type: string, nullable: true }
+        hubDraftCreatedAt: { type: string, nullable: true }
+        voiceProfileUsed: { type: boolean }
+        status: { type: string }
+        error: { type: string, nullable: true }
+        noteBeforeDraft: { type: boolean, nullable: true }
+        draftUsedNote: { type: boolean, nullable: true }
+        reviewNote: { type: string }
+        reviewedByEmail: { type: string, nullable: true }
+        reviewedAt: { type: string, nullable: true }
+    ReviewDraftPatternEventRequest:
+      type: object
+      properties:
+        noteBeforeDraft: { type: boolean, nullable: true }
+        draftUsedNote: { type: boolean, nullable: true }
+        reviewNote: { type: string, maxLength: 2000 }
+    DraftPatternAuditStats:
+      type: object
+      required: [calls, okCalls, scored, correct, usedOrAccepted, edited, rejectedOrIgnored]
+      properties:
+        calls: { type: integer }
+        okCalls: { type: integer }
+        scored: { type: integer }
+        correct: { type: integer }
+        usedOrAccepted: { type: integer }
+        edited: { type: integer }
+        rejectedOrIgnored: { type: integer }
+    DraftPatternSummary:
+      type: object
+      required: [sinceDays, patternA, patternB, patternC]
+      properties:
+        sinceDays: { type: integer }
+        patternA:
+          $ref: "#/components/schemas/DraftPatternAuditStats"
+        patternB:
+          allOf:
+            - $ref: "#/components/schemas/DraftPatternAuditStats"
+            - type: object
+              required:
+                [events, notesPosted, avgNoteLatencyMs, maxNoteLatencyMs, orderingKnown, orderingHeld, draftUsedNoteScored, draftUsedNoteYes, errors]
+              properties:
+                events: { type: integer }
+                notesPosted: { type: integer }
+                avgNoteLatencyMs: { type: integer }
+                maxNoteLatencyMs: { type: integer }
+                orderingKnown: { type: integer }
+                orderingHeld: { type: integer }
+                draftUsedNoteScored: { type: integer }
+                draftUsedNoteYes: { type: integer }
+                errors: { type: integer }
+        patternC:
+          allOf:
+            - $ref: "#/components/schemas/DraftPatternAuditStats"
+            - type: object
+              required: [events, draftsCreated, errors]
+              properties:
+                events: { type: integer }
+                draftsCreated: { type: integer }
+                errors: { type: integer }

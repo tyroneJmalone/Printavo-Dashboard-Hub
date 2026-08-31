@@ -120,6 +120,8 @@ import type {
   DeleteCollection200,
   DetectedChipplyStoresResponse,
   DirectoryCustomersResponse,
+  DraftPatternEventRecord,
+  DraftPatternSummary,
   DropboxEntry,
   DropboxEntryList,
   DropboxFolderLinkRequest,
@@ -159,6 +161,7 @@ import type {
   GetCustomerArtworkTemporaryLinkParams,
   GetCustomerProfileParams,
   GetDashboardSummaryParams,
+  GetDraftPatternSummaryParams,
   GetEmailActivityStatsParams,
   GetEmailDealsReportParams,
   GetEmailFilteredBucketParams,
@@ -210,6 +213,7 @@ import type {
   ListCreditsParams,
   ListCustomersParams,
   ListDirectoryCustomersParams,
+  ListDraftPatternEventsParams,
   ListEmailAccessGroups200,
   ListEmailCustomersParams,
   ListEmailMailboxPolicies200,
@@ -237,6 +241,8 @@ import type {
   MemberInput,
   MemberUpdate,
   MessageResult,
+  MissiveWebhookSecret,
+  MissiveWebhookSettings,
   ModuleAccessResponse,
   NeedsOrderingResult,
   NicheReportResponse,
@@ -288,6 +294,7 @@ import type {
   ReportFilterOptions,
   ReportSummary,
   RequestMbUploadUrl200,
+  ReviewDraftPatternEventRequest,
   RewardAward,
   RewardRule,
   RewardRuleInput,
@@ -359,7 +366,9 @@ import type {
   VendorShipTo,
   VendorShipToResponse,
   VendorSubmitRequest,
-  VendorSubmitResult
+  VendorSubmitResult,
+  VoiceProfileRecord,
+  VoiceProfileRefreshStarted
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -22325,5 +22334,538 @@ export const useUpdateAiContextSettings = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateAiContextSettingsMutationOptions(options));
+    }
+
+export const getListVoiceProfilesUrl = () => {
+
+
+
+
+  return `/api/voice-profiles`
+}
+
+/**
+ * @summary Voice profiles for every tracked mailbox (staff)
+ */
+export const listVoiceProfiles = async ( options?: RequestInit): Promise<VoiceProfileRecord[]> => {
+
+  return customFetch<VoiceProfileRecord[]>(getListVoiceProfilesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListVoiceProfilesQueryKey = () => {
+    return [
+    `/api/voice-profiles`
+    ] as const;
+    }
+
+
+export const getListVoiceProfilesQueryOptions = <TData = Awaited<ReturnType<typeof listVoiceProfiles>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listVoiceProfiles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListVoiceProfilesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listVoiceProfiles>>> = ({ signal }) => listVoiceProfiles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listVoiceProfiles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListVoiceProfilesQueryResult = NonNullable<Awaited<ReturnType<typeof listVoiceProfiles>>>
+export type ListVoiceProfilesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Voice profiles for every tracked mailbox (staff)
+ */
+
+export function useListVoiceProfiles<TData = Awaited<ReturnType<typeof listVoiceProfiles>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listVoiceProfiles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListVoiceProfilesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRefreshVoiceProfileUrl = (mailboxId: string,) => {
+
+
+
+
+  return `/api/voice-profiles/${mailboxId}/refresh`
+}
+
+/**
+ * @summary Regenerate a mailbox's voice profile from its sent mail (staff)
+ */
+export const refreshVoiceProfile = async (mailboxId: string, options?: RequestInit): Promise<VoiceProfileRefreshStarted> => {
+
+  return customFetch<VoiceProfileRefreshStarted>(getRefreshVoiceProfileUrl(mailboxId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRefreshVoiceProfileMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshVoiceProfile>>, TError,{mailboxId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshVoiceProfile>>, TError,{mailboxId: string}, TContext> => {
+
+const mutationKey = ['refreshVoiceProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshVoiceProfile>>, {mailboxId: string}> = (props) => {
+          const {mailboxId} = props ?? {};
+
+          return  refreshVoiceProfile(mailboxId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshVoiceProfileMutationResult = NonNullable<Awaited<ReturnType<typeof refreshVoiceProfile>>>
+
+    export type RefreshVoiceProfileMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Regenerate a mailbox's voice profile from its sent mail (staff)
+ */
+export const useRefreshVoiceProfile = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshVoiceProfile>>, TError,{mailboxId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshVoiceProfile>>,
+        TError,
+        {mailboxId: string},
+        TContext
+      > => {
+      return useMutation(getRefreshVoiceProfileMutationOptions(options));
+    }
+
+export const getGetMissiveWebhookSettingsUrl = () => {
+
+
+
+
+  return `/api/ai-context/webhooks`
+}
+
+/**
+ * @summary Missive webhook endpoints + signature secret (admin)
+ */
+export const getMissiveWebhookSettings = async ( options?: RequestInit): Promise<MissiveWebhookSettings> => {
+
+  return customFetch<MissiveWebhookSettings>(getGetMissiveWebhookSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMissiveWebhookSettingsQueryKey = () => {
+    return [
+    `/api/ai-context/webhooks`
+    ] as const;
+    }
+
+
+export const getGetMissiveWebhookSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getMissiveWebhookSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMissiveWebhookSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMissiveWebhookSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMissiveWebhookSettings>>> = ({ signal }) => getMissiveWebhookSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMissiveWebhookSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMissiveWebhookSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getMissiveWebhookSettings>>>
+export type GetMissiveWebhookSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Missive webhook endpoints + signature secret (admin)
+ */
+
+export function useGetMissiveWebhookSettings<TData = Awaited<ReturnType<typeof getMissiveWebhookSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMissiveWebhookSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMissiveWebhookSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRotateMissiveWebhookSecretUrl = () => {
+
+
+
+
+  return `/api/ai-context/webhooks/rotate`
+}
+
+/**
+ * @summary Generate/rotate the Missive webhook signature secret (admin)
+ */
+export const rotateMissiveWebhookSecret = async ( options?: RequestInit): Promise<MissiveWebhookSecret> => {
+
+  return customFetch<MissiveWebhookSecret>(getRotateMissiveWebhookSecretUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRotateMissiveWebhookSecretMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotateMissiveWebhookSecret>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rotateMissiveWebhookSecret>>, TError,void, TContext> => {
+
+const mutationKey = ['rotateMissiveWebhookSecret'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rotateMissiveWebhookSecret>>, void> = () => {
+
+
+          return  rotateMissiveWebhookSecret(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RotateMissiveWebhookSecretMutationResult = NonNullable<Awaited<ReturnType<typeof rotateMissiveWebhookSecret>>>
+
+    export type RotateMissiveWebhookSecretMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Generate/rotate the Missive webhook signature secret (admin)
+ */
+export const useRotateMissiveWebhookSecret = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotateMissiveWebhookSecret>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rotateMissiveWebhookSecret>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRotateMissiveWebhookSecretMutationOptions(options));
+    }
+
+export const getGetDraftPatternSummaryUrl = (params?: GetDraftPatternSummaryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/ai-context/patterns/summary?${stringifiedParams}` : `/api/ai-context/patterns/summary`
+}
+
+/**
+ * @summary Pattern A/B/C comparison stats (admin)
+ */
+export const getDraftPatternSummary = async (params?: GetDraftPatternSummaryParams, options?: RequestInit): Promise<DraftPatternSummary> => {
+
+  return customFetch<DraftPatternSummary>(getGetDraftPatternSummaryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDraftPatternSummaryQueryKey = (params?: GetDraftPatternSummaryParams,) => {
+    return [
+    `/api/ai-context/patterns/summary`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDraftPatternSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getDraftPatternSummary>>, TError = ErrorType<unknown>>(params?: GetDraftPatternSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDraftPatternSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDraftPatternSummaryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDraftPatternSummary>>> = ({ signal }) => getDraftPatternSummary(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDraftPatternSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDraftPatternSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getDraftPatternSummary>>>
+export type GetDraftPatternSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Pattern A/B/C comparison stats (admin)
+ */
+
+export function useGetDraftPatternSummary<TData = Awaited<ReturnType<typeof getDraftPatternSummary>>, TError = ErrorType<unknown>>(
+ params?: GetDraftPatternSummaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDraftPatternSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDraftPatternSummaryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListDraftPatternEventsUrl = (params?: ListDraftPatternEventsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/ai-context/patterns/events?${stringifiedParams}` : `/api/ai-context/patterns/events`
+}
+
+/**
+ * @summary Pattern B/C webhook drafting events (admin)
+ */
+export const listDraftPatternEvents = async (params?: ListDraftPatternEventsParams, options?: RequestInit): Promise<DraftPatternEventRecord[]> => {
+
+  return customFetch<DraftPatternEventRecord[]>(getListDraftPatternEventsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDraftPatternEventsQueryKey = (params?: ListDraftPatternEventsParams,) => {
+    return [
+    `/api/ai-context/patterns/events`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListDraftPatternEventsQueryOptions = <TData = Awaited<ReturnType<typeof listDraftPatternEvents>>, TError = ErrorType<unknown>>(params?: ListDraftPatternEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDraftPatternEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDraftPatternEventsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDraftPatternEvents>>> = ({ signal }) => listDraftPatternEvents(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDraftPatternEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDraftPatternEventsQueryResult = NonNullable<Awaited<ReturnType<typeof listDraftPatternEvents>>>
+export type ListDraftPatternEventsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Pattern B/C webhook drafting events (admin)
+ */
+
+export function useListDraftPatternEvents<TData = Awaited<ReturnType<typeof listDraftPatternEvents>>, TError = ErrorType<unknown>>(
+ params?: ListDraftPatternEventsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDraftPatternEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDraftPatternEventsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewDraftPatternEventUrl = (id: string,) => {
+
+
+
+
+  return `/api/ai-context/patterns/events/${id}`
+}
+
+/**
+ * @summary Score a Pattern B/C event against the pass criteria (admin)
+ */
+export const reviewDraftPatternEvent = async (id: string,
+    reviewDraftPatternEventRequest: ReviewDraftPatternEventRequest, options?: RequestInit): Promise<DraftPatternEventRecord> => {
+
+  return customFetch<DraftPatternEventRecord>(getReviewDraftPatternEventUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reviewDraftPatternEventRequest)
+  }
+);}
+
+
+
+
+export const getReviewDraftPatternEventMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewDraftPatternEvent>>, TError,{id: string;data: BodyType<ReviewDraftPatternEventRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewDraftPatternEvent>>, TError,{id: string;data: BodyType<ReviewDraftPatternEventRequest>}, TContext> => {
+
+const mutationKey = ['reviewDraftPatternEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewDraftPatternEvent>>, {id: string;data: BodyType<ReviewDraftPatternEventRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reviewDraftPatternEvent(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewDraftPatternEventMutationResult = NonNullable<Awaited<ReturnType<typeof reviewDraftPatternEvent>>>
+    export type ReviewDraftPatternEventMutationBody = BodyType<ReviewDraftPatternEventRequest>
+    export type ReviewDraftPatternEventMutationError = ErrorType<void>
+
+    /**
+ * @summary Score a Pattern B/C event against the pass criteria (admin)
+ */
+export const useReviewDraftPatternEvent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewDraftPatternEvent>>, TError,{id: string;data: BodyType<ReviewDraftPatternEventRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewDraftPatternEvent>>,
+        TError,
+        {id: string;data: BodyType<ReviewDraftPatternEventRequest>},
+        TContext
+      > => {
+      return useMutation(getReviewDraftPatternEventMutationOptions(options));
     }
 

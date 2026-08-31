@@ -15,6 +15,7 @@ import {
 } from "@workspace/api-client-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
+import { PatternsPanel } from "@/components/ai/PatternsPanel";
 import { useToast } from "@/hooks/use-toast";
 import {
   Bot,
@@ -414,6 +415,8 @@ export default function AiContext() {
             )}
           </div>
         </Card>
+
+        <PatternsPanel />
       </div>
     </AppShell>
   );

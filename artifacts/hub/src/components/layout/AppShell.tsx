@@ -5,7 +5,7 @@ import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api
 import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity, BookOpen } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity, BookOpen, AudioLines } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -81,6 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "ai", label: "Ask AI", href: "/ask", icon: Sparkles, module: "ask-ai" },
       { id: "knowledge", label: "Knowledge Base", href: "/knowledge", icon: BookOpen, module: "knowledge" },
       { id: "ai-connections", label: "AI Connections", href: "/ai-connections", icon: Bot, adminOnly: true },
+      { id: "voice-profiles", label: "Voice Profiles", href: "/voice-profiles", icon: AudioLines },
       { id: "email-activity", label: "Email Activity", href: "/email-activity", icon: Mail, requiredCapability: "view_email_activity" },
       { id: "email-access", label: "Email Access", href: "/email-activity/access", icon: Shield, adminOnly: true },
       { id: "correspondence", label: "Correspondence", href: "/correspondence", icon: Inbox, module: "correspondence" },

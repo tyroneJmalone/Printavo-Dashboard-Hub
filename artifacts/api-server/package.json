@@ -17,7 +17,10 @@
     "test:missive-authorization-db": "node ./test-missive-authorization-db.mjs",
     "test:dropbox-policy": "node ./test-dropbox-policy.mjs",
     "test:knowledge-editorial": "node ./test-knowledge-editorial.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:voice-privacy": "node ./test-voice-privacy.mjs",
+    "test:webhook-dedupe": "node ./test-webhook-dedupe.mjs",
+    "test:writer-lock": "node ./test-writer-lock.mjs"
   },
   "dependencies": {
     "@clerk/express": "^2.1.42",

@@ -14,7 +14,8 @@ import type { ContextCaller, ContextToolResult } from "./types";
  */
 export async function executeContextTool(input: {
   caller: ContextCaller;
-  surface: "context_mcp" | "context_rest" | "context_internal";
+  /** pattern_b / pattern_c = webhook drafting pipelines (internal callers). */
+  surface: "context_mcp" | "context_rest" | "context_internal" | "pattern_b" | "pattern_c";
   tool: string;
   args: unknown;
 }): Promise<ContextToolResult> {

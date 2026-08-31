@@ -97,32 +97,65 @@ async function scheduledRequest(work: () => Promise<Response>): Promise<Response
  * request (see missiveAccounts). Omitted = the primary token / connector.
  */
 export async function missiveGet<T>(path: string, accountToken?: string): Promise<T> {
+  return missiveRequest<T>("GET", path, undefined, accountToken);
+}
+
+/**
+ * The ONLY Missive write paths the Hub may call. Context notes are internal
+ * posts on a conversation; drafts are review-only replies a human must send.
+ * Nothing here can send email or touch a customer directly.
+ */
+const WRITABLE_PATHS = new Set(["/v1/posts", "/v1/drafts"]);
+
+export async function missivePost<T>(
+  path: string,
+  body: Record<string, unknown>,
+  accountToken?: string,
+): Promise<T> {
+  if (!WRITABLE_PATHS.has(missiveApiUrl(path).pathname)) {
+    throw new MissiveApiError(400, `Missive POST not allowed for ${path}`);
+  }
+  return missiveRequest<T>("POST", path, body, accountToken);
+}
+
+async function missiveRequest<T>(
+  method: "GET" | "POST",
+  path: string,
+  body?: Record<string, unknown>,
+  accountToken?: string,
+): Promise<T> {
   const url = missiveApiUrl(path);
   const token = accountToken?.trim() || process.env.MISSIVE_API_TOKEN?.trim();
   for (let attempt = 0; attempt < MISSIVE_MAX_ATTEMPTS; attempt++) {
     const response = await scheduledRequest(() =>
       token
         ? fetch(url, {
-            method: "GET",
+            method,
             headers: {
               Accept: "application/json",
               Authorization: `Bearer ${token}`,
+              ...(body ? { "Content-Type": "application/json" } : {}),
             },
+            body: body ? JSON.stringify(body) : undefined,
             signal: AbortSignal.timeout(MISSIVE_REQUEST_TIMEOUT_MS),
           })
         : new ReplitConnectors().proxy("missive", path, {
-            method: "GET",
-            headers: { Accept: "application/json" },
+            method,
+            headers: {
+              Accept: "application/json",
+              ...(body ? { "Content-Type": "application/json" } : {}),
+            },
+            ...(body ? { body: JSON.stringify(body) } : {}),
           }),
     );
     const contentType = response.headers.get("content-type") ?? "";
     const text = await response.text();
-    let body: unknown = null;
+    let parsedBody: unknown = null;
     if (contentType.includes("json") && text) {
       try {
-        body = JSON.parse(text);
+        parsedBody = JSON.parse(text);
       } catch {
-        body = null;
+        parsedBody = null;
       }
     }
     if (response.status === 429 && attempt + 1 < MISSIVE_MAX_ATTEMPTS) {
@@ -131,11 +164,11 @@ export async function missiveGet<T>(path: string, accountToken?: string): Promis
     }
     if (!response.ok) {
       const detail =
-        typeof body === "object" &&
-        body !== null &&
-        "error" in body &&
-        typeof (body as { error?: { message?: unknown } }).error?.message === "string"
-          ? (body as { error: { message: string } }).error.message
+        typeof parsedBody === "object" &&
+        parsedBody !== null &&
+        "error" in parsedBody &&
+        typeof (parsedBody as { error?: { message?: unknown } }).error?.message === "string"
+          ? (parsedBody as { error: { message: string } }).error.message
           : contentType.includes("text/html")
             ? "connector returned HTML instead of the Missive API"
             : text.slice(0, 300);
@@ -147,9 +180,33 @@ export async function missiveGet<T>(path: string, accountToken?: string): Promis
         "Missive API returned a non-JSON response",
       );
     }
-    return body as T;
+    return parsedBody as T;
   }
   throw new MissiveApiError(429, "Missive API rate limit retry budget exhausted");
+}
+
+/**
+ * Pick the Missive account token that owns a mailbox. Drafts must be
+ * created with the mailbox owner's own token (from_field must be an alias
+ * that account can send as), so match the secret label (e.g. "andrew")
+ * against the mailbox address/display name. The primary token is the
+ * fallback — it belongs to the main account (Tyler) and is also fine for
+ * posting context notes on any conversation it can see.
+ */
+export function missiveAccountForMailbox(
+  email: string,
+  displayName?: string | null,
+): MissiveAccount {
+  const accounts = missiveAccounts();
+  const localPart = (email.split("@")[0] ?? "").toLowerCase();
+  const name = (displayName ?? "").toLowerCase();
+  const match = accounts.find(
+    (a) =>
+      a.label !== "primary" &&
+      a.label !== "connector" &&
+      (localPart.startsWith(a.label) || a.label.startsWith(localPart) || name.includes(a.label)),
+  );
+  return match ?? accounts[0]!;
 }
 
 export function missivePath(path: string, params?: Record<string, string | number | undefined>) {

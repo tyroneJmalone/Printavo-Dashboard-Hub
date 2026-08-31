@@ -65,3 +65,4 @@ export * from "./hubCalcUploads";
 export * from "./customerBranding";
 export * from "./aiConsumers";
 export * from "./knowledgeEntries";
+export * from "./voiceProfiles";
