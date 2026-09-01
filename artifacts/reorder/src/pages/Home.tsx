@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { customerLookupSchema, SIZE_LABEL_MAP } from "@/lib/schema";
+import mintLogo from "@/assets/mint-printworks-logo.png";
 
 import { 
   useSearchReorderPortalOrders, 
@@ -717,15 +718,15 @@ export default function Home() {
       <div className="min-h-[100dvh] bg-muted flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center space-y-4">
-            <div className="mx-auto w-20 h-20 rounded-2xl bg-white shadow-sm border flex items-center justify-center mb-6">
-              <Package className="w-10 h-10 text-primary" />
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground" data-testid="text-app-title">
-              Mint Printworks
-            </h1>
-            <p className="text-lg font-medium text-primary">
+            <img
+              src={mintLogo}
+              alt="Mint Printworks"
+              className="mx-auto w-64 sm:w-72 h-auto mb-6"
+              data-testid="img-app-logo"
+            />
+            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground" data-testid="text-app-title">
               Reorder Portal
-            </p>
+            </h1>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
               Search by email or company name to view your order history and easily place a reorder.
             </p>
