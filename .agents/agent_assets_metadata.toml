@@ -6,6 +6,7 @@ id = "AIAV1y2pFKvhf__NVUWGL"
 uri = "file://attached_assets/Printavo_Dashboard_Consolidation_Assessment.md"
 type = "text"
 title = "Printavo Hub — Consolidation Assessment (Updated July 7, 2026)"
+logical_id = "779132e0-0a35-4616-acbc-0f49226109cd"
 
 [[outputs]]
 id = "Y0PG3VFvOR639daF8l3fw"
@@ -13,18 +14,21 @@ uri = "file://exports/printavo-hub-plan-status.pdf"
 type = "pdf"
 title = "Printavo Hub — Project Plan & Status (Aug 7)"
 description = "The familiar plan & status sheet, updated: punch list, new Aug items (sync bar, MB email images, curation drafts), un-tabled catalog search, and the new CFO assistant + email hub ideas in the backlog grid."
+logical_id = "20719e8c-2734-4973-aa38-4481a8755d81"
 
 [[outputs]]
 id = "cCumyYl_kqaOCcaajAS8j"
 uri = "file://handoffs/standalone-momintum-list-groups.md"
 type = "text"
 title = "Handoff: List Groups for the standalone moMINTum app"
+logical_id = "ceab8836-3a4b-4751-9386-51fe99a1b0b8"
 
 [[outputs]]
 id = "FSw69gTRq92Odc5P-tUT9"
 uri = "file://docs/insights-log.md"
 type = "text"
 title = "Insights & Ideas Log (seeded from past chats)"
+logical_id = "3ee458b7-7e64-40b9-8db9-802e981efe28"
 
 [[outputs]]
 id = "NFeMe0FY8CCXSr1GgvwXU"
@@ -32,6 +36,7 @@ uri = "file://handoffs/standalone-momintum-update-pack-invoice-links-and-task-co
 type = "text"
 title = "moMINTum update pack (2 features + context)"
 description = "Combined handoff for the standalone moMINTum agent: relationship/context primer, clickable Printavo invoice links, and accurate task counts."
+logical_id = "3a846227-8bd2-4cc9-926d-fa843d23e561"
 
 [[outputs]]
 id = "KGO9zB7mWfzIgRfR9GhT9"
@@ -39,6 +44,7 @@ uri = "file://docs/status-and-roadmap.md"
 type = "text"
 title = "Hub Status & Roadmap Review"
 description = "Snapshot of everything built, the drafted curation tasks, the assessed ideas backlog (incl. the new CFO AI assistant idea), and a suggested sequencing for next steps."
+logical_id = "275183a3-6c66-46eb-8452-e84a5c7be1e1"
 
 [[outputs]]
 id = "s_eZqJNNckfKBIZ704Jrl"
@@ -46,6 +52,7 @@ uri = "file://docs/hub-status-and-roadmap.pdf"
 type = "pdf"
 title = "Hub Status & Roadmap (PDF)"
 description = "Printable/forwardable export of the Aug 7 status snapshot: modules built, drafted curation tasks, assessed ideas backlog, and suggested sequencing."
+logical_id = "3fe22714-15be-4d36-a3e3-3fb4f8757800"
 
 [[outputs]]
 id = "s3Hz9RF1kzkNXRwcbMOAb"
@@ -53,3 +60,4 @@ uri = "file://exports/printavo-hub-architecture-overview.pdf"
 type = "pdf"
 title = "Printavo Hub — Architecture & Systems Overview"
 description = "Shareable technical brief: platform architecture, sync foundation, current modules, integrations, safety guardrails, and roadmap (including the Missive AI context layer direction)."
+logical_id = "d6deb1b7-f8ee-441a-a7ff-c4f7d3d63ae3"

@@ -10618,3 +10618,232 @@ export const ReviewDraftBacktestItemResponse = zod.object({
 })
 
 
+/**
+ * Public endpoint — looks up synced Printavo invoices by exact customer email or company name
+ * @summary Search past orders for the public reorder portal
+ */
+export const searchReorderPortalOrdersQueryQMin = 2;
+export const searchReorderPortalOrdersQueryQMax = 200;
+
+
+
+export const SearchReorderPortalOrdersQueryParams = zod.object({
+  "q": zod.coerce.string().min(searchReorderPortalOrdersQueryQMin).max(searchReorderPortalOrdersQueryQMax),
+  "type": zod.enum(['email', 'company'])
+})
+
+export const searchReorderPortalOrdersResponseOrdersItemMockupUrlsMax = 30;
+
+export const searchReorderPortalOrdersResponseOrdersItemLineItemsItemSizesMax = 50;
+
+export const searchReorderPortalOrdersResponseOrdersItemLineItemsItemMockupUrlsMax = 20;
+
+export const searchReorderPortalOrdersResponseOrdersItemLineItemsMax = 100;
+
+export const searchReorderPortalOrdersResponseOrdersMax = 50;
+
+
+
+export const SearchReorderPortalOrdersResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "id": zod.string(),
+  "visualId": zod.number().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "statusColor": zod.string().nullable(),
+  "total": zod.number().nullable(),
+  "invoiceDate": zod.string().nullable().describe('YYYY-MM-DD (UTC calendar date)'),
+  "customerCompany": zod.string().nullable(),
+  "mockupUrls": zod.array(zod.string()).max(searchReorderPortalOrdersResponseOrdersItemMockupUrlsMax),
+  "lineItems": zod.array(zod.object({
+  "id": zod.string(),
+  "itemNumber": zod.string().nullable(),
+  "color": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "totalQty": zod.number(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().describe('Raw Printavo size key, e.g. size_2xl'),
+  "label": zod.string().describe('Display label, e.g. 2XL'),
+  "count": zod.number()
+})).max(searchReorderPortalOrdersResponseOrdersItemLineItemsItemSizesMax),
+  "mockupUrls": zod.array(zod.string()).max(searchReorderPortalOrdersResponseOrdersItemLineItemsItemMockupUrlsMax)
+})).max(searchReorderPortalOrdersResponseOrdersItemLineItemsMax)
+})).max(searchReorderPortalOrdersResponseOrdersMax)
+})
+
+
+/**
+ * Public endpoint — stores the request and emails the sales team
+ * @summary Submit a reorder request
+ */
+export const submitReorderRequestBodyOrderIdMax = 100;
+
+export const submitReorderRequestBodyOrderNicknameMax = 500;
+
+export const submitReorderRequestBodyCustomerNameMax = 200;
+
+export const submitReorderRequestBodyCustomerEmailMax = 320;
+
+export const submitReorderRequestBodyCustomerCompanyMax = 300;
+
+export const submitReorderRequestBodyNotesMax = 5000;
+
+export const submitReorderRequestBodyItemsItemLineItemIdMax = 100;
+
+export const submitReorderRequestBodyItemsItemItemNumberMax = 200;
+
+export const submitReorderRequestBodyItemsItemColorMax = 200;
+
+export const submitReorderRequestBodyItemsItemDescriptionMax = 500;
+
+export const submitReorderRequestBodyItemsItemSizesItemLabelMax = 40;
+
+export const submitReorderRequestBodyItemsItemSizesItemQtyMax = 100000;
+
+export const submitReorderRequestBodyItemsItemSizesMax = 50;
+
+export const submitReorderRequestBodyItemsMax = 100;
+
+
+
+export const SubmitReorderRequestBody = zod.object({
+  "orderId": zod.string().min(1).max(submitReorderRequestBodyOrderIdMax),
+  "visualId": zod.number().nullish(),
+  "orderNickname": zod.string().max(submitReorderRequestBodyOrderNicknameMax).nullish(),
+  "customerName": zod.string().min(1).max(submitReorderRequestBodyCustomerNameMax),
+  "customerEmail": zod.string().email().max(submitReorderRequestBodyCustomerEmailMax),
+  "customerCompany": zod.string().max(submitReorderRequestBodyCustomerCompanyMax).nullish(),
+  "notes": zod.string().max(submitReorderRequestBodyNotesMax).nullish(),
+  "items": zod.array(zod.object({
+  "lineItemId": zod.string().max(submitReorderRequestBodyItemsItemLineItemIdMax).nullish(),
+  "itemNumber": zod.string().max(submitReorderRequestBodyItemsItemItemNumberMax).nullish(),
+  "color": zod.string().max(submitReorderRequestBodyItemsItemColorMax).nullish(),
+  "description": zod.string().max(submitReorderRequestBodyItemsItemDescriptionMax).nullable(),
+  "sizes": zod.array(zod.object({
+  "label": zod.string().max(submitReorderRequestBodyItemsItemSizesItemLabelMax),
+  "qty": zod.number().min(1).max(submitReorderRequestBodyItemsItemSizesItemQtyMax)
+})).min(1).max(submitReorderRequestBodyItemsItemSizesMax)
+})).min(1).max(submitReorderRequestBodyItemsMax)
+})
+
+export const SubmitReorderRequestResponse = zod.object({
+  "ok": zod.boolean(),
+  "id": zod.string().uuid()
+})
+
+
+/**
+ * @summary List reorder requests (staff inbox)
+ */
+export const ListReorderRequestsQueryParams = zod.object({
+  "status": zod.enum(['new', 'in_progress', 'done', 'all']).optional()
+})
+
+export const listReorderRequestsResponseRequestsItemItemsItemLineItemIdMax = 100;
+
+export const listReorderRequestsResponseRequestsItemItemsItemItemNumberMax = 200;
+
+export const listReorderRequestsResponseRequestsItemItemsItemColorMax = 200;
+
+export const listReorderRequestsResponseRequestsItemItemsItemDescriptionMax = 500;
+
+export const listReorderRequestsResponseRequestsItemItemsItemSizesItemLabelMax = 40;
+
+export const listReorderRequestsResponseRequestsItemItemsItemSizesItemQtyMax = 100000;
+
+export const listReorderRequestsResponseRequestsItemItemsItemSizesMax = 50;
+
+export const listReorderRequestsResponseRequestsItemItemsMax = 100;
+
+export const listReorderRequestsResponseRequestsMax = 1000;
+
+
+
+export const ListReorderRequestsResponse = zod.object({
+  "requests": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "createdAt": zod.coerce.date(),
+  "orderId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "orderNickname": zod.string().nullable(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string(),
+  "customerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "items": zod.array(zod.object({
+  "lineItemId": zod.string().max(listReorderRequestsResponseRequestsItemItemsItemLineItemIdMax).nullish(),
+  "itemNumber": zod.string().max(listReorderRequestsResponseRequestsItemItemsItemItemNumberMax).nullish(),
+  "color": zod.string().max(listReorderRequestsResponseRequestsItemItemsItemColorMax).nullish(),
+  "description": zod.string().max(listReorderRequestsResponseRequestsItemItemsItemDescriptionMax).nullable(),
+  "sizes": zod.array(zod.object({
+  "label": zod.string().max(listReorderRequestsResponseRequestsItemItemsItemSizesItemLabelMax),
+  "qty": zod.number().min(1).max(listReorderRequestsResponseRequestsItemItemsItemSizesItemQtyMax)
+})).min(1).max(listReorderRequestsResponseRequestsItemItemsItemSizesMax)
+})).max(listReorderRequestsResponseRequestsItemItemsMax),
+  "totalQty": zod.number(),
+  "status": zod.enum(['new', 'in_progress', 'done']),
+  "emailSent": zod.boolean()
+})).max(listReorderRequestsResponseRequestsMax),
+  "counts": zod.object({
+  "new": zod.number(),
+  "inProgress": zod.number(),
+  "done": zod.number()
+})
+})
+
+
+/**
+ * @summary Update a reorder request's status
+ */
+export const UpdateReorderRequestParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateReorderRequestBody = zod.object({
+  "status": zod.enum(['new', 'in_progress', 'done'])
+})
+
+export const updateReorderRequestResponseItemsItemLineItemIdMax = 100;
+
+export const updateReorderRequestResponseItemsItemItemNumberMax = 200;
+
+export const updateReorderRequestResponseItemsItemColorMax = 200;
+
+export const updateReorderRequestResponseItemsItemDescriptionMax = 500;
+
+export const updateReorderRequestResponseItemsItemSizesItemLabelMax = 40;
+
+export const updateReorderRequestResponseItemsItemSizesItemQtyMax = 100000;
+
+export const updateReorderRequestResponseItemsItemSizesMax = 50;
+
+export const updateReorderRequestResponseItemsMax = 100;
+
+
+
+export const UpdateReorderRequestResponse = zod.object({
+  "id": zod.string().uuid(),
+  "createdAt": zod.coerce.date(),
+  "orderId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "orderNickname": zod.string().nullable(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string(),
+  "customerCompany": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "items": zod.array(zod.object({
+  "lineItemId": zod.string().max(updateReorderRequestResponseItemsItemLineItemIdMax).nullish(),
+  "itemNumber": zod.string().max(updateReorderRequestResponseItemsItemItemNumberMax).nullish(),
+  "color": zod.string().max(updateReorderRequestResponseItemsItemColorMax).nullish(),
+  "description": zod.string().max(updateReorderRequestResponseItemsItemDescriptionMax).nullable(),
+  "sizes": zod.array(zod.object({
+  "label": zod.string().max(updateReorderRequestResponseItemsItemSizesItemLabelMax),
+  "qty": zod.number().min(1).max(updateReorderRequestResponseItemsItemSizesItemQtyMax)
+})).min(1).max(updateReorderRequestResponseItemsItemSizesMax)
+})).max(updateReorderRequestResponseItemsMax),
+  "totalQty": zod.number(),
+  "status": zod.enum(['new', 'in_progress', 'done']),
+  "emailSent": zod.boolean()
+})
+
+

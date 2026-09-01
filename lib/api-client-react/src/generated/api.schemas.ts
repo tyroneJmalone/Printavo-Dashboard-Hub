@@ -5,6 +5,194 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ReorderPortalSizeCount {
+  /** Raw Printavo size key, e.g. size_2xl */
+  size: string;
+  /** Display label, e.g. 2XL */
+  label: string;
+  count: number;
+}
+
+export interface ReorderPortalLineItem {
+  id: string;
+  /** @nullable */
+  itemNumber: string | null;
+  /** @nullable */
+  color: string | null;
+  /** @nullable */
+  description: string | null;
+  totalQty: number;
+  /** @maxItems 50 */
+  sizes: ReorderPortalSizeCount[];
+  /** @maxItems 20 */
+  mockupUrls: string[];
+}
+
+export interface ReorderPortalOrder {
+  id: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  statusName: string | null;
+  /** @nullable */
+  statusColor: string | null;
+  /** @nullable */
+  total: number | null;
+  /**
+     * YYYY-MM-DD (UTC calendar date)
+     * @nullable
+     */
+  invoiceDate: string | null;
+  /** @nullable */
+  customerCompany: string | null;
+  /** @maxItems 30 */
+  mockupUrls: string[];
+  /** @maxItems 100 */
+  lineItems: ReorderPortalLineItem[];
+}
+
+export interface ReorderPortalOrderList {
+  /** @maxItems 50 */
+  orders: ReorderPortalOrder[];
+}
+
+export interface ReorderRequestSizeQty {
+  /** @maxLength 40 */
+  label: string;
+  /**
+     * @minimum 1
+     * @maximum 100000
+     */
+  qty: number;
+}
+
+export interface ReorderRequestItem {
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  lineItemId?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  itemNumber?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  color?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  description: string | null;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  sizes: ReorderRequestSizeQty[];
+}
+
+export interface ReorderRequestInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  orderId: string;
+  /** @nullable */
+  visualId?: number | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  orderNickname?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  customerName: string;
+  /** @maxLength 320 */
+  customerEmail: string;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
+  customerCompany?: string | null;
+  /**
+     * @maxLength 5000
+     * @nullable
+     */
+  notes?: string | null;
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  items: ReorderRequestItem[];
+}
+
+export interface ReorderRequestSubmitResult {
+  ok: boolean;
+  id: string;
+}
+
+export type ReorderRequestRecordStatus = typeof ReorderRequestRecordStatus[keyof typeof ReorderRequestRecordStatus];
+
+
+export const ReorderRequestRecordStatus = {
+  new: 'new',
+  in_progress: 'in_progress',
+  done: 'done',
+} as const;
+
+export interface ReorderRequestRecord {
+  id: string;
+  createdAt: string;
+  orderId: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  orderNickname: string | null;
+  customerName: string;
+  customerEmail: string;
+  /** @nullable */
+  customerCompany: string | null;
+  /** @nullable */
+  notes: string | null;
+  /** @maxItems 100 */
+  items: ReorderRequestItem[];
+  totalQty: number;
+  status: ReorderRequestRecordStatus;
+  emailSent: boolean;
+}
+
+export type ReorderRequestListCounts = {
+  new: number;
+  inProgress: number;
+  done: number;
+};
+
+export interface ReorderRequestList {
+  /** @maxItems 1000 */
+  requests: ReorderRequestRecord[];
+  counts: ReorderRequestListCounts;
+}
+
+export type UpdateReorderRequestInputStatus = typeof UpdateReorderRequestInputStatus[keyof typeof UpdateReorderRequestInputStatus];
+
+
+export const UpdateReorderRequestInputStatus = {
+  new: 'new',
+  in_progress: 'in_progress',
+  done: 'done',
+} as const;
+
+export interface UpdateReorderRequestInput {
+  status: UpdateReorderRequestInputStatus;
+}
+
 export interface AuditFields {
   createdByEmail: string;
   updatedByEmail: string;
@@ -7270,4 +7458,35 @@ export type ListDraftBacktestRunsParams = {
  */
 limit?: number;
 };
+
+export type SearchReorderPortalOrdersParams = {
+/**
+ * @minLength 2
+ * @maxLength 200
+ */
+q: string;
+type: SearchReorderPortalOrdersType;
+};
+
+export type SearchReorderPortalOrdersType = typeof SearchReorderPortalOrdersType[keyof typeof SearchReorderPortalOrdersType];
+
+
+export const SearchReorderPortalOrdersType = {
+  email: 'email',
+  company: 'company',
+} as const;
+
+export type ListReorderRequestsParams = {
+status?: ListReorderRequestsStatus;
+};
+
+export type ListReorderRequestsStatus = typeof ListReorderRequestsStatus[keyof typeof ListReorderRequestsStatus];
+
+
+export const ListReorderRequestsStatus = {
+  new: 'new',
+  in_progress: 'in_progress',
+  done: 'done',
+  all: 'all',
+} as const;
 

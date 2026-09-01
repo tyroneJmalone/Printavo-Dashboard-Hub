@@ -40,6 +40,7 @@ export const MODULE_DEFS: readonly ModuleDef[] = [
   { key: "pipeline", label: "Pipeline", group: "Sales", apiPrefixes: ["/pipeline", "/reports"] },
   { key: "status-activity", label: "Status Activity", group: "Sales", apiPrefixes: ["/status-activity", "/reports"] },
   { key: "chipply", label: "Chipply Stores", group: "Sales", apiPrefixes: ["/chipply"] },
+  { key: "reorder", label: "Reorder Requests", group: "Sales", apiPrefixes: ["/reorder-requests"] },
   { key: "customers", label: "Client Directory & Niche Report", group: "Clients", apiPrefixes: ["/customers", "/branding"] },
   { key: "purchasing", label: "Vendor Orders, PO Log & Tracking", group: "Purchasing", apiPrefixes: ["/purchasing"] },
   { key: "production", label: "Print Queue & Automation", group: "Production", apiPrefixes: ["/print-queue"] },

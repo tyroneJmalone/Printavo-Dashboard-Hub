@@ -41,6 +41,7 @@ const MODULE_PAGE_PREFIXES: Record<string, readonly string[]> = {
   pipeline: ["/pipeline"],
   "status-activity": ["/status-activity"],
   chipply: ["/chipply"],
+  reorder: ["/reorder-requests"],
   customers: ["/customers"],
   purchasing: ["/vendor-orders", "/po-log", "/tracking", "/status-rules"],
   production: ["/print-queue", "/print-queue-rules", "/auto-print"],
@@ -96,7 +97,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "pipeline", label: "Pipeline", href: "/pipeline", icon: Filter, module: "pipeline" },
       { id: "status-activity", label: "Status Activity", href: "/status-activity", icon: Activity, module: "status-activity" },
       { id: "chipply", label: "Chipply Stores", href: "/chipply", icon: Store, module: "chipply" },
-      { id: "reorders", label: "Reorder Inbox", icon: Inbox, disabled: true },
+      { id: "reorders", label: "Reorder Requests", href: "/reorder-requests", icon: Inbox, module: "reorder" },
     ],
   },
   {

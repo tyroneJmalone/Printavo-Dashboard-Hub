@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/reorder/"
+title = "Reorder Portal"
+description = "A customer-facing reorder portal for Mint Printworks. Customers look up their order history by email or company name, browse past orders with mockup images, pick sizes and quantities, and submit a reorder request that notifies the sales team and appears in the staff Hub."
+version = "1.0.0"
+id = "artifacts/reorder"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/reorder/" ]
+localPort = 19970
+
+[services.development]
+run = "pnpm --filter @workspace/reorder run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/reorder", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/reorder/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19970"
+BASE_PATH = "/reorder/"

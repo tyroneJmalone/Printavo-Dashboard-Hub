@@ -36,6 +36,10 @@ tags:
     description: Chipply web stores — email/export import, Printavo invoice linking, revenue kept separate
   - name: hub
     description: Hub Price Calculator — AI interpretation, PNG upload, invoice search, and Printavo push
+  - name: reorderPortal
+    description: Public customer-facing reorder portal (no staff auth)
+  - name: reorderRequests
+    description: Staff reorder request inbox
 paths:
   /healthz:
     get:
@@ -6716,6 +6720,95 @@ paths:
                 $ref: "#/components/schemas/DraftBacktestItemRecord"
         "404":
           description: Not found
+  /reorder-portal/orders:
+    get:
+      operationId: searchReorderPortalOrders
+      tags: [reorderPortal]
+      summary: Search past orders for the public reorder portal
+      description: Public endpoint — looks up synced Printavo invoices by exact customer email or company name
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, minLength: 2, maxLength: 200 }
+        - name: type
+          in: query
+          required: true
+          schema: { type: string, enum: [email, company] }
+      responses:
+        "200":
+          description: Matching orders, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReorderPortalOrderList"
+        "400":
+          description: Invalid search
+  /reorder-portal/requests:
+    post:
+      operationId: submitReorderRequest
+      tags: [reorderPortal]
+      summary: Submit a reorder request
+      description: Public endpoint — stores the request and emails the sales team
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderRequestInput"
+      responses:
+        "201":
+          description: Request received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReorderRequestSubmitResult"
+        "400":
+          description: Invalid request
+        "429":
+          description: Too many requests
+  /reorder-requests:
+    get:
+      operationId: listReorderRequests
+      tags: [reorderRequests]
+      summary: List reorder requests (staff inbox)
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [new, in_progress, done, all] }
+      responses:
+        "200":
+          description: Requests + status counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReorderRequestList"
+  /reorder-requests/{id}:
+    patch:
+      operationId: updateReorderRequest
+      tags: [reorderRequests]
+      summary: Update a reorder request's status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReorderRequestInput"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReorderRequestRecord"
+        "404":
+          description: Not found
 components:
   parameters:
     CustomerIdParam:
@@ -6841,6 +6934,141 @@ components:
       description: "||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)"
       schema: { type: string }
   schemas:
+    ReorderPortalSizeCount:
+      type: object
+      required: [size, label, count]
+      properties:
+        size: { type: string, description: "Raw Printavo size key, e.g. size_2xl" }
+        label: { type: string, description: "Display label, e.g. 2XL" }
+        count: { type: integer }
+    ReorderPortalLineItem:
+      type: object
+      required: [id, itemNumber, color, description, totalQty, sizes, mockupUrls]
+      properties:
+        id: { type: string }
+        itemNumber: { type: [string, "null"] }
+        color: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        totalQty: { type: integer }
+        sizes:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/ReorderPortalSizeCount" }
+        mockupUrls:
+          type: array
+          maxItems: 20
+          items: { type: string }
+    ReorderPortalOrder:
+      type: object
+      required: [id, visualId, nickname, statusName, statusColor, total, invoiceDate, customerCompany, mockupUrls, lineItems]
+      properties:
+        id: { type: string }
+        visualId: { type: [integer, "null"] }
+        nickname: { type: [string, "null"] }
+        statusName: { type: [string, "null"] }
+        statusColor: { type: [string, "null"] }
+        total: { type: [number, "null"] }
+        invoiceDate:
+          type: [string, "null"]
+          description: "YYYY-MM-DD (UTC calendar date)"
+        customerCompany: { type: [string, "null"] }
+        mockupUrls:
+          type: array
+          maxItems: 30
+          items: { type: string }
+        lineItems:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/ReorderPortalLineItem" }
+    ReorderPortalOrderList:
+      type: object
+      required: [orders]
+      properties:
+        orders:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/ReorderPortalOrder" }
+    ReorderRequestSizeQty:
+      type: object
+      required: [label, qty]
+      properties:
+        label: { type: string, maxLength: 40 }
+        qty: { type: integer, minimum: 1, maximum: 100000 }
+    ReorderRequestItem:
+      type: object
+      required: [description, sizes]
+      properties:
+        lineItemId: { type: [string, "null"], maxLength: 100 }
+        itemNumber: { type: [string, "null"], maxLength: 200 }
+        color: { type: [string, "null"], maxLength: 200 }
+        description: { type: [string, "null"], maxLength: 500 }
+        sizes:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/components/schemas/ReorderRequestSizeQty" }
+    ReorderRequestInput:
+      type: object
+      required: [orderId, customerName, customerEmail, items]
+      properties:
+        orderId: { type: string, minLength: 1, maxLength: 100 }
+        visualId: { type: [integer, "null"] }
+        orderNickname: { type: [string, "null"], maxLength: 500 }
+        customerName: { type: string, minLength: 1, maxLength: 200 }
+        customerEmail: { type: string, format: email, maxLength: 320 }
+        customerCompany: { type: [string, "null"], maxLength: 300 }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: "#/components/schemas/ReorderRequestItem" }
+    ReorderRequestSubmitResult:
+      type: object
+      required: [ok, id]
+      properties:
+        ok: { type: boolean }
+        id: { type: string, format: uuid }
+    ReorderRequestRecord:
+      type: object
+      required: [id, createdAt, orderId, visualId, orderNickname, customerName, customerEmail, customerCompany, notes, items, totalQty, status, emailSent]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        orderId: { type: string }
+        visualId: { type: [integer, "null"] }
+        orderNickname: { type: [string, "null"] }
+        customerName: { type: string }
+        customerEmail: { type: string }
+        customerCompany: { type: [string, "null"] }
+        notes: { type: [string, "null"] }
+        items:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/ReorderRequestItem" }
+        totalQty: { type: integer }
+        status: { type: string, enum: [new, in_progress, done] }
+        emailSent: { type: boolean }
+    ReorderRequestList:
+      type: object
+      required: [requests, counts]
+      properties:
+        requests:
+          type: array
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/ReorderRequestRecord" }
+        counts:
+          type: object
+          required: [new, inProgress, done]
+          properties:
+            new: { type: integer }
+            inProgress: { type: integer }
+            done: { type: integer }
+    UpdateReorderRequestInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [new, in_progress, done] }
     AuditFields:
       type: object
       required: [createdByEmail, updatedByEmail, createdAt, updatedAt]

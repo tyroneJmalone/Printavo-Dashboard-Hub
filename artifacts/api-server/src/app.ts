@@ -13,6 +13,10 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Behind the Replit edge proxy: resolve req.ip from X-Forwarded-For (one
+// trusted hop) so per-IP rate limits key on the real client, not the proxy.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,

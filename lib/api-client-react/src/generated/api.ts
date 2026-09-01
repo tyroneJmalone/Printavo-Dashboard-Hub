@@ -232,6 +232,7 @@ import type {
   ListPqStatusJobsParams,
   ListPrintQueueOrdersParams,
   ListRedemptionsParams,
+  ListReorderRequestsParams,
   ListRewardAwardsParams,
   ListStatusSuggestionsParams,
   ListTasksParams,
@@ -292,6 +293,11 @@ import type {
   Redemption,
   RedemptionInput,
   RedemptionResult,
+  ReorderPortalOrderList,
+  ReorderRequestInput,
+  ReorderRequestList,
+  ReorderRequestRecord,
+  ReorderRequestSubmitResult,
   ReorderStatusRulesRequest,
   ReplaceChipplyStoreStylesRequest,
   ReportFilterOptions,
@@ -312,6 +318,7 @@ import type {
   SearchAiQuoteCustomersParams,
   SearchCustomerArtworkParams,
   SearchHubInvoicesParams,
+  SearchReorderPortalOrdersParams,
   SeedStartResult,
   SendTestRewardEmail200,
   SendToPrintavoResult,
@@ -358,6 +365,7 @@ import type {
   UpdateModuleAccessRequest,
   UpdatePoFileRequest,
   UpdatePqStatusRuleRequest,
+  UpdateReorderRequestInput,
   UpdateStaffRoleRequest,
   UpdateStatusRuleRequest,
   UpsertDecorationMatrixRequest,
@@ -23174,5 +23182,316 @@ export const useReviewDraftBacktestItem = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getReviewDraftBacktestItemMutationOptions(options));
+    }
+
+export const getSearchReorderPortalOrdersUrl = (params: SearchReorderPortalOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reorder-portal/orders?${stringifiedParams}` : `/api/reorder-portal/orders`
+}
+
+/**
+ * Public endpoint — looks up synced Printavo invoices by exact customer email or company name
+ * @summary Search past orders for the public reorder portal
+ */
+export const searchReorderPortalOrders = async (params: SearchReorderPortalOrdersParams, options?: RequestInit): Promise<ReorderPortalOrderList> => {
+
+  return customFetch<ReorderPortalOrderList>(getSearchReorderPortalOrdersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchReorderPortalOrdersQueryKey = (params?: SearchReorderPortalOrdersParams,) => {
+    return [
+    `/api/reorder-portal/orders`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchReorderPortalOrdersQueryOptions = <TData = Awaited<ReturnType<typeof searchReorderPortalOrders>>, TError = ErrorType<void>>(params: SearchReorderPortalOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchReorderPortalOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchReorderPortalOrdersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchReorderPortalOrders>>> = ({ signal }) => searchReorderPortalOrders(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchReorderPortalOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchReorderPortalOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof searchReorderPortalOrders>>>
+export type SearchReorderPortalOrdersQueryError = ErrorType<void>
+
+
+/**
+ * @summary Search past orders for the public reorder portal
+ */
+
+export function useSearchReorderPortalOrders<TData = Awaited<ReturnType<typeof searchReorderPortalOrders>>, TError = ErrorType<void>>(
+ params: SearchReorderPortalOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchReorderPortalOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchReorderPortalOrdersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSubmitReorderRequestUrl = () => {
+
+
+
+
+  return `/api/reorder-portal/requests`
+}
+
+/**
+ * Public endpoint — stores the request and emails the sales team
+ * @summary Submit a reorder request
+ */
+export const submitReorderRequest = async (reorderRequestInput: ReorderRequestInput, options?: RequestInit): Promise<ReorderRequestSubmitResult> => {
+
+  return customFetch<ReorderRequestSubmitResult>(getSubmitReorderRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reorderRequestInput)
+  }
+);}
+
+
+
+
+export const getSubmitReorderRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitReorderRequest>>, TError,{data: BodyType<ReorderRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitReorderRequest>>, TError,{data: BodyType<ReorderRequestInput>}, TContext> => {
+
+const mutationKey = ['submitReorderRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitReorderRequest>>, {data: BodyType<ReorderRequestInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitReorderRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitReorderRequestMutationResult = NonNullable<Awaited<ReturnType<typeof submitReorderRequest>>>
+    export type SubmitReorderRequestMutationBody = BodyType<ReorderRequestInput>
+    export type SubmitReorderRequestMutationError = ErrorType<void>
+
+    /**
+ * @summary Submit a reorder request
+ */
+export const useSubmitReorderRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitReorderRequest>>, TError,{data: BodyType<ReorderRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitReorderRequest>>,
+        TError,
+        {data: BodyType<ReorderRequestInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitReorderRequestMutationOptions(options));
+    }
+
+export const getListReorderRequestsUrl = (params?: ListReorderRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reorder-requests?${stringifiedParams}` : `/api/reorder-requests`
+}
+
+/**
+ * @summary List reorder requests (staff inbox)
+ */
+export const listReorderRequests = async (params?: ListReorderRequestsParams, options?: RequestInit): Promise<ReorderRequestList> => {
+
+  return customFetch<ReorderRequestList>(getListReorderRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListReorderRequestsQueryKey = (params?: ListReorderRequestsParams,) => {
+    return [
+    `/api/reorder-requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListReorderRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listReorderRequests>>, TError = ErrorType<unknown>>(params?: ListReorderRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReorderRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListReorderRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReorderRequests>>> = ({ signal }) => listReorderRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listReorderRequests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListReorderRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listReorderRequests>>>
+export type ListReorderRequestsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List reorder requests (staff inbox)
+ */
+
+export function useListReorderRequests<TData = Awaited<ReturnType<typeof listReorderRequests>>, TError = ErrorType<unknown>>(
+ params?: ListReorderRequestsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReorderRequests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListReorderRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateReorderRequestUrl = (id: string,) => {
+
+
+
+
+  return `/api/reorder-requests/${id}`
+}
+
+/**
+ * @summary Update a reorder request's status
+ */
+export const updateReorderRequest = async (id: string,
+    updateReorderRequestInput: UpdateReorderRequestInput, options?: RequestInit): Promise<ReorderRequestRecord> => {
+
+  return customFetch<ReorderRequestRecord>(getUpdateReorderRequestUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateReorderRequestInput)
+  }
+);}
+
+
+
+
+export const getUpdateReorderRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReorderRequest>>, TError,{id: string;data: BodyType<UpdateReorderRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateReorderRequest>>, TError,{id: string;data: BodyType<UpdateReorderRequestInput>}, TContext> => {
+
+const mutationKey = ['updateReorderRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateReorderRequest>>, {id: string;data: BodyType<UpdateReorderRequestInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateReorderRequest(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateReorderRequestMutationResult = NonNullable<Awaited<ReturnType<typeof updateReorderRequest>>>
+    export type UpdateReorderRequestMutationBody = BodyType<UpdateReorderRequestInput>
+    export type UpdateReorderRequestMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a reorder request's status
+ */
+export const useUpdateReorderRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateReorderRequest>>, TError,{id: string;data: BodyType<UpdateReorderRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateReorderRequest>>,
+        TError,
+        {id: string;data: BodyType<UpdateReorderRequestInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateReorderRequestMutationOptions(options));
     }
 

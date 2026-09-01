@@ -43,6 +43,8 @@ import missiveWebhooksRouter from "./missiveWebhooks";
 import voiceProfilesRouter from "./voiceProfiles";
 import aiPatternsRouter from "./aiPatterns";
 import aiBacktestRouter from "./aiBacktest";
+import reorderPublicRouter from "./reorderPublic";
+import reorderRequestsRouter from "./reorderRequests";
 
 const router: IRouter = Router();
 
@@ -64,6 +66,9 @@ if (isMintbucksConfigured()) {
 router.use(contextDoorsRouter);
 // Missive rule webhooks (Pattern B/C drafting) — HMAC-signed, no session.
 router.use(missiveWebhooksRouter);
+// Reorder Portal — customer-facing search + request submission (rate
+// limited inside; invoices only, minimal field exposure).
+router.use(reorderPublicRouter);
 
 // ── Staff-only ───────────────────────────────────────────────────────
 router.use(requireStaff);
@@ -101,6 +106,7 @@ router.use(aiConsumersRouter); // admin-only inside (token + audit management)
 router.use(voiceProfilesRouter); // staff view/refresh — traits only, no mail content
 router.use(aiPatternsRouter); // admin-only inside (webhooks + pattern measurement)
 router.use(aiBacktestRouter); // admin-only inside (offline drafting backtest)
+router.use(reorderRequestsRouter); // staff reorder-request inbox (module-gated)
 
 // moMINTum task management — shared LIVE database with the standalone app.
 // Only mounted when MOMINTUM_DATABASE_URL is set (removing the secret is the

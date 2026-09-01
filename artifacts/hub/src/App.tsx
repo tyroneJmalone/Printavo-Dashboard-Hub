@@ -52,6 +52,7 @@ import ChipplyStores from "./pages/ChipplyStores";
 import ChipplyStoreDetail from "./pages/ChipplyStoreDetail";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import VoiceProfiles from "./pages/VoiceProfiles";
+import ReorderRequests from "./pages/ReorderRequests";
 import AiContext from "./pages/AiContext";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
 import { Customers as MintBucksCustomers } from "./pages/mintbucks/Customers";
@@ -220,6 +221,7 @@ function HubRoutes() {
       <Route path="/collections" component={Collections} />
       <Route path="/chipply/:id" component={ChipplyStoreDetail} />
       <Route path="/chipply" component={ChipplyStores} />
+      <Route path="/reorder-requests" component={ReorderRequests} />
       <Route path="/vendor-orders" component={VendorOrders} />
       <Route path="/po-log" component={PoLog} />
       <Route path="/tracking" component={VendorTracking} />
