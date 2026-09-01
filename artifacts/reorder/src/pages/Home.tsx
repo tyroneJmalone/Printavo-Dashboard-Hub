@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Search, RotateCcw, Package, Mail, ArrowLeft, Filter, Image as ImageIcon, Hash, DollarSign, Building2, ChevronDown } from "lucide-react";
+import { Search, RotateCcw, Package, Mail, ArrowLeft, Filter, Image as ImageIcon, Hash, DollarSign, Building2, ChevronDown, Link2 } from "lucide-react";
 import { z } from "zod";
 
 import { useToast } from "@/hooks/use-toast";
@@ -592,15 +592,41 @@ function ReorderModal({ order, open, onClose }: { order: ReorderPortalOrder | nu
   );
 }
 
+/** Read a shareable search from the URL (?q=...&type=email|company). */
+function readSearchFromUrl(): { value: string; type: "email" | "company" } | null {
+  const params = new URLSearchParams(window.location.search);
+  const q = (params.get("q") ?? "").trim();
+  const type = params.get("type") === "company" ? "company" : "email";
+  if (q.length < 2) return null;
+  return { value: q, type };
+}
+
+/** Keep the URL in sync with the current search so any view is shareable. */
+function writeSearchToUrl(query: { value: string; type: "email" | "company" } | null) {
+  const url = new URL(window.location.href);
+  if (query) {
+    url.searchParams.set("q", query.value);
+    url.searchParams.set("type", query.type);
+  } else {
+    url.searchParams.delete("q");
+    url.searchParams.delete("type");
+  }
+  window.history.replaceState(null, "", url);
+}
+
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState<{ value: string; type: "email" | "company" } | null>(null);
+  const [searchQuery, setSearchQuery] = useState<{ value: string; type: "email" | "company" } | null>(readSearchFromUrl);
   const [activeStatusNames, setActiveStatusNames] = useState<Set<string>>(new Set());
   const [reorderOrder, setReorderOrder] = useState<ReorderPortalOrder | null>(null);
   const [statusesInitialized, setStatusesInitialized] = useState(false);
+  const { toast } = useToast();
 
   const lookupForm = useForm<z.infer<typeof customerLookupSchema>>({
     resolver: zodResolver(customerLookupSchema),
-    defaultValues: { searchType: "email", searchValue: "" },
+    defaultValues: {
+      searchType: searchQuery?.type ?? "email",
+      searchValue: searchQuery?.value ?? "",
+    },
   });
 
   const searchType = lookupForm.watch("searchType");
@@ -645,9 +671,27 @@ export default function Home() {
   });
 
   const handleLookup = lookupForm.handleSubmit((data) => {
-    setSearchQuery({ value: data.searchValue, type: data.searchType });
+    const next = { value: data.searchValue, type: data.searchType };
+    setSearchQuery(next);
     setStatusesInitialized(false);
+    writeSearchToUrl(next);
   });
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link Copied",
+        description: "Anyone with this link will see this search.",
+      });
+    } catch {
+      toast({
+        title: "Could Not Copy",
+        description: "Copy the address bar URL instead.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const toggleStatus = (name: string) => {
     setActiveStatusNames((prev) => {
@@ -664,7 +708,8 @@ export default function Home() {
   const handleBack = () => {
     setSearchQuery(null);
     setStatusesInitialized(false);
-    lookupForm.reset();
+    lookupForm.reset({ searchType: "email", searchValue: "" });
+    writeSearchToUrl(null);
   };
 
   if (!searchQuery) {
@@ -769,6 +814,16 @@ export default function Home() {
                 {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''}
               </Badge>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyLink}
+              className="h-9 font-semibold"
+              data-testid="button-copy-link"
+            >
+              <Link2 className="w-4 h-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Copy Link</span>
+            </Button>
           </div>
         </div>
       </header>
