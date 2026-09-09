@@ -13,6 +13,7 @@ import {
   customerEmailStats,
   customerThreads,
 } from "../src/lib/emailActivity/matching.ts";
+import { classifyMessages } from "../src/lib/emailActivity/classify.ts";
 import { hasStaffCapability } from "../src/middlewares/requireStaff.ts";
 import emailActivityRouter from "../src/routes/emailActivity.ts";
 
@@ -143,17 +144,19 @@ before(async () => {
       `aggregate-hidden-filtered-thread-${suffix}`,
     ],
   );
-  await pool.query(
+  const systemNotification = await pool.query<{ id: string }>(
     `INSERT INTO email_messages
        (mailbox_id, gmail_id, gmail_thread_id, direction, from_address, subject, internal_date, excluded_reason)
      VALUES ($1,$2,$3,'outbound','tommy@mintprintworks.com',
-       'seps.io has completed Quote #99999',now()-interval '1 day','printavo-notification')`,
+       'seps.io has completed Quote #99999',now()-interval '1 day',NULL)
+     RETURNING id`,
     [
       ids.groupMailbox,
       `aggregate-auth-system-${suffix}`,
       `aggregate-auth-system-thread-${suffix}`,
     ],
   );
+  await classifyMessages([systemNotification.rows[0]!.id]);
   await pool.query(
     `INSERT INTO email_thread_customers
        (mailbox_id, gmail_thread_id, printavo_customer_id, source)

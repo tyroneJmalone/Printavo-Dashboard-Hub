@@ -114,11 +114,11 @@ const VERDICT_SQL = sql`
     ) THEN 'rule-domain'
     WHEN (
         (
-          email_messages.from_address = 'andrew@mintprintworks.com'
+          email_messages.from_address ~* '@mintprintworks[.]com$'
           AND email_messages.subject ~* '(^proof[[:space:]]+ready|^payment[[:space:]]+received|quote[[:space:]]*&[[:space:]]*artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|^contract screen print order is ready!)'
         )
         OR (
-          email_messages.from_address IN ('andrew@mintprintworks.com', 'tommy@mintprintworks.com')
+          email_messages.from_address ~* '@mintprintworks[.]com$'
           AND email_messages.subject ~* '^seps[.]io[[:space:]]+has[[:space:]].*quote[[:space:]]*#[0-9]+'
         )
       )
