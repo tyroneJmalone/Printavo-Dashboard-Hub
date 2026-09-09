@@ -603,6 +603,9 @@ export default function EmailActivity() {
         </Card>
 
         {/* Recent messages */}
+        <p className="text-xs text-slate-500">
+          One row per recent thread (up to 50 per side). Headline totals count messages in the selected range; thread badges count the full conversation.
+        </p>
         <div className="grid lg:grid-cols-2 gap-4">
           <MessageList title="Sent" messages={messages?.sent} />
           <MessageList title="Received" messages={messages?.received} />

@@ -148,15 +148,19 @@ before(async () => {
     `INSERT INTO email_messages
        (mailbox_id, gmail_id, gmail_thread_id, direction, from_address, subject, internal_date, excluded_reason)
      VALUES ($1,$2,$3,'outbound','tommy@mintprintworks.com',
-       'seps.io has completed Quote #99999',now()-interval '1 day',NULL)
+       'seps.io has completed Quote #99999',now()-interval '1 day',NULL),
+       ($1,$4,$5,'outbound','medina@mintprintworks.com',
+       'Your order is ready! - PO #TEST - Invoice #99999',now()-interval '1 day',NULL)
      RETURNING id`,
     [
       ids.groupMailbox,
       `aggregate-auth-system-${suffix}`,
       `aggregate-auth-system-thread-${suffix}`,
+      `aggregate-auth-order-ready-${suffix}`,
+      `aggregate-auth-order-ready-thread-${suffix}`,
     ],
   );
-  await classifyMessages([systemNotification.rows[0]!.id]);
+  await classifyMessages(systemNotification.rows.map((row) => row.id));
   await pool.query(
     `INSERT INTO email_thread_customers
        (mailbox_id, gmail_thread_id, printavo_customer_id, source)
@@ -335,7 +339,7 @@ test("all-mailbox analytics endpoints stay inside the server-derived ACL scope",
     assert.equal(heatmap.cells.reduce((sum: number, cell: any) => sum + cell.sent + cell.received, 0), 3);
     assert.deepEqual(
       Object.fromEntries(filtered.breakdown.map((row: any) => [row.reason, row.count])),
-      { "fixture-authorized": 1, "printavo-notification": 1 },
+      { "fixture-authorized": 1, "printavo-notification": 2 },
     );
     assert.equal(filtered.sample.every((row: any) => row.mailboxId === ids.groupMailbox), true);
     assert.equal(messages.sent.length, 1);
