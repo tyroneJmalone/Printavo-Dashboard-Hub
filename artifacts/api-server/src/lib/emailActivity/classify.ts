@@ -113,8 +113,16 @@ const VERDICT_SQL = sql`
       WHERE r.kind = 'domain' AND r.value = email_messages.counterpart_domain
     ) THEN 'rule-domain'
     WHEN email_messages.direction = 'outbound'
-      AND email_messages.from_address = 'andrew@mintprintworks.com'
-      AND email_messages.subject ~* '(^proof[[:space:]]+ready|^payment[[:space:]]+received|quote[[:space:]]*&[[:space:]]*artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|^contract screen print order is ready!)'
+      AND (
+        (
+          email_messages.from_address = 'andrew@mintprintworks.com'
+          AND email_messages.subject ~* '(^proof[[:space:]]+ready|^payment[[:space:]]+received|quote[[:space:]]*&[[:space:]]*artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|^contract screen print order is ready!)'
+        )
+        OR (
+          email_messages.from_address IN ('andrew@mintprintworks.com', 'tommy@mintprintworks.com')
+          AND email_messages.subject ~* '^seps[.]io[[:space:]]+has[[:space:]].*quote[[:space:]]*#[0-9]+'
+        )
+      )
       THEN 'printavo-notification'
     WHEN email_messages.direction = 'inbound' AND email_messages.has_list_unsubscribe THEN 'list-unsubscribe'
     WHEN email_messages.direction = 'inbound' AND email_messages.is_auto_submitted THEN 'auto-submitted'
