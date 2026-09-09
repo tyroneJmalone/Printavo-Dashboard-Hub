@@ -150,7 +150,13 @@ before(async () => {
      VALUES ($1,$2,$3,'outbound','tommy@mintprintworks.com',
        'seps.io has completed Quote #99999',now()-interval '1 day',NULL),
        ($1,$4,$5,'outbound','medina@mintprintworks.com',
-       'Your order is ready! - PO #TEST - Invoice #99999',now()-interval '1 day',NULL)
+       'Your order is ready! - PO #TEST - Invoice #99999',now()-interval '1 day',NULL),
+       ($1,$6,$7,'outbound','tommy@mintprintworks.com',
+       'Order Invoice #99999 - TEST is ready to Ship',now()-interval '1 day',NULL),
+       ($1,$8,$9,'outbound','andrew@mintprintworks.com',
+       'Your HEAT APPLIED GRAPHICS order is ready! Invoice #99999',now()-interval '1 day',NULL),
+       ($1,$10,$11,'outbound','medina@mintprintworks.com',
+       'Your EMBROIDERY order is ready! Invoice #99999',now()-interval '1 day',NULL)
      RETURNING id`,
     [
       ids.groupMailbox,
@@ -158,6 +164,12 @@ before(async () => {
       `aggregate-auth-system-thread-${suffix}`,
       `aggregate-auth-order-ready-${suffix}`,
       `aggregate-auth-order-ready-thread-${suffix}`,
+      `aggregate-auth-ready-ship-${suffix}`,
+      `aggregate-auth-ready-ship-thread-${suffix}`,
+      `aggregate-auth-heat-ready-${suffix}`,
+      `aggregate-auth-heat-ready-thread-${suffix}`,
+      `aggregate-auth-embroidery-ready-${suffix}`,
+      `aggregate-auth-embroidery-ready-thread-${suffix}`,
     ],
   );
   await classifyMessages(systemNotification.rows.map((row) => row.id));
@@ -339,7 +351,7 @@ test("all-mailbox analytics endpoints stay inside the server-derived ACL scope",
     assert.equal(heatmap.cells.reduce((sum: number, cell: any) => sum + cell.sent + cell.received, 0), 3);
     assert.deepEqual(
       Object.fromEntries(filtered.breakdown.map((row: any) => [row.reason, row.count])),
-      { "fixture-authorized": 1, "printavo-notification": 2 },
+      { "fixture-authorized": 1, "printavo-notification": 5 },
     );
     assert.equal(filtered.sample.every((row: any) => row.mailboxId === ids.groupMailbox), true);
     assert.equal(messages.sent.length, 1);

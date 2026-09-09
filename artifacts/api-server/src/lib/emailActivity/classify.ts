@@ -115,7 +115,7 @@ const VERDICT_SQL = sql`
     WHEN (
         (
           email_messages.from_address ~* '@mintprintworks[.]com$'
-          AND email_messages.subject ~* '(^proof[[:space:]]+ready|^payment[[:space:]]+received|quote[[:space:]]*&[[:space:]]*artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|^contract screen print order is ready!|^your[[:space:]]+order[[:space:]]+is[[:space:]]+ready!)'
+          AND email_messages.subject ~* '(^proof[[:space:]]+ready|^payment[[:space:]]+received|quote[[:space:]]*&[[:space:]]*artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|^contract screen print order is ready!|^your[[:space:]]+order[[:space:]]+is[[:space:]]+ready!|^order[[:space:]]+invoice[[:space:]]*#[0-9]+.*is[[:space:]]+ready[[:space:]]+to[[:space:]]+ship|^your[[:space:]]+(heat[[:space:]]+applied[[:space:]]+graphics|embroidery)[[:space:]]+order[[:space:]]+is[[:space:]]+ready!)'
         )
         OR (
           email_messages.from_address ~* '@mintprintworks[.]com$'
