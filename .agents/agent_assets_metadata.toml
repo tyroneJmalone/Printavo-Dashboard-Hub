@@ -12,9 +12,15 @@ logical_id = "779132e0-0a35-4616-acbc-0f49226109cd"
 id = "Y0PG3VFvOR639daF8l3fw"
 uri = "file://exports/printavo-hub-plan-status.pdf"
 type = "pdf"
-title = "Printavo Hub — Project Plan & Status (Aug 7)"
-description = "The familiar plan & status sheet, updated: punch list, new Aug items (sync bar, MB email images, curation drafts), un-tabled catalog search, and the new CFO assistant + email hub ideas in the backlog grid."
+title = "Printavo Hub — Plan, Status & Roadmap (PDF)"
+description = "Updated 4-page owner review PDF covering current status, priorities, roadmap, and operating rules."
 logical_id = "20719e8c-2734-4973-aa38-4481a8755d81"
+content_hash = "sha256:fa8573fbdddeb09d3c99f45c45e2edc89b4a2c86d98305ba2cbf3d01be8760bb"
+size = 187003
+mtime_ms = 1788918115356
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/20719e8c-2734-4973-aa38-4481a8755d81/d860bd09-20f9-49e9-9bef-51de5c01af96"
+storage_version_token = "1788918121677063"
+content_type = "application/pdf"
 
 [[outputs]]
 id = "cCumyYl_kqaOCcaajAS8j"
@@ -89,3 +95,17 @@ mtime_ms = 1788915472132
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/ef2f8003-0c38-4138-8fa6-d5ed7e56ac7e/026c8a36-8ffd-4eed-bb0f-066e63ff8353"
 storage_version_token = "1788915484189847"
 content_type = "text/html"
+
+[[outputs]]
+id = "YcI8-7_Zije7bptnZtv4C"
+uri = "file://exports/printavo-hub-complete-synopsis.pdf"
+type = "pdf"
+title = "Printavo Hub — Complete Synopsis & Team Feedback Guide (PDF)"
+description = "Nine-page team review PDF describing every Hub section, module, and page, with feedback and prioritization guidance."
+logical_id = "27891715-4b62-4d6d-a8ee-635d75370f0a"
+content_hash = "sha256:88a83acb637ac713638394b312cbe8495e6583485a469939931185bed2e201ad"
+size = 231637
+mtime_ms = 1788918116228
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/27891715-4b62-4d6d-a8ee-635d75370f0a/9c5c1374-8874-48de-a324-5e5e17f6f2d0"
+storage_version_token = "1788918122197439"
+content_type = "application/pdf"
