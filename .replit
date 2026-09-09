@@ -32,3 +32,6 @@ PRINTAVO_TASK_SYNC_ENABLED = "true"
 
 [userenv.shared]
 MINTBUCKS_APP_URL = "https://mintbucks.replit.app"
+
+[userenv.production]
+KB_DRIVE_SYNC_ENABLED = "true"

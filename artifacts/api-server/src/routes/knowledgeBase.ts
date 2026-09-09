@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, sql } from "drizzle-orm";
-import { db, knowledgeEntriesTable, type KnowledgeEntry } from "@workspace/db";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { db, knowledgeEntriesTable, knowledgeEntrySourcesTable, type KnowledgeEntry } from "@workspace/db";
 import {
   CreateKnowledgeEntryBody,
   CreateKnowledgeEntryResponse,
@@ -30,7 +30,7 @@ import { shouldDemoteApprovedEntry } from "../lib/knowledgeEditorial";
  */
 const router: IRouter = Router();
 
-function entryDto(row: KnowledgeEntry) {
+function entryDto(row: KnowledgeEntry, sourceStale = false) {
   return {
     id: row.id,
     title: row.title,
@@ -49,6 +49,7 @@ function entryDto(row: KnowledgeEntry) {
     updatedByEmail: row.updatedByEmail,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    sourceStale,
   };
 }
 
@@ -77,7 +78,19 @@ router.get("/knowledge/entries", async (req, res): Promise<void> => {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(knowledgeEntriesTable.updatedAt))
     .limit(500);
-  res.json(ListKnowledgeEntriesResponse.parse(rows.map(entryDto)));
+  const staleLinks = rows.length
+    ? await db
+        .select({ entryId: knowledgeEntrySourcesTable.entryId })
+        .from(knowledgeEntrySourcesTable)
+        .where(
+          and(
+            inArray(knowledgeEntrySourcesTable.entryId, rows.map((row) => row.id)),
+            eq(knowledgeEntrySourcesTable.stale, "true"),
+          ),
+        )
+    : [];
+  const staleIds = new Set(staleLinks.map((link) => link.entryId));
+  res.json(ListKnowledgeEntriesResponse.parse(rows.map((row) => entryDto(row, staleIds.has(row.id)))));
 });
 
 router.post("/knowledge/entries", async (req, res): Promise<void> => {

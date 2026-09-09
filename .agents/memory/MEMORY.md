@@ -48,6 +48,7 @@
 - [AI context layer architecture](ai-context-layer.md) — one protocol-independent core, thin MCP/REST/internal doors, per-consumer tokens, internal vs external trust tiers from day one.
 - [Drizzle push misses index predicates](drizzle-push-index-predicates.md) — adding WHERE to an existing unique index silently no-ops on push; verify pg_indexes and recreate manually.
 - [KB learning filters](kb-learning-requirements.md) — future KB-suggestion analysis must only read customer-linked threads + skip bulk mail; filter at analysis, sync stores everything.
+- [Knowledge source sync ownership](kb-source-sync-ownership.md) — scheduled Drive ingestion runs in production only; development uses manual sync to prevent duplicate imports.
 - [Voice profiles & drafting patterns](voice-drafting-patterns.md) — traits-only privacy rule, clamp LLM outputs before zod, single-writer sync heartbeat, VM deployment requirement.
 - [Module access gating](module-access-gating.md) — new staff API prefixes must be claimed in the module registry (+ AppShell page map) or all staff can reach them; readiness gate, not security.
 - [Dev DB schema drift](dev-db-schema-drift.md) — rollbacks can silently drop merged tables from the dev DB; publish diffs DEV into prod, so verify new tables exist + re-run db push before shipping.

@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
+import { KnowledgeSources } from "@/components/knowledge/KnowledgeSources";
 import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen,
@@ -273,6 +274,8 @@ export default function KnowledgeBase() {
           their effective dates are visible to AI — drafts and archived entries are not.
         </div>
 
+        <KnowledgeSources />
+
         {showCreate && (
           <Card>
             <div className="text-sm font-semibold text-slate-200 mb-3">New entry (starts as draft)</div>
@@ -411,6 +414,12 @@ export default function KnowledgeBase() {
                     )}
                   </div>
                   <div className="text-sm text-slate-300 mt-2 whitespace-pre-wrap leading-relaxed">{e.body}</div>
+                   {e.sourceStale && (
+                     <div className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-700/30 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-300">
+                       <CalendarClock size={12} className="mt-0.5 shrink-0" />
+                       The linked source changed or was removed. Review this approved text before relying on it.
+                     </div>
+                   )}
                   <div className="text-[11px] text-slate-600 mt-2 flex flex-wrap gap-x-4 gap-y-0.5">
                     {e.tags.length > 0 && <span>tags: {e.tags.join(", ")}</span>}
                     {e.sourceName && <span>source: {e.sourceName}</span>}

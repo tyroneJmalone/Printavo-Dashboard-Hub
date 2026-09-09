@@ -186,6 +186,7 @@ import type {
   GetStatusBreakdownParams,
   GetStyleNumberBreakdownParams,
   GetTopCustomersParams,
+  GoogleDriveSourceInput,
   HealthStatus,
   HubCalculatorPushRequest,
   HubCalculatorPushResult,
@@ -201,6 +202,12 @@ import type {
   KnowledgeEntryInput,
   KnowledgeEntryReview,
   KnowledgeEntryUpdate,
+  KnowledgeSource,
+  KnowledgeSourceDocument,
+  KnowledgeSourceSyncResult,
+  KnowledgeSourceUpdateInput,
+  KnowledgeSourceUploadInput,
+  KnowledgeSourceUploadResult,
   LinkCustomerArtworkFolder200,
   List,
   ListAiAuditEventsParams,
@@ -21757,6 +21764,495 @@ export const useReviewKnowledgeEntry = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getReviewKnowledgeEntryMutationOptions(options));
+    }
+
+export const getUploadKnowledgeSourceUrl = () => {
+
+
+
+
+  return `/api/knowledge/sources/upload`
+}
+
+/**
+ * @summary Upload one private source document and create draft candidates
+ */
+export const uploadKnowledgeSource = async (knowledgeSourceUploadInput: KnowledgeSourceUploadInput, options?: RequestInit): Promise<KnowledgeSourceUploadResult> => {
+    const formData = new FormData();
+formData.append(`file`, knowledgeSourceUploadInput.file);
+if(knowledgeSourceUploadInput.name !== undefined) {
+ formData.append(`name`, knowledgeSourceUploadInput.name);
+ }
+if(knowledgeSourceUploadInput.sourceUrl !== undefined) {
+ formData.append(`sourceUrl`, knowledgeSourceUploadInput.sourceUrl);
+ }
+
+  return customFetch<KnowledgeSourceUploadResult>(getUploadKnowledgeSourceUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+export const getUploadKnowledgeSourceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadKnowledgeSource>>, TError,{data: BodyType<KnowledgeSourceUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadKnowledgeSource>>, TError,{data: BodyType<KnowledgeSourceUploadInput>}, TContext> => {
+
+const mutationKey = ['uploadKnowledgeSource'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadKnowledgeSource>>, {data: BodyType<KnowledgeSourceUploadInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadKnowledgeSource(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadKnowledgeSourceMutationResult = NonNullable<Awaited<ReturnType<typeof uploadKnowledgeSource>>>
+    export type UploadKnowledgeSourceMutationBody = BodyType<KnowledgeSourceUploadInput>
+    export type UploadKnowledgeSourceMutationError = ErrorType<void>
+
+    /**
+ * @summary Upload one private source document and create draft candidates
+ */
+export const useUploadKnowledgeSource = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadKnowledgeSource>>, TError,{data: BodyType<KnowledgeSourceUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadKnowledgeSource>>,
+        TError,
+        {data: BodyType<KnowledgeSourceUploadInput>},
+        TContext
+      > => {
+      return useMutation(getUploadKnowledgeSourceMutationOptions(options));
+    }
+
+export const getListKnowledgeSourcesUrl = () => {
+
+
+
+
+  return `/api/knowledge/sources`
+}
+
+export const listKnowledgeSources = async ( options?: RequestInit): Promise<KnowledgeSource[]> => {
+
+  return customFetch<KnowledgeSource[]>(getListKnowledgeSourcesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListKnowledgeSourcesQueryKey = () => {
+    return [
+    `/api/knowledge/sources`
+    ] as const;
+    }
+
+
+export const getListKnowledgeSourcesQueryOptions = <TData = Awaited<ReturnType<typeof listKnowledgeSources>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListKnowledgeSourcesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listKnowledgeSources>>> = ({ signal }) => listKnowledgeSources({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeSources>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListKnowledgeSourcesQueryResult = NonNullable<Awaited<ReturnType<typeof listKnowledgeSources>>>
+export type ListKnowledgeSourcesQueryError = ErrorType<unknown>
+
+
+
+export function useListKnowledgeSources<TData = Awaited<ReturnType<typeof listKnowledgeSources>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListKnowledgeSourcesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateGoogleDriveKnowledgeSourceUrl = () => {
+
+
+
+
+  return `/api/knowledge/sources/google-drive`
+}
+
+/**
+ * @summary Configure a Google Drive folder source
+ */
+export const createGoogleDriveKnowledgeSource = async (googleDriveSourceInput: GoogleDriveSourceInput, options?: RequestInit): Promise<KnowledgeSource> => {
+
+  return customFetch<KnowledgeSource>(getCreateGoogleDriveKnowledgeSourceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(googleDriveSourceInput)
+  }
+);}
+
+
+
+
+export const getCreateGoogleDriveKnowledgeSourceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGoogleDriveKnowledgeSource>>, TError,{data: BodyType<GoogleDriveSourceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGoogleDriveKnowledgeSource>>, TError,{data: BodyType<GoogleDriveSourceInput>}, TContext> => {
+
+const mutationKey = ['createGoogleDriveKnowledgeSource'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGoogleDriveKnowledgeSource>>, {data: BodyType<GoogleDriveSourceInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createGoogleDriveKnowledgeSource(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGoogleDriveKnowledgeSourceMutationResult = NonNullable<Awaited<ReturnType<typeof createGoogleDriveKnowledgeSource>>>
+    export type CreateGoogleDriveKnowledgeSourceMutationBody = BodyType<GoogleDriveSourceInput>
+    export type CreateGoogleDriveKnowledgeSourceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Configure a Google Drive folder source
+ */
+export const useCreateGoogleDriveKnowledgeSource = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGoogleDriveKnowledgeSource>>, TError,{data: BodyType<GoogleDriveSourceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createGoogleDriveKnowledgeSource>>,
+        TError,
+        {data: BodyType<GoogleDriveSourceInput>},
+        TContext
+      > => {
+      return useMutation(getCreateGoogleDriveKnowledgeSourceMutationOptions(options));
+    }
+
+export const getUpdateKnowledgeSourceUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/sources/${id}`
+}
+
+export const updateKnowledgeSource = async (id: string,
+    knowledgeSourceUpdateInput: KnowledgeSourceUpdateInput, options?: RequestInit): Promise<KnowledgeSource> => {
+
+  return customFetch<KnowledgeSource>(getUpdateKnowledgeSourceUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeSourceUpdateInput)
+  }
+);}
+
+
+
+
+export const getUpdateKnowledgeSourceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgeSource>>, TError,{id: string;data: BodyType<KnowledgeSourceUpdateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgeSource>>, TError,{id: string;data: BodyType<KnowledgeSourceUpdateInput>}, TContext> => {
+
+const mutationKey = ['updateKnowledgeSource'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateKnowledgeSource>>, {id: string;data: BodyType<KnowledgeSourceUpdateInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateKnowledgeSource(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateKnowledgeSourceMutationResult = NonNullable<Awaited<ReturnType<typeof updateKnowledgeSource>>>
+    export type UpdateKnowledgeSourceMutationBody = BodyType<KnowledgeSourceUpdateInput>
+    export type UpdateKnowledgeSourceMutationError = ErrorType<unknown>
+
+    export const useUpdateKnowledgeSource = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgeSource>>, TError,{id: string;data: BodyType<KnowledgeSourceUpdateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateKnowledgeSource>>,
+        TError,
+        {id: string;data: BodyType<KnowledgeSourceUpdateInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateKnowledgeSourceMutationOptions(options));
+    }
+
+export const getDeleteKnowledgeSourceUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/sources/${id}`
+}
+
+export const deleteKnowledgeSource = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteKnowledgeSourceUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteKnowledgeSourceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteKnowledgeSource>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteKnowledgeSource>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteKnowledgeSource'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteKnowledgeSource>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteKnowledgeSource(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteKnowledgeSourceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteKnowledgeSource>>>
+
+    export type DeleteKnowledgeSourceMutationError = ErrorType<unknown>
+
+    export const useDeleteKnowledgeSource = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteKnowledgeSource>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteKnowledgeSource>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteKnowledgeSourceMutationOptions(options));
+    }
+
+export const getListKnowledgeSourceDocumentsUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/sources/${id}/documents`
+}
+
+export const listKnowledgeSourceDocuments = async (id: string, options?: RequestInit): Promise<KnowledgeSourceDocument[]> => {
+
+  return customFetch<KnowledgeSourceDocument[]>(getListKnowledgeSourceDocumentsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListKnowledgeSourceDocumentsQueryKey = (id: string,) => {
+    return [
+    `/api/knowledge/sources/${id}/documents`
+    ] as const;
+    }
+
+
+export const getListKnowledgeSourceDocumentsQueryOptions = <TData = Awaited<ReturnType<typeof listKnowledgeSourceDocuments>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeSourceDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListKnowledgeSourceDocumentsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listKnowledgeSourceDocuments>>> = ({ signal }) => listKnowledgeSourceDocuments(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeSourceDocuments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListKnowledgeSourceDocumentsQueryResult = NonNullable<Awaited<ReturnType<typeof listKnowledgeSourceDocuments>>>
+export type ListKnowledgeSourceDocumentsQueryError = ErrorType<unknown>
+
+
+
+export function useListKnowledgeSourceDocuments<TData = Awaited<ReturnType<typeof listKnowledgeSourceDocuments>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeSourceDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListKnowledgeSourceDocumentsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSyncGoogleDriveKnowledgeSourceUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/sources/${id}/sync`
+}
+
+/**
+ * @summary Synchronize a Google Drive source now
+ */
+export const syncGoogleDriveKnowledgeSource = async (id: string, options?: RequestInit): Promise<KnowledgeSourceSyncResult> => {
+
+  return customFetch<KnowledgeSourceSyncResult>(getSyncGoogleDriveKnowledgeSourceUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getSyncGoogleDriveKnowledgeSourceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncGoogleDriveKnowledgeSource>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncGoogleDriveKnowledgeSource>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['syncGoogleDriveKnowledgeSource'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncGoogleDriveKnowledgeSource>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  syncGoogleDriveKnowledgeSource(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncGoogleDriveKnowledgeSourceMutationResult = NonNullable<Awaited<ReturnType<typeof syncGoogleDriveKnowledgeSource>>>
+
+    export type SyncGoogleDriveKnowledgeSourceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Synchronize a Google Drive source now
+ */
+export const useSyncGoogleDriveKnowledgeSource = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncGoogleDriveKnowledgeSource>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncGoogleDriveKnowledgeSource>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getSyncGoogleDriveKnowledgeSourceMutationOptions(options));
     }
 
 export const getListAiConsumersUrl = () => {

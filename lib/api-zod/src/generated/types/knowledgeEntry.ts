@@ -20,6 +20,7 @@ export interface KnowledgeEntry {
   /** @nullable */
   expiresDate?: string | null;
   reviewStatus: KnowledgeEntryReviewStatus;
+  sourceStale: boolean;
   /** @nullable */
   approvedByEmail?: string | null;
   /** @nullable */

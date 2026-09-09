@@ -65,6 +65,7 @@ export * from "./hubCalcUploads";
 export * from "./customerBranding";
 export * from "./aiConsumers";
 export * from "./knowledgeEntries";
+export * from "./knowledgeSources";
 export * from "./voiceProfiles";
 export * from "./draftBacktest";
 export * from "./reorderRequests";

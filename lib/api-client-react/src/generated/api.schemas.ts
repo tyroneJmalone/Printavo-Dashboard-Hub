@@ -5890,6 +5890,103 @@ export interface HubCalculatorPushResult {
   lineItemOutcome: HubCalculatorPushResultLineItemOutcome;
 }
 
+export interface KnowledgeSourceUploadInput {
+  /** Multipart file; PDF, DOCX, TXT, MD, or CSV */
+  file: string;
+  name?: string;
+  sourceUrl?: string;
+}
+
+export interface GoogleDriveSourceInput {
+  folderId: string;
+  folderUrl?: string;
+  name?: string;
+}
+
+export interface KnowledgeSourceUploadResult {
+  documentId: string;
+  draftCount: number;
+  idempotent?: boolean;
+}
+
+export type KnowledgeSourceUpdateInputStatus = typeof KnowledgeSourceUpdateInputStatus[keyof typeof KnowledgeSourceUpdateInputStatus];
+
+
+export const KnowledgeSourceUpdateInputStatus = {
+  active: 'active',
+  paused: 'paused',
+} as const;
+
+export interface KnowledgeSourceUpdateInput {
+  status: KnowledgeSourceUpdateInputStatus;
+}
+
+export type KnowledgeSourceKind = typeof KnowledgeSourceKind[keyof typeof KnowledgeSourceKind];
+
+
+export const KnowledgeSourceKind = {
+  upload: 'upload',
+  google_drive: 'google_drive',
+} as const;
+
+export type KnowledgeSourceStatus = typeof KnowledgeSourceStatus[keyof typeof KnowledgeSourceStatus];
+
+
+export const KnowledgeSourceStatus = {
+  active: 'active',
+  paused: 'paused',
+  syncing: 'syncing',
+  error: 'error',
+  deleted: 'deleted',
+} as const;
+
+export interface KnowledgeSource {
+  id: string;
+  kind: KnowledgeSourceKind;
+  name: string;
+  sourceUrl: string;
+  driveFolderId?: string | null;
+  status: KnowledgeSourceStatus;
+  lastSyncAt?: string | null;
+  lastError?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type KnowledgeSourceDocumentStatus = typeof KnowledgeSourceDocumentStatus[keyof typeof KnowledgeSourceDocumentStatus];
+
+
+export const KnowledgeSourceDocumentStatus = {
+  processing: 'processing',
+  active: 'active',
+  deleted: 'deleted',
+  error: 'error',
+  stale: 'stale',
+} as const;
+
+export interface KnowledgeSourceDocument {
+  id: string;
+  sourceId: string;
+  name: string;
+  mimeType: string;
+  status: KnowledgeSourceDocumentStatus;
+  checksum: string;
+  draftCount: number;
+  staleEntryCount: number;
+  externalFileId?: string | null;
+  driveRevision?: string | null;
+  driveModifiedTime?: string | null;
+  lastError?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgeSourceSyncResult {
+  sourceId: string;
+  documents: number;
+  drafts: number;
+}
+
 export type KnowledgeEntryReviewStatus = typeof KnowledgeEntryReviewStatus[keyof typeof KnowledgeEntryReviewStatus];
 
 
@@ -5912,6 +6009,7 @@ export interface KnowledgeEntry {
   /** @nullable */
   expiresDate?: string | null;
   reviewStatus: KnowledgeEntryReviewStatus;
+  sourceStale: boolean;
   /** @nullable */
   approvedByEmail?: string | null;
   /** @nullable */

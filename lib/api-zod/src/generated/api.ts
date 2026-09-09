@@ -9887,6 +9887,8 @@ export const ListKnowledgeEntriesQueryParams = zod.object({
   "q": zod.coerce.string().optional()
 })
 
+export const listKnowledgeEntriesResponseSourceStaleDefault = false;
+
 export const ListKnowledgeEntriesResponseItem = zod.object({
   "id": zod.string().uuid(),
   "title": zod.string(),
@@ -9898,6 +9900,7 @@ export const ListKnowledgeEntriesResponseItem = zod.object({
   "effectiveDate": zod.string().nullish(),
   "expiresDate": zod.string().nullish(),
   "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "sourceStale": zod.boolean().default(listKnowledgeEntriesResponseSourceStaleDefault),
   "approvedByEmail": zod.string().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "lastReviewedAt": zod.coerce.date().nullish(),
@@ -9942,6 +9945,8 @@ export const CreateKnowledgeEntryBody = zod.object({
   "expiresDate": zod.string().regex(createKnowledgeEntryBodyExpiresDateRegExp).nullish()
 })
 
+export const createKnowledgeEntryResponseSourceStaleDefault = false;
+
 export const CreateKnowledgeEntryResponse = zod.object({
   "id": zod.string().uuid(),
   "title": zod.string(),
@@ -9953,6 +9958,7 @@ export const CreateKnowledgeEntryResponse = zod.object({
   "effectiveDate": zod.string().nullish(),
   "expiresDate": zod.string().nullish(),
   "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "sourceStale": zod.boolean().default(createKnowledgeEntryResponseSourceStaleDefault),
   "approvedByEmail": zod.string().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "lastReviewedAt": zod.coerce.date().nullish(),
@@ -10000,6 +10006,8 @@ export const UpdateKnowledgeEntryBody = zod.object({
   "expiresDate": zod.string().regex(updateKnowledgeEntryBodyExpiresDateRegExp).nullish()
 })
 
+export const updateKnowledgeEntryResponseSourceStaleDefault = false;
+
 export const UpdateKnowledgeEntryResponse = zod.object({
   "id": zod.string().uuid(),
   "title": zod.string(),
@@ -10011,6 +10019,7 @@ export const UpdateKnowledgeEntryResponse = zod.object({
   "effectiveDate": zod.string().nullish(),
   "expiresDate": zod.string().nullish(),
   "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "sourceStale": zod.boolean().default(updateKnowledgeEntryResponseSourceStaleDefault),
   "approvedByEmail": zod.string().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "lastReviewedAt": zod.coerce.date().nullish(),
@@ -10042,6 +10051,8 @@ export const ReviewKnowledgeEntryBody = zod.object({
   "action": zod.enum(['approve', 'archive', 'redraft'])
 })
 
+export const reviewKnowledgeEntryResponseSourceStaleDefault = false;
+
 export const ReviewKnowledgeEntryResponse = zod.object({
   "id": zod.string().uuid(),
   "title": zod.string(),
@@ -10053,6 +10064,7 @@ export const ReviewKnowledgeEntryResponse = zod.object({
   "effectiveDate": zod.string().nullish(),
   "expiresDate": zod.string().nullish(),
   "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "sourceStale": zod.boolean().default(reviewKnowledgeEntryResponseSourceStaleDefault),
   "approvedByEmail": zod.string().nullish(),
   "approvedAt": zod.coerce.date().nullish(),
   "lastReviewedAt": zod.coerce.date().nullish(),
@@ -10060,6 +10072,126 @@ export const ReviewKnowledgeEntryResponse = zod.object({
   "updatedByEmail": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Upload one private source document and create draft candidates
+ */
+export const UploadKnowledgeSourceBody = zod.object({
+  "file": zod.string().describe('Multipart file; PDF, DOCX, TXT, MD, or CSV'),
+  "name": zod.string().optional(),
+  "sourceUrl": zod.string().optional()
+})
+
+export const UploadKnowledgeSourceResponse = zod.object({
+  "documentId": zod.string().uuid(),
+  "draftCount": zod.number(),
+  "idempotent": zod.boolean().optional()
+})
+
+
+export const ListKnowledgeSourcesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['upload', 'google_drive']),
+  "name": zod.string(),
+  "sourceUrl": zod.string(),
+  "driveFolderId": zod.string().nullish(),
+  "status": zod.enum(['active', 'paused', 'syncing', 'error', 'deleted']),
+  "lastSyncAt": zod.coerce.date().nullish(),
+  "lastError": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListKnowledgeSourcesResponse = zod.array(ListKnowledgeSourcesResponseItem)
+
+
+/**
+ * @summary Configure a Google Drive folder source
+ */
+export const CreateGoogleDriveKnowledgeSourceBody = zod.object({
+  "folderId": zod.string(),
+  "folderUrl": zod.string().optional(),
+  "name": zod.string().optional()
+})
+
+export const CreateGoogleDriveKnowledgeSourceResponse = zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['upload', 'google_drive']),
+  "name": zod.string(),
+  "sourceUrl": zod.string(),
+  "driveFolderId": zod.string().nullish(),
+  "status": zod.enum(['active', 'paused', 'syncing', 'error', 'deleted']),
+  "lastSyncAt": zod.coerce.date().nullish(),
+  "lastError": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const UpdateKnowledgeSourceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateKnowledgeSourceBody = zod.object({
+  "status": zod.enum(['active', 'paused'])
+})
+
+export const UpdateKnowledgeSourceResponse = zod.object({
+  "id": zod.string().uuid(),
+  "kind": zod.enum(['upload', 'google_drive']),
+  "name": zod.string(),
+  "sourceUrl": zod.string(),
+  "driveFolderId": zod.string().nullish(),
+  "status": zod.enum(['active', 'paused', 'syncing', 'error', 'deleted']),
+  "lastSyncAt": zod.coerce.date().nullish(),
+  "lastError": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const DeleteKnowledgeSourceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteKnowledgeSourceResponse = zod.void()
+
+
+export const ListKnowledgeSourceDocumentsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ListKnowledgeSourceDocumentsResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "sourceId": zod.string().uuid(),
+  "name": zod.string(),
+  "mimeType": zod.string(),
+  "status": zod.enum(['processing', 'active', 'deleted', 'error', 'stale']),
+  "checksum": zod.string(),
+  "draftCount": zod.number(),
+  "staleEntryCount": zod.number(),
+  "externalFileId": zod.string().nullish(),
+  "driveRevision": zod.string().nullish(),
+  "driveModifiedTime": zod.coerce.date().nullish(),
+  "lastError": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListKnowledgeSourceDocumentsResponse = zod.array(ListKnowledgeSourceDocumentsResponseItem)
+
+
+/**
+ * @summary Synchronize a Google Drive source now
+ */
+export const SyncGoogleDriveKnowledgeSourceParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const SyncGoogleDriveKnowledgeSourceResponse = zod.object({
+  "sourceId": zod.string().uuid(),
+  "documents": zod.number(),
+  "drafts": zod.number()
 })
 
 

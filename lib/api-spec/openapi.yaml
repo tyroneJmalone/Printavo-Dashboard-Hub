@@ -6369,6 +6369,95 @@ paths:
                 $ref: "#/components/schemas/KnowledgeEntry"
         "404":
           description: Not found
+  /knowledge/sources/upload:
+    post:
+      operationId: uploadKnowledgeSource
+      tags: [knowledge]
+      summary: Upload one private source document and create draft candidates
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/KnowledgeSourceUploadInput" }
+      responses:
+        "201":
+          description: Source document ingested
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KnowledgeSourceUploadResult" }
+        "400": { description: Invalid upload }
+        "422": { description: Extraction failed }
+  /knowledge/sources:
+    get:
+      operationId: listKnowledgeSources
+      tags: [knowledge]
+      responses:
+        "200":
+          description: Knowledge sources
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/KnowledgeSource" } }
+  /knowledge/sources/google-drive:
+    post:
+      operationId: createGoogleDriveKnowledgeSource
+      tags: [knowledge]
+      summary: Configure a Google Drive folder source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GoogleDriveSourceInput" }
+      responses:
+        "201":
+          description: Configured source
+          content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeSource" } } }
+  /knowledge/sources/{id}:
+    patch:
+      operationId: updateKnowledgeSource
+      tags: [knowledge]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/KnowledgeSourceUpdateInput" }
+      responses:
+        "200":
+          description: Updated source
+          content: { application/json: { schema: { $ref: "#/components/schemas/KnowledgeSource" } } }
+    delete:
+      operationId: deleteKnowledgeSource
+      tags: [knowledge]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Deleted source }
+  /knowledge/sources/{id}/documents:
+    get:
+      operationId: listKnowledgeSourceDocuments
+      tags: [knowledge]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Source documents
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/KnowledgeSourceDocument" } }
+  /knowledge/sources/{id}/sync:
+    post:
+      operationId: syncGoogleDriveKnowledgeSource
+      tags: [knowledge]
+      summary: Synchronize a Google Drive source now
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KnowledgeSourceSyncResult" }
   /ai-context/consumers:
     get:
       operationId: listAiConsumers
@@ -12432,6 +12521,71 @@ components:
             lineItemGroupId: { type: string, nullable: true }
             lineItemId: { type: string, nullable: true }
             error: { type: string, nullable: true }
+    KnowledgeSourceUploadInput:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, description: "Multipart file; PDF, DOCX, TXT, MD, or CSV" }
+        name: { type: string }
+        sourceUrl: { type: string }
+    GoogleDriveSourceInput:
+      type: object
+      required: [folderId]
+      properties:
+        folderId: { type: string }
+        folderUrl: { type: string }
+        name: { type: string }
+    KnowledgeSourceUploadResult:
+      type: object
+      required: [documentId, draftCount]
+      properties:
+        documentId: { type: string, format: uuid }
+        draftCount: { type: integer }
+        idempotent: { type: boolean }
+    KnowledgeSourceUpdateInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, paused] }
+    KnowledgeSource:
+      type: object
+      required: [id, kind, name, sourceUrl, status, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [upload, google_drive] }
+        name: { type: string }
+        sourceUrl: { type: string }
+        driveFolderId: { type: string, nullable: true }
+        status: { type: string, enum: [active, paused, syncing, error, deleted] }
+        lastSyncAt: { type: string, format: date-time, nullable: true }
+        lastError: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    KnowledgeSourceDocument:
+      type: object
+      required: [id, sourceId, name, mimeType, status, checksum, draftCount, staleEntryCount, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        sourceId: { type: string, format: uuid }
+        name: { type: string }
+        mimeType: { type: string }
+        status: { type: string, enum: [processing, active, deleted, error, stale] }
+        checksum: { type: string }
+        draftCount: { type: integer }
+        staleEntryCount: { type: integer }
+        externalFileId: { type: string, nullable: true }
+        driveRevision: { type: string, nullable: true }
+        driveModifiedTime: { type: string, format: date-time, nullable: true }
+        lastError: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    KnowledgeSourceSyncResult:
+      type: object
+      required: [sourceId, documents, drafts]
+      properties:
+        sourceId: { type: string, format: uuid }
+        documents: { type: integer }
+        drafts: { type: integer }
     KnowledgeEntry:
       type: object
       required:
@@ -12444,6 +12598,7 @@ components:
           sourceName,
           sourceUrl,
           reviewStatus,
+          sourceStale,
           createdAt,
           updatedAt,
         ]
@@ -12460,6 +12615,7 @@ components:
         effectiveDate: { type: ["string", "null"] }
         expiresDate: { type: ["string", "null"] }
         reviewStatus: { type: string, enum: [draft, approved, archived] }
+        sourceStale: { type: boolean, default: false }
         approvedByEmail: { type: ["string", "null"] }
         approvedAt: { type: ["string", "null"], format: date-time }
         lastReviewedAt: { type: ["string", "null"], format: date-time }

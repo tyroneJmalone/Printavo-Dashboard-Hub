@@ -45,6 +45,7 @@ import aiPatternsRouter from "./aiPatterns";
 import aiBacktestRouter from "./aiBacktest";
 import reorderPublicRouter from "./reorderPublic";
 import reorderRequestsRouter from "./reorderRequests";
+import knowledgeSourcesRouter from "./knowledgeSources";
 
 const router: IRouter = Router();
 
@@ -102,6 +103,7 @@ router.use(emailAccessRouter);
 router.use(correspondenceRouter);
 router.use(hubRouter);
 router.use(knowledgeBaseRouter);
+router.use(knowledgeSourcesRouter);
 router.use(aiConsumersRouter); // admin-only inside (token + audit management)
 router.use(voiceProfilesRouter); // staff view/refresh — traits only, no mail content
 router.use(aiPatternsRouter); // admin-only inside (webhooks + pattern measurement)
