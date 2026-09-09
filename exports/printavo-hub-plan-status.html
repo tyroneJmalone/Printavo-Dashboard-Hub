@@ -2,184 +2,89 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Printavo Hub — Project Plan &amp; Status</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Printavo Hub — Plan, Status & Roadmap</title>
 <style>
-  @page { size: Letter; margin: 0.42in 0.45in; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: "Helvetica Neue", Arial, sans-serif; color: #1a2332; font-size: 8.6px; line-height: 1.35; }
-  h1 { font-size: 17px; letter-spacing: -0.02em; }
-  .sub { color: #5b6b7d; font-size: 9.5px; margin-top: 2px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 7px 0 9px; padding: 5px 8px; background: #f2f5f9; border-radius: 5px; font-size: 8px; }
-  .legend span { white-space: nowrap; }
-  .cols { column-count: 2; column-gap: 16px; }
-  .section { break-inside: avoid; margin-bottom: 9px; }
-  .section h2 { font-size: 10.3px; border-bottom: 1.4px solid #1a2332; padding-bottom: 2px; margin-bottom: 4px; letter-spacing: 0.01em; }
-  .item { display: flex; gap: 6px; margin-bottom: 4.5px; break-inside: avoid; }
-  .badge { flex: 0 0 52px; font-weight: 700; font-size: 7.2px; letter-spacing: 0.03em; padding-top: 1px; white-space: nowrap; }
-  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 3px; }
-  .done .dot, .done { color: #15803d; } .done .dot { background: #15803d; }
-  .test .dot, .test { color: #b45309; } .test .dot { background: #d97706; }
-  .next .dot, .next { color: #1d4ed8; } .next .dot { background: #2563eb; }
-  .tabled .dot, .tabled { color: #64748b; } .tabled .dot { background: #94a3b8; }
-  .backlog .dot, .backlog { color: #64748b; } .backlog .dot { background: #cbd5e1; }
-  .ready .dot, .ready { color: #7e22ce; } .ready .dot { background: #9333ea; }
-  .wait .dot, .wait { color: #0e7490; } .wait .dot { background: #0891b2; }
-  .draft .dot, .draft { color: #1d4ed8; } .draft .dot { background: #2563eb; }
-  .body { flex: 1; }
-  .body b { font-size: 8.8px; }
-  .body p { color: #47586b; margin-top: 1px; }
-  .new-tag { display: inline-block; background: #dcfce7; color: #15803d; font-size: 6.8px; font-weight: 700; padding: 0.5px 4px; border-radius: 3px; vertical-align: 1px; margin-left: 3px; letter-spacing: 0.04em; }
-  .punch { background: #fefce8; border: 1px solid #eab308; border-radius: 6px; padding: 7px 9px; margin-bottom: 9px; break-inside: avoid; }
-  .punch h2 { font-size: 10.3px; margin-bottom: 3px; color: #854d0e; }
-  .punch ol { margin-left: 14px; }
-  .punch li { margin-bottom: 2px; color: #47586b; }
-  .punch li b { color: #1a2332; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 12px; }
-  .grid3 .idea b { font-size: 8.4px; display: block; }
-  .grid3 .idea p { color: #5b6b7d; }
-  .rule { color: #b91c1c; font-weight: 700; }
-  .foot { margin-top: 7px; padding-top: 5px; border-top: 1px solid #d7dee7; color: #5b6b7d; font-size: 7.6px; }
+  @page{size:Letter;margin:.5in}*{box-sizing:border-box}body{margin:0;font-family:Inter,"Helvetica Neue",Arial,sans-serif;color:#172033;background:#eef2f6;line-height:1.45}main{max-width:1050px;margin:28px auto;background:#fff;padding:42px 48px;box-shadow:0 8px 30px #17203318}.eyebrow{color:#64748b;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}h1{font-size:34px;line-height:1.08;margin:8px 0 10px;letter-spacing:-.035em}h2{font-size:19px;margin:28px 0 10px;border-bottom:2px solid #172033;padding-bottom:6px}h3{font-size:14px;margin:0 0 4px}.lead{font-size:15px;color:#475569;max-width:820px}.callout{background:#f0fdf4;border:1px solid #86efac;border-left:5px solid #22c55e;border-radius:8px;padding:16px 18px;margin:22px 0}.decision{background:#fff7ed;border-color:#fdba74;border-left-color:#f97316}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{border:1px solid #dbe3ec;border-radius:8px;padding:13px 14px;break-inside:avoid}.card p,.row p{margin:3px 0;color:#526174;font-size:12px}.tag{display:inline-block;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}.live{background:#dcfce7;color:#166534}.validate{background:#fef3c7;color:#92400e}.evolve{background:#dbeafe;color:#1e40af}.planned{background:#ede9fe;color:#6b21a8}.deferred{background:#e2e8f0;color:#475569}.priority{counter-reset:item;list-style:none;padding:0}.priority li{counter-increment:item;position:relative;padding:0 0 14px 42px;break-inside:avoid}.priority li:before{content:counter(item);position:absolute;left:0;top:0;width:27px;height:27px;border-radius:50%;background:#172033;color:white;text-align:center;line-height:27px;font-weight:800}.priority b{display:block}.priority span{font-size:12px;color:#526174}.table{width:100%;border-collapse:collapse;font-size:11px}.table th{text-align:left;background:#f1f5f9;color:#334155}.table th,.table td{padding:8px;border:1px solid #dbe3ec;vertical-align:top}.checks{columns:2;padding-left:19px;font-size:12px}.checks li{margin-bottom:6px;break-inside:avoid}.foot{margin-top:28px;border-top:1px solid #cbd5e1;padding-top:10px;color:#64748b;font-size:10px}@media(max-width:700px){main{margin:0;padding:24px}.grid{grid-template-columns:1fr}.checks{columns:1}h1{font-size:28px}}@media print{body{background:#fff}main{margin:0;padding:0;box-shadow:none}.card{page-break-inside:avoid}a{color:inherit;text-decoration:none}}
 </style>
 </head>
-<body>
+<body><main>
+<div class="eyebrow">Mint Printworks · Updated September 8, 2026</div>
+<h1>Printavo Hub — Plan, Status &amp; Roadmap</h1>
+<p class="lead">The Hub has moved beyond a collection of ports into a working internal operating platform: shared Printavo data, sales intelligence, customer context, purchasing, production, quoting, shipping, loyalty, communications, AI support, and backups in one staff-controlled system.</p>
 
-<h1>Printavo Hub — Project Plan &amp; Status</h1>
-<div class="sub">Mint Printworks · August 7, 2026 · One consolidated internal platform replacing 11 separate Printavo-connected apps</div>
-
-<div class="legend">
-  <span class="done"><span class="dot"></span><b>DONE</b> built, tested, reviewed</span>
-  <span class="test"><span class="dot"></span><b>YOUR TEST</b> done, waiting on Tyler to validate</span>
-  <span class="wait"><span class="dot"></span><b>WAITING</b> blocked on outside answer/input</span>
-  <span class="draft"><span class="dot"></span><b>DRAFTED</b> plan written, awaiting your acceptance</span>
-  <span class="tabled"><span class="dot"></span><b>TABLED</b> paused, will return</span>
-  <span class="backlog"><span class="dot"></span><b>BACKLOG</b> logged, not scheduled</span>
-  <span class="ready"><span class="dot"></span><b>READY</b> unblocked, your call</span>
+<div class="callout">
+  <h3>Where we are now</h3>
+  <p><b>The foundation and most core tools are built.</b> The next phase should not be “build everything.” It should be a focused team review: identify the few workflows that save the most time or improve the most decisions, validate them with real staff use, and dial those in before expanding the surface area.</p>
 </div>
 
-<div class="punch">
-  <h2>Punch List — what's waiting on you</h2>
-  <ol>
-    <li><b>Product Curation Tool (new this week):</b> three plans drafted in the tasks panel — review &amp; accept to start. Phase 1 (cross-vendor stock checker) is the quick win; foundations already exist under the PO builder.</li>
-    <li><b>Mint Bucks email images (new Jul 31):</b> try the reward-rule &amp; credit image uploads and the "send test email" button (test emails all come to you). If you ever retire the standalone MB app, re-upload its images in the Hub first.</li>
-    <li><b>moMINTum standalone update pack:</b> forward the combined handoff doc (invoice links + task counts, with context primer) to your standalone app's agent when ready.</li>
-    <li><b>Standing items from Jul 25:</b> Print Queue (PQ1–PQ3b incl. restyled packing slips), Client 360 browsing, Ask AI questions/presets, Chipply real-store import + support answer, Shipping tools live checks, Mint Bucks page click-through — all still awaiting your validation.</li>
-    <li><b>Mint Bucks go-live decisions:</b> email mode still test (everything routes to you; one env-var flip when ready) and the poller-ownership flip (MB5) stays parked until you say go.</li>
-    <li><b>Publish the Hub</b> whenever you give the word — production database steps (new tables since last publish check) are handled as part of publishing.</li>
-  </ol>
+<h2>Executive status</h2>
+<div class="grid">
+  <div class="card"><span class="tag live">Operational foundation</span><h3>Sync, identity, access &amp; module shell</h3><p>Staff login, module access, shared Printavo mirror, global sync visibility, route isolation, and a unified navigation system are in place.</p></div>
+  <div class="card"><span class="tag live">Core workflows built</span><h3>Purchasing, production, quoting &amp; shipping</h3><p>Vendor ordering, PO tracking, print queues, pricing, shipping estimates, label sorting, and supporting automation have substantial working implementations.</p></div>
+  <div class="card"><span class="tag evolve">High-value tools evolving</span><h3>Customer, sales, email &amp; AI intelligence</h3><p>Client 360, pipeline, correspondence, knowledge, voice profiles, Ask AI, and AI quote drafting are available and should now be shaped by team feedback and measured use.</p></div>
+  <div class="card"><span class="tag validate">Operational decisions</span><h3>Controlled automation and go-live settings</h3><p>Some write paths and outbound emails intentionally remain guarded, test-routed, dry-run, or single-owner until Tyler explicitly approves live operation.</p></div>
 </div>
 
-<div class="cols">
+<h2>Recommended focus for the team review</h2>
+<ol class="priority">
+  <li><b>Choose 3–5 “must win” workflows.</b><span>Ask each teammate where time is lost, where errors recur, and which information is hardest to find. Rank impact by hours saved, risk reduced, revenue influenced, and frequency of use.</span></li>
+  <li><b>Run real workflow validation before adding breadth.</b><span>Use the Hub on actual day-to-day work, capture friction at the page/action level, and distinguish missing capability from usability polish, data quality, or training.</span></li>
+  <li><b>Dial in the customer and sales workspace.</b><span>Directory, profiles, pipeline, correspondence, reorder requests, and product curation can become the team’s daily front office if the views, filters, ownership, and next actions match staff habits.</span></li>
+  <li><b>Dial in production and purchasing reliability.</b><span>Vendor Orders, PO Log, tracking, Print Queue, queue rules, and auto-print have direct operational leverage. Validate handoffs, exception handling, safeguards, and ownership.</span></li>
+  <li><b>Prove AI value with narrow, reviewable tasks.</b><span>Complete the quote-draft scoring exercise, keep knowledge learning human-approved, and prioritize repeatable answers/drafts over broad autonomous behavior.</span></li>
+  <li><b>Finish operational readiness.</b><span>Verify offsite backup copies and restoreability, production schema, deployment settings, poller ownership, and test/live email controls before depending on the Hub as critical infrastructure.</span></li>
+</ol>
 
-<div class="section">
-  <h2>Foundation — Sync, Backup &amp; Reports</h2>
-  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Printavo sync engine + speed overhaul</b><p>Everything mirrored to our database. Recent changes land within one 5-min tick; manual Sync Now ~70s; deep re-checks nightly.</p></div></div>
-  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Global sync bar<span class="new-tag">NEW — built Aug 7</span></b><p>"Printavo synced X min ago" + Sync Now button now atop EVERY Hub page (was Vendor Orders only). Finishing a manual sync refreshes whatever page you're on.</p></div></div>
-  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Complete Printavo backup</b><p>Full history to Feb 2018 (~19k orders), payments to Dec 2017, messages/inquiries/payment requests/merch stores/reference data, order files mirrored to our cloud storage, one-click ~61 MB JSON ZIP export. Known limits: pricing-matrix cells not exposed by API; packing slips login-walled. Disaster-recovery note: this preserves recoverable business data, but it is not yet a one-click restore back into Printavo.</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Order detail + payments history + Reports API</b><p>Backend done (2017→today payments, legacy Insights formulas). Reports UI + your preset-reports list still to come.</p></div></div>
+<h2>Current capability map</h2>
+<table class="table">
+<tr><th>Area</th><th>Status</th><th>Current capability</th><th>Next decision</th></tr>
+<tr><td>Foundation &amp; Data</td><td><span class="tag live">Built</span></td><td>Printavo mirror, frequent sync, change tracking, historical backup/export, global sync status.</td><td>Prioritize independent offsite copies and a practical restore drill.</td></tr>
+<tr><td>Analyze &amp; AI</td><td><span class="tag evolve">Evolving</span></td><td>Reports, payments, Ask AI, saved knowledge, AI connections, voice profiles, email activity, correspondence.</td><td>Identify recurring questions and drafts that staff will actually use weekly.</td></tr>
+<tr><td>Sales &amp; Clients</td><td><span class="tag evolve">Evolving</span></td><td>Product Finder, Pantones, collections, pipeline, status activity, Chipply, reorder inbox, directory, profiles, brand sheets, niche reporting.</td><td>Choose the daily sales workspace and tighten follow-up/ownership flows.</td></tr>
+<tr><td>Purchasing</td><td><span class="tag live">Built</span></td><td>Vendor ordering through SanMar/S&amp;S, PO log, live tracking, status rules, safeguards against duplicate orders.</td><td>Staff validation and exception-path polish; Reorder Scan remains a placeholder.</td></tr>
+<tr><td>Production</td><td><span class="tag validate">Validate</span></td><td>Print Queue, bulk status actions, queue rules, auto-print, in-house packing slip/box-label support.</td><td>Confirm rules, dry-run behavior, printers, and safe ownership before wider use.</td></tr>
+<tr><td>Quoting</td><td><span class="tag evolve">Evolving</span></td><td>Price Calculator and reviewable AI quote drafts with customer, pricing, matrix, and note context.</td><td>Finish human scoring; tune only the patterns that materially improve drafting.</td></tr>
+<tr><td>Team &amp; Shipping</td><td><span class="tag live">Built</span></td><td>moMINTum tasks, rate comparison, packing-slip/label sorting.</td><td>Validate actual staff handoffs and carrier-rate workflows.</td></tr>
+<tr><td>Mint Bucks</td><td><span class="tag validate">Controlled</span></td><td>Full customer credit, issue/redemption, reward, report, certificate, balance-check, and settings workflows.</td><td>Choose email and poller ownership; avoid dual automation.</td></tr>
+<tr><td>Reorder Portal</td><td><span class="tag evolve">New</span></td><td>Separate customer-facing portal with email/company lookup, reorder submission, shareable search links, and a Hub staff inbox.</td><td>Gather usage feedback first; private links/check-in remain deferred.</td></tr>
+</table>
+
+<h2>Near-term roadmap</h2>
+<div class="grid">
+  <div class="card"><span class="tag validate">Now · Feedback</span><h3>Structured teammate walkthrough</h3><p>Invite one representative user. Have them complete common workflows without coaching, record friction and requested outcomes, then rank changes by impact and frequency.</p></div>
+  <div class="card"><span class="tag validate">Now · Safety</span><h3>Operational readiness</h3><p>Offsite backups, restore confidence, deployment/schema verification, email modes, poller ownership, and restricted real-write testing.</p></div>
+  <div class="card"><span class="tag evolve">Next · Adoption</span><h3>Refine the winning modules</h3><p>Improve navigation, defaults, saved views, filters, ownership, handoffs, and feedback loops in the 3–5 workflows selected by the team.</p></div>
+  <div class="card"><span class="tag evolve">Next · AI proof</span><h3>Measured drafting &amp; knowledge</h3><p>Complete the 50-draft keep/drop review. Let real conversations suggest knowledge only through explicit human approval.</p></div>
+  <div class="card"><span class="tag planned">Later · Integrations</span><h3>Broader communication intelligence</h3><p>Fireflies visibility audit, additional communication sources, sales follow-up support, and richer cross-channel customer context.</p></div>
+  <div class="card"><span class="tag deferred">Deferred</span><h3>Expansion before validation</h3><p>Private reorder links/check-in, Color Library, standalone Reorder Scan, broad autonomous AI, CFO analysis, and other major additions should wait for focused feedback.</p></div>
 </div>
 
-<div class="section">
-  <h2>Product Curation Tool<span class="new-tag">NEW — drafted Aug 7</span></h2>
-  <div class="item"><div class="badge draft"><span class="dot"></span>DRAFTED</div><div class="body"><b>Phase 1 — Cross-vendor stock checker</b><p>Style search across SanMar + S&amp;S at once, color pick, size × warehouse live inventory grid with cost, cross-vendor style aliasing (G500 vs 5000), multi-select (men's + women's), and check-a-Printavo-invoice mode. Vendor lookups already exist under the PO builder.</p></div></div>
-  <div class="item"><div class="badge draft"><span class="dot"></span>DRAFTED</div><div class="body"><b>Phase 2 — Descriptive search + color families</b><p>Our own local catalog of both vendors' lines, refreshed nightly (prices/colors/styles; your tag fixes survive; health panel). AI tags color families &amp; garment attributes once at import — "forest green polos" or "light blue" searches run instantly. Inventory never cached, always live. Also the foundation for the color catalog + key-authed catalog API backlog items.</p></div></div>
-  <div class="item"><div class="badge draft"><span class="dot"></span>DRAFTED</div><div class="body"><b>Phase 3 — Collections &amp; customer curation</b><p>Star styles into named collections, link to customers (shows on their profile), fresh stock re-checks, send-to-Price-Calculator. Future follow-ons flagged: templated sell sheets, push collection onto a Printavo invoice, shared customer links.</p></div></div>
+<div class="callout decision">
+  <h3>Questions for Tyler after the team review</h3>
+  <ul class="checks">
+    <li>Which three pages would the team use every day?</li>
+    <li>Which workflow currently wastes the most labor?</li>
+    <li>Where would a mistake be most costly?</li>
+    <li>Which data or answer is hardest to find today?</li>
+    <li>Which automation feels safe enough to enable?</li>
+    <li>What should be hidden until it is more mature?</li>
+    <li>Which module needs better defaults, not more features?</li>
+    <li>What result would prove the Hub is paying off?</li>
+  </ul>
 </div>
 
-<div class="section">
-  <h2>Client 360</h2>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Directory + niche categories + niche report</b><p>All ~3,565 customers, biggest spenders first. Assign niches inline or in bulk; keyword search looks INSIDE order nicknames with select-all-matching. Niche report uses invoice-only revenue (~$10.4M all-time).</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Customer profiles</b><p>Lifetime/YTD spend, order frequency, avg pieces, top styles, decoration-method breakdown, order history, contacts, niche. (Branding colors/artwork still deferred.)</p></div></div>
-</div>
+<h2>Non-negotiable operating rules</h2>
+<ul class="checks">
+  <li>Build and validate incrementally; avoid a big-bang rollout.</li>
+  <li>Keep modules independently tunable so one tool cannot destabilize another.</li>
+  <li>Use Printavo order <b>#22251 only</b> for real-write testing; never use #19004.</li>
+  <li>Non-idempotent vendor/Printavo writes get one attempt; ambiguous results require manual verification.</li>
+  <li>Only one environment may own Printavo ⇄ moMINTum polling.</li>
+  <li>Only one app may own Mint Bucks polling; test emails can consume one-shot ledgers.</li>
+  <li>AI knowledge changes remain draft-first and human-approved.</li>
+  <li>Customer correspondence access must be enforced before retrieval, not only hidden in the UI.</li>
+</ul>
 
-<div class="section">
-  <h2>Ask AI</h2>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Plain-English questions over all Hub data + saved presets</b><p>AI writes a read-only query under strict guardrails, answers with the table + SQL shown. Save any answer as an instant preset. Verified: June 2026 = $120,058.66.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Chipply Web Stores</h2>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Store imports — email paste + CSV uploads</b><p>Paste a "Web Store Closed" email or upload SalesReport / Margin Report CSVs; editable review step before saving.</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Live Printavo linking + clean revenue separation</b><p>$0 merch shells link themselves via nickname convention; "Detected in Printavo" lists ~295 not-yet-imported groups. Chipply dollars never mix into Printavo revenue; excluded production gets its own profile block. Real method tokens: EMB / HEAT / PRINT.</p></div></div>
-  <div class="item"><div class="badge wait"><span class="dot"></span>WAITING</div><div class="body"><b>Chipply support answer</b><p>Scheduled export emails or data feed? Best case makes imports hands-off; the import page is reused either way. CH2 (profile section, reporting, CSV imports, reassignment) confirmed as next Chipply step after your CH1 test.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Vendor Orders / Purchasing — COMPLETE</h2>
-  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>P1–P4 — Scan, cart, PO builder, Printavo push, electronic vendor ordering + tracking</b><p>Needs-ordering scan, SanMar + S&amp;S live pricing, warehouse auto-pick, PO Log with locks, write-backs, status suggestions. Live orders proven with BOTH vendors. PIN gate, kill switch, double-order protection, tracking dashboard.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Price Calculator (Breezy Quote port) — COMPLETE</h2>
-  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>PC1–PC4 — Full calculator</b><p>Matrices (+CSV import), exact legacy math, 10-col breakdown, vendor price lookup with sale toggle &amp; smart search, PNG export.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Team &amp; Access</h2>
-  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Staff login &amp; roles</b><p>Google/email sign-in, staff allowlist, admin vs staff roles, staff management in Settings, admin PIN in app settings.</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>moMINTum task app inside the Hub</b><p>Full task manager, same live database as the standalone app. Staff-gated; one-click nav both ways.</p><p><b>Standalone catch-up (Aug 3):</b> combined update pack written (invoice links + task counts, with context primer) — ready for you to forward to the standalone app's agent; all 8 handoff docs indexed in handoffs/.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Printavo ⇄ moMINTum Task Sync</h2>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Two-way task sync — LIVE, auto-polling every 5 min</b><p>Smart routing, completions flow both ways, deletions clean up twins, safeguard pop-ups on Printavo-linked tasks.</p><p class="rule">Rule: auto-sync flag lives in ONE environment only (currently dev) — never both, or tasks duplicate.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Mint Bucks — store credit</h2>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Full port — 12 pages, same live database</b><p>Reward/order poller stays OFF in the Hub until you flip ownership. Emails redirect to you ([TEST→…]) until email mode goes live. MINTBUCKS_APP_URL now set; Resend connected.</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Branded email images + test emails<span class="new-tag">NEW — built Jul 31</span></b><p>Upload images on reward rules &amp; credits (shown in reward/reminder emails) and send yourself a test email from any rule. Images uploaded in the standalone app keep working in Hub emails while that app stays published; retire it → re-upload once in the Hub.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Print Queue (Workorder Manager port)</h2>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>PQ1 — Manual workorder printing</b><p>Status filters, presets, combined print preview with per-order exclude, attachments toggle, packing-slip links.</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>PQ2 — Bulk status change + queue rules</b><p>Safe bulk moves (stale-order guard), rules with off/ask/auto modes, kill switch (default off).</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>PQ3a — Auto-print to PrintNode</b><p>Scheduled printing + auto status move by decoration type. Double-print protection verified. Safe state: off + dry-run. Test with order #22251 only.</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>PQ3b — Packing slips &amp; box labels</b><p>Near-clone of Printavo's public template: QR code, logo + shop block, billing/shipping columns, per-group size-matrix tables. Rendered from our own data.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Shipping</h2>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Rate Estimator ("shipstimator")</b><p>USPS/UPS quotes from ShipStation + EasyPost side-by-side, weight calc, preset boxes, smart paste for addresses.</p></div></div>
-  <div class="item"><div class="badge test"><span class="dot"></span>YOUR TEST</div><div class="body"><b>Slip / Label Sorter</b><p>Sorts packing slips Style→Color→Size→Order# and pairs the USPS label PDF 1:1, + match report. All 9 presets + custom sort builder.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Tabled — Returning Later</h2>
-  <div class="item"><div class="badge tabled"><span class="dot"></span>TABLED</div><div class="body"><b>Branding / artwork / Dropbox on profiles</b><p>Customer branding colors + artwork references — deferred when Client 360 shipped; slots into the existing profile page.</p></div></div>
-  <div class="item"><div class="badge done"><span class="dot"></span>DONE</div><div class="body"><b>Cross-vendor catalog search → un-tabled</b><p>Absorbed into the Product Curation Tool (Phases 1–2 above); the key-protected API for your other app rides on the Phase-2 catalog.</p></div></div>
-</div>
-
-<div class="section">
-  <h2>Going Live</h2>
-  <div class="item"><div class="badge ready"><span class="dot"></span>READY</div><div class="body"><b>Publish the Hub</b><p>Your call. Production database needs the tables added since the last publish check (Chipply, insights presets) — handled as part of publishing. Task-sync auto-poll flag is dev-scoped, so publishing stays safe.</p></div></div>
-</div>
-
-</div>
-
-<div class="section" style="margin-top: 2px;">
-  <h2>Backlog &amp; Ideas — Logged, Not Scheduled</h2>
-  <div class="grid3">
-    <div class="idea"><b>CFO AI assistant<span class="new-tag">NEW Aug 7</span></b><p>Analyst agent over Printavo data + imported payroll/labor + email effort. Three layers: financial intake → tunable order cost model (stitches/colors/qty as labor proxies) → scheduled advisory digests + chat, on the Ask AI guardrails.</p></div>
-    <div class="idea"><b>Email correspondence hub<span class="new-tag">NEW Aug 7</span></b><p>Read-only Gmail monitoring of CSR inboxes; emails mapped to customers (exact) and invoices (suggest + confirm). Track replies, not opens — read receipts unreliable industry-wide. Feeds the CFO agent's ROI data.</p></div>
-    <div class="idea"><b>Color catalog / database</b><p>Hub-built color DB, reusable for the Breezy app — now naturally rides on the curation Phase-2 catalog.</p></div>
-    <div class="idea"><b>Knowledge base — FAQ, SOPs, reference</b><p>Centralized internal docs, structured for AI &amp; platform integrations to use.</p></div>
-    <div class="idea"><b>External analytics hub</b><p>Fireflies, JustCall, Google Analytics/AdWords, Meta, RB2B, EmailAnalytics, ActivTrak, Constant Contact… roles in place for access tiers.</p></div>
-    <div class="idea"><b>Sales &amp; follow-up tools</b><p>Proactive follow-up reminders, receivables tracking, custom alerts — get much smarter once the email hub exists.</p></div>
-    <div class="idea"><b>Preset reports library</b><p>Batch of ready-made reports — working from your list. (Ask AI presets already cover the ad-hoc cases.)</p></div>
-    <div class="idea"><b>Maintenance &amp; sidework log</b><p>With scheduled reminders; may tie into moMINTum.</p></div>
-    <div class="idea"><b>Outgoing activity log</b><p>One audit trail of everything the Hub sends out — what, when, success.</p></div>
-    <div class="idea"><b>Missive messaging portal</b><p>Inbox / messaging inside the Hub via Missive's API.</p></div>
-    <div class="idea"><b>Public Reorder Portal</b><p>Customer-facing reordering, after internal modules settle.</p></div>
-    <div class="idea"><b>Orders report / dashboard shell counts</b><p>Chipply shells still inflate the general Orders report + dashboard counts — parked for a decision.</p></div>
-    <div class="idea"><b>Offsite Printavo backup copies<span class="new-tag">NEW Aug 20</span></b><p>Nightly, dated backup bundles pushed to a dedicated Google Drive folder with retention and visible success/failure status; recommended first choice. Optional second copy to a NAS via secure SFTP/WebDAV or a NAS-side pull agent — never expose a local SMB share publicly. Must include both the portable data ZIP and mirrored file objects, preserve prior good copies, and verify each backup can be opened.</p></div>
-  </div>
-</div>
-
-<div class="foot">
-  Since last report (Jul 25): Mint Bucks branded email images + test-email sending shipped · moMINTum standalone update pack written (ready to forward) · global Printavo sync bar on every page · Product Curation Tool planned in 3 phases (drafted, awaiting your acceptance) — absorbs the tabled catalog search + Aug 4 stock-checker idea · three new ideas logged &amp; assessed: CFO AI assistant, email correspondence hub, offsite Printavo backup copies.
-  &nbsp;·&nbsp; <b>Testing rule in force: order #22251 only; #19004 never again.</b>
-</div>
-
-</body>
-</html>
+<div class="foot">This is the canonical plan/status document and supersedes the August 7 snapshot. It is intended for owner review and roadmap decisions. See the companion “Printavo Hub — Complete Synopsis &amp; Team Feedback Guide” for page-level detail.</div>
+</main></body></html>

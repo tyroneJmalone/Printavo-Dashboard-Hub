@@ -61,3 +61,31 @@ type = "pdf"
 title = "Printavo Hub — Architecture & Systems Overview"
 description = "Shareable technical brief: platform architecture, sync foundation, current modules, integrations, safety guardrails, and roadmap (including the Missive AI context layer direction)."
 logical_id = "d6deb1b7-f8ee-441a-a7ff-c4f7d3d63ae3"
+
+[[outputs]]
+id = "iXQvqxEa1G3JixaO-MnsF"
+uri = "file://exports/printavo-hub-plan-status.html"
+type = "text"
+title = "Printavo Hub — Plan, Status & Roadmap"
+description = "Updated owner review document with current status, recommended focus, roadmap, operational decisions, and team-review questions."
+logical_id = "97b59143-b8c4-4a97-a79c-0556eea91364"
+content_hash = "sha256:0958c59c977f25765358a972701fd5aeda52fc44604c5f21b2af749435ee3a80"
+size = 12203
+mtime_ms = 1788915408636
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/97b59143-b8c4-4a97-a79c-0556eea91364/d4ecb469-b370-4a2a-aa5c-47fc70d117a4"
+storage_version_token = "1788915483672238"
+content_type = "text/html"
+
+[[outputs]]
+id = "lJCmJaQVjOlfqb-JY95_t"
+uri = "file://exports/printavo-hub-complete-synopsis.html"
+type = "text"
+title = "Printavo Hub — Complete Synopsis & Team Feedback Guide"
+description = "Plain-language guide to every Hub section, module, and page, including intended purpose, current maturity, feedback prompts, and prioritization worksheet."
+logical_id = "ef2f8003-0c38-4138-8fa6-d5ed7e56ac7e"
+content_hash = "sha256:7a917c287176f666b5907415f1155a6846be7e8625144aed2b2ad898fdc93924"
+size = 21418
+mtime_ms = 1788915472132
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/ef2f8003-0c38-4138-8fa6-d5ed7e56ac7e/026c8a36-8ffd-4eed-bb0f-066e63ff8353"
+storage_version_token = "1788915484189847"
+content_type = "text/html"
