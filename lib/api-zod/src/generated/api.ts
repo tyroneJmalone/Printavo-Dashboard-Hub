@@ -9625,6 +9625,7 @@ export const GetEmailUnansweredThreadsQueryParams = zod.object({
 export const GetEmailUnansweredThreadsResponse = zod.object({
   "thresholdHours": zod.number(),
   "threads": zod.array(zod.object({
+  "id": zod.string(),
   "mailboxId": zod.string(),
   "email": zod.string().nullable(),
   "gmailThreadId": zod.string(),
@@ -9672,14 +9673,62 @@ export const GetEmailFilteredBucketResponse = zod.object({
   "count": zod.number()
 })),
   "sample": zod.array(zod.object({
+  "id": zod.string(),
   "mailboxId": zod.string(),
   "email": zod.string().nullable(),
+  "gmailThreadId": zod.string(),
   "subject": zod.string(),
   "counterpart": zod.string(),
   "reason": zod.string(),
   "direction": zod.string(),
   "internalDate": zod.string()
 }))
+})
+
+
+/**
+ * @summary Recent counted sent and received messages for authorized mailboxes
+ */
+export const ListEmailActivityMessagesQueryParams = zod.object({
+  "start": zod.coerce.string(),
+  "end": zod.coerce.string(),
+  "mailboxId": zod.coerce.string().optional().describe('Omit to include all mailboxes the current staff member is authorized to view.')
+})
+
+export const ListEmailActivityMessagesResponse = zod.object({
+  "sent": zod.array(zod.object({
+  "id": zod.string(),
+  "mailboxId": zod.string(),
+  "email": zod.string().nullable(),
+  "gmailThreadId": zod.string(),
+  "subject": zod.string(),
+  "counterpart": zod.string(),
+  "direction": zod.enum(['inbound', 'outbound']),
+  "internalDate": zod.string()
+})),
+  "received": zod.array(zod.object({
+  "id": zod.string(),
+  "mailboxId": zod.string(),
+  "email": zod.string().nullable(),
+  "gmailThreadId": zod.string(),
+  "subject": zod.string(),
+  "counterpart": zod.string(),
+  "direction": zod.enum(['inbound', 'outbound']),
+  "internalDate": zod.string()
+}))
+})
+
+
+/**
+ * @summary Fetch a live body preview for one authorized Gmail message
+ */
+export const GetEmailActivityMessagePreviewParams = zod.object({
+  "mailboxId": zod.coerce.string(),
+  "messageId": zod.coerce.string()
+})
+
+export const GetEmailActivityMessagePreviewResponse = zod.object({
+  "body": zod.string()
 })
 
 

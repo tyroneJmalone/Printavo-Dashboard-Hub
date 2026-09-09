@@ -145,7 +145,7 @@ export async function unansweredThreads(thresholdHours: number, mailboxIds: stri
     (await db.execute(sql`
       WITH last_msg AS (
         SELECT DISTINCT ON (m.mailbox_id, m.gmail_thread_id)
-          m.mailbox_id, m.gmail_thread_id, m.direction, m.internal_date,
+          m.id, m.mailbox_id, m.gmail_thread_id, m.direction, m.internal_date,
           m.subject, m.counterpart_address,
           count(*) OVER (PARTITION BY m.mailbox_id, m.gmail_thread_id)::int AS msg_count
         FROM email_messages m
@@ -154,7 +154,7 @@ export async function unansweredThreads(thresholdHours: number, mailboxIds: stri
           ${mailboxFilter(mailboxIds)}
         ORDER BY m.mailbox_id, m.gmail_thread_id, m.internal_date DESC
       )
-      SELECT mailbox_id, gmail_thread_id, subject, counterpart_address,
+      SELECT id, mailbox_id, gmail_thread_id, subject, counterpart_address,
         internal_date AS last_inbound_at, msg_count,
         EXTRACT(EPOCH FROM (now() - internal_date))::float / 3600 AS age_hours
       FROM last_msg
@@ -163,6 +163,7 @@ export async function unansweredThreads(thresholdHours: number, mailboxIds: stri
       ORDER BY internal_date ASC
       LIMIT ${limit}
     `)) as unknown as Rows<{
+      id: string;
       mailbox_id: string;
       gmail_thread_id: string;
       subject: string;
@@ -194,6 +195,37 @@ export async function heatmapStats(range: StatsRange) {
   return rows;
 }
 
+/** Most recent counted messages in each direction for the selected range. */
+export async function recentMessages(range: StatsRange, limitPerDirection = 50) {
+  const rows = (
+    (await db.execute(sql`
+      WITH ranked AS (
+        SELECT m.id, m.mailbox_id, m.gmail_thread_id, m.subject,
+          m.counterpart_address, m.direction, m.internal_date,
+          row_number() OVER (PARTITION BY m.direction ORDER BY m.internal_date DESC) AS direction_rank
+        FROM email_messages m
+        WHERE m.excluded_reason IS NULL
+          AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
+          ${mailboxFilter(range.mailboxIds)}
+      )
+      SELECT id, mailbox_id, gmail_thread_id, subject, counterpart_address,
+        direction, internal_date
+      FROM ranked
+      WHERE direction_rank <= ${limitPerDirection}
+      ORDER BY internal_date DESC
+    `)) as unknown as Rows<{
+      id: string;
+      mailbox_id: string;
+      gmail_thread_id: string;
+      subject: string;
+      counterpart_address: string;
+      direction: "inbound" | "outbound";
+      internal_date: string | Date;
+    }>
+  ).rows;
+  return rows;
+}
+
 /** Filtered-bucket breakdown + a recent sample for spot-checking. */
 export async function filteredStats(range: StatsRange, sampleLimit = 50) {
   const breakdown = (
@@ -208,8 +240,8 @@ export async function filteredStats(range: StatsRange, sampleLimit = 50) {
   ).rows;
   const sample = (
     (await db.execute(sql`
-      SELECT m.mailbox_id, m.subject, m.counterpart_address, m.excluded_reason,
-        m.direction, m.internal_date
+      SELECT m.id, m.mailbox_id, m.gmail_thread_id, m.subject, m.counterpart_address,
+        m.excluded_reason, m.direction, m.internal_date
       FROM email_messages m
       WHERE m.excluded_reason IS NOT NULL
         AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
@@ -217,7 +249,9 @@ export async function filteredStats(range: StatsRange, sampleLimit = 50) {
       ORDER BY m.internal_date DESC
       LIMIT ${sampleLimit}
     `)) as unknown as Rows<{
+      id: string;
       mailbox_id: string;
+      gmail_thread_id: string;
       subject: string;
       counterpart_address: string;
       excluded_reason: string;

@@ -6095,6 +6095,58 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmailFilteredResponse"
+  /email-activity/messages:
+    get:
+      operationId: listEmailActivityMessages
+      tags: [emailActivity]
+      summary: Recent counted sent and received messages for authorized mailboxes
+      parameters:
+        - name: start
+          in: query
+          required: true
+          schema: { type: string }
+        - name: end
+          in: query
+          required: true
+          schema: { type: string }
+        - name: mailboxId
+          in: query
+          description: Omit to include all mailboxes the current staff member is authorized to view.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Recent sent and received messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailActivityMessagesResponse"
+  /email-activity/mailboxes/{mailboxId}/messages/{messageId}/preview:
+    get:
+      operationId: getEmailActivityMessagePreview
+      tags: [emailActivity]
+      summary: Fetch a live body preview for one authorized Gmail message
+      parameters:
+        - name: mailboxId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Live body preview; the body is not persisted by Hub
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailActivityMessagePreview"
+        "404":
+          description: Message not found or not authorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /email-activity/match:
     post:
       operationId: runEmailMatching
@@ -12026,8 +12078,9 @@ components:
           $ref: "#/components/schemas/EmailResponseTimeStats"
     EmailUnansweredThread:
       type: object
-      required: [mailboxId, email, gmailThreadId, subject, counterpart, lastInboundAt, ageHours, messageCount]
+      required: [id, mailboxId, email, gmailThreadId, subject, counterpart, lastInboundAt, ageHours, messageCount]
       properties:
+        id: { type: string }
         mailboxId: { type: string }
         email: { type: string, nullable: true }
         gmailThreadId: { type: string }
@@ -12069,10 +12122,12 @@ components:
         count: { type: integer }
     EmailFilteredSample:
       type: object
-      required: [mailboxId, email, subject, counterpart, reason, direction, internalDate]
+      required: [id, mailboxId, email, gmailThreadId, subject, counterpart, reason, direction, internalDate]
       properties:
+        id: { type: string }
         mailboxId: { type: string }
         email: { type: string, nullable: true }
+        gmailThreadId: { type: string }
         subject: { type: string }
         counterpart: { type: string }
         reason: { type: string }
@@ -12091,6 +12146,35 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/EmailFilteredSample"
+    EmailActivityMessageSummary:
+      type: object
+      required: [id, mailboxId, email, gmailThreadId, subject, counterpart, direction, internalDate]
+      properties:
+        id: { type: string }
+        mailboxId: { type: string }
+        email: { type: ["string", "null"] }
+        gmailThreadId: { type: string }
+        subject: { type: string }
+        counterpart: { type: string }
+        direction: { type: string, enum: [inbound, outbound] }
+        internalDate: { type: string }
+    EmailActivityMessagesResponse:
+      type: object
+      required: [sent, received]
+      properties:
+        sent:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailActivityMessageSummary"
+        received:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailActivityMessageSummary"
+    EmailActivityMessagePreview:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string }
     EmailMatchResult:
       type: object
       required: [customersLinked, invoicesLinked]

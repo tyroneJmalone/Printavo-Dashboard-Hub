@@ -5385,6 +5385,7 @@ export interface EmailResponseTimesResponse {
 }
 
 export interface EmailUnansweredThread {
+  id: string;
   mailboxId: string;
   email: string | null;
   gmailThreadId: string;
@@ -5418,8 +5419,10 @@ export interface EmailFilteredReason {
 }
 
 export interface EmailFilteredSample {
+  id: string;
   mailboxId: string;
   email: string | null;
+  gmailThreadId: string;
   subject: string;
   counterpart: string;
   reason: string;
@@ -5431,6 +5434,35 @@ export interface EmailFilteredResponse {
   total: number;
   breakdown: EmailFilteredReason[];
   sample: EmailFilteredSample[];
+}
+
+export type EmailActivityMessageSummaryDirection = typeof EmailActivityMessageSummaryDirection[keyof typeof EmailActivityMessageSummaryDirection];
+
+
+export const EmailActivityMessageSummaryDirection = {
+  inbound: 'inbound',
+  outbound: 'outbound',
+} as const;
+
+export interface EmailActivityMessageSummary {
+  id: string;
+  mailboxId: string;
+  /** @nullable */
+  email: string | null;
+  gmailThreadId: string;
+  subject: string;
+  counterpart: string;
+  direction: EmailActivityMessageSummaryDirection;
+  internalDate: string;
+}
+
+export interface EmailActivityMessagesResponse {
+  sent: EmailActivityMessageSummary[];
+  received: EmailActivityMessageSummary[];
+}
+
+export interface EmailActivityMessagePreview {
+  body: string;
 }
 
 export interface EmailMatchResult {
@@ -7455,6 +7487,15 @@ start: string;
 end: string;
 /**
  * Omit to aggregate all mailboxes the current staff member is authorized to view.
+ */
+mailboxId?: string;
+};
+
+export type ListEmailActivityMessagesParams = {
+start: string;
+end: string;
+/**
+ * Omit to include all mailboxes the current staff member is authorized to view.
  */
 mailboxId?: string;
 };

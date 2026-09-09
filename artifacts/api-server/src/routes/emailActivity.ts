@@ -4,8 +4,9 @@ import {
   emailMailboxesTable,
   emailExclusionRulesTable,
   emailActivitySettingsTable,
+  emailMessagesTable,
 } from "@workspace/db";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and } from "drizzle-orm";
 import {
   AddEmailMailboxBody,
   UpdateEmailMailboxBody,
@@ -15,7 +16,7 @@ import {
 import { requireCapability } from "../middlewares/requireStaff";
 import { authorizedMailboxIds, canReadMailbox } from "../lib/emailAccess/authorization";
 import { logger } from "../lib/logger";
-import { gmailConfigured, serviceAccountEmail } from "../lib/emailActivity/gmail";
+import { GmailApiError, GmailMailboxClient, gmailConfigured, serviceAccountEmail } from "../lib/emailActivity/gmail";
 import {
   runEmailSync,
   isEmailSyncActive,
@@ -30,6 +31,7 @@ import {
   unansweredThreads,
   heatmapStats,
   filteredStats,
+  recentMessages,
 } from "../lib/emailActivity/stats";
 import {
   runEmailMatching,
@@ -403,6 +405,7 @@ router.get("/email-activity/unanswered", requireCapability("view_email_activity"
   res.json({
     thresholdHours: settings.unansweredThresholdHours,
     threads: rows.map((r) => ({
+      id: r.id,
       mailboxId: r.mailbox_id,
       email: lookup.get(r.mailbox_id)?.email ?? null,
       gmailThreadId: r.gmail_thread_id,
@@ -437,8 +440,10 @@ router.get("/email-activity/filtered", requireCapability("view_email_activity"),
     total: breakdown.reduce((s, b) => s + b.count, 0),
     breakdown: breakdown.map((b) => ({ reason: b.reason, count: b.count })),
     sample: sample.map((s) => ({
+      id: s.id,
       mailboxId: s.mailbox_id,
       email: lookup.get(s.mailbox_id)?.email ?? null,
+      gmailThreadId: s.gmail_thread_id,
       subject: s.subject,
       counterpart: s.counterpart_address,
       reason: s.excluded_reason,
@@ -446,6 +451,63 @@ router.get("/email-activity/filtered", requireCapability("view_email_activity"),
       internalDate: new Date(s.internal_date).toISOString(),
     })),
   });
+});
+
+router.get("/email-activity/messages", requireCapability("view_email_activity"), async (req, res) => {
+  const range = parseRange(req, res);
+  if (!range) return;
+  const mailboxIds = await authorizedMailboxScope(req, res, range.mailboxId);
+  if (!mailboxIds) return;
+  const [rows, lookup] = await Promise.all([
+    recentMessages({ ...range, mailboxIds }),
+    mailboxLookup(),
+  ]);
+  const serialize = (row: (typeof rows)[number]) => ({
+    id: row.id,
+    mailboxId: row.mailbox_id,
+    email: lookup.get(row.mailbox_id)?.email ?? null,
+    gmailThreadId: row.gmail_thread_id,
+    subject: row.subject,
+    counterpart: row.counterpart_address,
+    direction: row.direction,
+    internalDate: new Date(row.internal_date).toISOString(),
+  });
+  return res.json({
+    sent: rows.filter((row) => row.direction === "outbound").map(serialize),
+    received: rows.filter((row) => row.direction === "inbound").map(serialize),
+  });
+});
+
+router.get("/email-activity/mailboxes/:mailboxId/messages/:messageId/preview", requireCapability("view_email_activity"), async (req, res) => {
+  const mailboxId = await authorizedMailboxId(
+    req,
+    res,
+    String(req.params.mailboxId),
+  );
+  if (!mailboxId) return;
+  const messageId = String(req.params.messageId);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(messageId)) {
+    return res.status(404).json({ error: "Message not found" });
+  }
+  const [message] = await db
+    .select({
+      gmailId: emailMessagesTable.gmailId,
+      mailboxEmail: emailMailboxesTable.email,
+    })
+    .from(emailMessagesTable)
+    .innerJoin(emailMailboxesTable, eq(emailMessagesTable.mailboxId, emailMailboxesTable.id))
+    .where(and(eq(emailMessagesTable.id, messageId), eq(emailMessagesTable.mailboxId, mailboxId)))
+    .limit(1);
+  if (!message) return res.status(404).json({ error: "Message not found" });
+  try {
+    const body = await new GmailMailboxClient(message.mailboxEmail).getMessageBody(message.gmailId);
+    return res.json({ body: body || "No readable message body was returned by Gmail." });
+  } catch (error) {
+    if (error instanceof GmailApiError && error.status === 404) {
+      return res.status(404).json({ error: "Message not found in Gmail" });
+    }
+    throw error;
+  }
 });
 
 // ── Customer / invoice correlation ───────────────────────────────────

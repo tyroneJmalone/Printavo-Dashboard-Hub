@@ -7,8 +7,10 @@
  */
 
 export interface EmailFilteredSample {
+  id: string;
   mailboxId: string;
   email: string | null;
+  gmailThreadId: string;
   subject: string;
   counterpart: string;
   reason: string;

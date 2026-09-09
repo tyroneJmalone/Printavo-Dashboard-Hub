@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "wouter";
 import {
   useGetEmailActivityStatus,
@@ -13,8 +14,13 @@ import {
   getGetEmailHeatmapQueryKey,
   useGetEmailFilteredBucket,
   getGetEmailFilteredBucketQueryKey,
+  useListEmailActivityMessages,
+  getListEmailActivityMessagesQueryKey,
+  useGetEmailActivityMessagePreview,
+  getGetEmailActivityMessagePreviewQueryKey,
   useListEmailCustomers,
   getListEmailCustomersQueryKey,
+  type EmailActivityMessageSummary,
 } from "@workspace/api-client-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
@@ -90,6 +96,134 @@ function SectionTitle({ icon: Icon, children }: { icon: React.ComponentType<any>
       <Icon size={15} className="text-[#10b981]" />
       {children}
     </div>
+  );
+}
+
+function gmailThreadUrl(email: string | null | undefined, gmailThreadId: string): string {
+  const account = email ? encodeURIComponent(email) : "0";
+  return `https://mail.google.com/mail/u/${account}/#all/${encodeURIComponent(gmailThreadId)}`;
+}
+
+function EmailSubjectLink({
+  id,
+  mailboxId,
+  email,
+  gmailThreadId,
+  subject,
+  className = "",
+}: {
+  id: string;
+  mailboxId: string;
+  email?: string | null;
+  gmailThreadId: string;
+  subject: string;
+  className?: string;
+}) {
+  const anchorRef = useRef<HTMLAnchorElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [position, setPosition] = useState({ left: 12, top: 12, above: false });
+  const { data, isLoading, isError } = useGetEmailActivityMessagePreview(mailboxId, id, {
+    query: {
+      enabled: showPreview,
+      queryKey: getGetEmailActivityMessagePreviewQueryKey(mailboxId, id),
+      staleTime: 30_000,
+      gcTime: 60_000,
+      retry: false,
+    },
+  });
+
+  const openPreview = () => {
+    const rect = anchorRef.current?.getBoundingClientRect();
+    if (rect) {
+      const width = Math.min(420, window.innerWidth - 24);
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+      const above = rect.bottom + 250 > window.innerHeight && rect.top > 250;
+      setPosition({ left, top: above ? rect.top - 8 : rect.bottom + 8, above });
+    }
+    setShowPreview(true);
+  };
+
+  return (
+    <>
+      <a
+        ref={anchorRef}
+        href={gmailThreadUrl(email, gmailThreadId)}
+        target="_blank"
+        rel="noreferrer"
+        onMouseEnter={openPreview}
+        onMouseLeave={() => setShowPreview(false)}
+        onFocus={openPreview}
+        onBlur={() => setShowPreview(false)}
+        className={`text-slate-200 hover:text-[#10b981] hover:underline underline-offset-2 ${className}`}
+      >
+        {subject || "(no subject)"}
+      </a>
+      {showPreview &&
+        createPortal(
+          <div
+            role="tooltip"
+            className="fixed z-[100] w-[min(420px,calc(100vw-24px))] max-h-60 overflow-y-auto rounded-lg border border-slate-700 bg-[#111c30] p-3 text-xs leading-relaxed text-slate-300 shadow-2xl shadow-black/50 whitespace-pre-wrap pointer-events-none"
+            style={{
+              left: position.left,
+              top: position.top,
+              transform: position.above ? "translateY(-100%)" : undefined,
+            }}
+          >
+            <div className="mb-2 border-b border-slate-700 pb-2 font-medium text-slate-100">
+              {subject || "(no subject)"}
+            </div>
+            {isLoading && <span className="text-slate-500">Loading email body…</span>}
+            {isError && <span className="text-rose-300">Email body preview is unavailable.</span>}
+            {data?.body}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function MessageList({
+  title,
+  messages,
+}: {
+  title: string;
+  messages: EmailActivityMessageSummary[] | undefined;
+}) {
+  return (
+    <Card>
+      <SectionTitle icon={Mail}>
+        {title} ({messages?.length ?? 0})
+      </SectionTitle>
+      <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar pr-1">
+        {messages?.map((message) => (
+          <div key={message.id} className="rounded-md border border-slate-800 px-3 py-2">
+            <div className="truncate text-xs font-medium">
+              <EmailSubjectLink
+                id={message.id}
+                mailboxId={message.mailboxId}
+                email={message.email}
+                gmailThreadId={message.gmailThreadId}
+                subject={message.subject}
+              />
+            </div>
+            <div className="mt-0.5 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+              <span className="truncate">{message.counterpart}</span>
+              <span className="whitespace-nowrap">
+                {new Date(message.internalDate).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+          </div>
+        ))}
+        {messages && messages.length === 0 && (
+          <div className="text-sm text-slate-500">No {title.toLowerCase()} email in this range.</div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -188,6 +322,9 @@ export default function EmailActivity() {
   });
   const { data: filtered } = useGetEmailFilteredBucket(common, {
     query: { enabled: canViewAnalytics && readableMailboxes.length > 0, queryKey: getGetEmailFilteredBucketQueryKey(common) },
+  });
+  const { data: messages } = useListEmailActivityMessages(common, {
+    query: { enabled: canViewAnalytics && readableMailboxes.length > 0, queryKey: getListEmailActivityMessagesQueryKey(common) },
   });
   const custParams = { start, end, ...(mailboxId ? { mailboxId } : {}) };
   const { data: emailCustomers } = useListEmailCustomers(custParams, {
@@ -431,6 +568,12 @@ export default function EmailActivity() {
           </div>
         </Card>
 
+        {/* Recent messages */}
+        <div className="grid lg:grid-cols-2 gap-4">
+          <MessageList title="Sent" messages={messages?.sent} />
+          <MessageList title="Received" messages={messages?.received} />
+        </div>
+
         {/* Customer drill-down */}
         <Card>
           <div className="flex items-center justify-between mb-3">
@@ -530,7 +673,15 @@ export default function EmailActivity() {
               {unanswered?.threads.map((t) => (
                 <div key={`${t.mailboxId}-${t.gmailThreadId}`} className="border border-slate-800 rounded-md px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs text-slate-200 truncate font-medium">{t.subject || "(no subject)"}</div>
+                    <div className="text-xs truncate font-medium">
+                      <EmailSubjectLink
+                        id={t.id}
+                        mailboxId={t.mailboxId}
+                        email={t.email}
+                        gmailThreadId={t.gmailThreadId}
+                        subject={t.subject}
+                      />
+                    </div>
                     <div className="text-[10px] text-amber-400 whitespace-nowrap">{fmtDur(t.ageHours * 3600)} old</div>
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5 truncate">
@@ -595,8 +746,16 @@ export default function EmailActivity() {
                 </thead>
                 <tbody>
                   {filtered?.sample.map((s, i) => (
-                    <tr key={i} className="border-b border-slate-800/50">
-                      <td className="py-1.5 pr-2 text-slate-300 max-w-[240px] truncate">{s.subject || "(no subject)"}</td>
+                    <tr key={s.id ?? i} className="border-b border-slate-800/50">
+                      <td className="py-1.5 pr-2 max-w-[240px] truncate">
+                        <EmailSubjectLink
+                          id={s.id}
+                          mailboxId={s.mailboxId}
+                          email={s.email}
+                          gmailThreadId={s.gmailThreadId}
+                          subject={s.subject}
+                        />
+                      </td>
                       <td className="py-1.5 pr-2 text-slate-400 max-w-[180px] truncate">{s.counterpart}</td>
                       <td className="py-1.5 pr-2 text-slate-500">{REASON_LABELS[s.reason] ?? s.reason}</td>
                       <td className="py-1.5 pr-0 text-slate-500 whitespace-nowrap">

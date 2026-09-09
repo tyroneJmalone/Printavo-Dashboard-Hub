@@ -81,6 +81,48 @@ export interface GmailMessageMeta {
   payload?: { headers?: { name: string; value: string }[] };
 }
 
+interface GmailMessagePart {
+  mimeType?: string;
+  body?: { data?: string };
+  parts?: GmailMessagePart[];
+}
+
+interface GmailMessageFull {
+  payload?: GmailMessagePart;
+}
+
+function decodeBody(data: string): string {
+  return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+}
+
+function findBody(part: GmailMessagePart | undefined, mimeType: string): string | null {
+  if (!part) return null;
+  if (part.mimeType === mimeType && part.body?.data) return decodeBody(part.body.data);
+  for (const child of part.parts ?? []) {
+    const body = findBody(child, mimeType);
+    if (body) return body;
+  }
+  return null;
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export class GmailMailboxClient {
   private jwt: JWT;
 
@@ -159,5 +201,14 @@ export class GmailMailboxClient {
         "Auto-Submitted",
       ],
     });
+  }
+
+  /** Live, on-demand body fetch for authorized previews. The caller must not persist it. */
+  async getMessageBody(id: string): Promise<string> {
+    const message = await this.get<GmailMessageFull>(`/messages/${id}`, { format: "full" });
+    const plain = findBody(message.payload, "text/plain");
+    const html = plain ? null : findBody(message.payload, "text/html");
+    const body = (plain ?? (html ? htmlToText(html) : "")).trim();
+    return body.slice(0, 12_000);
   }
 }

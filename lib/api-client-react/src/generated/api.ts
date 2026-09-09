@@ -131,6 +131,8 @@ import type {
   EmailAccessGroupRequest,
   EmailAccessPolicy,
   EmailAccessPolicyRequest,
+  EmailActivityMessagePreview,
+  EmailActivityMessagesResponse,
   EmailActivitySettings,
   EmailActivityStatus,
   EmailCustomerCorrespondence,
@@ -225,6 +227,7 @@ import type {
   ListDraftBacktestRunsParams,
   ListDraftPatternEventsParams,
   ListEmailAccessGroups200,
+  ListEmailActivityMessagesParams,
   ListEmailCustomersParams,
   ListEmailMailboxPolicies200,
   ListGroup,
@@ -20765,6 +20768,172 @@ export function useGetEmailFilteredBucket<TData = Awaited<ReturnType<typeof getE
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetEmailFilteredBucketQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListEmailActivityMessagesUrl = (params: ListEmailActivityMessagesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/email-activity/messages?${stringifiedParams}` : `/api/email-activity/messages`
+}
+
+/**
+ * @summary Recent counted sent and received messages for authorized mailboxes
+ */
+export const listEmailActivityMessages = async (params: ListEmailActivityMessagesParams, options?: RequestInit): Promise<EmailActivityMessagesResponse> => {
+
+  return customFetch<EmailActivityMessagesResponse>(getListEmailActivityMessagesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEmailActivityMessagesQueryKey = (params?: ListEmailActivityMessagesParams,) => {
+    return [
+    `/api/email-activity/messages`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListEmailActivityMessagesQueryOptions = <TData = Awaited<ReturnType<typeof listEmailActivityMessages>>, TError = ErrorType<unknown>>(params: ListEmailActivityMessagesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailActivityMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEmailActivityMessagesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEmailActivityMessages>>> = ({ signal }) => listEmailActivityMessages(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEmailActivityMessages>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEmailActivityMessagesQueryResult = NonNullable<Awaited<ReturnType<typeof listEmailActivityMessages>>>
+export type ListEmailActivityMessagesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Recent counted sent and received messages for authorized mailboxes
+ */
+
+export function useListEmailActivityMessages<TData = Awaited<ReturnType<typeof listEmailActivityMessages>>, TError = ErrorType<unknown>>(
+ params: ListEmailActivityMessagesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEmailActivityMessages>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEmailActivityMessagesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEmailActivityMessagePreviewUrl = (mailboxId: string,
+    messageId: string,) => {
+
+
+
+
+  return `/api/email-activity/mailboxes/${mailboxId}/messages/${messageId}/preview`
+}
+
+/**
+ * @summary Fetch a live body preview for one authorized Gmail message
+ */
+export const getEmailActivityMessagePreview = async (mailboxId: string,
+    messageId: string, options?: RequestInit): Promise<EmailActivityMessagePreview> => {
+
+  return customFetch<EmailActivityMessagePreview>(getGetEmailActivityMessagePreviewUrl(mailboxId,messageId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEmailActivityMessagePreviewQueryKey = (mailboxId: string,
+    messageId: string,) => {
+    return [
+    `/api/email-activity/mailboxes/${mailboxId}/messages/${messageId}/preview`
+    ] as const;
+    }
+
+
+export const getGetEmailActivityMessagePreviewQueryOptions = <TData = Awaited<ReturnType<typeof getEmailActivityMessagePreview>>, TError = ErrorType<ErrorResponse>>(mailboxId: string,
+    messageId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityMessagePreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEmailActivityMessagePreviewQueryKey(mailboxId,messageId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailActivityMessagePreview>>> = ({ signal }) => getEmailActivityMessagePreview(mailboxId,messageId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: mailboxId !== null && mailboxId !== undefined && messageId !== null && messageId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityMessagePreview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEmailActivityMessagePreviewQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailActivityMessagePreview>>>
+export type GetEmailActivityMessagePreviewQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Fetch a live body preview for one authorized Gmail message
+ */
+
+export function useGetEmailActivityMessagePreview<TData = Awaited<ReturnType<typeof getEmailActivityMessagePreview>>, TError = ErrorType<ErrorResponse>>(
+ mailboxId: string,
+    messageId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEmailActivityMessagePreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEmailActivityMessagePreviewQueryOptions(mailboxId,messageId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

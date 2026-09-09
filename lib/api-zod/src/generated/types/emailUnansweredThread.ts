@@ -7,6 +7,7 @@
  */
 
 export interface EmailUnansweredThread {
+  id: string;
   mailboxId: string;
   email: string | null;
   gmailThreadId: string;
