@@ -112,8 +112,7 @@ const VERDICT_SQL = sql`
       SELECT 1 FROM email_exclusion_rules r
       WHERE r.kind = 'domain' AND r.value = email_messages.counterpart_domain
     ) THEN 'rule-domain'
-    WHEN email_messages.direction = 'outbound'
-      AND (
+    WHEN (
         (
           email_messages.from_address = 'andrew@mintprintworks.com'
           AND email_messages.subject ~* '(^proof[[:space:]]+ready|^payment[[:space:]]+received|quote[[:space:]]*&[[:space:]]*artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|^contract screen print order is ready!)'
