@@ -144,6 +144,17 @@ before(async () => {
     ],
   );
   await pool.query(
+    `INSERT INTO email_messages
+       (mailbox_id, gmail_id, gmail_thread_id, direction, from_address, subject, internal_date, excluded_reason)
+     VALUES ($1,$2,$3,'outbound','tommy@mintprintworks.com',
+       'seps.io has completed Quote #99999',now()-interval '1 day','printavo-notification')`,
+    [
+      ids.groupMailbox,
+      `aggregate-auth-system-${suffix}`,
+      `aggregate-auth-system-thread-${suffix}`,
+    ],
+  );
+  await pool.query(
     `INSERT INTO email_thread_customers
        (mailbox_id, gmail_thread_id, printavo_customer_id, source)
      VALUES ($1,$2,$4,'fixture'), ($3,$5,$4,'fixture')`,
@@ -313,12 +324,16 @@ test("all-mailbox analytics endpoints stay inside the server-derived ACL scope",
       await Promise.all(responses.map((response) => response.json())) as any[];
 
     assert.deepEqual(stats.people.map((row: any) => row.mailboxId), [ids.groupMailbox]);
+    assert.equal(stats.people[0].filtered, 1);
     assert.equal(stats.series.every((row: any) => row.mailboxId === ids.groupMailbox), true);
     assert.deepEqual(responseTimes.people.map((row: any) => row.mailboxId), [ids.groupMailbox]);
     assert.equal(unanswered.threads.length > 0, true);
     assert.equal(unanswered.threads.every((row: any) => row.mailboxId === ids.groupMailbox), true);
     assert.equal(heatmap.cells.reduce((sum: number, cell: any) => sum + cell.sent + cell.received, 0), 3);
-    assert.deepEqual(filtered.breakdown, [{ reason: "fixture-authorized", count: 1 }]);
+    assert.deepEqual(
+      Object.fromEntries(filtered.breakdown.map((row: any) => [row.reason, row.count])),
+      { "fixture-authorized": 1, "printavo-notification": 1 },
+    );
     assert.equal(filtered.sample.every((row: any) => row.mailboxId === ids.groupMailbox), true);
     assert.equal(messages.sent.length, 1);
     assert.equal(messages.received.length, 2);
@@ -341,6 +356,17 @@ test("all-mailbox analytics endpoints stay inside the server-derived ACL scope",
       `${base}/email-activity/mailboxes/${ids.protectedMailbox}/messages/${randomUUID()}/preview`,
     );
     assert.equal(deniedPreview.status, 404);
+    const selectedFiltered = await fetch(
+      `${base}/email-activity/filtered?${range}&mailboxId=${ids.groupMailbox}`,
+    );
+    assert.equal(selectedFiltered.status, 200);
+    const selectedFilteredBody = await selectedFiltered.json() as any;
+    assert.equal(selectedFilteredBody.total, 1);
+    assert.deepEqual(selectedFilteredBody.breakdown, [{ reason: "fixture-authorized", count: 1 }]);
+    assert.equal(
+      selectedFilteredBody.sample.every((row: any) => row.reason !== "printavo-notification"),
+      true,
+    );
 
     actor = users.emptyManager;
     const emptyResponses = await Promise.all(paths.map((path) => fetch(`${base}${path}`)));

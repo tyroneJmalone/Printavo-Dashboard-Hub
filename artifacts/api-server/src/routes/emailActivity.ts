@@ -433,7 +433,7 @@ router.get("/email-activity/filtered", requireCapability("view_email_activity"),
   const mailboxIds = await authorizedMailboxScope(req, res, range.mailboxId);
   if (!mailboxIds) return;
   const [{ breakdown, sample }, lookup] = await Promise.all([
-    filteredStats({ ...range, mailboxIds }),
+    filteredStats({ ...range, mailboxIds }, 50, !range.mailboxId),
     mailboxLookup(),
   ]);
   res.json({

@@ -37,7 +37,10 @@ export async function overviewStats(range: StatsRange, granularity: "daily" | "w
         count(*) FILTER (WHERE m.excluded_reason IS NULL AND m.direction = 'outbound')::int AS sent,
         count(*) FILTER (WHERE m.excluded_reason IS NULL AND m.direction = 'inbound')::int AS received,
         count(DISTINCT m.gmail_thread_id) FILTER (WHERE m.excluded_reason IS NULL)::int AS threads,
-        count(*) FILTER (WHERE m.excluded_reason IS NOT NULL)::int AS filtered
+        count(*) FILTER (
+          WHERE m.excluded_reason IS NOT NULL
+            AND m.excluded_reason <> 'printavo-notification'
+        )::int AS filtered
       FROM email_messages m
       WHERE ${base}
       GROUP BY m.mailbox_id
@@ -250,7 +253,14 @@ export async function recentMessages(range: StatsRange, limitPerDirection = 50) 
 }
 
 /** Filtered-bucket breakdown + a recent sample for spot-checking. */
-export async function filteredStats(range: StatsRange, sampleLimit = 50) {
+export async function filteredStats(
+  range: StatsRange,
+  sampleLimit = 50,
+  includeSystemNotifications = true,
+) {
+  const systemNotificationFilter = includeSystemNotifications
+    ? sql``
+    : sql`AND m.excluded_reason <> 'printavo-notification'`;
   const breakdown = (
     (await db.execute(sql`
       SELECT m.excluded_reason AS reason, count(*)::int AS count
@@ -258,6 +268,7 @@ export async function filteredStats(range: StatsRange, sampleLimit = 50) {
       WHERE m.excluded_reason IS NOT NULL
         AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
         ${mailboxFilter(range.mailboxIds)}
+        ${systemNotificationFilter}
       GROUP BY 1 ORDER BY 2 DESC
     `)) as unknown as Rows<{ reason: string; count: number }>
   ).rows;
@@ -269,6 +280,7 @@ export async function filteredStats(range: StatsRange, sampleLimit = 50) {
       WHERE m.excluded_reason IS NOT NULL
         AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
         ${mailboxFilter(range.mailboxIds)}
+        ${systemNotificationFilter}
       ORDER BY m.internal_date DESC
       LIMIT ${sampleLimit}
     `)) as unknown as Rows<{
