@@ -12,14 +12,14 @@ logical_id = "779132e0-0a35-4616-acbc-0f49226109cd"
 id = "Y0PG3VFvOR639daF8l3fw"
 uri = "file://exports/printavo-hub-plan-status.pdf"
 type = "pdf"
-title = "Printavo Hub — Plan, Status & Roadmap (PDF)"
-description = "Updated 4-page owner review PDF covering current status, priorities, roadmap, and operating rules."
+title = "Printavo Hub — Detailed Plan, Status & Roadmap (PDF)"
+description = "Expanded 11-page canonical status report with specific testing instructions, Tyler decisions, external dependencies, operational readiness checks, module-by-module status, current tasks, and roadmap."
 logical_id = "20719e8c-2734-4973-aa38-4481a8755d81"
-content_hash = "sha256:fa8573fbdddeb09d3c99f45c45e2edc89b4a2c86d98305ba2cbf3d01be8760bb"
-size = 187003
-mtime_ms = 1788918115356
-storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/20719e8c-2734-4973-aa38-4481a8755d81/d860bd09-20f9-49e9-9bef-51de5c01af96"
-storage_version_token = "1788918121677063"
+content_hash = "sha256:b4d3d06945ae32d3d80cefe1155e7a2fc710dc8136f029480156c5e1be6be980"
+size = 308694
+mtime_ms = 1788921986602
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/20719e8c-2734-4973-aa38-4481a8755d81/9ae0efa1-6882-431d-a910-98d3190c0b30"
+storage_version_token = "1788921993754022"
 content_type = "application/pdf"
 
 [[outputs]]
@@ -72,14 +72,14 @@ logical_id = "d6deb1b7-f8ee-441a-a7ff-c4f7d3d63ae3"
 id = "iXQvqxEa1G3JixaO-MnsF"
 uri = "file://exports/printavo-hub-plan-status.html"
 type = "text"
-title = "Printavo Hub — Plan, Status & Roadmap"
-description = "Updated owner review document with current status, recommended focus, roadmap, operational decisions, and team-review questions."
+title = "Printavo Hub — Detailed Plan, Status & Roadmap (HTML)"
+description = "Editable and print-ready source for the updated canonical Hub status report."
 logical_id = "97b59143-b8c4-4a97-a79c-0556eea91364"
-content_hash = "sha256:0958c59c977f25765358a972701fd5aeda52fc44604c5f21b2af749435ee3a80"
-size = 12203
-mtime_ms = 1788915408636
-storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/97b59143-b8c4-4a97-a79c-0556eea91364/d4ecb469-b370-4a2a-aa5c-47fc70d117a4"
-storage_version_token = "1788915483672238"
+content_hash = "sha256:5dae6e18fbd5663a593c8afbfc935acb0588e6a56c9a9fff03f21dd9706f0e4b"
+size = 29342
+mtime_ms = 1788921971762
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/97b59143-b8c4-4a97-a79c-0556eea91364/cbf9d738-0055-4c7e-91b4-979f86a46dd7"
+storage_version_token = "1788921994382876"
 content_type = "text/html"
 
 [[outputs]]

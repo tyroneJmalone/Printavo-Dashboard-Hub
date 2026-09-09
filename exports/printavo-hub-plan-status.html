@@ -6,11 +6,12 @@
 <title>Printavo Hub — Plan, Status & Roadmap</title>
 <style>
   @page{size:Letter;margin:.5in}*{box-sizing:border-box}body{margin:0;font-family:Inter,"Helvetica Neue",Arial,sans-serif;color:#172033;background:#eef2f6;line-height:1.45}main{max-width:1050px;margin:28px auto;background:#fff;padding:42px 48px;box-shadow:0 8px 30px #17203318}.eyebrow{color:#64748b;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}h1{font-size:34px;line-height:1.08;margin:8px 0 10px;letter-spacing:-.035em}h2{font-size:19px;margin:28px 0 10px;border-bottom:2px solid #172033;padding-bottom:6px}h3{font-size:14px;margin:0 0 4px}.lead{font-size:15px;color:#475569;max-width:820px}.callout{background:#f0fdf4;border:1px solid #86efac;border-left:5px solid #22c55e;border-radius:8px;padding:16px 18px;margin:22px 0}.decision{background:#fff7ed;border-color:#fdba74;border-left-color:#f97316}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{border:1px solid #dbe3ec;border-radius:8px;padding:13px 14px;break-inside:avoid}.card p,.row p{margin:3px 0;color:#526174;font-size:12px}.tag{display:inline-block;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}.live{background:#dcfce7;color:#166534}.validate{background:#fef3c7;color:#92400e}.evolve{background:#dbeafe;color:#1e40af}.planned{background:#ede9fe;color:#6b21a8}.deferred{background:#e2e8f0;color:#475569}.priority{counter-reset:item;list-style:none;padding:0}.priority li{counter-increment:item;position:relative;padding:0 0 14px 42px;break-inside:avoid}.priority li:before{content:counter(item);position:absolute;left:0;top:0;width:27px;height:27px;border-radius:50%;background:#172033;color:white;text-align:center;line-height:27px;font-weight:800}.priority b{display:block}.priority span{font-size:12px;color:#526174}.table{width:100%;border-collapse:collapse;font-size:11px}.table th{text-align:left;background:#f1f5f9;color:#334155}.table th,.table td{padding:8px;border:1px solid #dbe3ec;vertical-align:top}.checks{columns:2;padding-left:19px;font-size:12px}.checks li{margin-bottom:6px;break-inside:avoid}.foot{margin-top:28px;border-top:1px solid #cbd5e1;padding-top:10px;color:#64748b;font-size:10px}@media(max-width:700px){main{margin:0;padding:24px}.grid{grid-template-columns:1fr}.checks{columns:1}h1{font-size:28px}}@media print{body{background:#fff}main{margin:0;padding:0;box-shadow:none}.card{page-break-inside:avoid}a{color:inherit;text-decoration:none}}
+  .punch{border:1px solid #fdba74;background:#fffaf2;border-radius:9px;padding:15px 17px;margin:12px 0;break-inside:avoid}.punch h3{font-size:15px;color:#9a3412}.punch ol,.punch ul{margin:8px 0 0;padding-left:22px}.punch li{margin-bottom:8px}.punch li p{margin:2px 0;color:#526174}.teststeps{background:#fff;border-left:3px solid #f59e0b;padding:7px 10px;margin-top:6px;color:#475569;font-size:10.5px}.module{border:1px solid #dbe3ec;border-radius:9px;margin-bottom:12px;overflow:hidden;break-inside:avoid}.module-head{display:flex;justify-content:space-between;gap:12px;background:#f8fafc;border-bottom:1px solid #dbe3ec;padding:11px 14px}.module-body{padding:12px 14px}.module p{margin:3px 0 7px;color:#526174}.items{margin:5px 0 0;padding-left:18px}.items li{margin:4px 0}.input{background:#ffedd5;color:#9a3412}.blocked{background:#fee2e2;color:#991b1b}
 </style>
 </head>
 <body><main>
-<div class="eyebrow">Mint Printworks · Updated September 8, 2026</div>
-<h1>Printavo Hub — Plan, Status &amp; Roadmap</h1>
+<div class="eyebrow">Mint Printworks · Canonical owner status report · Updated September 8, 2026</div>
+<h1>Printavo Hub — Detailed Plan, Status &amp; Roadmap</h1>
 <p class="lead">The Hub has moved beyond a collection of ports into a working internal operating platform: shared Printavo data, sales intelligence, customer context, purchasing, production, quoting, shipping, loyalty, communications, AI support, and backups in one staff-controlled system.</p>
 
 <div class="callout">
@@ -24,6 +25,51 @@
   <div class="card"><span class="tag live">Core workflows built</span><h3>Purchasing, production, quoting &amp; shipping</h3><p>Vendor ordering, PO tracking, print queues, pricing, shipping estimates, label sorting, and supporting automation have substantial working implementations.</p></div>
   <div class="card"><span class="tag evolve">High-value tools evolving</span><h3>Customer, sales, email &amp; AI intelligence</h3><p>Client 360, pipeline, correspondence, knowledge, voice profiles, Ask AI, and AI quote drafting are available and should now be shaped by team feedback and measured use.</p></div>
   <div class="card"><span class="tag validate">Operational decisions</span><h3>Controlled automation and go-live settings</h3><p>Some write paths and outbound emails intentionally remain guarded, test-routed, dry-run, or single-owner until Tyler explicitly approves live operation.</p></div>
+</div>
+
+<h2>Punch list — specific items waiting for testing or input</h2>
+
+<div class="punch">
+  <h3>A. Waiting for Tyler or a teammate to test</h3>
+  <ol>
+    <li><b>Choose and test the 3–5 highest-impact daily workflows.</b><p>Invite one representative teammate to use the Hub without coaching. Record where they hesitate, leave the Hub, distrust the data, or cannot identify the next action.</p><div class="teststeps"><b>Suggested choices:</b> Sales—Pipeline, Customer Profile, Correspondence, Product Finder. Purchasing—Vendor Orders, PO Log, Tracking. Production—Print Queue, Queue Rules, Auto-Print. Quoting—Price Calculator, AI Quote Drafts.</div></li>
+    <li><b>Reorder Portal end-to-end acceptance.</b><p>Confirm the customer experience and internal staff handoff.</p><div class="teststeps"><b>Test:</b> open /reorder/ → search by a real customer email and company → verify order history, dates, filters, line items, sizes and prior quantities → change quantities → enter test contact details → submit → open Hub /reorder-requests → expand it → move New → In Progress → Done. Confirm the outbound email destination and test/live routing. Submission does not create a Printavo invoice.</div></li>
+    <li><b>Chipply Store import acceptance (CH1).</b><p>The next Chipply phase remains gated by acceptance of the current import and linking workflow.</p><div class="teststeps"><b>Test:</b> paste a representative “Web Store Closed” email → review/edit every parsed field → save → verify store detail → confirm correct $0 Printavo shell matches → verify Chipply dollars remain separate from Printavo revenue.</div></li>
+    <li><b>Production print workflow acceptance.</b><p>Validate the physical result and recovery path, not only the screen.</p><div class="teststeps"><b>Test:</b> with order <b>#22251 only</b>, run a manual Print Queue preview, verify attachments and exclusions, inspect Mint packing-slip/box-label output, then validate PrintNode in dry-run or ask mode. Confirm duplicate protection and intended status movement.</div></li>
+    <li><b>Shipping workflow acceptance.</b><p>Confirm the tools match the packages and documents staff actually handles.</p><div class="teststeps"><b>Test:</b> compare rates for a known shipment using actual box presets/address paste; upload a representative packing-slip/USPS-label set into Label Sorter and verify pairing, sort order and match report.</div></li>
+    <li><b>Client 360 and sales workspace acceptance.</b><p>Confirm customer profiles surface needed context without bouncing among Printavo, inboxes and spreadsheets.</p><div class="teststeps"><b>Test:</b> find a known customer → inspect spend, contacts, orders, top styles, decoration mix, niche, artwork/brand sheet, Chipply context and authorized correspondence → note the three facts/actions that should be most prominent.</div></li>
+  </ol>
+</div>
+
+<div class="punch">
+  <h3>B. Waiting for Tyler’s scoring or product decision</h3>
+  <ol>
+    <li><b>Score the 50 AI quote backtest drafts.</b> <span class="tag input">Current blocker</span><p>The backtest task is in progress but waiting for input. Record Keep/Drop and, where useful, a reason. This evidence should determine which drafting patterns deserve refinement.</p></li>
+    <li><b>Select the team’s 3–5 “must-win” workflows.</b><p>Rank by frequency, hours saved, error/risk reduction, revenue/customer impact and likely adoption. This decision should control the next refinement cycle.</p></li>
+    <li><b>Decide Mint Bucks live-email and poller ownership.</b><p>Choose whether the Hub or standalone app owns polling, turn the other poller off, set live email mode only in the intended environment, restart and test carefully. Manual/test polls can consume one-shot ledgers.</p></li>
+    <li><b>Decide Printavo ⇄ moMINTum automatic sync ownership.</b><p>The automatic sync flag may be enabled in one environment only. Confirm development or production ownership—never both.</p></li>
+    <li><b>Approve which guarded automations may move beyond ask/dry-run.</b><p>Vendor submission, status rules, Print Queue rules, Auto-Print and Printavo task writes should be approved separately after the corresponding workflow test.</p></li>
+    <li><b>Decide whether the Hub is ready to publish for broader staff use.</b><p>Publishing should follow production schema verification, settings review, backup readiness and explicit ownership of pollers/email modes.</p></li>
+  </ol>
+</div>
+
+<div class="punch">
+  <h3>C. Waiting on outside input or an external audit</h3>
+  <ul>
+    <li><b>Fireflies visibility audit:</b> determine what a Business Team Admin read-only key can see, especially private meetings, before choosing central versus per-user access.</li>
+    <li><b>Chipply automation answer:</b> confirm whether scheduled export emails or a supported data feed can replace manual import. The current review/import workflow remains useful either way.</li>
+    <li><b>Carrier/vendor behavior:</b> live rate, inventory, tracking and order behavior depends on connected providers; record exceptions by provider and workflow.</li>
+  </ul>
+</div>
+
+<div class="punch">
+  <h3>D. Operational readiness checks before relying on the Hub</h3>
+  <ul>
+    <li><b>Offsite backups:</b> establish nightly independent copies with retention, visible success/failure, integrity checks and a practical restore/openability drill. Current export is valuable but is not a one-click Printavo restore.</li>
+    <li><b>Production database:</b> verify all new Hub-owned tables exist before or during publishing.</li>
+    <li><b>Email modes:</b> verify Reorder Portal and Mint Bucks destinations before customer-facing use; test routing should remain obvious and intentional.</li>
+    <li><b>Real-write guard:</b> all Printavo write testing uses <b>#22251 (“TEST DO NOT ORDER”) only</b>. Never use #19004.</li>
+  </ul>
 </div>
 
 <h2>Recommended focus for the team review</h2>
@@ -48,6 +94,45 @@
 <tr><td>Team &amp; Shipping</td><td><span class="tag live">Built</span></td><td>moMINTum tasks, rate comparison, packing-slip/label sorting.</td><td>Validate actual staff handoffs and carrier-rate workflows.</td></tr>
 <tr><td>Mint Bucks</td><td><span class="tag validate">Controlled</span></td><td>Full customer credit, issue/redemption, reward, report, certificate, balance-check, and settings workflows.</td><td>Choose email and poller ownership; avoid dual automation.</td></tr>
 <tr><td>Reorder Portal</td><td><span class="tag evolve">New</span></td><td>Separate customer-facing portal with email/company lookup, reorder submission, shareable search links, and a Hub staff inbox.</td><td>Gather usage feedback first; private links/check-in remain deferred.</td></tr>
+</table>
+
+<h2>Detailed module status</h2>
+
+<div class="module"><div class="module-head"><h3>Foundation — Printavo mirror, sync and access</h3><span class="tag live">Built</span></div><div class="module-body"><p>The shared foundation mirrors Printavo data into PostgreSQL for faster reporting and safer cross-module use. Recent activity is polled frequently; deeper checks and historical processes fill the longer-term record. Every Hub page receives global sync visibility. Staff identity, allowlisting, roles, module availability and administrative controls support staged rollout.</p><ul class="items"><li>Sync, normalization, hashing, change events, run state, retries and freshness indicators are implemented.</li><li>Module visibility allows independent rollout; email data has additional role/group/thread controls.</li><li>Printavo lacks a true updated-since feed, so the sync uses bounded recrawls and deeper scheduled verification.</li></ul></div></div>
+
+<div class="module"><div class="module-head"><h3>Dashboard, Reports and Payments</h3><span class="tag validate">Staff validation</span></div><div class="module-body"><p>The Dashboard provides orientation and shortcuts. Reports and Payments expose local order, revenue and cash-history data without repeatedly querying Printavo. The technical foundation is present; the remaining work is deciding which metrics, saved reports and exceptions matter most by role.</p><p><b>Next:</b> collect each reviewer’s three most frequent business questions and convert only recurring ones into reports or presets.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Ask AI, Knowledge Base, AI Connections and Voice Profiles</h3><span class="tag evolve">Evolving</span></div><div class="module-body"><p>Ask AI turns plain-English questions into guarded read-only queries. Knowledge Base stores human-approved SOPs and reference knowledge. AI Connections governs consumers, auditing, rate limits and kill switches. Voice Profiles support appropriate drafting.</p><ul class="items"><li>AI answers remain read-only and reviewable.</li><li>Quote and correspondence drafting assist rather than autonomously send.</li><li>Conversation learning is proposed but must remain draft-first and human-approved.</li><li>The 50-draft scoring exercise is the immediate evidence gate.</li></ul></div></div>
+
+<div class="module"><div class="module-head"><h3>Email Activity, Email Access and Correspondence</h3><span class="tag evolve">Evolving</span></div><div class="module-body"><p>Authorized mailbox activity and customer correspondence can be viewed in the Hub. Admins manage broad visibility while managers/staff are limited by mailbox groups, ownership or explicit thread grants. Customer context aggregates only correspondence the user is authorized to retrieve.</p><p><b>Next:</b> validate customer matching, access boundaries, thread summaries and next actions before adding more communication channels.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Client 360 — Directory, profiles, brand sheets and niches</h3><span class="tag validate">Staff validation</span></div><div class="module-body"><p>The client workspace consolidates customer search, lifetime/YTD spend, frequency, average pieces, top styles, decoration mix, order history, contacts, niches, Chipply context, brand/artwork and authorized correspondence. Niche tools support inline/bulk assignment and segment reporting.</p><p><b>Next:</b> decide the default profile hierarchy and which facts should trigger a follow-up, recommendation or warning.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Sales — Product Finder, Pantones, Collections, Pipeline and Status Activity</h3><span class="tag evolve">Evolving</span></div><div class="module-body"><p>Product Finder searches vendor catalogs and live inventory; Pantones supports color decisions; Collections saves curated products; Pipeline and Status Activity show active work and movement. Together these can become the daily sales workspace.</p><ul class="items"><li>Inventory remains live rather than cached.</li><li>Catalog corrections and shared color data should survive refreshes and later serve other Mint tools.</li><li>Collections can later support sell sheets, customer links, calculator handoff or separately reviewed Printavo writes.</li></ul><p><b>Next:</b> staff feedback on saved views, ownership, filters, product comparison and next actions.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Chipply Stores</h3><span class="tag validate">Tyler test</span></div><div class="module-body"><p>CH1 imports “Web Store Closed” emails through required review, stores Chipply financials separately, detects candidate Printavo groups and derives links to $0 production shells. Chipply dollars never mix into Printavo revenue.</p><p><b>After acceptance:</b> customer-profile context, separate reporting, CSV imports, customer reassignment and potentially hands-off ingestion.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Public Reorder Portal and Hub Reorder Requests</h3><span class="tag validate">New · test</span></div><div class="module-body"><p>The customer-facing portal supports no-login email/company lookup, eligible prior-order browsing, quantity selection, request submission and shareable saved-search URLs. Hub staff manage requests through New, In Progress and Done.</p><ul class="items"><li>Writes re-validate invoice eligibility and line-item ownership.</li><li>Share links are saved public searches, not private authenticated links.</li><li>Submission stores/emails a follow-up request; it does not create a Printavo invoice.</li><li>Private links, check-in/verification and invoice creation are deferred pending feedback.</li></ul></div></div>
+
+<div class="module"><div class="module-head"><h3>Purchasing — Vendor Orders, PO Log, Tracking and Status Rules</h3><span class="tag live">Built</span></div><div class="module-body"><p>Purchasing covers needs-ordering discovery, SanMar/S&amp;S pricing and inventory, cart and warehouse selection, PO creation, guarded Printavo updates, electronic vendor submission, tracking and confirmed status suggestions. Both vendor paths have live verification and duplicate/ambiguous-result safeguards.</p><p><b>Open:</b> staff exception validation and workflow polish. “Reorder Scan” is a separate deferred placeholder—not the customer Reorder Portal.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Production — Print Queue, Queue Rules, Auto-Print, packing slips and labels</h3><span class="tag validate">Tyler test</span></div><div class="module-body"><p>The suite supports filtered workorder preparation, presets, exclusions, attachments, bulk status moves, off/ask/auto rules, PrintNode auto-print, duplicate protection and Mint-rendered packing slips/box labels.</p><p><b>Current posture:</b> safety-first. Validate output and exceptions with #22251 before broader automation. Color Library remains deferred.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Quoting — Price Calculator and AI Quote Drafts</h3><span class="tag evolve">Evolving</span></div><div class="module-body"><p>Price Calculator provides matrices, CSV import, vendor costs, legacy-compatible math, detailed breakdowns and image export. AI Quote Drafts prepares reviewable customer, pricing, note and matrix drafts.</p><p><b>Next:</b> finish keep/drop scoring and improve proven patterns before any expansion toward automatic quote creation.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Team — moMINTum and Printavo task sync</h3><span class="tag input">Ownership decision</span></div><div class="module-body"><p>The Hub links to moMINTum, sharing the standalone app’s live database. Printavo task twins support routing, two-way completion, deletion reconciliation and guarded send-to-Printavo.</p><p><b>Hard rule:</b> automatic task sync may run in one Hub environment only. Choose development or production ownership.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Shipping — Rate Estimator and Label Sorter</h3><span class="tag validate">Staff validation</span></div><div class="module-body"><p>Rate Estimator compares USPS/UPS options using weights, packages and address parsing. Label Sorter organizes packing slips by configurable fields and pairs USPS labels one-to-one with a match report.</p><p><b>Next:</b> validate real package profiles, carrier responses and production sorting sequences.</p></div></div>
+
+<div class="module"><div class="module-head"><h3>Mint Bucks</h3><span class="tag input">Go-live decision</span></div><div class="module-body"><p>The complete store-credit module includes dashboard, customers, credits, redemptions, reward rules, branded emails, reports, certificates, balance check and settings. It shares live data with the standalone app.</p><ul class="items"><li>Email is controlled by test/live mode.</li><li>Only one app owns polling; stop the old owner before starting the new.</li><li>Manual/test polls can consume shared one-shot claims.</li><li>Never schema-push the shared Mint Bucks database.</li></ul></div></div>
+
+<div class="module"><div class="module-head"><h3>Backups and recovery</h3><span class="tag evolve">Strengthen</span></div><div class="module-body"><p>The Hub creates a broad portable Printavo archive, including historical records and accessible mirrored files. This improves recoverability but does not restore directly into Printavo.</p><p><b>Next:</b> dated offsite copies, retention, failure visibility, integrity verification and a written restore drill.</p></div></div>
+
+<h2>Current task state</h2>
+<table class="table">
+<tr><th>Item</th><th>Status</th><th>Meaning</th></tr>
+<tr><td>Score 50 backtest drafts and record Keep/Drop</td><td><span class="tag input">In progress · waiting</span></td><td>Blocked until Tyler completes scoring; results guide further quote-drafting refinement.</td></tr>
+<tr><td>Let Knowledge Base learn from real conversations</td><td><span class="tag planned">Proposed</span></td><td>Would analyze permitted customer-linked conversations, skip bulk mail and create human-review suggestions—not publish automatically.</td></tr>
 </table>
 
 <h2>Near-term roadmap</h2>
@@ -86,5 +171,5 @@
   <li>Customer correspondence access must be enforced before retrieval, not only hidden in the UI.</li>
 </ul>
 
-<div class="foot">This is the canonical plan/status document and supersedes the August 7 snapshot. It is intended for owner review and roadmap decisions. See the companion “Printavo Hub — Complete Synopsis &amp; Team Feedback Guide” for page-level detail.</div>
+<div class="foot">This is the canonical detailed Printavo Hub plan/status document and supersedes the shorter September 8 version and the August 7 snapshot. See the companion “Printavo Hub — Complete Synopsis &amp; Team Feedback Guide” for page-level detail.</div>
 </main></body></html>
