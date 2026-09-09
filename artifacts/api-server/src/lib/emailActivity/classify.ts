@@ -112,6 +112,10 @@ const VERDICT_SQL = sql`
       SELECT 1 FROM email_exclusion_rules r
       WHERE r.kind = 'domain' AND r.value = email_messages.counterpart_domain
     ) THEN 'rule-domain'
+    WHEN email_messages.direction = 'outbound'
+      AND email_messages.from_address = 'andrew@mintprintworks.com'
+      AND email_messages.subject ~* '(^proof[[:space:]]+ready|^payment[[:space:]]+received|quote[[:space:]]*&[[:space:]]*artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|artwork[[:space:]]*/[[:space:]]*proof[[:space:]]+approved|^contract screen print order is ready!)'
+      THEN 'printavo-notification'
     WHEN email_messages.direction = 'inbound' AND email_messages.has_list_unsubscribe THEN 'list-unsubscribe'
     WHEN email_messages.direction = 'inbound' AND email_messages.is_auto_submitted THEN 'auto-submitted'
     WHEN email_messages.direction = 'inbound' AND email_messages.from_address ~* '^(no-?reply|do-?not-?reply|noreply|donotreply|mailer-daemon|postmaster|notifications?|alerts?|bounces?)[@.+_-]' THEN 'no-reply'

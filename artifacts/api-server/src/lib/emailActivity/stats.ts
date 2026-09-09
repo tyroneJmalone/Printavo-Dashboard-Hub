@@ -195,24 +195,45 @@ export async function heatmapStats(range: StatsRange) {
   return rows;
 }
 
-/** Most recent counted messages in each direction for the selected range. */
+/** Most recent counted threads in each direction, with full-thread direction counts. */
 export async function recentMessages(range: StatsRange, limitPerDirection = 50) {
   const rows = (
     (await db.execute(sql`
-      WITH ranked AS (
+      WITH range_messages AS (
         SELECT m.id, m.mailbox_id, m.gmail_thread_id, m.subject,
           m.counterpart_address, m.direction, m.internal_date,
-          row_number() OVER (PARTITION BY m.direction ORDER BY m.internal_date DESC) AS direction_rank
+          row_number() OVER (
+            PARTITION BY m.mailbox_id, m.gmail_thread_id, m.direction
+            ORDER BY m.internal_date DESC
+          ) AS thread_direction_rank
         FROM email_messages m
         WHERE m.excluded_reason IS NULL
           AND m.internal_date >= ${range.start} AND m.internal_date < ${range.end}
           ${mailboxFilter(range.mailboxIds)}
+      ),
+      direction_latest AS (
+        SELECT *,
+          row_number() OVER (PARTITION BY direction ORDER BY internal_date DESC) AS direction_rank
+        FROM range_messages
+        WHERE thread_direction_rank = 1
+      ),
+      candidates AS (
+        SELECT *
+        FROM direction_latest
+        WHERE direction_rank <= ${limitPerDirection}
       )
-      SELECT id, mailbox_id, gmail_thread_id, subject, counterpart_address,
-        direction, internal_date
-      FROM ranked
-      WHERE direction_rank <= ${limitPerDirection}
-      ORDER BY internal_date DESC
+      SELECT c.id, c.mailbox_id, c.gmail_thread_id, c.subject, c.counterpart_address,
+        c.direction, c.internal_date,
+        count(*) FILTER (WHERE t.direction = 'outbound')::int AS sent,
+        count(*) FILTER (WHERE t.direction = 'inbound')::int AS received
+      FROM candidates c
+      JOIN email_messages t
+        ON t.mailbox_id = c.mailbox_id
+       AND t.gmail_thread_id = c.gmail_thread_id
+       AND t.excluded_reason IS NULL
+      GROUP BY c.id, c.mailbox_id, c.gmail_thread_id, c.subject,
+        c.counterpart_address, c.direction, c.internal_date, c.direction_rank
+      ORDER BY c.direction, c.direction_rank
     `)) as unknown as Rows<{
       id: string;
       mailbox_id: string;
@@ -221,6 +242,8 @@ export async function recentMessages(range: StatsRange, limitPerDirection = 50) 
       counterpart_address: string;
       direction: "inbound" | "outbound";
       internal_date: string | Date;
+      sent: number;
+      received: number;
     }>
   ).rows;
   return rows;

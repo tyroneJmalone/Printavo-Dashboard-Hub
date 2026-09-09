@@ -34,7 +34,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Mail, Clock, Flame, Filter, AlertTriangle, Settings2, Users, TrendingUp } from "lucide-react";
+import { Mail, Clock, Flame, Filter, AlertTriangle, Settings2, Users, TrendingUp, X } from "lucide-react";
 
 /**
  * Email Activity dashboard for staff with the analytics capability. Sent/received/thread stats per
@@ -50,6 +50,7 @@ const REASON_LABELS: Record<string, string> = {
   "no-reply": "No-reply sender",
   "gmail-category": "Gmail category (promo/social/…)",
   "auto-submitted": "Auto-submitted / bulk precedence",
+  "printavo-notification": "Printavo internal notification",
 };
 
 function isoDay(d: Date): string {
@@ -99,32 +100,26 @@ function SectionTitle({ icon: Icon, children }: { icon: React.ComponentType<any>
   );
 }
 
-function gmailThreadUrl(email: string | null | undefined, gmailThreadId: string): string {
-  const account = email ? encodeURIComponent(email) : "0";
-  return `https://mail.google.com/mail/u/${account}/#all/${encodeURIComponent(gmailThreadId)}`;
-}
-
 function EmailSubjectLink({
   id,
   mailboxId,
   email,
-  gmailThreadId,
   subject,
   className = "",
 }: {
   id: string;
   mailboxId: string;
   email?: string | null;
-  gmailThreadId: string;
   subject: string;
   className?: string;
 }) {
-  const anchorRef = useRef<HTMLAnchorElement>(null);
+  const anchorRef = useRef<HTMLButtonElement>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
   const [position, setPosition] = useState({ left: 12, top: 12, above: false });
   const { data, isLoading, isError } = useGetEmailActivityMessagePreview(mailboxId, id, {
     query: {
-      enabled: showPreview,
+      enabled: showPreview || showEmail,
       queryKey: getGetEmailActivityMessagePreviewQueryKey(mailboxId, id),
       staleTime: 30_000,
       gcTime: 60_000,
@@ -145,19 +140,21 @@ function EmailSubjectLink({
 
   return (
     <>
-      <a
+      <button
         ref={anchorRef}
-        href={gmailThreadUrl(email, gmailThreadId)}
-        target="_blank"
-        rel="noreferrer"
+        type="button"
+        onClick={() => {
+          setShowPreview(false);
+          setShowEmail(true);
+        }}
         onMouseEnter={openPreview}
         onMouseLeave={() => setShowPreview(false)}
         onFocus={openPreview}
         onBlur={() => setShowPreview(false)}
-        className={`text-slate-200 hover:text-[#10b981] hover:underline underline-offset-2 ${className}`}
+        className={`max-w-full truncate text-left text-slate-200 hover:text-[#10b981] hover:underline underline-offset-2 ${className}`}
       >
         {subject || "(no subject)"}
-      </a>
+      </button>
       {showPreview &&
         createPortal(
           <div
@@ -175,6 +172,34 @@ function EmailSubjectLink({
             {isLoading && <span className="text-slate-500">Loading email body…</span>}
             {isError && <span className="text-rose-300">Email body preview is unavailable.</span>}
             {data?.body}
+          </div>,
+          document.body,
+        )}
+      {showEmail &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setShowEmail(false);
+            }}
+          >
+            <div role="dialog" aria-modal="true" aria-label={subject || "Email"} className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-700 bg-[#0f172a] shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-5 py-4">
+                <div>
+                  <div className="text-[11px] uppercase tracking-wide text-slate-500">Email message</div>
+                  <h2 className="mt-1 text-base font-semibold text-white">{subject || "(no subject)"}</h2>
+                  {email && <div className="mt-1 text-xs text-slate-500">Mailbox: {email}</div>}
+                </div>
+                <button type="button" onClick={() => setShowEmail(false)} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Close email">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="min-h-40 flex-1 overflow-y-auto whitespace-pre-wrap px-5 py-4 text-sm leading-6 text-slate-300 custom-scrollbar">
+                {isLoading && <span className="text-slate-500">Loading email body…</span>}
+                {isError && <span className="text-rose-300">Email body is unavailable.</span>}
+                {data?.body}
+              </div>
+            </div>
           </div>,
           document.body,
         )}
@@ -202,7 +227,6 @@ function MessageList({
                 id={message.id}
                 mailboxId={message.mailboxId}
                 email={message.email}
-                gmailThreadId={message.gmailThreadId}
                 subject={message.subject}
               />
             </div>
@@ -215,6 +239,16 @@ function MessageList({
                   hour: "numeric",
                   minute: "2-digit",
                 })}
+              </span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-3 text-[11px] tabular-nums">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                {message.sent} sent
+              </span>
+              <span className="flex items-center gap-1 text-sky-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+                {message.received} received
               </span>
             </div>
           </div>
@@ -678,7 +712,6 @@ export default function EmailActivity() {
                         id={t.id}
                         mailboxId={t.mailboxId}
                         email={t.email}
-                        gmailThreadId={t.gmailThreadId}
                         subject={t.subject}
                       />
                     </div>
@@ -752,7 +785,6 @@ export default function EmailActivity() {
                           id={s.id}
                           mailboxId={s.mailboxId}
                           email={s.email}
-                          gmailThreadId={s.gmailThreadId}
                           subject={s.subject}
                         />
                       </td>

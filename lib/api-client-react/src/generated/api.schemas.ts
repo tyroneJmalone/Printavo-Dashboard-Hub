@@ -5454,6 +5454,10 @@ export interface EmailActivityMessageSummary {
   counterpart: string;
   direction: EmailActivityMessageSummaryDirection;
   internalDate: string;
+  /** Counted outbound messages on the full thread */
+  sent: number;
+  /** Counted inbound messages on the full thread */
+  received: number;
 }
 
 export interface EmailActivityMessagesResponse {

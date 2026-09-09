@@ -9704,7 +9704,9 @@ export const ListEmailActivityMessagesResponse = zod.object({
   "subject": zod.string(),
   "counterpart": zod.string(),
   "direction": zod.enum(['inbound', 'outbound']),
-  "internalDate": zod.string()
+  "internalDate": zod.string(),
+  "sent": zod.number().describe('Counted outbound messages on the full thread'),
+  "received": zod.number().describe('Counted inbound messages on the full thread')
 })),
   "received": zod.array(zod.object({
   "id": zod.string(),
@@ -9714,7 +9716,9 @@ export const ListEmailActivityMessagesResponse = zod.object({
   "subject": zod.string(),
   "counterpart": zod.string(),
   "direction": zod.enum(['inbound', 'outbound']),
-  "internalDate": zod.string()
+  "internalDate": zod.string(),
+  "sent": zod.number().describe('Counted outbound messages on the full thread'),
+  "received": zod.number().describe('Counted inbound messages on the full thread')
 }))
 })
 

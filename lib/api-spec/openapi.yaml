@@ -12148,7 +12148,7 @@ components:
             $ref: "#/components/schemas/EmailFilteredSample"
     EmailActivityMessageSummary:
       type: object
-      required: [id, mailboxId, email, gmailThreadId, subject, counterpart, direction, internalDate]
+      required: [id, mailboxId, email, gmailThreadId, subject, counterpart, direction, internalDate, sent, received]
       properties:
         id: { type: string }
         mailboxId: { type: string }
@@ -12158,6 +12158,8 @@ components:
         counterpart: { type: string }
         direction: { type: string, enum: [inbound, outbound] }
         internalDate: { type: string }
+        sent: { type: integer, description: Counted outbound messages on the full thread }
+        received: { type: integer, description: Counted inbound messages on the full thread }
     EmailActivityMessagesResponse:
       type: object
       required: [sent, received]

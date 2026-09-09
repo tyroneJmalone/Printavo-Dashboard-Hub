@@ -471,6 +471,8 @@ router.get("/email-activity/messages", requireCapability("view_email_activity"),
     counterpart: row.counterpart_address,
     direction: row.direction,
     internalDate: new Date(row.internal_date).toISOString(),
+    sent: row.sent,
+    received: row.received,
   });
   return res.json({
     sent: rows.filter((row) => row.direction === "outbound").map(serialize),

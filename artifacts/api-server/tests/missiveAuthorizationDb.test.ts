@@ -253,6 +253,7 @@ test("every analytics route registers the capability gate", async () => {
     "/email-activity/unanswered",
     "/email-activity/heatmap",
     "/email-activity/filtered",
+    "/email-activity/messages",
     "/email-activity/customers",
     "/email-activity/deals-report",
   ];
@@ -301,13 +302,14 @@ test("all-mailbox analytics endpoints stay inside the server-derived ACL scope",
     "/email-activity/unanswered",
     `/email-activity/heatmap?${range}`,
     `/email-activity/filtered?${range}`,
+    `/email-activity/messages?${range}`,
     `/email-activity/customers?${range}`,
   ];
 
   try {
     const responses = await Promise.all(paths.map((path) => fetch(`${base}${path}`)));
-    assert.deepEqual(responses.map((response) => response.status), [200, 200, 200, 200, 200, 200]);
-    const [stats, responseTimes, unanswered, heatmap, filtered, customers] =
+    assert.deepEqual(responses.map((response) => response.status), [200, 200, 200, 200, 200, 200, 200]);
+    const [stats, responseTimes, unanswered, heatmap, filtered, messages, customers] =
       await Promise.all(responses.map((response) => response.json())) as any[];
 
     assert.deepEqual(stats.people.map((row: any) => row.mailboxId), [ids.groupMailbox]);
@@ -318,6 +320,16 @@ test("all-mailbox analytics endpoints stay inside the server-derived ACL scope",
     assert.equal(heatmap.cells.reduce((sum: number, cell: any) => sum + cell.sent + cell.received, 0), 3);
     assert.deepEqual(filtered.breakdown, [{ reason: "fixture-authorized", count: 1 }]);
     assert.equal(filtered.sample.every((row: any) => row.mailboxId === ids.groupMailbox), true);
+    assert.equal(messages.sent.length, 1);
+    assert.equal(messages.received.length, 2);
+    assert.deepEqual(
+      { sent: messages.sent[0].sent, received: messages.sent[0].received },
+      { sent: 1, received: 1 },
+    );
+    assert.equal(
+      [...messages.sent, ...messages.received].every((row: any) => row.mailboxId === ids.groupMailbox),
+      true,
+    );
     assert.equal(customers.customers.length, 1);
     assert.equal(customers.customers[0].messages, 2);
 
@@ -325,17 +337,22 @@ test("all-mailbox analytics endpoints stay inside the server-derived ACL scope",
       `${base}/email-activity/stats?granularity=daily&${range}&mailboxId=${ids.protectedMailbox}`,
     );
     assert.equal(denied.status, 404);
+    const deniedPreview = await fetch(
+      `${base}/email-activity/mailboxes/${ids.protectedMailbox}/messages/${randomUUID()}/preview`,
+    );
+    assert.equal(deniedPreview.status, 404);
 
     actor = users.emptyManager;
     const emptyResponses = await Promise.all(paths.map((path) => fetch(`${base}${path}`)));
-    assert.deepEqual(emptyResponses.map((response) => response.status), [200, 200, 200, 200, 200, 200]);
-    const [emptyStats, emptyResponseTimes, emptyUnanswered, emptyHeatmap, emptyFiltered, emptyCustomers] =
+    assert.deepEqual(emptyResponses.map((response) => response.status), [200, 200, 200, 200, 200, 200, 200]);
+    const [emptyStats, emptyResponseTimes, emptyUnanswered, emptyHeatmap, emptyFiltered, emptyMessages, emptyCustomers] =
       await Promise.all(emptyResponses.map((response) => response.json())) as any[];
     assert.deepEqual(emptyStats.people, []);
     assert.deepEqual(emptyResponseTimes.people, []);
     assert.deepEqual(emptyUnanswered.threads, []);
     assert.deepEqual(emptyHeatmap.cells, []);
     assert.equal(emptyFiltered.total, 0);
+    assert.deepEqual(emptyMessages, { sent: [], received: [] });
     assert.deepEqual(emptyCustomers.customers, []);
   } finally {
     await new Promise<void>((resolve, reject) =>

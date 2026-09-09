@@ -2,7 +2,7 @@ import { db, emailMailboxesTable, emailMessagesTable, emailActivitySettingsTable
 import { eq, sql } from "drizzle-orm";
 import type { Logger } from "pino";
 import { GmailMailboxClient, GmailApiError, gmailConfigured } from "./gmail";
-import { parseGmailMessage, classifyMessages } from "./classify";
+import { parseGmailMessage, classifyMessages, reclassifyAll } from "./classify";
 import { runEmailMatching } from "./matching";
 
 /**
@@ -22,6 +22,7 @@ const FETCH_CONCURRENCY = 6;
 const MAX_PAGES_PER_TICK = 20;
 
 let syncActive = false;
+let classificationRefreshed = false;
 export function isEmailSyncActive(): boolean {
   return syncActive;
 }
@@ -202,6 +203,11 @@ export async function runEmailSync(log: Logger): Promise<{ ran: boolean; message
     if (mailboxes.length === 0) return { ran: false, message: "No active mailboxes configured" };
     for (const mailbox of mailboxes) {
       await syncMailbox(mailbox, log);
+    }
+    if (!classificationRefreshed) {
+      const reclassified = await reclassifyAll();
+      classificationRefreshed = true;
+      log.info({ reclassified }, "email activity classification rules refreshed");
     }
     // Correlation pass: link new threads to Printavo customers/invoices.
     // Never throws — a matching failure must not mark the sync as failed.
