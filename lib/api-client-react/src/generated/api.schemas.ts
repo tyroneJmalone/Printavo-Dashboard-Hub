@@ -962,11 +962,23 @@ export interface PrintavoOrderHistory {
   pagination: PrintavoOrderHistoryPagination;
 }
 
+export type ReportActivityStatsByOrderType = {
+  invoice: number;
+  quote: number;
+};
+
+export interface ReportActivityStats {
+  affectedOrders: number;
+  changes: number;
+  byOrderType: ReportActivityStatsByOrderType;
+}
+
 export interface ReportStats {
   orders: number;
   revenue: number;
   quantity: number;
   avgOrderValue: number;
+  activity: ReportActivityStats;
 }
 
 export interface ReportFiltersEcho { [key: string]: unknown }
@@ -982,6 +994,8 @@ export interface ReportOrderSummary {
   nickname: string | null;
   /** @nullable */
   customerName: string | null;
+  /** @nullable */
+  ownerEmail: string | null;
   total: number;
   qty: number;
   /** @nullable */
@@ -992,6 +1006,9 @@ export interface ReportOrderSummary {
   productionDueAt: string | null;
   /** @nullable */
   dueAt: string | null;
+  activityCount: number;
+  /** @nullable */
+  latestActivityAt: string | null;
 }
 
 export interface OrdersReport {
@@ -3044,6 +3061,7 @@ export interface ReportFilterOptions {
   colors: string[];
   styleNumbers: string[];
   tiers: string[];
+  owners: string[];
   paymentTypes: string[];
 }
 
@@ -6676,6 +6694,26 @@ export type SearchParamParameter = string;
  */
 export type ExcludeParamParameter = string;
 
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+export type ActivityOnlyParamParameter = boolean;
+
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+export type ActivityStartParamParameter = string;
+
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+export type ActivityEndParamParameter = string;
+
+/**
+ * Current invoice/quote owner email
+ */
+export type ActivityOwnerParamParameter = string;
+
 export type ListChangeEventsParams = {
 /**
  * @minimum 1
@@ -7052,6 +7090,22 @@ search?: SearchParamParameter;
  */
 exclude?: ExcludeParamParameter;
 /**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
+/**
  * @minimum 1
  * @maximum 500
  */
@@ -7101,6 +7155,22 @@ search?: SearchParamParameter;
  * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
  */
 exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
 };
 
 export type GetPricingMatrixBreakdownParams = {
@@ -7142,6 +7212,22 @@ search?: SearchParamParameter;
  * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
  */
 exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
 };
 
 export type GetImprintsByTierParams = {
@@ -7183,6 +7269,22 @@ search?: SearchParamParameter;
  * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
  */
 exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
 };
 
 export type GetOrderQuantityBreakdownParams = {
@@ -7224,6 +7326,22 @@ search?: SearchParamParameter;
  * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
  */
 exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
 };
 
 export type GetStyleNumberBreakdownParams = {
@@ -7265,6 +7383,22 @@ search?: SearchParamParameter;
  * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
  */
 exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
 };
 
 export type GetBrandBreakdownParams = {
@@ -7306,6 +7440,22 @@ search?: SearchParamParameter;
  * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
  */
 exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
 };
 
 export type GetColorBreakdownParams = {
@@ -7347,6 +7497,22 @@ search?: SearchParamParameter;
  * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
  */
 exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
 };
 
 export type GetPaymentsReportParams = {

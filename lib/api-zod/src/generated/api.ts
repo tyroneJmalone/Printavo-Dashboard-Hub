@@ -4045,6 +4045,10 @@ export const GetOrdersReportQueryParams = zod.object({
   "maxTotal": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
   "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email'),
   "limit": zod.coerce.number().min(1).max(getOrdersReportQueryLimitMax).optional(),
   "offset": zod.coerce.number().min(getOrdersReportQueryOffsetMin).optional()
 })
@@ -4055,7 +4059,15 @@ export const GetOrdersReportResponse = zod.object({
   "orders": zod.number(),
   "revenue": zod.number(),
   "quantity": zod.number(),
-  "avgOrderValue": zod.number()
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+})
+})
 }),
   "total": zod.number(),
   "limit": zod.number(),
@@ -4067,12 +4079,15 @@ export const GetOrdersReportResponse = zod.object({
   "statusName": zod.string().nullable(),
   "nickname": zod.string().nullable(),
   "customerName": zod.string().nullable(),
+  "ownerEmail": zod.string().nullable(),
   "total": zod.number(),
   "qty": zod.number(),
   "createdAt": zod.string().nullable(),
   "invoiceAt": zod.string().nullable(),
   "productionDueAt": zod.string().nullable(),
-  "dueAt": zod.string().nullable()
+  "dueAt": zod.string().nullable(),
+  "activityCount": zod.number(),
+  "latestActivityAt": zod.coerce.date().nullable()
 }))
 })
 
@@ -4100,7 +4115,11 @@ export const GetStatusBreakdownQueryParams = zod.object({
   "minTotal": zod.coerce.number().optional(),
   "maxTotal": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
-  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email')
 })
 
 export const GetStatusBreakdownResponse = zod.object({
@@ -4109,7 +4128,15 @@ export const GetStatusBreakdownResponse = zod.object({
   "orders": zod.number(),
   "revenue": zod.number(),
   "quantity": zod.number(),
-  "avgOrderValue": zod.number()
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+})
+})
 }),
   "rows": zod.array(zod.object({
   "label": zod.string(),
@@ -4144,7 +4171,11 @@ export const GetPricingMatrixBreakdownQueryParams = zod.object({
   "minTotal": zod.coerce.number().optional(),
   "maxTotal": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
-  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email')
 })
 
 export const GetPricingMatrixBreakdownResponse = zod.object({
@@ -4153,7 +4184,15 @@ export const GetPricingMatrixBreakdownResponse = zod.object({
   "orders": zod.number(),
   "revenue": zod.number(),
   "quantity": zod.number(),
-  "avgOrderValue": zod.number()
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+})
+})
 }),
   "rows": zod.array(zod.object({
   "label": zod.string(),
@@ -4188,7 +4227,11 @@ export const GetImprintsByTierQueryParams = zod.object({
   "minTotal": zod.coerce.number().optional(),
   "maxTotal": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
-  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email')
 })
 
 export const GetImprintsByTierResponse = zod.object({
@@ -4197,7 +4240,15 @@ export const GetImprintsByTierResponse = zod.object({
   "orders": zod.number(),
   "revenue": zod.number(),
   "quantity": zod.number(),
-  "avgOrderValue": zod.number()
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+})
+})
 }),
   "rows": zod.array(zod.object({
   "label": zod.string(),
@@ -4232,7 +4283,11 @@ export const GetOrderQuantityBreakdownQueryParams = zod.object({
   "minTotal": zod.coerce.number().optional(),
   "maxTotal": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
-  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email')
 })
 
 export const GetOrderQuantityBreakdownResponse = zod.object({
@@ -4241,7 +4296,15 @@ export const GetOrderQuantityBreakdownResponse = zod.object({
   "orders": zod.number(),
   "revenue": zod.number(),
   "quantity": zod.number(),
-  "avgOrderValue": zod.number()
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+})
+})
 }),
   "rows": zod.array(zod.object({
   "label": zod.string(),
@@ -4276,7 +4339,11 @@ export const GetStyleNumberBreakdownQueryParams = zod.object({
   "minTotal": zod.coerce.number().optional(),
   "maxTotal": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
-  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email')
 })
 
 export const GetStyleNumberBreakdownResponse = zod.object({
@@ -4285,7 +4352,15 @@ export const GetStyleNumberBreakdownResponse = zod.object({
   "orders": zod.number(),
   "revenue": zod.number(),
   "quantity": zod.number(),
-  "avgOrderValue": zod.number()
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+})
+})
 }),
   "rows": zod.array(zod.object({
   "label": zod.string(),
@@ -4320,7 +4395,11 @@ export const GetBrandBreakdownQueryParams = zod.object({
   "minTotal": zod.coerce.number().optional(),
   "maxTotal": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
-  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email')
 })
 
 export const GetBrandBreakdownResponse = zod.object({
@@ -4329,7 +4408,15 @@ export const GetBrandBreakdownResponse = zod.object({
   "orders": zod.number(),
   "revenue": zod.number(),
   "quantity": zod.number(),
-  "avgOrderValue": zod.number()
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+})
+})
 }),
   "rows": zod.array(zod.object({
   "label": zod.string(),
@@ -4364,7 +4451,11 @@ export const GetColorBreakdownQueryParams = zod.object({
   "minTotal": zod.coerce.number().optional(),
   "maxTotal": zod.coerce.number().optional(),
   "search": zod.coerce.string().optional(),
-  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)')
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email')
 })
 
 export const GetColorBreakdownResponse = zod.object({
@@ -4373,7 +4464,15 @@ export const GetColorBreakdownResponse = zod.object({
   "orders": zod.number(),
   "revenue": zod.number(),
   "quantity": zod.number(),
-  "avgOrderValue": zod.number()
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+})
+})
 }),
   "rows": zod.array(zod.object({
   "label": zod.string(),
@@ -4439,6 +4538,7 @@ export const GetReportFilterOptionsResponse = zod.object({
   "colors": zod.array(zod.string()),
   "styleNumbers": zod.array(zod.string()),
   "tiers": zod.array(zod.string()),
+  "owners": zod.array(zod.string()),
   "paymentTypes": zod.array(zod.string())
 })
 

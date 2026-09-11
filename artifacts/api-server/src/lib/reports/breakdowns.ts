@@ -19,6 +19,16 @@ export interface ReportStats {
   revenue: number;
   quantity: number;
   avgOrderValue: number;
+  activity: ActivityStats;
+}
+
+export interface ActivityStats {
+  affectedOrders: number;
+  changes: number;
+  byOrderType: {
+    invoice: number;
+    quote: number;
+  };
 }
 
 export function computeStats(orders: ReportOrder[]): ReportStats {
@@ -29,7 +39,25 @@ export function computeStats(orders: ReportOrder[]): ReportStats {
     revenue: round2(revenue),
     quantity,
     avgOrderValue: orders.length > 0 ? round2(revenue / orders.length) : 0,
+    activity: computeActivityStats(orders),
   };
+}
+
+/** Activity is already reduced per order by the dataset query. */
+export function computeActivityStats(orders: ReportOrder[]): ActivityStats {
+  const stats: ActivityStats = {
+    affectedOrders: 0,
+    changes: 0,
+    byOrderType: { invoice: 0, quote: 0 },
+  };
+  for (const order of orders) {
+    if (order.activityCount <= 0) continue;
+    stats.affectedOrders += 1;
+    stats.changes += order.activityCount;
+    if (order.orderType === "invoice") stats.byOrderType.invoice += 1;
+    if (order.orderType === "quote") stats.byOrderType.quote += 1;
+  }
+  return stats;
 }
 
 export interface BreakdownRow {

@@ -2278,6 +2278,10 @@ paths:
         - $ref: "#/components/parameters/MaxTotalParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
         - name: limit
           in: query
           required: false
@@ -2319,6 +2323,10 @@ paths:
         - $ref: "#/components/parameters/MaxTotalParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
       responses:
         "200":
           description: Breakdown report
@@ -2352,6 +2360,10 @@ paths:
         - $ref: "#/components/parameters/MaxTotalParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
       responses:
         "200":
           description: Breakdown report
@@ -2385,6 +2397,10 @@ paths:
         - $ref: "#/components/parameters/MaxTotalParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
       responses:
         "200":
           description: Breakdown report
@@ -2418,6 +2434,10 @@ paths:
         - $ref: "#/components/parameters/MaxTotalParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
       responses:
         "200":
           description: Breakdown report
@@ -2451,6 +2471,10 @@ paths:
         - $ref: "#/components/parameters/MaxTotalParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
       responses:
         "200":
           description: Breakdown report
@@ -2484,6 +2508,10 @@ paths:
         - $ref: "#/components/parameters/MaxTotalParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
       responses:
         "200":
           description: Breakdown report
@@ -2517,6 +2545,10 @@ paths:
         - $ref: "#/components/parameters/MaxTotalParam"
         - $ref: "#/components/parameters/SearchParam"
         - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
       responses:
         "200":
           description: Breakdown report
@@ -7116,6 +7148,30 @@ components:
       required: false
       description: "||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)"
       schema: { type: string }
+    ActivityOnlyParam:
+      name: activityOnly
+      in: query
+      required: false
+      description: Keep only orders with qualifying recorded activity in the selected activity window
+      schema: { type: boolean }
+    ActivityStartParam:
+      name: activityStart
+      in: query
+      required: false
+      description: Inclusive shop-local activity date (YYYY-MM-DD)
+      schema: { type: string }
+    ActivityEndParam:
+      name: activityEnd
+      in: query
+      required: false
+      description: Inclusive shop-local activity date (YYYY-MM-DD)
+      schema: { type: string }
+    ActivityOwnerParam:
+      name: activityOwner
+      in: query
+      required: false
+      description: Current invoice/quote owner email
+      schema: { type: string }
   schemas:
     ReorderPortalSizeCount:
       type: object
@@ -7893,7 +7949,21 @@ components:
         revenue: { type: number }
         quantity: { type: integer }
         avgOrderValue: { type: number }
-      required: [orders, revenue, quantity, avgOrderValue]
+        activity:
+          $ref: "#/components/schemas/ReportActivityStats"
+      required: [orders, revenue, quantity, avgOrderValue, activity]
+    ReportActivityStats:
+      type: object
+      properties:
+        affectedOrders: { type: integer }
+        changes: { type: integer }
+        byOrderType:
+          type: object
+          properties:
+            invoice: { type: integer }
+            quote: { type: integer }
+          required: [invoice, quote]
+      required: [affectedOrders, changes, byOrderType]
     ReportFiltersEcho:
       type: object
       additionalProperties: true
@@ -7906,13 +7976,16 @@ components:
         statusName: { type: ["string", "null"] }
         nickname: { type: ["string", "null"] }
         customerName: { type: ["string", "null"] }
+        ownerEmail: { type: ["string", "null"] }
         total: { type: number }
         qty: { type: integer }
         createdAt: { type: ["string", "null"] }
         invoiceAt: { type: ["string", "null"] }
         productionDueAt: { type: ["string", "null"] }
         dueAt: { type: ["string", "null"] }
-      required: [id, visualId, orderType, statusName, nickname, customerName, total, qty, createdAt, invoiceAt, productionDueAt, dueAt]
+        activityCount: { type: integer }
+        latestActivityAt: { type: ["string", "null"], format: date-time }
+      required: [id, visualId, orderType, statusName, nickname, customerName, ownerEmail, total, qty, createdAt, invoiceAt, productionDueAt, dueAt, activityCount, latestActivityAt]
     OrdersReport:
       type: object
       properties:
@@ -9537,10 +9610,13 @@ components:
         tiers:
           type: array
           items: { type: string }
+        owners:
+          type: array
+          items: { type: string }
         paymentTypes:
           type: array
           items: { type: string }
-      required: [statuses, brands, categories, colors, styleNumbers, tiers, paymentTypes]
+      required: [statuses, brands, categories, colors, styleNumbers, tiers, owners, paymentTypes]
     AskInsightsRequest:
       type: object
       properties:

@@ -6,8 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './activityEndParamParameter';
 export * from './activityItem';
 export * from './activityItemType';
+export * from './activityOnlyParamParameter';
+export * from './activityOwnerParamParameter';
+export * from './activityStartParamParameter';
 export * from './addCollectionItemsRequest';
 export * from './addEmailExclusionRequest';
 export * from './addEmailExclusionRequestKind';
@@ -566,6 +570,8 @@ export * from './reorderRequestSizeQty';
 export * from './reorderRequestSubmitResult';
 export * from './reorderStatusRulesRequest';
 export * from './replaceChipplyStoreStylesRequest';
+export * from './reportActivityStats';
+export * from './reportActivityStatsByOrderType';
 export * from './reportBreakdownRow';
 export * from './reportFilterOptions';
 export * from './reportFiltersEcho';

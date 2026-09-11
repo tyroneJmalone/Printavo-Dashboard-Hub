@@ -23,12 +23,71 @@ import {
 } from "@workspace/api-client-react";
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { useEffect, useState } from "react";
-import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History } from "lucide-react";
+import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays } from "lucide-react";
 
 type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color';
+type ReportMode = "normal" | "activity";
+type ActivityPreset = "today" | "yesterday" | "lastWeek" | "custom";
+
+function localDateKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+  return `${values.get("year")}-${values.get("month")}-${values.get("day")}`;
+}
+
+function shiftLocalDate(dateKey: string, days: number): string {
+  const shifted = new Date(`${dateKey}T12:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return localDateKey(shifted);
+}
+
+function activityPresetRange(preset: ActivityPreset): { start: string; end: string } {
+  const today = new Date();
+  const todayKey = localDateKey(today);
+  if (preset === "today") return { start: todayKey, end: todayKey };
+  if (preset === "yesterday") {
+    const day = shiftLocalDate(todayKey, -1);
+    return { start: day, end: day };
+  }
+  if (preset === "lastWeek") {
+    const dayOfWeek = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      weekday: "short",
+    }).format(today);
+    const daysSinceMonday = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(dayOfWeek);
+    const monday = shiftLocalDate(todayKey, -(daysSinceMonday < 0 ? 0 : daysSinceMonday) - 7);
+    return { start: monday, end: shiftLocalDate(monday, 6) };
+  }
+  return { start: "", end: "" };
+}
+
+function formatObservedAt(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
 
 export default function Orders() {
   const [activeTab, setActiveTab] = useState<BreakdownType>('table');
+  const [reportMode, setReportMode] = useState<ReportMode>("normal");
+  const [activityPreset, setActivityPreset] = useState<ActivityPreset>("today");
+  const defaultActivityRange = activityPresetRange("today");
+  const [activityStart, setActivityStart] = useState(defaultActivityRange.start);
+  const [activityEnd, setActivityEnd] = useState(defaultActivityRange.end);
+  const [activityOwner, setActivityOwner] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(0);
   const limit = 100;
@@ -36,7 +95,8 @@ export default function Orders() {
   // Filter state
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [orderType, setOrderType] = useState<"invoice" | "quote" | "all">("invoice");
+  const [normalOrderType, setNormalOrderType] = useState<"invoice" | "quote" | "all">("invoice");
+  const [activityOrderType, setActivityOrderType] = useState<"invoice" | "quote" | "all">("all");
   const [statuses, setStatuses] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -64,28 +124,32 @@ export default function Orders() {
   // Construct params
   const params: GetOrdersReportParams = {
     search: debouncedSearch || undefined,
-    orderType,
+    orderType: reportMode === "activity" ? activityOrderType : normalOrderType,
     statuses: statuses.length ? statuses.join("||") : undefined,
     brands: brands.length ? brands.join("||") : undefined,
     categories: categories.length ? categories.join("||") : undefined,
     colors: colors.length ? colors.join("||") : undefined,
     styleNumbers: styleNumbers.length ? styleNumbers.join("||") : undefined,
     exclude: exclude.length ? exclude.join("||") : undefined,
-    createdStart: dateBasis === "created" && dateStart ? dateStart : undefined,
-    createdEnd: dateBasis === "created" && dateEnd ? dateEnd : undefined,
-    invoiceStart: dateBasis === "invoice" && dateStart ? dateStart : undefined,
-    invoiceEnd: dateBasis === "invoice" && dateEnd ? dateEnd : undefined,
-    productionDueStart: dateBasis === "productionDue" && dateStart ? dateStart : undefined,
-    productionDueEnd: dateBasis === "productionDue" && dateEnd ? dateEnd : undefined,
-    dueStart: dateBasis === "due" && dateStart ? dateStart : undefined,
-    dueEnd: dateBasis === "due" && dateEnd ? dateEnd : undefined,
+    createdStart: reportMode === "normal" && dateBasis === "created" && dateStart ? dateStart : undefined,
+    createdEnd: reportMode === "normal" && dateBasis === "created" && dateEnd ? dateEnd : undefined,
+    invoiceStart: reportMode === "normal" && dateBasis === "invoice" && dateStart ? dateStart : undefined,
+    invoiceEnd: reportMode === "normal" && dateBasis === "invoice" && dateEnd ? dateEnd : undefined,
+    productionDueStart: reportMode === "normal" && dateBasis === "productionDue" && dateStart ? dateStart : undefined,
+    productionDueEnd: reportMode === "normal" && dateBasis === "productionDue" && dateEnd ? dateEnd : undefined,
+    dueStart: reportMode === "normal" && dateBasis === "due" && dateStart ? dateStart : undefined,
+    dueEnd: reportMode === "normal" && dateBasis === "due" && dateEnd ? dateEnd : undefined,
     minQty: minQty ? Number(minQty) : undefined,
     maxQty: maxQty ? Number(maxQty) : undefined,
     minTotal: minTotal ? Number(minTotal) : undefined,
     maxTotal: maxTotal ? Number(maxTotal) : undefined,
+    activityOnly: reportMode === "activity" ? true : undefined,
+    activityStart: reportMode === "activity" && activityStart ? activityStart : undefined,
+    activityEnd: reportMode === "activity" && activityEnd ? activityEnd : undefined,
+    activityOwner: reportMode === "activity" && activityOwner ? activityOwner : undefined,
   };
 
-  const { data: ordersData, isLoading: isLoadingOrders } = useGetOrdersReport({ ...params, limit, offset: page * limit }, {
+  const { data: ordersData, isLoading: isLoadingOrders, isError: isOrdersError } = useGetOrdersReport({ ...params, limit, offset: page * limit }, {
     query: { queryKey: getGetOrdersReportQueryKey({ ...params, limit, offset: page * limit }) }
   });
 
@@ -121,7 +185,8 @@ export default function Orders() {
 
   const clearAllFilters = () => {
     setSearch("");
-    setOrderType("invoice");
+    setNormalOrderType("invoice");
+    setActivityOrderType("all");
     setStatuses([]);
     setBrands([]);
     setCategories([]);
@@ -134,10 +199,15 @@ export default function Orders() {
     setMaxQty("");
     setMinTotal("");
     setMaxTotal("");
+    const todayRange = activityPresetRange("today");
+    setActivityPreset("today");
+    setActivityStart(todayRange.start);
+    setActivityEnd(todayRange.end);
+    setActivityOwner("");
     setPage(0);
   };
 
-  const hasActiveFilters = search || orderType !== "invoice" || statuses.length || brands.length || categories.length || colors.length || styleNumbers.length || exclude.length || dateStart || dateEnd || minQty || maxQty || minTotal || maxTotal;
+  const hasActiveFilters = search || (reportMode === "normal" ? normalOrderType !== "invoice" : activityOrderType !== "all") || statuses.length || brands.length || categories.length || colors.length || styleNumbers.length || exclude.length || (reportMode === "normal" && (dateStart || dateEnd)) || minQty || maxQty || minTotal || maxTotal || (reportMode === "activity" && (activityOwner || activityPreset !== "today"));
 
   return (
     <AppShell>
@@ -146,13 +216,37 @@ export default function Orders() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-white flex items-center gap-2 tracking-tight">
-                <FileText className="text-[#10b981]" size={24} />
-                Orders Report
+                 {reportMode === "activity" ? <Activity className="text-[#10b981]" size={24} /> : <FileText className="text-[#10b981]" size={24} />}
+                 {reportMode === "activity" ? "Activity Report" : "Orders Report"}
               </h1>
-              <p className="text-xs text-slate-400 mt-1">Comprehensive view of all print jobs and quotes.</p>
+               <p className="text-xs text-slate-400 mt-1">
+                 {reportMode === "activity"
+                   ? "Orders with recorded changes observed in the selected range."
+                   : "Comprehensive view of all print jobs and quotes."}
+               </p>
             </div>
             
             <div className="flex items-center gap-3">
+               <div className="flex rounded-md border border-slate-700 bg-slate-900 p-0.5" role="tablist" aria-label="Report mode">
+                 <button
+                   type="button"
+                   role="tab"
+                   aria-selected={reportMode === "normal"}
+                   onClick={() => { setReportMode("normal"); setPage(0); }}
+                   className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${reportMode === "normal" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-white"}`}
+                 >
+                   Orders
+                 </button>
+                 <button
+                   type="button"
+                   role="tab"
+                   aria-selected={reportMode === "activity"}
+                   onClick={() => { setReportMode("activity"); setPage(0); }}
+                   className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${reportMode === "activity" ? "bg-[#059669]/30 text-[#10b981]" : "text-slate-400 hover:text-white"}`}
+                 >
+                   Activity
+                 </button>
+               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                 <input 
@@ -175,19 +269,85 @@ export default function Orders() {
           {showFilters && (
             <div className="mt-4 p-4 bg-slate-900/80 border border-slate-700 rounded-xl space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white">Filter Orders</h3>
+                 <h3 className="text-sm font-bold text-white">{reportMode === "activity" ? "Filter Activity" : "Filter Orders"}</h3>
                 <button onClick={clearAllFilters} className="text-xs text-slate-400 hover:text-white">Clear All</button>
               </div>
+               {reportMode === "activity" && (
+                 <div className="grid grid-cols-4 gap-4 rounded-lg border border-emerald-900/40 bg-emerald-950/10 p-3">
+                   <div className="space-y-1">
+                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1">
+                       <CalendarDays size={12} /> Activity Range
+                     </label>
+                     <select
+                       value={activityPreset}
+                       onChange={(e) => {
+                         const next = e.target.value as ActivityPreset;
+                         setActivityPreset(next);
+                         if (next !== "custom") {
+                           const range = activityPresetRange(next);
+                           setActivityStart(range.start);
+                           setActivityEnd(range.end);
+                         }
+                         setPage(0);
+                       }}
+                       className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5"
+                     >
+                       <option value="today">Today</option>
+                       <option value="yesterday">Yesterday</option>
+                       <option value="lastWeek">Last week (previous calendar week)</option>
+                       <option value="custom">Custom dates</option>
+                     </select>
+                   </div>
+                   <div className="space-y-1 col-span-2">
+                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Observed between</label>
+                     <div className="flex items-center gap-2">
+                       <input
+                         type="date"
+                         value={activityStart}
+                         onChange={(e) => { setActivityPreset("custom"); setActivityStart(e.target.value); setPage(0); }}
+                         className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5"
+                       />
+                       <span className="text-slate-500 text-xs">to</span>
+                       <input
+                         type="date"
+                         value={activityEnd}
+                         onChange={(e) => { setActivityPreset("custom"); setActivityEnd(e.target.value); setPage(0); }}
+                         className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5"
+                       />
+                     </div>
+                   </div>
+                   <div className="space-y-1">
+                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Current invoice owner</label>
+                     <select
+                       value={activityOwner}
+                       onChange={(e) => { setActivityOwner(e.target.value); setPage(0); }}
+                       className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5"
+                     >
+                       <option value="">All owners</option>
+                       {filterOpts?.owners?.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
+                     </select>
+                   </div>
+                 </div>
+               )}
               <div className="grid grid-cols-4 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Order Type</label>
-                  <select value={orderType} onChange={e => { setOrderType(e.target.value as any); setPage(0); }} className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5">
+                  <select
+                    value={reportMode === "activity" ? activityOrderType : normalOrderType}
+                    onChange={e => {
+                      const next = e.target.value as "invoice" | "quote" | "all";
+                      if (reportMode === "activity") setActivityOrderType(next);
+                      else setNormalOrderType(next);
+                      setPage(0);
+                    }}
+                    className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5"
+                  >
                     <option value="invoice">Invoice</option>
                     <option value="quote">Quote</option>
                     <option value="all">All</option>
                   </select>
                 </div>
-                <div className="space-y-1 col-span-2">
+                {reportMode === "normal" && <div className="space-y-1 col-span-2">
                   <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
                     Date Range
                     <select value={dateBasis} onChange={e => { setDateBasis(e.target.value as any); setPage(0); }} className="bg-transparent border-none text-[#10b981] font-bold p-0 focus:ring-0">
@@ -202,7 +362,7 @@ export default function Orders() {
                     <span className="text-slate-500 text-xs">to</span>
                     <input type="date" value={dateEnd} onChange={e => { setDateEnd(e.target.value); setPage(0); }} className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5" />
                   </div>
-                </div>
+                </div>}
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Exclude Filters</label>
                   <select value="" onChange={e => {
@@ -315,6 +475,28 @@ export default function Orders() {
                 <div className="text-xs text-slate-400 font-medium mb-1">Avg Order Value</div>
                 <div className="text-2xl font-bold text-[#10b981]">{formatMoney(ordersData.stats.avgOrderValue)}</div>
               </div>
+               {reportMode === "activity" && (
+                 <>
+                   <div className="bg-emerald-950/20 rounded-lg border border-emerald-900/50 p-4">
+                     <div className="text-xs text-slate-400 font-medium mb-1">Affected Orders</div>
+                     <div className="text-2xl font-bold text-[#10b981]">{formatNumber(ordersData.stats.activity.affectedOrders)}</div>
+                     <div className="text-[10px] text-slate-500 mt-1">Distinct invoices/quotes with activity</div>
+                   </div>
+                   <div className="bg-emerald-950/20 rounded-lg border border-emerald-900/50 p-4">
+                     <div className="text-xs text-slate-400 font-medium mb-1">Recorded Changes</div>
+                     <div className="text-2xl font-bold text-white">{formatNumber(ordersData.stats.activity.changes)}</div>
+                     <div className="text-[10px] text-slate-500 mt-1">Status, field, updated, and line-item changes</div>
+                   </div>
+                   <div className="bg-emerald-950/20 rounded-lg border border-emerald-900/50 p-4">
+                     <div className="text-xs text-slate-400 font-medium mb-1">Invoice / Quote</div>
+                     <div className="text-lg font-bold text-white">
+                       {formatNumber(ordersData.stats.activity.byOrderType.invoice)} <span className="text-slate-500 font-normal">/</span>{" "}
+                       {formatNumber(ordersData.stats.activity.byOrderType.quote)}
+                     </div>
+                     <div className="text-[10px] text-slate-500 mt-1">Affected orders by current type</div>
+                   </div>
+                 </>
+               )}
             </div>
           )}
 
@@ -347,10 +529,14 @@ export default function Orders() {
         <div className="flex-1 overflow-auto p-6 bg-[#020617]">
           {activeTab === 'table' ? (
             <div className="flex flex-col h-full space-y-4">
-              {isLoadingOrders ? (
+               {isLoadingOrders ? (
                 <div className="flex items-center justify-center flex-1">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
                 </div>
+               ) : isOrdersError ? (
+                 <div className="flex items-center justify-center flex-1 text-sm text-red-400">
+                   We couldn't load this report. Please try again.
+                 </div>
               ) : (
                 <>
                   <div className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1">
@@ -362,6 +548,8 @@ export default function Orders() {
                           <th className="px-6 py-4">Customer</th>
                           <th className="px-6 py-4">Details</th>
                           <th className="px-6 py-4">Status</th>
+                           {reportMode === "activity" && <th className="px-6 py-4">Activity</th>}
+                           {reportMode === "activity" && <th className="px-6 py-4">Latest observed</th>}
                           <th className="px-6 py-4">Created</th>
                           <th className="px-6 py-4 text-right">Total</th>
                         </tr>
@@ -393,6 +581,16 @@ export default function Orders() {
                                 {order.statusName || 'Unknown'}
                               </span>
                             </td>
+                             {reportMode === "activity" && (
+                               <td className="px-6 py-4 font-mono text-[#10b981]">
+                                 {formatNumber(order.activityCount)}
+                               </td>
+                             )}
+                             {reportMode === "activity" && (
+                               <td className="px-6 py-4 text-slate-400 text-xs">
+                                 {formatObservedAt(order.latestActivityAt)}
+                               </td>
+                             )}
                             <td className="px-6 py-4 text-slate-400 font-mono text-xs">{formatDate(order.createdAt)}</td>
                             <td className="px-6 py-4 text-right font-mono font-bold text-[#10b981]">
                               {formatMoney(order.total)}
@@ -401,7 +599,7 @@ export default function Orders() {
                         ))}
                         {ordersData?.orders?.length === 0 && (
                           <tr>
-                            <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                             <td colSpan={reportMode === "activity" ? 9 : 7} className="px-6 py-12 text-center text-slate-500">
                               No orders found matching your filters.
                             </td>
                           </tr>

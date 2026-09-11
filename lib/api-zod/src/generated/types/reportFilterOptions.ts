@@ -13,5 +13,6 @@ export interface ReportFilterOptions {
   colors: string[];
   styleNumbers: string[];
   tiers: string[];
+  owners: string[];
   paymentTypes: string[];
 }

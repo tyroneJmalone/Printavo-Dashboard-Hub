@@ -12,6 +12,7 @@ import {
   orderQuantityBreakdown,
   type BreakdownRow,
 } from "../lib/reports/breakdowns";
+import { paginateReportRows } from "../lib/reports/activity";
 
 /**
  * Reports module. Reads Postgres ONLY (never the Printavo API) —
@@ -66,19 +67,22 @@ router.get("/reports/orders", (req, res) => {
       ? Math.max(Math.trunc(offsetRaw), 0)
       : 0;
     const orders = await loadReportOrders(filters);
-    const page = orders.slice(offset, offset + limit).map((o) => ({
+    const page = paginateReportRows(orders, offset, limit).map((o) => ({
       id: o.id,
       visualId: o.visualId,
       orderType: o.orderType,
       statusName: o.statusName,
       nickname: o.nickname,
       customerName: o.customerName,
+      ownerEmail: o.ownerEmail,
       total: o.total,
       qty: o.qty,
       createdAt: o.createdAt,
       invoiceAt: o.invoiceAt,
       productionDueAt: o.productionDueAt,
       dueAt: o.dueAt,
+      activityCount: o.activityCount,
+      latestActivityAt: o.latestActivityAt,
     }));
     res.json({
       filters: filtersEcho(filters),
@@ -291,7 +295,7 @@ router.get("/reports/payments/stats", (req, res) => {
 
 router.get("/reports/filter-options", (req, res) => {
   (async () => {
-    const [statuses, brands, categories, colors, styles, tiers] =
+    const [statuses, brands, categories, colors, styles, tiers, owners] =
       await Promise.all([
         db.execute(
           sql`SELECT DISTINCT status_name AS v FROM pv_orders WHERE status_name IS NOT NULL ORDER BY 1`,
@@ -311,6 +315,9 @@ router.get("/reports/filter-options", (req, res) => {
         db.execute(
           sql`SELECT DISTINCT column_name AS v FROM pv_imprints WHERE column_name IS NOT NULL AND column_name <> '' ORDER BY 1`,
         ),
+        db.execute(
+          sql`SELECT DISTINCT owner_email AS v FROM pv_orders WHERE owner_email IS NOT NULL AND owner_email <> '' ORDER BY 1`,
+        ),
       ]);
     const vals = (r: { rows: unknown[] }): string[] =>
       (r.rows as Array<{ v: string }>).map((x) => x.v);
@@ -321,6 +328,7 @@ router.get("/reports/filter-options", (req, res) => {
       colors: vals(colors),
       styleNumbers: vals(styles),
       tiers: vals(tiers),
+      owners: vals(owners),
       paymentTypes: PAYMENT_TYPES,
     });
   })().catch((err) => {

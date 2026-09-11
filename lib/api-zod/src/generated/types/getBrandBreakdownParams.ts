@@ -5,6 +5,10 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ActivityEndParamParameter } from './activityEndParamParameter';
+import type { ActivityOnlyParamParameter } from './activityOnlyParamParameter';
+import type { ActivityOwnerParamParameter } from './activityOwnerParamParameter';
+import type { ActivityStartParamParameter } from './activityStartParamParameter';
 import type { BrandsParamParameter } from './brandsParamParameter';
 import type { CategoriesParamParameter } from './categoriesParamParameter';
 import type { ColorsParamParameter } from './colorsParamParameter';
@@ -65,4 +69,20 @@ search?: SearchParamParameter;
  * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
  */
 exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
 };

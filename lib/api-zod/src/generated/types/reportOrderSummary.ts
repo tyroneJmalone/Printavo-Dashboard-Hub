@@ -17,6 +17,8 @@ export interface ReportOrderSummary {
   nickname: string | null;
   /** @nullable */
   customerName: string | null;
+  /** @nullable */
+  ownerEmail: string | null;
   total: number;
   qty: number;
   /** @nullable */
@@ -27,4 +29,7 @@ export interface ReportOrderSummary {
   productionDueAt: string | null;
   /** @nullable */
   dueAt: string | null;
+  activityCount: number;
+  /** @nullable */
+  latestActivityAt: Date | null;
 }

@@ -18,6 +18,13 @@ export type ExcludableFilter = (typeof EXCLUDABLE_FILTERS)[number];
 
 export interface ReportFilters {
   orderType: "invoice" | "quote" | "all";
+  /** Activity mode keeps only orders with at least one qualifying event. */
+  activityOnly: boolean;
+  /** Inclusive shop-local calendar dates for activity timestamps. */
+  activityStart: string | null;
+  activityEnd: string | null;
+  /** Current owner on pv_orders, never the event actor/historical owner. */
+  activityOwner: string | null;
   statuses: string[];
   brands: string[];
   categories: string[];
@@ -102,6 +109,19 @@ export function parseReportFilters(query: Query): {
     errors.push("orderType must be invoice, quote, or all");
   }
 
+  const activityOnlyRaw = str(query, "activityOnly");
+  const activityOnly =
+    activityOnlyRaw === "true" || activityOnlyRaw === "1";
+  if (
+    activityOnlyRaw !== null &&
+    activityOnlyRaw !== "true" &&
+    activityOnlyRaw !== "false" &&
+    activityOnlyRaw !== "1" &&
+    activityOnlyRaw !== "0"
+  ) {
+    errors.push("activityOnly must be true or false");
+  }
+
   const exclude = new Set<ExcludableFilter>();
   for (const name of str(query, "exclude")?.split(/\|\||,/) ?? []) {
     const trimmed = name.trim() as ExcludableFilter;
@@ -115,6 +135,10 @@ export function parseReportFilters(query: Query): {
 
   const filters: ReportFilters = {
     orderType,
+    activityOnly,
+    activityStart: dateStr(query, "activityStart", errors),
+    activityEnd: dateStr(query, "activityEnd", errors),
+    activityOwner: str(query, "activityOwner"),
     statuses: multi(query, "statuses"),
     brands: multi(query, "brands"),
     categories: multi(query, "categories"),
@@ -136,6 +160,14 @@ export function parseReportFilters(query: Query): {
     exclude,
   };
 
+  if (
+    filters.activityStart &&
+    filters.activityEnd &&
+    filters.activityStart > filters.activityEnd
+  ) {
+    errors.push("activityStart must be on or before activityEnd");
+  }
+
   return { filters, errors };
 }
 
@@ -143,6 +175,10 @@ export function parseReportFilters(query: Query): {
 export function filtersEcho(f: ReportFilters): Record<string, unknown> {
   return {
     orderType: f.orderType,
+    activityOnly: f.activityOnly,
+    activityStart: f.activityStart,
+    activityEnd: f.activityEnd,
+    activityOwner: f.activityOwner,
     statuses: f.statuses,
     brands: f.brands,
     categories: f.categories,

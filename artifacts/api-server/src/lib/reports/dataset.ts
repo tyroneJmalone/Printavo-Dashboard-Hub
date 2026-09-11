@@ -34,6 +34,7 @@ export interface ReportOrder {
   id: string;
   visualId: number;
   orderType: string;
+  ownerEmail: string | null;
   statusName: string | null;
   nickname: string | null;
   customerName: string | null;
@@ -43,6 +44,8 @@ export interface ReportOrder {
   invoiceAt: string | null;
   productionDueAt: string | null;
   dueAt: string | null;
+  activityCount: number;
+  latestActivityAt: string | null;
   groups: ReportGroup[];
 }
 
@@ -111,6 +114,94 @@ function orderConditions(f: ReportFilters): SQL[] {
   return conds;
 }
 
+/**
+ * Reduce activity to one row per order before joining the order dataset.
+ * Legacy order events use entity_id as the order id and historically did not
+ * populate order_id; line-item events use order_id while entity_id is the
+ * line id. This shape prevents line joins from multiplying event counts.
+ */
+function activityFragments(f: ReportFilters): {
+  cte: SQL;
+  join: SQL;
+  select: SQL;
+  conditions: SQL[];
+} {
+  const requested =
+    f.activityOnly ||
+    f.activityStart !== null ||
+    f.activityEnd !== null ||
+    f.activityOwner !== null;
+  if (!requested) {
+    return {
+      cte: sql``,
+      join: sql``,
+      select: sql`0::int AS activity_count, null::timestamptz AS latest_activity_at`,
+      conditions: [],
+    };
+  }
+
+  const activityDates: SQL[] = [];
+  if (f.activityStart) {
+    activityDates.push(
+      sql`(ce.occurred_at AT TIME ZONE ${ET})::date >= ${f.activityStart}::date`,
+    );
+  }
+  if (f.activityEnd) {
+    activityDates.push(
+      sql`(ce.occurred_at AT TIME ZONE ${ET})::date <= ${f.activityEnd}::date`,
+    );
+  }
+  const activityWhere = activityDates.length
+    ? sql` AND ${sql.join(activityDates, sql` AND `)}`
+    : sql``;
+  const cte = sql`
+    WITH activity_events AS (
+      SELECT CASE
+        WHEN ce.entity_type = 'order' THEN ce.entity_id
+        ELSE ce.order_id
+      END AS order_id, ce.occurred_at
+      FROM change_events ce
+      WHERE (
+        (
+          ce.entity_type = 'order'
+          AND ce.event_type IN ('status_change', 'field_change', 'updated')
+          AND ce.entity_id IS NOT NULL
+        )
+        OR (
+          ce.entity_type = 'line_item'
+          AND ce.event_type IN ('status_change', 'field_change', 'created', 'deleted')
+          AND ce.order_id IS NOT NULL
+        )
+      )${activityWhere}
+    ),
+    activity_by_order AS (
+      SELECT order_id, count(*)::int AS activity_count,
+             max(occurred_at) AS latest_activity_at
+      FROM activity_events
+      GROUP BY order_id
+    )
+  `;
+  const conditions: SQL[] = [];
+  if (f.activityOnly) {
+    conditions.push(sql`activity.order_id IS NOT NULL`);
+  }
+  // Ownership is qualified against the current pv_orders row, never against
+  // event actor metadata or a historical owner value.
+  if (f.activityOwner) {
+    conditions.push(
+      sql`lower(trim(coalesce(owner_email, ''))) = ${f.activityOwner.trim().toLowerCase()}`,
+    );
+  }
+  return {
+    cte,
+    join: sql` LEFT JOIN activity_by_order activity
+      ON activity.order_id = pv_orders.printavo_id`,
+    select: sql`coalesce(activity.activity_count, 0)::int AS activity_count,
+      activity.latest_activity_at`,
+    conditions,
+  };
+}
+
 interface OrderRow {
   printavo_id: string;
   visual_id: number;
@@ -120,10 +211,13 @@ interface OrderRow {
   customer_company: string | null;
   contact_name: string | null;
   total: string | null;
+  owner_email: string | null;
   printavo_created_at: string | null;
   invoice_at: string | null;
   production_due_at: string | null;
   customer_due_at: string | null;
+  activity_count: number | string | null;
+  latest_activity_at: string | Date | null;
 }
 
 interface GroupRow {
@@ -181,16 +275,24 @@ function passesItemFilters(order: ReportOrder, f: ReportFilters): boolean {
 export async function loadReportOrders(
   f: ReportFilters,
 ): Promise<ReportOrder[]> {
-  const conds = orderConditions(f);
+  const activity = activityFragments(f);
+  const conds = [...orderConditions(f), ...activity.conditions];
   const where =
-    conds.length > 0 ? sql` WHERE ${sql.join(conds, sql` AND `)}` : sql``;
+    conds.length > 0
+      ? sql` WHERE ${sql.join(conds, sql` AND `)}`
+      : sql``;
 
   const orderRes = await db.execute(sql`
+    ${activity.cte}
     SELECT printavo_id, visual_id, order_type, status_name, nickname,
            customer_company, contact_name, total,
-           printavo_created_at, invoice_at, production_due_at, customer_due_at
-    FROM pv_orders${where}
-    ORDER BY printavo_created_at DESC NULLS LAST
+           owner_email, printavo_created_at, invoice_at, production_due_at,
+           customer_due_at,
+           ${activity.select}
+    FROM pv_orders${activity.join}${where}
+     ORDER BY printavo_created_at DESC NULLS LAST,
+              visual_id DESC NULLS LAST,
+              printavo_id DESC
   `);
   const orderRows = orderRes.rows as unknown as OrderRow[];
   if (orderRows.length === 0) return [];
@@ -251,6 +353,7 @@ export async function loadReportOrders(
       id: r.printavo_id,
       visualId: r.visual_id,
       orderType: r.order_type,
+      ownerEmail: r.owner_email,
       statusName: r.status_name,
       nickname: r.nickname,
       customerName: r.customer_company?.trim() || r.contact_name?.trim() || null,
@@ -265,6 +368,10 @@ export async function loadReportOrders(
         : null,
       dueAt: r.customer_due_at
         ? new Date(r.customer_due_at).toISOString()
+        : null,
+      activityCount: Number(r.activity_count ?? 0),
+      latestActivityAt: r.latest_activity_at
+        ? new Date(r.latest_activity_at).toISOString()
         : null,
       groups,
     };
