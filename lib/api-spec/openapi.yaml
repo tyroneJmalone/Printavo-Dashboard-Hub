@@ -972,6 +972,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProbeResult"
+  /printavo/orders/{orderId}/history:
+    get:
+      operationId: getPrintavoOrderHistory
+      tags: [printavo]
+      summary: Read complete-observation line-item history for an order
+      description: >
+        Reads the local Printavo mirror only. History is based on complete,
+        successful detail observations; the first observation is a baseline
+        and is not emitted as a change. No upstream Printavo write is made.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: limit
+          in: query
+          required: false
+          description: Maximum snapshots and events returned per page
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: beforeSnapshotId
+          in: query
+          required: false
+          description: Return older snapshot rows than this snapshot id
+          schema: { type: integer, minimum: 1 }
+        - name: beforeEventId
+          in: query
+          required: false
+          description: Return older change events than this event id
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Order line-item history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoOrderHistory"
+        "404":
+          description: Order is not present in the local mirror
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /purchasing/needs-ordering:
     get:
       operationId: getNeedsOrdering
@@ -7752,6 +7794,98 @@ components:
         ok: { type: boolean }
         message: { type: string }
       required: [ok, message]
+    PrintavoOrderHistory:
+      type: object
+      required: [order, baselineObservedAt, observations, currentItems, lineItemLabels, events, pagination]
+      properties:
+        order:
+          $ref: "#/components/schemas/PrintavoOrderHistoryOrder"
+        baselineObservedAt: { type: ["string", "null"], format: date-time }
+        observations:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrintavoLineItemObservation"
+        currentItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrintavoCurrentLineItem"
+        lineItemLabels:
+          type: object
+          additionalProperties: { type: string }
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/PrintavoLineItemHistoryEvent"
+        pagination:
+          $ref: "#/components/schemas/PrintavoOrderHistoryPagination"
+    PrintavoOrderHistoryOrder:
+      type: object
+      required: [id, visualId, detailSyncedAt, detailSyncState, detailSyncError]
+      properties:
+        id: { type: string }
+        visualId: { type: ["integer", "null"] }
+        detailSyncedAt: { type: ["string", "null"], format: date-time }
+        detailSyncState: { type: string, enum: [unknown, complete, incomplete] }
+        detailSyncError: { type: ["string", "null"] }
+    PrintavoOrderHistoryPagination:
+      type: object
+      required: [snapshots, events]
+      properties:
+        snapshots:
+          $ref: "#/components/schemas/PrintavoHistoryPage"
+        events:
+          $ref: "#/components/schemas/PrintavoHistoryPage"
+    PrintavoHistoryPage:
+      type: object
+      required: [hasMore, nextBeforeId]
+      properties:
+        hasMore: { type: boolean }
+        nextBeforeId: { type: ["integer", "null"] }
+    PrintavoLineItemObservation:
+      type: object
+      required: [id, observedAt, itemCount, contentHash, syncRunId]
+      properties:
+        id: { type: integer }
+        observedAt: { type: string, format: date-time }
+        itemCount: { type: integer }
+        contentHash: { type: string }
+        syncRunId: { type: ["integer", "null"] }
+    PrintavoCurrentLineItem:
+      type: object
+      required: [lineItemId, itemNumber, description, color, productId, brand, items, price, sizes, productStatus, groupId]
+      properties:
+        lineItemId: { type: string }
+        itemNumber: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        color: { type: ["string", "null"] }
+        productId: { type: ["string", "null"] }
+        brand: { type: ["string", "null"] }
+        items: { type: integer }
+        price: { type: ["string", "null"] }
+        sizes:
+          type: ["array", "null"]
+          items:
+            type: object
+            required: [size, count]
+            properties:
+              size: { type: string }
+              count: { type: integer }
+        productStatus: { type: ["string", "null"] }
+        groupId: { type: string }
+    PrintavoLineItemHistoryEvent:
+      type: object
+      required: [id, entityType, entityId, visualId, eventType, field, oldValue, newValue, occurredAt, syncRunId]
+      properties:
+        id: { type: integer }
+        entityType: { type: string }
+        entityId: { type: string }
+        visualId: { type: ["integer", "null"] }
+        eventType: { type: string }
+        field: { type: ["string", "null"] }
+        oldValue: {}
+        newValue: {}
+        occurredAt: { type: string, format: date-time }
+        syncRunId: { type: ["integer", "null"] }
     ReportStats:
       type: object
       properties:

@@ -1267,6 +1267,89 @@ export const ProbePrintavoResponse = zod.object({
 
 
 /**
+ * Reads the local Printavo mirror only. History is based on complete, successful detail observations; the first observation is a baseline and is not emitted as a change. No upstream Printavo write is made.
+ * @summary Read complete-observation line-item history for an order
+ */
+export const getPrintavoOrderHistoryPathOrderIdMax = 100;
+
+
+
+export const GetPrintavoOrderHistoryParams = zod.object({
+  "orderId": zod.coerce.string().min(1).max(getPrintavoOrderHistoryPathOrderIdMax)
+})
+
+export const getPrintavoOrderHistoryQueryLimitDefault = 25;
+export const getPrintavoOrderHistoryQueryLimitMax = 100;
+
+
+
+
+
+export const GetPrintavoOrderHistoryQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(getPrintavoOrderHistoryQueryLimitMax).default(getPrintavoOrderHistoryQueryLimitDefault).describe('Maximum snapshots and events returned per page'),
+  "beforeSnapshotId": zod.coerce.number().min(1).optional().describe('Return older snapshot rows than this snapshot id'),
+  "beforeEventId": zod.coerce.number().min(1).optional().describe('Return older change events than this event id')
+})
+
+export const GetPrintavoOrderHistoryResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "visualId": zod.number().nullable(),
+  "detailSyncedAt": zod.coerce.date().nullable(),
+  "detailSyncState": zod.enum(['unknown', 'complete', 'incomplete']),
+  "detailSyncError": zod.string().nullable()
+}),
+  "baselineObservedAt": zod.coerce.date().nullable(),
+  "observations": zod.array(zod.object({
+  "id": zod.number(),
+  "observedAt": zod.coerce.date(),
+  "itemCount": zod.number(),
+  "contentHash": zod.string(),
+  "syncRunId": zod.number().nullable()
+})),
+  "currentItems": zod.array(zod.object({
+  "lineItemId": zod.string(),
+  "itemNumber": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "color": zod.string().nullable(),
+  "productId": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "items": zod.number(),
+  "price": zod.string().nullable(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "count": zod.number()
+})).nullable(),
+  "productStatus": zod.string().nullable(),
+  "groupId": zod.string()
+})),
+  "lineItemLabels": zod.record(zod.string(), zod.string()),
+  "events": zod.array(zod.object({
+  "id": zod.number(),
+  "entityType": zod.string(),
+  "entityId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "eventType": zod.string(),
+  "field": zod.string().nullable(),
+  "oldValue": zod.unknown(),
+  "newValue": zod.unknown(),
+  "occurredAt": zod.coerce.date(),
+  "syncRunId": zod.number().nullable()
+})),
+  "pagination": zod.object({
+  "snapshots": zod.object({
+  "hasMore": zod.boolean(),
+  "nextBeforeId": zod.number().nullable()
+}),
+  "events": zod.object({
+  "hasMore": zod.boolean(),
+  "nextBeforeId": zod.number().nullable()
+})
+})
+})
+
+
+/**
  * Scans synced pv_line_items for product_status='need_ordering', grouped by order
  * @summary Orders with line items needing ordering
  */

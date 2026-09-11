@@ -542,6 +542,7 @@ async function historyDetailAsc(
 
   for (;;) {
     await yieldToPoll();
+    const fetchedAt = new Date();
     const data =
       kind === "invoices"
         ? (await client.query<InvoicesDetailPage>(
@@ -555,7 +556,10 @@ async function historyDetailAsc(
     for (const node of data.nodes) {
       const visual = Number(node.visualId);
       if (Number.isFinite(visual)) lastVisualId = visual;
-      await applyOrderDetail(node, kind, agg, logger);
+      await applyOrderDetail(node, kind, agg, logger, {
+        syncRunId: runId,
+        fetchedAt,
+      });
     }
 
     pages += 1;
@@ -613,6 +617,7 @@ async function historyDetailDescSweep(
 
   for (;;) {
     await yieldToPoll();
+    const fetchedAt = new Date();
     const data =
       kind === "invoices"
         ? (await client.query<InvoicesDetailPage>(
@@ -633,7 +638,10 @@ async function historyDetailDescSweep(
           break;
         }
       }
-      await applyOrderDetail(node, kind, agg, logger);
+      await applyOrderDetail(node, kind, agg, logger, {
+        syncRunId: runId,
+        fetchedAt,
+      });
     }
 
     pages += 1;

@@ -23,6 +23,7 @@ export * from "./pvContacts";
 export * from "./pvStatuses";
 export * from "./pvLineItemGroups";
 export * from "./pvLineItems";
+export * from "./pvOrderLineItemSnapshots";
 export * from "./pvImprints";
 export * from "./pvPayments";
 export * from "./changeEvents";

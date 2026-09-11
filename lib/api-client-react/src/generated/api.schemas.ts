@@ -866,6 +866,102 @@ export interface ProbeResult {
   message: string;
 }
 
+export type PrintavoOrderHistoryLineItemLabels = {[key: string]: string};
+
+export type PrintavoOrderHistoryOrderDetailSyncState = typeof PrintavoOrderHistoryOrderDetailSyncState[keyof typeof PrintavoOrderHistoryOrderDetailSyncState];
+
+
+export const PrintavoOrderHistoryOrderDetailSyncState = {
+  unknown: 'unknown',
+  complete: 'complete',
+  incomplete: 'incomplete',
+} as const;
+
+export interface PrintavoOrderHistoryOrder {
+  id: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  detailSyncedAt: string | null;
+  detailSyncState: PrintavoOrderHistoryOrderDetailSyncState;
+  /** @nullable */
+  detailSyncError: string | null;
+}
+
+export interface PrintavoLineItemObservation {
+  id: number;
+  observedAt: string;
+  itemCount: number;
+  contentHash: string;
+  /** @nullable */
+  syncRunId: number | null;
+}
+
+export type PrintavoCurrentLineItemSizesItem = {
+  size: string;
+  count: number;
+};
+
+export interface PrintavoCurrentLineItem {
+  lineItemId: string;
+  /** @nullable */
+  itemNumber: string | null;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  color: string | null;
+  /** @nullable */
+  productId: string | null;
+  /** @nullable */
+  brand: string | null;
+  items: number;
+  /** @nullable */
+  price: string | null;
+  /** @nullable */
+  sizes: PrintavoCurrentLineItemSizesItem[] | null;
+  /** @nullable */
+  productStatus: string | null;
+  groupId: string;
+}
+
+export interface PrintavoLineItemHistoryEvent {
+  id: number;
+  entityType: string;
+  entityId: string;
+  /** @nullable */
+  visualId: number | null;
+  eventType: string;
+  /** @nullable */
+  field: string | null;
+  oldValue: unknown;
+  newValue: unknown;
+  occurredAt: string;
+  /** @nullable */
+  syncRunId: number | null;
+}
+
+export interface PrintavoHistoryPage {
+  hasMore: boolean;
+  /** @nullable */
+  nextBeforeId: number | null;
+}
+
+export interface PrintavoOrderHistoryPagination {
+  snapshots: PrintavoHistoryPage;
+  events: PrintavoHistoryPage;
+}
+
+export interface PrintavoOrderHistory {
+  order: PrintavoOrderHistoryOrder;
+  /** @nullable */
+  baselineObservedAt: string | null;
+  observations: PrintavoLineItemObservation[];
+  currentItems: PrintavoCurrentLineItem[];
+  lineItemLabels: PrintavoOrderHistoryLineItemLabels;
+  events: PrintavoLineItemHistoryEvent[];
+  pagination: PrintavoOrderHistoryPagination;
+}
+
 export interface ReportStats {
   orders: number;
   revenue: number;
@@ -6787,6 +6883,25 @@ export const GetPipelineStage = {
   archive: 'archive',
   other: 'other',
 } as const;
+
+export type GetPrintavoOrderHistoryParams = {
+/**
+ * Maximum snapshots and events returned per page
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * Return older snapshot rows than this snapshot id
+ * @minimum 1
+ */
+beforeSnapshotId?: number;
+/**
+ * Return older change events than this event id
+ * @minimum 1
+ */
+beforeEventId?: number;
+};
 
 export type GetFinderOrderParams = {
 /**

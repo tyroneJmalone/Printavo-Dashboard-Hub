@@ -182,6 +182,7 @@ import type {
   GetPaymentsStatsParams,
   GetPipelineParams,
   GetPricingMatrixBreakdownParams,
+  GetPrintavoOrderHistoryParams,
   GetRecentActivityParams,
   GetStatusActivityOrdersParams,
   GetStatusActivityParams,
@@ -286,6 +287,7 @@ import type {
   PrintQueueOrdersResponse,
   PrintavoConnectionResult,
   PrintavoLinkStatus,
+  PrintavoOrderHistory,
   PrintavoOrderSummary,
   PrintavoSettings,
   PrintavoSettingsInput,
@@ -3560,6 +3562,96 @@ export function useProbePrintavo<TData = Awaited<ReturnType<typeof probePrintavo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getProbePrintavoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPrintavoOrderHistoryUrl = (orderId: string,
+    params?: GetPrintavoOrderHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/printavo/orders/${orderId}/history?${stringifiedParams}` : `/api/printavo/orders/${orderId}/history`
+}
+
+/**
+ * Reads the local Printavo mirror only. History is based on complete, successful detail observations; the first observation is a baseline and is not emitted as a change. No upstream Printavo write is made.
+ * @summary Read complete-observation line-item history for an order
+ */
+export const getPrintavoOrderHistory = async (orderId: string,
+    params?: GetPrintavoOrderHistoryParams, options?: RequestInit): Promise<PrintavoOrderHistory> => {
+
+  return customFetch<PrintavoOrderHistory>(getGetPrintavoOrderHistoryUrl(orderId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrintavoOrderHistoryQueryKey = (orderId: string,
+    params?: GetPrintavoOrderHistoryParams,) => {
+    return [
+    `/api/printavo/orders/${orderId}/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPrintavoOrderHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getPrintavoOrderHistory>>, TError = ErrorType<ErrorResponse>>(orderId: string,
+    params?: GetPrintavoOrderHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintavoOrderHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrintavoOrderHistoryQueryKey(orderId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrintavoOrderHistory>>> = ({ signal }) => getPrintavoOrderHistory(orderId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderId !== null && orderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrintavoOrderHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrintavoOrderHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getPrintavoOrderHistory>>>
+export type GetPrintavoOrderHistoryQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Read complete-observation line-item history for an order
+ */
+
+export function useGetPrintavoOrderHistory<TData = Awaited<ReturnType<typeof getPrintavoOrderHistory>>, TError = ErrorType<ErrorResponse>>(
+ orderId: string,
+    params?: GetPrintavoOrderHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintavoOrderHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrintavoOrderHistoryQueryOptions(orderId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

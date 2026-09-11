@@ -5,13 +5,14 @@ import {
   pvLineItemGroupsTable,
   pvLineItemsTable,
   pvImprintsTable,
+  pvOrderLineItemSnapshotsTable,
   changeEventsTable,
   type InsertPvLineItemGroup,
   type InsertPvLineItem,
   type InsertPvImprint,
   type InsertChangeEvent,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import {
   orderDetailPageQuery,
   singleOrderDetailQuery,
@@ -44,12 +45,20 @@ import {
   setWatermark,
 } from "./state";
 import { SEED_MONTHS } from "./seed";
+import {
+  compareLineItemSnapshots,
+  isFetchedObservationStale,
+  lineItemHistoryHash,
+  lineItemHistoryStates,
+  type LineItemHistoryState,
+} from "./lineItemHistory";
 
 export { isDetailBackfillActive } from "./runState";
 
 export type DetailOutcome =
   | "written"
   | "unchanged"
+  | "stale"
   | "missing_order"
   | "truncated";
 
@@ -57,6 +66,7 @@ export interface DetailAgg {
   seen: number;
   written: number;
   unchanged: number;
+  stale: number;
   missingOrder: number;
   toppedUp: number;
   truncated: number;
@@ -67,6 +77,7 @@ export function newDetailAgg(): DetailAgg {
     seen: 0,
     written: 0,
     unchanged: 0,
+    stale: 0,
     missingOrder: 0,
     toppedUp: 0,
     truncated: 0,
@@ -78,6 +89,42 @@ function isTruncated(node: PvOrderDetailNode): boolean {
   return node.lineItemGroups.nodes.some(
     (g) => g.lineItems.pageInfo.hasNextPage || g.imprints.pageInfo.hasNextPage,
   );
+}
+
+/** A detail response is safe for replacement/history only when complete. */
+export function isCompleteOrderDetail(node: PvOrderDetailNode): boolean {
+  return !isTruncated(node);
+}
+
+async function markDetailIncomplete(
+  orderId: string,
+  fetchedAt: Date,
+  reason: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${orderId}, 0))`,
+    );
+    const [order] = await tx
+      .select({ detailFetchStartedAt: pvOrdersTable.detailFetchStartedAt })
+      .from(pvOrdersTable)
+      .where(eq(pvOrdersTable.printavoId, orderId))
+      .limit(1);
+    if (
+      !order ||
+      isFetchedObservationStale(fetchedAt, order.detailFetchStartedAt)
+    ) {
+      return;
+    }
+    await tx
+      .update(pvOrdersTable)
+      .set({
+        detailSyncState: "incomplete",
+        detailSyncError: reason,
+        detailFetchStartedAt: fetchedAt,
+      })
+      .where(eq(pvOrdersTable.printavoId, orderId));
+  });
 }
 
 /**
@@ -101,22 +148,14 @@ export async function applyOrderDetail(
   kind: OrderKind,
   agg: DetailAgg,
   logger: Logger,
-  opts?: { force?: boolean },
+  opts?: {
+    force?: boolean;
+    syncRunId?: number | null;
+    fetchedAt?: Date;
+  },
 ): Promise<DetailOutcome> {
   agg.seen += 1;
-
-  const [order] = await db
-    .select({
-      printavoId: pvOrdersTable.printavoId,
-      detailContentHash: pvOrdersTable.detailContentHash,
-    })
-    .from(pvOrdersTable)
-    .where(eq(pvOrdersTable.printavoId, pageNode.id))
-    .limit(1);
-  if (!order) {
-    agg.missingOrder += 1;
-    return "missing_order";
-  }
+  const fetchedAt = opts?.fetchedAt ?? new Date();
 
   let node = pageNode;
   if (isTruncated(node)) {
@@ -146,14 +185,18 @@ export async function applyOrderDetail(
       groupsPage = cont.lineItemGroups.pageInfo;
     }
     node.lineItemGroups.pageInfo = { hasNextPage: groupsPage.hasNextPage };
-    if (isTruncated(node)) {
-      // >40 line items or >15 imprints within one group — store what we
-      // have but flag loudly; nothing in this account should hit this.
+    if (!isCompleteOrderDetail(node)) {
+      // >40 line items or >15 imprints within one group — do not replace
+      // children or emit deletions from incomplete data.
       agg.truncated += 1;
+      const reason =
+        "Nested line-item or imprint pagination remains after supported top-up";
+      await markDetailIncomplete(node.id, fetchedAt, reason);
       logger.warn(
         { orderId: node.id, visualId: node.visualId },
-        "Order detail truncated even at generous limits",
+        `Order detail incomplete — skipped: ${reason}`,
       );
+      return "truncated";
     }
   }
 
@@ -173,99 +216,176 @@ export async function applyOrderDetail(
   // trusted as evidence the rows are current (a drifted row with a
   // matching hash would otherwise be re-flagged and skipped forever).
   const hash = detailHashOf(node);
-  if (!opts?.force && order.detailContentHash === hash) {
-    await db
-      .update(pvOrdersTable)
-      .set({ detailSyncedAt: new Date() })
-      .where(eq(pvOrdersTable.printavoId, node.id));
-    agg.unchanged += 1;
-    return "unchanged";
-  }
-
-  // Line-item product status activity log (Needs Ordering / Ordered / ...):
-  // Printavo exposes no event timestamps or audit log for these changes,
-  // so we record the transition at OBSERVATION time whenever a detail
-  // rewrite lands a different status than what was stored. This is the
-  // single choke point for local product_status writes (delete+reinsert
-  // below), so it covers manual Printavo edits AND hub PO write-backs.
-  const previousStatuses = new Map(
-    (
-      await db
-        .select({
-          printavoId: pvLineItemsTable.printavoId,
-          productStatus: pvLineItemsTable.productStatus,
-        })
-        .from(pvLineItemsTable)
-        .where(eq(pvLineItemsTable.orderId, node.id))
-    ).map((r) => [r.printavoId, r.productStatus]),
-  );
-
-  const groupRows: InsertPvLineItemGroup[] = [];
-  const itemRows: InsertPvLineItem[] = [];
-  const imprintRows: InsertPvImprint[] = [];
+  const currentStates = lineItemHistoryStates(node.lineItemGroups.nodes);
   const now = new Date();
-  for (const group of node.lineItemGroups.nodes) {
-    groupRows.push({
-      printavoId: group.id,
+  const outcome = await db.transaction(async (tx) => {
+    // Every read that determines the before-state is protected by the same
+    // per-order lock as the replacement.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${node.id}, 0))`,
+    );
+    const [order] = await tx
+      .select({
+        printavoId: pvOrdersTable.printavoId,
+        detailContentHash: pvOrdersTable.detailContentHash,
+        detailFetchStartedAt: pvOrdersTable.detailFetchStartedAt,
+      })
+      .from(pvOrdersTable)
+      .where(eq(pvOrdersTable.printavoId, node.id))
+      .limit(1);
+    if (!order) return "missing_order" as const;
+
+    // Reject a response that started before an already-accepted newer one.
+    if (isFetchedObservationStale(fetchedAt, order.detailFetchStartedAt)) {
+      return "stale" as const;
+    }
+
+    const [latestSnapshot] = await tx
+      .select()
+      .from(pvOrderLineItemSnapshotsTable)
+      .where(eq(pvOrderLineItemSnapshotsTable.orderId, node.id))
+      .orderBy(desc(pvOrderLineItemSnapshotsTable.id))
+      .limit(1);
+    const previousStates = latestSnapshot
+      ? (latestSnapshot.lineItems as LineItemHistoryState[])
+      : [];
+    const baseline = latestSnapshot === undefined;
+    if (!opts?.force && order.detailContentHash === hash) {
+      // Rows written before line-item history was introduced have a detail
+      // hash but no observation. Capture this first complete response as the
+      // baseline without inventing additions.
+      if (baseline) {
+        await tx.insert(pvOrderLineItemSnapshotsTable).values({
+          orderId: node.id,
+          observedAt: now,
+          syncRunId: opts?.syncRunId ?? null,
+          contentHash: lineItemHistoryHash(currentStates),
+          lineItems: currentStates,
+        });
+      }
+      await tx
+        .update(pvOrdersTable)
+        .set({
+          detailSyncedAt: now,
+          detailFetchStartedAt: fetchedAt,
+          detailSyncState: "complete",
+          detailSyncError: null,
+        })
+        .where(eq(pvOrdersTable.printavoId, node.id));
+      return "unchanged" as const;
+    }
+
+    // Line-item product status activity log (Needs Ordering / Ordered / ...):
+    // Printavo exposes no event timestamps or audit log for these changes,
+    // so we record the transition at OBSERVATION time whenever a detail
+    // rewrite lands a different status than what was stored. This is the
+    // single choke point for local product_status writes (delete+reinsert
+    // below), so it covers manual Printavo edits AND hub PO write-backs.
+    const previousStatuses = new Map(
+      (
+        await tx
+          .select({
+            printavoId: pvLineItemsTable.printavoId,
+            productStatus: pvLineItemsTable.productStatus,
+          })
+          .from(pvLineItemsTable)
+          .where(eq(pvLineItemsTable.orderId, node.id))
+      ).map((r) => [r.printavoId, r.productStatus]),
+    );
+
+    const groupRows: InsertPvLineItemGroup[] = [];
+    const itemRows: InsertPvLineItem[] = [];
+    const imprintRows: InsertPvImprint[] = [];
+    for (const group of node.lineItemGroups.nodes) {
+      groupRows.push({
+        printavoId: group.id,
+        orderId: node.id,
+        position: group.position ?? null,
+        syncedAt: now,
+      });
+      for (const li of group.lineItems.nodes) {
+        itemRows.push({
+          printavoId: li.id,
+          groupId: group.id,
+          orderId: node.id,
+          itemNumber: li.itemNumber ?? null,
+          color: li.color ?? null,
+          description: li.description ?? null,
+          categoryId: li.category?.id ?? null,
+          categoryName: li.category?.name ?? null,
+          brand: li.product?.brand ?? null,
+          productId: li.product?.id ?? null,
+          items: li.items ?? 0,
+          price: moneyStr(li.price),
+          merch: li.merch ?? false,
+          productStatus: li.productStatus ?? null,
+          sizes: li.sizes ?? null,
+          syncedAt: now,
+        });
+      }
+      for (const imp of group.imprints.nodes) {
+        imprintRows.push({
+          printavoId: imp.id,
+          groupId: group.id,
+          orderId: node.id,
+          details: imp.details ?? null,
+          matrixName: imp.pricingMatrixColumn?.matrix?.name ?? null,
+          columnName: imp.pricingMatrixColumn?.columnName ?? null,
+          typeOfWork: imp.typeOfWork?.name ?? null,
+          syncedAt: now,
+        });
+      }
+    }
+
+    const statusEvents: InsertChangeEvent[] = [];
+    for (const row of itemRows) {
+      if (!previousStatuses.has(row.printavoId)) continue;
+      const oldStatus = previousStatuses.get(row.printavoId) ?? null;
+      const newStatus = row.productStatus ?? null;
+      if (oldStatus !== newStatus) {
+        statusEvents.push({
+          entityType: "line_item",
+          entityId: row.printavoId,
+          orderId: node.id,
+          visualId: node.visualId ?? null,
+          eventType: "status_change",
+          field: "productStatus",
+          oldValue: oldStatus,
+          newValue: newStatus,
+          occurredAt: now,
+          syncRunId: opts?.syncRunId ?? null,
+        });
+      }
+    }
+
+    const lineItemChanges = compareLineItemSnapshots(
+      previousStates,
+      currentStates,
+      baseline,
+    );
+    const lineItemEvents: InsertChangeEvent[] = lineItemChanges.map((change) => ({
+      entityType: "line_item",
+      entityId: change.lineItemId,
       orderId: node.id,
-      position: group.position ?? null,
-      syncedAt: now,
-    });
-    for (const li of group.lineItems.nodes) {
-      itemRows.push({
-        printavoId: li.id,
-        groupId: group.id,
-        orderId: node.id,
-        itemNumber: li.itemNumber ?? null,
-        color: li.color ?? null,
-        description: li.description ?? null,
-        categoryId: li.category?.id ?? null,
-        categoryName: li.category?.name ?? null,
-        brand: li.product?.brand ?? null,
-        productId: li.product?.id ?? null,
-        items: li.items ?? 0,
-        price: moneyStr(li.price),
-        merch: li.merch ?? false,
-        productStatus: li.productStatus ?? null,
-        sizes: li.sizes ?? null,
-        syncedAt: now,
-      });
-    }
-    for (const imp of group.imprints.nodes) {
-      imprintRows.push({
-        printavoId: imp.id,
-        groupId: group.id,
-        orderId: node.id,
-        details: imp.details ?? null,
-        matrixName: imp.pricingMatrixColumn?.matrix?.name ?? null,
-        columnName: imp.pricingMatrixColumn?.columnName ?? null,
-        typeOfWork: imp.typeOfWork?.name ?? null,
-        syncedAt: now,
-      });
-    }
-  }
+      visualId: node.visualId ?? null,
+      eventType:
+        change.kind === "added"
+          ? "created"
+          : change.kind === "removed"
+            ? "deleted"
+            : "field_change",
+      field: change.field,
+      oldValue: change.oldValue,
+      newValue: change.newValue,
+      occurredAt: now,
+      syncRunId: opts?.syncRunId ?? null,
+    }));
+    const snapshotHash = lineItemHistoryHash(currentStates);
+    const shouldWriteSnapshot =
+      baseline ||
+      lineItemChanges.length > 0 ||
+      latestSnapshot?.contentHash !== snapshotHash;
 
-  const statusEvents: InsertChangeEvent[] = [];
-  for (const row of itemRows) {
-    if (!previousStatuses.has(row.printavoId)) continue;
-    const oldStatus = previousStatuses.get(row.printavoId) ?? null;
-    const newStatus = row.productStatus ?? null;
-    if (oldStatus !== newStatus) {
-      statusEvents.push({
-        entityType: "line_item",
-        entityId: row.printavoId,
-        visualId: node.visualId ?? null,
-        eventType: "status_change",
-        field: "productStatus",
-        oldValue: oldStatus,
-        newValue: newStatus,
-        occurredAt: now,
-        syncRunId: null,
-      });
-    }
-  }
-
-  await db.transaction(async (tx) => {
     await tx
       .delete(pvLineItemGroupsTable)
       .where(eq(pvLineItemGroupsTable.orderId, node.id));
@@ -278,16 +398,37 @@ export async function applyOrderDetail(
     if (imprintRows.length > 0) {
       await tx.insert(pvImprintsTable).values(imprintRows);
     }
-    if (statusEvents.length > 0) {
-      await tx.insert(changeEventsTable).values(statusEvents);
+    if (statusEvents.length > 0 || lineItemEvents.length > 0) {
+      await tx
+        .insert(changeEventsTable)
+        .values([...statusEvents, ...lineItemEvents]);
+    }
+    if (shouldWriteSnapshot) {
+      await tx.insert(pvOrderLineItemSnapshotsTable).values({
+        orderId: node.id,
+        observedAt: now,
+        syncRunId: opts?.syncRunId ?? null,
+        contentHash: snapshotHash,
+        lineItems: currentStates,
+      });
     }
     await tx
       .update(pvOrdersTable)
-      .set({ detailContentHash: hash, detailSyncedAt: now })
+      .set({
+        detailContentHash: hash,
+        detailSyncedAt: now,
+        detailFetchStartedAt: fetchedAt,
+        detailSyncState: "complete",
+        detailSyncError: null,
+      })
       .where(eq(pvOrdersTable.printavoId, node.id));
+    return "written" as const;
   });
-  agg.written += 1;
-  return "written";
+  if (outcome === "missing_order") agg.missingOrder += 1;
+  if (outcome === "stale") agg.stale += 1;
+  if (outcome === "unchanged") agg.unchanged += 1;
+  if (outcome === "written") agg.written += 1;
+  return outcome;
 }
 
 /**
@@ -299,10 +440,15 @@ export async function refreshOrderDetail(
   kind: OrderKind,
   agg: DetailAgg,
   logger: Logger,
-  opts?: { force?: boolean },
+  opts?: {
+    force?: boolean;
+    syncRunId?: number | null;
+    fetchedAt?: Date;
+  },
 ): Promise<DetailOutcome> {
   const singleKind = kind === "invoices" ? "invoice" : "quote";
   const client = getPrintavoClient();
+  const fetchedAt = opts?.fetchedAt ?? new Date();
   const data = await client.query<SingleOrderDetail>(
     singleOrderDetailQuery(singleKind, orderId),
   );
@@ -312,7 +458,7 @@ export async function refreshOrderDetail(
     agg.missingOrder += 1;
     return "missing_order";
   }
-  return applyOrderDetail(node, kind, agg, logger, opts);
+  return applyOrderDetail(node, kind, agg, logger, { ...opts, fetchedAt });
 }
 
 /**
@@ -329,12 +475,14 @@ export async function crawlDetailEntity(
     entity: string;
     startCursor: string | null;
   },
+  opts?: { syncRunId?: number | null },
 ): Promise<void> {
   const client = getPrintavoClient();
   let cursor: string | null = checkpoint?.startCursor ?? null;
   let pages = 0;
 
   for (;;) {
+    const fetchedAt = new Date();
     const data =
       kind === "invoices"
         ? (await client.query<InvoicesDetailPage>(
@@ -351,7 +499,10 @@ export async function crawlDetailEntity(
         reachedCutoff = true;
         break;
       }
-      await applyOrderDetail(node, kind, agg, logger);
+      await applyOrderDetail(node, kind, agg, logger, {
+        syncRunId: opts?.syncRunId ?? checkpoint?.runId ?? null,
+        fetchedAt,
+      });
     }
 
     pages += 1;

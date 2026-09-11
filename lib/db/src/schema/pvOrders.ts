@@ -49,6 +49,13 @@ export const pvOrdersTable = pgTable(
     contentHash: text("content_hash").notNull(),
     detailContentHash: text("detail_content_hash"),
     detailSyncedAt: timestamp("detail_synced_at", { withTimezone: true }),
+    /** Fetch-start ordering fence for concurrent detail responses. */
+    detailFetchStartedAt: timestamp("detail_fetch_started_at", {
+      withTimezone: true,
+    }),
+    /** Complete, incomplete, or unknown when no detail has been observed. */
+    detailSyncState: text("detail_sync_state").notNull().default("unknown"),
+    detailSyncError: text("detail_sync_error"),
     // Backup module: full-fidelity supplemental payload (fees, expenses,
     // approvals, production files, mockups, ...) captured by a per-order
     // extras query. Raw blob — no hot columns; refreshed by the extras

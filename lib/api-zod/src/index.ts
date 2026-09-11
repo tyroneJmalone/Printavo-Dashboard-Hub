@@ -1,6 +1,13 @@
 export * from "./generated/api";
 export * from "./generated/types";
 
+// getPrintavoOrderHistory has a path parameter plus query pagination params,
+// and orval emits the same params name in both generated surfaces.
+export { GetPrintavoOrderHistoryParams } from "./generated/api";
+export type {
+  GetPrintavoOrderHistoryParams as GetPrintavoOrderHistoryQueryParamsType,
+} from "./generated/types";
+
 // getCustomerProfile has both path params (zod schema in ./generated/api) and
 // query params (TS type in ./generated/types), and orval names them both
 // "GetCustomerProfileParams". Resolve the ambiguity: the bare name is the zod

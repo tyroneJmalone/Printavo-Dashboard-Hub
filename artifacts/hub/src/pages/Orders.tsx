@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
+import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
 import { 
   useGetOrdersReport, 
   useGetReportFilterOptions,
@@ -22,7 +23,7 @@ import {
 } from "@workspace/api-client-react";
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { useEffect, useState } from "react";
-import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History } from "lucide-react";
 
 type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color';
 
@@ -51,6 +52,7 @@ export default function Orders() {
   const [maxQty, setMaxQty] = useState("");
   const [minTotal, setMinTotal] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
+  const [historyOrder, setHistoryOrder] = useState<{ id: string; visualId: number | null } | null>(null);
 
   const { data: filterOpts } = useGetReportFilterOptions();
 
@@ -368,7 +370,18 @@ export default function Orders() {
                         {ordersData?.orders?.map((order) => (
                           <tr key={order.id} className="hover:bg-slate-800/40 transition-colors">
                             <td className="px-6 py-4 font-mono text-slate-300">
-                              <PrintavoOrderLink orderId={order.id} visualId={order.visualId} />
+                              <div className="flex items-center gap-2">
+                                <PrintavoOrderLink orderId={order.id} visualId={order.visualId} />
+                                <button
+                                  type="button"
+                                  onClick={() => setHistoryOrder({ id: order.id, visualId: order.visualId })}
+                                  className="rounded p-1 text-slate-500 transition-colors hover:bg-slate-800 hover:text-[#10b981]"
+                                  title="View line-item history"
+                                  aria-label={`View line-item history for order ${order.visualId}`}
+                                >
+                                  <History size={14} />
+                                </button>
+                              </div>
                             </td>
                             <td className="px-6 py-4 text-xs font-medium text-slate-400 capitalize">{order.orderType}</td>
                             <td className="px-6 py-4 font-medium text-white">{order.customerName}</td>
@@ -477,6 +490,14 @@ export default function Orders() {
           )}
         </div>
       </div>
+      <OrderLineItemHistory
+        orderId={historyOrder?.id ?? null}
+        visualId={historyOrder?.visualId ?? null}
+        open={historyOrder !== null}
+        onOpenChange={(open) => {
+          if (!open) setHistoryOrder(null);
+        }}
+      />
     </AppShell>
   );
 }

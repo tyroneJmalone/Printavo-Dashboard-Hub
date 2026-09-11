@@ -23,8 +23,10 @@ export const changeEventsTable = pgTable(
     id: bigserial("id", { mode: "number" }).primaryKey(),
     entityType: text("entity_type").notNull(), // order | customer | contact | status | line_item
     entityId: text("entity_id").notNull(),
+    /** Denormalized owner for bounded order history reads. */
+    orderId: text("order_id"),
     visualId: integer("visual_id"),
-    eventType: text("event_type").notNull(), // created | status_change | field_change | updated | converted
+    eventType: text("event_type").notNull(), // created | deleted | status_change | field_change | updated | converted
     field: text("field"),
     oldValue: jsonb("old_value"),
     newValue: jsonb("new_value"),
@@ -35,6 +37,7 @@ export const changeEventsTable = pgTable(
   },
   (t) => [
     index("change_events_entity_idx").on(t.entityType, t.entityId, t.occurredAt),
+    index("change_events_order_idx").on(t.orderId, t.occurredAt),
     index("change_events_occurred_idx").on(t.occurredAt),
     index("change_events_type_idx").on(t.eventType),
   ],

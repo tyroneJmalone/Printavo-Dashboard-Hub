@@ -321,6 +321,7 @@ export async function runIncrementalPoll(
           // matching hash would otherwise never be repaired).
           const outcome = await refreshOrderDetail(id, "invoices", detailAgg, logger, {
             force: true,
+            syncRunId: run.id,
           });
           // A brand-new order isn't in pv_orders yet (missing_order):
           // leave it out of the dedupe set so the post-crawl refresh
@@ -374,13 +375,19 @@ export async function runIncrementalPoll(
     // updatedAt.
     if (detailsWm && detailAgg) {
       if (detailRecrawlDue) {
-        await crawlDetailEntity("invoices", cutoff, detailAgg, logger);
-        await crawlDetailEntity("quotes", cutoff, detailAgg, logger);
+        await crawlDetailEntity("invoices", cutoff, detailAgg, logger, undefined, {
+          syncRunId: run.id,
+        });
+        await crawlDetailEntity("quotes", cutoff, detailAgg, logger, undefined, {
+          syncRunId: run.id,
+        });
         await setWatermark("details_daily", runStart);
       } else {
         for (const { id, kind } of changedOrders) {
           if (refreshedOrderIds.has(id)) continue;
-          await refreshOrderDetail(id, kind, detailAgg, logger);
+          await refreshOrderDetail(id, kind, detailAgg, logger, {
+            syncRunId: run.id,
+          });
           refreshedOrderIds.add(id);
         }
       }

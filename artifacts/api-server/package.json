@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test:quote-matrices": "node ./test-quote-matrices.mjs",
     "test:hub-calc": "node ./test-hub-calc.mjs",
+    "test:line-item-history": "node ./test-line-item-history.mjs",
     "test:palette-suggestions": "node ./test-palette-suggestions.mjs",
     "test:pantone-verification": "node ./test-pantone-verification.mjs",
     "test:pantone-verification-integration": "node ./test-pantone-verification-integration.mjs",
