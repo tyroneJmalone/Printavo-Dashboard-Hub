@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ReportActivityStatsByCategory } from './reportActivityStatsByCategory';
 import type { ReportActivityStatsByOrderType } from './reportActivityStatsByOrderType';
 
 export interface ReportActivityStats {
   affectedOrders: number;
   changes: number;
   byOrderType: ReportActivityStatsByOrderType;
+  byCategory: ReportActivityStatsByCategory;
 }

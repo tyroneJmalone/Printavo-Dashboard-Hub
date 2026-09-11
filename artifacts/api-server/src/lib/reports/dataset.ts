@@ -1,6 +1,10 @@
 import { db } from "@workspace/db";
 import { sql, type SQL } from "drizzle-orm";
 import type { ReportFilters } from "./filters";
+import {
+  emptyActivityBreakdown,
+  type ActivityBreakdown,
+} from "./activity";
 
 /**
  * Loads the filtered order dataset (with line items + imprints) into
@@ -46,6 +50,7 @@ export interface ReportOrder {
   dueAt: string | null;
   activityCount: number;
   latestActivityAt: string | null;
+  activityBreakdown: ActivityBreakdown;
   groups: ReportGroup[];
 }
 
@@ -135,7 +140,15 @@ function activityFragments(f: ReportFilters): {
     return {
       cte: sql``,
       join: sql``,
-      select: sql`0::int AS activity_count, null::timestamptz AS latest_activity_at`,
+      select: sql`0::int AS activity_count,
+        null::timestamptz AS latest_activity_at,
+        jsonb_build_object(
+          'quantity', 0,
+          'lineItem', 0,
+          'price', 0,
+          'status', 0,
+          'order', 0
+        ) AS activity_breakdown`,
       conditions: [],
     };
   }
@@ -159,7 +172,22 @@ function activityFragments(f: ReportFilters): {
       SELECT CASE
         WHEN ce.entity_type = 'order' THEN ce.entity_id
         ELSE ce.order_id
-      END AS order_id, ce.occurred_at
+      END AS order_id,
+      ce.occurred_at,
+      ce.entity_type,
+      ce.event_type,
+      ce.field,
+      CASE
+        WHEN ce.event_type = 'status_change' OR ce.field = 'productStatus'
+          THEN 'status'
+        WHEN ce.field = 'quantity'
+          THEN 'quantity'
+        WHEN ce.field IN ('unitPrice', 'total', 'amountOutstanding')
+          THEN 'price'
+        WHEN ce.entity_type = 'line_item'
+          THEN 'lineItem'
+        ELSE 'order'
+      END AS category
       FROM change_events ce
       WHERE (
         (
@@ -176,7 +204,14 @@ function activityFragments(f: ReportFilters): {
     ),
     activity_by_order AS (
       SELECT order_id, count(*)::int AS activity_count,
-             max(occurred_at) AS latest_activity_at
+             max(occurred_at) AS latest_activity_at,
+             jsonb_build_object(
+               'quantity', count(*) FILTER (WHERE category = 'quantity')::int,
+               'lineItem', count(*) FILTER (WHERE category = 'lineItem')::int,
+               'price', count(*) FILTER (WHERE category = 'price')::int,
+               'status', count(*) FILTER (WHERE category = 'status')::int,
+               'order', count(*) FILTER (WHERE category = 'order')::int
+             ) AS activity_breakdown
       FROM activity_events
       GROUP BY order_id
     )
@@ -197,7 +232,17 @@ function activityFragments(f: ReportFilters): {
     join: sql` LEFT JOIN activity_by_order activity
       ON activity.order_id = pv_orders.printavo_id`,
     select: sql`coalesce(activity.activity_count, 0)::int AS activity_count,
-      activity.latest_activity_at`,
+      activity.latest_activity_at,
+      coalesce(
+        activity.activity_breakdown,
+        jsonb_build_object(
+          'quantity', 0,
+          'lineItem', 0,
+          'price', 0,
+          'status', 0,
+          'order', 0
+        )
+      ) AS activity_breakdown`,
     conditions,
   };
 }
@@ -218,6 +263,7 @@ interface OrderRow {
   customer_due_at: string | null;
   activity_count: number | string | null;
   latest_activity_at: string | Date | null;
+  activity_breakdown: ActivityBreakdown | null;
 }
 
 interface GroupRow {
@@ -373,6 +419,7 @@ export async function loadReportOrders(
       latestActivityAt: r.latest_activity_at
         ? new Date(r.latest_activity_at).toISOString()
         : null,
+      activityBreakdown: r.activity_breakdown ?? emptyActivityBreakdown(),
       groups,
     };
     if (f.minQty !== null && qty < f.minQty) continue;

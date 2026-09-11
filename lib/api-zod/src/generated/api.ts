@@ -4066,6 +4066,13 @@ export const GetOrdersReportResponse = zod.object({
   "byOrderType": zod.object({
   "invoice": zod.number(),
   "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
 })
 })
 }),
@@ -4087,7 +4094,14 @@ export const GetOrdersReportResponse = zod.object({
   "productionDueAt": zod.string().nullable(),
   "dueAt": zod.string().nullable(),
   "activityCount": zod.number(),
-  "latestActivityAt": zod.coerce.date().nullable()
+  "latestActivityAt": zod.coerce.date().nullable(),
+  "activityBreakdown": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
+})
 }))
 })
 
@@ -4135,6 +4149,13 @@ export const GetStatusBreakdownResponse = zod.object({
   "byOrderType": zod.object({
   "invoice": zod.number(),
   "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
 })
 })
 }),
@@ -4191,6 +4212,13 @@ export const GetPricingMatrixBreakdownResponse = zod.object({
   "byOrderType": zod.object({
   "invoice": zod.number(),
   "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
 })
 })
 }),
@@ -4247,6 +4275,13 @@ export const GetImprintsByTierResponse = zod.object({
   "byOrderType": zod.object({
   "invoice": zod.number(),
   "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
 })
 })
 }),
@@ -4303,6 +4338,13 @@ export const GetOrderQuantityBreakdownResponse = zod.object({
   "byOrderType": zod.object({
   "invoice": zod.number(),
   "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
 })
 })
 }),
@@ -4359,6 +4401,13 @@ export const GetStyleNumberBreakdownResponse = zod.object({
   "byOrderType": zod.object({
   "invoice": zod.number(),
   "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
 })
 })
 }),
@@ -4415,6 +4464,13 @@ export const GetBrandBreakdownResponse = zod.object({
   "byOrderType": zod.object({
   "invoice": zod.number(),
   "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
 })
 })
 }),
@@ -4471,6 +4527,13 @@ export const GetColorBreakdownResponse = zod.object({
   "byOrderType": zod.object({
   "invoice": zod.number(),
   "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
 })
 })
 }),

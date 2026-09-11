@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ReportActivityBreakdown } from './reportActivityBreakdown';
 
 export interface ReportOrderSummary {
   id: string;
@@ -32,4 +33,5 @@ export interface ReportOrderSummary {
   activityCount: number;
   /** @nullable */
   latestActivityAt: Date | null;
+  activityBreakdown: ReportActivityBreakdown;
 }

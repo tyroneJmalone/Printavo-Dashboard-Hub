@@ -1,5 +1,6 @@
-const SHOP_TIME_ZONE = "America/New_York";
+import type { ReportOrder } from "./dataset";
 
+const SHOP_TIME_ZONE = "America/New_York";
 export type ActivityEntityType = "order" | "line_item";
 export type ActivityEventType =
   | "created"
@@ -9,11 +10,34 @@ export type ActivityEventType =
   | "updated"
   | "converted";
 
+export const ACTIVITY_CATEGORIES = [
+  "quantity",
+  "lineItem",
+  "price",
+  "status",
+  "order",
+] as const;
+
+export type ActivityCategory = (typeof ACTIVITY_CATEGORIES)[number];
+
+export type ActivityBreakdown = Record<ActivityCategory, number>;
+
+export function emptyActivityBreakdown(): ActivityBreakdown {
+  return {
+    quantity: 0,
+    lineItem: 0,
+    price: 0,
+    status: 0,
+    order: 0,
+  };
+}
+
 export interface ReportActivityEvent {
   entityType: ActivityEntityType;
   entityId: string | null;
   orderId: string | null;
   eventType: ActivityEventType;
+  field?: string | null;
   occurredAt: Date | string;
 }
 
@@ -21,6 +45,7 @@ export interface AggregatedActivity {
   orderId: string;
   changes: number;
   latestObservedAt: string;
+  breakdown: ActivityBreakdown;
 }
 
 /**
@@ -50,6 +75,30 @@ export function activityOrderId(
 ): string | null {
   if (!isQualifyingActivityEvent(event)) return null;
   return event.entityType === "order" ? event.entityId : event.orderId;
+}
+
+/**
+ * Every qualifying event maps to exactly one category. These names mirror the
+ * fields emitted by the sync engine (line-item quantity/unitPrice/productStatus
+ * and order total/amountOutstanding) rather than guessing from free-form JSON.
+ */
+export function activityCategory(event: Pick<
+  ReportActivityEvent,
+  "entityType" | "eventType" | "field"
+>): ActivityCategory {
+  if (event.eventType === "status_change" || event.field === "productStatus") {
+    return "status";
+  }
+  if (event.field === "quantity") return "quantity";
+  if (
+    event.field === "unitPrice" ||
+    event.field === "total" ||
+    event.field === "amountOutstanding"
+  ) {
+    return "price";
+  }
+  if (event.entityType === "line_item") return "lineItem";
+  return "order";
 }
 
 function localDate(value: Date | string): string {
@@ -82,7 +131,10 @@ export function aggregateActivity(
   start: string | null = null,
   end: string | null = null,
 ): AggregatedActivity[] {
-  const byOrder = new Map<string, { changes: number; latest: Date }>();
+  const byOrder = new Map<
+    string,
+    { changes: number; latest: Date; breakdown: ActivityBreakdown }
+  >();
   for (const event of events) {
     const orderId = activityOrderId(event);
     if (
@@ -97,9 +149,12 @@ export function aggregateActivity(
         : event.occurredAt;
     const previous = byOrder.get(orderId);
     if (!previous) {
-      byOrder.set(orderId, { changes: 1, latest: at });
+      const breakdown = emptyActivityBreakdown();
+      breakdown[activityCategory(event)] = 1;
+      byOrder.set(orderId, { changes: 1, latest: at, breakdown });
     } else {
       previous.changes += 1;
+      previous.breakdown[activityCategory(event)] += 1;
       if (at > previous.latest) previous.latest = at;
     }
   }
@@ -108,8 +163,13 @@ export function aggregateActivity(
       orderId,
       changes: value.changes,
       latestObservedAt: value.latest.toISOString(),
+      breakdown: value.breakdown,
     }))
-    .sort((a, b) => b.latestObservedAt.localeCompare(a.latestObservedAt));
+    .sort(
+      (a, b) =>
+        b.latestObservedAt.localeCompare(a.latestObservedAt) ||
+        b.orderId.localeCompare(a.orderId),
+    );
 }
 
 export function currentOwnerMatches(
@@ -126,4 +186,26 @@ export function paginateReportRows<T>(
   limit: number,
 ): T[] {
   return rows.slice(Math.max(0, Math.trunc(offset)), Math.max(0, Math.trunc(offset)) + Math.max(1, Math.trunc(limit)));
+}
+
+/** Stable API envelope for the paginated list (never omit matching orders). */
+export function serializeReportOrder(order: ReportOrder) {
+  return {
+    id: order.id,
+    visualId: order.visualId,
+    orderType: order.orderType,
+    statusName: order.statusName,
+    nickname: order.nickname,
+    customerName: order.customerName,
+    ownerEmail: order.ownerEmail,
+    total: order.total,
+    qty: order.qty,
+    createdAt: order.createdAt,
+    invoiceAt: order.invoiceAt,
+    productionDueAt: order.productionDueAt,
+    dueAt: order.dueAt,
+    activityCount: order.activityCount,
+    latestActivityAt: order.latestActivityAt,
+    activityBreakdown: order.activityBreakdown,
+  };
 }

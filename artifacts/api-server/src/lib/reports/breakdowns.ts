@@ -1,4 +1,8 @@
 import type { ReportGroup, ReportOrder } from "./dataset";
+import {
+  emptyActivityBreakdown,
+  type ActivityBreakdown,
+} from "./activity";
 
 /**
  * Report formulas ported from the legacy Insights app (must match exactly):
@@ -29,6 +33,7 @@ export interface ActivityStats {
     invoice: number;
     quote: number;
   };
+  byCategory: ActivityBreakdown;
 }
 
 export function computeStats(orders: ReportOrder[]): ReportStats {
@@ -49,11 +54,17 @@ export function computeActivityStats(orders: ReportOrder[]): ActivityStats {
     affectedOrders: 0,
     changes: 0,
     byOrderType: { invoice: 0, quote: 0 },
+    byCategory: emptyActivityBreakdown(),
   };
   for (const order of orders) {
     if (order.activityCount <= 0) continue;
     stats.affectedOrders += 1;
     stats.changes += order.activityCount;
+    for (const category of Object.keys(stats.byCategory) as Array<
+      keyof ActivityBreakdown
+    >) {
+      stats.byCategory[category] += order.activityBreakdown[category];
+    }
     if (order.orderType === "invoice") stats.byOrderType.invoice += 1;
     if (order.orderType === "quote") stats.byOrderType.quote += 1;
   }

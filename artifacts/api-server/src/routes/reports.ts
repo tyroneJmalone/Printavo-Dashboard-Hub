@@ -12,7 +12,10 @@ import {
   orderQuantityBreakdown,
   type BreakdownRow,
 } from "../lib/reports/breakdowns";
-import { paginateReportRows } from "../lib/reports/activity";
+import {
+  paginateReportRows,
+  serializeReportOrder,
+} from "../lib/reports/activity";
 
 /**
  * Reports module. Reads Postgres ONLY (never the Printavo API) —
@@ -67,23 +70,7 @@ router.get("/reports/orders", (req, res) => {
       ? Math.max(Math.trunc(offsetRaw), 0)
       : 0;
     const orders = await loadReportOrders(filters);
-    const page = paginateReportRows(orders, offset, limit).map((o) => ({
-      id: o.id,
-      visualId: o.visualId,
-      orderType: o.orderType,
-      statusName: o.statusName,
-      nickname: o.nickname,
-      customerName: o.customerName,
-      ownerEmail: o.ownerEmail,
-      total: o.total,
-      qty: o.qty,
-      createdAt: o.createdAt,
-      invoiceAt: o.invoiceAt,
-      productionDueAt: o.productionDueAt,
-      dueAt: o.dueAt,
-      activityCount: o.activityCount,
-      latestActivityAt: o.latestActivityAt,
-    }));
+    const page = paginateReportRows(orders, offset, limit).map(serializeReportOrder);
     res.json({
       filters: filtersEcho(filters),
       stats: computeStats(orders),

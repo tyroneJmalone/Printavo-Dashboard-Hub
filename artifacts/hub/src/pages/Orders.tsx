@@ -149,9 +149,16 @@ export default function Orders() {
     activityOwner: reportMode === "activity" && activityOwner ? activityOwner : undefined,
   };
 
-  const { data: ordersData, isLoading: isLoadingOrders, isError: isOrdersError } = useGetOrdersReport({ ...params, limit, offset: page * limit }, {
+  const { data: ordersData, isLoading: isLoadingOrders, isFetching: isFetchingOrders, isError: isOrdersError } = useGetOrdersReport({ ...params, limit, offset: page * limit }, {
     query: { queryKey: getGetOrdersReportQueryKey({ ...params, limit, offset: page * limit }) }
   });
+  const reportOrders = ordersData?.orders ?? [];
+
+  useEffect(() => {
+    if (ordersData && ordersData.total > 0 && page * limit >= ordersData.total) {
+      setPage(0);
+    }
+  }, [ordersData, page]);
 
   const { data: statusBreakdown, isLoading: isLoadingStatus } = useGetStatusBreakdown(params, { query: { queryKey: getGetStatusBreakdownQueryKey(params), enabled: activeTab === 'status' } });
   const { data: pricingBreakdown, isLoading: isLoadingPricing } = useGetPricingMatrixBreakdown(params, { query: { queryKey: getGetPricingMatrixBreakdownQueryKey(params), enabled: activeTab === 'pricing' } });
@@ -211,7 +218,7 @@ export default function Orders() {
 
   return (
     <AppShell>
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col h-full overflow-auto">
         <div className="flex-shrink-0 bg-[#020617] border-b border-slate-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -457,7 +464,7 @@ export default function Orders() {
             </div>
           )}
 
-          {!isLoadingOrders && ordersData?.stats && (
+           {!isLoadingOrders && !isFetchingOrders && ordersData?.stats && (
             <div className="grid grid-cols-4 gap-4 mt-6">
               <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
                 <div className="text-xs text-slate-400 font-medium mb-1">Total Orders</div>
@@ -499,6 +506,32 @@ export default function Orders() {
                )}
             </div>
           )}
+           {!isLoadingOrders && !isFetchingOrders && reportMode === "activity" && ordersData?.stats && (
+             <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/10 p-4">
+               <div className="flex items-center justify-between mb-3">
+                 <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Changes by category</div>
+                 <div className="text-xs text-slate-500">
+                   Total: <span className="font-mono text-slate-300">{formatNumber(ordersData.stats.activity.changes)}</span>
+                 </div>
+               </div>
+               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                 {([
+                   ["quantity", "Qty"],
+                   ["lineItem", "Line Item"],
+                   ["price", "Price"],
+                   ["status", "Status"],
+                   ["order", "Other order changes"],
+                 ] as const).map(([key, label]) => (
+                   <div key={key} className="rounded border border-slate-800 bg-slate-900/60 px-3 py-2">
+                     <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+                     <div className="mt-1 font-mono text-lg font-bold text-white">
+                       {formatNumber(ordersData.stats.activity.byCategory[key])}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           )}
 
           <div className="mt-6 border-b border-slate-800 flex overflow-x-auto custom-scrollbar">
             {[
@@ -526,10 +559,10 @@ export default function Orders() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-6 bg-[#020617]">
+        <div className="flex-1 shrink-0 p-6 bg-[#020617]">
           {activeTab === 'table' ? (
-            <div className="flex flex-col h-full space-y-4">
-               {isLoadingOrders ? (
+            <div className="flex flex-col space-y-4">
+                {isLoadingOrders || isFetchingOrders ? (
                 <div className="flex items-center justify-center flex-1">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
                 </div>
@@ -539,7 +572,7 @@ export default function Orders() {
                  </div>
               ) : (
                 <>
-                  <div className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1">
+                  <div className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-x-auto shadow-2xl shrink-0">
                     <table className="w-full text-sm text-left whitespace-nowrap">
                       <thead className="text-xs text-slate-400 bg-slate-900/80 uppercase font-semibold border-b border-slate-800 tracking-wider">
                         <tr>
@@ -555,7 +588,7 @@ export default function Orders() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
-                        {ordersData?.orders?.map((order) => (
+                         {reportOrders.map((order) => (
                           <tr key={order.id} className="hover:bg-slate-800/40 transition-colors">
                             <td className="px-6 py-4 font-mono text-slate-300">
                               <div className="flex items-center gap-2">
@@ -597,7 +630,7 @@ export default function Orders() {
                             </td>
                           </tr>
                         ))}
-                        {ordersData?.orders?.length === 0 && (
+                         {ordersData && reportOrders.length === 0 && (
                           <tr>
                              <td colSpan={reportMode === "activity" ? 9 : 7} className="px-6 py-12 text-center text-slate-500">
                               No orders found matching your filters.

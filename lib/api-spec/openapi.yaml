@@ -7963,7 +7963,16 @@ components:
             invoice: { type: integer }
             quote: { type: integer }
           required: [invoice, quote]
-      required: [affectedOrders, changes, byOrderType]
+        byCategory:
+          type: object
+          properties:
+            quantity: { type: integer }
+            lineItem: { type: integer }
+            price: { type: integer }
+            status: { type: integer }
+            order: { type: integer }
+          required: [quantity, lineItem, price, status, order]
+      required: [affectedOrders, changes, byOrderType, byCategory]
     ReportFiltersEcho:
       type: object
       additionalProperties: true
@@ -7985,7 +7994,18 @@ components:
         dueAt: { type: ["string", "null"] }
         activityCount: { type: integer }
         latestActivityAt: { type: ["string", "null"], format: date-time }
-      required: [id, visualId, orderType, statusName, nickname, customerName, ownerEmail, total, qty, createdAt, invoiceAt, productionDueAt, dueAt, activityCount, latestActivityAt]
+        activityBreakdown:
+          $ref: "#/components/schemas/ReportActivityBreakdown"
+      required: [id, visualId, orderType, statusName, nickname, customerName, ownerEmail, total, qty, createdAt, invoiceAt, productionDueAt, dueAt, activityCount, latestActivityAt, activityBreakdown]
+    ReportActivityBreakdown:
+      type: object
+      properties:
+        quantity: { type: integer }
+        lineItem: { type: integer }
+        price: { type: integer }
+        status: { type: integer }
+        order: { type: integer }
+      required: [quantity, lineItem, price, status, order]
     OrdersReport:
       type: object
       properties:

@@ -967,10 +967,19 @@ export type ReportActivityStatsByOrderType = {
   quote: number;
 };
 
+export type ReportActivityStatsByCategory = {
+  quantity: number;
+  lineItem: number;
+  price: number;
+  status: number;
+  order: number;
+};
+
 export interface ReportActivityStats {
   affectedOrders: number;
   changes: number;
   byOrderType: ReportActivityStatsByOrderType;
+  byCategory: ReportActivityStatsByCategory;
 }
 
 export interface ReportStats {
@@ -982,6 +991,14 @@ export interface ReportStats {
 }
 
 export interface ReportFiltersEcho { [key: string]: unknown }
+
+export interface ReportActivityBreakdown {
+  quantity: number;
+  lineItem: number;
+  price: number;
+  status: number;
+  order: number;
+}
 
 export interface ReportOrderSummary {
   id: string;
@@ -1009,6 +1026,7 @@ export interface ReportOrderSummary {
   activityCount: number;
   /** @nullable */
   latestActivityAt: string | null;
+  activityBreakdown: ReportActivityBreakdown;
 }
 
 export interface OrdersReport {
