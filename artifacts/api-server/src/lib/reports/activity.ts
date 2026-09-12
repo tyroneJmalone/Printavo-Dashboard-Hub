@@ -14,6 +14,7 @@ export const ACTIVITY_CATEGORIES = [
   "quantity",
   "lineItem",
   "price",
+  "balance",
   "status",
   "order",
 ] as const;
@@ -27,6 +28,7 @@ export function emptyActivityBreakdown(): ActivityBreakdown {
     quantity: 0,
     lineItem: 0,
     price: 0,
+    balance: 0,
     status: 0,
     order: 0,
   };
@@ -81,6 +83,7 @@ export function activityOrderId(
  * Every qualifying event maps to exactly one category. These names mirror the
  * fields emitted by the sync engine (line-item quantity/unitPrice/productStatus
  * and order total/amountOutstanding) rather than guessing from free-form JSON.
+ * amountOutstanding is a balance/payment observation, separate from price.
  */
 export function activityCategory(event: Pick<
   ReportActivityEvent,
@@ -92,13 +95,53 @@ export function activityCategory(event: Pick<
   if (event.field === "quantity") return "quantity";
   if (
     event.field === "unitPrice" ||
-    event.field === "total" ||
-    event.field === "amountOutstanding"
+    event.field === "total"
   ) {
     return "price";
   }
+  if (event.field === "amountOutstanding") return "balance";
   if (event.entityType === "line_item") return "lineItem";
   return "order";
+}
+
+const ACTIVITY_FIELD_LABELS: Record<string, string> = {
+  quantity: "Quantity",
+  unitPrice: "Unit price",
+  total: "Order total",
+  amountOutstanding: "Balance",
+  status: "Status",
+  owner: "Owner",
+  nickname: "Nickname",
+  invoiceAt: "Invoice date",
+  customerDueAt: "Customer due date",
+  productionDueAt: "Production due date",
+  paymentDueAt: "Payment due date",
+  orderType: "Order type",
+  productStatus: "Product status",
+  description: "Description",
+  product: "Product",
+  color: "Color",
+  brand: "Brand",
+  itemNumber: "Style number",
+};
+
+function humanizeActivityField(field: string): string {
+  return field
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/^./, (character) => character.toUpperCase());
+}
+
+/** A field label must never imply details absent from an `updated` event. */
+export function activityFieldLabel(
+  field: string | null | undefined,
+  eventType: ActivityEventType,
+): string {
+  if (eventType === "updated" && !field) return "Unspecified update";
+  if (eventType === "created") return "Line item added";
+  if (eventType === "deleted") return "Line item removed";
+  if (eventType === "status_change" && !field) return "Status changed";
+  if (!field) return "Unspecified update";
+  return ACTIVITY_FIELD_LABELS[field] ?? humanizeActivityField(field);
 }
 
 function localDate(value: Date | string): string {

@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   aggregateActivity,
   activityCategory,
+  activityFieldLabel,
   currentOwnerMatches,
   isQualifyingActivityEvent,
   paginateReportRows,
@@ -62,11 +63,12 @@ test("activity categories are mutually exclusive and reconcile to change totals"
     event({ entityType: "line_item", orderId: "order-1", field: "color" }),
     event({ entityType: "line_item", orderId: "order-1", eventType: "created" }),
     event({ entityType: "order", field: "total" }),
+    event({ entityType: "order", field: "amountOutstanding" }),
     event({ entityType: "order", field: "nickname" }),
   ];
   assert.deepEqual(
     events.map((item) => activityCategory(item)),
-    ["quantity", "price", "status", "lineItem", "lineItem", "price", "order"],
+    ["quantity", "price", "status", "lineItem", "lineItem", "price", "balance", "order"],
   );
   const [row] = aggregateActivity(events);
   assert.ok(row);
@@ -75,9 +77,16 @@ test("activity categories are mutually exclusive and reconcile to change totals"
     quantity: 1,
     lineItem: 2,
     price: 2,
+    balance: 1,
     status: 1,
     order: 1,
   });
+});
+
+test("unspecified updates stay explicitly unspecified", () => {
+  assert.equal(activityFieldLabel(null, "updated"), "Unspecified update");
+  assert.equal(activityFieldLabel("amountOutstanding", "field_change"), "Balance");
+  assert.equal(activityFieldLabel(null, "status_change"), "Status changed");
 });
 
 test("baseline snapshots are not activity and unrelated event types are excluded", () => {
@@ -141,6 +150,7 @@ test("serialized activity list rows preserve matching order data", () => {
       quantity: 1,
       lineItem: 1,
       price: 1,
+      balance: 0,
       status: 0,
       order: 0,
     },

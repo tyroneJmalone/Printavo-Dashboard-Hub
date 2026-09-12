@@ -971,6 +971,7 @@ export type ReportActivityStatsByCategory = {
   quantity: number;
   lineItem: number;
   price: number;
+  balance: number;
   status: number;
   order: number;
 };
@@ -996,6 +997,7 @@ export interface ReportActivityBreakdown {
   quantity: number;
   lineItem: number;
   price: number;
+  balance: number;
   status: number;
   order: number;
 }
@@ -1027,6 +1029,71 @@ export interface ReportOrderSummary {
   /** @nullable */
   latestActivityAt: string | null;
   activityBreakdown: ReportActivityBreakdown;
+}
+
+export interface OrderActivityOrder {
+  id: string;
+  /** @nullable */
+  visualId: number | null;
+  orderType: string;
+  /** @nullable */
+  ownerEmail: string | null;
+  /** @nullable */
+  invoiceAt: string | null;
+}
+
+export interface OrderActivityRange {
+  /** @nullable */
+  start: string | null;
+  /** @nullable */
+  end: string | null;
+}
+
+export interface OrderActivityTotals {
+  changes: number;
+  byCategory: ReportActivityBreakdown;
+}
+
+export type OrderActivityEventCategory = typeof OrderActivityEventCategory[keyof typeof OrderActivityEventCategory];
+
+
+export const OrderActivityEventCategory = {
+  quantity: 'quantity',
+  lineItem: 'lineItem',
+  price: 'price',
+  balance: 'balance',
+  status: 'status',
+  order: 'order',
+} as const;
+
+export interface OrderActivityEvent {
+  id: number;
+  entityType: string;
+  /** @nullable */
+  entityId: string | null;
+  eventType: string;
+  /** @nullable */
+  field: string | null;
+  fieldLabel: string;
+  category: OrderActivityEventCategory;
+  oldValue: unknown;
+  newValue: unknown;
+  /** @nullable */
+  occurredAt: string | null;
+}
+
+export interface OrderActivityPage {
+  hasMore: boolean;
+  /** @nullable */
+  nextBeforeId: number | null;
+}
+
+export interface OrderActivityDetail {
+  order: OrderActivityOrder;
+  range: OrderActivityRange;
+  totals: OrderActivityTotals;
+  events: OrderActivityEvent[];
+  pagination: OrderActivityPage;
 }
 
 export interface OrdersReport {
@@ -7132,6 +7199,31 @@ limit?: number;
  * @minimum 0
  */
 offset?: number;
+};
+
+export type GetOrderActivityParams = {
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * Return older events than this change-event id
+ * @minimum 1
+ */
+beforeId?: number;
 };
 
 export type GetStatusBreakdownParams = {

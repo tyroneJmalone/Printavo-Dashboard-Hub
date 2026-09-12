@@ -5,6 +5,7 @@ import {
   emptyActivityBreakdown,
   type ActivityBreakdown,
 } from "./activity";
+import { activityCategorySql, qualifyingActivitySql } from "./activitySql";
 
 /**
  * Loads the filtered order dataset (with line items + imprints) into
@@ -146,6 +147,7 @@ function activityFragments(f: ReportFilters): {
           'quantity', 0,
           'lineItem', 0,
           'price', 0,
+          'balance', 0,
           'status', 0,
           'order', 0
         ) AS activity_breakdown`,
@@ -177,30 +179,18 @@ function activityFragments(f: ReportFilters): {
       ce.entity_type,
       ce.event_type,
       ce.field,
-      CASE
-        WHEN ce.event_type = 'status_change' OR ce.field = 'productStatus'
-          THEN 'status'
-        WHEN ce.field = 'quantity'
-          THEN 'quantity'
-        WHEN ce.field IN ('unitPrice', 'total', 'amountOutstanding')
-          THEN 'price'
-        WHEN ce.entity_type = 'line_item'
-          THEN 'lineItem'
-        ELSE 'order'
-      END AS category
+      ${activityCategorySql(
+        sql`ce.entity_type`,
+        sql`ce.event_type`,
+        sql`ce.field`,
+      )} AS category
       FROM change_events ce
-      WHERE (
-        (
-          ce.entity_type = 'order'
-          AND ce.event_type IN ('status_change', 'field_change', 'updated')
-          AND ce.entity_id IS NOT NULL
-        )
-        OR (
-          ce.entity_type = 'line_item'
-          AND ce.event_type IN ('status_change', 'field_change', 'created', 'deleted')
-          AND ce.order_id IS NOT NULL
-        )
-      )${activityWhere}
+      WHERE ${qualifyingActivitySql(
+        sql`ce.entity_type`,
+        sql`ce.event_type`,
+        sql`ce.entity_id`,
+        sql`ce.order_id`,
+      )}${activityWhere}
     ),
     activity_by_order AS (
       SELECT order_id, count(*)::int AS activity_count,
@@ -209,6 +199,7 @@ function activityFragments(f: ReportFilters): {
                'quantity', count(*) FILTER (WHERE category = 'quantity')::int,
                'lineItem', count(*) FILTER (WHERE category = 'lineItem')::int,
                'price', count(*) FILTER (WHERE category = 'price')::int,
+               'balance', count(*) FILTER (WHERE category = 'balance')::int,
                'status', count(*) FILTER (WHERE category = 'status')::int,
                'order', count(*) FILTER (WHERE category = 'order')::int
              ) AS activity_breakdown
@@ -239,6 +230,7 @@ function activityFragments(f: ReportFilters): {
           'quantity', 0,
           'lineItem', 0,
           'price', 0,
+          'balance', 0,
           'status', 0,
           'order', 0
         )

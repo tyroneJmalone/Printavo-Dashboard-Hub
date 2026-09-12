@@ -176,6 +176,7 @@ import type {
   GetFinderOrderParams,
   GetImprintsByTierParams,
   GetNicheReportParams,
+  GetOrderActivityParams,
   GetOrderQuantityBreakdownParams,
   GetOrdersReportParams,
   GetPaymentsReportParams,
@@ -262,6 +263,7 @@ import type {
   NeedsOrderingResult,
   NicheReportResponse,
   NotificationLogItem,
+  OrderActivityDetail,
   OrdersReport,
   PaletteCollectionPreviewRequest,
   PaletteCollectionPreviewResponse,
@@ -7486,6 +7488,96 @@ export function useGetOrdersReport<TData = Awaited<ReturnType<typeof getOrdersRe
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetOrdersReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOrderActivityUrl = (orderId: string,
+    params?: GetOrderActivityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/orders/${orderId}/activity?${stringifiedParams}` : `/api/reports/orders/${orderId}/activity`
+}
+
+/**
+ * Reads the local change-event mirror only. The qualifying event predicate, inclusive Eastern date range, current-owner filter, and category classifier match the orders activity report. No Printavo request is made.
+ * @summary Read qualifying activity events for one report order
+ */
+export const getOrderActivity = async (orderId: string,
+    params?: GetOrderActivityParams, options?: RequestInit): Promise<OrderActivityDetail> => {
+
+  return customFetch<OrderActivityDetail>(getGetOrderActivityUrl(orderId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrderActivityQueryKey = (orderId: string,
+    params?: GetOrderActivityParams,) => {
+    return [
+    `/api/reports/orders/${orderId}/activity`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOrderActivityQueryOptions = <TData = Awaited<ReturnType<typeof getOrderActivity>>, TError = ErrorType<ErrorResponse>>(orderId: string,
+    params?: GetOrderActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrderActivityQueryKey(orderId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderActivity>>> = ({ signal }) => getOrderActivity(orderId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderId !== null && orderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrderActivity>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrderActivityQueryResult = NonNullable<Awaited<ReturnType<typeof getOrderActivity>>>
+export type GetOrderActivityQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Read qualifying activity events for one report order
+ */
+
+export function useGetOrderActivity<TData = Awaited<ReturnType<typeof getOrderActivity>>, TError = ErrorType<ErrorResponse>>(
+ orderId: string,
+    params?: GetOrderActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrderActivityQueryOptions(orderId,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

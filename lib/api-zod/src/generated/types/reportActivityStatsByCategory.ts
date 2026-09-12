@@ -10,6 +10,7 @@ export type ReportActivityStatsByCategory = {
   quantity: number;
   lineItem: number;
   price: number;
+  balance: number;
   status: number;
   order: number;
 };

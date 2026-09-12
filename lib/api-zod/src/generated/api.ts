@@ -4071,6 +4071,7 @@ export const GetOrdersReportResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })
@@ -4099,10 +4100,79 @@ export const GetOrdersReportResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })
 }))
+})
+
+
+/**
+ * Reads the local change-event mirror only. The qualifying event predicate, inclusive Eastern date range, current-owner filter, and category classifier match the orders activity report. No Printavo request is made.
+ * @summary Read qualifying activity events for one report order
+ */
+export const getOrderActivityPathOrderIdMax = 100;
+
+
+
+export const GetOrderActivityParams = zod.object({
+  "orderId": zod.coerce.string().min(1).max(getOrderActivityPathOrderIdMax)
+})
+
+export const getOrderActivityQueryLimitDefault = 25;
+export const getOrderActivityQueryLimitMax = 100;
+
+
+
+
+export const GetOrderActivityQueryParams = zod.object({
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email'),
+  "limit": zod.coerce.number().min(1).max(getOrderActivityQueryLimitMax).default(getOrderActivityQueryLimitDefault),
+  "beforeId": zod.coerce.number().min(1).optional().describe('Return older events than this change-event id')
+})
+
+export const GetOrderActivityResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "visualId": zod.number().nullable(),
+  "orderType": zod.string(),
+  "ownerEmail": zod.string().nullable(),
+  "invoiceAt": zod.string().nullable()
+}),
+  "range": zod.object({
+  "start": zod.coerce.date().nullable(),
+  "end": zod.coerce.date().nullable()
+}),
+  "totals": zod.object({
+  "changes": zod.number(),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "balance": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
+})
+}),
+  "events": zod.array(zod.object({
+  "id": zod.number(),
+  "entityType": zod.string(),
+  "entityId": zod.string().nullable(),
+  "eventType": zod.string(),
+  "field": zod.string().nullable(),
+  "fieldLabel": zod.string(),
+  "category": zod.enum(['quantity', 'lineItem', 'price', 'balance', 'status', 'order']),
+  "oldValue": zod.unknown(),
+  "newValue": zod.unknown(),
+  "occurredAt": zod.coerce.date().nullable()
+})),
+  "pagination": zod.object({
+  "hasMore": zod.boolean(),
+  "nextBeforeId": zod.number().nullable()
+})
 })
 
 
@@ -4154,6 +4224,7 @@ export const GetStatusBreakdownResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })
@@ -4217,6 +4288,7 @@ export const GetPricingMatrixBreakdownResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })
@@ -4280,6 +4352,7 @@ export const GetImprintsByTierResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })
@@ -4343,6 +4416,7 @@ export const GetOrderQuantityBreakdownResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })
@@ -4406,6 +4480,7 @@ export const GetStyleNumberBreakdownResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })
@@ -4469,6 +4544,7 @@ export const GetBrandBreakdownResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })
@@ -4532,6 +4608,7 @@ export const GetColorBreakdownResponse = zod.object({
   "quantity": zod.number(),
   "lineItem": zod.number(),
   "price": zod.number(),
+  "balance": zod.number(),
   "status": zod.number(),
   "order": zod.number()
 })

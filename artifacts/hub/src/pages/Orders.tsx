@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
+import { ActivityOrderDetailPanel } from "@/components/ActivityOrderDetailPanel";
 import { 
   useGetOrdersReport, 
   useGetReportFilterOptions,
@@ -113,6 +114,11 @@ export default function Orders() {
   const [minTotal, setMinTotal] = useState("");
   const [maxTotal, setMaxTotal] = useState("");
   const [historyOrder, setHistoryOrder] = useState<{ id: string; visualId: number | null } | null>(null);
+  const [activityDetailOrder, setActivityDetailOrder] = useState<{
+    id: string;
+    visualId: number | null;
+    invoiceAt: string | null;
+  } | null>(null);
 
   const { data: filterOpts } = useGetReportFilterOptions();
 
@@ -514,11 +520,12 @@ export default function Orders() {
                    Total: <span className="font-mono text-slate-300">{formatNumber(ordersData.stats.activity.changes)}</span>
                  </div>
                </div>
-               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
                  {([
                    ["quantity", "Qty"],
                    ["lineItem", "Line Item"],
                    ["price", "Price"],
+                    ["balance", "Balance / payment"],
                    ["status", "Status"],
                    ["order", "Other order changes"],
                  ] as const).map(([key, label]) => (
@@ -581,7 +588,7 @@ export default function Orders() {
                           <th className="px-6 py-4">Customer</th>
                           <th className="px-6 py-4">Details</th>
                           <th className="px-6 py-4">Status</th>
-                           {reportMode === "activity" && <th className="px-6 py-4">Activity</th>}
+                            {reportMode === "activity" && <th className="px-6 py-4">Activity Count</th>}
                            {reportMode === "activity" && <th className="px-6 py-4">Latest observed</th>}
                           <th className="px-6 py-4">Created</th>
                           <th className="px-6 py-4 text-right">Total</th>
@@ -615,8 +622,24 @@ export default function Orders() {
                               </span>
                             </td>
                              {reportMode === "activity" && (
-                               <td className="px-6 py-4 font-mono text-[#10b981]">
-                                 {formatNumber(order.activityCount)}
+                                <td className="px-6 py-4 font-mono text-[#10b981]">
+                                  <button
+                                    type="button"
+                                    data-testid={`button-activity-count-${order.id}`}
+                                    disabled={order.activityCount <= 0}
+                                    onClick={() =>
+                                      setActivityDetailOrder({
+                                        id: order.id,
+                                        visualId: order.visualId,
+                                        invoiceAt: order.invoiceAt,
+                                      })
+                                    }
+                                    className="rounded px-1.5 py-1 text-left underline decoration-dotted underline-offset-4 transition-colors hover:bg-emerald-950/40 hover:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 disabled:cursor-default disabled:no-underline disabled:opacity-60"
+                                    title="View qualifying activity details"
+                                    aria-label={`View ${order.activityCount} activity changes for order ${order.visualId ?? order.id}`}
+                                  >
+                                    {formatNumber(order.activityCount)}
+                                  </button>
                                </td>
                              )}
                              {reportMode === "activity" && (
@@ -727,6 +750,18 @@ export default function Orders() {
         open={historyOrder !== null}
         onOpenChange={(open) => {
           if (!open) setHistoryOrder(null);
+        }}
+      />
+      <ActivityOrderDetailPanel
+        orderId={activityDetailOrder?.id ?? null}
+        visualId={activityDetailOrder?.visualId ?? null}
+        invoiceAt={activityDetailOrder?.invoiceAt ?? null}
+        open={activityDetailOrder !== null}
+        activityStart={activityStart}
+        activityEnd={activityEnd}
+        activityOwner={activityOwner}
+        onOpenChange={(open) => {
+          if (!open) setActivityDetailOrder(null);
         }}
       />
     </AppShell>

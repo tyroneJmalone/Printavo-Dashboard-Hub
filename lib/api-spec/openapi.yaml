@@ -2297,6 +2297,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OrdersReport"
+  /reports/orders/{orderId}/activity:
+    get:
+      operationId: getOrderActivity
+      tags: [reports]
+      summary: Read qualifying activity events for one report order
+      description: >
+        Reads the local change-event mirror only. The qualifying event
+        predicate, inclusive Eastern date range, current-owner filter, and
+        category classifier match the orders activity report. No Printavo
+        request is made.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: beforeId
+          in: query
+          required: false
+          description: Return older events than this change-event id
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Order activity detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderActivityDetail"
+        "404":
+          description: Order is not present in the selected local report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /reports/status-breakdown:
     get:
       operationId: getStatusBreakdown
@@ -7969,9 +8009,10 @@ components:
             quantity: { type: integer }
             lineItem: { type: integer }
             price: { type: integer }
+            balance: { type: integer }
             status: { type: integer }
             order: { type: integer }
-          required: [quantity, lineItem, price, status, order]
+          required: [quantity, lineItem, price, balance, status, order]
       required: [affectedOrders, changes, byOrderType, byCategory]
     ReportFiltersEcho:
       type: object
@@ -8003,9 +8044,70 @@ components:
         quantity: { type: integer }
         lineItem: { type: integer }
         price: { type: integer }
+        balance: { type: integer }
         status: { type: integer }
         order: { type: integer }
-      required: [quantity, lineItem, price, status, order]
+      required: [quantity, lineItem, price, balance, status, order]
+    OrderActivityDetail:
+      type: object
+      properties:
+        order:
+          $ref: "#/components/schemas/OrderActivityOrder"
+        range:
+          $ref: "#/components/schemas/OrderActivityRange"
+        totals:
+          $ref: "#/components/schemas/OrderActivityTotals"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderActivityEvent"
+        pagination:
+          $ref: "#/components/schemas/OrderActivityPage"
+      required: [order, range, totals, events, pagination]
+    OrderActivityOrder:
+      type: object
+      properties:
+        id: { type: string }
+        visualId: { type: ["integer", "null"] }
+        orderType: { type: string }
+        ownerEmail: { type: ["string", "null"] }
+        invoiceAt: { type: ["string", "null"] }
+      required: [id, visualId, orderType, ownerEmail, invoiceAt]
+    OrderActivityRange:
+      type: object
+      properties:
+        start: { type: ["string", "null"], format: date }
+        end: { type: ["string", "null"], format: date }
+      required: [start, end]
+    OrderActivityTotals:
+      type: object
+      properties:
+        changes: { type: integer }
+        byCategory:
+          $ref: "#/components/schemas/ReportActivityBreakdown"
+      required: [changes, byCategory]
+    OrderActivityEvent:
+      type: object
+      properties:
+        id: { type: integer }
+        entityType: { type: string }
+        entityId: { type: ["string", "null"] }
+        eventType: { type: string }
+        field: { type: ["string", "null"] }
+        fieldLabel: { type: string }
+        category:
+          type: string
+          enum: [quantity, lineItem, price, balance, status, order]
+        oldValue: {}
+        newValue: {}
+        occurredAt: { type: ["string", "null"], format: date-time }
+      required: [id, entityType, entityId, eventType, field, fieldLabel, category, oldValue, newValue, occurredAt]
+    OrderActivityPage:
+      type: object
+      properties:
+        hasMore: { type: boolean }
+        nextBeforeId: { type: ["integer", "null"] }
+      required: [hasMore, nextBeforeId]
     OrdersReport:
       type: object
       properties:

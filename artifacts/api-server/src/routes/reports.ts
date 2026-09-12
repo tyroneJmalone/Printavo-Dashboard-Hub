@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { parseReportFilters, filtersEcho } from "../lib/reports/filters";
 import { loadReportOrders, type ReportOrder } from "../lib/reports/dataset";
 import {
@@ -13,9 +13,17 @@ import {
   type BreakdownRow,
 } from "../lib/reports/breakdowns";
 import {
+  activityFieldLabel,
+  currentOwnerMatches,
   paginateReportRows,
   serializeReportOrder,
+  type ActivityCategory,
+  type ActivityEventType,
 } from "../lib/reports/activity";
+import {
+  activityCategorySql,
+  qualifyingActivitySql,
+} from "../lib/reports/activitySql";
 
 /**
  * Reports module. Reads Postgres ONLY (never the Printavo API) —
@@ -82,6 +90,216 @@ router.get("/reports/orders", (req, res) => {
   })().catch((err) => {
     req.log.error({ err }, "Orders report failed");
     res.status(500).json({ error: "Report failed" });
+  });
+});
+
+/**
+ * Bounded, local-only activity detail for one order. This deliberately uses
+ * the same qualifying predicate/category SQL as the report aggregate and
+ * applies the report's inclusive Eastern date and current-owner filters.
+ */
+router.get("/reports/orders/:orderId/activity", (req, res) => {
+  (async () => {
+    const { filters, errors } = parseReportFilters(
+      req.query as Record<string, unknown>,
+    );
+    const requestedLimit = Number(req.query.limit ?? 25);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100)
+      : 25;
+    const beforeRaw = req.query.beforeId;
+    const beforeId =
+      typeof beforeRaw === "string" && beforeRaw.trim() !== ""
+        ? Number(beforeRaw)
+        : null;
+    if (
+      beforeRaw !== undefined &&
+      (!Number.isInteger(beforeId) || (beforeId ?? 0) <= 0)
+    ) {
+      errors.push("beforeId must be a positive integer");
+    }
+    if (errors.length > 0) {
+      res.status(400).json({ errors });
+      return;
+    }
+
+    const orderId = req.params.orderId;
+    const orderResult = await db.execute(sql`
+      SELECT
+        printavo_id AS id,
+        visual_id AS visual_id,
+        order_type AS order_type,
+        owner_email AS owner_email,
+        invoice_at AS invoice_at
+      FROM pv_orders
+      WHERE printavo_id = ${orderId}
+      LIMIT 1
+    `);
+    const order = (orderResult.rows[0] ?? null) as {
+      id: string;
+      visual_id: number | null;
+      order_type: string;
+      owner_email: string | null;
+      invoice_at: string | null;
+    } | null;
+    if (!order) {
+      res.status(404).json({ error: "Order was not found in the local mirror" });
+      return;
+    }
+    if (!currentOwnerMatches(order.owner_email, filters.activityOwner)) {
+      res.status(404).json({ error: "Order is outside the selected owner filter" });
+      return;
+    }
+
+    const dateConditions: SQL[] = [];
+    if (filters.activityStart) {
+      dateConditions.push(
+        sql`(ce.occurred_at AT TIME ZONE 'America/New_York')::date >= ${filters.activityStart}::date`,
+      );
+    }
+    if (filters.activityEnd) {
+      dateConditions.push(
+        sql`(ce.occurred_at AT TIME ZONE 'America/New_York')::date <= ${filters.activityEnd}::date`,
+      );
+    }
+    const dateWhere = dateConditions.length
+      ? sql` AND ${sql.join(dateConditions, sql` AND `)}`
+      : sql``;
+    const cursorWhere = beforeId
+      ? sql` WHERE id < ${beforeId}`
+      : sql``;
+    const eventRows = await db.execute(sql`
+      WITH activity_events AS (
+        SELECT
+          ce.id,
+          ce.entity_type,
+          ce.entity_id,
+          ce.event_type,
+          ce.field,
+          ce.old_value,
+          ce.new_value,
+          ce.occurred_at,
+          ${activityCategorySql(
+            sql`ce.entity_type`,
+            sql`ce.event_type`,
+            sql`ce.field`,
+          )} AS category
+        FROM change_events ce
+        WHERE ${qualifyingActivitySql(
+          sql`ce.entity_type`,
+          sql`ce.event_type`,
+          sql`ce.entity_id`,
+          sql`ce.order_id`,
+        )}
+          AND (
+            (ce.entity_type = 'order' AND ce.entity_id = ${orderId})
+            OR (ce.entity_type = 'line_item' AND ce.order_id = ${orderId})
+          )${dateWhere}
+      ),
+      activity_totals AS (
+        SELECT
+          count(*)::int AS total_changes,
+          count(*) FILTER (WHERE category = 'quantity')::int AS quantity_changes,
+          count(*) FILTER (WHERE category = 'lineItem')::int AS line_item_changes,
+          count(*) FILTER (WHERE category = 'price')::int AS price_changes,
+          count(*) FILTER (WHERE category = 'balance')::int AS balance_changes,
+          count(*) FILTER (WHERE category = 'status')::int AS status_changes,
+          count(*) FILTER (WHERE category = 'order')::int AS order_changes
+        FROM activity_events
+      ),
+      paged AS (
+        SELECT *
+        FROM activity_events${cursorWhere}
+        ORDER BY occurred_at DESC, id DESC
+        LIMIT ${limit + 1}
+      )
+      SELECT paged.*, activity_totals.*
+      FROM activity_totals
+      LEFT JOIN paged ON true
+      ORDER BY paged.occurred_at DESC NULLS LAST, paged.id DESC NULLS LAST
+    `);
+    const rows = eventRows.rows as unknown as Array<{
+      id: number | string | null;
+      entity_type: string | null;
+      entity_id: string | null;
+      event_type: string | null;
+      field: string | null;
+      old_value: unknown;
+      new_value: unknown;
+      occurred_at: Date | string | null;
+      category: ActivityCategory | null;
+      total_changes: number;
+      quantity_changes: number;
+      line_item_changes: number;
+      price_changes: number;
+      balance_changes: number;
+      status_changes: number;
+      order_changes: number;
+    }>;
+    const pageRows = rows.filter((row) => row.id !== null);
+    const hasMore = pageRows.length > limit;
+    const events = pageRows.slice(0, limit);
+    const toIso = (value: Date | string | null | undefined): string | null => {
+      if (!value) return null;
+      return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+    };
+    const totals = rows[0] ?? {
+      total_changes: 0,
+      quantity_changes: 0,
+      line_item_changes: 0,
+      price_changes: 0,
+      balance_changes: 0,
+      status_changes: 0,
+      order_changes: 0,
+    };
+    res.json({
+      order: {
+        id: order.id,
+        visualId: order.visual_id,
+        orderType: order.order_type,
+        ownerEmail: order.owner_email,
+        invoiceAt: order.invoice_at,
+      },
+      range: {
+        start: filters.activityStart,
+        end: filters.activityEnd,
+      },
+      totals: {
+        changes: Number(totals.total_changes ?? 0),
+        byCategory: {
+          quantity: Number(totals.quantity_changes ?? 0),
+          lineItem: Number(totals.line_item_changes ?? 0),
+          price: Number(totals.price_changes ?? 0),
+          balance: Number(totals.balance_changes ?? 0),
+          status: Number(totals.status_changes ?? 0),
+          order: Number(totals.order_changes ?? 0),
+        },
+      },
+      events: events.map((event) => ({
+        id: Number(event.id),
+        entityType: event.entity_type,
+        entityId: event.entity_id,
+        eventType: event.event_type,
+        field: event.field,
+        fieldLabel: activityFieldLabel(
+          event.field,
+          event.event_type as ActivityEventType,
+        ),
+        category: event.category,
+        oldValue: event.old_value,
+        newValue: event.new_value,
+        occurredAt: toIso(event.occurred_at),
+      })),
+      pagination: {
+        hasMore,
+        nextBeforeId: hasMore
+          ? Number(events[events.length - 1]?.id ?? 0)
+          : null,
+      },
+    });
+  })().catch((err) => {
+    req.log.error({ err, orderId: req.params.orderId }, "Order activity detail failed");
+    res.status(500).json({ error: "Failed to load order activity" });
   });
 });
 
