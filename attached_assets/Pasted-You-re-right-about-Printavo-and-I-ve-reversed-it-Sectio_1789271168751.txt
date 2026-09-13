@@ -1,0 +1,28 @@
+You're right about Printavo and I've reversed it. Section A is marked superseded.
+
+A second poller against the same Printavo account is straightforwardly wasteful — and the rate limit point is the one that settles it. Those limits are per account, not per application, so two pollers halve the headroom for both. Plus a duplicate scheduler, cursor, backoff and credential store that already exist and work, and two sources of truth for the same invoice.
+
+So for Mint, PrintScope shouldn't talk to Printavo at all. The Hub already knows when a new attachment lands — it's syncing anyway — so it pushes job context to PrintScope rather than PrintScope polling. No second scheduler, no Printavo credentials in PrintScope, and no PrintScope credentials in the Hub.
+
+Your "dormant preparation" instinct is exactly the right shape, and the Replit brief already named the pattern for Reorder Portal: consume the Hub's data when connected, use a direct connector when not, both behind one internal interface. Applied here, job_context.source becomes "hub" (built, Mint's path), "manual" (built, fallback), "printavo" (interface only, unbuilt). The seam exists; the code gets written when a shop without a Hub actually signs up. Costs nothing now.
+
+Where I'd still hold — but not for architectural reasons. For the stack.
+
+PrintScope can't be written in the Hub's language. The Hub is Express/Node; the entire validated Phase 0 pipeline is Python and Python-only. pikepdf is doing colorant enumeration, graphics-state tracking and content-stream rewriting for plate isolation, and there's no Node equivalent that does that work. Ghostscript and mutool are CLI tools. scipy handles the raster fallback.
+
+"Build it in the Hub" would mean either rewriting and re-validating everything against a Node PDF library that can't do the job, or running a Python sidecar the Hub calls — which is a separate service with extra steps. It also cuts against your standing decision that all new Breezy apps are Python/Flask.
+
+Second reason, and it's yours: your Hub notes flag "API and scheduler sharing one Express process." PrintScope is the heaviest thing in the stack — Ghostscript renders, vector extraction, eight plates at 600 dpi. Putting that in the same process as the application your whole business runs on means a runaway render degrades the Hub. Keep the failures in the tool.
+
+So the result is cheaper than either of our starting positions: separate service, but one Printavo integration instead of two.
+
+One honest correction to my own claim. I said PrintScope needs zero extraction to become a commercial product. Not quite — a non-Hub tenant needs the "printavo" adapter written. That's one adapter behind an existing interface, not extracting a backend plus a data store plus a staff inbox. Still much cheaper than Reorder Portal, but not literally zero, and the doc says so now.
+
+Yes, send the integration scope. Four things matter most:
+
+	1.	What's synced and at what grain — invoices, line items, attachments, production dates?
+	2.	Actual rate limits, and what the current sync already consumes of them.
+	3.	Are attachment contents stored, or only metadata? If the Hub already has the output file bytes, PrintScope never touches Printavo even to fetch artwork.
+	4.	Does the sync detect a new attachment on an existing invoice?
+
+That last one is the likeliest gap. Syncing invoice records isn't the same as noticing a file appeared on one — and that's precisely the trigger PrintScope needs.

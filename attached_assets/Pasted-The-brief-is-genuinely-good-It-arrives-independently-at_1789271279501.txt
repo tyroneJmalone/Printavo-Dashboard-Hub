@@ -1,0 +1,31 @@
+The brief is genuinely good. It arrives independently at the same boundary we'd already settled in Section E, and "leave the internal apps alone, copy later" is the right call — you don't restructure a working operating system on the strength of a hypothesis. I'd sign off on Parts 1–6 with four additions.
+
+1. Most of that technical checklist is not v1 scope.
+
+The brief is written for a product that handles transactions. Mint Bucks is money — idempotency, audit trails, duplicate protection, a single authoritative service are all genuinely essential there. PrintScope is read-only analysis of files: one meaningful write, no balances, no financial operations, no customer-facing surface.
+
+Applied literally, signed webhooks, OAuth, event reconciliation and contract tests sit between you and your first verdict on a rule set you haven't validated yet. Adopt the boundary now, defer the checklist. Section F5 in the doc splits it line by line — six things worth doing on day one because they're nearly free, the rest deferred to Phase 7 or to tenant #2.
+
+2. Your own Hub notes already flag this problem.
+
+The Hub's open architecture concerns list "sister-app shared-database coupling with weak identity join keys." That's exactly what moMINTum and Mint Bucks are doing, and it's already on your own list as a thing to fix. So the "don't let Hub read PrintScope's database" recommendation isn't new advice — PrintScope is just the chance not to create a fourth instance of it.
+
+Worth stating loudly in the build instructions, because the house pattern is the path of least resistance and the Replit Agent has two working examples of doing it the other way.
+
+3. Don't inherit email-based identity.
+
+The brief mentions moMINTum maps members by email rather than shared auth-provider IDs. That's the "weak identity join keys" half of your own flagged concern. PrintScope should use Firebase Auth UIDs — already the Breezy standard — and keep machine auth (Hub → PrintScope service credential) separate from human SSO. The brief is right that these are different problems; that's usually where these integrations get awkward.
+
+4. PrintScope may be a better first commercial candidate than Reorder Portal.
+
+The brief nominates Reorder Portal, but by its own account that backend depends on Hub's synced order data, request storage and staff inbox — all of which need extracting or rebuilding, plus the email/company-lookup privacy rework it correctly flags.
+
+PrintScope needs no extraction at all. Built API-first from the first commit, it is commercial-ready the day it works. It's also the easiest tenant-isolation story of the three: it keeps facts JSON and verdicts, and purges the artwork — so the genuinely sensitive asset, another shop's customer art, barely persists.
+
+That makes it the cheapest experiment available in whether anyone will pay.
+
+One thing to have ready: "one core, many thin doors" says no consumer surface keeps its own copy of data, and PrintScope owning a database will look like a violation. It isn't — PrintScope is a source, not a consumer surface. It produces verdicts, geometry hashes and extracted facts that exist nowhere else, and it feeds the Hub once, exactly like Printavo does. The violation would be the Hub keeping a second copy of inspection records.
+
+On the plate viewer specifically — I'd be more opinionated than the brief's hybrid recommendation. Don't port it into Hub. Vector rendering, zoom/pan and per-plate compositing are a heavy specialised surface, and porting it is precisely the moMINTum trap. What belongs natively in Hub is small: a verdict chip on a job, the mesh tally, a needs-review count, and a link out.
+
+And to close your earlier question: none of this changes anything about functionality or the plan.
