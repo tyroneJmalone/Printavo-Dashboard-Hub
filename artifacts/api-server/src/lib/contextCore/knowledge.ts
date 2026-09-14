@@ -16,7 +16,7 @@ export async function searchKnowledge(input: {
   const limit = Math.min(Math.max(input.limit ?? 8, 1), 20);
   const query = input.query.trim();
   const tsQuery = sql`plainto_tsquery('english', ${query})`;
-  const tsVector = sql`to_tsvector('english', coalesce(${knowledgeEntriesTable.title}, '') || ' ' || coalesce(${knowledgeEntriesTable.body}, ''))`;
+  const tsVector = knowledgeEntriesTable.searchVector;
   const like = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
   const conditions = [
     eq(knowledgeEntriesTable.reviewStatus, "approved"),

@@ -98,12 +98,12 @@ function containsAllTerms(value: string, terms: string[]): boolean {
 
 function customerTextSearch(terms: string[], operator: "&" | "|") {
   const query = terms.map((term) => `${term}:*`).join(` ${operator} `);
-  return sql<boolean>`to_tsvector('simple', coalesce(${pvCustomersTable.companyName}, '')) @@ to_tsquery('simple', ${query})`;
+  return sql<boolean>`${pvCustomersTable.searchVector} @@ to_tsquery('simple', ${query})`;
 }
 
 function contactTextSearch(terms: string[], operator: "&" | "|") {
   const query = terms.map((term) => `${term}:*`).join(` ${operator} `);
-  return sql<boolean>`to_tsvector('simple', coalesce(${pvContactsTable.fullName}, '') || ' ' || coalesce(${pvContactsTable.email}, '')) @@ to_tsquery('simple', ${query})`;
+  return sql<boolean>`${pvContactsTable.searchVector} @@ to_tsquery('simple', ${query})`;
 }
 
 type QuoteCustomerRow = {

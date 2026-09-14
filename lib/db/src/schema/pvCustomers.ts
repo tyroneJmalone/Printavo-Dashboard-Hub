@@ -1,11 +1,15 @@
 import { pgTable, text, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { searchVector } from "../searchVector";
 
 export const pvCustomersTable = pgTable(
   "pv_customers",
   {
     printavoId: text("printavo_id").primaryKey(),
     companyName: text("company_name"),
+    searchVector: searchVector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple'::regconfig, coalesce(company_name, ''))`,
+    ),
     primaryContactId: text("primary_contact_id"),
     ownerEmail: text("owner_email"),
     printavoCreatedAt: timestamp("printavo_created_at", { withTimezone: true }),
@@ -23,7 +27,7 @@ export const pvCustomersTable = pgTable(
     index("pv_customers_company_idx").on(t.companyName),
     index("pv_customers_company_search_idx").using(
       "gin",
-      sql`to_tsvector('simple', coalesce(${t.companyName}, ''))`,
+      t.searchVector,
     ),
   ],
 );

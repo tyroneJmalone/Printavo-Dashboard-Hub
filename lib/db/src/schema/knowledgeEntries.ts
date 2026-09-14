@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { searchVector } from "../searchVector";
 import {
   date,
   index,
@@ -27,6 +28,9 @@ export const knowledgeEntriesTable = pgTable(
     title: text("title").notNull(),
     /** The reviewed fact text — this exact text is what consumers see. */
     body: text("body").notNull(),
+    searchVector: searchVector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('english'::regconfig, coalesce(title, '') || ' ' || coalesce(body, ''))`,
+    ),
     /** Grouping label: 'policy' | 'pricing' | 'production' | 'faq' | ... */
     category: text("category").notNull().default("general"),
     tags: text("tags").array().notNull().default([]),
@@ -56,7 +60,7 @@ export const knowledgeEntriesTable = pgTable(
     index("knowledge_entries_category_idx").on(t.category),
     index("knowledge_entries_search_idx").using(
       "gin",
-      sql`to_tsvector('english', coalesce(${t.title}, '') || ' ' || coalesce(${t.body}, ''))`,
+      t.searchVector,
     ),
   ],
 );
