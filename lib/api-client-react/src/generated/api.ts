@@ -61,6 +61,8 @@ import type {
   BrandingColorList,
   BreakdownReport,
   BrowseCustomerArtworkParams,
+  BulkDeleteKnowledgeEntriesInput,
+  BulkDeleteKnowledgeEntriesResult,
   BulkDeleteTasksInput,
   BulkUpdateTasksInput,
   CatalogColorFamilyRequest,
@@ -206,6 +208,10 @@ import type {
   KnowledgeEntryInput,
   KnowledgeEntryReview,
   KnowledgeEntryUpdate,
+  KnowledgeMergeCommitInput,
+  KnowledgeMergeCommitResponse,
+  KnowledgeMergePreviewInput,
+  KnowledgeMergePreviewResponse,
   KnowledgePlaygroundInput,
   KnowledgePlaygroundResponse,
   KnowledgeSource,
@@ -21982,6 +21988,219 @@ export const usePlaygroundKnowledge = <TError = ErrorType<ErrorResponse>,
       return useMutation(getPlaygroundKnowledgeMutationOptions(options));
     }
 
+export const getBulkDeleteKnowledgeEntriesUrl = () => {
+
+
+
+
+  return `/api/knowledge/entries/bulk-delete`
+}
+
+/**
+ * Deletes the selected entries in one transaction. The request must include explicit confirmation and a per-entry updatedAt/reviewStatus snapshot captured at confirmation; missing or concurrently changed selections abort the whole operation.
+ * @summary Permanently delete multiple knowledge entries (admin only)
+ */
+export const bulkDeleteKnowledgeEntries = async (bulkDeleteKnowledgeEntriesInput: BulkDeleteKnowledgeEntriesInput, options?: RequestInit): Promise<BulkDeleteKnowledgeEntriesResult> => {
+
+  return customFetch<BulkDeleteKnowledgeEntriesResult>(getBulkDeleteKnowledgeEntriesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bulkDeleteKnowledgeEntriesInput)
+  }
+);}
+
+
+
+
+export const getBulkDeleteKnowledgeEntriesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteKnowledgeEntries>>, TError,{data: BodyType<BulkDeleteKnowledgeEntriesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteKnowledgeEntries>>, TError,{data: BodyType<BulkDeleteKnowledgeEntriesInput>}, TContext> => {
+
+const mutationKey = ['bulkDeleteKnowledgeEntries'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkDeleteKnowledgeEntries>>, {data: BodyType<BulkDeleteKnowledgeEntriesInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkDeleteKnowledgeEntries(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkDeleteKnowledgeEntriesMutationResult = NonNullable<Awaited<ReturnType<typeof bulkDeleteKnowledgeEntries>>>
+    export type BulkDeleteKnowledgeEntriesMutationBody = BodyType<BulkDeleteKnowledgeEntriesInput>
+    export type BulkDeleteKnowledgeEntriesMutationError = ErrorType<void>
+
+    /**
+ * @summary Permanently delete multiple knowledge entries (admin only)
+ */
+export const useBulkDeleteKnowledgeEntries = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteKnowledgeEntries>>, TError,{data: BodyType<BulkDeleteKnowledgeEntriesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkDeleteKnowledgeEntries>>,
+        TError,
+        {data: BodyType<BulkDeleteKnowledgeEntriesInput>},
+        TContext
+      > => {
+      return useMutation(getBulkDeleteKnowledgeEntriesMutationOptions(options));
+    }
+
+export const getPreviewKnowledgeMergeUrl = () => {
+
+
+
+
+  return `/api/knowledge/entries/merge/preview`
+}
+
+/**
+ * Reads the full selected entries and generates one editable draft candidate. The originals are not changed. Conflicts must be preserved and explicitly flagged; the returned snapshot token is required to commit.
+ * @summary Generate an AI knowledge merge draft preview (admin only)
+ */
+export const previewKnowledgeMerge = async (knowledgeMergePreviewInput: KnowledgeMergePreviewInput, options?: RequestInit): Promise<KnowledgeMergePreviewResponse> => {
+
+  return customFetch<KnowledgeMergePreviewResponse>(getPreviewKnowledgeMergeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeMergePreviewInput)
+  }
+);}
+
+
+
+
+export const getPreviewKnowledgeMergeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewKnowledgeMerge>>, TError,{data: BodyType<KnowledgeMergePreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewKnowledgeMerge>>, TError,{data: BodyType<KnowledgeMergePreviewInput>}, TContext> => {
+
+const mutationKey = ['previewKnowledgeMerge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewKnowledgeMerge>>, {data: BodyType<KnowledgeMergePreviewInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewKnowledgeMerge(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewKnowledgeMergeMutationResult = NonNullable<Awaited<ReturnType<typeof previewKnowledgeMerge>>>
+    export type PreviewKnowledgeMergeMutationBody = BodyType<KnowledgeMergePreviewInput>
+    export type PreviewKnowledgeMergeMutationError = ErrorType<void>
+
+    /**
+ * @summary Generate an AI knowledge merge draft preview (admin only)
+ */
+export const usePreviewKnowledgeMerge = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewKnowledgeMerge>>, TError,{data: BodyType<KnowledgeMergePreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewKnowledgeMerge>>,
+        TError,
+        {data: BodyType<KnowledgeMergePreviewInput>},
+        TContext
+      > => {
+      return useMutation(getPreviewKnowledgeMergeMutationOptions(options));
+    }
+
+export const getCommitKnowledgeMergeUrl = () => {
+
+
+
+
+  return `/api/knowledge/entries/merge/commit`
+}
+
+/**
+ * Atomically creates one draft, transfers all source links, and deletes the originals only when every selected entry still matches the preview snapshot. The new entry is never automatically approved.
+ * @summary Commit an edited AI knowledge merge draft (admin only)
+ */
+export const commitKnowledgeMerge = async (knowledgeMergeCommitInput: KnowledgeMergeCommitInput, options?: RequestInit): Promise<KnowledgeMergeCommitResponse> => {
+
+  return customFetch<KnowledgeMergeCommitResponse>(getCommitKnowledgeMergeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeMergeCommitInput)
+  }
+);}
+
+
+
+
+export const getCommitKnowledgeMergeMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitKnowledgeMerge>>, TError,{data: BodyType<KnowledgeMergeCommitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof commitKnowledgeMerge>>, TError,{data: BodyType<KnowledgeMergeCommitInput>}, TContext> => {
+
+const mutationKey = ['commitKnowledgeMerge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof commitKnowledgeMerge>>, {data: BodyType<KnowledgeMergeCommitInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  commitKnowledgeMerge(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CommitKnowledgeMergeMutationResult = NonNullable<Awaited<ReturnType<typeof commitKnowledgeMerge>>>
+    export type CommitKnowledgeMergeMutationBody = BodyType<KnowledgeMergeCommitInput>
+    export type CommitKnowledgeMergeMutationError = ErrorType<void>
+
+    /**
+ * @summary Commit an edited AI knowledge merge draft (admin only)
+ */
+export const useCommitKnowledgeMerge = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitKnowledgeMerge>>, TError,{data: BodyType<KnowledgeMergeCommitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof commitKnowledgeMerge>>,
+        TError,
+        {data: BodyType<KnowledgeMergeCommitInput>},
+        TContext
+      > => {
+      return useMutation(getCommitKnowledgeMergeMutationOptions(options));
+    }
+
 export const getUpdateKnowledgeEntryUrl = (id: string,) => {
 
 
@@ -22699,8 +22918,8 @@ export const getRetryKnowledgeDocumentUrl = (id: string,) => {
 }
 
 /**
- * Reuses stored extracted text, never auto-approves entries, and refuses documents with approved entries.
- * @summary Retry a failed or zero-draft source import (admin only)
+ * This POST takes no request body. It reuses stored extracted text to regenerate draft candidates for failed, active, or stale imports, replacing only removable draft-only entries. It never auto-approves entries and refuses documents with approved entries.
+ * @summary Retry or explicitly regenerate a draft-only source import (admin only)
  */
 export const retryKnowledgeDocument = async (id: string, options?: RequestInit): Promise<KnowledgeSourceDocumentRetryResult> => {
 
@@ -22748,7 +22967,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RetryKnowledgeDocumentMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Retry a failed or zero-draft source import (admin only)
+ * @summary Retry or explicitly regenerate a draft-only source import (admin only)
  */
 export const useRetryKnowledgeDocument = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryKnowledgeDocument>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}

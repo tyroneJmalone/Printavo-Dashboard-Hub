@@ -10381,6 +10381,166 @@ export const PlaygroundKnowledgeResponse = zod.object({
 
 
 /**
+ * Deletes the selected entries in one transaction. The request must include explicit confirmation and a per-entry updatedAt/reviewStatus snapshot captured at confirmation; missing or concurrently changed selections abort the whole operation.
+ * @summary Permanently delete multiple knowledge entries (admin only)
+ */
+export const bulkDeleteKnowledgeEntriesBodyEntryIdsMax = 100;
+
+export const bulkDeleteKnowledgeEntriesBodySnapshotsMax = 100;
+
+
+
+export const BulkDeleteKnowledgeEntriesBody = zod.object({
+  "entryIds": zod.array(zod.string().uuid()).min(1).max(bulkDeleteKnowledgeEntriesBodyEntryIdsMax),
+  "snapshots": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "updatedAt": zod.coerce.date(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived'])
+})).min(1).max(bulkDeleteKnowledgeEntriesBodySnapshotsMax).describe('One current updatedAt and review status snapshot for every entryId; the server revalidates these while locked.'),
+  "confirm": zod.boolean().describe('Must be true to permanently delete the selected entries.')
+})
+
+export const BulkDeleteKnowledgeEntriesResponse = zod.object({
+  "selectedCount": zod.number(),
+  "approvedCount": zod.number(),
+  "draftCount": zod.number(),
+  "archivedCount": zod.number()
+})
+
+
+/**
+ * Reads the full selected entries and generates one editable draft candidate. The originals are not changed. Conflicts must be preserved and explicitly flagged; the returned snapshot token is required to commit.
+ * @summary Generate an AI knowledge merge draft preview (admin only)
+ */
+export const previewKnowledgeMergeBodyEntryIdsMin = 2;
+export const previewKnowledgeMergeBodyEntryIdsMax = 20;
+
+
+
+export const PreviewKnowledgeMergeBody = zod.object({
+  "entryIds": zod.array(zod.string().uuid()).min(previewKnowledgeMergeBodyEntryIdsMin).max(previewKnowledgeMergeBodyEntryIdsMax)
+})
+
+export const previewKnowledgeMergeResponseEntriesItemSourceStaleDefault = false;
+export const previewKnowledgeMergeResponseCandidateTitleMin = 3;
+export const previewKnowledgeMergeResponseCandidateTitleMax = 200;
+
+export const previewKnowledgeMergeResponseCandidateBodyMax = 20000;
+
+export const previewKnowledgeMergeResponseCandidateCategoryMax = 50;
+
+export const previewKnowledgeMergeResponseCandidateTagsItemMax = 50;
+
+export const previewKnowledgeMergeResponseCandidateTagsMax = 20;
+
+export const previewKnowledgeMergeResponseCandidateEffectiveDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const previewKnowledgeMergeResponseCandidateExpiresDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const previewKnowledgeMergeResponseConflictsItemMax = 500;
+
+export const previewKnowledgeMergeResponseConflictsMax = 20;
+
+
+
+export const PreviewKnowledgeMergeResponse = zod.object({
+  "token": zod.string(),
+  "entryIds": zod.array(zod.string().uuid()),
+  "entries": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "tags": zod.array(zod.string()),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "effectiveDate": zod.string().nullish(),
+  "expiresDate": zod.string().nullish(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "sourceStale": zod.boolean().default(previewKnowledgeMergeResponseEntriesItemSourceStaleDefault),
+  "approvedByEmail": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "lastReviewedAt": zod.coerce.date().nullish(),
+  "createdByEmail": zod.string().nullish(),
+  "updatedByEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "candidate": zod.object({
+  "title": zod.string().min(previewKnowledgeMergeResponseCandidateTitleMin).max(previewKnowledgeMergeResponseCandidateTitleMax),
+  "body": zod.string().min(1).max(previewKnowledgeMergeResponseCandidateBodyMax),
+  "category": zod.string().min(1).max(previewKnowledgeMergeResponseCandidateCategoryMax),
+  "tags": zod.array(zod.string().min(1).max(previewKnowledgeMergeResponseCandidateTagsItemMax)).max(previewKnowledgeMergeResponseCandidateTagsMax),
+  "effectiveDate": zod.string().regex(previewKnowledgeMergeResponseCandidateEffectiveDateRegExp).nullable(),
+  "expiresDate": zod.string().regex(previewKnowledgeMergeResponseCandidateExpiresDateRegExp).nullable()
+}),
+  "conflicts": zod.array(zod.string().min(1).max(previewKnowledgeMergeResponseConflictsItemMax)).max(previewKnowledgeMergeResponseConflictsMax)
+})
+
+
+/**
+ * Atomically creates one draft, transfers all source links, and deletes the originals only when every selected entry still matches the preview snapshot. The new entry is never automatically approved.
+ * @summary Commit an edited AI knowledge merge draft (admin only)
+ */
+
+export const commitKnowledgeMergeBodyEntryIdsMin = 2;
+export const commitKnowledgeMergeBodyEntryIdsMax = 20;
+
+export const commitKnowledgeMergeBodyCandidateTitleMin = 3;
+export const commitKnowledgeMergeBodyCandidateTitleMax = 200;
+
+export const commitKnowledgeMergeBodyCandidateBodyMax = 20000;
+
+export const commitKnowledgeMergeBodyCandidateCategoryMax = 50;
+
+export const commitKnowledgeMergeBodyCandidateTagsItemMax = 50;
+
+export const commitKnowledgeMergeBodyCandidateTagsMax = 20;
+
+export const commitKnowledgeMergeBodyCandidateEffectiveDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const commitKnowledgeMergeBodyCandidateExpiresDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const CommitKnowledgeMergeBody = zod.object({
+  "token": zod.string().min(1),
+  "entryIds": zod.array(zod.string().uuid()).min(commitKnowledgeMergeBodyEntryIdsMin).max(commitKnowledgeMergeBodyEntryIdsMax),
+  "candidate": zod.object({
+  "title": zod.string().min(commitKnowledgeMergeBodyCandidateTitleMin).max(commitKnowledgeMergeBodyCandidateTitleMax),
+  "body": zod.string().min(1).max(commitKnowledgeMergeBodyCandidateBodyMax),
+  "category": zod.string().min(1).max(commitKnowledgeMergeBodyCandidateCategoryMax),
+  "tags": zod.array(zod.string().min(1).max(commitKnowledgeMergeBodyCandidateTagsItemMax)).max(commitKnowledgeMergeBodyCandidateTagsMax),
+  "effectiveDate": zod.string().regex(commitKnowledgeMergeBodyCandidateEffectiveDateRegExp).nullable(),
+  "expiresDate": zod.string().regex(commitKnowledgeMergeBodyCandidateExpiresDateRegExp).nullable()
+})
+})
+
+export const commitKnowledgeMergeResponseEntrySourceStaleDefault = false;
+
+export const CommitKnowledgeMergeResponse = zod.object({
+  "entry": zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "tags": zod.array(zod.string()),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "effectiveDate": zod.string().nullish(),
+  "expiresDate": zod.string().nullish(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "sourceStale": zod.boolean().default(commitKnowledgeMergeResponseEntrySourceStaleDefault),
+  "approvedByEmail": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "lastReviewedAt": zod.coerce.date().nullish(),
+  "createdByEmail": zod.string().nullish(),
+  "updatedByEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "deletedEntryIds": zod.array(zod.string().uuid()),
+  "sourceLinkCount": zod.number()
+})
+
+
+/**
  * @summary Update a knowledge base entry (any AI-visible edit demotes an approved entry to draft)
  */
 export const UpdateKnowledgeEntryParams = zod.object({
@@ -10610,8 +10770,8 @@ export const PreviewKnowledgeDocumentResponse = zod.object({
 
 
 /**
- * Reuses stored extracted text, never auto-approves entries, and refuses documents with approved entries.
- * @summary Retry a failed or zero-draft source import (admin only)
+ * This POST takes no request body. It reuses stored extracted text to regenerate draft candidates for failed, active, or stale imports, replacing only removable draft-only entries. It never auto-approves entries and refuses documents with approved entries.
+ * @summary Retry or explicitly regenerate a draft-only source import (admin only)
  */
 export const RetryKnowledgeDocumentParams = zod.object({
   "id": zod.coerce.string().uuid()

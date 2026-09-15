@@ -52,6 +52,7 @@
 - [Insights role membership](insights-role-membership.md) — PostgreSQL membership can have SET=false; preserve read-only safeguards and check explicit role-switch permission.
 - [KB learning filters](kb-learning-requirements.md) — future KB-suggestion analysis must only read customer-linked threads + skip bulk mail; filter at analysis, sync stores everything.
 - [Knowledge source sync ownership](kb-source-sync-ownership.md) — scheduled Drive ingestion runs in production only; development uses manual sync to prevent duplicate imports.
+- [KB import quality](kb-import-quality.md) — successful insertion is not semantic recovery; inspect actual PDF-derived draft bodies and preserve short rules and exceptions.
 - [Voice profiles & drafting patterns](voice-drafting-patterns.md) — traits-only privacy rule, clamp LLM outputs before zod, single-writer sync heartbeat, VM deployment requirement.
 - [Module access gating](module-access-gating.md) — new staff API prefixes must be claimed in the module registry (+ AppShell page map) or all staff can reach them; readiness gate, not security.
 - [Dev DB schema drift](dev-db-schema-drift.md) — rollbacks can silently drop merged tables from the dev DB; publish diffs DEV into prod, so verify new tables exist + re-run db push before shipping.

@@ -4,7 +4,7 @@ import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { spawn } from "child_process";
-import { eq, and, desc, inArray, or } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, or } from "drizzle-orm";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { db, knowledgeEntriesTable, knowledgeSourcesTable, knowledgeSourceDocumentsTable, knowledgeEntrySourcesTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -14,8 +14,13 @@ import { requireAdmin } from "../middlewares/requireStaff";
 import {
   canRetryKnowledgeDocument,
   chunkExtractedText,
+  draftOnlyUnsharedEntryIds,
   importFailurePatch,
+  isMeaningfulDraftFragment,
+  isRetryableTransactionAbort,
   normalizeDraftTitle,
+  semanticBatches,
+  validateSemanticDraftCoverage,
 } from "../lib/knowledgeSourceImport";
 
 const router: IRouter = Router();
@@ -27,11 +32,11 @@ const ALLOWED: Record<string, string> = {
 const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server")) ? path.resolve(process.cwd(), "../..") : process.cwd();
 const AI_MODEL = "gpt-5.6-terra";
 const DraftCandidateSchema = z.object({
-  index: z.number().int().nonnegative(),
+  sourceIndexes: z.array(z.number().int().nonnegative()).min(1).max(200),
   // Titles are normalized against the source section below. Do not reject an
   // otherwise usable candidate because an LLM returned a one-character title.
   title: z.string().trim().max(1000),
-  body: z.string().trim().min(1).max(2400),
+  body: z.string().trim().min(1).max(6000),
   category: z.enum(["general", "policy", "pricing", "production", "shipping", "faq"]),
   tags: z.array(z.string().trim().min(1).max(40)).max(8),
   effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
@@ -39,27 +44,43 @@ const DraftCandidateSchema = z.object({
 });
 type DraftCandidate = z.infer<typeof DraftCandidateSchema>;
 
-async function enrichDrafts(
+function meaningfulDraftBody(value: string): boolean {
+  return isMeaningfulDraftFragment(value);
+}
+
+function sourceSectionKey(section: { title: string; body: string }): string {
+  return createHash("sha256").update(section.title + "\n" + section.body).digest("hex");
+}
+
+/**
+ * AI-only enrichment helper. It has no database side effects and is exported
+ * so a reviewer can preview regenerated candidates against preserved source
+ * text without touching a document row.
+ */
+export async function enrichKnowledgeDrafts(
   chunks: Array<{ title: string; body: string }>,
   sourceName: string,
 ): Promise<DraftCandidate[]> {
   const enriched: DraftCandidate[] = [];
-  for (let offset = 0; offset < chunks.length; offset += 12) {
-    const batch = chunks.slice(offset, offset + 12);
+  let offset = 0;
+  for (const batch of semanticBatches(chunks)) {
+    const batchOffset = offset;
+    offset += batch.length;
+    const expectedIndexes = new Set(batch.map((_, index) => batchOffset + index));
     const completion = await openai.chat.completions.create({
       model: AI_MODEL,
       messages: [
         {
           role: "system",
           content:
-            "Extract reviewable company-knowledge draft candidates from source excerpts. Never invent a fact. Keep each body self-contained and faithful to its excerpt. Suggest one concise title, one allowed category (general, policy, pricing, production, shipping, faq), 0-8 lowercase tags, and effective/expiration dates only when explicitly stated as YYYY-MM-DD; otherwise use null. Return exactly one item for every input index as JSON: {\"drafts\":[{\"index\":0,\"title\":\"...\",\"body\":\"...\",\"category\":\"general\",\"tags\":[],\"effectiveDate\":null,\"expiresDate\":null}]}. These remain human-reviewed drafts, so preserve qualifications and exceptions.",
+            "Extract reviewable company-knowledge draft candidates from the complete source window. Group related excerpts into the smallest set of coherent factual topics; do not create one draft per excerpt or visual line. A source index may be reused by multiple candidates when one bounded window contains multiple distinct topics, but every source index must be covered by at least one candidate. Include lists, conditions, exceptions, and negative rules. Never invent a fact, and never omit or weaken a qualifier, exception, threshold, date, or 'only/except/unless' rule. Keep each body self-contained and faithful to the supplied text. Suggest one concise title, one allowed category (general, policy, pricing, production, shipping, faq), 0-8 lowercase tags, and effective/expiration dates only when explicitly stated as YYYY-MM-DD; otherwise use null. Return JSON {\"drafts\":[{\"sourceIndexes\":[0],\"title\":\"...\",\"body\":\"...\",\"category\":\"general\",\"tags\":[],\"effectiveDate\":null,\"expiresDate\":null}]}. sourceIndexes must refer to the supplied excerpts. These remain human-reviewed drafts and must be drafts, not customer-facing conclusions.",
         },
         {
           role: "user",
           content: JSON.stringify({
             sourceName,
             excerpts: batch.map((chunk, index) => ({
-              index: offset + index,
+              index: batchOffset + index,
               heading: chunk.title,
               text: chunk.body,
             })),
@@ -72,24 +93,35 @@ async function enrichDrafts(
     const raw = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as { drafts?: unknown };
     const parsed = z.array(DraftCandidateSchema).safeParse(raw.drafts);
     if (!parsed.success) throw new Error(`AI draft extraction returned invalid data: ${parsed.error.message}`);
-    const expected = new Set(batch.map((_, index) => offset + index));
-    const returned = new Set(parsed.data.map((draft) => draft.index));
-    if (returned.size !== expected.size || [...expected].some((index) => !returned.has(index))) {
-      throw new Error("AI draft extraction did not return exactly one candidate per source excerpt");
+    if (!parsed.data.length) {
+      throw new Error("AI draft extraction returned no factual candidates");
     }
+    const sourceIndexes: number[][] = [];
+    for (const draft of parsed.data) {
+      if (!meaningfulDraftBody(draft.body)) {
+        throw new Error("AI draft extraction returned a meaningless draft body");
+      }
+      sourceIndexes.push(draft.sourceIndexes);
+    }
+    const normalizedIndexes = validateSemanticDraftCoverage(expectedIndexes, sourceIndexes);
     enriched.push(
-      ...parsed.data.map((draft) => ({
-        ...draft,
-        title: normalizeDraftTitle(
-          draft.title,
-          chunks[draft.index]?.title ?? "",
-          sourceName,
-          draft.index,
-        ),
-      })),
+      ...parsed.data.map((draft, draftIndex) => {
+        const indexes = normalizedIndexes[draftIndex]!;
+        const firstIndex = indexes[0]!;
+        return {
+          ...draft,
+          sourceIndexes: indexes,
+          title: normalizeDraftTitle(
+            draft.title,
+            chunks[firstIndex]?.title ?? "",
+            sourceName,
+            firstIndex,
+          ),
+        };
+      }),
     );
   }
-  return enriched.sort((a, b) => a.index - b.index);
+  return enriched;
 }
 
 async function extract(file: Express.Multer.File): Promise<{ text: string; chunks: Array<{ title: string; body: string }> }> {
@@ -113,8 +145,13 @@ async function extract(file: Express.Multer.File): Promise<{ text: string; chunk
     });
     if (code !== 0) throw new Error(err || "document extraction failed");
     const result = JSON.parse(out) as { text?: string; chunks?: Array<{ title: string; body: string }>; error?: string };
-    if (result.error || !result.text || !result.chunks?.length) throw new Error(result.error || "document contains no extractable text");
-    return { text: result.text, chunks: result.chunks };
+    if (result.error || !result.text) throw new Error(result.error || "document contains no extractable text");
+    // Rebuild windows from the normalized text in one place. This keeps upload
+    // and retry semantics identical even when an older extractor emitted
+    // over-fragmented chunks.
+    const chunks = chunkExtractedText(result.text);
+    if (!chunks.length) throw new Error("document contains no meaningful factual text");
+    return { text: result.text, chunks };
   } finally { await fs.unlink(tmp).catch(() => undefined); }
 }
 
@@ -127,38 +164,209 @@ async function createDrafts(
   source: typeof knowledgeSourcesTable.$inferSelect,
   chunks: Array<{ title: string; body: string }>,
   email: string,
-) {
-  const candidates = await enrichDrafts(chunks, source.name);
+  options: { replaceDrafts?: boolean } = {},
+): Promise<{ addedDrafts: number; draftCount: number }> {
+  const candidates = await enrichKnowledgeDrafts(chunks, source.name);
   return db.transaction(async (tx) => {
-    const existing = await tx
+    // Discover the current ownership without locking first. Every lock in
+    // this transaction is acquired in the global order entries -> links ->
+    // documents; otherwise regeneration can deadlock with bulk entry updates.
+    const observedLinks = await tx
+      .select({
+        entryId: knowledgeEntrySourcesTable.entryId,
+        sectionKey: knowledgeEntrySourcesTable.sectionKey,
+        documentId: knowledgeEntrySourcesTable.documentId,
+      })
+      .from(knowledgeEntrySourcesTable)
+      .where(eq(knowledgeEntrySourcesTable.documentId, documentId))
+      .orderBy(
+        asc(knowledgeEntrySourcesTable.entryId),
+        asc(knowledgeEntrySourcesTable.documentId),
+        asc(knowledgeEntrySourcesTable.sectionKey),
+      );
+    const entryIds = Array.from(new Set(observedLinks.map((entry) => entry.entryId))).sort();
+    const lockedEntries = entryIds.length
+      ? await tx
+        .select({ id: knowledgeEntriesTable.id, reviewStatus: knowledgeEntriesTable.reviewStatus })
+        .from(knowledgeEntriesTable)
+        .where(inArray(knowledgeEntriesTable.id, entryIds))
+        .orderBy(asc(knowledgeEntriesTable.id))
+        .for("update")
+      : [];
+    if (lockedEntries.length !== entryIds.length) {
+      throw new Error("Knowledge document links changed while drafts were being regenerated");
+    }
+    const lockedLinks = await tx
+      .select({
+        entryId: knowledgeEntrySourcesTable.entryId,
+        sectionKey: knowledgeEntrySourcesTable.sectionKey,
+        documentId: knowledgeEntrySourcesTable.documentId,
+      })
+      .from(knowledgeEntrySourcesTable)
+      .where(eq(knowledgeEntrySourcesTable.documentId, documentId))
+      .orderBy(
+        asc(knowledgeEntrySourcesTable.entryId),
+        asc(knowledgeEntrySourcesTable.documentId),
+        asc(knowledgeEntrySourcesTable.sectionKey),
+      )
+      .for("update");
+    const linkKey = (link: { entryId: string; documentId: string; sectionKey: string }) =>
+      `${link.entryId}:${link.documentId}:${link.sectionKey}`;
+    const observedLinkKeys = new Set(observedLinks.map(linkKey));
+    const lockedLinkKeys = new Set(lockedLinks.map(linkKey));
+    if (
+      observedLinkKeys.size !== lockedLinkKeys.size ||
+      Array.from(observedLinkKeys).some((key) => !lockedLinkKeys.has(key))
+    ) {
+      throw new Error("Knowledge document links changed while drafts were being regenerated");
+    }
+    const reviewStatuses = new Map(lockedEntries.map((entry) => [entry.id, entry.reviewStatus]));
+    const existing = lockedLinks.map((link) => ({
+      ...link,
+      reviewStatus: reviewStatuses.get(link.entryId) ?? "",
+    }));
+    if (options.replaceDrafts) {
+      const allLinks = entryIds.length
+        ? await tx
+          .select({ entryId: knowledgeEntrySourcesTable.entryId, documentId: knowledgeEntrySourcesTable.documentId })
+          .from(knowledgeEntrySourcesTable)
+          .where(inArray(knowledgeEntrySourcesTable.entryId, entryIds))
+          .orderBy(
+            asc(knowledgeEntrySourcesTable.entryId),
+            asc(knowledgeEntrySourcesTable.documentId),
+            asc(knowledgeEntrySourcesTable.sectionKey),
+          )
+          .for("update")
+        : [];
+    }
+    // Lock the document row last. A concurrent reviewer or source worker may
+    // have changed ownership while the model was running; re-read the links
+    // after all locks to make the deletion decision from current ownership,
+    // never from the initial snapshot.
+    const lockedDocuments = await tx
+      .select({ id: knowledgeSourceDocumentsTable.id })
+      .from(knowledgeSourceDocumentsTable)
+      .where(eq(knowledgeSourceDocumentsTable.id, documentId))
+      .orderBy(asc(knowledgeSourceDocumentsTable.id))
+      .for("update");
+    if (!lockedDocuments.length) throw new Error("Knowledge source document no longer exists");
+    const finalLinks = await tx
+      .select({
+        entryId: knowledgeEntrySourcesTable.entryId,
+        sectionKey: knowledgeEntrySourcesTable.sectionKey,
+        documentId: knowledgeEntrySourcesTable.documentId,
+      })
+      .from(knowledgeEntrySourcesTable)
+      .where(eq(knowledgeEntrySourcesTable.documentId, documentId))
+      .orderBy(
+        asc(knowledgeEntrySourcesTable.entryId),
+        asc(knowledgeEntrySourcesTable.documentId),
+        asc(knowledgeEntrySourcesTable.sectionKey),
+      );
+    const finalLinkKeys = new Set(finalLinks.map(linkKey));
+    if (
+      finalLinkKeys.size !== lockedLinkKeys.size ||
+      Array.from(finalLinkKeys).some((key) => !lockedLinkKeys.has(key))
+    ) {
+      throw new Error("Knowledge document links changed while drafts were being regenerated");
+    }
+    const finalOwnershipLinks = entryIds.length
+      ? await tx
+        .select({
+          entryId: knowledgeEntrySourcesTable.entryId,
+          documentId: knowledgeEntrySourcesTable.documentId,
+        })
+        .from(knowledgeEntrySourcesTable)
+        .where(inArray(knowledgeEntrySourcesTable.entryId, entryIds))
+        .orderBy(
+          asc(knowledgeEntrySourcesTable.entryId),
+          asc(knowledgeEntrySourcesTable.documentId),
+          asc(knowledgeEntrySourcesTable.sectionKey),
+        )
+      : [];
+    if (options.replaceDrafts) {
+      if (lockedEntries.some((entry) => entry.reviewStatus === "approved")) {
+        throw new Error("A linked knowledge entry was approved while this document was being regenerated");
+      }
+      const removableEntryIds = draftOnlyUnsharedEntryIds(existing, finalOwnershipLinks, documentId);
+      if (removableEntryIds.length) {
+        await tx
+          .delete(knowledgeEntrySourcesTable)
+          .where(
+            and(
+              eq(knowledgeEntrySourcesTable.documentId, documentId),
+              inArray(knowledgeEntrySourcesTable.entryId, removableEntryIds),
+            ),
+          );
+        await tx
+          .delete(knowledgeEntriesTable)
+          .where(
+            and(
+              inArray(knowledgeEntriesTable.id, removableEntryIds),
+              eq(knowledgeEntriesTable.reviewStatus, "draft"),
+            ),
+          );
+      }
+    }
+
+    const remaining = await tx
       .select({ entryId: knowledgeEntrySourcesTable.entryId, sectionKey: knowledgeEntrySourcesTable.sectionKey })
       .from(knowledgeEntrySourcesTable)
       .where(eq(knowledgeEntrySourcesTable.documentId, documentId));
-    const seen = new Set(existing.map((x) => x.sectionKey));
-    let count = 0;
-    for (const chunk of candidates) {
-      // Hash the deterministic source section rather than the model-generated
-      // title. Retries therefore remain idempotent even if the model phrases a
-      // valid title differently on a later attempt.
-      const section = chunks[chunk.index] ?? { title: chunk.title, body: chunk.body };
-      const key = createHash("sha256").update(section.title + "\n" + section.body).digest("hex");
-      if (seen.has(key)) continue;
+    // Existing source keys make a normal import idempotent. Do not add keys
+    // from newly inserted candidates here: two semantic topics may correctly
+    // cite the same bounded source window.
+    const existingSectionKeys = new Set(remaining.map((entry) => entry.sectionKey));
+    let addedDrafts = 0;
+    for (const candidate of candidates) {
+      // Hash deterministic source sections, never model-generated text. This
+      // keeps normal imports idempotent even if the model rephrases a title.
+      const sections = candidate.sourceIndexes
+        .map((index) => chunks[index])
+        .filter((section): section is { title: string; body: string } => Boolean(section));
+      if (!sections.length) throw new Error("AI draft extraction referenced a missing source window");
+      const keys = sections.map(sourceSectionKey);
+      // Regeneration must still create replacement candidates when a
+      // protected shared draft cites the same window. Normal imports retain
+      // key-based idempotence; replacement has already removed all removable
+      // drafts transactionally and must not let a shared row suppress output.
+      if (!options.replaceDrafts && keys.every((key) => existingSectionKeys.has(key))) continue;
       const [entry] = await tx.insert(knowledgeEntriesTable).values({
-        title: chunk.title || source.name,
-        body: chunk.body,
-        category: chunk.category,
-        tags: Array.from(new Set(chunk.tags.map((tag) => tag.toLowerCase()))),
+        title: candidate.title || source.name,
+        body: candidate.body,
+        category: candidate.category,
+        tags: Array.from(new Set(candidate.tags.map((tag) => tag.toLowerCase()))),
         sourceName: source.name, sourceUrl: source.sourceUrl, reviewStatus: "draft",
-        effectiveDate: chunk.effectiveDate,
-        expiresDate: chunk.expiresDate,
+        effectiveDate: candidate.effectiveDate,
+        expiresDate: candidate.expiresDate,
         createdByEmail: email, updatedByEmail: email,
       }).returning();
       if (!entry) throw new Error("Knowledge draft insert returned no entry");
-      await tx.insert(knowledgeEntrySourcesTable).values({ entryId: entry.id, documentId, sectionKey: key });
-      seen.add(key);
-      count++;
+      for (const key of keys) {
+        await tx.insert(knowledgeEntrySourcesTable).values({ entryId: entry.id, documentId, sectionKey: key });
+      }
+      addedDrafts++;
     }
-    return count;
+    const draftLinks = await tx
+      .select({
+        entryId: knowledgeEntrySourcesTable.entryId,
+        reviewStatus: knowledgeEntriesTable.reviewStatus,
+      })
+      .from(knowledgeEntrySourcesTable)
+      .innerJoin(
+        knowledgeEntriesTable,
+        eq(knowledgeEntriesTable.id, knowledgeEntrySourcesTable.entryId),
+      )
+      .where(eq(knowledgeEntrySourcesTable.documentId, documentId));
+    const draftEntryIds = new Set(
+      draftLinks
+        .filter((entry) => entry.reviewStatus === "draft")
+        .map((entry) => entry.entryId),
+    );
+    return {
+      addedDrafts,
+      draftCount: draftEntryIds.size,
+    };
   });
 }
 
@@ -206,11 +414,61 @@ async function markImportFailed(
   });
 }
 
+async function restoreDocumentClaim(
+  documentId: string,
+  previousStatus: string,
+  previousError: string | null,
+  email: string,
+): Promise<void> {
+  const status = ["error", "active", "stale"].includes(previousStatus) ? previousStatus : "error";
+  await db
+    .update(knowledgeSourceDocumentsTable)
+    .set({
+      status,
+      lastError: previousError,
+      updatedByEmail: email,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(knowledgeSourceDocumentsTable.id, documentId),
+        eq(knowledgeSourceDocumentsTable.status, "processing"),
+      ),
+    );
+}
+
+/**
+ * A newly uploaded document starts in processing, but its owning source is
+ * already active. If the enrichment transaction is aborted by PostgreSQL's
+ * deadlock/serialization detector, leave the source active and make the
+ * document retryable instead of reporting a source ingestion failure.
+ */
+async function restoreTransientUpload(
+  documentId: string,
+  error: unknown,
+  email: string,
+): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  await db
+    .update(knowledgeSourceDocumentsTable)
+    .set({
+      status: "error",
+      lastError: message,
+      updatedByEmail: email,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(knowledgeSourceDocumentsTable.id, documentId),
+        eq(knowledgeSourceDocumentsTable.status, "processing"),
+      ),
+    );
+}
+
 async function markImportSucceeded(
   documentId: string,
   sourceId: string,
-  previousDraftCount: number,
-  addedDrafts: number,
+  draftCount: number,
   email: string,
 ): Promise<void> {
   const now = new Date();
@@ -219,7 +477,7 @@ async function markImportSucceeded(
       .update(knowledgeSourceDocumentsTable)
       .set({
         status: "active",
-        draftCount: previousDraftCount + addedDrafts,
+        draftCount,
         lastError: null,
         updatedByEmail: email,
         updatedAt: now,
@@ -249,6 +507,9 @@ export async function retryKnowledgeDocument(
   retryInFlight.add(documentId);
 
   let claimed: typeof knowledgeSourceDocumentsTable.$inferSelect | undefined;
+  let claimRestore:
+    | { status: string; lastError: string | null }
+    | undefined;
   try {
     claimed = await db.transaction(async (tx) => {
       const [document] = await tx
@@ -278,10 +539,11 @@ export async function retryKnowledgeDocument(
           throw new KnowledgeDocumentError("This document is already being imported", 409);
         }
         throw new KnowledgeDocumentError(
-          "Retry is available only for failed or zero-draft imports",
+          "Retry is available only for failed or unapproved document imports",
           409,
         );
       }
+      claimRestore = { status: document.status, lastError: document.lastError };
 
       // The conditional update is the database-side concurrency guard. The
       // in-process set above also gives an immediate actionable response.
@@ -298,10 +560,7 @@ export async function retryKnowledgeDocument(
             eq(knowledgeSourceDocumentsTable.id, documentId),
             or(
               eq(knowledgeSourceDocumentsTable.status, "error"),
-              and(
-                eq(knowledgeSourceDocumentsTable.draftCount, 0),
-                inArray(knowledgeSourceDocumentsTable.status, ["active", "stale"]),
-              ),
+              inArray(knowledgeSourceDocumentsTable.status, ["active", "stale"]),
             ),
           ),
         )
@@ -335,12 +594,16 @@ export async function retryKnowledgeDocument(
       );
     }
 
-    const addedDrafts = await createDrafts(claimed.id, source, chunks, email);
-    await markImportSucceeded(claimed.id, source.id, claimed.draftCount, addedDrafts, email);
-    return { draftCount: addedDrafts };
+    const regenerated = await createDrafts(claimed.id, source, chunks, email, { replaceDrafts: true });
+    await markImportSucceeded(claimed.id, source.id, regenerated.draftCount, email);
+    return { draftCount: regenerated.draftCount };
   } catch (error) {
     if (claimed) {
-      await markImportFailed(claimed.id, claimed.sourceId, error, email);
+      if (isRetryableTransactionAbort(error) && claimRestore) {
+        await restoreDocumentClaim(claimed.id, claimRestore.status, claimRestore.lastError, email);
+      } else {
+        await markImportFailed(claimed.id, claimed.sourceId, error, email);
+      }
     }
     throw error;
   } finally {
@@ -439,8 +702,8 @@ export async function syncDriveSource(source: typeof knowledgeSourcesTable.$infe
       await db.update(knowledgeEntrySourcesTable).set({ stale: "true" }).where(eq(knowledgeEntrySourcesTable.documentId, old.id));
     }
     const documentDrafts = await createDrafts(doc.id, source, extracted.chunks, email);
-    drafts += documentDrafts;
-    await db.update(knowledgeSourceDocumentsTable).set({ draftCount: (old?.draftCount ?? 0) + documentDrafts, updatedAt: new Date() }).where(eq(knowledgeSourceDocumentsTable.id, doc.id));
+    drafts += documentDrafts.addedDrafts;
+    await db.update(knowledgeSourceDocumentsTable).set({ draftCount: documentDrafts.draftCount, updatedAt: new Date() }).where(eq(knowledgeSourceDocumentsTable.id, doc.id));
   }
   const docs = await db.select().from(knowledgeSourceDocumentsTable).where(eq(knowledgeSourceDocumentsTable.sourceId, source.id));
   for (const doc of docs) if (doc.externalFileId && !seen.has(doc.externalFileId)) {
@@ -472,6 +735,23 @@ export async function runDriveSourceSync(sourceId: string, email: string): Promi
       .where(eq(knowledgeSourcesTable.id, sourceId));
     return result;
   } catch (error) {
+    if (isRetryableTransactionAbort(error)) {
+      await db
+        .update(knowledgeSourcesTable)
+        .set({
+          status: claimed.status,
+          lastError: claimed.lastError,
+          updatedAt: new Date(),
+          updatedByEmail: email,
+        })
+        .where(
+          and(
+            eq(knowledgeSourcesTable.id, sourceId),
+            eq(knowledgeSourcesTable.status, "syncing"),
+          ),
+        );
+      throw error;
+    }
     await db
       .update(knowledgeSourcesTable)
       .set({
@@ -527,13 +807,17 @@ router.post("/knowledge/sources/upload", upload.single("file"), async (req, res)
       updatedAt: new Date(),
       updatedByEmail: req.staff!.email,
     }).where(eq(knowledgeSourceDocumentsTable.id, document.id));
-    const draftCount = await createDrafts(document.id, source, extracted.chunks, req.staff!.email);
-    await markImportSucceeded(document.id, source.id, 0, draftCount, req.staff!.email);
+    const created = await createDrafts(document.id, source, extracted.chunks, req.staff!.email);
+    await markImportSucceeded(document.id, source.id, created.draftCount, req.staff!.email);
     const [updatedSource] = await db.select().from(knowledgeSourcesTable).where(eq(knowledgeSourcesTable.id, source.id)).limit(1);
-    res.status(201).json({ source: dto(updatedSource ?? source), documentId: document.id, draftCount });
+    res.status(201).json({ source: dto(updatedSource ?? source), documentId: document.id, draftCount: created.draftCount });
   } catch (error) {
     if (document) {
-      await markImportFailed(document.id, source.id, error, req.staff!.email);
+      if (isRetryableTransactionAbort(error)) {
+        await restoreTransientUpload(document.id, error, req.staff!.email);
+      } else {
+        await markImportFailed(document.id, source.id, error, req.staff!.email);
+      }
     } else {
       await db.update(knowledgeSourcesTable).set({
         status: "error",
@@ -573,6 +857,10 @@ router.get("/knowledge/documents/:id/preview", requireAdmin, async (req, res): P
   });
 });
 
+// The retry endpoint intentionally has no options/body: every invocation is
+// guarded server-side and replaces only draft entries linked solely to this
+// document. This keeps callers safe by default and avoids an OpenAPI option
+// that could accidentally request an approval/shared-entry overwrite.
 router.post("/knowledge/documents/:id/retry", requireAdmin, async (req, res): Promise<void> => {
   const documentId = String(req.params.id);
   if (!z.string().uuid().safeParse(documentId).success) {

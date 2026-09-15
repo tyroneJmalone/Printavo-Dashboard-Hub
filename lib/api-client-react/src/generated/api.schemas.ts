@@ -6352,6 +6352,116 @@ export interface KnowledgeEntryUpdate {
   expiresDate?: string | null;
 }
 
+export type KnowledgeEntrySelectionSnapshotReviewStatus = typeof KnowledgeEntrySelectionSnapshotReviewStatus[keyof typeof KnowledgeEntrySelectionSnapshotReviewStatus];
+
+
+export const KnowledgeEntrySelectionSnapshotReviewStatus = {
+  draft: 'draft',
+  approved: 'approved',
+  archived: 'archived',
+} as const;
+
+export interface KnowledgeEntrySelectionSnapshot {
+  id: string;
+  updatedAt: string;
+  reviewStatus: KnowledgeEntrySelectionSnapshotReviewStatus;
+}
+
+export interface BulkDeleteKnowledgeEntriesInput {
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  entryIds: string[];
+  /**
+     * One current updatedAt and review status snapshot for every entryId; the server revalidates these while locked.
+     * @minItems 1
+     * @maxItems 100
+     */
+  snapshots: KnowledgeEntrySelectionSnapshot[];
+  /** Must be true to permanently delete the selected entries. */
+  confirm: boolean;
+}
+
+export interface BulkDeleteKnowledgeEntriesResult {
+  selectedCount: number;
+  approvedCount: number;
+  draftCount: number;
+  archivedCount: number;
+}
+
+export interface KnowledgeMergeCandidate {
+  /**
+     * @minLength 3
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  body: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  category: string;
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 50
+     */
+  tags: string[];
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  effectiveDate: string | null;
+  /**
+     * @nullable
+     * @pattern ^\d{4}-\d{2}-\d{2}$
+     */
+  expiresDate: string | null;
+}
+
+export interface KnowledgeMergePreviewInput {
+  /**
+     * @minItems 2
+     * @maxItems 20
+     */
+  entryIds: string[];
+}
+
+export interface KnowledgeMergePreviewResponse {
+  token: string;
+  entryIds: string[];
+  entries: KnowledgeEntry[];
+  candidate: KnowledgeMergeCandidate;
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 500
+     */
+  conflicts: string[];
+}
+
+export interface KnowledgeMergeCommitInput {
+  /** @minLength 1 */
+  token: string;
+  /**
+     * @minItems 2
+     * @maxItems 20
+     */
+  entryIds: string[];
+  candidate: KnowledgeMergeCandidate;
+}
+
+export interface KnowledgeMergeCommitResponse {
+  entry: KnowledgeEntry;
+  deletedEntryIds: string[];
+  sourceLinkCount: number;
+}
+
 export type KnowledgeEntryReviewAction = typeof KnowledgeEntryReviewAction[keyof typeof KnowledgeEntryReviewAction];
 
 

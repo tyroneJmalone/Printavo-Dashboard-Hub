@@ -1,12 +1,24 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { db, knowledgeEntriesTable, knowledgeEntrySourcesTable, type KnowledgeEntry } from "@workspace/db";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import {
+  db,
+  knowledgeEntriesTable,
+  knowledgeEntrySourcesTable,
+  knowledgeSourceDocumentsTable,
+  type KnowledgeEntry,
+} from "@workspace/db";
+import {
+  BulkDeleteKnowledgeEntriesBody,
+  BulkDeleteKnowledgeEntriesResponse,
+  CommitKnowledgeMergeBody,
+  CommitKnowledgeMergeResponse,
   CreateKnowledgeEntryBody,
   CreateKnowledgeEntryResponse,
   DeleteKnowledgeEntryParams,
   ListKnowledgeEntriesQueryParams,
   ListKnowledgeEntriesResponse,
+  PreviewKnowledgeMergeBody,
+  PreviewKnowledgeMergeResponse,
   ReviewKnowledgeEntryBody,
   ReviewKnowledgeEntryParams,
   ReviewKnowledgeEntryResponse,
@@ -25,6 +37,14 @@ import {
   runKnowledgePlayground,
 } from "../lib/knowledgePlayground";
 import { checkRateLimit } from "../lib/aiGuardrails/rateLimit";
+import {
+  issueKnowledgeMergeToken,
+  mergeLinksMatch,
+  mergeSnapshotsMatch,
+  takeKnowledgeMergeToken,
+  type KnowledgeMergeLinkSnapshot,
+} from "../lib/knowledgeMerge";
+import { z } from "zod";
 
 /**
  * Staff CRUD + review workflow for the knowledge base that feeds the AI
@@ -40,6 +60,52 @@ import { checkRateLimit } from "../lib/aiGuardrails/rateLimit";
 const router: IRouter = Router();
 const PLAYGROUND_RATE_LIMIT_PER_MINUTE = 12;
 const playgroundInFlight = new Set<string>();
+const MERGE_RATE_LIMIT_PER_MINUTE = 3;
+const mergeInFlight = new Set<string>();
+const mergeCandidateSchema = z.object({
+  title: z.string().trim().min(3).max(200),
+  body: z.string().trim().min(1).max(20_000),
+  category: z.string().trim().min(1).max(50),
+  tags: z.array(z.string().trim().min(1).max(50)).max(20),
+  effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  expiresDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+});
+const mergeAiResponseSchema = z.object({
+  candidate: mergeCandidateSchema,
+  conflicts: z.array(z.string().trim().min(1).max(500)).max(20),
+});
+
+async function recomputeKnowledgeDocumentDraftCounts(
+  tx: any,
+  documentIds: string[],
+  email: string,
+): Promise<void> {
+  for (const documentId of new Set(documentIds)) {
+    const [{ count }] = await tx
+      .select({
+        count: sql<number>`count(distinct ${knowledgeEntrySourcesTable.entryId})`,
+      })
+      .from(knowledgeEntrySourcesTable)
+      .innerJoin(
+        knowledgeEntriesTable,
+        eq(knowledgeEntriesTable.id, knowledgeEntrySourcesTable.entryId),
+      )
+      .where(
+        and(
+          eq(knowledgeEntrySourcesTable.documentId, documentId),
+          eq(knowledgeEntriesTable.reviewStatus, "draft"),
+        ),
+      );
+    await tx
+      .update(knowledgeSourceDocumentsTable)
+      .set({
+        draftCount: Number(count ?? 0),
+        updatedByEmail: email,
+        updatedAt: new Date(),
+      })
+      .where(eq(knowledgeSourceDocumentsTable.id, documentId));
+  }
+}
 
 function entryDto(row: KnowledgeEntry, sourceStale = false) {
   return {
@@ -62,6 +128,54 @@ function entryDto(row: KnowledgeEntry, sourceStale = false) {
     updatedAt: row.updatedAt,
     sourceStale,
   };
+}
+
+function combinedSourceBreadcrumb(rows: KnowledgeEntry[]): { sourceName: string; sourceUrl: string } {
+  const names = [...new Set(rows.map((row) => row.sourceName.trim()).filter(Boolean))];
+  const urls = [...new Set(rows.map((row) => row.sourceUrl.trim()).filter(Boolean))];
+  const sourceNameParts = names.length ? [...names] : ["selected knowledge entries"];
+  let sourceUrl = "";
+  const commonUrl = urls.length === 1 ? urls[0]! : undefined;
+  const usableCommonUrl =
+    commonUrl &&
+    commonUrl.length <= 1_000 &&
+    !/[\r\n]/.test(commonUrl) &&
+    (() => {
+      try {
+        new URL(commonUrl);
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+  if (usableCommonUrl) {
+    sourceUrl = commonUrl;
+  } else if (urls.length > 0) {
+    // sourceUrl is a single-link editor field. Keep every distinct URL in
+    // the staff-only breadcrumb instead of writing a newline-delimited value
+    // that is not a usable URL and cannot be edited safely.
+    sourceNameParts.push(`URLs: ${urls.join(" | ")}`);
+  }
+  const sourceName = `Merged source breadcrumbs: ${sourceNameParts.join(" | ")}`;
+  if (sourceName.length > 300) {
+    throw new KnowledgeMergeProvenanceError(
+      "The preserved source breadcrumbs exceed the 300-character source name limit; shorten the source metadata or merge fewer entries.",
+    );
+  }
+  return {
+    sourceName,
+    sourceUrl,
+  };
+}
+
+class KnowledgeMergeProvenanceError extends Error {
+  readonly code = "merge_provenance_too_large";
+  readonly statusCode = 422;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "KnowledgeMergeProvenanceError";
+  }
 }
 
 router.post("/knowledge/playground", async (req, res): Promise<void> => {
@@ -148,6 +262,420 @@ router.get("/knowledge/entries", async (req, res): Promise<void> => {
   const staleIds = new Set(staleLinks.map((link) => link.entryId));
   res.json(ListKnowledgeEntriesResponse.parse(rows.map((row) => entryDto(row, staleIds.has(row.id)))));
 });
+
+router.post(
+  "/knowledge/entries/bulk-delete",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = BulkDeleteKnowledgeEntriesBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const entryIds = parsed.data.entryIds;
+    if (new Set(entryIds).size !== entryIds.length) {
+      res.status(400).json({ error: "Entry ids must be unique" });
+      return;
+    }
+    if (
+      parsed.data.snapshots.length !== entryIds.length ||
+      new Set(parsed.data.snapshots.map((snapshot) => snapshot.id)).size !== entryIds.length ||
+      parsed.data.snapshots.some((snapshot) => !entryIds.includes(snapshot.id))
+    ) {
+      res.status(400).json({ error: "Every selected entry must include exactly one current snapshot" });
+      return;
+    }
+
+    const selectedRows = await db
+      .select({
+        id: knowledgeEntriesTable.id,
+        reviewStatus: knowledgeEntriesTable.reviewStatus,
+        updatedAt: knowledgeEntriesTable.updatedAt,
+      })
+      .from(knowledgeEntriesTable)
+      .where(inArray(knowledgeEntriesTable.id, entryIds));
+    if (selectedRows.length !== entryIds.length) {
+      res.status(409).json({
+        error: "One or more selected entries no longer exist; nothing was deleted.",
+        code: "stale_selection",
+      });
+      return;
+    }
+    const counts = {
+      selectedCount: selectedRows.length,
+      approvedCount: selectedRows.filter((row) => row.reviewStatus === "approved").length,
+      draftCount: selectedRows.filter((row) => row.reviewStatus === "draft").length,
+      archivedCount: selectedRows.filter((row) => row.reviewStatus === "archived").length,
+    };
+    if (!parsed.data.confirm) {
+      res.status(400).json({
+        error: "Explicit confirmation is required before permanently deleting knowledge entries.",
+        code: "confirmation_required",
+        ...counts,
+      });
+      return;
+    }
+
+    try {
+      const result = await db.transaction(async (tx) => {
+        const locked = await tx
+          .select({
+            id: knowledgeEntriesTable.id,
+            reviewStatus: knowledgeEntriesTable.reviewStatus,
+            updatedAt: knowledgeEntriesTable.updatedAt,
+          })
+          .from(knowledgeEntriesTable)
+          .where(inArray(knowledgeEntriesTable.id, entryIds))
+          .orderBy(asc(knowledgeEntriesTable.id))
+          .for("update");
+        if (locked.length !== entryIds.length) {
+          throw new Error("stale_selection");
+        }
+        const snapshots = new Map(parsed.data.snapshots.map((snapshot) => [snapshot.id, snapshot]));
+        if (locked.some((row) => {
+          const snapshot = snapshots.get(row.id);
+          return (
+            !snapshot ||
+            row.updatedAt.toISOString() !== snapshot.updatedAt.toISOString() ||
+            row.reviewStatus !== snapshot.reviewStatus
+          );
+        })) {
+          throw new Error("stale_selection");
+        }
+        const affectedLinks = await tx
+          .select({ documentId: knowledgeEntrySourcesTable.documentId })
+          .from(knowledgeEntrySourcesTable)
+          .where(inArray(knowledgeEntrySourcesTable.entryId, entryIds))
+          .orderBy(
+            asc(knowledgeEntrySourcesTable.entryId),
+            asc(knowledgeEntrySourcesTable.documentId),
+            asc(knowledgeEntrySourcesTable.sectionKey),
+          )
+          .for("update");
+        const affectedDocumentIds = [...new Set(affectedLinks.map((link) => link.documentId))];
+        if (affectedDocumentIds.length) {
+          await tx
+            .select({ id: knowledgeSourceDocumentsTable.id })
+            .from(knowledgeSourceDocumentsTable)
+            .where(inArray(knowledgeSourceDocumentsTable.id, affectedDocumentIds))
+            .orderBy(asc(knowledgeSourceDocumentsTable.id))
+            .for("update");
+        }
+        const deleted = await tx
+          .delete(knowledgeEntriesTable)
+          .where(inArray(knowledgeEntriesTable.id, entryIds))
+          .returning({ id: knowledgeEntriesTable.id });
+        if (deleted.length !== entryIds.length) {
+          throw new Error("stale_selection");
+        }
+        await recomputeKnowledgeDocumentDraftCounts(tx, affectedDocumentIds, req.staff!.email);
+        return {
+          selectedCount: locked.length,
+          approvedCount: locked.filter((row) => row.reviewStatus === "approved").length,
+          draftCount: locked.filter((row) => row.reviewStatus === "draft").length,
+          archivedCount: locked.filter((row) => row.reviewStatus === "archived").length,
+        };
+      });
+      req.log.info({ entryIds, by: req.staff!.email, ...result }, "knowledge entries bulk deleted");
+      res.json(BulkDeleteKnowledgeEntriesResponse.parse(result));
+    } catch (error) {
+      if (error instanceof Error && error.message === "stale_selection") {
+        res.status(409).json({
+          error: "The selection changed while deleting; nothing was deleted.",
+          code: "stale_selection",
+        });
+        return;
+      }
+      throw error;
+    }
+  },
+);
+
+router.post(
+  "/knowledge/entries/merge/preview",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = PreviewKnowledgeMergeBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const entryIds = parsed.data.entryIds;
+    if (new Set(entryIds).size !== entryIds.length) {
+      res.status(400).json({ error: "Entry ids must be unique" });
+      return;
+    }
+    const staffKey = `knowledge-merge:${req.staff!.id}`;
+    const rate = checkRateLimit(staffKey, MERGE_RATE_LIMIT_PER_MINUTE);
+    if (!rate.allowed) {
+      res
+        .status(429)
+        .set("Retry-After", String(rate.retryAfterSeconds))
+        .json({ error: "Knowledge merge rate limit reached. Try again shortly." });
+      return;
+    }
+    if (mergeInFlight.has(staffKey)) {
+      res
+        .status(429)
+        .set("Retry-After", "1")
+        .json({ error: "A knowledge merge request is already in progress." });
+      return;
+    }
+    mergeInFlight.add(staffKey);
+
+    try {
+      const rows = await db
+        .select()
+        .from(knowledgeEntriesTable)
+        .where(inArray(knowledgeEntriesTable.id, entryIds));
+      if (rows.length !== entryIds.length) {
+        res.status(409).json({
+          error: "One or more selected entries no longer exist; refresh and select them again.",
+          code: "stale_selection",
+        });
+        return;
+      }
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      const orderedRows = entryIds.map((id) => byId.get(id)!);
+      const sourceLinks = await db
+        .select({
+          entryId: knowledgeEntrySourcesTable.entryId,
+          documentId: knowledgeEntrySourcesTable.documentId,
+          sectionKey: knowledgeEntrySourcesTable.sectionKey,
+          stale: knowledgeEntrySourcesTable.stale,
+          createdAt: knowledgeEntrySourcesTable.createdAt,
+        })
+        .from(knowledgeEntrySourcesTable)
+        .where(inArray(knowledgeEntrySourcesTable.entryId, entryIds));
+      const staleIds = new Set(
+        sourceLinks
+          .filter((link) => link.stale === "true")
+          .map((link) => link.entryId),
+      );
+      const linkSnapshots: KnowledgeMergeLinkSnapshot[] = sourceLinks.map((link) => ({
+        entryId: link.entryId,
+        documentId: link.documentId,
+        sectionKey: link.sectionKey,
+        stale: link.stale,
+        createdAt: link.createdAt.toISOString(),
+      }));
+      const sourceEntries = orderedRows.map((row) => entryDto(row, staleIds.has(row.id)));
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-5.6-terra",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Consolidate the supplied company knowledge entries into one coherent human-review draft. Use only facts explicitly present in the entries: never invent, infer, or silently choose between incompatible values. Preserve every qualification, exception, condition, date window, and operational detail. If entries conflict, preserve both positions in the body and explicitly describe each conflict in the conflicts array; the body should include a clearly labeled 'Conflicts requiring review' section. Return JSON only with {candidate:{title,body,category,tags,effectiveDate,expiresDate},conflicts:[string]}. The result is always a draft and must not imply approval. Dates are YYYY-MM-DD only when explicitly stated, otherwise null.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({ entries: sourceEntries }),
+          },
+        ],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 12_000,
+      });
+      const raw = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as unknown;
+      const aiResult = mergeAiResponseSchema.safeParse(raw);
+      if (!aiResult.success) {
+        throw new Error(`AI knowledge merge returned invalid data: ${aiResult.error.message}`);
+      }
+      const conflicts = Array.from(new Set(aiResult.data.conflicts));
+      let candidate = aiResult.data.candidate;
+      if (conflicts.length > 0 && !/\bconflicts requiring review\b/i.test(candidate.body)) {
+        candidate = {
+          ...candidate,
+          body: `${candidate.body}\n\nConflicts requiring review:\n${conflicts.map((conflict) => `- ${conflict}`).join("\n")}`,
+        };
+      }
+      const response = {
+        token: issueKnowledgeMergeToken(
+          req.staff!.id,
+          orderedRows.map((row) => ({ id: row.id, updatedAt: row.updatedAt.toISOString() })),
+          linkSnapshots,
+        ),
+        entryIds,
+        entries: orderedRows.map((row) => entryDto(row, staleIds.has(row.id))),
+        candidate,
+        conflicts,
+      };
+      res.json(PreviewKnowledgeMergeResponse.parse(response));
+    } catch (error) {
+      req.log.error({ err: error }, "knowledge merge preview failed");
+      res.status(503).json({ error: "Knowledge merge is temporarily unavailable." });
+    } finally {
+      mergeInFlight.delete(staffKey);
+    }
+  },
+);
+
+router.post(
+  "/knowledge/entries/merge/commit",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = CommitKnowledgeMergeBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const entryIds = parsed.data.entryIds;
+    if (new Set(entryIds).size !== entryIds.length) {
+      res.status(400).json({ error: "Entry ids must be unique" });
+      return;
+    }
+    const staffKey = `knowledge-merge:${req.staff!.id}`;
+    if (mergeInFlight.has(staffKey)) {
+      res
+        .status(429)
+        .set("Retry-After", "1")
+        .json({ error: "A knowledge merge request is already in progress." });
+      return;
+    }
+    mergeInFlight.add(staffKey);
+    const expected = takeKnowledgeMergeToken(parsed.data.token, req.staff!.id, entryIds);
+    if (!expected) {
+      mergeInFlight.delete(staffKey);
+      res.status(409).json({
+        error: "This merge preview is expired, already used, or belongs to a different selection. Generate a new preview.",
+        code: "stale_preview",
+      });
+      return;
+    }
+
+    try {
+      const result = await db.transaction(async (tx) => {
+        const lockedRows = await tx
+          .select()
+          .from(knowledgeEntriesTable)
+          .where(inArray(knowledgeEntriesTable.id, entryIds))
+          .orderBy(asc(knowledgeEntriesTable.id))
+          .for("update");
+        const actual = lockedRows.map((row) => ({
+          id: row.id,
+          updatedAt: row.updatedAt.toISOString(),
+        }));
+        if (lockedRows.length !== entryIds.length || !mergeSnapshotsMatch(expected.snapshots, actual)) {
+          throw new Error("stale_preview");
+        }
+
+        const links = await tx
+          .select({
+            entryId: knowledgeEntrySourcesTable.entryId,
+            documentId: knowledgeEntrySourcesTable.documentId,
+            sectionKey: knowledgeEntrySourcesTable.sectionKey,
+            stale: knowledgeEntrySourcesTable.stale,
+            createdAt: knowledgeEntrySourcesTable.createdAt,
+          })
+          .from(knowledgeEntrySourcesTable)
+          .where(inArray(knowledgeEntrySourcesTable.entryId, entryIds))
+          .orderBy(
+            asc(knowledgeEntrySourcesTable.entryId),
+            asc(knowledgeEntrySourcesTable.documentId),
+            asc(knowledgeEntrySourcesTable.sectionKey),
+          )
+          .for("update");
+        const actualLinks: KnowledgeMergeLinkSnapshot[] = links.map((link) => ({
+          entryId: link.entryId,
+          documentId: link.documentId,
+          sectionKey: link.sectionKey,
+          stale: link.stale,
+          createdAt: link.createdAt.toISOString(),
+        }));
+        if (!mergeLinksMatch(expected.links, actualLinks)) {
+          throw new Error("stale_preview");
+        }
+        const affectedDocumentIds = [...new Set(links.map((link) => link.documentId))];
+        if (affectedDocumentIds.length) {
+          await tx
+            .select({ id: knowledgeSourceDocumentsTable.id })
+            .from(knowledgeSourceDocumentsTable)
+            .where(inArray(knowledgeSourceDocumentsTable.id, affectedDocumentIds))
+            .orderBy(asc(knowledgeSourceDocumentsTable.id))
+            .for("update");
+        }
+        const uniqueLinks = new Map<string, { documentId: string; sectionKey: string; stale: string }>();
+        for (const link of links) {
+          const key = `${link.documentId}:${link.sectionKey}`;
+          const current = uniqueLinks.get(key);
+          uniqueLinks.set(key, {
+            ...link,
+            stale: current?.stale === "true" || link.stale === "true" ? "true" : "false",
+          });
+        }
+
+        const [merged] = await tx
+          .insert(knowledgeEntriesTable)
+          .values({
+            title: parsed.data.candidate.title,
+            body: parsed.data.candidate.body,
+            category: parsed.data.candidate.category,
+            tags: parsed.data.candidate.tags,
+            effectiveDate: parsed.data.candidate.effectiveDate,
+            expiresDate: parsed.data.candidate.expiresDate,
+            ...combinedSourceBreadcrumb(lockedRows),
+            reviewStatus: "draft",
+            approvedByEmail: null,
+            approvedAt: null,
+            lastReviewedAt: null,
+            createdByEmail: req.staff!.email,
+            updatedByEmail: req.staff!.email,
+          })
+          .returning();
+        if (!merged) throw new Error("merge_insert_failed");
+
+        if (uniqueLinks.size > 0) {
+          await tx
+            .insert(knowledgeEntrySourcesTable)
+            .values(
+              [...uniqueLinks.values()].map((link) => ({
+                entryId: merged.id,
+                documentId: link.documentId,
+                sectionKey: link.sectionKey,
+                stale: link.stale,
+              })),
+            )
+            .onConflictDoNothing();
+        }
+        const deleted = await tx
+          .delete(knowledgeEntriesTable)
+          .where(inArray(knowledgeEntriesTable.id, entryIds))
+          .returning({ id: knowledgeEntriesTable.id });
+        if (deleted.length !== entryIds.length) {
+          throw new Error("stale_preview");
+        }
+        await recomputeKnowledgeDocumentDraftCounts(tx, affectedDocumentIds, req.staff!.email);
+        return {
+          entry: entryDto(merged, [...uniqueLinks.values()].some((link) => link.stale === "true")),
+          deletedEntryIds: entryIds,
+          sourceLinkCount: uniqueLinks.size,
+        };
+      });
+      req.log.info(
+        { entryIds, mergedEntryId: result.entry.id, by: req.staff!.email },
+        "knowledge entries merged",
+      );
+      res.json(CommitKnowledgeMergeResponse.parse(result));
+    } catch (error) {
+      if (error instanceof KnowledgeMergeProvenanceError) {
+        res.status(error.statusCode).json({ error: error.message, code: error.code });
+        return;
+      }
+      if (error instanceof Error && error.message === "stale_preview") {
+        res.status(409).json({
+          error: "A selected entry changed or disappeared while this merge was open. Nothing was changed; generate a new preview.",
+          code: "stale_preview",
+        });
+        return;
+      }
+      req.log.error({ err: error }, "knowledge merge commit failed");
+      res.status(503).json({ error: "Knowledge merge could not be saved. Nothing was changed." });
+    } finally {
+      mergeInFlight.delete(staffKey);
+    }
+  },
+);
 
 router.post("/knowledge/entries", async (req, res): Promise<void> => {
   const parsed = CreateKnowledgeEntryBody.safeParse(req.body);

@@ -1,12 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  getListKnowledgeSourcesQueryKey,
+  type KnowledgeMergeCandidate,
+  useBulkDeleteKnowledgeEntries,
+  useCommitKnowledgeMerge,
   useListKnowledgeEntries,
   getListKnowledgeEntriesQueryKey,
   useCreateKnowledgeEntry,
   useUpdateKnowledgeEntry,
   useReviewKnowledgeEntry,
   useDeleteKnowledgeEntry,
+  usePreviewKnowledgeMerge,
 } from "@workspace/api-client-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
@@ -23,6 +28,8 @@ import {
   Search,
   Undo2,
   CalendarClock,
+  AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 
 /**
@@ -85,6 +92,15 @@ export default function KnowledgeBase() {
   const [form, setForm] = useState<EntryForm>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EntryForm>(EMPTY_FORM);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [mergePreview, setMergePreview] = useState<{
+    token: string;
+    entryIds: string[];
+    entries: NonNullable<typeof entries>;
+    candidate: KnowledgeMergeCandidate;
+    conflicts: string[];
+  } | null>(null);
+  const [mergeCandidate, setMergeCandidate] = useState<KnowledgeMergeCandidate | null>(null);
 
   const params = useMemo(
     () => ({
@@ -97,8 +113,26 @@ export default function KnowledgeBase() {
     query: { queryKey: getListKnowledgeEntriesQueryKey(params) },
   });
 
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setMergePreview(null);
+    setMergeCandidate(null);
+  }, [statusFilter, search]);
+
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: getListKnowledgeEntriesQueryKey(), exact: false });
+  const invalidateSourceData = () => {
+    qc.invalidateQueries({ queryKey: getListKnowledgeSourcesQueryKey() });
+    qc.invalidateQueries({
+      predicate: (query) =>
+        typeof query.queryKey[0] === "string" &&
+        query.queryKey[0].startsWith("/api/knowledge/sources/"),
+    });
+  };
+  const invalidateKnowledgeData = () => {
+    invalidate();
+    invalidateSourceData();
+  };
 
   const createEntry = useCreateKnowledgeEntry({
     mutation: {
@@ -152,6 +186,132 @@ export default function KnowledgeBase() {
       },
     },
   });
+  const bulkDeleteEntries = useBulkDeleteKnowledgeEntries({
+    mutation: {
+      onSuccess: (result) => {
+        setSelectedIds(new Set());
+        invalidateKnowledgeData();
+        toast({
+          title: `${result.selectedCount} entr${result.selectedCount === 1 ? "y" : "ies"} deleted`,
+          description: result.approvedCount
+            ? `${result.approvedCount} approved entr${result.approvedCount === 1 ? "y was" : "ies were"} permanently removed.`
+            : undefined,
+        });
+      },
+      onError: (err: any) =>
+        toast({
+          title: "Couldn't delete selected entries",
+          description: err?.error ?? String(err),
+          variant: "destructive",
+        }),
+    },
+  });
+  const previewMerge = usePreviewKnowledgeMerge({
+    mutation: {
+      onSuccess: (result) => {
+        setMergePreview(result);
+        setMergeCandidate(result.candidate);
+      },
+      onError: (err: any) =>
+        toast({
+          title: "Couldn't generate merge preview",
+          description: err?.error ?? String(err),
+          variant: "destructive",
+        }),
+    },
+  });
+  const commitMerge = useCommitKnowledgeMerge({
+    mutation: {
+      onSuccess: (result) => {
+        setSelectedIds(new Set());
+        setMergePreview(null);
+        setMergeCandidate(null);
+        invalidateKnowledgeData();
+        toast({
+          title: "Merged draft saved",
+          description: `${result.deletedEntryIds.length} original entries were replaced; ${result.sourceLinkCount} source links preserved. Review and approve the new draft when ready.`,
+        });
+      },
+      onError: (err: any) => {
+        setMergePreview(null);
+        setMergeCandidate(null);
+        toast({
+          title: "Merge was not saved",
+          description: err?.error ?? String(err),
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const visibleEntries = entries ?? [];
+  const selectedEntries = visibleEntries.filter((entry) => selectedIds.has(entry.id));
+  const selectedApprovedCount = selectedEntries.filter((entry) => entry.reviewStatus === "approved").length;
+  const allVisibleSelected = visibleEntries.length > 0 && visibleEntries.every((entry) => selectedIds.has(entry.id));
+  const mergeApprovedCount =
+    mergePreview?.entries.filter((entry) => entry.reviewStatus === "approved").length ?? 0;
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const toggleAllVisible = () => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) visibleEntries.forEach((entry) => next.delete(entry.id));
+      else visibleEntries.forEach((entry) => next.add(entry.id));
+      return next;
+    });
+  };
+  const requestBulkDelete = () => {
+    if (!selectedEntries.length || bulkDeleteEntries.isPending) return;
+    const approvedWarning =
+      selectedApprovedCount > 0
+        ? `\n\nWARNING: ${selectedApprovedCount} approved entr${selectedApprovedCount === 1 ? "y is" : "ies are"} currently live for AI tools and will be permanently removed.`
+        : "";
+    if (
+      confirm(
+        `Permanently delete ${selectedEntries.length} selected entr${selectedEntries.length === 1 ? "y" : "ies"}? This cannot be undone.${approvedWarning}`,
+      )
+    ) {
+      bulkDeleteEntries.mutate({
+        data: {
+          entryIds: selectedEntries.map((entry) => entry.id),
+          snapshots: selectedEntries.map((entry) => ({
+            id: entry.id,
+            updatedAt: new Date(entry.updatedAt).toISOString(),
+            reviewStatus: entry.reviewStatus,
+          })),
+          confirm: true,
+        },
+      });
+    }
+  };
+  const requestMergePreview = () => {
+    if (selectedEntries.length < 2 || previewMerge.isPending || commitMerge.isPending) return;
+    setMergePreview(null);
+    setMergeCandidate(null);
+    previewMerge.mutate({ data: { entryIds: selectedEntries.map((entry) => entry.id) } });
+  };
+  const requestMergeCommit = () => {
+    if (!mergePreview || !mergeCandidate || commitMerge.isPending) return;
+    if (
+      confirm(
+        `Save this edited draft as one replacement and permanently delete ${mergePreview.entryIds.length} originals?${mergeApprovedCount ? ` ${mergeApprovedCount} approved original${mergeApprovedCount === 1 ? " is" : "s are"} live for AI and will be replaced by a draft.` : ""} Originals remain untouched until you confirm.`,
+      )
+    ) {
+      commitMerge.mutate({
+        data: {
+          token: mergePreview.token,
+          entryIds: mergePreview.entryIds,
+          candidate: mergeCandidate,
+        },
+      });
+    }
+  };
 
   const startEdit = (e: NonNullable<typeof entries>[number]) => {
     setEditingId(e.id);
@@ -324,6 +484,173 @@ export default function KnowledgeBase() {
           </div>
         </div>
 
+        {isAdmin && visibleEntries.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={toggleAllVisible}
+                className="accent-emerald-500"
+                aria-label="Select all visible knowledge entries"
+              />
+              Select visible ({visibleEntries.length})
+            </label>
+            {selectedEntries.length > 0 && (
+              <>
+                <span className="text-xs text-slate-500">
+                  {selectedEntries.length} selected
+                  {selectedApprovedCount > 0 && ` · ${selectedApprovedCount} approved`}
+                </span>
+                <div className="flex-1" />
+                <button
+                  className={btnGhost}
+                  disabled={selectedEntries.length < 2 || previewMerge.isPending || commitMerge.isPending}
+                  onClick={requestMergePreview}
+                >
+                  <span className="flex items-center gap-1">
+                    <Sparkles size={12} /> {previewMerge.isPending ? "Generating…" : "AI merge preview"}
+                  </span>
+                </button>
+                <button
+                  className="text-xs font-medium px-3 py-1.5 rounded-md border border-red-900/60 bg-red-950/30 text-red-300 hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={bulkDeleteEntries.isPending}
+                  onClick={requestBulkDelete}
+                >
+                  <span className="flex items-center gap-1">
+                    <Trash2 size={12} /> {bulkDeleteEntries.isPending ? "Deleting…" : "Delete selected"}
+                  </span>
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {mergePreview && mergeCandidate && (
+          <Card className="border-emerald-800/60 bg-emerald-950/10">
+            <div className="flex items-start gap-2">
+              <Sparkles size={16} className="mt-0.5 shrink-0 text-emerald-400" />
+              <div>
+                <div className="text-sm font-semibold text-slate-100">AI merge preview</div>
+                <div className="mt-0.5 text-xs leading-relaxed text-slate-400">
+                  Review and edit this candidate before saving. The {mergePreview.entries.length} originals remain unchanged
+                  until you confirm; the replacement will always start as a draft.
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {mergePreview.entries.map((entry) => (
+                <span key={entry.id} className="rounded bg-slate-800 px-2 py-1 text-[11px] text-slate-300">
+                  {entry.title}
+                </span>
+              ))}
+            </div>
+            {mergePreview.conflicts.length > 0 && (
+              <div className="mt-3 rounded-md border border-amber-700/40 bg-amber-500/10 p-2.5 text-xs text-amber-200">
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <AlertTriangle size={13} /> Conflicts requiring review
+                </div>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                  {mergePreview.conflicts.map((conflict, index) => <li key={`${conflict}-${index}`}>{conflict}</li>)}
+                </ul>
+              </div>
+            )}
+            {mergeApprovedCount > 0 && (
+              <div className="mt-3 flex items-start gap-1.5 rounded-md border border-red-800/50 bg-red-950/25 p-2.5 text-xs leading-relaxed text-red-200">
+                <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                <span>
+                  {mergeApprovedCount} approved original{mergeApprovedCount === 1 ? " is" : "s are"} currently live for
+                  AI tools. They will be removed only after confirmation, and the replacement will remain a draft until
+                  separately approved.
+                </span>
+              </div>
+            )}
+            <div className="mt-3 space-y-2">
+              <input
+                className={`${inputCls} w-full`}
+                value={mergeCandidate.title}
+                onChange={(event) => setMergeCandidate({ ...mergeCandidate, title: event.target.value })}
+                aria-label="Merged draft title"
+              />
+              <textarea
+                className={`${inputCls} min-h-[180px] w-full leading-relaxed`}
+                value={mergeCandidate.body}
+                onChange={(event) => setMergeCandidate({ ...mergeCandidate, body: event.target.value })}
+                aria-label="Merged draft body"
+              />
+              <div className="flex flex-wrap gap-2">
+                <input
+                  className={`${inputCls} w-36`}
+                  value={mergeCandidate.category}
+                  onChange={(event) => setMergeCandidate({ ...mergeCandidate, category: event.target.value })}
+                  placeholder="Category"
+                  aria-label="Merged draft category"
+                />
+                <input
+                  className={`${inputCls} min-w-[180px] flex-1`}
+                  value={mergeCandidate.tags.join(", ")}
+                  onChange={(event) =>
+                    setMergeCandidate({
+                      ...mergeCandidate,
+                      tags: event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean),
+                    })
+                  }
+                  placeholder="Tags, comma-separated"
+                  aria-label="Merged draft tags"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <label className="text-[11px] text-slate-500">
+                  Effective from
+                  <input
+                    type="date"
+                    className={`${inputCls} mt-0.5 block`}
+                    value={mergeCandidate.effectiveDate ?? ""}
+                    onChange={(event) =>
+                      setMergeCandidate({ ...mergeCandidate, effectiveDate: event.target.value || null })
+                    }
+                  />
+                </label>
+                <label className="text-[11px] text-slate-500">
+                  Expires after
+                  <input
+                    type="date"
+                    className={`${inputCls} mt-0.5 block`}
+                    value={mergeCandidate.expiresDate ?? ""}
+                    onChange={(event) =>
+                      setMergeCandidate({ ...mergeCandidate, expiresDate: event.target.value || null })
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                className={btnCls}
+                disabled={
+                  commitMerge.isPending ||
+                  mergeCandidate.title.trim().length < 3 ||
+                  !mergeCandidate.body.trim() ||
+                  !mergeCandidate.category.trim()
+                }
+                onClick={requestMergeCommit}
+              >
+                {commitMerge.isPending ? "Saving replacement…" : "Confirm save replacement"}
+              </button>
+              <button
+                className={btnGhost}
+                disabled={commitMerge.isPending}
+                onClick={() => {
+                  setMergePreview(null);
+                  setMergeCandidate(null);
+                }}
+              >
+                Cancel preview
+              </button>
+            </div>
+          </Card>
+        )}
+
         <div className="space-y-2">
           {isLoading && <div className="text-sm text-slate-500">Loading…</div>}
           {entries?.map((e) => (
@@ -352,6 +679,15 @@ export default function KnowledgeBase() {
               ) : (
                 <>
                   <div className="flex flex-wrap items-center gap-2">
+                    {isAdmin && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(e.id)}
+                        onChange={() => toggleSelected(e.id)}
+                        className="accent-emerald-500"
+                        aria-label={`Select ${e.title}`}
+                      />
+                    )}
                     <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded font-bold ${STATUS_BADGE[e.reviewStatus] ?? ""}`}>
                       {e.reviewStatus}
                     </span>

@@ -6516,6 +6516,81 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /knowledge/entries/bulk-delete:
+    post:
+      operationId: bulkDeleteKnowledgeEntries
+      tags: [knowledge]
+      summary: Permanently delete multiple knowledge entries (admin only)
+      description: Deletes the selected entries in one transaction. The request must include explicit confirmation and a per-entry updatedAt/reviewStatus snapshot captured at confirmation; missing or concurrently changed selections abort the whole operation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkDeleteKnowledgeEntriesInput"
+      responses:
+        "200":
+          description: Deleted entry counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkDeleteKnowledgeEntriesResult"
+        "400":
+          description: Invalid request or missing explicit confirmation
+        "409":
+          description: One or more selected entries no longer exists
+  /knowledge/entries/merge/preview:
+    post:
+      operationId: previewKnowledgeMerge
+      tags: [knowledge]
+      summary: Generate an AI knowledge merge draft preview (admin only)
+      description: Reads the full selected entries and generates one editable draft candidate. The originals are not changed. Conflicts must be preserved and explicitly flagged; the returned snapshot token is required to commit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeMergePreviewInput"
+      responses:
+        "200":
+          description: Editable AI merge preview and server snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeMergePreviewResponse"
+        "400":
+          description: Invalid selection
+        "409":
+          description: A selected entry is missing
+        "429":
+          description: Merge already in progress or rate limited
+        "503":
+          description: AI merge unavailable
+  /knowledge/entries/merge/commit:
+    post:
+      operationId: commitKnowledgeMerge
+      tags: [knowledge]
+      summary: Commit an edited AI knowledge merge draft (admin only)
+      description: Atomically creates one draft, transfers all source links, and deletes the originals only when every selected entry still matches the preview snapshot. The new entry is never automatically approved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeMergeCommitInput"
+      responses:
+        "200":
+          description: Merged draft and deleted originals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeMergeCommitResponse"
+        "400":
+          description: Invalid candidate or selection
+        "409":
+          description: Preview expired, replayed, or stale
+        "503":
+          description: Merge could not be saved
   /knowledge/entries/{id}:
     patch:
       operationId: updateKnowledgeEntry
@@ -6683,8 +6758,8 @@ paths:
     post:
       operationId: retryKnowledgeDocument
       tags: [knowledge]
-      summary: Retry a failed or zero-draft source import (admin only)
-      description: Reuses stored extracted text, never auto-approves entries, and refuses documents with approved entries.
+      summary: Retry or explicitly regenerate a draft-only source import (admin only)
+      description: This POST takes no request body. It reuses stored extracted text to regenerate draft candidates for failed, active, or stale imports, replacing only removable draft-only entries. It never auto-approves entries and refuses documents with approved entries.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
@@ -13187,6 +13262,100 @@ components:
         sourceUrl: { type: string, maxLength: 1000 }
         effectiveDate: { type: ["string", "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
         expiresDate: { type: ["string", "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+    BulkDeleteKnowledgeEntriesInput:
+      type: object
+      required: [entryIds, snapshots, confirm]
+      properties:
+        entryIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        snapshots:
+          type: array
+          minItems: 1
+          maxItems: 100
+          description: One current updatedAt and review status snapshot for every entryId; the server revalidates these while locked.
+          items: { $ref: "#/components/schemas/KnowledgeEntrySelectionSnapshot" }
+        confirm:
+          type: boolean
+          description: Must be true to permanently delete the selected entries.
+    KnowledgeEntrySelectionSnapshot:
+      type: object
+      required: [id, updatedAt, reviewStatus]
+      properties:
+        id: { type: string, format: uuid }
+        updatedAt: { type: string, format: date-time }
+        reviewStatus: { type: string, enum: [draft, approved, archived] }
+    BulkDeleteKnowledgeEntriesResult:
+      type: object
+      required: [selectedCount, approvedCount, draftCount, archivedCount]
+      properties:
+        selectedCount: { type: integer }
+        approvedCount: { type: integer }
+        draftCount: { type: integer }
+        archivedCount: { type: integer }
+    KnowledgeMergeCandidate:
+      type: object
+      required: [title, body, category, tags, effectiveDate, expiresDate]
+      properties:
+        title: { type: string, minLength: 3, maxLength: 200 }
+        body: { type: string, minLength: 1, maxLength: 20000 }
+        category: { type: string, minLength: 1, maxLength: 50 }
+        tags:
+          type: array
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 50 }
+        effectiveDate: { type: ["string", "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+        expiresDate: { type: ["string", "null"], pattern: '^\d{4}-\d{2}-\d{2}$' }
+    KnowledgeMergePreviewInput:
+      type: object
+      required: [entryIds]
+      properties:
+        entryIds:
+          type: array
+          minItems: 2
+          maxItems: 20
+          uniqueItems: true
+          items: { type: string, format: uuid }
+    KnowledgeMergePreviewResponse:
+      type: object
+      required: [token, entryIds, entries, candidate, conflicts]
+      properties:
+        token: { type: string }
+        entryIds:
+          type: array
+          items: { type: string, format: uuid }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/KnowledgeEntry" }
+        candidate: { $ref: "#/components/schemas/KnowledgeMergeCandidate" }
+        conflicts:
+          type: array
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 500 }
+    KnowledgeMergeCommitInput:
+      type: object
+      required: [token, entryIds, candidate]
+      properties:
+        token: { type: string, minLength: 1 }
+        entryIds:
+          type: array
+          minItems: 2
+          maxItems: 20
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        candidate: { $ref: "#/components/schemas/KnowledgeMergeCandidate" }
+    KnowledgeMergeCommitResponse:
+      type: object
+      required: [entry, deletedEntryIds, sourceLinkCount]
+      properties:
+        entry: { $ref: "#/components/schemas/KnowledgeEntry" }
+        deletedEntryIds:
+          type: array
+          items: { type: string, format: uuid }
+        sourceLinkCount: { type: integer }
     KnowledgeEntryReview:
       type: object
       required: [action]

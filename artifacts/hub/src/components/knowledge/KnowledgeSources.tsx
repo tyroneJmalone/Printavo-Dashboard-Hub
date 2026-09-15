@@ -284,6 +284,15 @@ export function KnowledgeSources() {
   });
 
   const retryDocument = async (document: KnowledgeSourceDocument) => {
+    const hasExistingDrafts = document.draftCount > 0;
+    if (
+      hasExistingDrafts &&
+      !window.confirm(
+        `Regenerate the ${document.draftCount} existing draft${document.draftCount === 1 ? "" : "s"} for "${document.name}"? Only unapproved, document-only drafts can be replaced; approved or shared entries will be preserved.`,
+      )
+    ) {
+      return;
+    }
     setRetryingDocumentId(document.id);
     try {
       const result = await customFetch<RetryDocumentResponse>(
@@ -295,7 +304,7 @@ export function KnowledgeSources() {
       await qc.refetchQueries({ queryKey: documentsKey, type: "active" });
       await invalidateKnowledgeEntries();
       toast({
-        title: "Document retried",
+        title: document.draftCount > 0 ? "Drafts regenerated" : "Document retried",
         description: `${result.draftCount} draft${result.draftCount === 1 ? "" : "s"} ready for human review.`,
       });
     } catch (error) {
@@ -488,14 +497,14 @@ export function KnowledgeSources() {
                                <span className="flex items-center gap-1"><Eye size={12} aria-hidden="true" /> View text</span>
                              </button>
                            )}
-                           {isAdmin && document.status !== "deleted" && (document.status === "error" || document.lastError || document.draftCount === 0) && (
+                            {isAdmin && document.status !== "deleted" && (document.status === "error" || document.lastError || document.status === "active" || document.status === "stale") && (
                              <button
                                className={ghostButton}
                                data-testid={`button-retry-document-${document.id}`}
                                disabled={retryingDocumentId === document.id}
                                onClick={() => void retryDocument(document)}
                              >
-                               <span className="flex items-center gap-1"><RefreshCw size={12} className={retryingDocumentId === document.id ? "animate-spin" : ""} aria-hidden="true" /> {retryingDocumentId === document.id ? "Retrying…" : "Retry"}</span>
+                                <span className="flex items-center gap-1"><RefreshCw size={12} className={retryingDocumentId === document.id ? "animate-spin" : ""} aria-hidden="true" /> {retryingDocumentId === document.id ? "Regenerating…" : document.draftCount > 0 ? "Regenerate drafts" : "Retry"}</span>
                              </button>
                            )}
                          </div>
