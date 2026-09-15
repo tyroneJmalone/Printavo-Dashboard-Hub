@@ -4,13 +4,19 @@ import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { spawn } from "child_process";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, or } from "drizzle-orm";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { db, knowledgeEntriesTable, knowledgeSourcesTable, knowledgeSourceDocumentsTable, knowledgeEntrySourcesTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
 import { objectStorageClient, getPrivateObjectDir, parseObjectPath } from "../lib/objectStorage";
 import { requireAdmin } from "../middlewares/requireStaff";
+import {
+  canRetryKnowledgeDocument,
+  chunkExtractedText,
+  importFailurePatch,
+  normalizeDraftTitle,
+} from "../lib/knowledgeSourceImport";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { files: 1, fileSize: 15 * 1024 * 1024 } });
@@ -22,7 +28,9 @@ const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"
 const AI_MODEL = "gpt-5.6-terra";
 const DraftCandidateSchema = z.object({
   index: z.number().int().nonnegative(),
-  title: z.string().trim().min(3).max(160),
+  // Titles are normalized against the source section below. Do not reject an
+  // otherwise usable candidate because an LLM returned a one-character title.
+  title: z.string().trim().max(1000),
   body: z.string().trim().min(1).max(2400),
   category: z.enum(["general", "policy", "pricing", "production", "shipping", "faq"]),
   tags: z.array(z.string().trim().min(1).max(40)).max(8),
@@ -69,7 +77,17 @@ async function enrichDrafts(
     if (returned.size !== expected.size || [...expected].some((index) => !returned.has(index))) {
       throw new Error("AI draft extraction did not return exactly one candidate per source excerpt");
     }
-    enriched.push(...parsed.data);
+    enriched.push(
+      ...parsed.data.map((draft) => ({
+        ...draft,
+        title: normalizeDraftTitle(
+          draft.title,
+          chunks[draft.index]?.title ?? "",
+          sourceName,
+          draft.index,
+        ),
+      })),
+    );
   }
   return enriched.sort((a, b) => a.index - b.index);
 }
@@ -104,29 +122,230 @@ function dto(row: typeof knowledgeSourcesTable.$inferSelect) {
   return { id: row.id, kind: row.kind, name: row.name, sourceUrl: row.sourceUrl, driveFolderId: row.driveFolderId, status: row.status, lastSyncAt: row.lastSyncAt, lastError: row.lastError, createdAt: row.createdAt, updatedAt: row.updatedAt };
 }
 
-async function createDrafts(documentId: string, source: typeof knowledgeSourcesTable.$inferSelect, chunks: Array<{ title: string; body: string }>, email: string) {
+async function createDrafts(
+  documentId: string,
+  source: typeof knowledgeSourcesTable.$inferSelect,
+  chunks: Array<{ title: string; body: string }>,
+  email: string,
+) {
   const candidates = await enrichDrafts(chunks, source.name);
-  const existing = await db.select({ entryId: knowledgeEntrySourcesTable.entryId, sectionKey: knowledgeEntrySourcesTable.sectionKey })
-    .from(knowledgeEntrySourcesTable).where(eq(knowledgeEntrySourcesTable.documentId, documentId));
-  const seen = new Set(existing.map((x) => x.sectionKey));
-  let count = 0;
-  for (const chunk of candidates) {
-    const key = createHash("sha256").update(chunk.title + "\n" + chunk.body).digest("hex");
-    if (seen.has(key)) continue;
-    const [entry] = await db.insert(knowledgeEntriesTable).values({
-      title: chunk.title || source.name,
-      body: chunk.body,
-      category: chunk.category,
-      tags: Array.from(new Set(chunk.tags.map((tag) => tag.toLowerCase()))),
-      sourceName: source.name, sourceUrl: source.sourceUrl, reviewStatus: "draft",
-      effectiveDate: chunk.effectiveDate,
-      expiresDate: chunk.expiresDate,
-      createdByEmail: email, updatedByEmail: email,
-    }).returning();
-    await db.insert(knowledgeEntrySourcesTable).values({ entryId: entry!.id, documentId, sectionKey: key });
-    count++;
+  return db.transaction(async (tx) => {
+    const existing = await tx
+      .select({ entryId: knowledgeEntrySourcesTable.entryId, sectionKey: knowledgeEntrySourcesTable.sectionKey })
+      .from(knowledgeEntrySourcesTable)
+      .where(eq(knowledgeEntrySourcesTable.documentId, documentId));
+    const seen = new Set(existing.map((x) => x.sectionKey));
+    let count = 0;
+    for (const chunk of candidates) {
+      // Hash the deterministic source section rather than the model-generated
+      // title. Retries therefore remain idempotent even if the model phrases a
+      // valid title differently on a later attempt.
+      const section = chunks[chunk.index] ?? { title: chunk.title, body: chunk.body };
+      const key = createHash("sha256").update(section.title + "\n" + section.body).digest("hex");
+      if (seen.has(key)) continue;
+      const [entry] = await tx.insert(knowledgeEntriesTable).values({
+        title: chunk.title || source.name,
+        body: chunk.body,
+        category: chunk.category,
+        tags: Array.from(new Set(chunk.tags.map((tag) => tag.toLowerCase()))),
+        sourceName: source.name, sourceUrl: source.sourceUrl, reviewStatus: "draft",
+        effectiveDate: chunk.effectiveDate,
+        expiresDate: chunk.expiresDate,
+        createdByEmail: email, updatedByEmail: email,
+      }).returning();
+      if (!entry) throw new Error("Knowledge draft insert returned no entry");
+      await tx.insert(knowledgeEntrySourcesTable).values({ entryId: entry.id, documentId, sectionKey: key });
+      seen.add(key);
+      count++;
+    }
+    return count;
+  });
+}
+
+export class KnowledgeDocumentError extends Error {
+  constructor(
+    message: string,
+    readonly statusCode: number,
+  ) {
+    super(message);
+    this.name = "KnowledgeDocumentError";
   }
-  return count;
+}
+
+const retryInFlight = new Set<string>();
+
+async function markImportFailed(
+  documentId: string,
+  sourceId: string,
+  error: unknown,
+  email: string,
+): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  const patch = importFailurePatch(message, email);
+  await db.transaction(async (tx) => {
+    // Do not include extractedText in this patch: source text is retained for
+    // the staff preview and for a later retry.
+    await tx
+      .update(knowledgeSourceDocumentsTable)
+      .set(patch)
+      .where(eq(knowledgeSourceDocumentsTable.id, documentId));
+    await tx
+      .update(knowledgeSourcesTable)
+      .set({
+        status: "error",
+        lastError: message,
+        updatedByEmail: email,
+        updatedAt: patch.updatedAt,
+      })
+      .where(
+        and(
+          eq(knowledgeSourcesTable.id, sourceId),
+          inArray(knowledgeSourcesTable.status, ["active", "error", "processing", "syncing", "paused"]),
+        ),
+      );
+  });
+}
+
+async function markImportSucceeded(
+  documentId: string,
+  sourceId: string,
+  previousDraftCount: number,
+  addedDrafts: number,
+  email: string,
+): Promise<void> {
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(knowledgeSourceDocumentsTable)
+      .set({
+        status: "active",
+        draftCount: previousDraftCount + addedDrafts,
+        lastError: null,
+        updatedByEmail: email,
+        updatedAt: now,
+      })
+      .where(eq(knowledgeSourceDocumentsTable.id, documentId));
+    // A failed import marks its owning source as error. Only recover that
+    // state; a paused/deleted source must not be silently re-enabled.
+    await tx
+      .update(knowledgeSourcesTable)
+      .set({ status: "active", lastError: null, updatedByEmail: email, updatedAt: now })
+      .where(and(eq(knowledgeSourcesTable.id, sourceId), eq(knowledgeSourcesTable.status, "error")));
+  });
+}
+
+/**
+ * Retry service used by the admin endpoint and by one-off dev recovery
+ * harnesses. It deliberately accepts only a document id and staff email, so a
+ * harness can call the same guarded operation without an auth bypass route.
+ */
+export async function retryKnowledgeDocument(
+  documentId: string,
+  email: string,
+): Promise<{ draftCount: number }> {
+  if (retryInFlight.has(documentId)) {
+    throw new KnowledgeDocumentError("A retry for this document is already in progress", 409);
+  }
+  retryInFlight.add(documentId);
+
+  let claimed: typeof knowledgeSourceDocumentsTable.$inferSelect | undefined;
+  try {
+    claimed = await db.transaction(async (tx) => {
+      const [document] = await tx
+        .select()
+        .from(knowledgeSourceDocumentsTable)
+        .where(eq(knowledgeSourceDocumentsTable.id, documentId))
+        .limit(1);
+      if (!document) throw new KnowledgeDocumentError("Knowledge document not found", 404);
+
+      const linked = await tx
+        .select({ reviewStatus: knowledgeEntriesTable.reviewStatus })
+        .from(knowledgeEntrySourcesTable)
+        .innerJoin(
+          knowledgeEntriesTable,
+          eq(knowledgeEntriesTable.id, knowledgeEntrySourcesTable.entryId),
+        )
+        .where(eq(knowledgeEntrySourcesTable.documentId, documentId));
+      const hasApprovedEntries = linked.some((entry) => entry.reviewStatus === "approved");
+      if (hasApprovedEntries) {
+        throw new KnowledgeDocumentError(
+          "This document already has approved knowledge entries; retry is refused so approvals are not reset",
+          409,
+        );
+      }
+      if (!canRetryKnowledgeDocument(document, false)) {
+        if (document.status === "processing") {
+          throw new KnowledgeDocumentError("This document is already being imported", 409);
+        }
+        throw new KnowledgeDocumentError(
+          "Retry is available only for failed or zero-draft imports",
+          409,
+        );
+      }
+
+      // The conditional update is the database-side concurrency guard. The
+      // in-process set above also gives an immediate actionable response.
+      const [updated] = await tx
+        .update(knowledgeSourceDocumentsTable)
+        .set({
+          status: "processing",
+          lastError: null,
+          updatedByEmail: email,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(knowledgeSourceDocumentsTable.id, documentId),
+            or(
+              eq(knowledgeSourceDocumentsTable.status, "error"),
+              and(
+                eq(knowledgeSourceDocumentsTable.draftCount, 0),
+                inArray(knowledgeSourceDocumentsTable.status, ["active", "stale"]),
+              ),
+            ),
+          ),
+        )
+        .returning();
+      if (!updated) {
+        throw new KnowledgeDocumentError("This document changed; retry it again after the current import finishes", 409);
+      }
+      return updated;
+    });
+
+    const [source] = await db
+      .select()
+      .from(knowledgeSourcesTable)
+      .where(eq(knowledgeSourcesTable.id, claimed.sourceId))
+      .limit(1);
+    if (!source) throw new KnowledgeDocumentError("The document's owning source no longer exists", 409);
+    if (source.status === "deleted") {
+      throw new KnowledgeDocumentError("The document's source has been deleted; upload it again", 409);
+    }
+    if (!claimed.extractedText.trim()) {
+      throw new KnowledgeDocumentError(
+        "No extracted text is available to retry; upload the original document again",
+        422,
+      );
+    }
+    const chunks = chunkExtractedText(claimed.extractedText);
+    if (!chunks.length) {
+      throw new KnowledgeDocumentError(
+        "Stored extracted text contains no usable sections; upload the original document again",
+        422,
+      );
+    }
+
+    const addedDrafts = await createDrafts(claimed.id, source, chunks, email);
+    await markImportSucceeded(claimed.id, source.id, claimed.draftCount, addedDrafts, email);
+    return { draftCount: addedDrafts };
+  } catch (error) {
+    if (claimed) {
+      await markImportFailed(claimed.id, claimed.sourceId, error, email);
+    }
+    throw error;
+  } finally {
+    retryInFlight.delete(documentId);
+  }
 }
 
 async function driveProxy(endpoint: string, init?: { method?: string; headers?: Record<string, string>; body?: string }): Promise<any> {
@@ -284,19 +503,92 @@ router.post("/knowledge/sources/upload", upload.single("file"), async (req, res)
   }).returning())[0]!;
   const objectPath = `${getPrivateObjectDir()}/knowledge/${source.id}/${checksum}${ext}`;
   const parsed = parseObjectPath(objectPath);
-  await objectStorageClient.bucket(parsed.bucketName).file(parsed.objectName).save(file.buffer, { resumable: false, contentType: file.mimetype });
+  let document: typeof knowledgeSourceDocumentsTable.$inferSelect | undefined;
   try {
-    const extracted = await extract(file);
-    const doc = (await db.insert(knowledgeSourceDocumentsTable).values({
-      sourceId: source.id, name: file.originalname, mimeType: file.mimetype, checksum, extractedText: extracted.text,
-      objectPath, status: "active", createdByEmail: req.staff!.email, updatedByEmail: req.staff!.email,
+    // Create one processing row before any work that can fail. Every later
+    // error updates this same row, rather than creating an active row plus a
+    // second error row.
+    document = (await db.insert(knowledgeSourceDocumentsTable).values({
+      sourceId: source.id,
+      name: file.originalname,
+      mimeType: file.mimetype,
+      checksum,
+      objectPath,
+      status: "processing",
+      createdByEmail: req.staff!.email,
+      updatedByEmail: req.staff!.email,
     }).returning())[0]!;
-    const draftCount = await createDrafts(doc.id, source, extracted.chunks, req.staff!.email);
-    await db.update(knowledgeSourceDocumentsTable).set({ draftCount, updatedAt: new Date() }).where(eq(knowledgeSourceDocumentsTable.id, doc.id));
-    res.status(201).json({ source: dto(source), documentId: doc.id, draftCount });
+    await objectStorageClient.bucket(parsed.bucketName).file(parsed.objectName).save(file.buffer, { resumable: false, contentType: file.mimetype });
+    const extracted = await extract(file);
+    // Persist extracted text before LLM enrichment. If enrichment fails, the
+    // staff preview and retry endpoint still have the original material.
+    await db.update(knowledgeSourceDocumentsTable).set({
+      extractedText: extracted.text,
+      updatedAt: new Date(),
+      updatedByEmail: req.staff!.email,
+    }).where(eq(knowledgeSourceDocumentsTable.id, document.id));
+    const draftCount = await createDrafts(document.id, source, extracted.chunks, req.staff!.email);
+    await markImportSucceeded(document.id, source.id, 0, draftCount, req.staff!.email);
+    const [updatedSource] = await db.select().from(knowledgeSourcesTable).where(eq(knowledgeSourcesTable.id, source.id)).limit(1);
+    res.status(201).json({ source: dto(updatedSource ?? source), documentId: document.id, draftCount });
   } catch (error) {
-    await db.insert(knowledgeSourceDocumentsTable).values({ sourceId: source.id, name: file.originalname, mimeType: file.mimetype, checksum, objectPath, status: "error", lastError: error instanceof Error ? error.message : String(error), createdByEmail: req.staff!.email, updatedByEmail: req.staff!.email });
+    if (document) {
+      await markImportFailed(document.id, source.id, error, req.staff!.email);
+    } else {
+      await db.update(knowledgeSourcesTable).set({
+        status: "error",
+        lastError: error instanceof Error ? error.message : String(error),
+        updatedByEmail: req.staff!.email,
+        updatedAt: new Date(),
+      }).where(eq(knowledgeSourcesTable.id, source.id));
+    }
     res.status(422).json({ error: error instanceof Error ? error.message : "Extraction failed" });
+  }
+});
+
+router.get("/knowledge/documents/:id/preview", requireAdmin, async (req, res): Promise<void> => {
+  const documentId = String(req.params.id);
+  if (!z.string().uuid().safeParse(documentId).success) {
+    res.status(400).json({ error: "A valid knowledge document id is required" });
+    return;
+  }
+  const [document] = await db
+    .select()
+    .from(knowledgeSourceDocumentsTable)
+    .where(eq(knowledgeSourceDocumentsTable.id, documentId))
+    .limit(1);
+  if (!document) {
+    res.status(404).json({ error: "Knowledge document not found" });
+    return;
+  }
+  // This is an admin-only staff preview. In particular, objectPath and source
+  // storage details never leave this route.
+  res.json({
+    id: document.id,
+    name: document.name,
+    status: document.status,
+    text: document.extractedText,
+    draftCount: document.draftCount,
+    error: document.lastError,
+  });
+});
+
+router.post("/knowledge/documents/:id/retry", requireAdmin, async (req, res): Promise<void> => {
+  const documentId = String(req.params.id);
+  if (!z.string().uuid().safeParse(documentId).success) {
+    res.status(400).json({ error: "A valid knowledge document id is required" });
+    return;
+  }
+  try {
+    const result = await retryKnowledgeDocument(documentId, req.staff!.email);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof KnowledgeDocumentError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error, documentId }, "knowledge document retry failed");
+    res.status(422).json({ error: error instanceof Error ? error.message : "Knowledge document retry failed" });
   }
 });
 

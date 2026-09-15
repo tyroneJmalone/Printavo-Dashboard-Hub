@@ -210,6 +210,8 @@ import type {
   KnowledgePlaygroundResponse,
   KnowledgeSource,
   KnowledgeSourceDocument,
+  KnowledgeSourceDocumentPreview,
+  KnowledgeSourceDocumentRetryResult,
   KnowledgeSourceSyncResult,
   KnowledgeSourceUpdateInput,
   KnowledgeSourceUploadInput,
@@ -22610,6 +22612,154 @@ export function useListKnowledgeSourceDocuments<TData = Awaited<ReturnType<typeo
 
 
 
+
+export const getPreviewKnowledgeDocumentUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/documents/${id}/preview`
+}
+
+/**
+ * @summary Preview stored source text and import status (admin only)
+ */
+export const previewKnowledgeDocument = async (id: string, options?: RequestInit): Promise<KnowledgeSourceDocumentPreview> => {
+
+  return customFetch<KnowledgeSourceDocumentPreview>(getPreviewKnowledgeDocumentUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewKnowledgeDocumentQueryKey = (id: string,) => {
+    return [
+    `/api/knowledge/documents/${id}/preview`
+    ] as const;
+    }
+
+
+export const getPreviewKnowledgeDocumentQueryOptions = <TData = Awaited<ReturnType<typeof previewKnowledgeDocument>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewKnowledgeDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviewKnowledgeDocumentQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewKnowledgeDocument>>> = ({ signal }) => previewKnowledgeDocument(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewKnowledgeDocument>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type PreviewKnowledgeDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof previewKnowledgeDocument>>>
+export type PreviewKnowledgeDocumentQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Preview stored source text and import status (admin only)
+ */
+
+export function usePreviewKnowledgeDocument<TData = Awaited<ReturnType<typeof previewKnowledgeDocument>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof previewKnowledgeDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getPreviewKnowledgeDocumentQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRetryKnowledgeDocumentUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/documents/${id}/retry`
+}
+
+/**
+ * Reuses stored extracted text, never auto-approves entries, and refuses documents with approved entries.
+ * @summary Retry a failed or zero-draft source import (admin only)
+ */
+export const retryKnowledgeDocument = async (id: string, options?: RequestInit): Promise<KnowledgeSourceDocumentRetryResult> => {
+
+  return customFetch<KnowledgeSourceDocumentRetryResult>(getRetryKnowledgeDocumentUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRetryKnowledgeDocumentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryKnowledgeDocument>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryKnowledgeDocument>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['retryKnowledgeDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryKnowledgeDocument>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  retryKnowledgeDocument(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryKnowledgeDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof retryKnowledgeDocument>>>
+
+    export type RetryKnowledgeDocumentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Retry a failed or zero-draft source import (admin only)
+ */
+export const useRetryKnowledgeDocument = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryKnowledgeDocument>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retryKnowledgeDocument>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRetryKnowledgeDocumentMutationOptions(options));
+    }
 
 export const getSyncGoogleDriveKnowledgeSourceUrl = (id: string,) => {
 

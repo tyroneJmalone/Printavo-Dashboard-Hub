@@ -10593,6 +10593,36 @@ export const ListKnowledgeSourceDocumentsResponse = zod.array(ListKnowledgeSourc
 
 
 /**
+ * @summary Preview stored source text and import status (admin only)
+ */
+export const PreviewKnowledgeDocumentParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const PreviewKnowledgeDocumentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "status": zod.enum(['processing', 'active', 'deleted', 'error', 'stale']),
+  "text": zod.string(),
+  "draftCount": zod.number(),
+  "error": zod.string().nullable()
+})
+
+
+/**
+ * Reuses stored extracted text, never auto-approves entries, and refuses documents with approved entries.
+ * @summary Retry a failed or zero-draft source import (admin only)
+ */
+export const RetryKnowledgeDocumentParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RetryKnowledgeDocumentResponse = zod.object({
+  "draftCount": zod.number()
+})
+
+
+/**
  * @summary Synchronize a Google Drive source now
  */
 export const SyncGoogleDriveKnowledgeSourceParams = zod.object({

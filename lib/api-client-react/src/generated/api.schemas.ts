@@ -6216,6 +6216,31 @@ export interface KnowledgeSourceDocument {
   updatedAt: string;
 }
 
+export type KnowledgeSourceDocumentPreviewStatus = typeof KnowledgeSourceDocumentPreviewStatus[keyof typeof KnowledgeSourceDocumentPreviewStatus];
+
+
+export const KnowledgeSourceDocumentPreviewStatus = {
+  processing: 'processing',
+  active: 'active',
+  deleted: 'deleted',
+  error: 'error',
+  stale: 'stale',
+} as const;
+
+export interface KnowledgeSourceDocumentPreview {
+  id: string;
+  name: string;
+  status: KnowledgeSourceDocumentPreviewStatus;
+  text: string;
+  draftCount: number;
+  /** @nullable */
+  error: string | null;
+}
+
+export interface KnowledgeSourceDocumentRetryResult {
+  draftCount: number;
+}
+
 export interface KnowledgeSourceSyncResult {
   sourceId: string;
   documents: number;

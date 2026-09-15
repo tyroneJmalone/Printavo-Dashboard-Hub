@@ -6656,6 +6656,63 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/KnowledgeSourceDocument" } }
+  /knowledge/documents/{id}/preview:
+    get:
+      operationId: previewKnowledgeDocument
+      tags: [knowledge]
+      summary: Preview stored source text and import status (admin only)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Staff-only source document preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KnowledgeSourceDocumentPreview" }
+        "400":
+          description: Invalid document id
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /knowledge/documents/{id}/retry:
+    post:
+      operationId: retryKnowledgeDocument
+      tags: [knowledge]
+      summary: Retry a failed or zero-draft source import (admin only)
+      description: Reuses stored extracted text, never auto-approves entries, and refuses documents with approved entries.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Import retry completed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KnowledgeSourceDocumentRetryResult" }
+        "400":
+          description: Invalid document id
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Retry is not allowed or is already in progress
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: Stored text is unavailable or draft extraction failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
   /knowledge/sources/{id}/sync:
     post:
       operationId: syncGoogleDriveKnowledgeSource
@@ -13042,6 +13099,21 @@ components:
         lastError: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    KnowledgeSourceDocumentPreview:
+      type: object
+      required: [id, name, status, text, draftCount, error]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, enum: [processing, active, deleted, error, stale] }
+        text: { type: string }
+        draftCount: { type: integer }
+        error: { type: ["string", "null"] }
+    KnowledgeSourceDocumentRetryResult:
+      type: object
+      required: [draftCount]
+      properties:
+        draftCount: { type: integer }
     KnowledgeSourceSyncResult:
       type: object
       required: [sourceId, documents, drafts]
