@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { KnowledgeEntrySelectionSnapshotReviewStatus } from './knowledgeEntrySelectionSnapshotReviewStatus';
+import type { KnowledgeGroup } from './knowledgeGroup';
 
 export interface KnowledgeEntrySelectionSnapshot {
   id: string;
   updatedAt: Date;
   reviewStatus: KnowledgeEntrySelectionSnapshotReviewStatus;
+  knowledgeGroup?: KnowledgeGroup;
 }

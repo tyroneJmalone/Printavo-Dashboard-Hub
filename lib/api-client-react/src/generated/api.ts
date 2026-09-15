@@ -204,6 +204,8 @@ import type {
   InsightsPresetEnvelope,
   InsightsPresetsResponse,
   InterpretAiQuotePromptRequest,
+  KnowledgeClassificationSettings,
+  KnowledgeClassificationSettingsInput,
   KnowledgeEntry,
   KnowledgeEntryInput,
   KnowledgeEntryReview,
@@ -21915,6 +21917,153 @@ export const useCreateKnowledgeEntry = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateKnowledgeEntryMutationOptions(options));
+    }
+
+export const getGetKnowledgeClassificationSettingsUrl = () => {
+
+
+
+
+  return `/api/knowledge/classification-settings`
+}
+
+/**
+ * @summary Read knowledge usage-group rules and category mappings (staff)
+ */
+export const getKnowledgeClassificationSettings = async ( options?: RequestInit): Promise<KnowledgeClassificationSettings> => {
+
+  return customFetch<KnowledgeClassificationSettings>(getGetKnowledgeClassificationSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetKnowledgeClassificationSettingsQueryKey = () => {
+    return [
+    `/api/knowledge/classification-settings`
+    ] as const;
+    }
+
+
+export const getGetKnowledgeClassificationSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getKnowledgeClassificationSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeClassificationSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetKnowledgeClassificationSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getKnowledgeClassificationSettings>>> = ({ signal }) => getKnowledgeClassificationSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeClassificationSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetKnowledgeClassificationSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getKnowledgeClassificationSettings>>>
+export type GetKnowledgeClassificationSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read knowledge usage-group rules and category mappings (staff)
+ */
+
+export function useGetKnowledgeClassificationSettings<TData = Awaited<ReturnType<typeof getKnowledgeClassificationSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeClassificationSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetKnowledgeClassificationSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateKnowledgeClassificationSettingsUrl = () => {
+
+
+
+
+  return `/api/knowledge/classification-settings`
+}
+
+/**
+ * @summary Update knowledge usage-group rules and category mappings (admin only)
+ */
+export const updateKnowledgeClassificationSettings = async (knowledgeClassificationSettingsInput: KnowledgeClassificationSettingsInput, options?: RequestInit): Promise<KnowledgeClassificationSettings> => {
+
+  return customFetch<KnowledgeClassificationSettings>(getUpdateKnowledgeClassificationSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeClassificationSettingsInput)
+  }
+);}
+
+
+
+
+export const getUpdateKnowledgeClassificationSettingsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgeClassificationSettings>>, TError,{data: BodyType<KnowledgeClassificationSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgeClassificationSettings>>, TError,{data: BodyType<KnowledgeClassificationSettingsInput>}, TContext> => {
+
+const mutationKey = ['updateKnowledgeClassificationSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateKnowledgeClassificationSettings>>, {data: BodyType<KnowledgeClassificationSettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateKnowledgeClassificationSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateKnowledgeClassificationSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateKnowledgeClassificationSettings>>>
+    export type UpdateKnowledgeClassificationSettingsMutationBody = BodyType<KnowledgeClassificationSettingsInput>
+    export type UpdateKnowledgeClassificationSettingsMutationError = ErrorType<void>
+
+    /**
+ * @summary Update knowledge usage-group rules and category mappings (admin only)
+ */
+export const useUpdateKnowledgeClassificationSettings = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgeClassificationSettings>>, TError,{data: BodyType<KnowledgeClassificationSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateKnowledgeClassificationSettings>>,
+        TError,
+        {data: BodyType<KnowledgeClassificationSettingsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateKnowledgeClassificationSettingsMutationOptions(options));
     }
 
 export const getPlaygroundKnowledgeUrl = () => {

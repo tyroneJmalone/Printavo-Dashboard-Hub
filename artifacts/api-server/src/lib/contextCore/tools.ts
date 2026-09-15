@@ -6,7 +6,7 @@ import {
   getRecentOrders,
   lookupCustomers,
 } from "./facts";
-import { searchKnowledge } from "./knowledge";
+import { searchInternalKnowledge, searchKnowledge } from "./knowledge";
 import { interpretAndCreateDraft } from "../quoteDrafts/service";
 import { getVoiceProfileFact } from "../voice/profiles";
 
@@ -94,7 +94,7 @@ export const CONTEXT_TOOLS: ContextTool[] = [
     name: "search_knowledge",
     title: "Search company knowledge",
     description:
-      "Search Mint Prints' staff-reviewed knowledge base for company facts: policies, pricing rules, turnaround times, production capabilities, FAQs. Returns only approved, currently-effective entries. Quote entry text verbatim when stating policies — never paraphrase a policy or invent one that isn't returned.",
+      "Search Mint Prints' customer-shareable, staff-reviewed knowledge base for company facts: policies, pricing rules, turnaround times, production capabilities, and FAQs. This tool is permanently limited to approved/current customer-shareable facts; it never returns internal operational or brand-voice entries. Quote entry text verbatim when stating policies — never paraphrase a policy or invent one that isn't returned.",
     schema: z.object({
       query: z.string().min(2).max(300).describe("What you need to know, in a few keywords"),
       category: z
@@ -105,9 +105,34 @@ export const CONTEXT_TOOLS: ContextTool[] = [
     }),
     allowedTiers: ["internal"],
     isAction: false,
-    cacheTtlSeconds: 30,
+    // Knowledge approval, effective windows, classification, and editable
+    // rules can change independently of the hot lookup cache. Never serve a
+    // stale classification or approval decision from this tool.
+    cacheTtlSeconds: 0,
     handler: async (args) =>
       searchKnowledge({
+        query: String(args.query),
+        category: args.category ? String(args.category) : null,
+      }),
+  },
+  {
+    name: "search_internal_knowledge",
+    title: "Search internal operational knowledge",
+    description:
+      "Staff-only search for approved, currently-effective internal operational knowledge. This separate tool is limited to the internal tier and can never be called by public/external consumers. Do not disclose returned entries to customers or use them as customer-facing factual citations.",
+    schema: z.object({
+      query: z.string().min(2).max(300).describe("Internal operational topic to search for"),
+      category: z
+        .string()
+        .max(50)
+        .optional()
+        .describe("Optional internal category filter"),
+    }),
+    allowedTiers: ["internal"],
+    isAction: false,
+    cacheTtlSeconds: 0,
+    handler: async (args) =>
+      searchInternalKnowledge({
         query: String(args.query),
         category: args.category ? String(args.category) : null,
       }),

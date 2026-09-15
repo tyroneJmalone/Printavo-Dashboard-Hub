@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { KnowledgeGroup } from './knowledgeGroup';
 
 export interface KnowledgeEntryInput {
   /**
@@ -19,6 +20,7 @@ export interface KnowledgeEntryInput {
   body: string;
   /** @maxLength 50 */
   category?: string;
+  knowledgeGroup?: KnowledgeGroup;
   /**
      * @maxItems 20
      * @items.maxLength 50

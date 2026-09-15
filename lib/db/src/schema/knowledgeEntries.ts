@@ -33,6 +33,14 @@ export const knowledgeEntriesTable = pgTable(
     ),
     /** Grouping label: 'policy' | 'pricing' | 'production' | 'faq' | ... */
     category: text("category").notNull().default("general"),
+    /**
+     * AI usage boundary for this entry. This is deliberately independent of
+     * category: categories are editorial/defaulting metadata, while this
+     * value is the explicit per-entry classification consumed by AI doors.
+     */
+    knowledgeGroup: text("knowledge_group")
+      .notNull()
+      .default("internal_operational"),
     tags: text("tags").array().notNull().default([]),
     /** Where the fact was extracted from — staff reference only. */
     sourceName: text("source_name").notNull().default(""),
@@ -58,6 +66,7 @@ export const knowledgeEntriesTable = pgTable(
   (t) => [
     index("knowledge_entries_status_idx").on(t.reviewStatus),
     index("knowledge_entries_category_idx").on(t.category),
+    index("knowledge_entries_group_idx").on(t.knowledgeGroup),
     index("knowledge_entries_search_idx").using(
       "gin",
       t.searchVector,

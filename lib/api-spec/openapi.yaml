@@ -6444,6 +6444,10 @@ paths:
         - name: category
           in: query
           schema: { type: string }
+        - name: knowledgeGroup
+          in: query
+          schema:
+            $ref: "#/components/schemas/KnowledgeGroup"
         - name: q
           in: query
           schema: { type: string }
@@ -6473,6 +6477,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/KnowledgeEntry"
+  /knowledge/classification-settings:
+    get:
+      operationId: getKnowledgeClassificationSettings
+      tags: [knowledge]
+      summary: Read knowledge usage-group rules and category mappings (staff)
+      responses:
+        "200":
+          description: Knowledge classification settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeClassificationSettings"
+    put:
+      operationId: updateKnowledgeClassificationSettings
+      tags: [knowledge]
+      summary: Update knowledge usage-group rules and category mappings (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeClassificationSettingsInput"
+      responses:
+        "200":
+          description: Updated knowledge classification settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeClassificationSettings"
+        "400":
+          description: Invalid settings or immutable group metadata
+        "409":
+          description: Settings changed since the supplied updatedAt snapshot
   /knowledge/playground:
     post:
       operationId: playgroundKnowledge
@@ -13196,6 +13233,47 @@ components:
         sourceId: { type: string, format: uuid }
         documents: { type: integer }
         drafts: { type: integer }
+    KnowledgeGroup:
+      type: string
+      enum: [customer_shareable, internal_operational, brand_voice]
+    KnowledgeClassificationGroup:
+      type: object
+      required: [id, label, rules, categories]
+      properties:
+        id: { $ref: "#/components/schemas/KnowledgeGroup" }
+        label: { type: string, maxLength: 100 }
+        rules:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 500 }
+        categories:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items: { type: string, minLength: 1, maxLength: 50 }
+    KnowledgeClassificationSettings:
+      type: object
+      required: [groups, updatedAt]
+      properties:
+        groups:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: { $ref: "#/components/schemas/KnowledgeClassificationGroup" }
+        updatedAt: { type: ["string", "null"] }
+    KnowledgeClassificationSettingsInput:
+      type: object
+      required: [groups, updatedAt]
+      properties:
+        groups:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: { $ref: "#/components/schemas/KnowledgeClassificationGroup" }
+        updatedAt:
+          type: ["string", "null"]
+          description: Expected settings version from GET; null for the initial default policy.
     KnowledgeEntry:
       type: object
       required:
@@ -13204,6 +13282,7 @@ components:
           title,
           body,
           category,
+           knowledgeGroup,
           tags,
           sourceName,
           sourceUrl,
@@ -13217,6 +13296,8 @@ components:
         title: { type: string }
         body: { type: string }
         category: { type: string }
+        knowledgeGroup:
+          $ref: "#/components/schemas/KnowledgeGroup"
         tags:
           type: array
           items: { type: string }
@@ -13240,6 +13321,8 @@ components:
         title: { type: string, minLength: 3, maxLength: 200 }
         body: { type: string, minLength: 1, maxLength: 20000 }
         category: { type: string, maxLength: 50 }
+        knowledgeGroup:
+          $ref: "#/components/schemas/KnowledgeGroup"
         tags:
           type: array
           maxItems: 20
@@ -13254,6 +13337,8 @@ components:
         title: { type: string, minLength: 3, maxLength: 200 }
         body: { type: string, minLength: 1, maxLength: 20000 }
         category: { type: string, maxLength: 50 }
+        knowledgeGroup:
+          $ref: "#/components/schemas/KnowledgeGroup"
         tags:
           type: array
           maxItems: 20
@@ -13288,6 +13373,8 @@ components:
         id: { type: string, format: uuid }
         updatedAt: { type: string, format: date-time }
         reviewStatus: { type: string, enum: [draft, approved, archived] }
+        knowledgeGroup:
+          $ref: "#/components/schemas/KnowledgeGroup"
     BulkDeleteKnowledgeEntriesResult:
       type: object
       required: [selectedCount, approvedCount, draftCount, archivedCount]
@@ -13303,6 +13390,8 @@ components:
         title: { type: string, minLength: 3, maxLength: 200 }
         body: { type: string, minLength: 1, maxLength: 20000 }
         category: { type: string, minLength: 1, maxLength: 50 }
+        knowledgeGroup:
+          $ref: "#/components/schemas/KnowledgeGroup"
         tags:
           type: array
           maxItems: 20

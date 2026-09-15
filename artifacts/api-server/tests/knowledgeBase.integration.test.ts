@@ -322,6 +322,61 @@ test("bulk delete rejects same-status edits and approval changes, then refreshes
   });
 });
 
+test("approval and visible PATCH serialize so an approval cannot erase demotion", async () => {
+  await withRows(async (rows) => {
+    const { entries } = await createTestEntries(rows, ["draft"]);
+    const entryId = entries[0]!.id;
+
+    let releaseLock!: () => void;
+    let signalLockAcquired!: () => void;
+    const lockHeld = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    const lockAcquired = new Promise<void>((resolve) => {
+      signalLockAcquired = resolve;
+    });
+    const holder = db.transaction(async (tx) => {
+      await tx
+        .select({ id: knowledgeEntriesTable.id })
+        .from(knowledgeEntriesTable)
+        .where(eq(knowledgeEntriesTable.id, entryId))
+        .for("update");
+      signalLockAcquired();
+      await lockHeld;
+    });
+    await lockAcquired;
+
+    // Queue approval first while the row is held. The legacy PATCH path could
+    // read "draft" without a lock, then overwrite the approval after release.
+    const approval = request("POST", `/knowledge/entries/${entryId}/review`, {
+      action: "approve",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const patch = request("PATCH", `/knowledge/entries/${entryId}`, {
+      body: `${marker} concurrent visible edit`,
+      knowledgeGroup: "customer_shareable",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    releaseLock();
+
+    const [approvalResult, patchResult] = await Promise.all([approval, patch, holder]);
+    assert.equal(approvalResult.status, 200, JSON.stringify(approvalResult.body));
+    assert.equal(patchResult.status, 200, JSON.stringify(patchResult.body));
+
+    const [final] = await db
+      .select({
+        body: knowledgeEntriesTable.body,
+        knowledgeGroup: knowledgeEntriesTable.knowledgeGroup,
+        reviewStatus: knowledgeEntriesTable.reviewStatus,
+      })
+      .from(knowledgeEntriesTable)
+      .where(eq(knowledgeEntriesTable.id, entryId));
+    assert.equal(final?.body, `${marker} concurrent visible edit`);
+    assert.equal(final?.knowledgeGroup, "customer_shareable");
+    assert.equal(final?.reviewStatus, "draft");
+  });
+});
+
 test("merge preview reads full entries and commit transfers links into one draft", async () => {
   await withRows(async (rows) => {
     const { entries, documentId } = await createTestEntries(rows, ["approved", "draft"], true);
@@ -380,6 +435,11 @@ test("merge preview reads full entries and commit transfers links into one draft
       assert.equal(preview.body.entries.length, 2);
       assert.match(prompt, new RegExp(marker));
       assert.match(prompt, new RegExp(entries[0]!.body));
+      assert.doesNotMatch(prompt, /route-test@route-test\.invalid/);
+      assert.doesNotMatch(
+        prompt,
+        /approvedByEmail|approvedAt|lastReviewedAt|createdByEmail|updatedByEmail|createdAt|updatedAt|sourceName|sourceUrl|sourceStale/,
+      );
       assert.equal(preview.body.conflicts.length, 1);
 
       const commit = await request("POST", "/knowledge/entries/merge/commit", {

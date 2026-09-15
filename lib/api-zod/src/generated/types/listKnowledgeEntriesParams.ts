@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { KnowledgeGroup } from './knowledgeGroup';
 import type { ListKnowledgeEntriesStatus } from './listKnowledgeEntriesStatus';
 
 export type ListKnowledgeEntriesParams = {
 status?: ListKnowledgeEntriesStatus;
 category?: string;
+knowledgeGroup?: KnowledgeGroup;
 q?: string;
 };

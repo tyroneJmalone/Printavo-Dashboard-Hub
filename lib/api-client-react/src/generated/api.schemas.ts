@@ -6247,6 +6247,57 @@ export interface KnowledgeSourceSyncResult {
   drafts: number;
 }
 
+export type KnowledgeGroup = typeof KnowledgeGroup[keyof typeof KnowledgeGroup];
+
+
+export const KnowledgeGroup = {
+  customer_shareable: 'customer_shareable',
+  internal_operational: 'internal_operational',
+  brand_voice: 'brand_voice',
+} as const;
+
+export interface KnowledgeClassificationGroup {
+  id: KnowledgeGroup;
+  /** @maxLength 100 */
+  label: string;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 500
+     */
+  rules: string[];
+  /**
+     * @maxItems 100
+     * @items.minLength 1
+     * @items.maxLength 50
+     */
+  categories: string[];
+}
+
+export interface KnowledgeClassificationSettings {
+  /**
+     * @minItems 3
+     * @maxItems 3
+     */
+  groups: KnowledgeClassificationGroup[];
+  /** @nullable */
+  updatedAt: string | null;
+}
+
+export interface KnowledgeClassificationSettingsInput {
+  /**
+     * @minItems 3
+     * @maxItems 3
+     */
+  groups: KnowledgeClassificationGroup[];
+  /**
+     * Expected settings version from GET; null for the initial default policy.
+     * @nullable
+     */
+  updatedAt: string | null;
+}
+
 export type KnowledgeEntryReviewStatus = typeof KnowledgeEntryReviewStatus[keyof typeof KnowledgeEntryReviewStatus];
 
 
@@ -6261,6 +6312,7 @@ export interface KnowledgeEntry {
   title: string;
   body: string;
   category: string;
+  knowledgeGroup: KnowledgeGroup;
   tags: string[];
   sourceName: string;
   sourceUrl: string;
@@ -6297,6 +6349,7 @@ export interface KnowledgeEntryInput {
   body: string;
   /** @maxLength 50 */
   category?: string;
+  knowledgeGroup?: KnowledgeGroup;
   /**
      * @maxItems 20
      * @items.maxLength 50
@@ -6331,6 +6384,7 @@ export interface KnowledgeEntryUpdate {
   body?: string;
   /** @maxLength 50 */
   category?: string;
+  knowledgeGroup?: KnowledgeGroup;
   /**
      * @maxItems 20
      * @items.maxLength 50
@@ -6365,6 +6419,7 @@ export interface KnowledgeEntrySelectionSnapshot {
   id: string;
   updatedAt: string;
   reviewStatus: KnowledgeEntrySelectionSnapshotReviewStatus;
+  knowledgeGroup?: KnowledgeGroup;
 }
 
 export interface BulkDeleteKnowledgeEntriesInput {
@@ -6406,6 +6461,7 @@ export interface KnowledgeMergeCandidate {
      * @maxLength 50
      */
   category: string;
+  knowledgeGroup?: KnowledgeGroup;
   /**
      * @maxItems 20
      * @items.minLength 1
@@ -8099,6 +8155,7 @@ export const GetStatusActivityOrdersMode = {
 export type ListKnowledgeEntriesParams = {
 status?: ListKnowledgeEntriesStatus;
 category?: string;
+knowledgeGroup?: KnowledgeGroup;
 q?: string;
 };
 

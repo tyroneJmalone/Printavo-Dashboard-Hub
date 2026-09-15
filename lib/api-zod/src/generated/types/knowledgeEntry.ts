@@ -6,12 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { KnowledgeEntryReviewStatus } from './knowledgeEntryReviewStatus';
+import type { KnowledgeGroup } from './knowledgeGroup';
 
 export interface KnowledgeEntry {
   id: string;
   title: string;
   body: string;
   category: string;
+  knowledgeGroup: KnowledgeGroup;
   tags: string[];
   sourceName: string;
   sourceUrl: string;

@@ -8,6 +8,12 @@ export const KNOWLEDGE_MERGE_TOKEN_TTL_MS = 10 * 60 * 1000;
 export type KnowledgeMergeSnapshot = {
   id: string;
   updatedAt: string;
+  /**
+   * Included in new snapshots so changing the AI-visible usage boundary
+   * invalidates an open merge preview. Optional keeps the token helper
+   * backwards-compatible with callers created before classification shipped.
+   */
+  knowledgeGroup?: string;
 };
 
 export type KnowledgeMergeLinkSnapshot = {
@@ -112,8 +118,15 @@ export function mergeSnapshotsMatch(
   if (!sameIds(expected.map((snapshot) => snapshot.id), actual.map((snapshot) => snapshot.id))) {
     return false;
   }
-  const byId = new Map(actual.map((snapshot) => [snapshot.id, snapshot.updatedAt]));
-  return expected.every((snapshot) => byId.get(snapshot.id) === snapshot.updatedAt);
+  const actualById = new Map(actual.map((snapshot) => [snapshot.id, snapshot]));
+  return expected.every((snapshot) => {
+    const current = actualById.get(snapshot.id);
+    return (
+      current?.updatedAt === snapshot.updatedAt &&
+      (snapshot.knowledgeGroup === undefined ||
+        current.knowledgeGroup === snapshot.knowledgeGroup)
+    );
+  });
 }
 
 export function mergeLinksMatch(

@@ -117,6 +117,62 @@ test("rejects citations outside the retrieved subset", async () => {
   );
 });
 
+test("keeps brand guidance separate from customer facts and consumes editable fact rules", async () => {
+  const requests: PlaygroundChatRequest[] = [];
+  const dependencies: KnowledgePlaygroundDependencies = {
+    searchKnowledge: async () => ({
+      entries: [entryA],
+      rules: ["Preserve approved qualifications exactly."],
+      classificationUpdatedAt: "2026-01-01T00:00:00.000Z",
+    }),
+    getBrandVoiceGuidance: async () => ({
+      entries: [
+        {
+          id: "brand-entry",
+          title: "Warm and concise",
+          body: "Use a warm, concise greeting. This is tone only, never a fact.",
+          category: "voice",
+        },
+      ],
+      rules: ["Custom live brand rule: keep salutations under five words."],
+    }),
+    createChatCompletion: async (request) => {
+      requests.push(request);
+      if (requests.length === 1) {
+        return { choices: [{ message: { content: JSON.stringify({ queries: ["turnaround"] }) } }] };
+      }
+      return {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                reply: "Standard turnaround is 10 business days after art approval. [kb:entry-a]",
+                usedEntryIds: ["entry-a"],
+              }),
+            },
+          },
+        ],
+      };
+    },
+  };
+
+  const result = await runKnowledgePlayground(
+    { message: "How long does a standard order take?" },
+    dependencies,
+  );
+
+  assert.deepEqual(result.usedEntryIds, ["entry-a"]);
+  assert.match(requests[1]!.messages[1]!.content, /Preserve approved qualifications exactly/);
+  assert.match(requests[1]!.messages[1]!.content, /BRAND_VOICE_GUIDANCE \(tone-only/);
+  assert.match(requests[1]!.messages[1]!.content, /Warm and concise/);
+  assert.match(
+    requests[1]!.messages[1]!.content,
+    /Custom live brand rule: keep salutations under five words/,
+  );
+  assert.match(requests[1]!.messages[1]!.content, /NON_EDITABLE_BRAND_SAFETY_RULES/);
+  assert.doesNotMatch(requests[1]!.messages[1]!.content, /brand-entry\]/);
+});
+
 test("surfaces malformed extraction and retrieval failures", async () => {
   const malformed = fakeDependencies(["not json"], []);
   await assert.rejects(

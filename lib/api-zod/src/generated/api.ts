@@ -10260,6 +10260,7 @@ export const GetStatusActivityOrdersResponse = zod.object({
 export const ListKnowledgeEntriesQueryParams = zod.object({
   "status": zod.enum(['draft', 'approved', 'archived']).optional(),
   "category": zod.coerce.string().optional(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']).optional(),
   "q": zod.coerce.string().optional()
 })
 
@@ -10270,6 +10271,7 @@ export const ListKnowledgeEntriesResponseItem = zod.object({
   "title": zod.string(),
   "body": zod.string(),
   "category": zod.string(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
   "tags": zod.array(zod.string()),
   "sourceName": zod.string(),
   "sourceUrl": zod.string(),
@@ -10314,6 +10316,7 @@ export const CreateKnowledgeEntryBody = zod.object({
   "title": zod.string().min(createKnowledgeEntryBodyTitleMin).max(createKnowledgeEntryBodyTitleMax),
   "body": zod.string().min(1).max(createKnowledgeEntryBodyBodyMax),
   "category": zod.string().max(createKnowledgeEntryBodyCategoryMax).optional(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']).optional(),
   "tags": zod.array(zod.string().max(createKnowledgeEntryBodyTagsItemMax)).max(createKnowledgeEntryBodyTagsMax).optional(),
   "sourceName": zod.string().max(createKnowledgeEntryBodySourceNameMax).optional(),
   "sourceUrl": zod.string().max(createKnowledgeEntryBodySourceUrlMax).optional(),
@@ -10328,6 +10331,7 @@ export const CreateKnowledgeEntryResponse = zod.object({
   "title": zod.string(),
   "body": zod.string(),
   "category": zod.string(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
   "tags": zod.array(zod.string()),
   "sourceName": zod.string(),
   "sourceUrl": zod.string(),
@@ -10342,6 +10346,89 @@ export const CreateKnowledgeEntryResponse = zod.object({
   "updatedByEmail": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Read knowledge usage-group rules and category mappings (staff)
+ */
+export const getKnowledgeClassificationSettingsResponseGroupsItemLabelMax = 100;
+
+export const getKnowledgeClassificationSettingsResponseGroupsItemRulesItemMax = 500;
+
+export const getKnowledgeClassificationSettingsResponseGroupsItemRulesMax = 20;
+
+export const getKnowledgeClassificationSettingsResponseGroupsItemCategoriesItemMax = 50;
+
+export const getKnowledgeClassificationSettingsResponseGroupsItemCategoriesMax = 100;
+
+export const getKnowledgeClassificationSettingsResponseGroupsMin = 3;
+export const getKnowledgeClassificationSettingsResponseGroupsMax = 3;
+
+
+
+export const GetKnowledgeClassificationSettingsResponse = zod.object({
+  "groups": zod.array(zod.object({
+  "id": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
+  "label": zod.string().max(getKnowledgeClassificationSettingsResponseGroupsItemLabelMax),
+  "rules": zod.array(zod.string().min(1).max(getKnowledgeClassificationSettingsResponseGroupsItemRulesItemMax)).min(1).max(getKnowledgeClassificationSettingsResponseGroupsItemRulesMax),
+  "categories": zod.array(zod.string().min(1).max(getKnowledgeClassificationSettingsResponseGroupsItemCategoriesItemMax)).max(getKnowledgeClassificationSettingsResponseGroupsItemCategoriesMax)
+})).min(getKnowledgeClassificationSettingsResponseGroupsMin).max(getKnowledgeClassificationSettingsResponseGroupsMax),
+  "updatedAt": zod.string().nullable()
+})
+
+
+/**
+ * @summary Update knowledge usage-group rules and category mappings (admin only)
+ */
+export const updateKnowledgeClassificationSettingsBodyGroupsItemLabelMax = 100;
+
+export const updateKnowledgeClassificationSettingsBodyGroupsItemRulesItemMax = 500;
+
+export const updateKnowledgeClassificationSettingsBodyGroupsItemRulesMax = 20;
+
+export const updateKnowledgeClassificationSettingsBodyGroupsItemCategoriesItemMax = 50;
+
+export const updateKnowledgeClassificationSettingsBodyGroupsItemCategoriesMax = 100;
+
+export const updateKnowledgeClassificationSettingsBodyGroupsMin = 3;
+export const updateKnowledgeClassificationSettingsBodyGroupsMax = 3;
+
+
+
+export const UpdateKnowledgeClassificationSettingsBody = zod.object({
+  "groups": zod.array(zod.object({
+  "id": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
+  "label": zod.string().max(updateKnowledgeClassificationSettingsBodyGroupsItemLabelMax),
+  "rules": zod.array(zod.string().min(1).max(updateKnowledgeClassificationSettingsBodyGroupsItemRulesItemMax)).min(1).max(updateKnowledgeClassificationSettingsBodyGroupsItemRulesMax),
+  "categories": zod.array(zod.string().min(1).max(updateKnowledgeClassificationSettingsBodyGroupsItemCategoriesItemMax)).max(updateKnowledgeClassificationSettingsBodyGroupsItemCategoriesMax)
+})).min(updateKnowledgeClassificationSettingsBodyGroupsMin).max(updateKnowledgeClassificationSettingsBodyGroupsMax),
+  "updatedAt": zod.string().nullable().describe('Expected settings version from GET; null for the initial default policy.')
+})
+
+export const updateKnowledgeClassificationSettingsResponseGroupsItemLabelMax = 100;
+
+export const updateKnowledgeClassificationSettingsResponseGroupsItemRulesItemMax = 500;
+
+export const updateKnowledgeClassificationSettingsResponseGroupsItemRulesMax = 20;
+
+export const updateKnowledgeClassificationSettingsResponseGroupsItemCategoriesItemMax = 50;
+
+export const updateKnowledgeClassificationSettingsResponseGroupsItemCategoriesMax = 100;
+
+export const updateKnowledgeClassificationSettingsResponseGroupsMin = 3;
+export const updateKnowledgeClassificationSettingsResponseGroupsMax = 3;
+
+
+
+export const UpdateKnowledgeClassificationSettingsResponse = zod.object({
+  "groups": zod.array(zod.object({
+  "id": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
+  "label": zod.string().max(updateKnowledgeClassificationSettingsResponseGroupsItemLabelMax),
+  "rules": zod.array(zod.string().min(1).max(updateKnowledgeClassificationSettingsResponseGroupsItemRulesItemMax)).min(1).max(updateKnowledgeClassificationSettingsResponseGroupsItemRulesMax),
+  "categories": zod.array(zod.string().min(1).max(updateKnowledgeClassificationSettingsResponseGroupsItemCategoriesItemMax)).max(updateKnowledgeClassificationSettingsResponseGroupsItemCategoriesMax)
+})).min(updateKnowledgeClassificationSettingsResponseGroupsMin).max(updateKnowledgeClassificationSettingsResponseGroupsMax),
+  "updatedAt": zod.string().nullable()
 })
 
 
@@ -10395,7 +10482,8 @@ export const BulkDeleteKnowledgeEntriesBody = zod.object({
   "snapshots": zod.array(zod.object({
   "id": zod.string().uuid(),
   "updatedAt": zod.coerce.date(),
-  "reviewStatus": zod.enum(['draft', 'approved', 'archived'])
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']).optional()
 })).min(1).max(bulkDeleteKnowledgeEntriesBodySnapshotsMax).describe('One current updatedAt and review status snapshot for every entryId; the server revalidates these while locked.'),
   "confirm": zod.boolean().describe('Must be true to permanently delete the selected entries.')
 })
@@ -10449,6 +10537,7 @@ export const PreviewKnowledgeMergeResponse = zod.object({
   "title": zod.string(),
   "body": zod.string(),
   "category": zod.string(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
   "tags": zod.array(zod.string()),
   "sourceName": zod.string(),
   "sourceUrl": zod.string(),
@@ -10468,6 +10557,7 @@ export const PreviewKnowledgeMergeResponse = zod.object({
   "title": zod.string().min(previewKnowledgeMergeResponseCandidateTitleMin).max(previewKnowledgeMergeResponseCandidateTitleMax),
   "body": zod.string().min(1).max(previewKnowledgeMergeResponseCandidateBodyMax),
   "category": zod.string().min(1).max(previewKnowledgeMergeResponseCandidateCategoryMax),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']).optional(),
   "tags": zod.array(zod.string().min(1).max(previewKnowledgeMergeResponseCandidateTagsItemMax)).max(previewKnowledgeMergeResponseCandidateTagsMax),
   "effectiveDate": zod.string().regex(previewKnowledgeMergeResponseCandidateEffectiveDateRegExp).nullable(),
   "expiresDate": zod.string().regex(previewKnowledgeMergeResponseCandidateExpiresDateRegExp).nullable()
@@ -10506,6 +10596,7 @@ export const CommitKnowledgeMergeBody = zod.object({
   "title": zod.string().min(commitKnowledgeMergeBodyCandidateTitleMin).max(commitKnowledgeMergeBodyCandidateTitleMax),
   "body": zod.string().min(1).max(commitKnowledgeMergeBodyCandidateBodyMax),
   "category": zod.string().min(1).max(commitKnowledgeMergeBodyCandidateCategoryMax),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']).optional(),
   "tags": zod.array(zod.string().min(1).max(commitKnowledgeMergeBodyCandidateTagsItemMax)).max(commitKnowledgeMergeBodyCandidateTagsMax),
   "effectiveDate": zod.string().regex(commitKnowledgeMergeBodyCandidateEffectiveDateRegExp).nullable(),
   "expiresDate": zod.string().regex(commitKnowledgeMergeBodyCandidateExpiresDateRegExp).nullable()
@@ -10520,6 +10611,7 @@ export const CommitKnowledgeMergeResponse = zod.object({
   "title": zod.string(),
   "body": zod.string(),
   "category": zod.string(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
   "tags": zod.array(zod.string()),
   "sourceName": zod.string(),
   "sourceUrl": zod.string(),
@@ -10570,6 +10662,7 @@ export const UpdateKnowledgeEntryBody = zod.object({
   "title": zod.string().min(updateKnowledgeEntryBodyTitleMin).max(updateKnowledgeEntryBodyTitleMax).optional(),
   "body": zod.string().min(1).max(updateKnowledgeEntryBodyBodyMax).optional(),
   "category": zod.string().max(updateKnowledgeEntryBodyCategoryMax).optional(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']).optional(),
   "tags": zod.array(zod.string().max(updateKnowledgeEntryBodyTagsItemMax)).max(updateKnowledgeEntryBodyTagsMax).optional(),
   "sourceName": zod.string().max(updateKnowledgeEntryBodySourceNameMax).optional(),
   "sourceUrl": zod.string().max(updateKnowledgeEntryBodySourceUrlMax).optional(),
@@ -10584,6 +10677,7 @@ export const UpdateKnowledgeEntryResponse = zod.object({
   "title": zod.string(),
   "body": zod.string(),
   "category": zod.string(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
   "tags": zod.array(zod.string()),
   "sourceName": zod.string(),
   "sourceUrl": zod.string(),
@@ -10629,6 +10723,7 @@ export const ReviewKnowledgeEntryResponse = zod.object({
   "title": zod.string(),
   "body": zod.string(),
   "category": zod.string(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
   "tags": zod.array(zod.string()),
   "sourceName": zod.string(),
   "sourceUrl": zod.string(),

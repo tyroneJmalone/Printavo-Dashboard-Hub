@@ -25,6 +25,9 @@ import {
   UpdateKnowledgeEntryBody,
   UpdateKnowledgeEntryParams,
   UpdateKnowledgeEntryResponse,
+  GetKnowledgeClassificationSettingsResponse,
+  UpdateKnowledgeClassificationSettingsBody,
+  UpdateKnowledgeClassificationSettingsResponse,
   PlaygroundKnowledgeBody,
   PlaygroundKnowledgeResponse,
 } from "@workspace/api-zod";
@@ -44,6 +47,15 @@ import {
   takeKnowledgeMergeToken,
   type KnowledgeMergeLinkSnapshot,
 } from "../lib/knowledgeMerge";
+import {
+  defaultKnowledgeGroupForCategory,
+  getKnowledgeClassificationSettings,
+  INTERNAL_KNOWLEDGE_GROUP,
+  KnowledgeClassificationStaleError,
+  KnowledgeClassificationValidationError,
+  updateKnowledgeClassificationSettings,
+  type KnowledgeGroupId,
+} from "../lib/knowledgeClassification";
 import { z } from "zod";
 
 /**
@@ -113,6 +125,7 @@ function entryDto(row: KnowledgeEntry, sourceStale = false) {
     title: row.title,
     body: row.body,
     category: row.category,
+    knowledgeGroup: row.knowledgeGroup,
     tags: row.tags,
     sourceName: row.sourceName,
     sourceUrl: row.sourceUrl,
@@ -236,6 +249,9 @@ router.get("/knowledge/entries", async (req, res): Promise<void> => {
   if (query.data.category) {
     conditions.push(eq(knowledgeEntriesTable.category, query.data.category));
   }
+  if (query.data.knowledgeGroup) {
+    conditions.push(eq(knowledgeEntriesTable.knowledgeGroup, query.data.knowledgeGroup));
+  }
   if (query.data.q) {
     const like = `%${query.data.q.replace(/[%_\\]/g, "\\$&")}%`;
     conditions.push(
@@ -262,6 +278,44 @@ router.get("/knowledge/entries", async (req, res): Promise<void> => {
   const staleIds = new Set(staleLinks.map((link) => link.entryId));
   res.json(ListKnowledgeEntriesResponse.parse(rows.map((row) => entryDto(row, staleIds.has(row.id)))));
 });
+
+router.get("/knowledge/classification-settings", async (_req, res): Promise<void> => {
+  const settings = await getKnowledgeClassificationSettings();
+  res.json(GetKnowledgeClassificationSettingsResponse.parse(settings));
+});
+
+router.put(
+  "/knowledge/classification-settings",
+  requireAdmin,
+  async (req, res): Promise<void> => {
+    const parsed = UpdateKnowledgeClassificationSettingsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    try {
+      const settings = await updateKnowledgeClassificationSettings(
+        parsed.data.groups,
+        parsed.data.updatedAt,
+      );
+      res.json(UpdateKnowledgeClassificationSettingsResponse.parse(settings));
+    } catch (error) {
+      if (error instanceof KnowledgeClassificationStaleError) {
+        res.status(409).json({ error: error.message, code: error.code });
+        return;
+      }
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      if (error instanceof KnowledgeClassificationValidationError) {
+        res.status(400).json({ error: error.message, code: error.code });
+        return;
+      }
+      throw error;
+    }
+  },
+);
 
 router.post(
   "/knowledge/entries/bulk-delete",
@@ -290,6 +344,7 @@ router.post(
       .select({
         id: knowledgeEntriesTable.id,
         reviewStatus: knowledgeEntriesTable.reviewStatus,
+        knowledgeGroup: knowledgeEntriesTable.knowledgeGroup,
         updatedAt: knowledgeEntriesTable.updatedAt,
       })
       .from(knowledgeEntriesTable)
@@ -322,6 +377,7 @@ router.post(
           .select({
             id: knowledgeEntriesTable.id,
             reviewStatus: knowledgeEntriesTable.reviewStatus,
+            knowledgeGroup: knowledgeEntriesTable.knowledgeGroup,
             updatedAt: knowledgeEntriesTable.updatedAt,
           })
           .from(knowledgeEntriesTable)
@@ -337,7 +393,9 @@ router.post(
           return (
             !snapshot ||
             row.updatedAt.toISOString() !== snapshot.updatedAt.toISOString() ||
-            row.reviewStatus !== snapshot.reviewStatus
+            row.reviewStatus !== snapshot.reviewStatus ||
+            (snapshot.knowledgeGroup !== undefined &&
+              row.knowledgeGroup !== snapshot.knowledgeGroup)
           );
         })) {
           throw new Error("stale_selection");
@@ -437,6 +495,13 @@ router.post(
       }
       const byId = new Map(rows.map((row) => [row.id, row]));
       const orderedRows = entryIds.map((id) => byId.get(id)!);
+      const originalKnowledgeGroups = new Set(
+        orderedRows.map((row) => row.knowledgeGroup),
+      );
+      const mergeKnowledgeGroup: KnowledgeGroupId =
+        originalKnowledgeGroups.size === 1
+          ? orderedRows[0]!.knowledgeGroup as KnowledgeGroupId
+          : INTERNAL_KNOWLEDGE_GROUP;
       const sourceLinks = await db
         .select({
           entryId: knowledgeEntrySourcesTable.entryId,
@@ -459,7 +524,19 @@ router.post(
         stale: link.stale,
         createdAt: link.createdAt.toISOString(),
       }));
-      const sourceEntries = orderedRows.map((row) => entryDto(row, staleIds.has(row.id)));
+      // Keep the AI input deliberately narrower than the staff editor DTO.
+      // Source breadcrumbs and every audit field are staff-only and must never
+      // be sent to an external model.
+      const aiEntries = orderedRows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        body: row.body,
+        category: row.category,
+        tags: row.tags,
+        knowledgeGroup: row.knowledgeGroup,
+        effectiveDate: row.effectiveDate,
+        expiresDate: row.expiresDate,
+      }));
 
       const completion = await openai.chat.completions.create({
         model: "gpt-5.6-terra",
@@ -471,7 +548,7 @@ router.post(
           },
           {
             role: "user",
-            content: JSON.stringify({ entries: sourceEntries }),
+            content: JSON.stringify({ entries: aiEntries }),
           },
         ],
         response_format: { type: "json_object" },
@@ -493,12 +570,16 @@ router.post(
       const response = {
         token: issueKnowledgeMergeToken(
           req.staff!.id,
-          orderedRows.map((row) => ({ id: row.id, updatedAt: row.updatedAt.toISOString() })),
+          orderedRows.map((row) => ({
+            id: row.id,
+            updatedAt: row.updatedAt.toISOString(),
+            knowledgeGroup: row.knowledgeGroup,
+          })),
           linkSnapshots,
         ),
         entryIds,
         entries: orderedRows.map((row) => entryDto(row, staleIds.has(row.id))),
-        candidate,
+        candidate: { ...candidate, knowledgeGroup: mergeKnowledgeGroup },
         conflicts,
       };
       res.json(PreviewKnowledgeMergeResponse.parse(response));
@@ -555,6 +636,7 @@ router.post(
         const actual = lockedRows.map((row) => ({
           id: row.id,
           updatedAt: row.updatedAt.toISOString(),
+          knowledgeGroup: row.knowledgeGroup,
         }));
         if (lockedRows.length !== entryIds.length || !mergeSnapshotsMatch(expected.snapshots, actual)) {
           throw new Error("stale_preview");
@@ -611,6 +693,11 @@ router.post(
             title: parsed.data.candidate.title,
             body: parsed.data.candidate.body,
             category: parsed.data.candidate.category,
+            knowledgeGroup:
+              parsed.data.candidate.knowledgeGroup ??
+              (new Set(lockedRows.map((row) => row.knowledgeGroup)).size === 1
+                ? (lockedRows[0]!.knowledgeGroup as KnowledgeGroupId)
+                : INTERNAL_KNOWLEDGE_GROUP),
             tags: parsed.data.candidate.tags,
             effectiveDate: parsed.data.candidate.effectiveDate,
             expiresDate: parsed.data.candidate.expiresDate,
@@ -683,12 +770,18 @@ router.post("/knowledge/entries", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const category = parsed.data.category ?? "general";
+  const classificationSettings = await getKnowledgeClassificationSettings();
+  const knowledgeGroup =
+    parsed.data.knowledgeGroup ??
+    defaultKnowledgeGroupForCategory(category, classificationSettings);
   const [row] = await db
     .insert(knowledgeEntriesTable)
     .values({
       title: parsed.data.title,
       body: parsed.data.body,
-      category: parsed.data.category ?? "general",
+      category,
+      knowledgeGroup,
       tags: parsed.data.tags ?? [],
       sourceName: parsed.data.sourceName ?? "",
       sourceUrl: parsed.data.sourceUrl ?? "",
@@ -714,40 +807,53 @@ router.patch("/knowledge/entries/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [existing] = await db
-    .select()
-    .from(knowledgeEntriesTable)
-    .where(eq(knowledgeEntriesTable.id, params.data.id));
-  if (!existing) {
+  const fields = parsed.data;
+  // Lock before reading reviewStatus or visible fields. Approval uses the same
+  // row lock below, so an edit either observes the approval and demotes or is
+  // committed first and can then be approved as the latest content.
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(knowledgeEntriesTable)
+      .where(eq(knowledgeEntriesTable.id, params.data.id))
+      .for("update");
+    if (!existing) return null;
+
+    // Every field AI consumers can see (or that affects retrieval) counts as
+    // content and forces re-review; only staff-only source breadcrumbs are
+    // exempt. No bypass flag exists — see lib/knowledgeEditorial.ts.
+    const demote = shouldDemoteApprovedEntry(existing.reviewStatus, existing, fields);
+    const [row] = await tx
+      .update(knowledgeEntriesTable)
+      .set({
+        ...(fields.title !== undefined ? { title: fields.title } : {}),
+        ...(fields.body !== undefined ? { body: fields.body } : {}),
+        ...(fields.category !== undefined ? { category: fields.category } : {}),
+        ...(fields.knowledgeGroup !== undefined
+          ? { knowledgeGroup: fields.knowledgeGroup }
+          : {}),
+        ...(fields.tags !== undefined ? { tags: fields.tags } : {}),
+        ...(fields.sourceName !== undefined ? { sourceName: fields.sourceName } : {}),
+        ...(fields.sourceUrl !== undefined ? { sourceUrl: fields.sourceUrl } : {}),
+        ...(fields.effectiveDate !== undefined ? { effectiveDate: fields.effectiveDate } : {}),
+        ...(fields.expiresDate !== undefined ? { expiresDate: fields.expiresDate } : {}),
+        ...(demote ? { reviewStatus: "draft" } : {}),
+        updatedByEmail: req.staff!.email,
+        updatedAt: new Date(),
+      })
+      .where(eq(knowledgeEntriesTable.id, params.data.id))
+      .returning();
+    return { row, demote };
+  });
+  if (!result?.row) {
     res.status(404).json({ error: "Entry not found" });
     return;
   }
-  const fields = parsed.data;
-  // Every field AI consumers can see (or that affects retrieval) counts as
-  // content and forces re-review; only staff-only source breadcrumbs are
-  // exempt. No bypass flag exists — see lib/knowledgeEditorial.ts.
-  const demote = shouldDemoteApprovedEntry(existing.reviewStatus, existing, fields);
-  const [row] = await db
-    .update(knowledgeEntriesTable)
-    .set({
-      ...(fields.title !== undefined ? { title: fields.title } : {}),
-      ...(fields.body !== undefined ? { body: fields.body } : {}),
-      ...(fields.category !== undefined ? { category: fields.category } : {}),
-      ...(fields.tags !== undefined ? { tags: fields.tags } : {}),
-      ...(fields.sourceName !== undefined ? { sourceName: fields.sourceName } : {}),
-      ...(fields.sourceUrl !== undefined ? { sourceUrl: fields.sourceUrl } : {}),
-      ...(fields.effectiveDate !== undefined ? { effectiveDate: fields.effectiveDate } : {}),
-      ...(fields.expiresDate !== undefined ? { expiresDate: fields.expiresDate } : {}),
-      ...(demote ? { reviewStatus: "draft" } : {}),
-      updatedByEmail: req.staff!.email,
-      updatedAt: new Date(),
-    })
-    .where(eq(knowledgeEntriesTable.id, params.data.id))
-    .returning();
+  const { row, demote } = result;
   if (demote) {
-    req.log.info({ entryId: row!.id }, "approved knowledge entry edited — demoted to draft");
+    req.log.info({ entryId: row.id }, "approved knowledge entry edited — demoted to draft");
   }
-  res.json(UpdateKnowledgeEntryResponse.parse(entryDto(row!)));
+  res.json(UpdateKnowledgeEntryResponse.parse(entryDto(row)));
 });
 
 router.post("/knowledge/entries/:id/review", async (req, res): Promise<void> => {
@@ -773,11 +879,23 @@ router.post("/knowledge/entries/:id/review", async (req, res): Promise<void> => 
       : parsed.data.action === "archive"
         ? { reviewStatus: "archived", lastReviewedAt: now }
         : { reviewStatus: "draft", lastReviewedAt: now };
-  const [row] = await db
-    .update(knowledgeEntriesTable)
-    .set({ ...patch, updatedByEmail: req.staff!.email, updatedAt: now })
-    .where(eq(knowledgeEntriesTable.id, params.data.id))
-    .returning();
+  // Match PATCH's lock ordering. If an edit wins first, this approval applies
+  // to the edited content; if approval wins first, PATCH observes approved and
+  // demotes its subsequent visible edit.
+  const row = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ id: knowledgeEntriesTable.id })
+      .from(knowledgeEntriesTable)
+      .where(eq(knowledgeEntriesTable.id, params.data.id))
+      .for("update");
+    if (!existing) return null;
+    const [updated] = await tx
+      .update(knowledgeEntriesTable)
+      .set({ ...patch, updatedByEmail: req.staff!.email, updatedAt: now })
+      .where(eq(knowledgeEntriesTable.id, params.data.id))
+      .returning();
+    return updated ?? null;
+  });
   if (!row) {
     res.status(404).json({ error: "Entry not found" });
     return;

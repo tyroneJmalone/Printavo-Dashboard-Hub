@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getListKnowledgeSourcesQueryKey,
@@ -7,6 +7,8 @@ import {
   useCommitKnowledgeMerge,
   useListKnowledgeEntries,
   getListKnowledgeEntriesQueryKey,
+  type ListKnowledgeEntriesParams,
+  type KnowledgeGroup,
   useCreateKnowledgeEntry,
   useUpdateKnowledgeEntry,
   useReviewKnowledgeEntry,
@@ -17,6 +19,12 @@ import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
 import { KnowledgeSources } from "@/components/knowledge/KnowledgeSources";
 import { KnowledgePlayground } from "@/components/knowledge/KnowledgePlayground";
+import {
+  getDefaultKnowledgeGroup,
+  KnowledgeClassificationSettings,
+  KNOWLEDGE_GROUPS,
+  useClassificationSettings,
+} from "@/components/knowledge/KnowledgeClassificationSettings";
 import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen,
@@ -30,6 +38,7 @@ import {
   CalendarClock,
   AlertTriangle,
   Sparkles,
+  Settings2,
 } from "lucide-react";
 
 /**
@@ -60,6 +69,7 @@ type EntryForm = {
   title: string;
   body: string;
   category: string;
+  knowledgeGroup: KnowledgeGroup;
   tags: string;
   sourceName: string;
   sourceUrl: string;
@@ -71,6 +81,7 @@ const EMPTY_FORM: EntryForm = {
   title: "",
   body: "",
   category: "general",
+  knowledgeGroup: "internal_operational",
   tags: "",
   sourceName: "",
   sourceUrl: "",
@@ -80,6 +91,26 @@ const EMPTY_FORM: EntryForm = {
 
 const CATEGORY_SUGGESTIONS = ["general", "policy", "pricing", "production", "shipping", "faq"];
 
+type EditableMergeCandidate = KnowledgeMergeCandidate & {
+  knowledgeGroup: KnowledgeGroup;
+};
+
+function entryKnowledgeGroup(entry: { knowledgeGroup?: KnowledgeGroup | null }): KnowledgeGroup {
+  return entry.knowledgeGroup === "customer_shareable" ||
+    entry.knowledgeGroup === "brand_voice" ||
+    entry.knowledgeGroup === "internal_operational"
+    ? entry.knowledgeGroup
+    : "internal_operational";
+}
+
+function groupLabel(group: KnowledgeGroup): string {
+  return KNOWLEDGE_GROUPS.find((candidate) => candidate.id === group)?.label ?? "Internal Operational Knowledge";
+}
+
+function isKnowledgeGroup(value: string): value is KnowledgeGroup {
+  return KNOWLEDGE_GROUPS.some((candidate) => candidate.id === value);
+}
+
 export default function KnowledgeBase() {
   const { role } = useStaff();
   const isAdmin = role === "admin";
@@ -87,11 +118,14 @@ export default function KnowledgeBase() {
   const { toast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState<"" | "draft" | "approved" | "archived">("");
+  const [groupFilter, setGroupFilter] = useState<"" | KnowledgeGroup>("");
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<EntryForm>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EntryForm>(EMPTY_FORM);
+  const [showClassificationSettings, setShowClassificationSettings] = useState(false);
+  const createGroupWasManuallySet = useRef(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [mergePreview, setMergePreview] = useState<{
     token: string;
@@ -100,14 +134,17 @@ export default function KnowledgeBase() {
     candidate: KnowledgeMergeCandidate;
     conflicts: string[];
   } | null>(null);
-  const [mergeCandidate, setMergeCandidate] = useState<KnowledgeMergeCandidate | null>(null);
+  const [mergeCandidate, setMergeCandidate] = useState<EditableMergeCandidate | null>(null);
+  const [mergeHasMixedGroups, setMergeHasMixedGroups] = useState(false);
+  const classificationSettings = useClassificationSettings();
 
   const params = useMemo(
-    () => ({
+    (): ListKnowledgeEntriesParams => ({
       ...(statusFilter ? { status: statusFilter } : {}),
+      ...(groupFilter ? { knowledgeGroup: groupFilter } : {}),
       ...(search.trim() ? { q: search.trim() } : {}),
     }),
-    [statusFilter, search],
+    [statusFilter, groupFilter, search],
   );
   const { data: entries, isLoading } = useListKnowledgeEntries(params, {
     query: { queryKey: getListKnowledgeEntriesQueryKey(params) },
@@ -117,7 +154,20 @@ export default function KnowledgeBase() {
     setSelectedIds(new Set());
     setMergePreview(null);
     setMergeCandidate(null);
-  }, [statusFilter, search]);
+    setMergeHasMixedGroups(false);
+    // A group switch must never retain a selection or merge preview from the
+    // previous result set. The key changes above; invalidate any cached list
+    // variants as well so a freshly classified entry cannot look stale.
+    void qc.invalidateQueries({ queryKey: getListKnowledgeEntriesQueryKey(), exact: false });
+  }, [statusFilter, groupFilter, search, qc]);
+
+  useEffect(() => {
+    if (!showCreate || createGroupWasManuallySet.current) return;
+    setForm((current) => ({
+      ...current,
+      knowledgeGroup: getDefaultKnowledgeGroup(current.category, classificationSettings.data),
+    }));
+  }, [showCreate, classificationSettings.data]);
 
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: getListKnowledgeEntriesQueryKey(), exact: false });
@@ -155,7 +205,7 @@ export default function KnowledgeBase() {
           title: "Entry saved",
           description:
             updated.reviewStatus === "draft"
-              ? "Content changed, so it went back to draft — re-approve to serve it to AI tools."
+              ? "Content or classification changed, so it went back to draft — re-approve to serve it to AI tools."
               : undefined,
         });
       },
@@ -210,7 +260,16 @@ export default function KnowledgeBase() {
     mutation: {
       onSuccess: (result) => {
         setMergePreview(result);
-        setMergeCandidate(result.candidate);
+        const selectedGroups = new Set(result.entries.map((entry) => entryKnowledgeGroup(entry)));
+        const mixedGroups = selectedGroups.size > 1;
+        const suggestedGroup = mixedGroups
+          ? "internal_operational"
+          : entryKnowledgeGroup(result.candidate);
+        setMergeHasMixedGroups(mixedGroups);
+        setMergeCandidate({
+          ...result.candidate,
+          knowledgeGroup: suggestedGroup,
+        });
       },
       onError: (err: any) =>
         toast({
@@ -226,6 +285,7 @@ export default function KnowledgeBase() {
         setSelectedIds(new Set());
         setMergePreview(null);
         setMergeCandidate(null);
+        setMergeHasMixedGroups(false);
         invalidateKnowledgeData();
         toast({
           title: "Merged draft saved",
@@ -294,6 +354,7 @@ export default function KnowledgeBase() {
     if (selectedEntries.length < 2 || previewMerge.isPending || commitMerge.isPending) return;
     setMergePreview(null);
     setMergeCandidate(null);
+    setMergeHasMixedGroups(new Set(selectedEntries.map((entry) => entryKnowledgeGroup(entry))).size > 1);
     previewMerge.mutate({ data: { entryIds: selectedEntries.map((entry) => entry.id) } });
   };
   const requestMergeCommit = () => {
@@ -319,6 +380,7 @@ export default function KnowledgeBase() {
       title: e.title,
       body: e.body,
       category: e.category,
+      knowledgeGroup: entryKnowledgeGroup(e),
       tags: e.tags.join(", "),
       sourceName: e.sourceName,
       sourceUrl: e.sourceUrl,
@@ -331,6 +393,7 @@ export default function KnowledgeBase() {
     title: f.title.trim(),
     body: f.body.trim(),
     category: f.category.trim() || "general",
+    knowledgeGroup: f.knowledgeGroup,
     tags: f.tags
       .split(",")
       .map((t) => t.trim())
@@ -342,7 +405,14 @@ export default function KnowledgeBase() {
     expiresDate: f.expiresDate || null,
   });
 
-  const entryFields = (f: EntryForm, set: (next: EntryForm) => void) => (
+  const entryFields = (
+    f: EntryForm,
+    set: (next: EntryForm) => void,
+    options?: {
+      onCategoryChange?: (category: string) => void;
+      onGroupChange?: (group: KnowledgeGroup) => void;
+    },
+  ) => (
     <div className="space-y-2">
       <input
         className={`${inputCls} w-full`}
@@ -362,7 +432,10 @@ export default function KnowledgeBase() {
           placeholder="Category"
           list="kb-categories"
           value={f.category}
-          onChange={(e) => set({ ...f, category: e.target.value })}
+          onChange={(e) => {
+            const category = e.target.value;
+            options?.onCategoryChange ? options.onCategoryChange(category) : set({ ...f, category });
+          }}
         />
         <datalist id="kb-categories">
           {CATEGORY_SUGGESTIONS.map((c) => (
@@ -375,6 +448,29 @@ export default function KnowledgeBase() {
           value={f.tags}
           onChange={(e) => set({ ...f, tags: e.target.value })}
         />
+      </div>
+      <label className="block text-[11px] text-slate-500">
+        Knowledge usage group
+        <select
+          className={`${inputCls} mt-0.5 w-full sm:w-auto`}
+          value={f.knowledgeGroup}
+          onChange={(event) => {
+            const group = event.target.value;
+            if (!isKnowledgeGroup(group)) return;
+            options?.onGroupChange ? options.onGroupChange(group) : set({ ...f, knowledgeGroup: group });
+          }}
+          aria-label="Knowledge usage group"
+        >
+          {KNOWLEDGE_GROUPS.map((group) => (
+            <option key={group.id} value={group.id}>
+              {group.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="text-[11px] text-slate-500">
+        Usage classification controls where this approved entry may be used. Changing an approved entry’s group
+        requires review again.
       </div>
       <div className="flex flex-wrap gap-2">
         <label className="text-[11px] text-slate-500">
@@ -424,7 +520,33 @@ export default function KnowledgeBase() {
           <BookOpen size={18} className="text-[#10b981]" />
           <h1 className="text-lg font-semibold text-white">Knowledge Base</h1>
           <div className="flex-1" />
-          <button className={btnCls} onClick={() => setShowCreate((v) => !v)}>
+          {isAdmin && (
+            <button
+              className={btnGhost}
+              onClick={() => setShowClassificationSettings(true)}
+              aria-label="Open knowledge classification settings"
+            >
+              <span className="flex items-center gap-1.5">
+                <Settings2 size={13} /> Classification settings
+              </span>
+            </button>
+          )}
+          <button
+            className={btnCls}
+            onClick={() => {
+              setShowCreate((current) => {
+                const next = !current;
+                if (next) {
+                  createGroupWasManuallySet.current = false;
+                  setForm((existing) => ({
+                    ...EMPTY_FORM,
+                    knowledgeGroup: getDefaultKnowledgeGroup("general", classificationSettings.data),
+                  }));
+                }
+                return next;
+              });
+            }}
+          >
             <span className="flex items-center gap-1.5">
               <Plus size={13} /> New entry
             </span>
@@ -442,7 +564,20 @@ export default function KnowledgeBase() {
         {showCreate && (
           <Card>
             <div className="text-sm font-semibold text-slate-200 mb-3">New entry (starts as draft)</div>
-            {entryFields(form, setForm)}
+            {entryFields(form, setForm, {
+              onCategoryChange: (category) =>
+                setForm((current) => ({
+                  ...current,
+                  category,
+                  knowledgeGroup: createGroupWasManuallySet.current
+                    ? current.knowledgeGroup
+                    : getDefaultKnowledgeGroup(category, classificationSettings.data),
+                })),
+              onGroupChange: (knowledgeGroup) => {
+                createGroupWasManuallySet.current = true;
+                setForm((current) => ({ ...current, knowledgeGroup }));
+              },
+            })}
             <div className="flex gap-2 mt-3">
               <button
                 className={btnCls}
@@ -458,6 +593,13 @@ export default function KnowledgeBase() {
           </Card>
         )}
 
+        {isAdmin && (
+          <KnowledgeClassificationSettings
+            open={showClassificationSettings}
+            onOpenChange={setShowClassificationSettings}
+          />
+        )}
+
         <div className="flex flex-wrap items-center gap-2">
           {(["", "approved", "draft", "archived"] as const).map((s) => (
             <button
@@ -470,6 +612,21 @@ export default function KnowledgeBase() {
               onClick={() => setStatusFilter(s)}
             >
               {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+          <span className="ml-1 text-[11px] uppercase tracking-wide text-slate-600">Usage</span>
+          {(["", ...KNOWLEDGE_GROUPS.map((group) => group.id)] as const).map((group) => (
+            <button
+              key={group || "all-groups"}
+              className={`text-xs px-2.5 py-1.5 rounded-md border ${
+                groupFilter === group
+                  ? "border-[#059669]/40 bg-[#059669]/10 text-[#10b981]"
+                  : "border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              }`}
+              onClick={() => setGroupFilter(group)}
+              aria-pressed={groupFilter === group}
+            >
+              {group === "" ? "All groups" : groupLabel(group)}
             </button>
           ))}
           <div className="flex-1" />
@@ -555,6 +712,15 @@ export default function KnowledgeBase() {
                 </ul>
               </div>
             )}
+            {mergeHasMixedGroups && (
+              <div className="mt-3 flex items-start gap-1.5 rounded-md border border-amber-700/40 bg-amber-500/10 p-2.5 text-xs leading-relaxed text-amber-200">
+                <AlertTriangle size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+                <span>
+                  The selected entries use different knowledge groups. This replacement defaults to Internal
+                  Operational Knowledge and requires an explicit review before saving.
+                </span>
+              </div>
+            )}
             {mergeApprovedCount > 0 && (
               <div className="mt-3 flex items-start gap-1.5 rounded-md border border-red-800/50 bg-red-950/25 p-2.5 text-xs leading-relaxed text-red-200">
                 <AlertTriangle size={13} className="mt-0.5 shrink-0" />
@@ -599,6 +765,28 @@ export default function KnowledgeBase() {
                   aria-label="Merged draft tags"
                 />
               </div>
+              <label className="block text-[11px] text-slate-500">
+                Knowledge usage group
+                <select
+                  className={`${inputCls} mt-0.5 w-full sm:w-auto`}
+                  value={mergeCandidate.knowledgeGroup}
+                  onChange={(event) => {
+                    const group = event.target.value;
+                    if (!isKnowledgeGroup(group)) return;
+                    setMergeCandidate({
+                      ...mergeCandidate,
+                      knowledgeGroup: group,
+                    });
+                  }}
+                  aria-label="Merged draft knowledge usage group"
+                >
+                  {KNOWLEDGE_GROUPS.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="flex flex-wrap gap-2">
                 <label className="text-[11px] text-slate-500">
                   Effective from
@@ -671,7 +859,7 @@ export default function KnowledgeBase() {
                     </button>
                     {e.reviewStatus === "approved" && (
                       <span className="text-[11px] text-amber-400 self-center">
-                        Saving content changes sends this back to draft for re-approval.
+                        Saving content or classification changes sends this back to draft for re-approval.
                       </span>
                     )}
                   </div>
@@ -690,6 +878,18 @@ export default function KnowledgeBase() {
                     )}
                     <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded font-bold ${STATUS_BADGE[e.reviewStatus] ?? ""}`}>
                       {e.reviewStatus}
+                    </span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        entryKnowledgeGroup(e) === "customer_shareable"
+                          ? "bg-sky-500/15 text-sky-300"
+                          : entryKnowledgeGroup(e) === "brand_voice"
+                            ? "bg-violet-500/15 text-violet-300"
+                            : "bg-slate-800 text-slate-400"
+                      }`}
+                      title={`Usage group: ${groupLabel(entryKnowledgeGroup(e))}`}
+                    >
+                      {groupLabel(entryKnowledgeGroup(e))}
                     </span>
                     <span className="text-sm font-semibold text-slate-100">{e.title}</span>
                     <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">{e.category}</span>

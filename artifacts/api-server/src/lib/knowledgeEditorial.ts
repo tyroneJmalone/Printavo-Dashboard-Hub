@@ -13,6 +13,7 @@ export interface KnowledgeVisibleFields {
   title: string;
   body: string;
   category: string;
+  knowledgeGroup?: string;
   tags: string[];
   effectiveDate: string | null;
   expiresDate: string | null;
@@ -22,6 +23,7 @@ export interface KnowledgeUpdateFields {
   title?: string;
   body?: string;
   category?: string;
+  knowledgeGroup?: string;
   tags?: string[];
   effectiveDate?: string | null;
   expiresDate?: string | null;
@@ -43,6 +45,7 @@ export function visibleContentChanged(
     (fields.title !== undefined && fields.title !== existing.title) ||
     (fields.body !== undefined && fields.body !== existing.body) ||
     (fields.category !== undefined && fields.category !== existing.category) ||
+    (fields.knowledgeGroup !== undefined && fields.knowledgeGroup !== existing.knowledgeGroup) ||
     tagsChanged ||
     (fields.effectiveDate !== undefined && fields.effectiveDate !== existing.effectiveDate) ||
     (fields.expiresDate !== undefined && fields.expiresDate !== existing.expiresDate)

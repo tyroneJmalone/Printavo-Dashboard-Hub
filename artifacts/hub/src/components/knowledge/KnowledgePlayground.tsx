@@ -7,22 +7,8 @@ import {
   RotateCcw,
   Search,
 } from "lucide-react";
+import type { KnowledgePlaygroundResponse } from "@workspace/api-client-react";
 import { customFetch } from "../../../../../lib/api-client-react/src/custom-fetch";
-
-type KnowledgePlaygroundEntry = {
-  id: string;
-  title: string;
-  body: string;
-  category: string;
-};
-
-type KnowledgePlaygroundResponse = {
-  reply: string;
-  searchQueries: string[];
-  retrievedEntries: KnowledgePlaygroundEntry[];
-  usedEntryIds: string[];
-  note: string;
-};
 
 async function requestKnowledgePlayground(message: string): Promise<KnowledgePlaygroundResponse> {
   return customFetch<KnowledgePlaygroundResponse>("/api/knowledge/playground", {
@@ -92,8 +78,9 @@ export function KnowledgePlayground() {
           </h2>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">
             Preview how a customer or prospect message is answered using only approved, currently effective
-            knowledge entries. This is a simulation: it does not send an email or save a knowledge-base entry,
-            and it does not include full email or customer-account context.
+            Customer-Shareable facts and Brand/Voice Guidance. Internal Operational Knowledge is never shown or
+            used for this customer-facing test. This is a simulation: it does not send an email or save a
+            knowledge-base entry, and it does not include full email or customer-account context.
           </p>
         </div>
       </div>
@@ -212,10 +199,12 @@ export function KnowledgePlayground() {
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">Matched entries</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Matched customer-safe entries
+            </h3>
             {result.retrievedEntries.length === 0 ? (
               <div className="mt-2 rounded-lg border border-amber-900/50 bg-amber-950/20 px-3.5 py-3 text-sm text-amber-200">
-                No approved, currently effective knowledge entries matched this message.
+                No approved, currently effective customer-shareable facts or brand guidance matched this message.
               </div>
             ) : (
               <div className="mt-2 space-y-2">

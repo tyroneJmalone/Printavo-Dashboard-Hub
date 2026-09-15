@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { KnowledgeGroup } from './knowledgeGroup';
 
 export interface KnowledgeMergeCandidate {
   /**
@@ -22,6 +23,7 @@ export interface KnowledgeMergeCandidate {
      * @maxLength 50
      */
   category: string;
+  knowledgeGroup?: KnowledgeGroup;
   /**
      * @maxItems 20
      * @items.minLength 1

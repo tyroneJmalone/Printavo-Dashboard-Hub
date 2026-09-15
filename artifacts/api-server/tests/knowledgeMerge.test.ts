@@ -90,3 +90,19 @@ test("snapshot comparison rejects concurrent edits or missing entries", () => {
   );
   assert.equal(mergeSnapshotsMatch(expected, []), false);
 });
+
+test("merge snapshots include knowledge-group changes", () => {
+  const expected = [{
+    id: ids[0]!,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    knowledgeGroup: "customer_shareable",
+  }];
+  assert.equal(mergeSnapshotsMatch(expected, expected), true);
+  assert.equal(
+    mergeSnapshotsMatch(expected, [{
+      ...expected[0]!,
+      knowledgeGroup: "internal_operational",
+    }]),
+    false,
+  );
+});

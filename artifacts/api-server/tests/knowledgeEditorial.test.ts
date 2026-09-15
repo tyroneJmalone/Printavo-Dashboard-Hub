@@ -21,6 +21,7 @@ test("every AI-visible field change demotes an approved entry", () => {
     ["title", { title: "Rush turnaround time" }],
     ["body", { body: "Standard turnaround is 15 business days." }],
     ["category", { category: "pricing" }],
+    ["knowledge group", { knowledgeGroup: "customer_shareable" }],
     ["tags (different value)", { tags: ["turnaround", "rush"] }],
     ["tags (added)", { tags: ["turnaround", "production", "rush"] }],
     ["tags (removed)", { tags: ["turnaround"] }],

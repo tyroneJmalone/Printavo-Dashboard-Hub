@@ -20,6 +20,7 @@
     "test:dropbox-policy": "node ./test-dropbox-policy.mjs",
     "test:knowledge-editorial": "node ./test-knowledge-editorial.mjs",
     "test:knowledge-base-integration": "node ./test-knowledge-base-integration.mjs",
+    "test:context-knowledge-integration": "node ./test-context-knowledge-integration.mjs",
     "test:knowledge-merge": "node ./test-knowledge-merge.mjs",
     "test:knowledge-playground": "node ./test-knowledge-playground.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",

@@ -22,6 +22,10 @@ import {
   semanticBatches,
   validateSemanticDraftCoverage,
 } from "../lib/knowledgeSourceImport";
+import {
+  defaultKnowledgeGroupForCategory,
+  getKnowledgeClassificationSettings,
+} from "../lib/knowledgeClassification";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { files: 1, fileSize: 15 * 1024 * 1024 } });
@@ -167,6 +171,9 @@ async function createDrafts(
   options: { replaceDrafts?: boolean } = {},
 ): Promise<{ addedDrafts: number; draftCount: number }> {
   const candidates = await enrichKnowledgeDrafts(chunks, source.name);
+  // Category mapping is a future-entry/import default only. The model does
+  // not select a usage group, and no existing entry is rewritten here.
+  const classificationSettings = await getKnowledgeClassificationSettings();
   return db.transaction(async (tx) => {
     // Discover the current ownership without locking first. Every lock in
     // this transaction is acquired in the global order entries -> links ->
@@ -335,6 +342,10 @@ async function createDrafts(
         title: candidate.title || source.name,
         body: candidate.body,
         category: candidate.category,
+         knowledgeGroup: defaultKnowledgeGroupForCategory(
+           candidate.category,
+           classificationSettings,
+         ),
         tags: Array.from(new Set(candidate.tags.map((tag) => tag.toLowerCase()))),
         sourceName: source.name, sourceUrl: source.sourceUrl, reviewStatus: "draft",
         effectiveDate: candidate.effectiveDate,
