@@ -40,6 +40,8 @@ tags:
     description: Public customer-facing reorder portal (no staff auth)
   - name: reorderRequests
     description: Staff reorder request inbox
+  - name: knowledge
+    description: Staff knowledge base and grounded customer-message playground
 paths:
   /healthz:
     get:
@@ -6471,6 +6473,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/KnowledgeEntry"
+  /knowledge/playground:
+    post:
+      operationId: playgroundKnowledge
+      tags: [knowledge]
+      summary: Test a customer message against the approved knowledge base (staff only)
+      description: Extracts bounded keyword queries, searches approved/effective entries, and returns a grounded draft without sending or persisting anything.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgePlaygroundInput"
+      responses:
+        "200":
+          description: Grounded customer-message test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgePlaygroundResponse"
+        "400":
+          description: Invalid message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: AI returned an invalid extraction or grounded response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: AI or knowledge-base search unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /knowledge/entries/{id}:
     patch:
       operationId: updateKnowledgeEntry
@@ -13075,6 +13120,38 @@ components:
       required: [action]
       properties:
         action: { type: string, enum: [approve, archive, redraft] }
+    KnowledgePlaygroundInput:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string, minLength: 3, maxLength: 4000 }
+    KnowledgePlaygroundEntry:
+      type: object
+      required: [id, title, body, category]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        body: { type: string }
+        category: { type: string }
+    KnowledgePlaygroundResponse:
+      type: object
+      required: [reply, searchQueries, retrievedEntries, usedEntryIds, note]
+      properties:
+        reply: { type: string }
+        searchQueries:
+          type: array
+          maxItems: 3
+          items: { type: string }
+        retrievedEntries:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundEntry"
+        usedEntryIds:
+          type: array
+          maxItems: 8
+          items: { type: string }
+        note: { type: string }
     AiConsumerRecord:
       type: object
       required:

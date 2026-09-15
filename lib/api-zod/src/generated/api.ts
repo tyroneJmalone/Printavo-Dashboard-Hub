@@ -10346,6 +10346,41 @@ export const CreateKnowledgeEntryResponse = zod.object({
 
 
 /**
+ * Extracts bounded keyword queries, searches approved/effective entries, and returns a grounded draft without sending or persisting anything.
+ * @summary Test a customer message against the approved knowledge base (staff only)
+ */
+export const playgroundKnowledgeBodyMessageMin = 3;
+export const playgroundKnowledgeBodyMessageMax = 4000;
+
+
+
+export const PlaygroundKnowledgeBody = zod.object({
+  "message": zod.string().min(playgroundKnowledgeBodyMessageMin).max(playgroundKnowledgeBodyMessageMax)
+})
+
+export const playgroundKnowledgeResponseSearchQueriesMax = 3;
+
+export const playgroundKnowledgeResponseRetrievedEntriesMax = 8;
+
+export const playgroundKnowledgeResponseUsedEntryIdsMax = 8;
+
+
+
+export const PlaygroundKnowledgeResponse = zod.object({
+  "reply": zod.string(),
+  "searchQueries": zod.array(zod.string()).max(playgroundKnowledgeResponseSearchQueriesMax),
+  "retrievedEntries": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string()
+})).max(playgroundKnowledgeResponseRetrievedEntriesMax),
+  "usedEntryIds": zod.array(zod.string()).max(playgroundKnowledgeResponseUsedEntryIdsMax),
+  "note": zod.string()
+})
+
+
+/**
  * @summary Update a knowledge base entry (any AI-visible edit demotes an approved entry to draft)
  */
 export const UpdateKnowledgeEntryParams = zod.object({

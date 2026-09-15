@@ -1,0 +1,144 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  KnowledgePlaygroundError,
+  runKnowledgePlayground,
+  type KnowledgePlaygroundDependencies,
+  type KnowledgePlaygroundEntry,
+  type PlaygroundChatRequest,
+} from "../src/lib/knowledgePlayground";
+
+const entryA: KnowledgePlaygroundEntry = {
+  id: "entry-a",
+  title: "Standard turnaround",
+  body: "Standard turnaround is 10 business days after art approval.",
+  category: "policy",
+};
+const entryB: KnowledgePlaygroundEntry = {
+  id: "entry-b",
+  title: "Rush service",
+  body: "Rush service may be available when confirmed by the production team.",
+  category: "production",
+};
+
+function fakeDependencies(
+  responses: string[],
+  searchResults: KnowledgePlaygroundEntry[][],
+): KnowledgePlaygroundDependencies & { requests: PlaygroundChatRequest[]; searches: string[] } {
+  const requests: PlaygroundChatRequest[] = [];
+  const searches: string[] = [];
+  return {
+    requests,
+    searches,
+    createChatCompletion: async (request) => {
+      requests.push(request);
+      const content = responses.shift();
+      if (!content) throw new Error("unexpected model call");
+      return { choices: [{ message: { content } }] };
+    },
+    searchKnowledge: async ({ query }) => {
+      searches.push(query);
+      return { entries: searchResults.shift() ?? [] };
+    },
+  };
+}
+
+test("extracts keyword queries, deduplicates retrieval, and validates grounded citations", async () => {
+  const dependencies = fakeDependencies(
+    [
+      JSON.stringify({ queries: ["rush turnaround", "rush turnaround", "art approval"] }),
+      JSON.stringify({
+        reply:
+          "Standard turnaround is 10 business days after art approval. [kb:entry-a]",
+        usedEntryIds: ["entry-a"],
+      }),
+    ],
+    [
+      [entryA, entryB],
+      [entryA],
+    ],
+  );
+
+  const result = await runKnowledgePlayground(
+    { message: "Could you tell me whether rush service is available?" },
+    dependencies,
+  );
+
+  assert.deepEqual(result.searchQueries, ["rush turnaround", "art approval"]);
+  assert.deepEqual(result.retrievedEntries, [entryA, entryB]);
+  assert.deepEqual(result.usedEntryIds, ["entry-a"]);
+  assert.match(result.reply, /\[kb:entry-a\]/);
+  assert.equal(dependencies.searches.length, 2);
+  assert.equal(dependencies.requests.length, 2);
+  assert.match(dependencies.requests[1]!.messages[1]!.content, /entry-a/);
+  assert.match(dependencies.requests[1]!.messages[1]!.content, /entry-b/);
+});
+
+test("returns an explicit no-match reply without a grounded generation call", async () => {
+  const dependencies = fakeDependencies(
+    [JSON.stringify({ queries: ["unmatched garment question"] })],
+    [[]],
+  );
+
+  const result = await runKnowledgePlayground(
+    { message: "Do you carry a garment that is not in the knowledge base?" },
+    dependencies,
+  );
+
+  assert.equal(dependencies.requests.length, 1);
+  assert.deepEqual(result.retrievedEntries, []);
+  assert.deepEqual(result.usedEntryIds, []);
+  assert.match(result.reply, /couldn't find an approved knowledge-base entry/i);
+  assert.match(result.note, /No customer-facing reply was generated/);
+});
+
+test("rejects citations outside the retrieved subset", async () => {
+  const dependencies = fakeDependencies(
+    [
+      JSON.stringify({ queries: ["turnaround"] }),
+      JSON.stringify({
+        reply: "Turnaround is 10 days. [kb:not-retrieved]",
+        usedEntryIds: ["not-retrieved"],
+      }),
+    ],
+    [[entryA]],
+  );
+
+  await assert.rejects(
+    () =>
+      runKnowledgePlayground(
+        { message: "How long does a standard order take?" },
+        dependencies,
+      ),
+    (error: unknown) =>
+      error instanceof KnowledgePlaygroundError &&
+      error.stage === "grounded_reply" &&
+      error.statusCode === 502,
+  );
+});
+
+test("surfaces malformed extraction and retrieval failures", async () => {
+  const malformed = fakeDependencies(["not json"], []);
+  await assert.rejects(
+    () => runKnowledgePlayground({ message: "A valid customer question" }, malformed),
+    (error: unknown) =>
+      error instanceof KnowledgePlaygroundError &&
+      error.stage === "query_extraction" &&
+      error.statusCode === 502,
+  );
+
+  const failedSearch = fakeDependencies(
+    [JSON.stringify({ queries: ["turnaround"] })],
+    [],
+  );
+  failedSearch.searchKnowledge = async () => {
+    throw new Error("database unavailable");
+  };
+  await assert.rejects(
+    () => runKnowledgePlayground({ message: "A valid customer question" }, failedSearch),
+    (error: unknown) =>
+      error instanceof KnowledgePlaygroundError &&
+      error.stage === "knowledge_search" &&
+      error.statusCode === 503,
+  );
+});

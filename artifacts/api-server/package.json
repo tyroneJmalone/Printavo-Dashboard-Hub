@@ -19,6 +19,7 @@
     "test:missive-authorization-db": "node ./test-missive-authorization-db.mjs",
     "test:dropbox-policy": "node ./test-dropbox-policy.mjs",
     "test:knowledge-editorial": "node ./test-knowledge-editorial.mjs",
+    "test:knowledge-playground": "node ./test-knowledge-playground.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:voice-privacy": "node ./test-voice-privacy.mjs",
     "test:webhook-dedupe": "node ./test-webhook-dedupe.mjs",

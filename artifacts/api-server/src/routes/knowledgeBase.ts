@@ -13,9 +13,18 @@ import {
   UpdateKnowledgeEntryBody,
   UpdateKnowledgeEntryParams,
   UpdateKnowledgeEntryResponse,
+  PlaygroundKnowledgeBody,
+  PlaygroundKnowledgeResponse,
 } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireStaff";
 import { shouldDemoteApprovedEntry } from "../lib/knowledgeEditorial";
+import { openai } from "@workspace/integrations-openai-ai-server";
+import { searchKnowledge } from "../lib/contextCore/knowledge";
+import {
+  KnowledgePlaygroundError,
+  runKnowledgePlayground,
+} from "../lib/knowledgePlayground";
+import { checkRateLimit } from "../lib/aiGuardrails/rateLimit";
 
 /**
  * Staff CRUD + review workflow for the knowledge base that feeds the AI
@@ -29,6 +38,8 @@ import { shouldDemoteApprovedEntry } from "../lib/knowledgeEditorial";
  *    canonical fact.
  */
 const router: IRouter = Router();
+const PLAYGROUND_RATE_LIMIT_PER_MINUTE = 12;
+const playgroundInFlight = new Set<string>();
 
 function entryDto(row: KnowledgeEntry, sourceStale = false) {
   return {
@@ -52,6 +63,51 @@ function entryDto(row: KnowledgeEntry, sourceStale = false) {
     sourceStale,
   };
 }
+
+router.post("/knowledge/playground", async (req, res): Promise<void> => {
+  const parsed = PlaygroundKnowledgeBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const staffKey = `knowledge-playground:${req.staff!.id}`;
+  const rate = checkRateLimit(staffKey, PLAYGROUND_RATE_LIMIT_PER_MINUTE);
+  if (!rate.allowed) {
+    res
+      .status(429)
+      .set("Retry-After", String(rate.retryAfterSeconds))
+      .json({ error: "Knowledge playground rate limit reached. Try again shortly." });
+    return;
+  }
+  if (playgroundInFlight.has(staffKey)) {
+    res
+      .status(429)
+      .set("Retry-After", "1")
+      .json({ error: "A knowledge playground request is already in progress." });
+    return;
+  }
+  playgroundInFlight.add(staffKey);
+
+  try {
+    const result = await runKnowledgePlayground(parsed.data, {
+      searchKnowledge,
+      createChatCompletion: (request, options) =>
+        openai.chat.completions.create(request, options),
+    });
+    res.json(PlaygroundKnowledgeResponse.parse(result));
+  } catch (error) {
+    if (error instanceof KnowledgePlaygroundError) {
+      req.log.error({ err: error, stage: error.stage }, "knowledge playground failed");
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error }, "knowledge playground failed");
+    res.status(503).json({ error: "Knowledge playground is temporarily unavailable." });
+  } finally {
+    playgroundInFlight.delete(staffKey);
+  }
+});
 
 router.get("/knowledge/entries", async (req, res): Promise<void> => {
   const query = ListKnowledgeEntriesQueryParams.safeParse(req.query);

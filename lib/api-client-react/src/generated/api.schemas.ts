@@ -6340,6 +6340,32 @@ export interface KnowledgeEntryReview {
   action: KnowledgeEntryReviewAction;
 }
 
+export interface KnowledgePlaygroundInput {
+  /**
+     * @minLength 3
+     * @maxLength 4000
+     */
+  message: string;
+}
+
+export interface KnowledgePlaygroundEntry {
+  id: string;
+  title: string;
+  body: string;
+  category: string;
+}
+
+export interface KnowledgePlaygroundResponse {
+  reply: string;
+  /** @maxItems 3 */
+  searchQueries: string[];
+  /** @maxItems 8 */
+  retrievedEntries: KnowledgePlaygroundEntry[];
+  /** @maxItems 8 */
+  usedEntryIds: string[];
+  note: string;
+}
+
 export type AiConsumerRecordTier = typeof AiConsumerRecordTier[keyof typeof AiConsumerRecordTier];
 
 

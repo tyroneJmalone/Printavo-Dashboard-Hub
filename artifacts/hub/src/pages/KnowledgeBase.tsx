@@ -11,6 +11,7 @@ import {
 import { useStaff } from "@/components/auth/StaffGate";
 import { AppShell } from "@/components/layout/AppShell";
 import { KnowledgeSources } from "@/components/knowledge/KnowledgeSources";
+import { KnowledgePlayground } from "@/components/knowledge/KnowledgePlayground";
 import { useToast } from "@/hooks/use-toast";
 import {
   BookOpen,
@@ -275,6 +276,8 @@ export default function KnowledgeBase() {
         </div>
 
         <KnowledgeSources />
+
+        <KnowledgePlayground />
 
         {showCreate && (
           <Card>

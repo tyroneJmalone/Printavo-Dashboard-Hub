@@ -206,6 +206,8 @@ import type {
   KnowledgeEntryInput,
   KnowledgeEntryReview,
   KnowledgeEntryUpdate,
+  KnowledgePlaygroundInput,
+  KnowledgePlaygroundResponse,
   KnowledgeSource,
   KnowledgeSourceDocument,
   KnowledgeSourceSyncResult,
@@ -21905,6 +21907,77 @@ export const useCreateKnowledgeEntry = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateKnowledgeEntryMutationOptions(options));
+    }
+
+export const getPlaygroundKnowledgeUrl = () => {
+
+
+
+
+  return `/api/knowledge/playground`
+}
+
+/**
+ * Extracts bounded keyword queries, searches approved/effective entries, and returns a grounded draft without sending or persisting anything.
+ * @summary Test a customer message against the approved knowledge base (staff only)
+ */
+export const playgroundKnowledge = async (knowledgePlaygroundInput: KnowledgePlaygroundInput, options?: RequestInit): Promise<KnowledgePlaygroundResponse> => {
+
+  return customFetch<KnowledgePlaygroundResponse>(getPlaygroundKnowledgeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgePlaygroundInput)
+  }
+);}
+
+
+
+
+export const getPlaygroundKnowledgeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof playgroundKnowledge>>, TError,{data: BodyType<KnowledgePlaygroundInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof playgroundKnowledge>>, TError,{data: BodyType<KnowledgePlaygroundInput>}, TContext> => {
+
+const mutationKey = ['playgroundKnowledge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof playgroundKnowledge>>, {data: BodyType<KnowledgePlaygroundInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  playgroundKnowledge(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PlaygroundKnowledgeMutationResult = NonNullable<Awaited<ReturnType<typeof playgroundKnowledge>>>
+    export type PlaygroundKnowledgeMutationBody = BodyType<KnowledgePlaygroundInput>
+    export type PlaygroundKnowledgeMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Test a customer message against the approved knowledge base (staff only)
+ */
+export const usePlaygroundKnowledge = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof playgroundKnowledge>>, TError,{data: BodyType<KnowledgePlaygroundInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof playgroundKnowledge>>,
+        TError,
+        {data: BodyType<KnowledgePlaygroundInput>},
+        TContext
+      > => {
+      return useMutation(getPlaygroundKnowledgeMutationOptions(options));
     }
 
 export const getUpdateKnowledgeEntryUrl = (id: string,) => {
