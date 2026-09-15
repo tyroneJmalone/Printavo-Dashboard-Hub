@@ -34,11 +34,14 @@ import {
 import { requireAdmin } from "../middlewares/requireStaff";
 import { shouldDemoteApprovedEntry } from "../lib/knowledgeEditorial";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { searchKnowledge } from "../lib/contextCore/knowledge";
 import {
   KnowledgePlaygroundError,
   runKnowledgePlayground,
 } from "../lib/knowledgePlayground";
+import {
+  searchPlaygroundBrandVoice,
+  searchPlaygroundKnowledge,
+} from "../lib/knowledgePlaygroundSearch";
 import { checkRateLimit } from "../lib/aiGuardrails/rateLimit";
 import {
   issueKnowledgeMergeToken,
@@ -61,8 +64,9 @@ import { z } from "zod";
 /**
  * Staff CRUD + review workflow for the knowledge base that feeds the AI
  * context layer. Editorial rules:
- *  - new entries start as drafts; only approved entries are ever served
- *    to AI consumers (enforced in contextCore/knowledge.ts);
+ *  - new entries start as drafts; live AI consumers receive only approved
+ *    entries (enforced in contextCore/knowledge.ts). The staff-only
+ *    playground has its own explicitly toggled retrieval boundary;
  *  - editing an approved entry demotes it back to draft (unless the
  *    editor cannot bypass this — there is no cosmetic-edit flag) so a
  *    changed fact always passes review again;
@@ -218,7 +222,14 @@ router.post("/knowledge/playground", async (req, res): Promise<void> => {
 
   try {
     const result = await runKnowledgePlayground(parsed.data, {
-      searchKnowledge,
+      // This route owns the only draft-capable retriever. The live context
+      // search remains a separate approved-only boundary.
+      searchKnowledge: ({ query, limit, includeDrafts }) =>
+        searchPlaygroundKnowledge({ query, limit, includeDrafts }),
+      searchPlaygroundKnowledge: ({ query, limit, includeDrafts }) =>
+        searchPlaygroundKnowledge({ query, limit, includeDrafts }),
+      searchPlaygroundBrandVoice: ({ query, limit, includeDrafts }) =>
+        searchPlaygroundBrandVoice({ query, limit, includeDrafts }),
       createChatCompletion: (request, options) =>
         openai.chat.completions.create(request, options),
     });

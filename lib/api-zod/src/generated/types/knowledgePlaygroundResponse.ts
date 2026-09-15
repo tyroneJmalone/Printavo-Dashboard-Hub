@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { KnowledgePlaygroundBrandGuidance } from './knowledgePlaygroundBrandGuidance';
 import type { KnowledgePlaygroundEntry } from './knowledgePlaygroundEntry';
 
 export interface KnowledgePlaygroundResponse {
@@ -15,5 +16,12 @@ export interface KnowledgePlaygroundResponse {
   retrievedEntries: KnowledgePlaygroundEntry[];
   /** @maxItems 8 */
   usedEntryIds: string[];
+  /**
+     * Brand/voice guidance is returned separately for tone testing and can never be used as factual evidence or a citation.
+     * @maxItems 3
+     */
+  brandGuidance: KnowledgePlaygroundBrandGuidance[];
+  /** Effective draft-inclusion mode used for this response. */
+  includeDrafts: boolean;
   note: string;
 }

@@ -25,6 +25,10 @@ import {
   runKnowledgePlayground,
   type PlaygroundChatRequest,
 } from "../src/lib/knowledgePlayground";
+import {
+  searchPlaygroundBrandVoice,
+  searchPlaygroundKnowledge,
+} from "../src/lib/knowledgePlaygroundSearch";
 
 const marker = `knowledge-classification-integration-${randomUUID()}`;
 const entryIds: string[] = [];
@@ -174,6 +178,51 @@ test("DB-backed context consumers isolate groups, state, live rules, and citatio
         createdAt: now,
         updatedAt: now,
       },
+      {
+        title: `${marker} customer archived`,
+        body: `${marker} ARCHIVED_MUST_NOT_LEAK`,
+        category: "policy",
+        knowledgeGroup: "customer_shareable",
+        tags: [marker, "archived"],
+        effectiveDate: dateOnly(-1),
+        expiresDate: dateOnly(2),
+        reviewStatus: "archived",
+        createdByEmail: "classification-test@invalid",
+        updatedByEmail: "classification-test@invalid",
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        title: `${marker} brand draft`,
+        body: `${marker} BRAND_DRAFT_TONE`,
+        category: "voice",
+        knowledgeGroup: "brand_voice",
+        tags: [marker, "brand-draft"],
+        effectiveDate: dateOnly(-1),
+        expiresDate: dateOnly(2),
+        reviewStatus: "draft",
+        createdByEmail: "classification-test@invalid",
+        updatedByEmail: "classification-test@invalid",
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        title: `${marker} brand expired`,
+        body: `${marker} BRAND_EXPIRED_MUST_NOT_LEAK`,
+        category: "voice",
+        knowledgeGroup: "brand_voice",
+        tags: [marker, "brand-expired"],
+        effectiveDate: dateOnly(-3),
+        expiresDate: dateOnly(-1),
+        reviewStatus: "approved",
+        approvedByEmail: "classification-test@invalid",
+        approvedAt: now,
+        lastReviewedAt: now,
+        createdByEmail: "classification-test@invalid",
+        updatedByEmail: "classification-test@invalid",
+        createdAt: now,
+        updatedAt: now,
+      },
     ])
     .returning();
   entryIds.push(...rows.map((row) => row.id));
@@ -181,6 +230,12 @@ test("DB-backed context consumers isolate groups, state, live rules, and citatio
   const customer = rows.find((row) => row.body.includes("CUSTOMER_FACT"))!;
   const internal = rows.find((row) => row.body.includes("INTERNAL_SECRET"))!;
   const brand = rows.find((row) => row.body.includes("BRAND_TONE"))!;
+  const customerDraft = rows.find((row) => row.body.includes("DRAFT_MUST_NOT_LEAK"))!;
+  const brandDraft = rows.find((row) => row.body.includes("BRAND_DRAFT_TONE"))!;
+  const beforePlaygroundRead = await db
+    .select({ id: knowledgeEntriesTable.id, updatedAt: knowledgeEntriesTable.updatedAt })
+    .from(knowledgeEntriesTable)
+    .where(inArray(knowledgeEntriesTable.id, entryIds));
 
   const customerResult = await searchKnowledge({ query: marker, limit: 20 });
   assert.deepEqual(customerResult.entries.map((entry) => entry.id), [customer.id]);
@@ -236,6 +291,63 @@ test("DB-backed context consumers isolate groups, state, live rules, and citatio
   assert.deepEqual(brandResult.entries.map((entry) => entry.id), [brand.id]);
   assert.match(brandResult.entries[0]!.body, /BRAND_TONE/);
   assert.equal(brandResult.entries[0]!.knowledgeGroup, "brand_voice");
+
+  // The playground's private retriever may opt into current drafts, but it
+  // still enforces date/status/group boundaries and never uses internal facts.
+  const playgroundApproved = await searchPlaygroundKnowledge({
+    query: marker,
+    limit: 20,
+  });
+  assert.deepEqual(playgroundApproved.entries.map((entry) => entry.id), [customer.id]);
+  assert.equal(playgroundApproved.entries[0]!.reviewStatus, "approved");
+
+  const playgroundWithDrafts = await searchPlaygroundKnowledge({
+    query: marker,
+    limit: 20,
+    includeDrafts: true,
+  });
+  assert.equal(
+    playgroundWithDrafts.entries.some((entry) => entry.id === customerDraft.id),
+    true,
+  );
+  assert.equal(
+    playgroundWithDrafts.entries.find((entry) => entry.id === customerDraft.id)?.reviewStatus,
+    "draft",
+  );
+  assert.doesNotMatch(
+    JSON.stringify(playgroundWithDrafts),
+    /INTERNAL_SECRET|BRAND_TONE|ARCHIVED_MUST_NOT_LEAK|EXPIRED_MUST_NOT_LEAK|FUTURE_MUST_NOT_LEAK/,
+  );
+
+  const brandPlaygroundApproved = await searchPlaygroundBrandVoice({
+    query: "",
+    limit: 20,
+  });
+  assert.deepEqual(brandPlaygroundApproved.entries.map((entry) => entry.id), [brand.id]);
+  assert.equal(brandPlaygroundApproved.entries[0]!.reviewStatus, "approved");
+  const brandPlaygroundWithDrafts = await searchPlaygroundBrandVoice({
+    query: "",
+    limit: 20,
+    includeDrafts: true,
+  });
+  assert.deepEqual(
+    new Set(brandPlaygroundWithDrafts.entries.map((entry) => entry.id)),
+    new Set([brand.id, brandDraft.id]),
+  );
+  assert.equal(
+    brandPlaygroundWithDrafts.entries.find((entry) => entry.id === brandDraft.id)?.reviewStatus,
+    "draft",
+  );
+  assert.doesNotMatch(JSON.stringify(brandPlaygroundWithDrafts), /BRAND_EXPIRED_MUST_NOT_LEAK/);
+  const afterPlaygroundRead = await db
+    .select({ id: knowledgeEntriesTable.id, updatedAt: knowledgeEntriesTable.updatedAt })
+    .from(knowledgeEntriesTable)
+    .where(inArray(knowledgeEntriesTable.id, entryIds));
+  assert.deepEqual(
+    new Map(afterPlaygroundRead.map((row) => [row.id, row.updatedAt.toISOString()])),
+    new Map(beforePlaygroundRead.map((row) => [row.id, row.updatedAt.toISOString()])),
+    "playground retrieval must not write knowledge entries",
+  );
 
   const playgroundRequests: PlaygroundChatRequest[] = [];
   const playground = await runKnowledgePlayground(

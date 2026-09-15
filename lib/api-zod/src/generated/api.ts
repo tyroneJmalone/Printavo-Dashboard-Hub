@@ -10433,16 +10433,17 @@ export const UpdateKnowledgeClassificationSettingsResponse = zod.object({
 
 
 /**
- * Extracts bounded keyword queries, searches approved/effective entries, and returns a grounded draft without sending or persisting anything.
- * @summary Test a customer message against the approved knowledge base (staff only)
+ * Extracts bounded keyword queries, searches approved/current entries by default, optionally includes current drafts for review, and returns a grounded draft without sending or persisting anything. Draft inclusion is limited to this staff-only playground; live context consumers remain approved-only.
+ * @summary Test a customer message against the knowledge base (staff only)
  */
 export const playgroundKnowledgeBodyMessageMin = 3;
 export const playgroundKnowledgeBodyMessageMax = 4000;
 
-
+export const playgroundKnowledgeBodyIncludeDraftsDefault = false;
 
 export const PlaygroundKnowledgeBody = zod.object({
-  "message": zod.string().min(playgroundKnowledgeBodyMessageMin).max(playgroundKnowledgeBodyMessageMax)
+  "message": zod.string().min(playgroundKnowledgeBodyMessageMin).max(playgroundKnowledgeBodyMessageMax),
+  "includeDrafts": zod.boolean().default(playgroundKnowledgeBodyIncludeDraftsDefault).describe('Include current customer-shareable and brand-voice drafts in this playground test. Archived, future, expired, and internal entries are never included.')
 })
 
 export const playgroundKnowledgeResponseSearchQueriesMax = 3;
@@ -10450,6 +10451,8 @@ export const playgroundKnowledgeResponseSearchQueriesMax = 3;
 export const playgroundKnowledgeResponseRetrievedEntriesMax = 8;
 
 export const playgroundKnowledgeResponseUsedEntryIdsMax = 8;
+
+export const playgroundKnowledgeResponseBrandGuidanceMax = 3;
 
 
 
@@ -10460,9 +10463,18 @@ export const PlaygroundKnowledgeResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "body": zod.string(),
-  "category": zod.string()
+  "category": zod.string(),
+  "reviewStatus": zod.enum(['draft', 'approved'])
 })).max(playgroundKnowledgeResponseRetrievedEntriesMax),
   "usedEntryIds": zod.array(zod.string()).max(playgroundKnowledgeResponseUsedEntryIdsMax),
+  "brandGuidance": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(playgroundKnowledgeResponseBrandGuidanceMax).describe('Brand\/voice guidance is returned separately for tone testing and can never be used as factual evidence or a citation.'),
+  "includeDrafts": zod.boolean().describe('Effective draft-inclusion mode used for this response.'),
   "note": zod.string()
 })
 

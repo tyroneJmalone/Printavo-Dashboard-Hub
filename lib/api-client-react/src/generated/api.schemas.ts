@@ -6537,13 +6537,40 @@ export interface KnowledgePlaygroundInput {
      * @maxLength 4000
      */
   message: string;
+  /** Include current customer-shareable and brand-voice drafts in this playground test. Archived, future, expired, and internal entries are never included. */
+  includeDrafts?: boolean;
 }
+
+export type KnowledgePlaygroundEntryReviewStatus = typeof KnowledgePlaygroundEntryReviewStatus[keyof typeof KnowledgePlaygroundEntryReviewStatus];
+
+
+export const KnowledgePlaygroundEntryReviewStatus = {
+  draft: 'draft',
+  approved: 'approved',
+} as const;
 
 export interface KnowledgePlaygroundEntry {
   id: string;
   title: string;
   body: string;
   category: string;
+  reviewStatus: KnowledgePlaygroundEntryReviewStatus;
+}
+
+export type KnowledgePlaygroundBrandGuidanceReviewStatus = typeof KnowledgePlaygroundBrandGuidanceReviewStatus[keyof typeof KnowledgePlaygroundBrandGuidanceReviewStatus];
+
+
+export const KnowledgePlaygroundBrandGuidanceReviewStatus = {
+  draft: 'draft',
+  approved: 'approved',
+} as const;
+
+export interface KnowledgePlaygroundBrandGuidance {
+  id: string;
+  title: string;
+  body: string;
+  category: string;
+  reviewStatus: KnowledgePlaygroundBrandGuidanceReviewStatus;
 }
 
 export interface KnowledgePlaygroundResponse {
@@ -6554,6 +6581,13 @@ export interface KnowledgePlaygroundResponse {
   retrievedEntries: KnowledgePlaygroundEntry[];
   /** @maxItems 8 */
   usedEntryIds: string[];
+  /**
+     * Brand/voice guidance is returned separately for tone testing and can never be used as factual evidence or a citation.
+     * @maxItems 3
+     */
+  brandGuidance: KnowledgePlaygroundBrandGuidance[];
+  /** Effective draft-inclusion mode used for this response. */
+  includeDrafts: boolean;
   note: string;
 }
 

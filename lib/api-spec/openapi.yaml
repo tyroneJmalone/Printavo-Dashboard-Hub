@@ -6514,8 +6514,8 @@ paths:
     post:
       operationId: playgroundKnowledge
       tags: [knowledge]
-      summary: Test a customer message against the approved knowledge base (staff only)
-      description: Extracts bounded keyword queries, searches approved/effective entries, and returns a grounded draft without sending or persisting anything.
+      summary: Test a customer message against the knowledge base (staff only)
+      description: Extracts bounded keyword queries, searches approved/current entries by default, optionally includes current drafts for review, and returns a grounded draft without sending or persisting anything. Draft inclusion is limited to this staff-only playground; live context consumers remain approved-only.
       requestBody:
         required: true
         content:
@@ -13455,17 +13455,31 @@ components:
       required: [message]
       properties:
         message: { type: string, minLength: 3, maxLength: 4000 }
+        includeDrafts:
+          type: boolean
+          default: false
+          description: Include current customer-shareable and brand-voice drafts in this playground test. Archived, future, expired, and internal entries are never included.
     KnowledgePlaygroundEntry:
       type: object
-      required: [id, title, body, category]
+      required: [id, title, body, category, reviewStatus]
       properties:
         id: { type: string }
         title: { type: string }
         body: { type: string }
         category: { type: string }
+        reviewStatus: { type: string, enum: [draft, approved] }
+    KnowledgePlaygroundBrandGuidance:
+      type: object
+      required: [id, title, body, category, reviewStatus]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        body: { type: string }
+        category: { type: string }
+        reviewStatus: { type: string, enum: [draft, approved] }
     KnowledgePlaygroundResponse:
       type: object
-      required: [reply, searchQueries, retrievedEntries, usedEntryIds, note]
+      required: [reply, searchQueries, retrievedEntries, usedEntryIds, brandGuidance, includeDrafts, note]
       properties:
         reply: { type: string }
         searchQueries:
@@ -13481,6 +13495,15 @@ components:
           type: array
           maxItems: 8
           items: { type: string }
+        brandGuidance:
+          type: array
+          maxItems: 3
+          description: Brand/voice guidance is returned separately for tone testing and can never be used as factual evidence or a citation.
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundBrandGuidance"
+        includeDrafts:
+          type: boolean
+          description: Effective draft-inclusion mode used for this response.
         note: { type: string }
     AiConsumerRecord:
       type: object

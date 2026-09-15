@@ -22075,8 +22075,8 @@ export const getPlaygroundKnowledgeUrl = () => {
 }
 
 /**
- * Extracts bounded keyword queries, searches approved/effective entries, and returns a grounded draft without sending or persisting anything.
- * @summary Test a customer message against the approved knowledge base (staff only)
+ * Extracts bounded keyword queries, searches approved/current entries by default, optionally includes current drafts for review, and returns a grounded draft without sending or persisting anything. Draft inclusion is limited to this staff-only playground; live context consumers remain approved-only.
+ * @summary Test a customer message against the knowledge base (staff only)
  */
 export const playgroundKnowledge = async (knowledgePlaygroundInput: KnowledgePlaygroundInput, options?: RequestInit): Promise<KnowledgePlaygroundResponse> => {
 
@@ -22124,7 +22124,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type PlaygroundKnowledgeMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Test a customer message against the approved knowledge base (staff only)
+ * @summary Test a customer message against the knowledge base (staff only)
  */
 export const usePlaygroundKnowledge = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof playgroundKnowledge>>, TError,{data: BodyType<KnowledgePlaygroundInput>}, TContext>, request?: SecondParameter<typeof customFetch>}

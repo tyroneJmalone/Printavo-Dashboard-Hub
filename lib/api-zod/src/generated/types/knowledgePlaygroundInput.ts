@@ -12,4 +12,6 @@ export interface KnowledgePlaygroundInput {
      * @maxLength 4000
      */
   message: string;
+  /** Include current customer-shareable and brand-voice drafts in this playground test. Archived, future, expired, and internal entries are never included. */
+  includeDrafts?: boolean;
 }

@@ -13,12 +13,14 @@ const entryA: KnowledgePlaygroundEntry = {
   title: "Standard turnaround",
   body: "Standard turnaround is 10 business days after art approval.",
   category: "policy",
+  reviewStatus: "approved",
 };
 const entryB: KnowledgePlaygroundEntry = {
   id: "entry-b",
   title: "Rush service",
   body: "Rush service may be available when confirmed by the production team.",
   category: "production",
+  reviewStatus: "approved",
 };
 
 function fakeDependencies(
@@ -67,6 +69,8 @@ test("extracts keyword queries, deduplicates retrieval, and validates grounded c
   assert.deepEqual(result.searchQueries, ["rush turnaround", "art approval"]);
   assert.deepEqual(result.retrievedEntries, [entryA, entryB]);
   assert.deepEqual(result.usedEntryIds, ["entry-a"]);
+  assert.equal(result.includeDrafts, false);
+  assert.deepEqual(result.brandGuidance, []);
   assert.match(result.reply, /\[kb:entry-a\]/);
   assert.equal(dependencies.searches.length, 2);
   assert.equal(dependencies.requests.length, 2);
@@ -132,6 +136,7 @@ test("keeps brand guidance separate from customer facts and consumes editable fa
           title: "Warm and concise",
           body: "Use a warm, concise greeting. This is tone only, never a fact.",
           category: "voice",
+          reviewStatus: "approved",
         },
       ],
       rules: ["Custom live brand rule: keep salutations under five words."],
@@ -162,6 +167,8 @@ test("keeps brand guidance separate from customer facts and consumes editable fa
   );
 
   assert.deepEqual(result.usedEntryIds, ["entry-a"]);
+  assert.equal(result.includeDrafts, false);
+  assert.deepEqual(result.brandGuidance[0]?.reviewStatus, "approved");
   assert.match(requests[1]!.messages[1]!.content, /Preserve approved qualifications exactly/);
   assert.match(requests[1]!.messages[1]!.content, /BRAND_VOICE_GUIDANCE \(tone-only/);
   assert.match(requests[1]!.messages[1]!.content, /Warm and concise/);
@@ -171,6 +178,144 @@ test("keeps brand guidance separate from customer facts and consumes editable fa
   );
   assert.match(requests[1]!.messages[1]!.content, /NON_EDITABLE_BRAND_SAFETY_RULES/);
   assert.doesNotMatch(requests[1]!.messages[1]!.content, /brand-entry\]/);
+});
+
+test("defaults to approved facts, opts into current drafts, and keeps brand IDs out of citations", async () => {
+  const requests: PlaygroundChatRequest[] = [];
+  const searches: Array<{ includeDrafts?: boolean; query: string }> = [];
+  const dependencies: KnowledgePlaygroundDependencies = {
+    searchKnowledge: async ({ query, includeDrafts }) => {
+      searches.push({ query, includeDrafts });
+      return {
+        entries: [
+          {
+            ...entryA,
+            reviewStatus: "approved",
+          },
+          ...(includeDrafts
+            ? [
+                {
+                  id: "entry-draft",
+                  title: "Draft turnaround",
+                  body: "Draft turnaround is being reviewed.",
+                  category: "policy",
+                  reviewStatus: "draft" as const,
+                },
+              ]
+            : []),
+        ],
+      };
+    },
+    getBrandVoiceGuidance: async ({ includeDrafts }) => ({
+      entries: [
+        {
+          id: "brand-approved",
+          title: "Warm tone",
+          body: "Use a warm tone.",
+          category: "voice",
+          reviewStatus: "approved",
+        },
+        ...(includeDrafts
+          ? [
+              {
+                id: "brand-draft",
+                title: "Draft tone",
+                body: "Try a shorter greeting while this is reviewed.",
+                category: "voice",
+                reviewStatus: "draft" as const,
+              },
+            ]
+          : []),
+      ],
+    }),
+    createChatCompletion: async (request) => {
+      requests.push(request);
+      if (requests.length % 2 === 1) {
+        return { choices: [{ message: { content: JSON.stringify({ queries: ["turnaround"] }) } }] };
+      }
+      return {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                reply: "The approved turnaround is 10 business days. [kb:entry-a]",
+                usedEntryIds: ["entry-a"],
+              }),
+            },
+          },
+        ],
+      };
+    },
+  };
+
+  const defaultResult = await runKnowledgePlayground(
+    { message: "How long is turnaround?" },
+    dependencies,
+  );
+  assert.equal(defaultResult.includeDrafts, false);
+  assert.deepEqual(defaultResult.retrievedEntries.map((entry) => entry.id), ["entry-a"]);
+  assert.deepEqual(defaultResult.brandGuidance.map((entry) => entry.id), ["brand-approved"]);
+  assert.equal(searches[0]?.includeDrafts, false);
+
+  const draftResult = await runKnowledgePlayground(
+    { message: "How long is turnaround?", includeDrafts: true },
+    dependencies,
+  );
+  assert.equal(draftResult.includeDrafts, true);
+  assert.deepEqual(
+    draftResult.retrievedEntries.map((entry) => [entry.id, entry.reviewStatus]),
+    [
+      ["entry-a", "approved"],
+      ["entry-draft", "draft"],
+    ],
+  );
+  assert.deepEqual(
+    draftResult.brandGuidance.map((entry) => [entry.id, entry.reviewStatus]),
+    [
+      ["brand-approved", "approved"],
+      ["brand-draft", "draft"],
+    ],
+  );
+  assert.match(requests[3]!.messages[1]!.content, /approved or draft\/effective/);
+  assert.match(requests[3]!.messages[1]!.content, /"reviewStatus":"draft"/);
+
+  let invalidCitationCalls = 0;
+  const invalidCitationDependencies: KnowledgePlaygroundDependencies = {
+    ...dependencies,
+    createChatCompletion: async () => {
+      invalidCitationCalls += 1;
+      if (invalidCitationCalls === 1) {
+        return {
+          choices: [
+            { message: { content: JSON.stringify({ queries: ["turnaround"] }) } },
+          ],
+        };
+      }
+      return {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                reply: "Brand guidance is the policy. [kb:brand-draft]",
+                usedEntryIds: ["brand-draft"],
+              }),
+            },
+          },
+        ],
+      };
+    },
+  };
+  await assert.rejects(
+    () =>
+      runKnowledgePlayground(
+        { message: "How long is turnaround?", includeDrafts: true },
+        invalidCitationDependencies,
+      ),
+    (error: unknown) =>
+      error instanceof KnowledgePlaygroundError &&
+      error.stage === "grounded_reply" &&
+      error.statusCode === 502,
+  );
 });
 
 test("surfaces malformed extraction and retrieval failures", async () => {
