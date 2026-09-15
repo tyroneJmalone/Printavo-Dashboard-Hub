@@ -49,6 +49,7 @@
 - [Drizzle push misses index predicates](drizzle-push-index-predicates.md) — adding WHERE to an existing unique index silently no-ops on push; verify pg_indexes and recreate manually.
 - [Publishing expression indexes](publish-expression-indexes.md) — publishing truncates GIN expressions; stored generated search columns preserve indexed search and valid migration SQL.
 - [Database copy before readiness](publish-copy-before-readiness.md) — a failed publish may already have copied dev data; verify production before retrying with overwrite.
+- [Insights role membership](insights-role-membership.md) — PostgreSQL membership can have SET=false; preserve read-only safeguards and check explicit role-switch permission.
 - [KB learning filters](kb-learning-requirements.md) — future KB-suggestion analysis must only read customer-linked threads + skip bulk mail; filter at analysis, sync stores everything.
 - [Knowledge source sync ownership](kb-source-sync-ownership.md) — scheduled Drive ingestion runs in production only; development uses manual sync to prevent duplicate imports.
 - [Voice profiles & drafting patterns](voice-drafting-patterns.md) — traits-only privacy rule, clamp LLM outputs before zod, single-writer sync heartbeat, VM deployment requirement.
