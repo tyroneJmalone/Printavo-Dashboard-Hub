@@ -81,6 +81,13 @@ const PAGE_INFO = `pageInfo { hasNextPage endCursor }`;
 export interface OrderPageArgs {
   after?: string | null;
   /**
+   * Restrict the list at Printavo before pagination. The v2 schema accepts
+   * `statusIds: [ID!]` on both invoices and quotes (verified by live
+   * introspection). Auto-print uses this instead of crawling the complete
+   * order history and filtering a stale local mirror.
+   */
+  statusIds?: readonly string[];
+  /**
    * VISUAL_ID sort direction. Default true (newest-first) — the
    * incremental crawl's recency proxy. History backfill passes false
    * to walk the archive oldest-first (verified live: ascending sort
@@ -94,9 +101,14 @@ function sortDescArg(sortDescending: boolean | undefined): string {
   return sortDescending === false ? "false" : "true";
 }
 
+function statusIdsArg(statusIds: readonly string[] | undefined): string {
+  if (!statusIds || statusIds.length === 0) return "";
+  return `, statusIds: [${statusIds.map(lit).join(", ")}]`;
+}
+
 export function invoicesPageQuery(args: OrderPageArgs = {}): string {
   return `query {
-    invoices(first: ${PAGE_SIZE}${afterArg(args.after)}, sortOn: VISUAL_ID, sortDescending: ${sortDescArg(args.sortDescending)}) {
+    invoices(first: ${PAGE_SIZE}${afterArg(args.after)}${statusIdsArg(args.statusIds)}, sortOn: VISUAL_ID, sortDescending: ${sortDescArg(args.sortDescending)}) {
       nodes { ${ORDER_NODE_FIELDS} }
       ${PAGE_INFO}
     }
@@ -105,7 +117,7 @@ export function invoicesPageQuery(args: OrderPageArgs = {}): string {
 
 export function quotesPageQuery(args: OrderPageArgs = {}): string {
   return `query {
-    quotes(first: ${PAGE_SIZE}${afterArg(args.after)}, sortOn: VISUAL_ID, sortDescending: ${sortDescArg(args.sortDescending)}) {
+    quotes(first: ${PAGE_SIZE}${afterArg(args.after)}${statusIdsArg(args.statusIds)}, sortOn: VISUAL_ID, sortDescending: ${sortDescArg(args.sortDescending)}) {
       nodes { ${ORDER_NODE_FIELDS} }
       ${PAGE_INFO}
     }
@@ -269,6 +281,20 @@ export function singleOrderDetailQuery(
       totalQuantity
       timestamps { createdAt updatedAt }
       ${lineItemGroupsSelection(20, 40, 15, { withGroupCursor: true })}
+    }
+  }`;
+}
+
+/** Exact-order status fence used immediately before PrintNode/status writes. */
+export function singleOrderStatusQuery(
+  kind: "invoice" | "quote",
+  printavoId: string,
+): string {
+  return `query {
+    ${kind}(id: ${lit(printavoId)}) {
+      id
+      visualId
+      status { id name }
     }
   }`;
 }

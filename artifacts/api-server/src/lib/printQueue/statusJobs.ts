@@ -9,6 +9,10 @@ import {
 import { eq, desc, inArray } from "drizzle-orm";
 import { statusUpdateMutation } from "@workspace/printavo";
 import { getPrintavoClient, printavoConfigured } from "../printavoGateway";
+import {
+  fetchLiveOrderStatus,
+  liveOrderStatusMatches,
+} from "./autoPrint/liveDiscovery";
 
 /**
  * Print Queue bulk status-change jobs (PQ2).
@@ -241,7 +245,7 @@ export async function startPqStatusJob(
   activeJobId = row.id;
 
   const expectedById = new Map(inputs.map((l) => [l.orderId, l.expectedStatusId]));
-  void runJob(row.id, state, expectedById, log).catch(async (err) => {
+  void runJob(row.id, state, expectedById, log, trigger).catch(async (err) => {
     log.error({ err, jobId: row.id }, "pq status job crashed");
     try {
       await persistState(row.id, {
@@ -262,6 +266,7 @@ async function runJob(
   state: PqJobState,
   expectedById: Map<string, string | null>,
   log: Logger,
+  trigger: "manual" | "ask" | "auto" | "autoprint",
 ): Promise<void> {
   const client = getPrintavoClient();
   try {
@@ -269,6 +274,8 @@ async function runJob(
       if (line.status !== "pending") continue;
       const [order] = await db
         .select({
+          visualId: pvOrdersTable.visualId,
+          orderType: pvOrdersTable.orderType,
           statusId: pvOrdersTable.statusId,
           statusName: pvOrdersTable.statusName,
         })
@@ -293,6 +300,39 @@ async function runJob(
         line.error = `Status is now "${order.statusName ?? order.statusId}" — not changed`;
         await persistState(jobId, state);
         continue;
+      }
+      if (trigger === "autoprint") {
+        const expectedStatusId = expected;
+        if (!expectedStatusId || order.visualId === null) {
+          line.status = "stale";
+          line.error = "Live status guard could not establish the source identity";
+          await persistState(jobId, state);
+          continue;
+        }
+        try {
+          const live = await fetchLiveOrderStatus(
+            order.orderType === "invoice" ? "invoice" : "quote",
+            line.orderId,
+          );
+          if (
+            !liveOrderStatusMatches(live, {
+              orderId: line.orderId,
+              visualId: order.visualId,
+              sourceStatusId: expectedStatusId,
+            })
+          ) {
+            line.status = "stale";
+            line.error =
+              "Live status changed before the post-print advance — not changed";
+            await persistState(jobId, state);
+            continue;
+          }
+        } catch (err) {
+          line.status = "stale";
+          line.error = `Live status verification failed — not changed: ${errMessage(err)}`;
+          await persistState(jobId, state);
+          continue;
+        }
       }
       try {
         await client.query(statusUpdateMutation(line.orderId, line.targetStatusId));

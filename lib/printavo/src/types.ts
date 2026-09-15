@@ -205,6 +205,18 @@ export interface SingleOrderDetail {
   quote?: PvOrderDetailNode | null;
 }
 
+/** Minimal exact-order status response used by print/status stale guards. */
+export interface PvOrderStatusNode {
+  id: string;
+  visualId: number | string;
+  status: PvStatusRef | null;
+}
+
+export interface SingleOrderStatus {
+  invoice?: PvOrderStatusNode | null;
+  quote?: PvOrderStatusNode | null;
+}
+
 export interface PvSweepLineItemNode {
   id: string;
   productStatus: string | null;

@@ -1,6 +1,9 @@
 import type { Logger } from "pino";
 import { getAutoPrintConfig } from "./config";
 import { startAutoPrintRun, anyRunActive, lastRunStartedAt } from "./engine";
+import { scheduledAutoPrintAllowed } from "./schedulerSafety";
+
+export { scheduledAutoPrintAllowed } from "./schedulerSafety";
 
 /**
  * Auto-print scheduler (PQ3a). Separate from the sync scheduler — checks
@@ -12,6 +15,7 @@ import { startAutoPrintRun, anyRunActive, lastRunStartedAt } from "./engine";
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 let timer: NodeJS.Timeout | null = null;
+let devLiveScheduleWarningLogged = false;
 
 export function startAutoPrintScheduler(logger: Logger): void {
   if (timer) return;
@@ -26,6 +30,24 @@ async function checkDue(logger: Logger): Promise<void> {
   try {
     const config = await getAutoPrintConfig();
     if (!config.enabled) return;
+    /*
+     * Development shares the live database and PrintNode credentials. A
+     * development scheduler must never autonomously submit a live job,
+     * regardless of the persisted config (which may intentionally be live in
+     * production). Dry-run schedules remain useful for exercising discovery
+     * and PDF generation. Manual runs intentionally keep their existing
+     * explicit-control behavior in startAutoPrintRun.
+     */
+    if (!scheduledAutoPrintAllowed(config.dryRun)) {
+      if (!devLiveScheduleWarningLogged) {
+        logger.warn(
+          "Scheduled live auto-print is disabled in development; set dryRun=true for scheduled checks",
+        );
+        devLiveScheduleWarningLogged = true;
+      }
+      return;
+    }
+    devLiveScheduleWarningLogged = false;
     if (anyRunActive()) return;
     const last = await lastRunStartedAt();
     const dueAt = last
