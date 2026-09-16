@@ -733,3 +733,18 @@ export async function lastRunStartedAt(): Promise<Date | null> {
     .limit(1);
   return row?.startedAt ?? null;
 }
+
+/**
+ * Most recent scheduled run start. Daily mode uses the trigger-specific
+ * history so a manual run cannot consume a daily slot, and the persisted
+ * timestamp survives a process restart and the repeated DST hour.
+ */
+export async function lastScheduledRunStartedAt(): Promise<Date | null> {
+  const [row] = await db
+    .select({ startedAt: pqPrintRunsTable.startedAt })
+    .from(pqPrintRunsTable)
+    .where(eq(pqPrintRunsTable.trigger, "scheduled"))
+    .orderBy(desc(pqPrintRunsTable.startedAt))
+    .limit(1);
+  return row?.startedAt ?? null;
+}

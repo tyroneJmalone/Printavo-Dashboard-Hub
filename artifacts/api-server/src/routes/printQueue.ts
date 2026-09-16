@@ -451,7 +451,22 @@ router.get("/print-queue/autoprint/config", (req, res) => {
 });
 
 router.put("/print-queue/autoprint/config", (req, res) => {
-  const parsed = UpdateAutoPrintConfigBody.safeParse(req.body);
+  /*
+   * scheduleMode/dailyTimes were added after the original interval-only
+   * config. Fill them only at the request boundary so an older Hub/client can
+   * still save an existing config; persisted rows are normalized in config.ts.
+   */
+  const body =
+    req.body && typeof req.body === "object" && !Array.isArray(req.body)
+      ? {
+          ...(req.body as Record<string, unknown>),
+          scheduleMode:
+            "scheduleMode" in req.body ? req.body.scheduleMode : "interval",
+          dailyTimes:
+            "dailyTimes" in req.body ? req.body.dailyTimes : ["06:00"],
+        }
+      : req.body;
+  const parsed = UpdateAutoPrintConfigBody.safeParse(body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid config" });
     return;

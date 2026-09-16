@@ -73,6 +73,7 @@ export * from './authMeRole';
 export * from './autoPrintCategoriesResponse';
 export * from './autoPrintCategoryMapping';
 export * from './autoPrintConfig';
+export * from './autoPrintConfigScheduleMode';
 export * from './autoPrintJob';
 export * from './autoPrintJobsResponse';
 export * from './autoPrintJobStatus';

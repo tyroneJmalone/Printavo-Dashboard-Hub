@@ -3880,15 +3880,34 @@ export interface AutoPrintCategoryMapping {
 }
 
 /**
- * Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.
+ * The one active schedule: interval (scheduleHours) or daily (dailyTimes in America/New_York).
+ */
+export type AutoPrintConfigScheduleMode = typeof AutoPrintConfigScheduleMode[keyof typeof AutoPrintConfigScheduleMode];
+
+
+export const AutoPrintConfigScheduleMode = {
+  interval: 'interval',
+  daily: 'daily',
+} as const;
+
+/**
+ * Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.
  */
 export interface AutoPrintConfig {
   enabled: boolean;
+  /** The one active schedule: interval (scheduleHours) or daily (dailyTimes in America/New_York). */
+  scheduleMode: AutoPrintConfigScheduleMode;
   /**
      * @minimum 1
      * @maximum 24
      */
   scheduleHours: number;
+  /**
+     * Eastern local clock times for daily mode. DST is handled in America/New_York; nonexistent spring-forward minutes do not run and repeated fall-back minutes run once.
+     * @maxItems 12
+     * @items.pattern ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$
+     */
+  dailyTimes: string[];
   sourceStatusIds: string[];
   /** @nullable */
   errorStatusId: string | null;

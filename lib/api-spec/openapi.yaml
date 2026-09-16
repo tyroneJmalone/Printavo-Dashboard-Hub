@@ -10668,10 +10668,23 @@ components:
       required: [category, statusId, statusName]
     AutoPrintConfig:
       type: object
-      description: Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.
+      description: "Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored."
       properties:
         enabled: { type: boolean }
+        scheduleMode:
+          type: string
+          enum: [interval, daily]
+          default: interval
+          description: "The one active schedule: interval (scheduleHours) or daily (dailyTimes in America/New_York)."
         scheduleHours: { type: integer, minimum: 1, maximum: 24 }
+        dailyTimes:
+          type: array
+          maxItems: 12
+          default: ["06:00"]
+          description: "Eastern local clock times for daily mode. DST is handled in America/New_York; nonexistent spring-forward minutes do not run and repeated fall-back minutes run once."
+          items:
+            type: string
+            pattern: "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
         sourceStatusIds:
           type: array
           items: { type: string }
@@ -10688,7 +10701,9 @@ components:
       required:
         [
           enabled,
+          scheduleMode,
           scheduleHours,
+          dailyTimes,
           sourceStatusIds,
           errorStatusId,
           errorStatusName,

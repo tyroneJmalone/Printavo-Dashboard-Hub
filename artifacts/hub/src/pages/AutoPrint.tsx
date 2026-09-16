@@ -16,6 +16,7 @@ import {
   useListPrintavoStatuses,
   getListPrintavoStatusesQueryKey,
   type AutoPrintConfig,
+  type AutoPrintConfigScheduleMode,
   type AutoPrintCategoryMapping,
   type AutoPrintRun,
   type AutoPrintJob,
@@ -64,6 +65,28 @@ const JOB_STATUS_STYLES: Record<string, string> = {
   pending: "bg-slate-500/15 text-slate-300",
   skipped: "bg-slate-500/15 text-slate-300",
 };
+
+const DAILY_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const MAX_DAILY_TIMES = 12;
+const DEFAULT_DAILY_TIME = "06:00";
+
+function isDailyTime(value: unknown): value is string {
+  return typeof value === "string" && DAILY_TIME_PATTERN.test(value);
+}
+
+function hydrateDailyTimes(value: unknown): string[] {
+  const times = Array.isArray(value)
+    ? value.filter(isDailyTime).slice(0, MAX_DAILY_TIMES)
+    : [];
+  return times.length > 0 ? times : [DEFAULT_DAILY_TIME];
+}
+
+function formatDailyTime(value: string): string {
+  if (!isDailyTime(value)) return value;
+  const [hours, minutes] = value.split(":").map(Number);
+  const hour = hours % 12 || 12;
+  return `${hour}:${String(minutes).padStart(2, "0")} ${hours >= 12 ? "PM" : "AM"}`;
+}
 
 /* ── Source status multi-select ──────────────────────────────────────── */
 
@@ -200,6 +223,12 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [dryRun, setDryRun] = useState(initial.dryRun);
   const [scheduleHours, setScheduleHours] = useState(String(initial.scheduleHours));
+  const [scheduleMode, setScheduleMode] = useState<AutoPrintConfigScheduleMode>(
+    initial.scheduleMode === "daily" ? "daily" : "interval",
+  );
+  const [dailyTimes, setDailyTimes] = useState<string[]>(
+    hydrateDailyTimes(initial.dailyTimes),
+  );
   const [copies, setCopies] = useState(String(initial.copies));
   const [sourceStatusIds, setSourceStatusIds] = useState<string[]>(
     initial.sourceStatusIds,
@@ -217,6 +246,14 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
   const selectedPrinter = printers.find((p) => String(p.id) === printerId);
   const statusName = (id: string) =>
     statuses.find((s) => s.id === id)?.name ?? id;
+  const scheduleSummary = useMemo(() => {
+    if (scheduleMode === "daily") {
+      const times = dailyTimes.filter(isDailyTime).map(formatDailyTime);
+      const visibleTimes = times.length > 0 ? times : [formatDailyTime(DEFAULT_DAILY_TIME)];
+      return `At ${visibleTimes.join(", ")} Eastern Time, new orders in the source statuses are printed once and moved by decoration category.`;
+    }
+    return `Every ${scheduleHours || "6"} hours, new orders in the source statuses are printed once and moved by decoration category.`;
+  }, [dailyTimes, scheduleHours, scheduleMode]);
 
   const save = useUpdateAutoPrintConfig({
     mutation: {
@@ -236,19 +273,33 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
   });
 
   const doSave = () => {
+    const invalidTimeIndex = dailyTimes.findIndex((time) => !isDailyTime(time));
+    if (invalidTimeIndex !== -1) {
+      toast({
+        title: "Invalid daily time",
+        description: `Enter a valid time for daily time ${invalidTimeIndex + 1} (HH:mm, for example 06:00).`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const payload = {
+      enabled,
+      dryRun,
+      scheduleHours: Math.min(24, Math.max(1, Number(scheduleHours) || 6)),
+      scheduleMode,
+      dailyTimes,
+      copies: Math.min(10, Math.max(1, Number(copies) || 1)),
+      sourceStatusIds,
+      printerId: printerId || null,
+      printerName: selectedPrinter?.name ?? (printerId ? initial.printerName : null),
+      errorStatusId: errorStatusId || null,
+      errorStatusName: errorStatusId ? statusName(errorStatusId) : null,
+      categoryMappings: mappings,
+    };
+
     save.mutate({
-      data: {
-        enabled,
-        dryRun,
-        scheduleHours: Math.min(24, Math.max(1, Number(scheduleHours) || 6)),
-        copies: Math.min(10, Math.max(1, Number(copies) || 1)),
-        sourceStatusIds,
-        printerId: printerId || null,
-        printerName: selectedPrinter?.name ?? (printerId ? initial.printerName : null),
-        errorStatusId: errorStatusId || null,
-        errorStatusName: errorStatusId ? statusName(errorStatusId) : null,
-        categoryMappings: mappings,
-      },
+      data: payload,
     });
   };
 
@@ -274,6 +325,26 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
     setNewTarget("");
   };
 
+  const updateDailyTime = (index: number, value: string) => {
+    setDailyTimes((current) =>
+      current.map((time, timeIndex) => (timeIndex === index ? value : time)),
+    );
+  };
+
+  const addDailyTime = () => {
+    setDailyTimes((current) =>
+      current.length >= MAX_DAILY_TIMES
+        ? current
+        : [...current, DEFAULT_DAILY_TIME],
+    );
+  };
+
+  const removeDailyTime = (index: number) => {
+    setDailyTimes((current) =>
+      current.length <= 1 ? current : current.filter((_, timeIndex) => timeIndex !== index),
+    );
+  };
+
   return (
     <div className="space-y-4">
       {!printersConfigured && (
@@ -290,9 +361,11 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
               <Power size={15} className={enabled ? "text-[#059669]" : "text-slate-500"} />
               Scheduled auto-printing
             </h2>
-            <p className="text-[12px] text-slate-400 mt-0.5">
-              Every {scheduleHours || "6"}h, new orders in the source statuses are
-              printed once and moved by decoration category.
+            <p
+              className="text-[12px] text-slate-400 mt-0.5"
+              data-testid="text-schedule-summary-header"
+            >
+              {scheduleSummary}
             </p>
           </div>
           <button
@@ -343,21 +416,154 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <label className="block">
+        <div className="rounded-lg border border-slate-800 bg-[#020617] p-3 space-y-3">
+          <div>
             <span className="text-[11px] uppercase tracking-wide text-slate-500">
-              Every (hours)
+              Schedule
             </span>
-            <input
-              type="number"
-              min={1}
-              max={24}
-              value={scheduleHours}
-              onChange={(e) => setScheduleHours(e.target.value)}
-              className="mt-1 w-full px-2.5 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-[#059669]"
-              data-testid="input-schedule-hours"
-            />
-          </label>
+            <p
+              className="text-[12px] text-slate-400 mt-1"
+              data-testid="text-schedule-summary"
+            >
+              {scheduleSummary}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label
+              className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
+                scheduleMode === "interval"
+                  ? "border-[#059669]/60 bg-[#059669]/10"
+                  : "border-slate-800 hover:border-slate-700"
+              }`}
+            >
+              <input
+                type="radio"
+                name="autoprint-schedule-mode"
+                value="interval"
+                checked={scheduleMode === "interval"}
+                onChange={() => setScheduleMode("interval")}
+                className="mt-0.5 accent-[#059669]"
+                data-testid="input-schedule-mode-interval"
+              />
+              <span>
+                <span className="block text-[13px] text-slate-200">
+                  Every N hours
+                </span>
+                <span className="block text-[11px] text-slate-500 mt-0.5">
+                  Run on a repeating interval.
+                </span>
+              </span>
+            </label>
+            <label
+              className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors ${
+                scheduleMode === "daily"
+                  ? "border-[#059669]/60 bg-[#059669]/10"
+                  : "border-slate-800 hover:border-slate-700"
+              }`}
+            >
+              <input
+                type="radio"
+                name="autoprint-schedule-mode"
+                value="daily"
+                checked={scheduleMode === "daily"}
+                onChange={() => setScheduleMode("daily")}
+                className="mt-0.5 accent-[#059669]"
+                data-testid="input-schedule-mode-daily"
+              />
+              <span>
+                <span className="block text-[13px] text-slate-200">
+                  Specific times (Eastern)
+                </span>
+                <span className="block text-[11px] text-slate-500 mt-0.5">
+                  Run once at each selected time.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          {scheduleMode === "interval" ? (
+            <label className="block max-w-48">
+              <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                Every (hours)
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={24}
+                value={scheduleHours}
+                onChange={(e) => setScheduleHours(e.target.value)}
+                className="mt-1 w-full px-2.5 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-[#059669]"
+                data-testid="input-schedule-hours"
+              />
+            </label>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <span className="text-[11px] uppercase tracking-wide text-slate-500">
+                    Daily times
+                  </span>
+                  <p
+                    className="text-[11px] text-slate-500 mt-0.5"
+                    data-testid="text-daily-timezone-note"
+                  >
+                    Times use Eastern Time and adjust automatically for daylight saving time.
+                  </p>
+                  <p className="text-[11px] text-slate-500" data-testid="text-daily-missed-note">
+                    Missed times are skipped; there is no catch-up run.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addDailyTime}
+                  disabled={dailyTimes.length >= MAX_DAILY_TIMES}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  data-testid="button-add-daily-time"
+                >
+                  <Plus size={13} /> Add time
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {dailyTimes.map((time, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2"
+                    data-testid={`row-daily-time-${index}`}
+                  >
+                    <input
+                      type="time"
+                      value={time}
+                      onChange={(e) => updateDailyTime(index, e.target.value)}
+                      className="w-36 px-2.5 py-2 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-200 focus:outline-none focus:border-[#059669]"
+                      aria-label={`Daily print time ${index + 1}`}
+                      data-testid={`input-daily-time-${index}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeDailyTime(index)}
+                      disabled={dailyTimes.length <= 1}
+                      className="p-2 text-slate-500 hover:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label={`Remove daily print time ${index + 1}`}
+                      title={
+                        dailyTimes.length <= 1
+                          ? "At least one time is required"
+                          : "Remove time"
+                      }
+                      data-testid={`button-remove-daily-time-${index}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Add up to {MAX_DAILY_TIMES} daily times.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <label className="block">
             <span className="text-[11px] uppercase tracking-wide text-slate-500">
               Copies

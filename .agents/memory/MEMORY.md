@@ -59,3 +59,4 @@
 - [Dev DB schema drift](dev-db-schema-drift.md) — rollbacks can silently drop merged tables from the dev DB; publish diffs DEV into prod, so verify new tables exist + re-run db push before shipping.
 - [Reorder Portal public surface](reorder-portal.md) — accepted no-auth lookup model (private links = later phase); public writes re-validate with read filters; REORDER_EMAIL_MODE=live needed in prod.
 - [Line-item history semantics](line-item-history-semantics.md) — complete baselines only; polling records net changes, never editor identity or reconstructed past edits.
+- [Auto-print schedule policy](auto-print-schedule-policy.md) — Eastern civil time, no missed-slot catch-up, and no repeated fall-back printing.

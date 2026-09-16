@@ -7176,7 +7176,12 @@ export const GetPqStatusJobResponse = zod.object({
 /**
  * @summary Auto-print configuration (defaults enabled=false, dryRun=true)
  */
+export const getAutoPrintConfigResponseScheduleModeDefault = `interval`;
 export const getAutoPrintConfigResponseScheduleHoursMax = 24;
+
+export const getAutoPrintConfigResponseDailyTimesItemRegExp = new RegExp('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$');
+export const getAutoPrintConfigResponseDailyTimesDefault = [`06:00`];
+export const getAutoPrintConfigResponseDailyTimesMax = 12;
 
 export const getAutoPrintConfigResponseCopiesMax = 10;
 
@@ -7186,7 +7191,9 @@ export const getAutoPrintConfigResponseCopiesMax = 10;
 
 export const GetAutoPrintConfigResponse = zod.object({
   "enabled": zod.boolean(),
+  "scheduleMode": zod.enum(['interval', 'daily']).default(getAutoPrintConfigResponseScheduleModeDefault).describe('The one active schedule: interval (scheduleHours) or daily (dailyTimes in America\/New_York).'),
   "scheduleHours": zod.number().min(1).max(getAutoPrintConfigResponseScheduleHoursMax),
+  "dailyTimes": zod.array(zod.string().regex(getAutoPrintConfigResponseDailyTimesItemRegExp)).max(getAutoPrintConfigResponseDailyTimesMax).default(getAutoPrintConfigResponseDailyTimesDefault).describe('Eastern local clock times for daily mode. DST is handled in America\/New_York; nonexistent spring-forward minutes do not run and repeated fall-back minutes run once.'),
   "sourceStatusIds": zod.array(zod.string()),
   "errorStatusId": zod.string().nullable(),
   "errorStatusName": zod.string().nullable(),
@@ -7199,13 +7206,18 @@ export const GetAutoPrintConfigResponse = zod.object({
   "statusId": zod.string().min(1),
   "statusName": zod.string()
 }))
-}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.')
+}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.')
 
 
 /**
  * @summary Replace the auto-print configuration (server normalizes invalid fields to safe defaults)
  */
+export const updateAutoPrintConfigBodyScheduleModeDefault = `interval`;
 export const updateAutoPrintConfigBodyScheduleHoursMax = 24;
+
+export const updateAutoPrintConfigBodyDailyTimesItemRegExp = new RegExp('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$');
+export const updateAutoPrintConfigBodyDailyTimesDefault = [`06:00`];
+export const updateAutoPrintConfigBodyDailyTimesMax = 12;
 
 export const updateAutoPrintConfigBodyCopiesMax = 10;
 
@@ -7215,7 +7227,9 @@ export const updateAutoPrintConfigBodyCopiesMax = 10;
 
 export const UpdateAutoPrintConfigBody = zod.object({
   "enabled": zod.boolean(),
+  "scheduleMode": zod.enum(['interval', 'daily']).default(updateAutoPrintConfigBodyScheduleModeDefault).describe('The one active schedule: interval (scheduleHours) or daily (dailyTimes in America\/New_York).'),
   "scheduleHours": zod.number().min(1).max(updateAutoPrintConfigBodyScheduleHoursMax),
+  "dailyTimes": zod.array(zod.string().regex(updateAutoPrintConfigBodyDailyTimesItemRegExp)).max(updateAutoPrintConfigBodyDailyTimesMax).default(updateAutoPrintConfigBodyDailyTimesDefault).describe('Eastern local clock times for daily mode. DST is handled in America\/New_York; nonexistent spring-forward minutes do not run and repeated fall-back minutes run once.'),
   "sourceStatusIds": zod.array(zod.string()),
   "errorStatusId": zod.string().nullable(),
   "errorStatusName": zod.string().nullable(),
@@ -7228,9 +7242,14 @@ export const UpdateAutoPrintConfigBody = zod.object({
   "statusId": zod.string().min(1),
   "statusName": zod.string()
 }))
-}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.')
+}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.')
 
+export const updateAutoPrintConfigResponseScheduleModeDefault = `interval`;
 export const updateAutoPrintConfigResponseScheduleHoursMax = 24;
+
+export const updateAutoPrintConfigResponseDailyTimesItemRegExp = new RegExp('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$');
+export const updateAutoPrintConfigResponseDailyTimesDefault = [`06:00`];
+export const updateAutoPrintConfigResponseDailyTimesMax = 12;
 
 export const updateAutoPrintConfigResponseCopiesMax = 10;
 
@@ -7240,7 +7259,9 @@ export const updateAutoPrintConfigResponseCopiesMax = 10;
 
 export const UpdateAutoPrintConfigResponse = zod.object({
   "enabled": zod.boolean(),
+  "scheduleMode": zod.enum(['interval', 'daily']).default(updateAutoPrintConfigResponseScheduleModeDefault).describe('The one active schedule: interval (scheduleHours) or daily (dailyTimes in America\/New_York).'),
   "scheduleHours": zod.number().min(1).max(updateAutoPrintConfigResponseScheduleHoursMax),
+  "dailyTimes": zod.array(zod.string().regex(updateAutoPrintConfigResponseDailyTimesItemRegExp)).max(updateAutoPrintConfigResponseDailyTimesMax).default(updateAutoPrintConfigResponseDailyTimesDefault).describe('Eastern local clock times for daily mode. DST is handled in America\/New_York; nonexistent spring-forward minutes do not run and repeated fall-back minutes run once.'),
   "sourceStatusIds": zod.array(zod.string()),
   "errorStatusId": zod.string().nullable(),
   "errorStatusName": zod.string().nullable(),
@@ -7253,7 +7274,7 @@ export const UpdateAutoPrintConfigResponse = zod.object({
   "statusId": zod.string().min(1),
   "statusName": zod.string()
 }))
-}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints.')
+}).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.')
 
 
 /**
