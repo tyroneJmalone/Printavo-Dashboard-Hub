@@ -10501,6 +10501,421 @@ export const PlaygroundKnowledgeResponse = zod.object({
 
 
 /**
+ * @summary List recent knowledge playground feedback (staff only)
+ */
+export const listKnowledgePlaygroundFeedbackQueryLimitDefault = 50;
+export const listKnowledgePlaygroundFeedbackQueryLimitMax = 100;
+
+
+
+export const ListKnowledgePlaygroundFeedbackQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listKnowledgePlaygroundFeedbackQueryLimitMax).default(listKnowledgePlaygroundFeedbackQueryLimitDefault)
+})
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotReplyMax = 4000;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotSearchQueriesItemMax = 120;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotSearchQueriesMax = 3;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesItemIdMax = 200;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesItemTitleMax = 300;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesItemBodyMax = 4000;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesItemCategoryMax = 100;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesMax = 8;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotUsedEntryIdsItemMax = 200;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotUsedEntryIdsMax = 8;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceItemIdMax = 200;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceItemTitleMax = 300;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceItemBodyMax = 4000;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceItemCategoryMax = 100;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceMax = 3;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotNoteMax = 2000;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSourcesItemIdMax = 200;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSourcesItemTitleMax = 300;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSourcesItemBodyMax = 4000;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSourcesItemCategoryMax = 100;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemSubmittedByEmailMax = 254;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackItemReviewedByOneEmailMax = 254;
+
+export const listKnowledgePlaygroundFeedbackResponseFeedbackMax = 100;
+
+
+
+export const ListKnowledgePlaygroundFeedbackResponse = zod.object({
+  "feedback": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "message": zod.string(),
+  "verdict": zod.enum(['helpful', 'needs_work']),
+  "issues": zod.array(zod.enum(['facts', 'missing_knowledge', 'tone', 'wording'])),
+  "comment": zod.string().nullable(),
+  "correctedReply": zod.string().nullable(),
+  "snapshot": zod.object({
+  "trust": zod.enum(['staff-submitted']).describe('This snapshot is bounded client-submitted evidence, not trusted ground truth or a knowledge-base update.'),
+  "reply": zod.string().min(1).max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotReplyMax),
+  "searchQueries": zod.array(zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotSearchQueriesItemMax)).max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotSearchQueriesMax),
+  "retrievedEntries": zod.array(zod.object({
+  "id": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesItemIdMax),
+  "title": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesItemTitleMax),
+  "body": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesItemBodyMax),
+  "category": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotRetrievedEntriesMax),
+  "usedEntryIds": zod.array(zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotUsedEntryIdsItemMax)).max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotUsedEntryIdsMax),
+  "brandGuidance": zod.array(zod.object({
+  "id": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceItemIdMax),
+  "title": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceItemTitleMax),
+  "body": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceItemBodyMax),
+  "category": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotBrandGuidanceMax),
+  "includeDrafts": zod.boolean(),
+  "note": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSnapshotNoteMax)
+}),
+  "includeDrafts": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSourcesItemIdMax),
+  "title": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSourcesItemTitleMax),
+  "body": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSourcesItemBodyMax),
+  "category": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSourcesItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})),
+  "submittedBy": zod.object({
+  "staffId": zod.string().uuid(),
+  "email": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemSubmittedByEmailMax)
+}),
+  "reviewed": zod.boolean(),
+  "reviewedBy": zod.union([zod.object({
+  "staffId": zod.string().uuid(),
+  "email": zod.string().max(listKnowledgePlaygroundFeedbackResponseFeedbackItemReviewedByOneEmailMax)
+}),zod.null()]),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})).max(listKnowledgePlaygroundFeedbackResponseFeedbackMax)
+})
+
+
+/**
+ * Stores the tested message, immutable staff-submitted result snapshot, bounded source snapshot, and authenticated staff attribution. This never changes the knowledge base or promotes a draft.
+ * @summary Save explicit feedback for a knowledge playground test (staff only)
+ */
+export const createKnowledgePlaygroundFeedbackBodyMessageMin = 3;
+export const createKnowledgePlaygroundFeedbackBodyMessageMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackBodyIssuesMax = 4;
+
+export const createKnowledgePlaygroundFeedbackBodyCommentMax = 2000;
+
+export const createKnowledgePlaygroundFeedbackBodyCorrectedReplyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotReplyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotSearchQueriesItemMax = 120;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotSearchQueriesMax = 3;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesItemIdMax = 200;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesItemTitleMax = 300;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesItemBodyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesItemCategoryMax = 100;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesMax = 8;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotUsedEntryIdsItemMax = 200;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotUsedEntryIdsMax = 8;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceItemIdMax = 200;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceItemTitleMax = 300;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceItemBodyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceItemCategoryMax = 100;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceMax = 3;
+
+export const createKnowledgePlaygroundFeedbackBodySnapshotNoteMax = 2000;
+
+export const createKnowledgePlaygroundFeedbackBodySourcesItemIdMax = 200;
+
+export const createKnowledgePlaygroundFeedbackBodySourcesItemTitleMax = 300;
+
+export const createKnowledgePlaygroundFeedbackBodySourcesItemBodyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackBodySourcesItemCategoryMax = 100;
+
+export const createKnowledgePlaygroundFeedbackBodySourcesMax = 8;
+
+
+
+export const CreateKnowledgePlaygroundFeedbackBody = zod.object({
+  "message": zod.string().min(createKnowledgePlaygroundFeedbackBodyMessageMin).max(createKnowledgePlaygroundFeedbackBodyMessageMax),
+  "verdict": zod.enum(['helpful', 'needs_work']),
+  "issues": zod.array(zod.enum(['facts', 'missing_knowledge', 'tone', 'wording'])).max(createKnowledgePlaygroundFeedbackBodyIssuesMax),
+  "comment": zod.string().max(createKnowledgePlaygroundFeedbackBodyCommentMax).nullish(),
+  "correctedReply": zod.string().max(createKnowledgePlaygroundFeedbackBodyCorrectedReplyMax).nullish(),
+  "snapshot": zod.object({
+  "reply": zod.string().min(1).max(createKnowledgePlaygroundFeedbackBodySnapshotReplyMax),
+  "searchQueries": zod.array(zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotSearchQueriesItemMax)).max(createKnowledgePlaygroundFeedbackBodySnapshotSearchQueriesMax),
+  "retrievedEntries": zod.array(zod.object({
+  "id": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesItemIdMax),
+  "title": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesItemTitleMax),
+  "body": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesItemBodyMax),
+  "category": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(createKnowledgePlaygroundFeedbackBodySnapshotRetrievedEntriesMax),
+  "usedEntryIds": zod.array(zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotUsedEntryIdsItemMax)).max(createKnowledgePlaygroundFeedbackBodySnapshotUsedEntryIdsMax),
+  "brandGuidance": zod.array(zod.object({
+  "id": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceItemIdMax),
+  "title": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceItemTitleMax),
+  "body": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceItemBodyMax),
+  "category": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(createKnowledgePlaygroundFeedbackBodySnapshotBrandGuidanceMax),
+  "includeDrafts": zod.boolean(),
+  "note": zod.string().max(createKnowledgePlaygroundFeedbackBodySnapshotNoteMax)
+}),
+  "includeDrafts": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.string().max(createKnowledgePlaygroundFeedbackBodySourcesItemIdMax),
+  "title": zod.string().max(createKnowledgePlaygroundFeedbackBodySourcesItemTitleMax),
+  "body": zod.string().max(createKnowledgePlaygroundFeedbackBodySourcesItemBodyMax),
+  "category": zod.string().max(createKnowledgePlaygroundFeedbackBodySourcesItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(createKnowledgePlaygroundFeedbackBodySourcesMax)
+})
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotReplyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotSearchQueriesItemMax = 120;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotSearchQueriesMax = 3;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesItemIdMax = 200;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesItemTitleMax = 300;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesItemBodyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesItemCategoryMax = 100;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesMax = 8;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotUsedEntryIdsItemMax = 200;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotUsedEntryIdsMax = 8;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceItemIdMax = 200;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceItemTitleMax = 300;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceItemBodyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceItemCategoryMax = 100;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceMax = 3;
+
+export const createKnowledgePlaygroundFeedbackResponseSnapshotNoteMax = 2000;
+
+export const createKnowledgePlaygroundFeedbackResponseSourcesItemIdMax = 200;
+
+export const createKnowledgePlaygroundFeedbackResponseSourcesItemTitleMax = 300;
+
+export const createKnowledgePlaygroundFeedbackResponseSourcesItemBodyMax = 4000;
+
+export const createKnowledgePlaygroundFeedbackResponseSourcesItemCategoryMax = 100;
+
+export const createKnowledgePlaygroundFeedbackResponseSubmittedByEmailMax = 254;
+
+export const createKnowledgePlaygroundFeedbackResponseReviewedByOneEmailMax = 254;
+
+
+
+export const CreateKnowledgePlaygroundFeedbackResponse = zod.object({
+  "id": zod.string().uuid(),
+  "message": zod.string(),
+  "verdict": zod.enum(['helpful', 'needs_work']),
+  "issues": zod.array(zod.enum(['facts', 'missing_knowledge', 'tone', 'wording'])),
+  "comment": zod.string().nullable(),
+  "correctedReply": zod.string().nullable(),
+  "snapshot": zod.object({
+  "trust": zod.enum(['staff-submitted']).describe('This snapshot is bounded client-submitted evidence, not trusted ground truth or a knowledge-base update.'),
+  "reply": zod.string().min(1).max(createKnowledgePlaygroundFeedbackResponseSnapshotReplyMax),
+  "searchQueries": zod.array(zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotSearchQueriesItemMax)).max(createKnowledgePlaygroundFeedbackResponseSnapshotSearchQueriesMax),
+  "retrievedEntries": zod.array(zod.object({
+  "id": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesItemIdMax),
+  "title": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesItemTitleMax),
+  "body": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesItemBodyMax),
+  "category": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(createKnowledgePlaygroundFeedbackResponseSnapshotRetrievedEntriesMax),
+  "usedEntryIds": zod.array(zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotUsedEntryIdsItemMax)).max(createKnowledgePlaygroundFeedbackResponseSnapshotUsedEntryIdsMax),
+  "brandGuidance": zod.array(zod.object({
+  "id": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceItemIdMax),
+  "title": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceItemTitleMax),
+  "body": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceItemBodyMax),
+  "category": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(createKnowledgePlaygroundFeedbackResponseSnapshotBrandGuidanceMax),
+  "includeDrafts": zod.boolean(),
+  "note": zod.string().max(createKnowledgePlaygroundFeedbackResponseSnapshotNoteMax)
+}),
+  "includeDrafts": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.string().max(createKnowledgePlaygroundFeedbackResponseSourcesItemIdMax),
+  "title": zod.string().max(createKnowledgePlaygroundFeedbackResponseSourcesItemTitleMax),
+  "body": zod.string().max(createKnowledgePlaygroundFeedbackResponseSourcesItemBodyMax),
+  "category": zod.string().max(createKnowledgePlaygroundFeedbackResponseSourcesItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})),
+  "submittedBy": zod.object({
+  "staffId": zod.string().uuid(),
+  "email": zod.string().max(createKnowledgePlaygroundFeedbackResponseSubmittedByEmailMax)
+}),
+  "reviewed": zod.boolean(),
+  "reviewedBy": zod.union([zod.object({
+  "staffId": zod.string().uuid(),
+  "email": zod.string().max(createKnowledgePlaygroundFeedbackResponseReviewedByOneEmailMax)
+}),zod.null()]),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Resolve or reopen saved knowledge playground feedback (staff only)
+ */
+export const UpdateKnowledgePlaygroundFeedbackReviewParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const UpdateKnowledgePlaygroundFeedbackReviewBody = zod.object({
+  "reviewed": zod.boolean()
+})
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotReplyMax = 4000;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotSearchQueriesItemMax = 120;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotSearchQueriesMax = 3;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesItemIdMax = 200;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesItemTitleMax = 300;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesItemBodyMax = 4000;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesItemCategoryMax = 100;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesMax = 8;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotUsedEntryIdsItemMax = 200;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotUsedEntryIdsMax = 8;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceItemIdMax = 200;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceItemTitleMax = 300;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceItemBodyMax = 4000;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceItemCategoryMax = 100;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceMax = 3;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSnapshotNoteMax = 2000;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSourcesItemIdMax = 200;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSourcesItemTitleMax = 300;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSourcesItemBodyMax = 4000;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSourcesItemCategoryMax = 100;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseSubmittedByEmailMax = 254;
+
+export const updateKnowledgePlaygroundFeedbackReviewResponseReviewedByOneEmailMax = 254;
+
+
+
+export const UpdateKnowledgePlaygroundFeedbackReviewResponse = zod.object({
+  "id": zod.string().uuid(),
+  "message": zod.string(),
+  "verdict": zod.enum(['helpful', 'needs_work']),
+  "issues": zod.array(zod.enum(['facts', 'missing_knowledge', 'tone', 'wording'])),
+  "comment": zod.string().nullable(),
+  "correctedReply": zod.string().nullable(),
+  "snapshot": zod.object({
+  "trust": zod.enum(['staff-submitted']).describe('This snapshot is bounded client-submitted evidence, not trusted ground truth or a knowledge-base update.'),
+  "reply": zod.string().min(1).max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotReplyMax),
+  "searchQueries": zod.array(zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotSearchQueriesItemMax)).max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotSearchQueriesMax),
+  "retrievedEntries": zod.array(zod.object({
+  "id": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesItemIdMax),
+  "title": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesItemTitleMax),
+  "body": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesItemBodyMax),
+  "category": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotRetrievedEntriesMax),
+  "usedEntryIds": zod.array(zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotUsedEntryIdsItemMax)).max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotUsedEntryIdsMax),
+  "brandGuidance": zod.array(zod.object({
+  "id": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceItemIdMax),
+  "title": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceItemTitleMax),
+  "body": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceItemBodyMax),
+  "category": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})).max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotBrandGuidanceMax),
+  "includeDrafts": zod.boolean(),
+  "note": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSnapshotNoteMax)
+}),
+  "includeDrafts": zod.boolean(),
+  "sources": zod.array(zod.object({
+  "id": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSourcesItemIdMax),
+  "title": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSourcesItemTitleMax),
+  "body": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSourcesItemBodyMax),
+  "category": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSourcesItemCategoryMax),
+  "reviewStatus": zod.enum(['draft', 'approved'])
+})),
+  "submittedBy": zod.object({
+  "staffId": zod.string().uuid(),
+  "email": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseSubmittedByEmailMax)
+}),
+  "reviewed": zod.boolean(),
+  "reviewedBy": zod.union([zod.object({
+  "staffId": zod.string().uuid(),
+  "email": zod.string().max(updateKnowledgePlaygroundFeedbackReviewResponseReviewedByOneEmailMax)
+}),zod.null()]),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * Deletes the selected entries in one transaction. The request must include explicit confirmation and a per-entry updatedAt/reviewStatus snapshot captured at confirmation; missing or concurrently changed selections abort the whole operation.
  * @summary Permanently delete multiple knowledge entries (admin only)
  */
@@ -10907,6 +11322,115 @@ export const RetryKnowledgeDocumentParams = zod.object({
 
 export const RetryKnowledgeDocumentResponse = zod.object({
   "draftCount": zod.number()
+})
+
+
+/**
+ * Reads only the already stored extracted text and returns short-lived, non-persisting tone candidates. Every candidate remains a human-review draft until explicitly selected for commit.
+ * @summary Preview explicit tone and lexicon recovery from stored source text (admin only)
+ */
+export const PreviewKnowledgeToneRecoveryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const PreviewKnowledgeToneRecoveryBody = zod.object({
+  "confirmStoredText": zod.literal(true).describe('Confirm that the preview may read only the document\'s already stored extracted text.')
+})
+
+export const previewKnowledgeToneRecoveryResponseCandidatesItemCandidateIdRegExp = new RegExp('^[a-f0-9]{64}$');
+export const previewKnowledgeToneRecoveryResponseCandidatesItemTitleMax = 1000;
+
+export const previewKnowledgeToneRecoveryResponseCandidatesItemBodyMax = 2000;
+
+export const previewKnowledgeToneRecoveryResponseCandidatesItemTagsItemMax = 40;
+
+export const previewKnowledgeToneRecoveryResponseCandidatesItemTagsMax = 8;
+
+export const previewKnowledgeToneRecoveryResponseCandidatesItemSourceIndexesItemMin = 0;
+
+export const previewKnowledgeToneRecoveryResponseCandidatesItemSourceIndexesMax = 200;
+
+export const previewKnowledgeToneRecoveryResponseCandidatesItemDateNoteMax = 500;
+
+export const previewKnowledgeToneRecoveryResponseCandidatesMax = 100;
+
+export const previewKnowledgeToneRecoveryResponseExcludedDateBoundItemTitleMax = 1000;
+
+export const previewKnowledgeToneRecoveryResponseExcludedDateBoundItemBodyMax = 2000;
+
+export const previewKnowledgeToneRecoveryResponseExcludedDateBoundItemDateNoteMax = 500;
+
+export const previewKnowledgeToneRecoveryResponseAssessmentCandidateCountMin = 0;
+export const previewKnowledgeToneRecoveryResponseAssessmentCandidateCountMax = 100;
+
+
+
+export const PreviewKnowledgeToneRecoveryResponse = zod.object({
+  "token": zod.string().uuid(),
+  "documentId": zod.string().uuid(),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "candidates": zod.array(zod.object({
+  "candidateId": zod.string().regex(previewKnowledgeToneRecoveryResponseCandidatesItemCandidateIdRegExp),
+  "title": zod.string().max(previewKnowledgeToneRecoveryResponseCandidatesItemTitleMax),
+  "body": zod.string().min(1).max(previewKnowledgeToneRecoveryResponseCandidatesItemBodyMax),
+  "candidateType": zod.enum(['tone']),
+  "category": zod.enum(['general']),
+  "tags": zod.array(zod.string().min(1).max(previewKnowledgeToneRecoveryResponseCandidatesItemTagsItemMax)).max(previewKnowledgeToneRecoveryResponseCandidatesItemTagsMax),
+  "sourceIndexes": zod.array(zod.number().min(previewKnowledgeToneRecoveryResponseCandidatesItemSourceIndexesItemMin)).min(1).max(previewKnowledgeToneRecoveryResponseCandidatesItemSourceIndexesMax),
+  "effectiveDate": zod.coerce.date().nullable(),
+  "expiresDate": zod.coerce.date().nullable(),
+  "dateBound": zod.boolean(),
+  "dateNote": zod.string().max(previewKnowledgeToneRecoveryResponseCandidatesItemDateNoteMax).nullable()
+})).max(previewKnowledgeToneRecoveryResponseCandidatesMax),
+  "excludedDateBound": zod.array(zod.object({
+  "title": zod.string().max(previewKnowledgeToneRecoveryResponseExcludedDateBoundItemTitleMax),
+  "body": zod.string().min(1).max(previewKnowledgeToneRecoveryResponseExcludedDateBoundItemBodyMax),
+  "dateNote": zod.string().max(previewKnowledgeToneRecoveryResponseExcludedDateBoundItemDateNoteMax).nullable()
+})),
+  "assessment": zod.object({
+  "candidateCount": zod.number().min(previewKnowledgeToneRecoveryResponseAssessmentCandidateCountMin).max(previewKnowledgeToneRecoveryResponseAssessmentCandidateCountMax),
+  "retrievalCap": zod.literal(3),
+  "toneBodyCharacterLimit": zod.literal(2000),
+  "mayExceedRetrievalCap": zod.boolean(),
+  "message": zod.string()
+})
+})
+
+
+/**
+ * Consumes a staff-scoped preview token and saves only explicitly selected tone candidates. Existing approved entries remain preserved; saved candidates remain drafts and are never auto-approved.
+ * @summary Save selected tone recovery candidates as reviewable drafts (admin only)
+ */
+export const CommitKnowledgeToneRecoveryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const commitKnowledgeToneRecoveryBodyCandidateIdsItemRegExp = new RegExp('^[a-f0-9]{64}$');
+export const commitKnowledgeToneRecoveryBodyCandidateIdsMax = 100;
+
+
+
+export const CommitKnowledgeToneRecoveryBody = zod.object({
+  "token": zod.string().uuid(),
+  "candidateIds": zod.array(zod.string().regex(commitKnowledgeToneRecoveryBodyCandidateIdsItemRegExp)).min(1).max(commitKnowledgeToneRecoveryBodyCandidateIdsMax)
+})
+
+export const commitKnowledgeToneRecoveryResponseAddedDraftsMin = 0;
+
+export const commitKnowledgeToneRecoveryResponseSkippedExistingMin = 0;
+
+export const commitKnowledgeToneRecoveryResponseApprovedPreservedMin = 0;
+
+export const commitKnowledgeToneRecoveryResponseDraftCountMin = 0;
+
+
+
+export const CommitKnowledgeToneRecoveryResponse = zod.object({
+  "addedDrafts": zod.number().min(commitKnowledgeToneRecoveryResponseAddedDraftsMin),
+  "skippedExisting": zod.number().min(commitKnowledgeToneRecoveryResponseSkippedExistingMin),
+  "approvedPreserved": zod.number().min(commitKnowledgeToneRecoveryResponseApprovedPreservedMin),
+  "draftCount": zod.number().min(commitKnowledgeToneRecoveryResponseDraftCountMin)
 })
 
 

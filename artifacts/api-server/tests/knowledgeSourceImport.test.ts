@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   canRetryKnowledgeDocument,
   chunkExtractedText,
+  applicabilityReviewBody,
+  draftSourceSectionKey,
   draftOnlyUnsharedEntryIds,
   importFailurePatch,
   isMeaningfulDraftFragment,
@@ -10,7 +12,9 @@ import {
   isRetryableTransactionAbort,
   normalizeExtractedText,
   normalizeDraftTitle,
+  planToneRecovery,
   semanticBatches,
+  toneRecoveryFingerprint,
   validateSemanticDraftCoverage,
 } from "../src/lib/knowledgeSourceImport";
 
@@ -174,4 +178,54 @@ test("semantic batches keep every bounded window without silent truncation", () 
     source.map((section) => section.title),
   );
   assert.ok(batches.every((batch) => batch.length > 0));
+});
+
+test("normal import keeps a tone candidate when a fact cites the same source window", () => {
+  const section = { title: "Brand language", body: "Use warm, welcoming language." };
+  const factKey = draftSourceSectionKey(section, "fact");
+  const toneKey = draftSourceSectionKey(section, "tone");
+  assert.notEqual(factKey, toneKey);
+  assert.match(toneKey, /^tone-v1:/);
+  assert.equal(
+    new Set([factKey, toneKey]).size,
+    2,
+    "fact and tone links must not suppress one another",
+  );
+});
+
+test("tone recovery is idempotent and never replaces an approved entry", () => {
+  const candidate = {
+    title: "Preferred vocabulary",
+    body: 'Say "welcoming"; avoid "cheap".',
+    tags: ["lexicon"],
+    sourceKeys: ["source-window:tone"],
+  };
+  const approved = {
+    ...candidate,
+    entryId: "approved-tone",
+    reviewStatus: "approved",
+  };
+  const first = planToneRecovery([candidate], [approved]);
+  assert.deepEqual(first.toInsert, []);
+  assert.equal(first.skippedExisting, 1);
+  assert.equal(first.approvedPreserved, 1);
+
+  const inserted = {
+    ...candidate,
+    entryId: "new-tone",
+    reviewStatus: "draft",
+  };
+  const second = planToneRecovery([candidate, candidate], [inserted]);
+  assert.deepEqual(second.toInsert, []);
+  assert.equal(second.skippedExisting, 2);
+  assert.equal(second.approvedPreserved, 0);
+  assert.equal(toneRecoveryFingerprint(candidate), toneRecoveryFingerprint(inserted));
+});
+
+test("date-bound normal imports retain source rules as internal applicability-review drafts", () => {
+  const sourceBody = "Use the anniversary badge from April 2026 through April 2027.";
+  const preserved = applicabilityReviewBody(sourceBody);
+  assert.match(preserved, /Applicability review required/);
+  assert.match(preserved, /Do not treat this draft as evergreen/);
+  assert.match(preserved, /April 2026 through April 2027/);
 });

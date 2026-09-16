@@ -6553,6 +6553,94 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /knowledge/playground-feedback:
+    get:
+      operationId: listKnowledgePlaygroundFeedback
+      tags: [knowledge]
+      summary: List recent knowledge playground feedback (staff only)
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Recent explicit staff feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgePlaygroundFeedbackListResponse"
+        "400":
+          description: Invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createKnowledgePlaygroundFeedback
+      tags: [knowledge]
+      summary: Save explicit feedback for a knowledge playground test (staff only)
+      description: Stores the tested message, immutable staff-submitted result snapshot, bounded source snapshot, and authenticated staff attribution. This never changes the knowledge base or promotes a draft.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgePlaygroundFeedbackInput"
+      responses:
+        "201":
+          description: Saved playground feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgePlaygroundFeedback"
+        "400":
+          description: Invalid feedback or bounded result snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /knowledge/playground-feedback/{id}/review:
+    patch:
+      operationId: updateKnowledgePlaygroundFeedbackReview
+      tags: [knowledge]
+      summary: Resolve or reopen saved knowledge playground feedback (staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgePlaygroundFeedbackReviewInput"
+      responses:
+        "200":
+          description: Updated reviewed status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgePlaygroundFeedback"
+        "400":
+          description: Invalid feedback review request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Feedback not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /knowledge/entries/bulk-delete:
     post:
       operationId: bulkDeleteKnowledgeEntries
@@ -6822,6 +6910,91 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
         "422":
           description: Stored text is unavailable or draft extraction failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /knowledge/documents/{id}/tone-recovery/preview:
+    post:
+      operationId: previewKnowledgeToneRecovery
+      tags: [knowledge]
+      summary: Preview explicit tone and lexicon recovery from stored source text (admin only)
+      description: Reads only the already stored extracted text and returns short-lived, non-persisting tone candidates. Every candidate remains a human-review draft until explicitly selected for commit.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeToneRecoveryPreviewInput"
+      responses:
+        "200":
+          description: Tone recovery candidates for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KnowledgeToneRecoveryPreviewResponse" }
+        "400":
+          description: Invalid document id or preview confirmation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Document or source not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Document is not eligible for tone recovery
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: Stored text cannot produce a tone recovery preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "429":
+          description: Tone recovery preview is rate-limited or already in progress
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /knowledge/documents/{id}/tone-recovery/commit:
+    post:
+      operationId: commitKnowledgeToneRecovery
+      tags: [knowledge]
+      summary: Save selected tone recovery candidates as reviewable drafts (admin only)
+      description: Consumes a staff-scoped preview token and saves only explicitly selected tone candidates. Existing approved entries remain preserved; saved candidates remain drafts and are never auto-approved.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeToneRecoveryCommitInput"
+      responses:
+        "200":
+          description: Selected tone candidates committed as drafts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/KnowledgeToneRecoveryCommitResponse" }
+        "400":
+          description: Invalid document id or commit body
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Preview token or candidate selection is stale, expired, or belongs to another staff session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "422":
+          description: Tone recovery candidates could not be saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "429":
+          description: Tone recovery commit is already in progress
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -13242,6 +13415,98 @@ components:
       required: [draftCount]
       properties:
         draftCount: { type: integer }
+    KnowledgeToneRecoveryPreviewInput:
+      type: object
+      required: [confirmStoredText]
+      properties:
+        confirmStoredText:
+          type: boolean
+          enum: [true]
+          description: Confirm that the preview may read only the document's already stored extracted text.
+    KnowledgeToneRecoveryCandidate:
+      type: object
+      required: [candidateId, title, body, candidateType, category, tags, sourceIndexes, effectiveDate, expiresDate, dateBound, dateNote]
+      properties:
+        candidateId:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+        title: { type: string, maxLength: 1000 }
+        body: { type: string, minLength: 1, maxLength: 2000 }
+        candidateType:
+          type: string
+          enum: [tone]
+        category:
+          type: string
+          enum: [general]
+        tags:
+          type: array
+          maxItems: 8
+          items: { type: string, minLength: 1, maxLength: 40 }
+        sourceIndexes:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { type: integer, minimum: 0 }
+        effectiveDate: { type: ["string", "null"], format: date }
+        expiresDate: { type: ["string", "null"], format: date }
+        dateBound: { type: boolean }
+        dateNote: { type: ["string", "null"], maxLength: 500 }
+    KnowledgeToneRecoveryExcludedDateBoundCandidate:
+      type: object
+      required: [title, body, dateNote]
+      properties:
+        title: { type: string, maxLength: 1000 }
+        body: { type: string, minLength: 1, maxLength: 2000 }
+        dateNote: { type: ["string", "null"], maxLength: 500 }
+    KnowledgeToneRecoveryAssessment:
+      type: object
+      required: [candidateCount, retrievalCap, toneBodyCharacterLimit, mayExceedRetrievalCap, message]
+      properties:
+        candidateCount: { type: integer, minimum: 0, maximum: 100 }
+        retrievalCap: { type: integer, enum: [3] }
+        toneBodyCharacterLimit: { type: integer, enum: [2000] }
+        mayExceedRetrievalCap: { type: boolean }
+        message: { type: string }
+    KnowledgeToneRecoveryPreviewResponse:
+      type: object
+      required: [token, documentId, sourceName, sourceUrl, candidates, excludedDateBound, assessment]
+      properties:
+        token: { type: string, format: uuid }
+        documentId: { type: string, format: uuid }
+        sourceName: { type: string }
+        sourceUrl: { type: string }
+        candidates:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/KnowledgeToneRecoveryCandidate"
+        excludedDateBound:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnowledgeToneRecoveryExcludedDateBoundCandidate"
+        assessment:
+          $ref: "#/components/schemas/KnowledgeToneRecoveryAssessment"
+    KnowledgeToneRecoveryCommitInput:
+      type: object
+      required: [token, candidateIds]
+      properties:
+        token: { type: string, format: uuid }
+        candidateIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            pattern: "^[a-f0-9]{64}$"
+    KnowledgeToneRecoveryCommitResponse:
+      type: object
+      required: [addedDrafts, skippedExisting, approvedPreserved, draftCount]
+      properties:
+        addedDrafts: { type: integer, minimum: 0 }
+        skippedExisting: { type: integer, minimum: 0 }
+        approvedPreserved: { type: integer, minimum: 0 }
+        draftCount: { type: integer, minimum: 0 }
     KnowledgeSourceSyncResult:
       type: object
       required: [sourceId, documents, drafts]
@@ -13521,6 +13786,167 @@ components:
           type: boolean
           description: Effective draft-inclusion mode used for this response.
         note: { type: string }
+    KnowledgePlaygroundFeedbackIssue:
+      type: string
+      enum: [facts, missing_knowledge, tone, wording]
+    KnowledgePlaygroundFeedbackVerdict:
+      type: string
+      enum: [helpful, needs_work]
+    KnowledgePlaygroundFeedbackSource:
+      type: object
+      required: [id, title, body, category, reviewStatus]
+      properties:
+        id: { type: string, maxLength: 200 }
+        title: { type: string, maxLength: 300 }
+        body: { type: string, maxLength: 4000 }
+        category: { type: string, maxLength: 100 }
+        reviewStatus: { type: string, enum: [draft, approved] }
+    KnowledgePlaygroundFeedbackEntry:
+      type: object
+      required: [id, title, body, category, reviewStatus]
+      properties:
+        id: { type: string, maxLength: 200 }
+        title: { type: string, maxLength: 300 }
+        body: { type: string, maxLength: 4000 }
+        category: { type: string, maxLength: 100 }
+        reviewStatus: { type: string, enum: [draft, approved] }
+    KnowledgePlaygroundFeedbackBrandGuidance:
+      type: object
+      required: [id, title, body, category, reviewStatus]
+      properties:
+        id: { type: string, maxLength: 200 }
+        title: { type: string, maxLength: 300 }
+        body: { type: string, maxLength: 4000 }
+        category: { type: string, maxLength: 100 }
+        reviewStatus: { type: string, enum: [draft, approved] }
+    KnowledgePlaygroundFeedbackSnapshotInput:
+      type: object
+      required: [reply, searchQueries, retrievedEntries, usedEntryIds, brandGuidance, includeDrafts, note]
+      properties:
+        reply: { type: string, minLength: 1, maxLength: 4000 }
+        searchQueries:
+          type: array
+          maxItems: 3
+          items: { type: string, maxLength: 120 }
+        retrievedEntries:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedbackEntry"
+        usedEntryIds:
+          type: array
+          maxItems: 8
+          items: { type: string, maxLength: 200 }
+        brandGuidance:
+          type: array
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedbackBrandGuidance"
+        includeDrafts: { type: boolean }
+        note: { type: string, maxLength: 2000 }
+    KnowledgePlaygroundFeedbackSnapshot:
+      type: object
+      required: [trust, reply, searchQueries, retrievedEntries, usedEntryIds, brandGuidance, includeDrafts, note]
+      properties:
+        trust:
+          type: string
+          enum: [staff-submitted]
+          description: This snapshot is bounded client-submitted evidence, not trusted ground truth or a knowledge-base update.
+        reply: { type: string, minLength: 1, maxLength: 4000 }
+        searchQueries:
+          type: array
+          maxItems: 3
+          items: { type: string, maxLength: 120 }
+        retrievedEntries:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedbackEntry"
+        usedEntryIds:
+          type: array
+          maxItems: 8
+          items: { type: string, maxLength: 200 }
+        brandGuidance:
+          type: array
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedbackBrandGuidance"
+        includeDrafts: { type: boolean }
+        note: { type: string, maxLength: 2000 }
+    KnowledgePlaygroundFeedbackStaff:
+      type: object
+      required: [staffId, email]
+      properties:
+        staffId: { type: string, format: uuid }
+        email: { type: string, maxLength: 254 }
+    KnowledgePlaygroundFeedbackInput:
+      type: object
+      required: [message, verdict, issues, snapshot, includeDrafts, sources]
+      properties:
+        message: { type: string, minLength: 3, maxLength: 4000 }
+        verdict:
+          $ref: "#/components/schemas/KnowledgePlaygroundFeedbackVerdict"
+        issues:
+          type: array
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedbackIssue"
+        comment: { type: ["string", "null"], maxLength: 2000 }
+        correctedReply: { type: ["string", "null"], maxLength: 4000 }
+        snapshot:
+          $ref: "#/components/schemas/KnowledgePlaygroundFeedbackSnapshotInput"
+        includeDrafts: { type: boolean }
+        sources:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedbackSource"
+    KnowledgePlaygroundFeedbackReviewInput:
+      type: object
+      required: [reviewed]
+      properties:
+        reviewed: { type: boolean }
+    KnowledgePlaygroundFeedback:
+      type: object
+      required: [id, message, verdict, issues, comment, correctedReply, snapshot, includeDrafts, sources, submittedBy, reviewed, reviewedBy, reviewedAt, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        message: { type: string }
+        verdict:
+          $ref: "#/components/schemas/KnowledgePlaygroundFeedbackVerdict"
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedbackIssue"
+        comment: { type: ["string", "null"] }
+        correctedReply: { type: ["string", "null"] }
+        snapshot:
+          $ref: "#/components/schemas/KnowledgePlaygroundFeedbackSnapshot"
+        includeDrafts: { type: boolean }
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedbackSource"
+        submittedBy:
+          $ref: "#/components/schemas/KnowledgePlaygroundFeedbackStaff"
+        reviewed: { type: boolean }
+        reviewedBy:
+          oneOf:
+            - $ref: "#/components/schemas/KnowledgePlaygroundFeedbackStaff"
+            - type: "null"
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    KnowledgePlaygroundFeedbackListResponse:
+      type: object
+      required: [feedback]
+      properties:
+        feedback:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/KnowledgePlaygroundFeedback"
     AiConsumerRecord:
       type: object
       required:

@@ -67,6 +67,7 @@ export * from "./customerBranding";
 export * from "./aiConsumers";
 export * from "./knowledgeEntries";
 export * from "./knowledgeSources";
+export * from "./knowledgePlaygroundFeedback";
 export * from "./voiceProfiles";
 export * from "./draftBacktest";
 export * from "./reorderRequests";

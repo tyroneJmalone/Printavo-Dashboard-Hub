@@ -28,9 +28,11 @@ import {
   FileText,
   FileUp,
   FolderSync,
+  Loader2,
   Pause,
   Play,
   RefreshCw,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { customFetch } from "../../../../../lib/api-client-react/src/custom-fetch";
@@ -75,6 +77,47 @@ type UploadResponse = {
   documentId: string;
   draftCount: number;
   idempotent?: boolean;
+};
+
+type ToneRecoveryCandidate = {
+  candidateId: string;
+  candidateType: "tone";
+  title: string;
+  body: string;
+  category: "general";
+  tags: string[];
+  sourceIndexes: number[];
+  effectiveDate: string | null;
+  expiresDate: string | null;
+  dateBound: boolean;
+  dateNote: string | null;
+};
+
+type ToneRecoveryPreviewResponse = {
+  token: string;
+  documentId: string;
+  sourceName: string;
+  sourceUrl: string;
+  candidates: ToneRecoveryCandidate[];
+  excludedDateBound?: Array<{
+    title: string;
+    body: string;
+    dateNote: string | null;
+  }>;
+  assessment: {
+    candidateCount: number;
+    retrievalCap: number;
+    toneBodyCharacterLimit: number;
+    mayExceedRetrievalCap: boolean;
+    message: string;
+  };
+};
+
+type ToneRecoveryCommitResponse = {
+  addedDrafts: number;
+  skippedExisting: number;
+  approvedPreserved: number;
+  draftCount: number;
 };
 
 function DocumentTextDialog({
@@ -191,6 +234,218 @@ function DocumentTextDialog({
   );
 }
 
+function ToneRecoveryDialog({
+  document,
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  document: KnowledgeSourceDocument | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => Promise<void>;
+}) {
+  const { toast } = useToast();
+  const [preview, setPreview] = useState<ToneRecoveryPreviewResponse | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !document) return;
+    let cancelled = false;
+    setLoading(true);
+    setSaving(false);
+    setPreview(null);
+    setSelected([]);
+    setError(null);
+    customFetch<ToneRecoveryPreviewResponse>(
+      `/api/knowledge/documents/${encodeURIComponent(document.id)}/tone-recovery/preview`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirmStoredText: true }),
+        responseType: "json",
+      },
+    )
+      .then((result) => {
+        if (cancelled) return;
+        setPreview(result);
+        setSelected(result.candidates.map((candidate) => candidate.candidateId));
+      })
+      .catch((requestError: unknown) => {
+        if (!cancelled) setError(errorMessage(requestError));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [document?.id, open]);
+
+  if (!document) return null;
+
+  const toggleCandidate = (candidateId: string) => {
+    setSelected((current) =>
+      current.includes(candidateId)
+        ? current.filter((id) => id !== candidateId)
+        : [...current, candidateId],
+    );
+  };
+
+  const save = async () => {
+    if (!preview || selected.length === 0) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await customFetch<ToneRecoveryCommitResponse>(
+        `/api/knowledge/documents/${encodeURIComponent(document.id)}/tone-recovery/commit`,
+        {
+          method: "POST",
+          body: JSON.stringify({ token: preview.token, candidateIds: selected }),
+          responseType: "json",
+        },
+      );
+      await onSaved();
+      toast({
+        title: result.addedDrafts ? "Tone drafts saved" : "No new tone drafts needed",
+        description: `${result.addedDrafts} new Brand/Voice draft${result.addedDrafts === 1 ? "" : "s"} saved; ${result.skippedExisting} duplicate${result.skippedExisting === 1 ? "" : "s"} skipped. Existing drafts and approvals were preserved.`,
+      });
+      onOpenChange(false);
+    } catch (requestError) {
+      setError(errorMessage(requestError));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-3xl flex-col gap-3 overflow-hidden border-slate-800 bg-slate-950 p-4 text-slate-100 sm:p-5"
+        data-testid={`dialog-tone-recovery-${document.id}`}
+      >
+        <DialogHeader className="shrink-0 pr-7">
+          <DialogTitle className="flex items-center gap-2 text-sm text-slate-100">
+            <Sparkles size={16} className="shrink-0 text-emerald-400" aria-hidden="true" />
+            Recover tone &amp; lexicon
+          </DialogTitle>
+          <DialogDescription className="text-left text-xs leading-relaxed text-slate-400">
+            Preview the stored extracted text for explicit Brand/Voice Guidance only. Select candidates to save as
+            new drafts; this action never regenerates, deletes, edits, or approves existing entries.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="rounded-md border border-emerald-900/50 bg-emerald-950/20 px-3 py-2 text-[11px] leading-relaxed text-emerald-200">
+          <strong className="font-semibold">Where this belongs:</strong> use the generic Brand/Voice Guidance group
+          for tone traits, preferred vocabulary, avoided words, and exact paired “say this / not that” examples.
+          Example prices, timelines, and promises stay wording examples—not factual policies. Factual entries keep the
+          existing internal/category-default policy.
+        </div>
+
+        {loading && (
+          <div className="flex items-center gap-2 text-xs text-slate-400" role="status">
+            <Loader2 size={14} className="animate-spin text-emerald-400" aria-hidden="true" />
+            Previewing stored text without saving…
+          </div>
+        )}
+        {error && (
+          <div className="flex items-start gap-2 rounded-md border border-red-900/50 bg-red-950/25 px-2.5 py-2 text-xs leading-relaxed text-red-200" role="alert">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        )}
+        {preview?.assessment && (
+          <div className="rounded-md border border-slate-800 bg-slate-900/60 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+            {preview.assessment.message}
+          </div>
+        )}
+        {(preview?.excludedDateBound?.length ?? 0) > 0 && preview && (
+          <div className="rounded-md border border-amber-900/50 bg-amber-950/20 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
+            <strong className="font-semibold">Date-bound guidance was not offered for saving.</strong>{" "}
+            Seasonal, anniversary, or month-only passages without exact YYYY-MM-DD dates stay excluded so they
+            cannot become evergreen Brand/Voice guidance. Review the stored source and supply exact dates if needed.
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {(preview.excludedDateBound ?? []).map((candidate) => (
+                <li key={`${candidate.title}:${candidate.dateNote ?? ""}`}>
+                  {candidate.title}{candidate.dateNote ? ` — ${candidate.dateNote}` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          {!loading && preview?.candidates.length === 0 && (
+            <div className="rounded-md border border-dashed border-slate-800 px-3 py-5 text-center text-xs text-slate-500">
+              No explicit tone or lexicon guidance was found in the stored text. No changes were made.
+            </div>
+          )}
+          {preview?.candidates.map((candidate) => {
+            const checked = selected.includes(candidate.candidateId);
+            return (
+              <label
+                key={candidate.candidateId}
+                className={`block cursor-pointer rounded-md border px-3 py-2.5 transition-colors ${
+                  checked
+                    ? "border-emerald-700/60 bg-emerald-950/20"
+                    : "border-slate-800 bg-slate-900/40 opacity-75"
+                }`}
+                data-testid={`tone-recovery-candidate-${candidate.candidateId}`}
+              >
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleCandidate(candidate.candidateId)}
+                    className="mt-0.5 accent-emerald-500"
+                    aria-label={`Select ${candidate.title}`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold text-slate-200">{candidate.title}</div>
+                    <div className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-300">
+                      {candidate.body}
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
+                      <span className="rounded bg-slate-800 px-1.5 py-0.5">Brand/Voice Guidance · draft only</span>
+                      {candidate.tags.map((tag) => (
+                        <span key={tag} className="rounded bg-slate-800 px-1.5 py-0.5">{tag}</span>
+                      ))}
+                      {(candidate.effectiveDate || candidate.expiresDate) && (
+                        <span className="rounded bg-slate-800 px-1.5 py-0.5">
+                          Applies {candidate.effectiveDate ?? "before"}–{candidate.expiresDate ?? "ongoing"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3">
+          <span className="text-[11px] text-slate-500">
+            {selected.length} of {preview?.candidates.length ?? 0} selected · source links are retained
+          </span>
+          <div className="flex gap-2">
+            <button type="button" className={ghostButton} onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={primaryButton}
+              disabled={!preview || selected.length === 0 || loading || saving}
+              onClick={() => void save()}
+            >
+              {saving ? "Saving…" : "Save selected as new drafts"}
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function KnowledgeSources() {
   const { role } = useStaff();
   const isAdmin = role === "admin";
@@ -204,6 +459,7 @@ export function KnowledgeSources() {
   const [driveName, setDriveName] = useState("");
   const [openSourceId, setOpenSourceId] = useState<string | null>(null);
   const [previewDocument, setPreviewDocument] = useState<KnowledgeSourceDocument | null>(null);
+  const [toneRecoveryDocument, setToneRecoveryDocument] = useState<KnowledgeSourceDocument | null>(null);
   const [retryingDocumentId, setRetryingDocumentId] = useState<string | null>(null);
 
   const {
@@ -497,6 +753,17 @@ export function KnowledgeSources() {
                                <span className="flex items-center gap-1"><Eye size={12} aria-hidden="true" /> View text</span>
                              </button>
                            )}
+                            {isAdmin && source.kind === "upload" && source.status === "active" && document.status === "active" && (
+                              <button
+                                className={ghostButton}
+                                data-testid={`button-recover-tone-${document.id}`}
+                                onClick={() => setToneRecoveryDocument(document)}
+                              >
+                                <span className="flex items-center gap-1">
+                                  <Sparkles size={12} aria-hidden="true" /> Recover tone / lexicon
+                                </span>
+                              </button>
+                            )}
                             {isAdmin && document.status !== "deleted" && (document.status === "error" || document.lastError || document.status === "active" || document.status === "stale") && (
                              <button
                                className={ghostButton}
@@ -534,6 +801,19 @@ export function KnowledgeSources() {
         open={Boolean(previewDocument)}
         onOpenChange={(open) => {
           if (!open) setPreviewDocument(null);
+        }}
+      />
+      <ToneRecoveryDialog
+        document={toneRecoveryDocument}
+        open={Boolean(toneRecoveryDocument)}
+        onOpenChange={(open) => {
+          if (!open) setToneRecoveryDocument(null);
+        }}
+        onSaved={async () => {
+          if (toneRecoveryDocument) {
+            await invalidateDocuments(toneRecoveryDocument.sourceId);
+          }
+          await invalidateKnowledgeEntries();
         }}
       />
     </section>

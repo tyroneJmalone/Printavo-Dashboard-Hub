@@ -1,7 +1,149 @@
+import { createHash } from "node:crypto";
+
 export type KnowledgeSourceSection = {
   title: string;
   body: string;
 };
+
+export type KnowledgeDraftKind = "fact" | "tone";
+
+export const DATE_BOUND_APPLICABILITY_REVIEW_WARNING =
+  "Applicability review required: the source gives a seasonal, month-only, or anniversary window without exact dates. Do not treat this draft as evergreen until exact applicability dates are confirmed.";
+
+export function applicabilityReviewBody(body: string): string {
+  return `${DATE_BOUND_APPLICABILITY_REVIEW_WARNING}\n\n${body}`;
+}
+
+export function toneRecoveryTopicSourceKey(baseKey: string, topicSlot: number): string {
+  if (!Number.isInteger(topicSlot) || topicSlot < 0) {
+    throw new Error("topicSlot must be a non-negative integer");
+  }
+  return `${baseKey}:topic:${topicSlot}`;
+}
+
+/**
+ * Imports created before topic slots were introduced used the base tone key.
+ * Treat that one legacy key as topic slot zero so normal imports and recovery
+ * remain idempotent without collapsing later distinct same-window topics.
+ */
+export function normalizeToneRecoverySourceKey(sectionKey: string): string {
+  if (/^tone-v1:[a-f0-9]{64}$/.test(sectionKey)) {
+    return toneRecoveryTopicSourceKey(sectionKey, 0);
+  }
+  // Early tone imports used `<hash>:tone` before the versioned namespace was
+  // added. Normalize those links too; they still identify source topic zero.
+  const legacyHash = /^([a-f0-9]{64}):tone$/.exec(sectionKey)?.[1];
+  return legacyHash
+    ? toneRecoveryTopicSourceKey(`tone-v1:${legacyHash}`, 0)
+    : sectionKey;
+}
+
+/**
+ * Facts and voice guidance may cite the same bounded source window. Keep their
+ * link keys distinct so a factual import cannot suppress a tone candidate (or
+ * vice versa) while preserving normal import idempotence.
+ */
+export function draftSourceSectionKey(
+  section: KnowledgeSourceSection,
+  kind: KnowledgeDraftKind = "fact",
+): string {
+  const base = createHash("sha256")
+    .update(section.title + "\n" + section.body)
+    .digest("hex");
+  // The tone prefix is a versioned source-provenance namespace. Do not use
+  // generated title/body text for tone identities: edited approved guidance
+  // must continue to suppress an equivalent recovery candidate.
+  return kind === "tone" ? `tone-v1:${base}` : base;
+}
+
+export type ToneRecoveryCandidateForPlan = {
+  title: string;
+  body: string;
+  tags: string[];
+  sourceKeys: string[];
+  effectiveDate?: string | null;
+  expiresDate?: string | null;
+  dateBound?: boolean;
+};
+
+export type ExistingToneRecoveryEntryForPlan = ToneRecoveryCandidateForPlan & {
+  entryId: string;
+  reviewStatus: string;
+};
+
+export type ToneRecoveryPlan = {
+  toInsert: ToneRecoveryCandidateForPlan[];
+  skippedExisting: number;
+  approvedPreserved: number;
+};
+
+/**
+ * Plan recovery inserts without mutating rows. The route uses this inside its
+ * transaction and the offline tests use it to prove repeated recovery is
+ * idempotent. Existing approved entries are only observed, never rewritten.
+ */
+export function planToneRecovery(
+  candidates: ToneRecoveryCandidateForPlan[],
+  existing: ExistingToneRecoveryEntryForPlan[],
+): ToneRecoveryPlan {
+  const fingerprint = (candidate: ToneRecoveryCandidateForPlan): string =>
+    toneRecoveryFingerprint(candidate);
+  const existingFingerprints = new Set(existing.map(fingerprint));
+  const seen = new Set<string>();
+  const toInsert: ToneRecoveryCandidateForPlan[] = [];
+  let skippedExisting = 0;
+  let approvedPreserved = 0;
+
+  for (const candidate of candidates) {
+    const key = fingerprint(candidate);
+    if (seen.has(key) || existingFingerprints.has(key)) {
+      skippedExisting++;
+      if (existing.some((entry) => entry.reviewStatus === "approved" && fingerprint(entry) === key)) {
+        approvedPreserved++;
+      }
+      continue;
+    }
+    seen.add(key);
+    toInsert.push(candidate);
+  }
+
+  return { toInsert, skippedExisting, approvedPreserved };
+}
+
+/**
+ * Recovery identity is deliberately source provenance only. A model may
+ * paraphrase a candidate or an editor may revise an approved body without
+ * resurfacing an equivalent draft; changing the source section changes its
+ * versioned source key. Topic slots distinguish multiple model-selected topics
+ * that cite one bounded source window.
+ */
+export function toneRecoveryFingerprint(
+  candidate: ToneRecoveryCandidateForPlan,
+): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        // Recovery identity is source provenance only. The ordered topic slot
+        // is already part of each source key, allowing two selected topics
+        // from one source window while suppressing paraphrased repeats.
+        sourceKeys: [...candidate.sourceKeys].sort(),
+      }),
+    )
+    .digest("hex");
+}
+
+export function validateCandidateSourceIndexes(
+  expectedIndexes: Set<number>,
+  candidateIndexes: number[][],
+): number[][] {
+  return candidateIndexes.map((indexes) => {
+    const unique = Array.from(new Set(indexes));
+    if (!unique.length || unique.some((index) => !expectedIndexes.has(index))) {
+      throw new Error("AI draft extraction returned an invalid source index");
+    }
+    return unique;
+  });
+}
 
 /**
  * Extraction providers do not agree on where a "line" ends. In particular,

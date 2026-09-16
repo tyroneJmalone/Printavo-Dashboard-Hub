@@ -6263,6 +6263,134 @@ export interface KnowledgeSourceDocumentRetryResult {
   draftCount: number;
 }
 
+export interface KnowledgeToneRecoveryPreviewInput {
+  /** Confirm that the preview may read only the document's already stored extracted text. */
+  confirmStoredText: true;
+}
+
+export type KnowledgeToneRecoveryCandidateCandidateType = typeof KnowledgeToneRecoveryCandidateCandidateType[keyof typeof KnowledgeToneRecoveryCandidateCandidateType];
+
+
+export const KnowledgeToneRecoveryCandidateCandidateType = {
+  tone: 'tone',
+} as const;
+
+export type KnowledgeToneRecoveryCandidateCategory = typeof KnowledgeToneRecoveryCandidateCategory[keyof typeof KnowledgeToneRecoveryCandidateCategory];
+
+
+export const KnowledgeToneRecoveryCandidateCategory = {
+  general: 'general',
+} as const;
+
+export interface KnowledgeToneRecoveryCandidate {
+  /** @pattern ^[a-f0-9]{64}$ */
+  candidateId: string;
+  /** @maxLength 1000 */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  body: string;
+  candidateType: KnowledgeToneRecoveryCandidateCandidateType;
+  category: KnowledgeToneRecoveryCandidateCategory;
+  /**
+     * @maxItems 8
+     * @items.minLength 1
+     * @items.maxLength 40
+     */
+  tags: string[];
+  /**
+     * @minItems 1
+     * @maxItems 200
+     * @items.minimum 0
+     */
+  sourceIndexes: number[];
+  /** @nullable */
+  effectiveDate: string | null;
+  /** @nullable */
+  expiresDate: string | null;
+  dateBound: boolean;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  dateNote: string | null;
+}
+
+export interface KnowledgeToneRecoveryExcludedDateBoundCandidate {
+  /** @maxLength 1000 */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  body: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  dateNote: string | null;
+}
+
+export type KnowledgeToneRecoveryAssessmentRetrievalCap = typeof KnowledgeToneRecoveryAssessmentRetrievalCap[keyof typeof KnowledgeToneRecoveryAssessmentRetrievalCap];
+
+
+export const KnowledgeToneRecoveryAssessmentRetrievalCap = {
+  NUMBER_3: 3,
+} as const;
+
+export type KnowledgeToneRecoveryAssessmentToneBodyCharacterLimit = typeof KnowledgeToneRecoveryAssessmentToneBodyCharacterLimit[keyof typeof KnowledgeToneRecoveryAssessmentToneBodyCharacterLimit];
+
+
+export const KnowledgeToneRecoveryAssessmentToneBodyCharacterLimit = {
+  NUMBER_2000: 2000,
+} as const;
+
+export interface KnowledgeToneRecoveryAssessment {
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  candidateCount: number;
+  retrievalCap: KnowledgeToneRecoveryAssessmentRetrievalCap;
+  toneBodyCharacterLimit: KnowledgeToneRecoveryAssessmentToneBodyCharacterLimit;
+  mayExceedRetrievalCap: boolean;
+  message: string;
+}
+
+export interface KnowledgeToneRecoveryPreviewResponse {
+  token: string;
+  documentId: string;
+  sourceName: string;
+  sourceUrl: string;
+  /** @maxItems 100 */
+  candidates: KnowledgeToneRecoveryCandidate[];
+  excludedDateBound: KnowledgeToneRecoveryExcludedDateBoundCandidate[];
+  assessment: KnowledgeToneRecoveryAssessment;
+}
+
+export interface KnowledgeToneRecoveryCommitInput {
+  token: string;
+  /**
+     * @minItems 1
+     * @maxItems 100
+     * @items.pattern ^[a-f0-9]{64}$
+     */
+  candidateIds: string[];
+}
+
+export interface KnowledgeToneRecoveryCommitResponse {
+  /** @minimum 0 */
+  addedDrafts: number;
+  /** @minimum 0 */
+  skippedExisting: number;
+  /** @minimum 0 */
+  approvedPreserved: number;
+  /** @minimum 0 */
+  draftCount: number;
+}
+
 export interface KnowledgeSourceSyncResult {
   sourceId: string;
   documents: number;
@@ -6611,6 +6739,207 @@ export interface KnowledgePlaygroundResponse {
   /** Effective draft-inclusion mode used for this response. */
   includeDrafts: boolean;
   note: string;
+}
+
+export type KnowledgePlaygroundFeedbackIssue = typeof KnowledgePlaygroundFeedbackIssue[keyof typeof KnowledgePlaygroundFeedbackIssue];
+
+
+export const KnowledgePlaygroundFeedbackIssue = {
+  facts: 'facts',
+  missing_knowledge: 'missing_knowledge',
+  tone: 'tone',
+  wording: 'wording',
+} as const;
+
+export type KnowledgePlaygroundFeedbackVerdict = typeof KnowledgePlaygroundFeedbackVerdict[keyof typeof KnowledgePlaygroundFeedbackVerdict];
+
+
+export const KnowledgePlaygroundFeedbackVerdict = {
+  helpful: 'helpful',
+  needs_work: 'needs_work',
+} as const;
+
+export type KnowledgePlaygroundFeedbackSourceReviewStatus = typeof KnowledgePlaygroundFeedbackSourceReviewStatus[keyof typeof KnowledgePlaygroundFeedbackSourceReviewStatus];
+
+
+export const KnowledgePlaygroundFeedbackSourceReviewStatus = {
+  draft: 'draft',
+  approved: 'approved',
+} as const;
+
+export interface KnowledgePlaygroundFeedbackSource {
+  /** @maxLength 200 */
+  id: string;
+  /** @maxLength 300 */
+  title: string;
+  /** @maxLength 4000 */
+  body: string;
+  /** @maxLength 100 */
+  category: string;
+  reviewStatus: KnowledgePlaygroundFeedbackSourceReviewStatus;
+}
+
+export type KnowledgePlaygroundFeedbackEntryReviewStatus = typeof KnowledgePlaygroundFeedbackEntryReviewStatus[keyof typeof KnowledgePlaygroundFeedbackEntryReviewStatus];
+
+
+export const KnowledgePlaygroundFeedbackEntryReviewStatus = {
+  draft: 'draft',
+  approved: 'approved',
+} as const;
+
+export interface KnowledgePlaygroundFeedbackEntry {
+  /** @maxLength 200 */
+  id: string;
+  /** @maxLength 300 */
+  title: string;
+  /** @maxLength 4000 */
+  body: string;
+  /** @maxLength 100 */
+  category: string;
+  reviewStatus: KnowledgePlaygroundFeedbackEntryReviewStatus;
+}
+
+export type KnowledgePlaygroundFeedbackBrandGuidanceReviewStatus = typeof KnowledgePlaygroundFeedbackBrandGuidanceReviewStatus[keyof typeof KnowledgePlaygroundFeedbackBrandGuidanceReviewStatus];
+
+
+export const KnowledgePlaygroundFeedbackBrandGuidanceReviewStatus = {
+  draft: 'draft',
+  approved: 'approved',
+} as const;
+
+export interface KnowledgePlaygroundFeedbackBrandGuidance {
+  /** @maxLength 200 */
+  id: string;
+  /** @maxLength 300 */
+  title: string;
+  /** @maxLength 4000 */
+  body: string;
+  /** @maxLength 100 */
+  category: string;
+  reviewStatus: KnowledgePlaygroundFeedbackBrandGuidanceReviewStatus;
+}
+
+export interface KnowledgePlaygroundFeedbackSnapshotInput {
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  reply: string;
+  /**
+     * @maxItems 3
+     * @items.maxLength 120
+     */
+  searchQueries: string[];
+  /** @maxItems 8 */
+  retrievedEntries: KnowledgePlaygroundFeedbackEntry[];
+  /**
+     * @maxItems 8
+     * @items.maxLength 200
+     */
+  usedEntryIds: string[];
+  /** @maxItems 3 */
+  brandGuidance: KnowledgePlaygroundFeedbackBrandGuidance[];
+  includeDrafts: boolean;
+  /** @maxLength 2000 */
+  note: string;
+}
+
+/**
+ * This snapshot is bounded client-submitted evidence, not trusted ground truth or a knowledge-base update.
+ */
+export type KnowledgePlaygroundFeedbackSnapshotTrust = typeof KnowledgePlaygroundFeedbackSnapshotTrust[keyof typeof KnowledgePlaygroundFeedbackSnapshotTrust];
+
+
+export const KnowledgePlaygroundFeedbackSnapshotTrust = {
+  'staff-submitted': 'staff-submitted',
+} as const;
+
+export interface KnowledgePlaygroundFeedbackSnapshot {
+  /** This snapshot is bounded client-submitted evidence, not trusted ground truth or a knowledge-base update. */
+  trust: KnowledgePlaygroundFeedbackSnapshotTrust;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  reply: string;
+  /**
+     * @maxItems 3
+     * @items.maxLength 120
+     */
+  searchQueries: string[];
+  /** @maxItems 8 */
+  retrievedEntries: KnowledgePlaygroundFeedbackEntry[];
+  /**
+     * @maxItems 8
+     * @items.maxLength 200
+     */
+  usedEntryIds: string[];
+  /** @maxItems 3 */
+  brandGuidance: KnowledgePlaygroundFeedbackBrandGuidance[];
+  includeDrafts: boolean;
+  /** @maxLength 2000 */
+  note: string;
+}
+
+export interface KnowledgePlaygroundFeedbackStaff {
+  staffId: string;
+  /** @maxLength 254 */
+  email: string;
+}
+
+export interface KnowledgePlaygroundFeedbackInput {
+  /**
+     * @minLength 3
+     * @maxLength 4000
+     */
+  message: string;
+  verdict: KnowledgePlaygroundFeedbackVerdict;
+  /** @maxItems 4 */
+  issues: KnowledgePlaygroundFeedbackIssue[];
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  comment?: string | null;
+  /**
+     * @maxLength 4000
+     * @nullable
+     */
+  correctedReply?: string | null;
+  snapshot: KnowledgePlaygroundFeedbackSnapshotInput;
+  includeDrafts: boolean;
+  /** @maxItems 8 */
+  sources: KnowledgePlaygroundFeedbackSource[];
+}
+
+export interface KnowledgePlaygroundFeedbackReviewInput {
+  reviewed: boolean;
+}
+
+export interface KnowledgePlaygroundFeedback {
+  id: string;
+  message: string;
+  verdict: KnowledgePlaygroundFeedbackVerdict;
+  issues: KnowledgePlaygroundFeedbackIssue[];
+  /** @nullable */
+  comment: string | null;
+  /** @nullable */
+  correctedReply: string | null;
+  snapshot: KnowledgePlaygroundFeedbackSnapshot;
+  includeDrafts: boolean;
+  sources: KnowledgePlaygroundFeedbackSource[];
+  submittedBy: KnowledgePlaygroundFeedbackStaff;
+  reviewed: boolean;
+  reviewedBy: KnowledgePlaygroundFeedbackStaff | null;
+  /** @nullable */
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgePlaygroundFeedbackListResponse {
+  /** @maxItems 100 */
+  feedback: KnowledgePlaygroundFeedback[];
 }
 
 export type AiConsumerRecordTier = typeof AiConsumerRecordTier[keyof typeof AiConsumerRecordTier];
@@ -8223,6 +8552,14 @@ export const ListKnowledgeEntriesStatus = {
   approved: 'approved',
   archived: 'archived',
 } as const;
+
+export type ListKnowledgePlaygroundFeedbackParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
 
 export type ListAiAuditEventsParams = {
 consumerId?: string;

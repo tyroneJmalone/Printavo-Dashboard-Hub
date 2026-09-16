@@ -214,6 +214,10 @@ import type {
   KnowledgeMergeCommitResponse,
   KnowledgeMergePreviewInput,
   KnowledgeMergePreviewResponse,
+  KnowledgePlaygroundFeedback,
+  KnowledgePlaygroundFeedbackInput,
+  KnowledgePlaygroundFeedbackListResponse,
+  KnowledgePlaygroundFeedbackReviewInput,
   KnowledgePlaygroundInput,
   KnowledgePlaygroundResponse,
   KnowledgeSource,
@@ -224,6 +228,10 @@ import type {
   KnowledgeSourceUpdateInput,
   KnowledgeSourceUploadInput,
   KnowledgeSourceUploadResult,
+  KnowledgeToneRecoveryCommitInput,
+  KnowledgeToneRecoveryCommitResponse,
+  KnowledgeToneRecoveryPreviewInput,
+  KnowledgeToneRecoveryPreviewResponse,
   LinkCustomerArtworkFolder200,
   List,
   ListAiAuditEventsParams,
@@ -251,6 +259,7 @@ import type {
   ListInput,
   ListInsightsPresetsParams,
   ListKnowledgeEntriesParams,
+  ListKnowledgePlaygroundFeedbackParams,
   ListListsParams,
   ListMentionsParams,
   ListPqStatusJobsParams,
@@ -22137,6 +22146,232 @@ export const usePlaygroundKnowledge = <TError = ErrorType<ErrorResponse>,
       return useMutation(getPlaygroundKnowledgeMutationOptions(options));
     }
 
+export const getListKnowledgePlaygroundFeedbackUrl = (params?: ListKnowledgePlaygroundFeedbackParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/knowledge/playground-feedback?${stringifiedParams}` : `/api/knowledge/playground-feedback`
+}
+
+/**
+ * @summary List recent knowledge playground feedback (staff only)
+ */
+export const listKnowledgePlaygroundFeedback = async (params?: ListKnowledgePlaygroundFeedbackParams, options?: RequestInit): Promise<KnowledgePlaygroundFeedbackListResponse> => {
+
+  return customFetch<KnowledgePlaygroundFeedbackListResponse>(getListKnowledgePlaygroundFeedbackUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListKnowledgePlaygroundFeedbackQueryKey = (params?: ListKnowledgePlaygroundFeedbackParams,) => {
+    return [
+    `/api/knowledge/playground-feedback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListKnowledgePlaygroundFeedbackQueryOptions = <TData = Awaited<ReturnType<typeof listKnowledgePlaygroundFeedback>>, TError = ErrorType<ErrorResponse>>(params?: ListKnowledgePlaygroundFeedbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listKnowledgePlaygroundFeedback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListKnowledgePlaygroundFeedbackQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listKnowledgePlaygroundFeedback>>> = ({ signal }) => listKnowledgePlaygroundFeedback(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listKnowledgePlaygroundFeedback>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListKnowledgePlaygroundFeedbackQueryResult = NonNullable<Awaited<ReturnType<typeof listKnowledgePlaygroundFeedback>>>
+export type ListKnowledgePlaygroundFeedbackQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List recent knowledge playground feedback (staff only)
+ */
+
+export function useListKnowledgePlaygroundFeedback<TData = Awaited<ReturnType<typeof listKnowledgePlaygroundFeedback>>, TError = ErrorType<ErrorResponse>>(
+ params?: ListKnowledgePlaygroundFeedbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listKnowledgePlaygroundFeedback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListKnowledgePlaygroundFeedbackQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateKnowledgePlaygroundFeedbackUrl = () => {
+
+
+
+
+  return `/api/knowledge/playground-feedback`
+}
+
+/**
+ * Stores the tested message, immutable staff-submitted result snapshot, bounded source snapshot, and authenticated staff attribution. This never changes the knowledge base or promotes a draft.
+ * @summary Save explicit feedback for a knowledge playground test (staff only)
+ */
+export const createKnowledgePlaygroundFeedback = async (knowledgePlaygroundFeedbackInput: KnowledgePlaygroundFeedbackInput, options?: RequestInit): Promise<KnowledgePlaygroundFeedback> => {
+
+  return customFetch<KnowledgePlaygroundFeedback>(getCreateKnowledgePlaygroundFeedbackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgePlaygroundFeedbackInput)
+  }
+);}
+
+
+
+
+export const getCreateKnowledgePlaygroundFeedbackMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createKnowledgePlaygroundFeedback>>, TError,{data: BodyType<KnowledgePlaygroundFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createKnowledgePlaygroundFeedback>>, TError,{data: BodyType<KnowledgePlaygroundFeedbackInput>}, TContext> => {
+
+const mutationKey = ['createKnowledgePlaygroundFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createKnowledgePlaygroundFeedback>>, {data: BodyType<KnowledgePlaygroundFeedbackInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createKnowledgePlaygroundFeedback(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateKnowledgePlaygroundFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof createKnowledgePlaygroundFeedback>>>
+    export type CreateKnowledgePlaygroundFeedbackMutationBody = BodyType<KnowledgePlaygroundFeedbackInput>
+    export type CreateKnowledgePlaygroundFeedbackMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save explicit feedback for a knowledge playground test (staff only)
+ */
+export const useCreateKnowledgePlaygroundFeedback = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createKnowledgePlaygroundFeedback>>, TError,{data: BodyType<KnowledgePlaygroundFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createKnowledgePlaygroundFeedback>>,
+        TError,
+        {data: BodyType<KnowledgePlaygroundFeedbackInput>},
+        TContext
+      > => {
+      return useMutation(getCreateKnowledgePlaygroundFeedbackMutationOptions(options));
+    }
+
+export const getUpdateKnowledgePlaygroundFeedbackReviewUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/playground-feedback/${id}/review`
+}
+
+/**
+ * @summary Resolve or reopen saved knowledge playground feedback (staff only)
+ */
+export const updateKnowledgePlaygroundFeedbackReview = async (id: string,
+    knowledgePlaygroundFeedbackReviewInput: KnowledgePlaygroundFeedbackReviewInput, options?: RequestInit): Promise<KnowledgePlaygroundFeedback> => {
+
+  return customFetch<KnowledgePlaygroundFeedback>(getUpdateKnowledgePlaygroundFeedbackReviewUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgePlaygroundFeedbackReviewInput)
+  }
+);}
+
+
+
+
+export const getUpdateKnowledgePlaygroundFeedbackReviewMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgePlaygroundFeedbackReview>>, TError,{id: string;data: BodyType<KnowledgePlaygroundFeedbackReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgePlaygroundFeedbackReview>>, TError,{id: string;data: BodyType<KnowledgePlaygroundFeedbackReviewInput>}, TContext> => {
+
+const mutationKey = ['updateKnowledgePlaygroundFeedbackReview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateKnowledgePlaygroundFeedbackReview>>, {id: string;data: BodyType<KnowledgePlaygroundFeedbackReviewInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateKnowledgePlaygroundFeedbackReview(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateKnowledgePlaygroundFeedbackReviewMutationResult = NonNullable<Awaited<ReturnType<typeof updateKnowledgePlaygroundFeedbackReview>>>
+    export type UpdateKnowledgePlaygroundFeedbackReviewMutationBody = BodyType<KnowledgePlaygroundFeedbackReviewInput>
+    export type UpdateKnowledgePlaygroundFeedbackReviewMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Resolve or reopen saved knowledge playground feedback (staff only)
+ */
+export const useUpdateKnowledgePlaygroundFeedbackReview = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateKnowledgePlaygroundFeedbackReview>>, TError,{id: string;data: BodyType<KnowledgePlaygroundFeedbackReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateKnowledgePlaygroundFeedbackReview>>,
+        TError,
+        {id: string;data: BodyType<KnowledgePlaygroundFeedbackReviewInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateKnowledgePlaygroundFeedbackReviewMutationOptions(options));
+    }
+
 export const getBulkDeleteKnowledgeEntriesUrl = () => {
 
 
@@ -23127,6 +23362,150 @@ export const useRetryKnowledgeDocument = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getRetryKnowledgeDocumentMutationOptions(options));
+    }
+
+export const getPreviewKnowledgeToneRecoveryUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/documents/${id}/tone-recovery/preview`
+}
+
+/**
+ * Reads only the already stored extracted text and returns short-lived, non-persisting tone candidates. Every candidate remains a human-review draft until explicitly selected for commit.
+ * @summary Preview explicit tone and lexicon recovery from stored source text (admin only)
+ */
+export const previewKnowledgeToneRecovery = async (id: string,
+    knowledgeToneRecoveryPreviewInput: KnowledgeToneRecoveryPreviewInput, options?: RequestInit): Promise<KnowledgeToneRecoveryPreviewResponse> => {
+
+  return customFetch<KnowledgeToneRecoveryPreviewResponse>(getPreviewKnowledgeToneRecoveryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeToneRecoveryPreviewInput)
+  }
+);}
+
+
+
+
+export const getPreviewKnowledgeToneRecoveryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewKnowledgeToneRecovery>>, TError,{id: string;data: BodyType<KnowledgeToneRecoveryPreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewKnowledgeToneRecovery>>, TError,{id: string;data: BodyType<KnowledgeToneRecoveryPreviewInput>}, TContext> => {
+
+const mutationKey = ['previewKnowledgeToneRecovery'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewKnowledgeToneRecovery>>, {id: string;data: BodyType<KnowledgeToneRecoveryPreviewInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  previewKnowledgeToneRecovery(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewKnowledgeToneRecoveryMutationResult = NonNullable<Awaited<ReturnType<typeof previewKnowledgeToneRecovery>>>
+    export type PreviewKnowledgeToneRecoveryMutationBody = BodyType<KnowledgeToneRecoveryPreviewInput>
+    export type PreviewKnowledgeToneRecoveryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Preview explicit tone and lexicon recovery from stored source text (admin only)
+ */
+export const usePreviewKnowledgeToneRecovery = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewKnowledgeToneRecovery>>, TError,{id: string;data: BodyType<KnowledgeToneRecoveryPreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewKnowledgeToneRecovery>>,
+        TError,
+        {id: string;data: BodyType<KnowledgeToneRecoveryPreviewInput>},
+        TContext
+      > => {
+      return useMutation(getPreviewKnowledgeToneRecoveryMutationOptions(options));
+    }
+
+export const getCommitKnowledgeToneRecoveryUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/documents/${id}/tone-recovery/commit`
+}
+
+/**
+ * Consumes a staff-scoped preview token and saves only explicitly selected tone candidates. Existing approved entries remain preserved; saved candidates remain drafts and are never auto-approved.
+ * @summary Save selected tone recovery candidates as reviewable drafts (admin only)
+ */
+export const commitKnowledgeToneRecovery = async (id: string,
+    knowledgeToneRecoveryCommitInput: KnowledgeToneRecoveryCommitInput, options?: RequestInit): Promise<KnowledgeToneRecoveryCommitResponse> => {
+
+  return customFetch<KnowledgeToneRecoveryCommitResponse>(getCommitKnowledgeToneRecoveryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(knowledgeToneRecoveryCommitInput)
+  }
+);}
+
+
+
+
+export const getCommitKnowledgeToneRecoveryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitKnowledgeToneRecovery>>, TError,{id: string;data: BodyType<KnowledgeToneRecoveryCommitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof commitKnowledgeToneRecovery>>, TError,{id: string;data: BodyType<KnowledgeToneRecoveryCommitInput>}, TContext> => {
+
+const mutationKey = ['commitKnowledgeToneRecovery'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof commitKnowledgeToneRecovery>>, {id: string;data: BodyType<KnowledgeToneRecoveryCommitInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  commitKnowledgeToneRecovery(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CommitKnowledgeToneRecoveryMutationResult = NonNullable<Awaited<ReturnType<typeof commitKnowledgeToneRecovery>>>
+    export type CommitKnowledgeToneRecoveryMutationBody = BodyType<KnowledgeToneRecoveryCommitInput>
+    export type CommitKnowledgeToneRecoveryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save selected tone recovery candidates as reviewable drafts (admin only)
+ */
+export const useCommitKnowledgeToneRecovery = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitKnowledgeToneRecovery>>, TError,{id: string;data: BodyType<KnowledgeToneRecoveryCommitInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof commitKnowledgeToneRecovery>>,
+        TError,
+        {id: string;data: BodyType<KnowledgeToneRecoveryCommitInput>},
+        TContext
+      > => {
+      return useMutation(getCommitKnowledgeToneRecoveryMutationOptions(options));
     }
 
 export const getSyncGoogleDriveKnowledgeSourceUrl = (id: string,) => {

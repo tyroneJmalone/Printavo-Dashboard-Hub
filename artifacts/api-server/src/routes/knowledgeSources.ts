@@ -7,21 +7,36 @@ import { spawn } from "child_process";
 import { eq, and, asc, desc, inArray, or } from "drizzle-orm";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { db, knowledgeEntriesTable, knowledgeSourcesTable, knowledgeSourceDocumentsTable, knowledgeEntrySourcesTable } from "@workspace/db";
-import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
 import { objectStorageClient, getPrivateObjectDir, parseObjectPath } from "../lib/objectStorage";
 import { requireAdmin } from "../middlewares/requireStaff";
+import { checkRateLimit } from "../lib/aiGuardrails/rateLimit";
 import {
   canRetryKnowledgeDocument,
   chunkExtractedText,
+  applicabilityReviewBody,
+  draftSourceSectionKey,
   draftOnlyUnsharedEntryIds,
   importFailurePatch,
-  isMeaningfulDraftFragment,
   isRetryableTransactionAbort,
-  normalizeDraftTitle,
-  semanticBatches,
-  validateSemanticDraftCoverage,
+  normalizeToneRecoverySourceKey,
+  planToneRecovery,
 } from "../lib/knowledgeSourceImport";
+import {
+  enrichKnowledgeDrafts,
+  MAX_TONE_RECOVERY_CANDIDATES,
+  MAX_TONE_BODY_CHARS,
+  previewToneRecoveryFromText,
+  recoverySourceKeysForCandidates,
+  type DraftCandidate,
+} from "../lib/knowledgeToneRecovery";
+import {
+  extractedTextDigest,
+  selectToneRecoveryPreviewCandidates,
+  stableToneRecoveryCandidateId,
+  toneRecoveryPreviewMismatch,
+  type ToneRecoveryPreviewBinding,
+} from "../lib/knowledgeToneRecoveryPolicy";
 import {
   defaultKnowledgeGroupForCategory,
   getKnowledgeClassificationSettings,
@@ -34,99 +49,6 @@ const ALLOWED: Record<string, string> = {
   ".txt": "text/plain", ".md": "text/markdown", ".csv": "text/csv",
 };
 const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server")) ? path.resolve(process.cwd(), "../..") : process.cwd();
-const AI_MODEL = "gpt-5.6-terra";
-const DraftCandidateSchema = z.object({
-  sourceIndexes: z.array(z.number().int().nonnegative()).min(1).max(200),
-  // Titles are normalized against the source section below. Do not reject an
-  // otherwise usable candidate because an LLM returned a one-character title.
-  title: z.string().trim().max(1000),
-  body: z.string().trim().min(1).max(6000),
-  category: z.enum(["general", "policy", "pricing", "production", "shipping", "faq"]),
-  tags: z.array(z.string().trim().min(1).max(40)).max(8),
-  effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-  expiresDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-});
-type DraftCandidate = z.infer<typeof DraftCandidateSchema>;
-
-function meaningfulDraftBody(value: string): boolean {
-  return isMeaningfulDraftFragment(value);
-}
-
-function sourceSectionKey(section: { title: string; body: string }): string {
-  return createHash("sha256").update(section.title + "\n" + section.body).digest("hex");
-}
-
-/**
- * AI-only enrichment helper. It has no database side effects and is exported
- * so a reviewer can preview regenerated candidates against preserved source
- * text without touching a document row.
- */
-export async function enrichKnowledgeDrafts(
-  chunks: Array<{ title: string; body: string }>,
-  sourceName: string,
-): Promise<DraftCandidate[]> {
-  const enriched: DraftCandidate[] = [];
-  let offset = 0;
-  for (const batch of semanticBatches(chunks)) {
-    const batchOffset = offset;
-    offset += batch.length;
-    const expectedIndexes = new Set(batch.map((_, index) => batchOffset + index));
-    const completion = await openai.chat.completions.create({
-      model: AI_MODEL,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Extract reviewable company-knowledge draft candidates from the complete source window. Group related excerpts into the smallest set of coherent factual topics; do not create one draft per excerpt or visual line. A source index may be reused by multiple candidates when one bounded window contains multiple distinct topics, but every source index must be covered by at least one candidate. Include lists, conditions, exceptions, and negative rules. Never invent a fact, and never omit or weaken a qualifier, exception, threshold, date, or 'only/except/unless' rule. Keep each body self-contained and faithful to the supplied text. Suggest one concise title, one allowed category (general, policy, pricing, production, shipping, faq), 0-8 lowercase tags, and effective/expiration dates only when explicitly stated as YYYY-MM-DD; otherwise use null. Return JSON {\"drafts\":[{\"sourceIndexes\":[0],\"title\":\"...\",\"body\":\"...\",\"category\":\"general\",\"tags\":[],\"effectiveDate\":null,\"expiresDate\":null}]}. sourceIndexes must refer to the supplied excerpts. These remain human-reviewed drafts and must be drafts, not customer-facing conclusions.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            sourceName,
-            excerpts: batch.map((chunk, index) => ({
-              index: batchOffset + index,
-              heading: chunk.title,
-              text: chunk.body,
-            })),
-          }),
-        },
-      ],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 8192,
-    });
-    const raw = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as { drafts?: unknown };
-    const parsed = z.array(DraftCandidateSchema).safeParse(raw.drafts);
-    if (!parsed.success) throw new Error(`AI draft extraction returned invalid data: ${parsed.error.message}`);
-    if (!parsed.data.length) {
-      throw new Error("AI draft extraction returned no factual candidates");
-    }
-    const sourceIndexes: number[][] = [];
-    for (const draft of parsed.data) {
-      if (!meaningfulDraftBody(draft.body)) {
-        throw new Error("AI draft extraction returned a meaningless draft body");
-      }
-      sourceIndexes.push(draft.sourceIndexes);
-    }
-    const normalizedIndexes = validateSemanticDraftCoverage(expectedIndexes, sourceIndexes);
-    enriched.push(
-      ...parsed.data.map((draft, draftIndex) => {
-        const indexes = normalizedIndexes[draftIndex]!;
-        const firstIndex = indexes[0]!;
-        return {
-          ...draft,
-          sourceIndexes: indexes,
-          title: normalizeDraftTitle(
-            draft.title,
-            chunks[firstIndex]?.title ?? "",
-            sourceName,
-            firstIndex,
-          ),
-        };
-      }),
-    );
-  }
-  return enriched;
-}
 
 async function extract(file: Express.Multer.File): Promise<{ text: string; chunks: Array<{ title: string; body: string }> }> {
   const tmp = path.join("/tmp", `kb-${randomUUID()}${path.extname(file.originalname).toLowerCase()}`);
@@ -323,30 +245,54 @@ async function createDrafts(
     // Existing source keys make a normal import idempotent. Do not add keys
     // from newly inserted candidates here: two semantic topics may correctly
     // cite the same bounded source window.
-    const existingSectionKeys = new Set(remaining.map((entry) => entry.sectionKey));
+    const existingSectionKeys = new Set(
+      remaining.map((entry) => normalizeToneRecoverySourceKey(entry.sectionKey)),
+    );
+    const toneCandidates = candidates.filter((candidate) => candidate.candidateType === "tone");
+    const toneKeysByCandidate = recoverySourceKeysForCandidates(toneCandidates, chunks);
+    let toneCandidateIndex = 0;
     let addedDrafts = 0;
     for (const candidate of candidates) {
+      const requiresApplicabilityReview =
+        candidate.dateBound &&
+        !candidate.effectiveDate &&
+        !candidate.expiresDate;
       // Hash deterministic source sections, never model-generated text. This
       // keeps normal imports idempotent even if the model rephrases a title.
       const sections = candidate.sourceIndexes
         .map((index) => chunks[index])
         .filter((section): section is { title: string; body: string } => Boolean(section));
       if (!sections.length) throw new Error("AI draft extraction referenced a missing source window");
-      const keys = sections.map(sourceSectionKey);
+      const keys = candidate.candidateType === "tone"
+        ? (toneKeysByCandidate[toneCandidateIndex++] ?? [])
+        : sections.map((section) => draftSourceSectionKey(section, candidate.candidateType));
+      if (!keys.length) throw new Error("AI tone extraction returned no source provenance");
       // Regeneration must still create replacement candidates when a
       // protected shared draft cites the same window. Normal imports retain
       // key-based idempotence; replacement has already removed all removable
       // drafts transactionally and must not let a shared row suppress output.
       if (!options.replaceDrafts && keys.every((key) => existingSectionKeys.has(key))) continue;
+      const isToneCandidate = candidate.candidateType === "tone";
       const [entry] = await tx.insert(knowledgeEntriesTable).values({
         title: candidate.title || source.name,
-        body: candidate.body,
-        category: candidate.category,
-         knowledgeGroup: defaultKnowledgeGroupForCategory(
-           candidate.category,
-           classificationSettings,
-         ),
-        tags: Array.from(new Set(candidate.tags.map((tag) => tag.toLowerCase()))),
+        body: requiresApplicabilityReview
+          ? applicabilityReviewBody(candidate.body)
+          : candidate.body,
+        // Tone guidance is explicitly separated from facts. Facts retain the
+        // existing category-default policy; the model cannot widen customer
+        // sharing by selecting a group.
+        category: isToneCandidate ? "general" : candidate.category,
+        knowledgeGroup: requiresApplicabilityReview
+          ? "internal_operational"
+          : isToneCandidate
+          ? "brand_voice"
+          : defaultKnowledgeGroupForCategory(candidate.category, classificationSettings),
+        tags: Array.from(
+          new Set([
+            ...candidate.tags.map((tag) => tag.toLowerCase()),
+            ...(requiresApplicabilityReview ? ["applicability-review"] : []),
+          ]),
+        ),
         sourceName: source.name, sourceUrl: source.sourceUrl, reviewStatus: "draft",
         effectiveDate: candidate.effectiveDate,
         expiresDate: candidate.expiresDate,
@@ -392,6 +338,64 @@ export class KnowledgeDocumentError extends Error {
 }
 
 const retryInFlight = new Set<string>();
+const toneRecoveryInFlight = new Set<string>();
+const toneRecoveryPreviews = new Map<
+  string,
+  ToneRecoveryPreviewBinding & {
+    candidates: Array<DraftCandidate & { candidateId: string; sourceKeys: string[] }>;
+  }
+>();
+const TONE_RECOVERY_PREVIEW_TTL_MS = 10 * 60_000;
+const TONE_RECOVERY_RATE_LIMIT_PER_MINUTE = 5;
+
+const ToneRecoveryPreviewRequestSchema = z.object({
+  // Kept as a body schema even though the document id is the primary input so
+  // future clients cannot accidentally send an unbounded extraction request.
+  confirmStoredText: z.literal(true),
+});
+const ToneRecoveryCommitRequestSchema = z.object({
+  token: z.string().uuid(),
+  candidateIds: z.array(z.string().regex(/^[a-f0-9]{64}$/)).min(1).max(MAX_TONE_RECOVERY_CANDIDATES),
+});
+
+function cleanupToneRecoveryPreviews(now = Date.now()): void {
+  for (const [token, preview] of toneRecoveryPreviews) {
+    if (preview.expiresAt <= now) toneRecoveryPreviews.delete(token);
+  }
+  while (toneRecoveryPreviews.size > 500) {
+    const oldest = toneRecoveryPreviews.keys().next().value;
+    if (!oldest) break;
+    toneRecoveryPreviews.delete(oldest);
+  }
+}
+
+async function eligibleToneRecoveryDocument(documentId: string): Promise<{
+  document: typeof knowledgeSourceDocumentsTable.$inferSelect;
+  source: typeof knowledgeSourcesTable.$inferSelect;
+}> {
+  const [document] = await db
+    .select()
+    .from(knowledgeSourceDocumentsTable)
+    .where(eq(knowledgeSourceDocumentsTable.id, documentId))
+    .limit(1);
+  if (!document) throw new KnowledgeDocumentError("Knowledge document not found", 404);
+  const [source] = await db
+    .select()
+    .from(knowledgeSourcesTable)
+    .where(eq(knowledgeSourcesTable.id, document.sourceId))
+    .limit(1);
+  if (!source) throw new KnowledgeDocumentError("The document's source no longer exists", 409);
+  if (source.kind !== "upload") {
+    throw new KnowledgeDocumentError("Tone recovery is available for uploaded documents only", 409);
+  }
+  if (source.status !== "active" || document.status !== "active") {
+    throw new KnowledgeDocumentError("Tone recovery requires an active source and active document", 409);
+  }
+  if (!document.extractedText.trim()) {
+    throw new KnowledgeDocumentError("No stored extracted text is available for tone recovery", 422);
+  }
+  return { document, source };
+}
 
 async function markImportFailed(
   documentId: string,
@@ -866,6 +870,362 @@ router.get("/knowledge/documents/:id/preview", requireAdmin, async (req, res): P
     draftCount: document.draftCount,
     error: document.lastError,
   });
+});
+
+/**
+ * Non-persisting voice/lexicon recovery. It reads only the stored extracted
+ * text and holds model output in a short-lived staff-scoped preview token.
+ * Saving is a separate, explicitly selected operation below.
+ */
+router.post("/knowledge/documents/:id/tone-recovery/preview", requireAdmin, async (req, res): Promise<void> => {
+  const documentId = String(req.params.id);
+  if (!z.string().uuid().safeParse(documentId).success) {
+    res.status(400).json({ error: "A valid knowledge document id is required" });
+    return;
+  }
+  const parsedBody = ToneRecoveryPreviewRequestSchema.safeParse(req.body ?? {});
+  if (!parsedBody.success) {
+    res.status(400).json({ error: parsedBody.error.message });
+    return;
+  }
+  const staffKey = `knowledge-tone-recovery:${req.staff!.id}`;
+  const rate = checkRateLimit(staffKey, TONE_RECOVERY_RATE_LIMIT_PER_MINUTE);
+  if (!rate.allowed) {
+    res
+      .status(429)
+      .set("Retry-After", String(rate.retryAfterSeconds))
+      .json({ error: "Tone recovery rate limit reached. Try again shortly." });
+    return;
+  }
+  if (toneRecoveryInFlight.has(staffKey)) {
+    res
+      .status(429)
+      .set("Retry-After", "1")
+      .json({ error: "A tone recovery preview is already in progress." });
+    return;
+  }
+
+  toneRecoveryInFlight.add(staffKey);
+  try {
+    cleanupToneRecoveryPreviews();
+    const { document, source } = await eligibleToneRecoveryDocument(documentId);
+    const preview = await previewToneRecoveryFromText(document.extractedText, source.name);
+    const sourceKeysByCandidate = recoverySourceKeysForCandidates(preview.candidates, preview.chunks);
+    const candidates = preview.candidates.map((candidate, candidateIndex) => {
+      const sourceKeys = sourceKeysByCandidate[candidateIndex] ?? [];
+      if (!sourceKeys.length) {
+        throw new Error("Tone recovery returned a candidate without a source link");
+      }
+      const candidateId = stableToneRecoveryCandidateId(sourceKeys);
+      return { ...candidate, candidateId, sourceKeys };
+    });
+    const deduplicatedCandidates = Array.from(
+      new Map(candidates.map((candidate) => [candidate.candidateId, candidate])).values(),
+    );
+    const token = randomUUID();
+    toneRecoveryPreviews.set(token, {
+      staffId: req.staff!.id,
+      documentId,
+      sourceId: source.id,
+      sourceUpdatedAt: source.updatedAt.toISOString(),
+      documentChecksum: document.checksum,
+      extractedTextDigest: extractedTextDigest(document.extractedText),
+      expiresAt: Date.now() + TONE_RECOVERY_PREVIEW_TTL_MS,
+      candidates: deduplicatedCandidates,
+    });
+    res.json({
+      token,
+      documentId,
+      sourceName: source.name,
+      sourceUrl: source.sourceUrl,
+      candidates: deduplicatedCandidates.map((candidate) => ({
+        candidateId: candidate.candidateId,
+        candidateType: "tone" as const,
+        title: candidate.title,
+        body: candidate.body,
+        category: "general" as const,
+        tags: candidate.tags,
+        sourceIndexes: candidate.sourceIndexes,
+         effectiveDate: candidate.effectiveDate,
+         expiresDate: candidate.expiresDate,
+         dateBound: candidate.dateBound,
+         dateNote: candidate.dateNote,
+      })),
+       excludedDateBound: preview.excludedDateBound.map((candidate) => ({
+         title: candidate.title,
+         body: candidate.body,
+         dateNote: candidate.dateNote,
+       })),
+      assessment: {
+        candidateCount: deduplicatedCandidates.length,
+        retrievalCap: 3,
+         toneBodyCharacterLimit: MAX_TONE_BODY_CHARS,
+        mayExceedRetrievalCap: deduplicatedCandidates.length > 3,
+        message:
+          deduplicatedCandidates.length > 3
+            ? "Existing Brand/Voice retrieval currently caps at 3 entries. All recovery candidates are shown for review; this action does not discard or auto-approve the additional guidance."
+             : "Review each candidate before saving. Brand/Voice guidance controls wording only, not facts or policy promises. Recovery identity is the source-section hash plus ordered topic slot; a model cannot always reconstruct a topic if same-window topics are reordered.",
+      },
+    });
+  } catch (error) {
+    if (error instanceof KnowledgeDocumentError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error, documentId }, "tone recovery preview failed");
+    res.status(422).json({ error: error instanceof Error ? error.message : "Tone recovery preview failed" });
+  } finally {
+    toneRecoveryInFlight.delete(staffKey);
+  }
+});
+
+router.post("/knowledge/documents/:id/tone-recovery/commit", requireAdmin, async (req, res): Promise<void> => {
+  const documentId = String(req.params.id);
+  if (!z.string().uuid().safeParse(documentId).success) {
+    res.status(400).json({ error: "A valid knowledge document id is required" });
+    return;
+  }
+  const parsed = ToneRecoveryCommitRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (new Set(parsed.data.candidateIds).size !== parsed.data.candidateIds.length) {
+    res.status(400).json({ error: "Candidate ids must be unique" });
+    return;
+  }
+  cleanupToneRecoveryPreviews();
+  const preview = toneRecoveryPreviews.get(parsed.data.token);
+  if (!preview) {
+    res.status(409).json({ error: "This tone recovery preview is expired or belongs to another document or staff session. Preview again." });
+    return;
+  }
+  const staffKey = `knowledge-tone-recovery:${req.staff!.id}`;
+  if (toneRecoveryInFlight.has(staffKey)) {
+    res.status(429).set("Retry-After", "1").json({ error: "A tone recovery operation is already in progress." });
+    return;
+  }
+  toneRecoveryInFlight.add(staffKey);
+  // Consume the preview before the transaction. A failed save is surfaced and
+  // can be retried with a fresh, bounded preview; this prevents token replay.
+  toneRecoveryPreviews.delete(parsed.data.token);
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Match the existing source-import lock order: linked entries, document,
+      // then source. This protects a concurrent approval while preserving the
+      // source's active/deleted state check before any insert.
+      const linkedRows = await tx
+        .select({
+          entryId: knowledgeEntrySourcesTable.entryId,
+          documentId: knowledgeEntrySourcesTable.documentId,
+          sectionKey: knowledgeEntrySourcesTable.sectionKey,
+          title: knowledgeEntriesTable.title,
+          body: knowledgeEntriesTable.body,
+          category: knowledgeEntriesTable.category,
+          knowledgeGroup: knowledgeEntriesTable.knowledgeGroup,
+          tags: knowledgeEntriesTable.tags,
+          reviewStatus: knowledgeEntriesTable.reviewStatus,
+        })
+        .from(knowledgeEntrySourcesTable)
+        .innerJoin(
+          knowledgeEntriesTable,
+          eq(knowledgeEntriesTable.id, knowledgeEntrySourcesTable.entryId),
+        )
+        .where(eq(knowledgeEntrySourcesTable.documentId, documentId))
+        .orderBy(asc(knowledgeEntrySourcesTable.entryId), asc(knowledgeEntrySourcesTable.sectionKey))
+        .for("update");
+      await tx
+        .select({ id: knowledgeSourceDocumentsTable.id })
+        .from(knowledgeSourceDocumentsTable)
+        .where(eq(knowledgeSourceDocumentsTable.id, documentId))
+        .for("update");
+      const [source] = await tx
+        .select()
+        .from(knowledgeSourcesTable)
+        .where(eq(knowledgeSourcesTable.id, preview.sourceId))
+        .for("update");
+      const [document] = await tx
+        .select()
+        .from(knowledgeSourceDocumentsTable)
+        .where(eq(knowledgeSourceDocumentsTable.id, documentId))
+        .limit(1);
+      if (!source || source.kind !== "upload" || source.status !== "active" || !document || document.status !== "active" || document.sourceId !== source.id) {
+        throw new KnowledgeDocumentError("Tone recovery requires an active source and active document", 409);
+      }
+      const previewMismatch = toneRecoveryPreviewMismatch(preview, {
+        staffId: req.staff!.id,
+        documentId,
+        sourceId: source.id,
+        sourceUpdatedAt: source.updatedAt.toISOString(),
+        documentChecksum: document.checksum,
+        extractedTextDigest: extractedTextDigest(document.extractedText),
+      });
+      if (previewMismatch) {
+        throw new KnowledgeDocumentError(`Tone recovery preview is stale: ${previewMismatch}. Preview again.`, 409);
+      }
+      const selection = selectToneRecoveryPreviewCandidates(
+        preview,
+        parsed.data.candidateIds,
+        {
+          staffId: req.staff!.id,
+          documentId,
+          sourceId: source.id,
+          sourceUpdatedAt: source.updatedAt.toISOString(),
+          documentChecksum: document.checksum,
+          extractedTextDigest: extractedTextDigest(document.extractedText),
+        },
+      );
+      if (selection.error) {
+        throw new KnowledgeDocumentError(`${selection.error}. Preview again.`, 409);
+      }
+      const selectedIds = new Set(parsed.data.candidateIds);
+      const candidates = preview.candidates.filter((candidate) =>
+        selectedIds.has(candidate.candidateId),
+      ) as Array<DraftCandidate & { candidateId: string; sourceKeys: string[] }>;
+      if (candidates.length !== parsed.data.candidateIds.length) {
+        throw new KnowledgeDocumentError("One or more recovery candidates are not in the preview. Preview again.", 409);
+      }
+      // A second recovery request may have read the old link set before it
+      // waited on the document lock. Re-read after the lock so dedupe observes
+      // a just-committed candidate rather than inserting a duplicate.
+      const refreshedLinkedRows = await tx
+        .select({
+          entryId: knowledgeEntrySourcesTable.entryId,
+          documentId: knowledgeEntrySourcesTable.documentId,
+          sectionKey: knowledgeEntrySourcesTable.sectionKey,
+          title: knowledgeEntriesTable.title,
+          body: knowledgeEntriesTable.body,
+          category: knowledgeEntriesTable.category,
+          knowledgeGroup: knowledgeEntriesTable.knowledgeGroup,
+          tags: knowledgeEntriesTable.tags,
+          reviewStatus: knowledgeEntriesTable.reviewStatus,
+        })
+        .from(knowledgeEntrySourcesTable)
+        .innerJoin(
+          knowledgeEntriesTable,
+          eq(knowledgeEntriesTable.id, knowledgeEntrySourcesTable.entryId),
+        )
+        .where(eq(knowledgeEntrySourcesTable.documentId, documentId))
+        .orderBy(asc(knowledgeEntrySourcesTable.entryId), asc(knowledgeEntrySourcesTable.sectionKey))
+        .for("update");
+
+      const byEntry = new Map<
+        string,
+        {
+          entryId: string;
+          title: string;
+          body: string;
+          category: string;
+          knowledgeGroup: string;
+          tags: string[];
+          reviewStatus: string;
+          sourceKeys: string[];
+        }
+      >();
+      for (const row of refreshedLinkedRows) {
+        const current = byEntry.get(row.entryId);
+        if (current) {
+           current.sourceKeys.push(normalizeToneRecoverySourceKey(row.sectionKey));
+        } else {
+          byEntry.set(row.entryId, {
+            entryId: row.entryId,
+            title: row.title,
+            body: row.body,
+            category: row.category,
+            knowledgeGroup: row.knowledgeGroup,
+            tags: row.tags,
+            reviewStatus: row.reviewStatus,
+             sourceKeys: [normalizeToneRecoverySourceKey(row.sectionKey)],
+          });
+        }
+      }
+      const plan = planToneRecovery(
+        candidates.map((candidate) => ({
+          title: candidate.title,
+          body: candidate.body,
+          tags: candidate.tags,
+          sourceKeys: candidate.sourceKeys,
+           effectiveDate: candidate.effectiveDate,
+           expiresDate: candidate.expiresDate,
+           dateBound: candidate.dateBound,
+        })),
+        Array.from(byEntry.values())
+          .filter((entry) => entry.knowledgeGroup === "brand_voice")
+          .map((entry) => ({
+            title: entry.title,
+            body: entry.body,
+            tags: entry.tags,
+            sourceKeys: entry.sourceKeys,
+            entryId: entry.entryId,
+            reviewStatus: entry.reviewStatus,
+          })),
+      );
+
+      for (const candidate of plan.toInsert) {
+        const [entry] = await tx
+          .insert(knowledgeEntriesTable)
+          .values({
+            title: candidate.title,
+            body: candidate.body,
+            category: "general",
+            knowledgeGroup: "brand_voice",
+            tags: Array.from(new Set(candidate.tags.map((tag) => tag.toLowerCase()))),
+            sourceName: source.name,
+            sourceUrl: source.sourceUrl,
+            effectiveDate: candidate.effectiveDate ?? null,
+            expiresDate: candidate.expiresDate ?? null,
+            reviewStatus: "draft",
+            createdByEmail: req.staff!.email,
+            updatedByEmail: req.staff!.email,
+          })
+          .returning();
+        if (!entry) throw new Error("Tone recovery draft insert returned no entry");
+        await tx
+          .insert(knowledgeEntrySourcesTable)
+          .values(
+            candidate.sourceKeys.map((sectionKey) => ({
+              entryId: entry.id,
+              documentId,
+              sectionKey,
+            })),
+          )
+          .onConflictDoNothing();
+      }
+
+      const draftLinks = await tx
+        .select({ entryId: knowledgeEntrySourcesTable.entryId })
+        .from(knowledgeEntrySourcesTable)
+        .innerJoin(
+          knowledgeEntriesTable,
+          eq(knowledgeEntriesTable.id, knowledgeEntrySourcesTable.entryId),
+        )
+        .where(and(eq(knowledgeEntrySourcesTable.documentId, documentId), eq(knowledgeEntriesTable.reviewStatus, "draft")));
+      await tx
+        .update(knowledgeSourceDocumentsTable)
+        .set({
+          draftCount: new Set(draftLinks.map((link) => link.entryId)).size,
+          updatedByEmail: req.staff!.email,
+          updatedAt: new Date(),
+        })
+        .where(eq(knowledgeSourceDocumentsTable.id, documentId));
+      return {
+        addedDrafts: plan.toInsert.length,
+        skippedExisting: plan.skippedExisting,
+        approvedPreserved: plan.approvedPreserved,
+        draftCount: new Set(draftLinks.map((link) => link.entryId)).size,
+      };
+    });
+    res.json(result);
+  } catch (error) {
+    if (error instanceof KnowledgeDocumentError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    req.log.error({ err: error, documentId }, "tone recovery commit failed");
+    res.status(422).json({ error: error instanceof Error ? error.message : "Tone recovery could not be saved" });
+  } finally {
+    toneRecoveryInFlight.delete(staffKey);
+  }
 });
 
 // The retry endpoint intentionally has no options/body: every invocation is

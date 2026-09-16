@@ -59,6 +59,7 @@ import {
   updateKnowledgeClassificationSettings,
   type KnowledgeGroupId,
 } from "../lib/knowledgeClassification";
+import knowledgePlaygroundFeedbackRouter from "./knowledgePlaygroundFeedback";
 import { z } from "zod";
 
 /**
@@ -78,6 +79,7 @@ const PLAYGROUND_RATE_LIMIT_PER_MINUTE = 12;
 const playgroundInFlight = new Set<string>();
 const MERGE_RATE_LIMIT_PER_MINUTE = 3;
 const mergeInFlight = new Set<string>();
+router.use(knowledgePlaygroundFeedbackRouter);
 const mergeCandidateSchema = z.object({
   title: z.string().trim().min(3).max(200),
   body: z.string().trim().min(1).max(20_000),
