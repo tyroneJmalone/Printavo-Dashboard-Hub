@@ -4,7 +4,7 @@ import {
   pqPrintRunsTable,
   pqPrintJobsTable,
   pvOrdersTable,
-  pvImprintsTable,
+  pvLineItemsTable,
   type PqPrintRun,
   type PqPrintJob,
 } from "@workspace/db";
@@ -25,6 +25,11 @@ import {
 } from "./liveDiscovery";
 import { checkPrintSafety } from "./printSafety";
 import { planAutoPrintDetails } from "./candidatePlanning";
+import {
+  classifyDecorationLines,
+  destinationMappingForClassification,
+  type DecorationLine,
+} from "../../purchasing/decorationClassifier";
 
 /**
  * Auto-print engine (PQ3a). One run at a time (in-memory claim slot,
@@ -444,25 +449,25 @@ async function runAutoPrint(
       return row;
     });
 
-    /* 5 — typeOfWork categories for mapping */
-    const imprintRows = ids.length
+    /* 5 — line-item decoration classification for mapping */
+    const lineItemRows = ids.length
       ? await db
           .select({
-            orderId: pvImprintsTable.orderId,
-            typeOfWork: pvImprintsTable.typeOfWork,
+            orderId: pvLineItemsTable.orderId,
+            categoryName: pvLineItemsTable.categoryName,
+            items: pvLineItemsTable.items,
           })
-          .from(pvImprintsTable)
-          .where(inArray(pvImprintsTable.orderId, ids))
+          .from(pvLineItemsTable)
+          .where(inArray(pvLineItemsTable.orderId, ids))
       : [];
-    const categoriesByOrder = new Map<string, Set<string>>();
-    for (const r of imprintRows) {
-      if (!r.typeOfWork) continue;
-      const set = categoriesByOrder.get(r.orderId) ?? new Set<string>();
-      set.add(r.typeOfWork.trim().toLowerCase());
-      categoriesByOrder.set(r.orderId, set);
+    const linesByOrder = new Map<string, DecorationLine[]>();
+    for (const r of lineItemRows) {
+      const lines = linesByOrder.get(r.orderId) ?? [];
+      lines.push({ categoryName: r.categoryName, items: r.items });
+      linesByOrder.set(r.orderId, lines);
     }
     const mappings = config.categoryMappings.map((m) => ({
-      category: m.category.trim().toLowerCase(),
+      category: m.category,
       statusId: m.statusId,
       statusName: m.statusName,
     }));
@@ -470,21 +475,20 @@ async function runAutoPrint(
     /* 6 — build the work list */
     const todo: Candidate[] = [];
     for (const row of orderRows) {
-      const cats = categoriesByOrder.get(row.printavoId);
-      if (!cats && !row.detailSyncedAt) {
-        // Imprints arrive with the detail sync — defer instead of printing
+      const lines = linesByOrder.get(row.printavoId);
+      if (!lines && !row.detailSyncedAt) {
+        // Line items arrive with the detail sync — defer instead of printing
         // with a silently-missed category mapping.
         counts.detailPending += 1;
         continue;
       }
+      const classification = classifyDecorationLines(lines ?? [], {
+        positiveQuantityOnly: true,
+      });
       let target: { statusId: string; statusName: string } | null = null;
-      if (cats) {
-        for (const m of mappings) {
-          if (cats.has(m.category)) {
-            target = { statusId: m.statusId, statusName: m.statusName };
-            break;
-          }
-        }
+      const mapping = destinationMappingForClassification(classification, mappings);
+      if (mapping) {
+        target = { statusId: mapping.statusId, statusName: mapping.statusName };
       }
       const raw = row.data as { workorderUrl?: unknown } | null;
       todo.push({

@@ -11897,7 +11897,7 @@ export const getListImprintCategoriesUrl = () => {
 }
 
 /**
- * @summary Distinct typeOfWork categories seen in synced imprints (for the mapping editor)
+ * @summary Stable line-item decoration destination groups for the auto-print mapping editor
  */
 export const listImprintCategories = async ( options?: RequestInit): Promise<AutoPrintCategoriesResponse> => {
 
@@ -11944,7 +11944,7 @@ export type ListImprintCategoriesQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Distinct typeOfWork categories seen in synced imprints (for the mapping editor)
+ * @summary Stable line-item decoration destination groups for the auto-print mapping editor
  */
 
 export function useListImprintCategories<TData = Awaited<ReturnType<typeof listImprintCategories>>, TError = ErrorType<unknown>>(

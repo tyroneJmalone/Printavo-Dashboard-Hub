@@ -88,6 +88,49 @@ function formatDailyTime(value: string): string {
   return `${hour}:${String(minutes).padStart(2, "0")} ${hours >= 12 ? "PM" : "AM"}`;
 }
 
+const DECORATION_GROUP_LABELS = [
+  "Screen Printing",
+  "Heat Applied Graphics",
+  "Embroidery",
+  "Mixed Decoration",
+] as const;
+
+const DECORATION_GROUP_ALIASES: Record<string, (typeof DECORATION_GROUP_LABELS)[number]> = {
+  "screen printing": "Screen Printing",
+  "screen print": "Screen Printing",
+  screenprinting: "Screen Printing",
+  "screen prints": "Screen Printing",
+  silkscreen: "Screen Printing",
+  "silk screen": "Screen Printing",
+  sp: "Screen Printing",
+  "heat applied graphics": "Heat Applied Graphics",
+  "heat applied graphic": "Heat Applied Graphics",
+  "heat applied graphics - personalizations": "Heat Applied Graphics",
+  "heat applied graphics - personalization": "Heat Applied Graphics",
+  "heat applied": "Heat Applied Graphics",
+  "heat press": "Heat Applied Graphics",
+  dtf: "Heat Applied Graphics",
+  embroidery: "Embroidery",
+  "embroidery - personalizations": "Embroidery",
+  "embroidery - personalization": "Embroidery",
+  "embroidery - set up/digitizing": "Embroidery",
+  "embroidery - setup/digitizing": "Embroidery",
+  "embroidery - set up": "Embroidery",
+  "embroidery - digitizing": "Embroidery",
+  emb: "Embroidery",
+  "mixed decoration": "Mixed Decoration",
+  "mixed decorations": "Mixed Decoration",
+};
+
+function decorationGroupLabel(category: string): string | null {
+  const normalized = category
+    .trim()
+    .toLowerCase()
+    .replace(/[‐‑‒–—―]/g, "-")
+    .replace(/\s+/g, " ");
+  return DECORATION_GROUP_ALIASES[normalized] ?? null;
+}
+
 /* ── Source status multi-select ──────────────────────────────────────── */
 
 function StatusMultiPicker({
@@ -218,7 +261,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
   const statuses = statusData?.statuses ?? [];
   const { data: printerData } = useListAutoPrintPrinters();
   const { data: categoryData } = useListImprintCategories();
-  const categories = categoryData?.categories ?? [];
+  const categories = categoryData?.categories ?? [...DECORATION_GROUP_LABELS];
 
   const [enabled, setEnabled] = useState(initial.enabled);
   const [dryRun, setDryRun] = useState(initial.dryRun);
@@ -640,11 +683,12 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
       <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 space-y-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-100">
-            After printing, move orders by decoration
+            After successful printing, move orders by decoration
           </h2>
           <p className="text-[12px] text-slate-400 mt-0.5">
-            The order&rsquo;s imprint category decides where it goes after its
-            workorder prints. Orders with no matching category stay put.
+            Positive-quantity line-item categories decide the destination after
+            the workorder prints successfully. Mixed orders only match Mixed
+            Decoration; mixed or unmapped orders stay where they are.
           </p>
         </div>
         {mappings.length > 0 && (
@@ -662,6 +706,14 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
                 <span className="text-[13px] text-slate-300 truncate">
                   {m.statusName}
                 </span>
+                {!decorationGroupLabel(m.category) && (
+                  <span
+                    className="text-[11px] text-amber-300/80"
+                    title="This saved category is not recognized and will not move orders."
+                  >
+                    unrecognized — stays unchanged
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() =>

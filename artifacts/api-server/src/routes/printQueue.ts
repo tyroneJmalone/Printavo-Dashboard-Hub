@@ -56,8 +56,7 @@ import {
   listPrintRuns,
   listPrintJobs,
 } from "../lib/printQueue/autoPrint/engine";
-import { db, pvImprintsTable } from "@workspace/db";
-import { isNotNull } from "drizzle-orm";
+import { DECORATION_CATEGORY_LABELS } from "../lib/purchasing/decorationClassifier";
 
 const router: IRouter = Router();
 
@@ -492,25 +491,11 @@ router.get("/print-queue/autoprint/printers", (req, res) => {
     });
 });
 
-router.get("/print-queue/autoprint/categories", (req, res) => {
-  db
-    .selectDistinct({ typeOfWork: pvImprintsTable.typeOfWork })
-    .from(pvImprintsTable)
-    .where(isNotNull(pvImprintsTable.typeOfWork))
-    .then((rows) => {
-      const categories = [
-        ...new Set(
-          rows
-            .map((r) => (r.typeOfWork ?? "").trim())
-            .filter((c) => c.length > 0),
-        ),
-      ].sort((a, b) => a.localeCompare(b));
-      res.json({ categories });
-    })
-    .catch((err) => {
-      req.log.error({ err }, "imprint category list failed");
-      res.status(500).json({ error: "Failed to list categories" });
-    });
+router.get("/print-queue/autoprint/categories", (_req, res) => {
+  // Keep the editor stable across sync history. Saved legacy/unknown
+  // mappings remain visible in the config response, but are not added here
+  // and cannot silently match a line-item classification.
+  res.json({ categories: [...DECORATION_CATEGORY_LABELS] });
 });
 
 router.post("/print-queue/autoprint/run", (req, res) => {

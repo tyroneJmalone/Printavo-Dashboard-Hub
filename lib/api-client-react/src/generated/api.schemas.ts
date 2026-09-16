@@ -3941,6 +3941,9 @@ export interface AutoPrintPrintersResponse {
   printers: AutoPrintPrinter[];
 }
 
+/**
+ * The stable destination groups are Screen Printing, Heat Applied Graphics, Embroidery, and Mixed Decoration.
+ */
 export interface AutoPrintCategoriesResponse {
   categories: string[];
 }

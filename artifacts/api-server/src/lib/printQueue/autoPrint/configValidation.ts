@@ -13,7 +13,7 @@ export const MAX_DAILY_TIMES = 12;
 export const DAILY_TIME_PATTERN = /^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/;
 
 export interface CategoryMapping {
-  /** pv_imprints type_of_work category (exact string). */
+  /** Decoration category/group label used for a post-print destination. */
   category: string;
   /** Printavo status to move the order to after a successful print. */
   statusId: string;
@@ -39,7 +39,7 @@ export interface AutoPrintConfig {
   copies: number;
   /** Simulate runs without sending anything to PrintNode. */
   dryRun: boolean;
-  /** typeOfWork category → post-print target status. */
+  /** Decoration category/group → post-print target status. */
   categoryMappings: CategoryMapping[];
 }
 

@@ -60,3 +60,4 @@
 - [Reorder Portal public surface](reorder-portal.md) — accepted no-auth lookup model (private links = later phase); public writes re-validate with read filters; REORDER_EMAIL_MODE=live needed in prod.
 - [Line-item history semantics](line-item-history-semantics.md) — complete baselines only; polling records net changes, never editor identity or reconstructed past edits.
 - [Auto-print schedule policy](auto-print-schedule-policy.md) — Eastern civil time, no missed-slot catch-up, and no repeated fall-back printing.
+- [Auto-print decoration policy](auto-print-decoration-policy.md) — use Purchasing decoration groups, separate destinations, and no retroactive printing/status changes.

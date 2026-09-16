@@ -7293,11 +7293,11 @@ export const ListAutoPrintPrintersResponse = zod.object({
 
 
 /**
- * @summary Distinct typeOfWork categories seen in synced imprints (for the mapping editor)
+ * @summary Stable line-item decoration destination groups for the auto-print mapping editor
  */
 export const ListImprintCategoriesResponse = zod.object({
   "categories": zod.array(zod.string())
-})
+}).describe('The stable destination groups are Screen Printing, Heat Applied Graphics, Embroidery, and Mixed Decoration.')
 
 
 /**

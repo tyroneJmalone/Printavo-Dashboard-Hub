@@ -3833,7 +3833,7 @@ paths:
     get:
       operationId: listImprintCategories
       tags: [printQueue]
-      summary: Distinct typeOfWork categories seen in synced imprints (for the mapping editor)
+      summary: Stable line-item decoration destination groups for the auto-print mapping editor
       responses:
         "200":
           description: Categories
@@ -10733,6 +10733,7 @@ components:
       required: [configured, printers]
     AutoPrintCategoriesResponse:
       type: object
+      description: The stable destination groups are Screen Printing, Heat Applied Graphics, Embroidery, and Mixed Decoration.
       properties:
         categories:
           type: array

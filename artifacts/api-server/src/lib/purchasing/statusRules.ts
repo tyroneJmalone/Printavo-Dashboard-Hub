@@ -15,6 +15,25 @@ import { statusUpdateMutation } from "@workspace/printavo";
 import { getPrintavoClient, printavoConfigured } from "../printavoGateway";
 import { refreshOrderDetail, newDetailAgg } from "../sync/detail";
 import { businessDaysUntilDue } from "./businessDays";
+import {
+  classifyDecorationLines,
+  DECO_GROUPS,
+  type DecoGroup,
+} from "./decorationClassifier";
+
+export {
+  classifyDecorationLines,
+  DECO_GROUPS,
+  decorationGroupForCategory,
+  decorationKindForCategory,
+  normalizeDecorationCategory,
+} from "./decorationClassifier";
+export type {
+  DecoGroup,
+  DecorationClassification,
+  DecorationKind,
+  DecorationLine,
+} from "./decorationClassifier";
 
 /**
  * Status rules engine (P3d).
@@ -27,30 +46,6 @@ import { businessDaysUntilDue } from "./businessDays";
  * Reads Postgres ONLY (pv_* tables); the single Printavo write
  * (statusUpdate) goes through the shared throttled gateway client.
  */
-
-export type DecoGroup = "print" | "heat" | "embroidery";
-export const DECO_GROUPS: readonly DecoGroup[] = ["print", "heat", "embroidery"];
-
-/**
- * pv_line_items.category_name → deco group (normalized: trim + lowercase).
- * Only these three groups drive status rules (Tyler, 2026-07-09). Contract
- * categories are intentionally EXCLUDED — contract work has its own status
- * lane; fee-ish categories (Shipping, Extras, Art, Samples, ...) are ignored.
- */
-const CATEGORY_TO_GROUP: Record<string, DecoGroup> = {
-  "screen printing": "print",
-  "heat applied graphics": "heat",
-  "heat applied graphics - personalizations": "heat",
-  embroidery: "embroidery",
-  "embroidery - personalizations": "embroidery",
-  "embroidery - set up/digitizing": "embroidery",
-};
-
-/** A line with this category makes the order mixed-deco by definition. */
-const MIXED_CATEGORY = "mixed decoration";
-
-const normCategory = (name: string | null): string =>
-  (name ?? "").trim().toLowerCase();
 
 function errMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -418,22 +413,26 @@ export interface OrderComposition {
 export function composeOrder(
   lines: { categoryName: string | null; productStatus: string | null; items: number }[],
 ): OrderComposition {
-  const groups = new Set<DecoGroup>();
-  let mixedLine = false;
+  // Keep the Purchasing engine's historical classification semantics: a
+  // recognized category contributes even when its quantity is zero. Auto-
+  // print opts into positiveQuantityOnly because stale zero-quantity rows
+  // must not route a physical print.
+  const decoration = classifyDecorationLines(lines);
   let needOrderingCount = 0;
   let orderedCount = 0;
   for (const line of lines) {
-    const cat = normCategory(line.categoryName);
-    const group = CATEGORY_TO_GROUP[cat];
-    if (group) groups.add(group);
-    if (cat === MIXED_CATEGORY) mixedLine = true;
     // Stale zero-quantity lines (e.g. picked-up orders never cleaned up)
     // must not block status suggestions forever — same pragmatics as the
     // needs-ordering cart.
     if (line.productStatus === "need_ordering" && line.items > 0) needOrderingCount += 1;
     if (line.productStatus === "ordered") orderedCount += 1;
   }
-  return { groups, mixed: mixedLine || groups.size > 1, needOrderingCount, orderedCount };
+  return {
+    groups: decoration.groups,
+    mixed: decoration.mixed,
+    needOrderingCount,
+    orderedCount,
+  };
 }
 
 /**
