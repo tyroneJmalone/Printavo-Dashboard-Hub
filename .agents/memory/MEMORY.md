@@ -62,3 +62,4 @@
 - [Line-item history semantics](line-item-history-semantics.md) — complete baselines only; polling records net changes, never editor identity or reconstructed past edits.
 - [Auto-print schedule policy](auto-print-schedule-policy.md) — Eastern civil time, no missed-slot catch-up, and no repeated fall-back printing.
 - [Auto-print decoration policy](auto-print-decoration-policy.md) — use Purchasing decoration groups, separate destinations, and no retroactive printing/status changes.
+- [Cap America catalog direction](cap-america-catalog-direction.md) — user wants unified Catalog Search; supplier product photos improve on PDF crops, without implying live inventory or ordering.
