@@ -36,6 +36,7 @@ import {
   type CatalogMatchedColor,
   type CatalogHealth,
 } from "@workspace/api-client-react";
+import { CapAmericaSampleCatalog } from "@/components/purchasing/CapAmericaSampleCatalog";
 
 // --- Types ---
 interface SessionSelection {
@@ -1176,6 +1177,12 @@ export default function ProductFinder() {
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const style = params.get("style");
+    const tabParam = params.get("tab");
+
+    if (tabParam === "cap-america") {
+      setActiveTab("cap-america");
+    }
+
     if (style) {
       setStyleQuery(style);
       setActiveTab("search");
@@ -1199,14 +1206,19 @@ export default function ProductFinder() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight">Product Finder</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Catalog & Live stock from SanMar and S&S Activewear</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {activeTab === "cap-america"
+                  ? "Static catalog sample for Cap America (Inventory unavailable)"
+                  : "Catalog & Live stock from SanMar and S&S Activewear"}
+              </p>
             </div>
           </div>
 
-          <TabsList className="bg-slate-900 border border-slate-800 p-1 w-full max-w-md grid grid-cols-3 rounded-lg mb-0 relative top-[1px]">
+          <TabsList className="bg-slate-900 border border-slate-800 p-1 w-full max-w-2xl h-auto grid grid-cols-2 sm:grid-cols-4 rounded-lg mb-0 relative top-[1px]">
             <TabsTrigger value="catalog" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Catalog Search</TabsTrigger>
             <TabsTrigger value="search" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Search by Style</TabsTrigger>
             <TabsTrigger value="invoice" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Check Invoice</TabsTrigger>
+            <TabsTrigger value="cap-america" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Cap America Sample</TabsTrigger>
           </TabsList>
         </div>
         
@@ -1221,6 +1233,10 @@ export default function ProductFinder() {
            
            <TabsContent value="invoice" className="m-0 lg:h-full border-none outline-none p-4 lg:p-6">
              <InvoiceCheckMode />
+           </TabsContent>
+
+           <TabsContent value="cap-america" className="m-0 lg:h-full border-none outline-none p-4 lg:p-6">
+             <CapAmericaSampleCatalog />
            </TabsContent>
         </div>
       </Tabs>
