@@ -1,0 +1,590 @@
+{
+  "i8501": {
+    "productUrl": "https://www.capamerica.com/i8501",
+    "hero": {
+      "imageUrl": "/cap-america-2026/supplier/i8501/hero.jpg",
+      "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-athletic%20gold-black-white-FR.png",
+      "width": 500,
+      "height": 500,
+      "label": "Athletic Gold/Black/White"
+    },
+    "colors": {
+      "Athletic Gold/Black/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/01-athletic-gold-black-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-athletic%20gold-black-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Athletic Gold/Navy/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/02-athletic-gold-navy-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-athletic%20gold-navy-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Black/Red/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/03-black-red-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-black-red-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Black/Royal/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/04-black-royal-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-black-royal-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Columbia Blue/Navy/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/05-columbia-blue-navy-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-columbia-navy-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Maroon/Black/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/06-maroon-black-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-maroon-black-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Navy/Red/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/07-navy-red-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-navy-red-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Orange/Black/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/08-orange-black-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-orange-black-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Vegas Gold/Black/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/09-vegas-gold-black-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-vegas%20gold-black-white_FR_1500px-XS.png",
+        "width": 500,
+        "height": 500
+      },
+      "Vegas Gold/Navy/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/10-vegas-gold-navy-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-vegas%20gold-navy-white_FR_1500px-XS.png",
+        "width": 500,
+        "height": 500
+      },
+      "White/Black/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/11-white-black-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/539312b6-77f1-4656-acf9-cd5eed4971ad.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Navy/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/12-white-navy-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-i8503_WHITENAVY_XS-XS.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Navy/Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/13-white-navy-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-white-navy-red-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "White/Royal/Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/14-white-royal-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-logo-white-royal-red-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Black/Graphite": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/15-black-graphite.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-black-graphite-FR_1500px-XS.png",
+        "width": 500,
+        "height": 500
+      },
+      "Black/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/16-black-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-black-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Dark Green/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/17-dark-green-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-dark%20green-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Graphite/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/18-graphite-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-graphite-black-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Graphite/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/19-graphite-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-graphite-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Kelly Green/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/20-kelly-green-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-kelly-green-white-FR_XS.png",
+        "width": 500,
+        "height": 500
+      },
+      "Maroon/Graphite": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/21-maroon-graphite.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-maroon-graphite-FR_1500px-XS.png",
+        "width": 500,
+        "height": 500
+      },
+      "Navy/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/22-navy-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-navy-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Purple/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/23-purple-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-purple-white-FR_XS.png",
+        "width": 500,
+        "height": 500
+      },
+      "Red/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/24-red-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-red-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Royal/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/25-royal-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-royal-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/26-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-black-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/27-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-navy-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/28-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-red-FR_XS.png",
+        "width": 500,
+        "height": 500
+      },
+      "Royal": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/29-royal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-royal-FR_XS.png",
+        "width": 500,
+        "height": 500
+      },
+      "White": {
+        "imageUrl": "/cap-america-2026/supplier/i8501/colors/30-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8501-blank-white-FR.png",
+        "width": 500,
+        "height": 500
+      }
+    }
+  },
+  "i8530": {
+    "productUrl": "https://www.capamerica.com/i8530",
+    "hero": {
+      "imageUrl": "/cap-america-2026/supplier/i8530/hero.jpg",
+      "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/19ebff4a-56fd-44d4-a5be-5bbbcbfcda18.jpg",
+      "width": 500,
+      "height": 500,
+      "label": "Black/Black/Silver"
+    },
+    "colors": {
+      "Black/Black/Silver": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/01-black-black-silver.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/19ebff4a-56fd-44d4-a5be-5bbbcbfcda18.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Black/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/02-white-black-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/89618bbb-4d0f-4afb-a5ae-41651fc4cf7e.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Maroon/Maroon": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/03-white-maroon-maroon.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/da190575-da2d-4c2f-9ef1-e7f7e6950f4d.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Navy/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/04-white-navy-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/7263d4d3-181e-49f3-9890-61de20296908.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Orange/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/05-white-orange-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/d2c5b7c6-eb0e-4ae4-856e-edd8d763defc.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Red/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/06-white-red-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/0f308405-fd20-4e48-a526-f768dafffe4b.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Red/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/07-white-red-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/f0797a51-5393-4481-b31d-6a728e534030.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Royal/Royal": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/08-white-royal-royal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/f0fcbc0b-4896-47b2-b9d9-725612d2d765.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Black/Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/09-black-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/4353c70e-216f-4b25-bf60-db253ea6ed0e.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Black/Royal": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/10-black-royal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/6033ba49-5044-49dc-b428-03baef66d0fe.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Silver/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/11-silver-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/ead32673-8f06-45bf-ae24-c52b0bdd18f8.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Silver/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/12-silver-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/a62c96a2-21f4-4b99-889c-9b53b5fabb20.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Silver/Purple": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/13-silver-purple.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/c5f92a99-fd8f-4e22-8430-7a590b6aafd8.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/14-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/9770ac8c-4760-4806-8a1c-0932c41ae885.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Dark Green": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/15-dark-green.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/6f7d9990-64a0-47cd-8a41-86eafb698446.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Graphite": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/16-graphite.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/9d6cffa8-5ebb-4504-bee4-0b999393875d.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/17-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/3baf469b-f647-4620-ae48-0a3a5e4ec059.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/18-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/a22615a9-c7db-41da-8ce5-3f2da2a536b2.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Royal": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/19-royal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/8654a1cb-6b68-4efb-b217-3a7d7607514b.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Silver": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/20-silver.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/2eeca412-7324-4703-95b4-39f9154951dd.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White": {
+        "imageUrl": "/cap-america-2026/supplier/i8530/colors/21-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/48523f78-2e64-4f4b-94b9-75050a0034a7.jpg",
+        "width": 500,
+        "height": 500
+      }
+    }
+  },
+  "i8503": {
+    "productUrl": "https://www.capamerica.com/i8503",
+    "hero": {
+      "imageUrl": "/cap-america-2026/supplier/i8503/hero.jpg",
+      "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/6c0afe8a-5e8c-40ff-83b3-61019abc3a99.jpeg",
+      "width": 500,
+      "height": 500,
+      "label": "Navy/Columbia Blue"
+    },
+    "colors": {
+      "Navy/Columbia Blue": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/01-navy-columbia-blue.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/6c0afe8a-5e8c-40ff-83b3-61019abc3a99.jpeg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/02-white-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/bd27f189-d871-4f5a-b10c-4e34b44e7d99.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Loden": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/03-loden.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/1e2b4770-218e-4f15-bf36-03e280c2c424.jpeg",
+        "width": 500,
+        "height": 500
+      },
+      "Silver": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/04-silver.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/e49511a1-4571-4502-9593-5c1dc053b2d3.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Vegas Gold": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/05-vegas-gold.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/04f48f08-5503-47b2-bb80-130f4bafdb95.jpeg",
+        "width": 500,
+        "height": 500
+      },
+      "Orange/Black/White": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/06-orange-black-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-orange-black-white-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Silver/Silver/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/07-silver-silver-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-silver-silver-black-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "White/Black/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/08-white-black-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-white-black-black-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "White/Maroon/Maroon": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/09-white-maroon-maroon.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/4d14f4b3-bedf-4229-b6ef-89039dfe2ed7.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Navy/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/10-white-navy-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/48529cb9-91b8-4ca0-9eac-d29734dbbd67.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White/Red/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/11-white-red-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-white-red-navy-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "White/Red/Royal": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/12-white-red-royal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-white-red-royal-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Black/Athletic Gold": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/13-black-athletic-gold.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-black-athletic%20gold-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Black/Orange": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/14-black-orange.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/64a8248b-1cf9-4c9d-9008-69a17afca5e4.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Dark Green/Athletic Gold": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/15-dark-green-athletic-gold.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-dark%20green-athletic%20gold-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Navy/Athletic Gold": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/16-navy-athletic-gold.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-navy-athletic%20gold-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Red/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/17-red-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-red-black-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Red/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/18-red-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-red-navy-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Royal/Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/19-royal-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-royal-red-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Silver/Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/20-silver-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-silver-black-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Silver/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/21-silver-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-silver-navy-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Silver/Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/22-silver-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-silver-red-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Silver/Royal": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/23-silver-royal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-silver-royal-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "White/Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/24-white-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-white-navy-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "White/Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/25-white-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-white-red-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "White/Royal": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/26-white-royal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-white-royal-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Black": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/27-black.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-black-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Brown": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/28-brown.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/b3b64479-b958-4ccd-93cf-16310f5387b7.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "Cardinal": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/29-cardinal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-cardinal-XS_1500px.png",
+        "width": 500,
+        "height": 500
+      },
+      "Columbia Blue": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/30-columbia-blue.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-columbia%20blue-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Dark Green": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/31-dark-green.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-dark%20green-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Graphite": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/32-graphite.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-graphite-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Kelly Green": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/33-kelly-green.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-kelly-green-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Maroon": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/34-maroon.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-maroon-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Navy": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/35-navy.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-navy-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Orange": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/36-orange.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-orange-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Purple": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/37-purple.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-purple-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Red": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/38-red.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-red-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "Royal": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/39-royal.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-blank-royal-FR.png",
+        "width": 500,
+        "height": 500
+      },
+      "True Texas Orange": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/40-true-texas-orange.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/e5173638-e60e-48f4-9604-cded2ad0c027.jpg",
+        "width": 500,
+        "height": 500
+      },
+      "White": {
+        "imageUrl": "/cap-america-2026/supplier/i8503/colors/41-white.jpg",
+        "sourceUrl": "https://d207zvy2rsg5b5.cloudfront.net/51DEA9C0-A389-449B-A80E-2A8752E1C2AB/Products/Medium/i8503-i8503-White-XS-XS.jpg",
+        "width": 500,
+        "height": 500
+      }
+    }
+  }
+}

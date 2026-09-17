@@ -1,0 +1,20 @@
+{
+  "i8501": {
+    "catalogCount": 30,
+    "verifiedCount": 30,
+    "unmatchedExactNames": [],
+    "failedValidation": []
+  },
+  "i8530": {
+    "catalogCount": 21,
+    "verifiedCount": 21,
+    "unmatchedExactNames": [],
+    "failedValidation": []
+  },
+  "i8503": {
+    "catalogCount": 41,
+    "verifiedCount": 41,
+    "unmatchedExactNames": [],
+    "failedValidation": []
+  }
+}

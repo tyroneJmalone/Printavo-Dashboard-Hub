@@ -86,12 +86,12 @@ export function CapAmericaSampleCatalog() {
                 }`}
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-md bg-slate-800/50 border border-white/10 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
+                  <div className="w-16 h-16 rounded-md bg-white border border-white/10 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
                     {sample.heroImageUrl && !failedImages.has(sample.heroImageUrl) ? (
                       <img
                         src={sample.heroImageUrl}
                         alt={sample.style}
-                        className="w-full h-full object-cover relative z-10"
+                        className="w-full h-full object-contain relative z-10"
                         onError={() => handleImageError(sample.heroImageUrl)}
                       />
                     ) : (
@@ -202,7 +202,7 @@ export function CapAmericaSampleCatalog() {
                   onClick={() => setSelectedColor(null)}
                   className={`px-3 py-1.5 rounded-md border text-sm focus-visible:ring-2 focus-visible:ring-blue-400 ${selectedColor === null ? "border-blue-500 text-white bg-slate-800" : "border-slate-700 text-slate-400"}`}
                 >
-                  Catalog hero
+                  {selectedStyle.productUrl ? "Product photo" : "Catalog hero"}
                 </button>
                 {selectedStyle.colors.map((color) => {
                   const hasFailed = failedImages.has(color.imageUrl);
@@ -236,7 +236,7 @@ export function CapAmericaSampleCatalog() {
 
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="w-full md:w-1/2">
-                  <div className="aspect-square bg-slate-800/30 rounded-xl border border-slate-800 overflow-hidden relative flex items-center justify-center p-4">
+                  <div className="aspect-square bg-white rounded-xl border border-slate-800 overflow-hidden relative flex items-center justify-center p-4">
                     {(() => {
                       const colorObj = selectedStyle.colors.find(c => c.name === selectedColor);
                       const imageUrl = colorObj?.imageUrl || selectedStyle.heroImageUrl;
@@ -261,13 +261,22 @@ export function CapAmericaSampleCatalog() {
                     })()}
                   </div>
                   
-                  <p className="mt-3 text-sm font-medium text-slate-300 text-center" aria-live="polite">{selectedColor ?? "Catalog hero — sample decoration"}</p>
-                  {selectedStyle.imageNote && (
+                  <p className="mt-3 text-sm font-medium text-slate-300 text-center" aria-live="polite">{selectedColor ?? selectedStyle.heroImageLabel ?? "Catalog hero — sample decoration"}</p>
+                  {!selectedColor && selectedStyle.imageNote && (
                     <div className="mt-3 text-xs text-slate-500 italic text-center">
                       * {selectedStyle.imageNote}
                     </div>
                   )}
-                  <p className="mt-2 text-xs text-slate-500 text-center">Extracted catalog thumbnails may appear soft when enlarged. Photos remain Cap America's.</p>
+                  <p className="mt-2 text-xs text-slate-500 text-center">
+                    {selectedColor && selectedStyle.colors.find(c => c.name === selectedColor)?.photoSource === "catalog"
+                      ? "Catalog image — a matching higher-resolution supplier photo was not verified. This crop may appear soft when enlarged."
+                      : "Supplier product photo. Photos remain Cap America's."}
+                  </p>
+                  {selectedStyle.productUrl && (
+                    <a href={selectedStyle.productUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block text-center text-xs text-blue-400 hover:underline">
+                      View supplier product page <ExternalLink className="inline w-3 h-3" />
+                    </a>
+                  )}
                 </div>
 
                 <div className="w-full md:w-1/2 flex flex-col">

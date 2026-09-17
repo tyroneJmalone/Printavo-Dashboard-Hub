@@ -8,6 +8,23 @@
  * /api/storage/public-objects/cap-america-2026/... when that route is mounted.
  */
 
+import supplierPhotoData from "./capAmericaSupplierPhotos.json";
+
+type SupplierPhoto = {
+  imageUrl: string;
+  sourceUrl: string;
+  width: number;
+  height: number;
+};
+
+type SupplierStylePhotos = {
+  productUrl: string;
+  hero: SupplierPhoto & { label: string };
+  colors: Record<string, SupplierPhoto>;
+};
+
+const supplierPhotos = supplierPhotoData as Record<string, SupplierStylePhotos>;
+
 export type CapAmericaSample = {
   style: string;
   title: string;
@@ -16,8 +33,10 @@ export type CapAmericaSample = {
   description: string;
   features: string[];
   sizes: { label: string; range: string }[];
-  colors: { name: string; imageUrl: string }[];
+  colors: { name: string; imageUrl: string; photoSource: "supplier" | "catalog" }[];
   heroImageUrl: string;
+  heroImageLabel?: string;
+  productUrl?: string;
   pageImageUrl: string;
   sourceUrl: string;
   catalogPage: number;
@@ -41,6 +60,7 @@ const colors = (style: string, names: string[]) =>
   names.map((name, index) => ({
     name,
     imageUrl: `/cap-america-2026/${style}/colors/${String(index + 1).padStart(2, "0")}-${imageSlug(name)}.jpg`,
+    photoSource: "catalog" as const,
   }));
 
 const common = {
@@ -51,7 +71,7 @@ const common = {
   stock: null,
 } as const;
 
-export const capAmericaSamples: CapAmericaSample[] = [
+const catalogSamples: CapAmericaSample[] = [
   {
     ...common,
     style: "i8501",
@@ -214,3 +234,21 @@ export const capAmericaSamples: CapAmericaSample[] = [
       "Hero is the Cap America catalog sample shown with 3D Embroidery; the gray logo decoration is not included with an undecorated cap.",
   },
 ];
+
+export const capAmericaSamples: CapAmericaSample[] = catalogSamples.map((sample) => {
+  const photos = supplierPhotos[sample.style];
+  if (!photos) return sample;
+  return {
+    ...sample,
+    heroImageUrl: photos.hero.imageUrl,
+    heroImageLabel: photos.hero.label,
+    productUrl: photos.productUrl,
+    imageNote: "Blank product photo supplied by Cap America; decoration is not shown.",
+    colors: sample.colors.map((color) => {
+      const photo = photos.colors[color.name];
+      return photo
+        ? { ...color, imageUrl: photo.imageUrl, photoSource: "supplier" as const }
+        : color;
+    }),
+  };
+});
