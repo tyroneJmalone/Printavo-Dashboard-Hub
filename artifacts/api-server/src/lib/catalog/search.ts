@@ -128,7 +128,7 @@ export async function searchCatalog(params: CatalogSearchParams): Promise<{ tota
   const scoreSql = sql.join(scoreParts, sql` + `);
 
   // Matched colors: colors in a requested family (or family-named by a token);
-  // when nothing color-ish was asked, the first few colors as a preview.
+  // when nothing color-ish was asked, return all available colors.
   const famArr = Array.from(new Set(allFamilies));
   const matchedColorsSql =
     famArr.length > 0
@@ -148,7 +148,7 @@ export async function searchCatalog(params: CatalogSearchParams): Promise<{ tota
               'productImage', cc.product_image, 'families', COALESCE(cf.families, '{}')) AS x
             FROM catalog_colors cc
             LEFT JOIN catalog_color_families cf ON cf.norm_name = cc.norm_name
-            WHERE cc.product_id = p.id ORDER BY cc.color_name LIMIT 8
+            WHERE cc.product_id = p.id ORDER BY cc.color_name
           ) sub
         )`;
   const colorsSql = sql`(

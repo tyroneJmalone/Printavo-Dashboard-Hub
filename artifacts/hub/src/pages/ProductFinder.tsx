@@ -978,8 +978,10 @@ function CatalogHitCard({ hit, onSelectStyle, availableFamilies }: { hit: Catalo
             
             {hit.matchedColors.length > 0 && (
                <div className="mt-4 pt-4 border-t border-slate-800/50">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Matched Colors</div>
-                  <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                    {hit.matchedColors.length === hit.colorCount ? "Available Colors" : "Matched Colors"} ({hit.matchedColors.length})
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                      {hit.matchedColors.map(c => (
                         <div key={c.colorName} className="flex items-start gap-2 bg-slate-950 border border-slate-800 rounded p-2 pr-3 min-w-[120px]">
                            <button 
