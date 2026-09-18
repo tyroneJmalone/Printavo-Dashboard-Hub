@@ -1,6 +1,9 @@
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { COLOR_FAMILIES } from "./tagger";
+import { mapCatalogSearchRow, type CatalogSearchHit } from "./searchResult";
+export { mapCatalogSearchRow } from "./searchResult";
+export type { CatalogSearchColor, CatalogSearchHit } from "./searchResult";
 
 /**
  * Deterministic catalog search — tokenized matching over the local catalog,
@@ -24,24 +27,6 @@ export interface CatalogSearchParams {
   priceMax?: number;
   limit?: number;
   offset?: number;
-}
-
-export interface CatalogSearchHit {
-  id: number;
-  vendor: string;
-  styleName: string;
-  brand: string | null;
-  title: string | null;
-  category: string | null;
-  styleImage: string | null;
-  priceMin: number | null;
-  priceMax: number | null;
-  sizes: string[];
-  tags: string[];
-  discontinued: boolean;
-  matchedColors: { colorName: string; swatchImage: string | null; productImage: string | null; families: string[] }[];
-  colorCount: number;
-  score: number;
 }
 
 const FAMILY_SET = new Set<string>(COLOR_FAMILIES);
@@ -166,6 +151,15 @@ export async function searchCatalog(params: CatalogSearchParams): Promise<{ tota
             WHERE cc.product_id = p.id ORDER BY cc.color_name LIMIT 8
           ) sub
         )`;
+  const colorsSql = sql`(
+    SELECT COALESCE(json_agg(json_build_object(
+      'colorName', cc.color_name, 'swatchImage', cc.swatch_image,
+      'productImage', cc.product_image, 'families', COALESCE(cf.families, '{}'))
+      ORDER BY cc.color_name), '[]'::json)
+    FROM catalog_colors cc
+    LEFT JOIN catalog_color_families cf ON cf.norm_name = cc.norm_name
+    WHERE cc.product_id = p.id
+  )`;
 
   const res = (await db.execute(sql`
     WITH base AS (
@@ -189,6 +183,7 @@ export async function searchCatalog(params: CatalogSearchParams): Promise<{ tota
     SELECT p.*,
       (SELECT count(*) FROM catalog_colors cc WHERE cc.product_id = p.id) AS color_count,
       ${matchedColorsSql} AS matched_colors,
+      ${colorsSql} AS colors,
       count(*) OVER () AS total
     FROM filtered p
     ORDER BY p.score DESC, p.brand NULLS LAST, p.style_name
@@ -199,23 +194,7 @@ export async function searchCatalog(params: CatalogSearchParams): Promise<{ tota
   const total = rows.length > 0 ? Number(rows[0]!.total) : 0;
   return {
     total,
-    hits: rows.map((r) => ({
-      id: Number(r.id),
-      vendor: String(r.vendor),
-      styleName: String(r.style_name),
-      brand: (r.brand as string | null) ?? null,
-      title: (r.title as string | null) ?? null,
-      category: (r.category as string | null) ?? null,
-      styleImage: (r.style_image as string | null) ?? null,
-      priceMin: r.price_min === null ? null : Number(r.price_min),
-      priceMax: r.price_max === null ? null : Number(r.price_max),
-      sizes: (r.sizes as string[]) ?? [],
-      tags: (r.eff_tags as string[]) ?? [],
-      discontinued: Boolean(r.discontinued),
-      matchedColors: (r.matched_colors as CatalogSearchHit["matchedColors"]) ?? [],
-      colorCount: Number(r.color_count ?? 0),
-      score: Number(r.score ?? 0),
-    })),
+    hits: rows.map(mapCatalogSearchRow),
   };
 }
 

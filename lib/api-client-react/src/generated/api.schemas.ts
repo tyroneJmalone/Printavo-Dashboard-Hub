@@ -1512,6 +1512,8 @@ export interface CatalogSearchHit {
   /** @nullable */
   title: string | null;
   /** @nullable */
+  description: string | null;
+  /** @nullable */
   category: string | null;
   /** @nullable */
   styleImage: string | null;
@@ -1522,6 +1524,8 @@ export interface CatalogSearchHit {
   sizes: string[];
   tags: string[];
   matchedColors: CatalogMatchedColor[];
+  /** Every color carried for this style, sorted by color name. */
+  colors: CatalogMatchedColor[];
   colorCount: number;
   score: number;
 }

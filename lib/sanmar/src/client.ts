@@ -256,40 +256,7 @@ export class SanMarClient {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-    const text = await this.soapCall(PRODUCT_INFO_ENDPOINT, body);
-    const blocks = text.match(/<listResponse>[\s\S]*?<\/listResponse>/g) ?? [];
-    const entries: SanMarProductEntry[] = [];
-    for (const block of blocks) {
-      const basic = block.match(/<productBasicInfo>([\s\S]*?)<\/productBasicInfo>/)?.[1];
-      const price = block.match(/<productPriceInfo>([\s\S]*?)<\/productPriceInfo>/)?.[1];
-      const image = block.match(/<productImageInfo>([\s\S]*?)<\/productImageInfo>/)?.[1];
-      if (!basic) continue;
-      const entryStyle = tag(basic, "style");
-      const catalogColor = tag(basic, "catalogColor") ?? tag(basic, "color");
-      const size = tag(basic, "size");
-      if (!entryStyle || !catalogColor || !size) continue;
-      entries.push({
-        style: entryStyle,
-        catalogColor,
-        size,
-        sizeIndex: num(tag(basic, "sizeIndex")),
-        inventoryKey: tag(basic, "inventoryKey"),
-        uniqueKey: tag(basic, "uniqueKey"),
-        brandName: tag(basic, "brandName"),
-        productTitle: tag(basic, "productTitle"),
-        caseSize: num(tag(basic, "caseSize")),
-        piecePrice: price ? num(tag(price, "piecePrice")) : null,
-        pieceSalePrice: price ? num(tag(price, "pieceSalePrice")) : null,
-        casePrice: price ? num(tag(price, "casePrice")) : null,
-        caseSalePrice: price ? num(tag(price, "caseSalePrice")) : null,
-        saleStartDate: price ? tag(price, "saleStartDate") : null,
-        saleEndDate: price ? tag(price, "saleEndDate") : null,
-        priceText: price ? tag(price, "priceText") : null,
-        colorSwatchImage: image ? tag(image, "colorSquareImage") : null,
-        colorProductImage: image ? tag(image, "colorProductImage") : null,
-      });
-    }
-    return entries;
+    return parseSanMarProductInfoResponse(await this.soapCall(PRODUCT_INFO_ENDPOINT, body));
   }
 
   /**
@@ -553,6 +520,45 @@ export class SanMarClient {
       packages,
     };
   }
+}
+
+/** Parse the Product Info SOAP payload into the catalog-facing read model. */
+export function parseSanMarProductInfoResponse(text: string): SanMarProductEntry[] {
+  const blocks = text.match(/<listResponse>[\s\S]*?<\/listResponse>/g) ?? [];
+  const entries: SanMarProductEntry[] = [];
+  for (const block of blocks) {
+    const basic = block.match(/<productBasicInfo>([\s\S]*?)<\/productBasicInfo>/)?.[1];
+    const price = block.match(/<productPriceInfo>([\s\S]*?)<\/productPriceInfo>/)?.[1];
+    const image = block.match(/<productImageInfo>([\s\S]*?)<\/productImageInfo>/)?.[1];
+    if (!basic) continue;
+    const entryStyle = tag(basic, "style");
+    const catalogColor = tag(basic, "catalogColor") ?? tag(basic, "color");
+    const size = tag(basic, "size");
+    if (!entryStyle || !catalogColor || !size) continue;
+    entries.push({
+      style: entryStyle,
+      catalogColor,
+      size,
+      sizeIndex: num(tag(basic, "sizeIndex")),
+      inventoryKey: tag(basic, "inventoryKey"),
+      uniqueKey: tag(basic, "uniqueKey"),
+      brandName: tag(basic, "brandName"),
+      productTitle: tag(basic, "productTitle"),
+      productDescription: tag(basic, "productDescription"),
+      category: tag(basic, "category"),
+      caseSize: num(tag(basic, "caseSize")),
+      piecePrice: price ? num(tag(price, "piecePrice")) : null,
+      pieceSalePrice: price ? num(tag(price, "pieceSalePrice")) : null,
+      casePrice: price ? num(tag(price, "casePrice")) : null,
+      caseSalePrice: price ? num(tag(price, "caseSalePrice")) : null,
+      saleStartDate: price ? tag(price, "saleStartDate") : null,
+      saleEndDate: price ? tag(price, "saleEndDate") : null,
+      priceText: price ? tag(price, "priceText") : null,
+      colorSwatchImage: image ? tag(image, "colorSquareImage") : null,
+      colorProductImage: image ? tag(image, "colorProductImage") : null,
+    });
+  }
+  return entries;
 }
 
 /**

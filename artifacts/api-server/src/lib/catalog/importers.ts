@@ -3,6 +3,8 @@ import { sql, eq, and } from "drizzle-orm";
 import { SanMarClient } from "@workspace/sanmar";
 import { SSClient } from "@workspace/ss-activewear";
 import type { Logger } from "pino";
+import { mapSanMarProduct, stripHtml, type ProductUpsert } from "./sanmarMapping";
+export { mapSanMarProduct, stripHtml } from "./sanmarMapping";
 
 /**
  * Nightly vendor catalog importers (Product Finder phase 2).
@@ -28,40 +30,11 @@ export function normColorName(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-/** Strip vendor HTML (S&S descriptions are <ul><li>…) to plain text. */
-export function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 const SS_IMAGE_BASE = "https://www.ssactivewear.com/";
 function ssImageUrl(path: string | null): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
   return SS_IMAGE_BASE + path.replace(/^\/+/, "");
-}
-
-interface ProductUpsert {
-  vendor: "sanmar" | "ss";
-  styleName: string;
-  styleId: string | null;
-  brand: string | null;
-  title: string | null;
-  description: string | null;
-  category: string | null;
-  styleImage: string | null;
-  priceMin: number | null;
-  priceMax: number | null;
-  sizes: string[];
-  colors: { colorName: string; swatchImage: string | null; productImage: string | null }[];
 }
 
 async function upsertProduct(p: ProductUpsert): Promise<void> {
@@ -187,10 +160,10 @@ const SS_CONCURRENCY = 5;
 
 /** Styles already imported very recently (e.g. an interrupted seed that was
  *  restarted) can be skipped — makes long imports resumable across restarts. */
-async function recentlyImported(vendor: string, withinMs: number): Promise<Set<string>> {
+async function recentlyImported(vendor: string, withinMs: number, requireDescription = false): Promise<Set<string>> {
   const cutoff = new Date(Date.now() - withinMs);
   const rows = await db
-    .select({ styleName: catalogProductsTable.styleName })
+    .select({ styleName: catalogProductsTable.styleName, description: catalogProductsTable.description })
     .from(catalogProductsTable)
     .where(
       and(
@@ -198,7 +171,7 @@ async function recentlyImported(vendor: string, withinMs: number): Promise<Set<s
         sql`${catalogProductsTable.lastSeenAt} > ${cutoff}`,
       ),
     );
-  return new Set(rows.map((r) => r.styleName));
+  return new Set(rows.filter((r) => !requireDescription || Boolean(r.description?.trim())).map((r) => r.styleName));
 }
 
 const RESUME_WINDOW_MS = 12 * 60 * 60 * 1000;
@@ -298,7 +271,10 @@ export async function importSanMarCatalog(
   onProgress?: (done: number, total: number) => void,
 ): Promise<ImportCounts> {
   const styles = await client.getSellableStyles();
-  const skip = await recentlyImported("sanmar", RESUME_WINDOW_MS);
+  // Legacy SanMar rows were imported with description=null. Do not treat those
+  // rows as resumably complete: the next normal scheduled import repairs them
+  // from the same product-info response, without a separate mass backfill.
+  const skip = await recentlyImported("sanmar", RESUME_WINDOW_MS, true);
   log.info({ styles: styles.length, alreadyFresh: skip.size }, "SanMar catalog enumeration");
   let productsUpserted = 0;
   let colorsUpserted = 0;
@@ -312,7 +288,6 @@ export async function importSanMarCatalog(
     try {
       const entries = await client.getProductInfo(styleNum);
       if (entries.length === 0) continue;
-      const first = entries[0]!;
       const colorMap = new Map<string, { swatch: string | null; photo: string | null }>();
       const sizeSet = new Set<string>();
       let priceMin: number | null = null;
@@ -329,24 +304,7 @@ export async function importSanMarCatalog(
           priceMax = priceMax === null ? cost : Math.max(priceMax, cost);
         }
       }
-      await upsertProduct({
-        vendor: "sanmar",
-        styleName: first.style,
-        styleId: null,
-        brand: first.brandName,
-        title: first.productTitle,
-        description: null,
-        category: null,
-        styleImage: colorMap.values().next().value?.photo ?? null,
-        priceMin,
-        priceMax,
-        sizes: Array.from(sizeSet),
-        colors: Array.from(colorMap.entries()).map(([colorName, im]) => ({
-          colorName,
-          swatchImage: im.swatch,
-          productImage: im.photo,
-        })),
-      });
+      await upsertProduct(mapSanMarProduct(entries, colorMap, sizeSet, priceMin, priceMax));
       productsUpserted += 1;
       colorsUpserted += colorMap.size;
     } catch (err) {
@@ -367,3 +325,4 @@ export async function importSanMarCatalog(
   log.info({ productsUpserted, colorsUpserted, failures, discontinuedCount }, "SanMar catalog import done");
   return { productsUpserted, colorsUpserted, discontinuedCount };
 }
+

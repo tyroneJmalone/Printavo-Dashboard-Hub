@@ -13,6 +13,9 @@ export interface SanMarProductEntry {
   uniqueKey: string | null;
   brandName: string | null;
   productTitle: string | null;
+  /** Manufacturer marketing copy from productBasicInfo.productDescription. */
+  productDescription: string | null;
+  category: string | null;
   caseSize: number | null;
   /** Regular account NET piece cost — THE cost figure for POs (not MSRP). */
   piecePrice: number | null;

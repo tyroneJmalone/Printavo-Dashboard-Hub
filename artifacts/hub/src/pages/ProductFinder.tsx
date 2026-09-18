@@ -889,14 +889,31 @@ function ColorFamilyEditor({ color, availableFamilies }: { color: CatalogMatched
    )
 }
 
+import { ProductPhotoViewer } from "@/components/product-finder/ProductPhotoViewer";
+
 function CatalogHitCard({ hit, onSelectStyle, availableFamilies }: { hit: CatalogSearchHit, onSelectStyle: (styleName: string) => void, availableFamilies: string[] }) {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerColorName, setViewerColorName] = useState<string | undefined>();
+  const [showFullDesc, setShowFullDesc] = useState(false);
+  
+  const description = hit.description?.trim();
+
+  const openViewer = (colorName?: string) => {
+    setViewerColorName(colorName);
+    setViewerOpen(true);
+  };
+
   return (
     <div className="bg-slate-900/40 hover:bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-colors rounded-xl p-5 shadow-sm group">
       <div className="flex flex-col sm:flex-row gap-5">
          {hit.styleImage ? (
-            <div className="w-full sm:w-32 h-32 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-2 flex-shrink-0">
-               <img src={hit.styleImage} className="max-w-full max-h-full object-contain mix-blend-screen" alt={hit.title || hit.styleName} />
-            </div>
+            <button 
+              onClick={() => openViewer()}
+              aria-label="View product photos"
+              className="w-full sm:w-32 h-32 rounded-lg bg-white border border-slate-700 flex items-center justify-center p-2 flex-shrink-0 cursor-pointer hover:border-slate-500 hover:ring-2 hover:ring-[#10b981]/50 transition-all focus:outline-none focus:ring-2 focus:ring-[#10b981]"
+            >
+               <img src={hit.styleImage} className="max-w-full max-h-full object-contain" alt={hit.title || hit.styleName} />
+            </button>
          ) : (
             <div className="w-full sm:w-32 h-32 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-700">
                <span className="text-xs text-slate-500">No Image</span>
@@ -925,7 +942,7 @@ function CatalogHitCard({ hit, onSelectStyle, availableFamilies }: { hit: Catalo
                </div>
             </div>
             
-            <div className="flex items-center gap-2 text-xs text-slate-400 mb-4">
+            <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
                {hit.category && <span>{hit.category}</span>}
                {hit.category && <span>&bull;</span>}
                {hit.sizes.length > 0 && (
@@ -936,6 +953,26 @@ function CatalogHitCard({ hit, onSelectStyle, availableFamilies }: { hit: Catalo
                )}
                <span>{hit.colorCount} colors available</span>
             </div>
+
+            {description ? (
+               <div className="mb-4 text-sm text-slate-400">
+                  <p className={`whitespace-pre-wrap ${!showFullDesc ? 'line-clamp-2' : ''}`}>
+                    {description}
+                  </p>
+                  {description && (
+                    <button 
+                      onClick={() => setShowFullDesc(!showFullDesc)}
+                      className="text-xs font-medium text-slate-300 hover:text-white mt-1 transition-colors"
+                    >
+                      {showFullDesc ? "Read less" : "Show more"}
+                    </button>
+                  )}
+               </div>
+            ) : (
+               <div className="mb-4 text-sm text-slate-500 italic">
+                 Description unavailable
+               </div>
+            )}
             
             <TagEditor hit={hit} />
             
@@ -945,13 +982,25 @@ function CatalogHitCard({ hit, onSelectStyle, availableFamilies }: { hit: Catalo
                   <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar">
                      {hit.matchedColors.map(c => (
                         <div key={c.colorName} className="flex items-start gap-2 bg-slate-950 border border-slate-800 rounded p-2 pr-3 min-w-[120px]">
-                           {c.swatchImage ? (
-                              <img src={c.swatchImage} className="w-6 h-6 rounded-sm shadow-sm flex-shrink-0" alt="" />
-                           ) : (
-                              <div className="w-6 h-6 rounded-sm bg-slate-700 shadow-sm flex-shrink-0" />
-                           )}
+                           <button 
+                              onClick={() => openViewer(c.colorName)}
+                              aria-label={`View ${c.colorName}`}
+                              className="focus:outline-none flex-shrink-0 group/swatch hover:ring-2 hover:ring-[#10b981]/50 rounded-sm transition-all"
+                           >
+                             {c.swatchImage ? (
+                                <img src={c.swatchImage} className="w-6 h-6 rounded-sm shadow-sm flex-shrink-0 bg-slate-200" alt="" />
+                             ) : (
+                                <div className="w-6 h-6 rounded-sm bg-slate-700 shadow-sm flex-shrink-0" />
+                             )}
+                           </button>
                            <div className="flex flex-col justify-center min-w-0">
-                              <span className="text-[11px] font-medium text-slate-300 leading-none mb-1 truncate">{c.colorName}</span>
+                              <button 
+                                onClick={() => openViewer(c.colorName)}
+                                aria-label={`View ${c.colorName}`}
+                                className="text-[11px] font-medium text-slate-300 hover:text-white leading-none mb-1 truncate text-left focus:outline-none"
+                              >
+                                {c.colorName}
+                              </button>
                               <ColorFamilyEditor color={c} availableFamilies={availableFamilies} />
                            </div>
                         </div>
@@ -975,6 +1024,13 @@ function CatalogHitCard({ hit, onSelectStyle, availableFamilies }: { hit: Catalo
             </div>
          </div>
       </div>
+
+      <ProductPhotoViewer 
+         open={viewerOpen} 
+         onOpenChange={setViewerOpen} 
+         hit={hit} 
+         initialColorName={viewerColorName} 
+      />
     </div>
   )
 }

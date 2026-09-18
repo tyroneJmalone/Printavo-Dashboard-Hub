@@ -1636,6 +1636,7 @@ export const CatalogSearchResponse = zod.object({
   "styleName": zod.string(),
   "brand": zod.string().nullable(),
   "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
   "category": zod.string().nullable(),
   "styleImage": zod.string().nullable(),
   "priceMin": zod.number().nullable(),
@@ -1648,6 +1649,12 @@ export const CatalogSearchResponse = zod.object({
   "productImage": zod.string().nullable(),
   "families": zod.array(zod.string())
 })),
+  "colors": zod.array(zod.object({
+  "colorName": zod.string(),
+  "swatchImage": zod.string().nullable(),
+  "productImage": zod.string().nullable(),
+  "families": zod.array(zod.string())
+})).describe('Every color carried for this style, sorted by color name.'),
   "colorCount": zod.number(),
   "score": zod.number()
 }))

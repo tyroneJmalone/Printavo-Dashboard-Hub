@@ -1,4 +1,4 @@
-export { SanMarClient, SanMarApiError, buildSanMarPoEnvelope } from "./client";
+export { SanMarClient, SanMarApiError, buildSanMarPoEnvelope, parseSanMarProductInfoResponse } from "./client";
 export { SANMAR_WAREHOUSES, SANMAR_SHIP_METHODS } from "./types";
 export type {
   SanMarCredentials,

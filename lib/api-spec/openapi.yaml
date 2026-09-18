@@ -8908,6 +8908,7 @@ components:
         styleName: { type: string }
         brand: { type: ["string", "null"] }
         title: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
         category: { type: ["string", "null"] }
         styleImage: { type: ["string", "null"] }
         priceMin: { type: ["number", "null"] }
@@ -8922,9 +8923,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CatalogMatchedColor"
+        colors:
+          type: array
+          description: Every color carried for this style, sorted by color name.
+          items:
+            $ref: "#/components/schemas/CatalogMatchedColor"
         colorCount: { type: integer }
         score: { type: number }
-      required: [id, vendor, styleName, brand, title, category, styleImage, priceMin, priceMax, sizes, tags, matchedColors, colorCount, score]
+      required: [id, vendor, styleName, brand, title, description, category, styleImage, priceMin, priceMax, sizes, tags, matchedColors, colors, colorCount, score]
     CatalogSearchResult:
       type: object
       properties:
