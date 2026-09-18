@@ -1259,6 +1259,62 @@ export interface NeedsOrderingResult {
   totalPieces: number;
 }
 
+export interface BulkLineItemProductStatusSelection {
+  /** @minLength 1 */
+  lineItemId: string;
+  /** @minLength 1 */
+  orderId: string;
+}
+
+export type BulkLineItemProductStatusRequestStatus = typeof BulkLineItemProductStatusRequestStatus[keyof typeof BulkLineItemProductStatusRequestStatus];
+
+
+export const BulkLineItemProductStatusRequestStatus = {
+  unset: 'unset',
+  ordered: 'ordered',
+  received: 'received',
+} as const;
+
+export interface BulkLineItemProductStatusRequest {
+  /**
+     * @minItems 1
+     * @maxItems 5
+     */
+  lineItems: BulkLineItemProductStatusSelection[];
+  status: BulkLineItemProductStatusRequestStatus;
+}
+
+export type BulkLineItemProductStatusResultOutcome = typeof BulkLineItemProductStatusResultOutcome[keyof typeof BulkLineItemProductStatusResultOutcome];
+
+
+export const BulkLineItemProductStatusResultOutcome = {
+  updated: 'updated',
+  already_set: 'already_set',
+  conflict: 'conflict',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+export interface BulkLineItemProductStatusResult {
+  lineItemId: string;
+  orderId: string;
+  outcome: BulkLineItemProductStatusResultOutcome;
+  message: string;
+}
+
+export interface BulkLineItemProductStatusResponse {
+  results: BulkLineItemProductStatusResult[];
+  /** @minimum 0 */
+  updated: number;
+  /** @minimum 0 */
+  alreadySet: number;
+  /**
+     * Includes failed, conflict, and unknown outcomes.
+     * @minimum 0
+     */
+  failed: number;
+}
+
 export interface ErrorResponse {
   error: string;
 }

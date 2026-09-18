@@ -1388,6 +1388,45 @@ export const GetNeedsOrderingResponse = zod.object({
 
 
 /**
+ * Updates only explicitly selected line items that still need ordering, after a fresh Printavo read.
+ * @summary Set product status on selected purchasing queue line items
+ */
+
+
+export const bulkSetLineItemProductStatusBodyLineItemsMax = 5;
+
+
+
+export const BulkSetLineItemProductStatusBody = zod.object({
+  "lineItems": zod.array(zod.object({
+  "lineItemId": zod.string().min(1),
+  "orderId": zod.string().min(1)
+})).min(1).max(bulkSetLineItemProductStatusBodyLineItemsMax),
+  "status": zod.enum(['unset', 'ordered', 'received'])
+})
+
+export const bulkSetLineItemProductStatusResponseUpdatedMin = 0;
+
+export const bulkSetLineItemProductStatusResponseAlreadySetMin = 0;
+
+export const bulkSetLineItemProductStatusResponseFailedMin = 0;
+
+
+
+export const BulkSetLineItemProductStatusResponse = zod.object({
+  "results": zod.array(zod.object({
+  "lineItemId": zod.string(),
+  "orderId": zod.string(),
+  "outcome": zod.enum(['updated', 'already_set', 'conflict', 'failed', 'unknown']),
+  "message": zod.string()
+})),
+  "updated": zod.number().min(bulkSetLineItemProductStatusResponseUpdatedMin),
+  "alreadySet": zod.number().min(bulkSetLineItemProductStatusResponseAlreadySetMin),
+  "failed": zod.number().min(bulkSetLineItemProductStatusResponseFailedMin).describe('Includes failed, conflict, and unknown outcomes.')
+})
+
+
+/**
  * Fetches all colors/sizes with cost and inventory for a style from SanMar or S&S Activewear. Cached in-memory ~15 minutes per vendor+style.
  * @summary Live vendor catalog lookup by style
  */

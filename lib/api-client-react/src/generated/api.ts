@@ -64,6 +64,8 @@ import type {
   BulkDeleteKnowledgeEntriesInput,
   BulkDeleteKnowledgeEntriesResult,
   BulkDeleteTasksInput,
+  BulkLineItemProductStatusRequest,
+  BulkLineItemProductStatusResponse,
   BulkUpdateTasksInput,
   CatalogColorFamilyRequest,
   CatalogFilters,
@@ -3764,6 +3766,77 @@ export function useGetNeedsOrdering<TData = Awaited<ReturnType<typeof getNeedsOr
 
 
 
+
+export const getBulkSetLineItemProductStatusUrl = () => {
+
+
+
+
+  return `/api/purchasing/line-item-product-status`
+}
+
+/**
+ * Updates only explicitly selected line items that still need ordering, after a fresh Printavo read.
+ * @summary Set product status on selected purchasing queue line items
+ */
+export const bulkSetLineItemProductStatus = async (bulkLineItemProductStatusRequest: BulkLineItemProductStatusRequest, options?: RequestInit): Promise<BulkLineItemProductStatusResponse> => {
+
+  return customFetch<BulkLineItemProductStatusResponse>(getBulkSetLineItemProductStatusUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bulkLineItemProductStatusRequest)
+  }
+);}
+
+
+
+
+export const getBulkSetLineItemProductStatusMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkSetLineItemProductStatus>>, TError,{data: BodyType<BulkLineItemProductStatusRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkSetLineItemProductStatus>>, TError,{data: BodyType<BulkLineItemProductStatusRequest>}, TContext> => {
+
+const mutationKey = ['bulkSetLineItemProductStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkSetLineItemProductStatus>>, {data: BodyType<BulkLineItemProductStatusRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkSetLineItemProductStatus(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkSetLineItemProductStatusMutationResult = NonNullable<Awaited<ReturnType<typeof bulkSetLineItemProductStatus>>>
+    export type BulkSetLineItemProductStatusMutationBody = BodyType<BulkLineItemProductStatusRequest>
+    export type BulkSetLineItemProductStatusMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Set product status on selected purchasing queue line items
+ */
+export const useBulkSetLineItemProductStatus = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkSetLineItemProductStatus>>, TError,{data: BodyType<BulkLineItemProductStatusRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkSetLineItemProductStatus>>,
+        TError,
+        {data: BodyType<BulkLineItemProductStatusRequest>},
+        TContext
+      > => {
+      return useMutation(getBulkSetLineItemProductStatusMutationOptions(options));
+    }
 
 export const getVendorLookupUrl = () => {
 

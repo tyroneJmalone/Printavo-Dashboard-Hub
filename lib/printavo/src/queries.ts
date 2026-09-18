@@ -410,8 +410,11 @@ export function poPushLineItemQuery(lineItemId: string): string {
 export interface LineItemUpdateInput {
   /** REQUIRED by Printavo's LineItemInput. */
   position: number;
-  /** LineItemStatus enum value, e.g. "ordered" (unquoted enum literal). */
-  productStatus?: string;
+  /**
+   * LineItemStatus enum value, e.g. "ordered" (unquoted enum literal).
+   * `null` explicitly clears the status; `undefined` leaves it untouched.
+   */
+  productStatus?: string | null;
   itemNumber?: string;
   color?: string;
   /** Pairs of (LineItemSize enum value, count). Enum values must come from PRINTAVO_SIZE_ENUM. */
@@ -433,7 +436,11 @@ export function lineItemUpdateMutation(
 ): string {
   const parts: string[] = [`position: ${Math.trunc(input.position)}`];
   if (input.productStatus !== undefined) {
-    parts.push(`productStatus: ${enumLit(input.productStatus, "LineItemStatus")}`);
+    parts.push(
+      input.productStatus === null
+        ? "productStatus: null"
+        : `productStatus: ${enumLit(input.productStatus, "LineItemStatus")}`,
+    );
   }
   if (input.itemNumber !== undefined) parts.push(`itemNumber: ${lit(input.itemNumber)}`);
   if (input.color !== undefined) parts.push(`color: ${lit(input.color)}`);

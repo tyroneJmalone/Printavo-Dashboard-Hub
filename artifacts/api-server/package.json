@@ -29,7 +29,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:voice-privacy": "node ./test-voice-privacy.mjs",
     "test:webhook-dedupe": "node ./test-webhook-dedupe.mjs",
-    "test:writer-lock": "node ./test-writer-lock.mjs"
+    "test:writer-lock": "node ./test-writer-lock.mjs",
+    "test:line-item-product-status": "node ./test-line-item-product-status.mjs"
   },
   "dependencies": {
     "@clerk/express": "^2.1.42",

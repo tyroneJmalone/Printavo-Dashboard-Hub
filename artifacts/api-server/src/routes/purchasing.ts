@@ -19,6 +19,8 @@ import {
   CatalogSearchQueryParams,
   SetCatalogTagOverrideBody,
   SetCatalogColorFamilyBody,
+  BulkSetLineItemProductStatusBody,
+  BulkSetLineItemProductStatusResponse,
 } from "@workspace/api-zod";
 import { searchCatalog, catalogFilters } from "../lib/catalog/search";
 import { catalogHealth, runCatalogRefresh, isRefreshActive } from "../lib/catalog/refresh";
@@ -70,6 +72,10 @@ import {
   dismissStatusSuggestion,
   type StatusRuleInput,
 } from "../lib/purchasing/statusRules";
+import {
+  bulkSetProductStatus,
+  normalizeUniqueSelections,
+} from "../lib/purchasing/lineItemProductStatus";
 
 /**
  * Purchasing (Vendor Orders) module routes.
@@ -96,6 +102,32 @@ router.get("/purchasing/needs-ordering", (req, res) => {
       req.log.error({ err }, "Needs-ordering scan failed");
       res.status(500).json({ error: "Needs-ordering scan failed" });
     });
+});
+
+router.post("/purchasing/line-item-product-status", async (req, res): Promise<void> => {
+  const parsed = BulkSetLineItemProductStatusBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid line-item product-status request" });
+    return;
+  }
+  const normalized = normalizeUniqueSelections(parsed.data.lineItems);
+  if (!normalized) {
+    res.status(400).json({ error: "Line-item and order IDs must be non-empty and unique" });
+    return;
+  }
+
+  try {
+    const auditLog = req.log.child({ actor: req.staff!.email });
+    const result = await bulkSetProductStatus(
+      normalized,
+      parsed.data.status,
+      auditLog,
+    );
+    res.json(BulkSetLineItemProductStatusResponse.parse(result));
+  } catch (err) {
+    req.log.error({ err }, "Bulk line-item product-status update failed");
+    res.status(500).json({ error: "Line-item product-status update failed" });
+  }
 });
 
 router.post("/purchasing/product-search", (req, res) => {
