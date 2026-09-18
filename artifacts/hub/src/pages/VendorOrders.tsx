@@ -149,6 +149,19 @@ export default function VendorOrders() {
     setSelectedIds(new Set());
   };
 
+  const handleAddSelectedToCart = () => {
+    for (const order of filteredOrders) {
+      for (const li of order.lineItems) {
+        if (selectedIds.has(li.id)) {
+          // The cart's addItem leaves existing entries (and their edits) intact.
+          addItem(buildCartItem(order, li));
+        }
+      }
+    }
+    setSelectedIds(new Set());
+    setCartOpen(true);
+  };
+
   const handleSelectOrder = (orderId: string, lineItems: NeedsOrderingLineItem[], checked: boolean) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -329,7 +342,7 @@ export default function VendorOrders() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar pb-24">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="animate-spin text-[#10b981]" size={32} />
@@ -480,9 +493,9 @@ export default function VendorOrders() {
           )}
         </div>
 
-        {/* Selection Action Bar (Fixed at bottom) */}
+        {/* Keep all selection actions visible without covering the last rows. */}
         {selectedIds.size > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 bg-[#0f172a] border-t border-[#10b981]/50 shadow-[0_-10px_40px_-10px_rgba(16,185,129,0.2)] p-4 px-6 flex flex-wrap gap-3 items-center justify-between z-10 animate-in slide-in-from-bottom-4">
+          <div className="flex-shrink-0 bg-[#0f172a] border-t border-[#10b981]/50 shadow-[0_-10px_40px_-10px_rgba(16,185,129,0.2)] p-4 px-6 flex flex-wrap gap-3 items-center justify-between z-10 animate-in slide-in-from-bottom-4">
             <div className="flex items-center gap-4">
               <div className="bg-[#10b981]/20 text-[#10b981] px-3 py-1.5 rounded-lg border border-[#10b981]/30 flex items-center gap-2">
                 <span className="font-black text-lg">{selectedIds.size}</span>
@@ -497,6 +510,17 @@ export default function VendorOrders() {
             </div>
             
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleAddSelectedToCart}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#059669] hover:bg-[#047857] text-white text-sm font-bold rounded-lg transition-colors"
+                title="Add selected lines without changing their Printavo product status. Items already in the cart stay unchanged."
+              >
+                <ShoppingCart size={16} />
+                Add Selected to PO Cart
+              </button>
+
+              <div className="w-px h-8 bg-slate-700 mx-2" />
+
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wider mr-2">Set Status To:</span>
               
               <button 
