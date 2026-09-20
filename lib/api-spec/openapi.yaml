@@ -10232,7 +10232,125 @@ components:
             question: { type: string }
             answer: { type: string }
             sql: { type: string }
+            analysis:
+              $ref: "#/components/schemas/InsightsAnalysis"
           required: [question, answer, sql]
+    InsightsAnalysisSource:
+      type: object
+      properties:
+        name: { type: string }
+        kind:
+          type: string
+          enum: [table]
+        usage:
+          type: string
+          enum: [referenced, scanned]
+        description: { type: string }
+        descriptionStatus:
+          type: string
+          enum: [model_described]
+      required: [name, kind, usage, description, descriptionStatus]
+    InsightsDateCoverage:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [measured, not_measured]
+        start:
+          type: [string, "null"]
+        end:
+          type: [string, "null"]
+        basis:
+          type: [string, "null"]
+      required: [status, start, end, basis]
+    InsightsExplainedItem:
+      type: object
+      properties:
+        description: { type: string }
+        status:
+          type: string
+          enum: [model_described]
+      required: [description, status]
+    InsightsFreshness:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [known, unknown]
+        asOf:
+          type: [string, "null"]
+        source:
+          type: [string, "null"]
+        note: { type: string }
+      required: [status, asOf, source, note]
+    InsightsSummaryProvenance:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [available, unavailable]
+        sampledRows: { type: integer }
+        returnedRows: { type: integer }
+        truncated: { type: boolean }
+        note:
+          type: [string, "null"]
+      required: [status, sampledRows, returnedRows, truncated, note]
+    InsightsFindingEvidence:
+      type: object
+      properties:
+        row:
+          type: integer
+          minimum: 0
+        column: { type: string }
+        value: {}
+      required: [row, column, value]
+    InsightsFinding:
+      type: object
+      properties:
+        text: { type: string }
+        evidence:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/InsightsFindingEvidence"
+      required: [text, evidence]
+    InsightsAnalysis:
+      type: object
+      description: Provenance for the executed SQL and returned evidence. Model-described prose is explanatory and not independently verified; SQL remains the audit truth.
+      properties:
+        interpretedQuestion: { type: string }
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/InsightsAnalysisSource"
+        dateCoverage:
+          $ref: "#/components/schemas/InsightsDateCoverage"
+        filters:
+          type: array
+          items:
+            $ref: "#/components/schemas/InsightsExplainedItem"
+        calculations:
+          type: array
+          items:
+            $ref: "#/components/schemas/InsightsExplainedItem"
+        exclusions:
+          type: array
+          items:
+            $ref: "#/components/schemas/InsightsExplainedItem"
+        freshness:
+          $ref: "#/components/schemas/InsightsFreshness"
+        limitations:
+          type: array
+          items: { type: string }
+        summary:
+          $ref: "#/components/schemas/InsightsSummaryProvenance"
+        findings:
+          type: array
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/InsightsFinding"
+        provenanceNote: { type: string }
+      required: [interpretedQuestion, sources, dateCoverage, filters, calculations, exclusions, freshness, limitations, summary, findings, provenanceNote]
     InsightsPreset:
       type: object
       properties:
@@ -10290,6 +10408,8 @@ components:
             preset:
               $ref: "#/components/schemas/InsightsPreset"
             ranAt: { type: string }
+            analysis:
+              $ref: "#/components/schemas/InsightsAnalysis"
           required: [preset, ranAt]
     ParseChipplyEmailRequest:
       type: object

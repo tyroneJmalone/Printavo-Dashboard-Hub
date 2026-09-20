@@ -3225,10 +3225,136 @@ export interface InsightsQueryResult {
   truncated: boolean;
 }
 
+export type InsightsAnalysisSourceKind = typeof InsightsAnalysisSourceKind[keyof typeof InsightsAnalysisSourceKind];
+
+
+export const InsightsAnalysisSourceKind = {
+  table: 'table',
+} as const;
+
+export type InsightsAnalysisSourceUsage = typeof InsightsAnalysisSourceUsage[keyof typeof InsightsAnalysisSourceUsage];
+
+
+export const InsightsAnalysisSourceUsage = {
+  referenced: 'referenced',
+  scanned: 'scanned',
+} as const;
+
+export type InsightsAnalysisSourceDescriptionStatus = typeof InsightsAnalysisSourceDescriptionStatus[keyof typeof InsightsAnalysisSourceDescriptionStatus];
+
+
+export const InsightsAnalysisSourceDescriptionStatus = {
+  model_described: 'model_described',
+} as const;
+
+export interface InsightsAnalysisSource {
+  name: string;
+  kind: InsightsAnalysisSourceKind;
+  usage: InsightsAnalysisSourceUsage;
+  description: string;
+  descriptionStatus: InsightsAnalysisSourceDescriptionStatus;
+}
+
+export type InsightsDateCoverageStatus = typeof InsightsDateCoverageStatus[keyof typeof InsightsDateCoverageStatus];
+
+
+export const InsightsDateCoverageStatus = {
+  measured: 'measured',
+  not_measured: 'not_measured',
+} as const;
+
+export interface InsightsDateCoverage {
+  status: InsightsDateCoverageStatus;
+  /** @nullable */
+  start: string | null;
+  /** @nullable */
+  end: string | null;
+  /** @nullable */
+  basis: string | null;
+}
+
+export type InsightsExplainedItemStatus = typeof InsightsExplainedItemStatus[keyof typeof InsightsExplainedItemStatus];
+
+
+export const InsightsExplainedItemStatus = {
+  model_described: 'model_described',
+} as const;
+
+export interface InsightsExplainedItem {
+  description: string;
+  status: InsightsExplainedItemStatus;
+}
+
+export type InsightsFreshnessStatus = typeof InsightsFreshnessStatus[keyof typeof InsightsFreshnessStatus];
+
+
+export const InsightsFreshnessStatus = {
+  known: 'known',
+  unknown: 'unknown',
+} as const;
+
+export interface InsightsFreshness {
+  status: InsightsFreshnessStatus;
+  /** @nullable */
+  asOf: string | null;
+  /** @nullable */
+  source: string | null;
+  note: string;
+}
+
+export type InsightsSummaryProvenanceStatus = typeof InsightsSummaryProvenanceStatus[keyof typeof InsightsSummaryProvenanceStatus];
+
+
+export const InsightsSummaryProvenanceStatus = {
+  available: 'available',
+  unavailable: 'unavailable',
+} as const;
+
+export interface InsightsSummaryProvenance {
+  status: InsightsSummaryProvenanceStatus;
+  sampledRows: number;
+  returnedRows: number;
+  truncated: boolean;
+  /** @nullable */
+  note: string | null;
+}
+
+export interface InsightsFindingEvidence {
+  /** @minimum 0 */
+  row: number;
+  column: string;
+  value: unknown;
+}
+
+export interface InsightsFinding {
+  text: string;
+  /** @minItems 1 */
+  evidence: InsightsFindingEvidence[];
+}
+
+/**
+ * Provenance for the executed SQL and returned evidence. Model-described prose is explanatory and not independently verified; SQL remains the audit truth.
+ */
+export interface InsightsAnalysis {
+  interpretedQuestion: string;
+  sources: InsightsAnalysisSource[];
+  dateCoverage: InsightsDateCoverage;
+  filters: InsightsExplainedItem[];
+  calculations: InsightsExplainedItem[];
+  exclusions: InsightsExplainedItem[];
+  freshness: InsightsFreshness;
+  limitations: string[];
+  summary: InsightsSummaryProvenance;
+  /** @maxItems 3 */
+  findings: InsightsFinding[];
+  provenanceNote: string;
+}
+
 export type AskInsightsResponse = InsightsQueryResult & {
   question: string;
   answer: string;
   sql: string;
+  analysis?: InsightsAnalysis;
 };
 
 export interface InsightsPreset {
@@ -3277,6 +3403,7 @@ export interface UpdateInsightsPresetRequest {
 export type RunInsightsPresetResponse = InsightsQueryResult & {
   preset: InsightsPreset;
   ranAt: string;
+  analysis?: InsightsAnalysis;
 };
 
 export interface ParseChipplyEmailRequest {

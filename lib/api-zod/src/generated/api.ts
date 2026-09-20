@@ -4741,6 +4741,13 @@ export const AskInsightsBody = zod.object({
   "question": zod.string().min(askInsightsBodyQuestionMin).max(askInsightsBodyQuestionMax)
 })
 
+export const askInsightsResponseTwoAnalysisFindingsItemEvidenceItemRowMin = 0;
+
+
+export const askInsightsResponseTwoAnalysisFindingsMax = 3;
+
+
+
 export const AskInsightsResponse = zod.object({
   "columns": zod.array(zod.string()),
   "rows": zod.array(zod.array(zod.unknown())),
@@ -4749,7 +4756,58 @@ export const AskInsightsResponse = zod.object({
 }).and(zod.object({
   "question": zod.string(),
   "answer": zod.string(),
-  "sql": zod.string()
+  "sql": zod.string(),
+  "analysis": zod.object({
+  "interpretedQuestion": zod.string(),
+  "sources": zod.array(zod.object({
+  "name": zod.string(),
+  "kind": zod.enum(['table']),
+  "usage": zod.enum(['referenced', 'scanned']),
+  "description": zod.string(),
+  "descriptionStatus": zod.enum(['model_described'])
+})),
+  "dateCoverage": zod.object({
+  "status": zod.enum(['measured', 'not_measured']),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "basis": zod.string().nullable()
+}),
+  "filters": zod.array(zod.object({
+  "description": zod.string(),
+  "status": zod.enum(['model_described'])
+})),
+  "calculations": zod.array(zod.object({
+  "description": zod.string(),
+  "status": zod.enum(['model_described'])
+})),
+  "exclusions": zod.array(zod.object({
+  "description": zod.string(),
+  "status": zod.enum(['model_described'])
+})),
+  "freshness": zod.object({
+  "status": zod.enum(['known', 'unknown']),
+  "asOf": zod.string().nullable(),
+  "source": zod.string().nullable(),
+  "note": zod.string()
+}),
+  "limitations": zod.array(zod.string()),
+  "summary": zod.object({
+  "status": zod.enum(['available', 'unavailable']),
+  "sampledRows": zod.number(),
+  "returnedRows": zod.number(),
+  "truncated": zod.boolean(),
+  "note": zod.string().nullable()
+}),
+  "findings": zod.array(zod.object({
+  "text": zod.string(),
+  "evidence": zod.array(zod.object({
+  "row": zod.number().min(askInsightsResponseTwoAnalysisFindingsItemEvidenceItemRowMin),
+  "column": zod.string(),
+  "value": zod.unknown()
+})).min(1)
+})).max(askInsightsResponseTwoAnalysisFindingsMax),
+  "provenanceNote": zod.string()
+}).optional().describe('Provenance for the executed SQL and returned evidence. Model-described prose is explanatory and not independently verified; SQL remains the audit truth.')
 }))
 
 
@@ -4841,6 +4899,13 @@ export const RunInsightsPresetParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const runInsightsPresetResponseTwoAnalysisFindingsItemEvidenceItemRowMin = 0;
+
+
+export const runInsightsPresetResponseTwoAnalysisFindingsMax = 3;
+
+
+
 export const RunInsightsPresetResponse = zod.object({
   "columns": zod.array(zod.string()),
   "rows": zod.array(zod.array(zod.unknown())),
@@ -4857,7 +4922,58 @@ export const RunInsightsPresetResponse = zod.object({
   "lastRunAt": zod.string().nullable(),
   "createdAt": zod.string()
 }),
-  "ranAt": zod.string()
+  "ranAt": zod.string(),
+  "analysis": zod.object({
+  "interpretedQuestion": zod.string(),
+  "sources": zod.array(zod.object({
+  "name": zod.string(),
+  "kind": zod.enum(['table']),
+  "usage": zod.enum(['referenced', 'scanned']),
+  "description": zod.string(),
+  "descriptionStatus": zod.enum(['model_described'])
+})),
+  "dateCoverage": zod.object({
+  "status": zod.enum(['measured', 'not_measured']),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "basis": zod.string().nullable()
+}),
+  "filters": zod.array(zod.object({
+  "description": zod.string(),
+  "status": zod.enum(['model_described'])
+})),
+  "calculations": zod.array(zod.object({
+  "description": zod.string(),
+  "status": zod.enum(['model_described'])
+})),
+  "exclusions": zod.array(zod.object({
+  "description": zod.string(),
+  "status": zod.enum(['model_described'])
+})),
+  "freshness": zod.object({
+  "status": zod.enum(['known', 'unknown']),
+  "asOf": zod.string().nullable(),
+  "source": zod.string().nullable(),
+  "note": zod.string()
+}),
+  "limitations": zod.array(zod.string()),
+  "summary": zod.object({
+  "status": zod.enum(['available', 'unavailable']),
+  "sampledRows": zod.number(),
+  "returnedRows": zod.number(),
+  "truncated": zod.boolean(),
+  "note": zod.string().nullable()
+}),
+  "findings": zod.array(zod.object({
+  "text": zod.string(),
+  "evidence": zod.array(zod.object({
+  "row": zod.number().min(runInsightsPresetResponseTwoAnalysisFindingsItemEvidenceItemRowMin),
+  "column": zod.string(),
+  "value": zod.unknown()
+})).min(1)
+})).max(runInsightsPresetResponseTwoAnalysisFindingsMax),
+  "provenanceNote": zod.string()
+}).optional().describe('Provenance for the executed SQL and returned evidence. Model-described prose is explanatory and not independently verified; SQL remains the audit truth.')
 }))
 
 

@@ -6,6 +6,13 @@ import {
   InsightsSqlError,
   type GuardedQueryResult,
 } from "./guard";
+import {
+  buildInsightsAnalysis,
+  parseModelAnalysis,
+  publicQueryResult,
+  type InsightsAnalysis,
+  type ModelAnalysis,
+} from "./provenance";
 
 /**
  * Ask AI core loop: question → SQL (model, JSON output) → guarded execution
@@ -36,9 +43,10 @@ const SUMMARY_ROW_LIMIT = 50;
 const FALLBACK_ANSWER =
   "Query ran successfully — see the results table below.";
 
-export interface AskOutcome extends GuardedQueryResult {
+export interface AskOutcome extends Omit<GuardedQueryResult, "metadata"> {
   answer: string;
   sql: string;
+  analysis: InsightsAnalysis;
 }
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
@@ -82,6 +90,9 @@ Hard rules:
 - Only the whitelisted tables listed below exist for you.
 - Prefer aggregates; results are hard-capped at 500 rows.
 - Use clear lowercase snake_case column aliases (they become table headers).
+- Make evidence visible in the result itself. If a time window is used or measured, include actual window_start and window_end result columns; never imply a window that the query did not measure. For status comparisons, include each exact matched status name and its count rather than only a combined total.
+- When the user asks for an overall total or average plus a breakdown, return the overall aggregate as an explicit result row (for example GROUPING SETS/ROLLUP or a UNION ALL overall row). Do not leave overall arithmetic for the summarizer.
+- Return durations as numeric hours or days (for example EXTRACT(EPOCH FROM duration) / 3600.0), never as raw PostgreSQL interval objects.
 
 ${schemaDoc}`;
 
@@ -132,15 +143,20 @@ ${schemaDoc}`;
       continue;
     }
 
-    let answer = FALLBACK_ANSWER;
+    let modelAnalysis: ModelAnalysis | null = null;
     if (remaining() >= MIN_CALL_MS) {
       try {
-        answer = await summarize(question, sqlText, result, remaining());
+        modelAnalysis = await summarize(question, sqlText, result, remaining());
       } catch (err) {
         logger.warn({ err }, "insights summarize failed — using fallback answer");
       }
     }
-    return { answer, sql: sqlText, ...result };
+    return {
+      answer: modelAnalysis?.answer ?? FALLBACK_ANSWER,
+      sql: sqlText,
+      ...publicQueryResult(result),
+      analysis: buildInsightsAnalysis(question, result, modelAnalysis),
+    };
   }
 
   throw new Error(
@@ -153,17 +169,28 @@ async function summarize(
   sqlText: string,
   result: GuardedQueryResult,
   budgetMs: number,
-): Promise<string> {
+): Promise<ModelAnalysis> {
   const sampleRows = result.rows.slice(0, SUMMARY_ROW_LIMIT);
   const resp = await openai.chat.completions.create(
     {
       model: MODEL,
       max_completion_tokens: 8192,
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
-          content:
-            "You are a data analyst for a screen-printing shop. Answer the user's question in 1-3 plain sentences using ONLY the query results provided. Lead with the concrete number(s). Format dollars like $1,234.56. If the results are empty, say no matching data was found (note: status-change history only exists since July 8, 2026, if relevant). Plain text only — no markdown.",
+          content: `You are a data analyst for a screen-printing shop. Use ONLY the SQL and returned query values provided.
+Return ONLY JSON with this shape:
+{"answer":"1-3 plain sentences","interpretedQuestion":"visible plain-language interpretation","sourceDescriptions":{"exact_table_name":"explanatory purpose"},"filters":["explanatory filter"],"calculations":["explanatory calculation"],"exclusions":["explanatory exclusion"],"limitations":["material limitation"],"findings":[{"text":"optional notable observation, no causal claim","evidence":[{"row":0,"column":"exact_column","value":"exact JSON value"}]}]}
+Rules:
+- Lead the answer with concrete values. Format dollars like $1,234.56.
+- Model-written descriptions are explanatory, not proof; SQL is the audit truth.
+- Never invent a date window. Discuss coverage only when result values measure it.
+- Findings are optional, maximum 3. Every finding needs exact zero-based row and column references plus values copied exactly from Results JSON. Make no causal claim.
+- State only aggregates and numbers that are explicitly present in Results JSON. Never compute a new weighted average, total, rate, difference, or other arithmetic in prose.
+- If results are empty, say no matching data was found.
+- If rows were sampled or capped, state that limitation and do not imply the summary inspected omitted rows.
+- Do not claim invoice creation is status entry. Status history is observed at polling time and can only support periods present in returned evidence.`,
         },
         {
           role: "user",
@@ -173,6 +200,7 @@ async function summarize(
     },
     { timeout: Math.min(CALL_TIMEOUT_MS, budgetMs) },
   );
-  const answer = resp.choices[0]?.message?.content?.trim();
-  return answer || FALLBACK_ANSWER;
+  const content = resp.choices[0]?.message?.content?.trim();
+  if (!content) throw new Error("Summary response was empty");
+  return parseModelAnalysis(content, result);
 }

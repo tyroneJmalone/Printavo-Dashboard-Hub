@@ -1,5 +1,6 @@
 import { pool } from "@workspace/db";
 import type pino from "pino";
+import { extractReferencedRelationsFromPlan } from "./provenance";
 
 /**
  * Guarded SQL execution for the Ask AI insights feature.
@@ -94,6 +95,16 @@ export interface GuardedQueryResult {
   rows: unknown[][];
   rowCount: number;
   truncated: boolean;
+  metadata: {
+    referencedRelations: string[];
+    planStatus: "available" | "unavailable";
+    freshness: {
+      status: "known" | "unknown";
+      asOf: string | null;
+      source: string | null;
+      note: string;
+    };
+  };
 }
 
 function serializeValue(v: unknown): unknown {
@@ -117,17 +128,63 @@ export async function runGuardedQuery(
     await client.query("BEGIN TRANSACTION READ ONLY");
     await client.query("SET LOCAL ROLE insights_ro");
     await client.query(`SET LOCAL statement_timeout = '5s'`);
+    let referencedRelations: string[] = [];
+    let planStatus: "available" | "unavailable" = "available";
+    await client.query("SAVEPOINT insights_plan");
+    try {
+      const explained = await client.query(`EXPLAIN (FORMAT JSON) ${sqlText}`);
+      referencedRelations = extractReferencedRelationsFromPlan(
+        explained.rows[0],
+        INSIGHTS_TABLES,
+      );
+      await client.query("RELEASE SAVEPOINT insights_plan");
+    } catch {
+      // EXPLAIN metadata is supplementary. The query itself remains usable.
+      await client.query("ROLLBACK TO SAVEPOINT insights_plan");
+      planStatus = "unavailable";
+    }
     const wrapped = `SELECT * FROM (\n${sqlText}\n) AS insights_q LIMIT ${ROW_CAP + 1}`;
     const result = await client.query({ text: wrapped, rowMode: "array" });
     const truncated = result.rows.length > ROW_CAP;
     const rows = (truncated ? result.rows.slice(0, ROW_CAP) : result.rows).map(
       (row: unknown[]) => row.map(serializeValue),
     );
+    let freshness: GuardedQueryResult["metadata"]["freshness"] = {
+      status: "unknown",
+      asOf: null,
+      source: null,
+      note: "No safe completed-sync timestamp was available for the scanned sources.",
+    };
+    if (
+      referencedRelations.some(
+        (name) => name.startsWith("pv_") || name === "change_events",
+      )
+    ) {
+      try {
+        const freshnessResult = await client.query(
+          `SELECT max(finished_at) AS as_of
+             FROM sync_runs
+            WHERE status = 'completed'`,
+        );
+        const asOf = freshnessResult.rows[0]?.as_of;
+        if (asOf instanceof Date) {
+          freshness = {
+            status: "known",
+            asOf: asOf.toISOString(),
+            source: "sync_runs.finished_at",
+            note: "Latest completed local mirror sync; individual source rows may have earlier observation times.",
+          };
+        }
+      } catch {
+        // Freshness is supplementary and must not invalidate a successful query.
+      }
+    }
     return {
       columns: result.fields.map((f) => f.name),
       rows,
       rowCount: rows.length,
       truncated,
+      metadata: { referencedRelations, planStatus, freshness },
     };
   } finally {
     try {

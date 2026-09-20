@@ -7,6 +7,10 @@ import {
   validateSql,
   InsightsSqlError,
 } from "../lib/insights/guard";
+import {
+  buildInsightsAnalysis,
+  publicQueryResult,
+} from "../lib/insights/provenance";
 
 /**
  * Ask AI insights — natural-language questions over the local Printavo
@@ -182,8 +186,9 @@ router.post("/insights/presets/:id/run", async (req, res) => {
       .where(eq(insightsPresetsTable.id, id));
     res.json({
       preset: presetJson({ ...preset, lastRunAt: ranAt }),
-      ...result,
+      ...publicQueryResult(result),
       ranAt: ranAt.toISOString(),
+      analysis: buildInsightsAnalysis(preset.question, result, null),
     });
   } catch (err) {
     if (err instanceof InsightsSqlError) {

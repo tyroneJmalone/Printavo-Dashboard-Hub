@@ -34,7 +34,11 @@ import {
   ChevronRight,
   AlertTriangle,
   Code2,
+  Info,
 } from "lucide-react";
+import { formatCell } from "@/components/insights/utils";
+import { AnalysisPanel } from "@/components/insights/AnalysisPanel";
+import { FindingsPanel } from "@/components/insights/FindingsPanel";
 
 const EXAMPLE_QUESTIONS = [
   "Who were our top 10 customers by revenue this year?",
@@ -48,12 +52,6 @@ function extractError(err: unknown): string {
     (err as { data?: { error?: string } })?.data?.error ??
     "Something went wrong. Try rephrasing your question."
   );
-}
-
-function formatCell(value: unknown): string {
-  if (value === null || value === undefined) return "—";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
 }
 
 function ResultsTable({
@@ -74,6 +72,7 @@ function ResultsTable({
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-slate-900">
             <tr>
+              <th scope="col" className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-800">Row</th>
               {columns.map((c, i) => (
                 <th
                   key={i}
@@ -87,6 +86,7 @@ function ResultsTable({
           <tbody>
             {rows.map((row, ri) => (
               <tr key={ri} className="odd:bg-slate-900/40">
+                <th scope="row" className="px-3 py-1.5 text-left font-normal text-slate-500">{ri + 1}</th>
                 {row.map((cell, ci) => (
                   <td
                     key={ci}
@@ -278,10 +278,33 @@ export default function AskAI() {
         {result && (
           <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 space-y-4">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs text-slate-500 mb-1">{result.question}</p>
-                <p className="text-sm text-slate-100 leading-relaxed">{result.answer}</p>
+              <div className="space-y-3 flex-1 min-w-0">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">You asked</p>
+                  <p className="text-sm font-medium text-slate-200">{result.question}</p>
+                </div>
+                
+                {result.analysis?.interpretedQuestion && (
+                  <div className="bg-indigo-950/20 border border-indigo-900/30 rounded-md p-3 flex gap-3">
+                    <Info size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-indigo-300/70 mb-0.5 uppercase tracking-wider font-semibold">How AI understood this</p>
+                      <p className="text-sm text-indigo-100/90 leading-relaxed">
+                        {result.analysis.interpretedQuestion}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-sm text-slate-100 leading-relaxed">{result.answer}</p>
+                </div>
+                
+                {result.analysis?.findings && (
+                  <FindingsPanel findings={result.analysis.findings} />
+                )}
               </div>
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -295,8 +318,15 @@ export default function AskAI() {
                 Save as preset
               </Button>
             </div>
+            
             <ResultsTable columns={result.columns} rows={result.rows} truncated={result.truncated} />
-            <SqlBlock sql={result.sql} />
+            
+            <div className="flex flex-col gap-2.5 mt-2 border-t border-slate-800 pt-4">
+              {result.analysis && (
+                <AnalysisPanel analysis={result.analysis} />
+              )}
+              <SqlBlock sql={result.sql} />
+            </div>
           </div>
         )}
 
@@ -360,13 +390,35 @@ export default function AskAI() {
                     </div>
                   </div>
                   {runResult && runResult.preset.id === p.id && (
-                    <div className="border-t border-slate-800 px-4 py-3 space-y-3">
+                    <div className="border-t border-slate-800 px-4 py-3 space-y-4">
+                      {runResult.analysis?.interpretedQuestion && (
+                        <div className="bg-indigo-950/20 border border-indigo-900/30 rounded-md p-3 flex gap-3">
+                          <Info size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs text-indigo-300/70 mb-0.5 uppercase tracking-wider font-semibold">How AI understood this</p>
+                            <p className="text-sm text-indigo-100/90 leading-relaxed">
+                              {runResult.analysis.interpretedQuestion}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      
                       <ResultsTable
                         columns={runResult.columns}
                         rows={runResult.rows}
                         truncated={runResult.truncated}
                       />
-                      <SqlBlock sql={runResult.preset.sql} />
+
+                      {runResult.analysis?.findings && (
+                        <FindingsPanel findings={runResult.analysis.findings} />
+                      )}
+                      
+                      <div className="flex flex-col gap-2.5 mt-2 border-t border-slate-800 pt-3">
+                        {runResult.analysis && (
+                          <AnalysisPanel analysis={runResult.analysis} />
+                        )}
+                        <SqlBlock sql={runResult.preset.sql} />
+                      </div>
                     </div>
                   )}
                 </div>

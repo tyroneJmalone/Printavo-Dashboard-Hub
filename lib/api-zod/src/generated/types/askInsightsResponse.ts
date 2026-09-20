@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { InsightsAnalysis } from './insightsAnalysis';
 import type { InsightsQueryResult } from './insightsQueryResult';
 
 export type AskInsightsResponse = InsightsQueryResult & {
   question: string;
   answer: string;
   sql: string;
+  analysis?: InsightsAnalysis;
 };

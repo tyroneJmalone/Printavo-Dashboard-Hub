@@ -49,6 +49,11 @@ Status-change history (change_events):
 - Status changes: entity_type='order' AND event_type='status_change'. old_value/new_value are jsonb-encoded strings — extract with new_value #>> '{}' (e.g. WHERE new_value #>> '{}' ILIKE '%revision%').
 - entity_id joins to pv_orders.printavo_id; visual_id is also populated directly.
 - Counting "how many times did orders ENTER status X" = COUNT(*) of matching status_change rows; "how many DISTINCT orders" = COUNT(DISTINCT entity_id).
+- Status-duration questions MUST identify entry events, then use LEAD(occurred_at) over each entity's complete chronological status-change stream BEFORE filtering to the requested status. The next actual transition is the exit; never substitute invoice creation or the next matching-status event for an unobserved entry/exit.
+- Report completed visits separately from orders currently waiting. For completed visits include visit count, distinct invoice count, average duration, and median duration. For currently waiting include distinct invoice count and age from the latest observed entry, clearly labeled as still open.
+- Status matching may be fuzzy for discovery, but return every exact matched status name with its own count so the user can audit what matched. Distinguish repeated visits from distinct invoices.
+- History is observation-based, begins only when tracking was enabled, and poll timestamps are not exact human action times. Include measured MIN/MAX occurred_at columns when answering over history; do not invent an earlier window.
+- If the user requests an overall duration plus per-status detail, calculate and return the overall aggregate in SQL as its own row; never rely on the summarizer to weight grouped averages. Return durations as numeric hours or days using EXTRACT(EPOCH ...), not PostgreSQL interval objects.
 
 Customers (pv_customers) & niches:
 - Display name: coalesce(nullif(company_name,''), data->'primaryContact'->>'fullName').

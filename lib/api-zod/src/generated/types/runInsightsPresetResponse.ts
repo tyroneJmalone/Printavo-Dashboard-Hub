@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { InsightsAnalysis } from './insightsAnalysis';
 import type { InsightsPreset } from './insightsPreset';
 import type { InsightsQueryResult } from './insightsQueryResult';
 
 export type RunInsightsPresetResponse = InsightsQueryResult & {
   preset: InsightsPreset;
   ranAt: string;
+  analysis?: InsightsAnalysis;
 };
