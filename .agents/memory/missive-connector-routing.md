@@ -39,6 +39,20 @@ shared across all tokens. One-time deep backfills: temporarily raise
 `initial_backfill_days` on the sync-state row, let a tick run, restore it —
 the tick restarts safely mid-pass after a server restart.
 
+## Browser search links
+
+Missive's public documentation does not describe its search deep links, but
+the public web application's route helpers support search mailbox links.
+This is browser navigation, not a REST API operation and does not require a
+connected integration.
+
+**Why:** Documentation searches did not establish a link format; inspection
+of the publicly served application confirmed its search route and encoded
+mailbox-path handling.
+
+**How to apply:** If links stop working, verify the current public router
+rather than substituting a compose link or requesting API credentials.
+
 ## Write-path quirks (posts & drafts)
 
 - Hub writes to Missive are allowlisted to `/v1/posts` and `/v1/drafts` only —

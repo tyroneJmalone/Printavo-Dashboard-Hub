@@ -2,6 +2,7 @@ import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { Link } from "wouter";
 import { formatMoney, formatNumber } from "@/lib/format";
 import { ArrowUp, ArrowDown, Flame, Loader2 } from "lucide-react";
+import { PipelineEmails } from "./PipelineEmails";
 import type { 
   PipelineRow, 
   PipelineViewConfigSort, 
@@ -164,7 +165,7 @@ export function PipelineTable({
           <tr className="bg-slate-900/70 text-left text-[11px] uppercase tracking-wider text-slate-400">
             <SortHeader field="visualId" label="Order" sort={sort} direction={direction} onSort={onSort} />
             <SortHeader field="customerName" label="Customer" sort={sort} direction={direction} onSort={onSort} />
-            <SortHeader field="customerEmail" label="Customer Email" sort={sort} direction={direction} onSort={onSort} />
+            <SortHeader field="customerEmail" label="Email" sort={sort} direction={direction} onSort={onSort} />
             <SortHeader field="nickname" label="Nickname" sort={sort} direction={direction} onSort={onSort} />
             {showRepColumn && <SortHeader field="ownerEmail" label="Rep" sort={sort} direction={direction} onSort={onSort} />}
             {showStageColumn && <SortHeader field="stage" label="Stage" sort={sort} direction={direction} onSort={onSort} />}
@@ -210,11 +211,7 @@ export function PipelineTable({
                   )}
                 </td>
                 <td className="px-3 py-2 text-slate-400 whitespace-nowrap">
-                  {row.customerEmail ? (
-                    <a className="hover:text-[#10b981] hover:underline underline-offset-2" href={`mailto:${row.customerEmail}`}>
-                      {row.customerEmail}
-                    </a>
-                  ) : "—"}
+                  <PipelineEmails value={row.customerEmail} />
                 </td>
                 <td
                   className="px-3 py-2 text-slate-400"
