@@ -3457,7 +3457,7 @@ export const getGetPipelineUrl = (params?: GetPipelineParams,) => {
 }
 
 /**
- * @summary Sales pipeline — quotes by stage plus recently won/done invoices
+ * @summary Sales pipeline — quotes by stage, recently won/done invoices, and all open receivables
  */
 export const getPipeline = async (params?: GetPipelineParams, options?: RequestInit): Promise<PipelineReport> => {
 
@@ -3504,7 +3504,7 @@ export type GetPipelineQueryError = ErrorType<ErrorResponse>
 
 
 /**
- * @summary Sales pipeline — quotes by stage plus recently won/done invoices
+ * @summary Sales pipeline — quotes by stage, recently won/done invoices, and all open receivables
  */
 
 export function useGetPipeline<TData = Awaited<ReturnType<typeof getPipeline>>, TError = ErrorType<ErrorResponse>>(

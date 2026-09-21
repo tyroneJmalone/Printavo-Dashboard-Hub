@@ -164,6 +164,7 @@ export function PipelineTable({
           <tr className="bg-slate-900/70 text-left text-[11px] uppercase tracking-wider text-slate-400">
             <SortHeader field="visualId" label="Order" sort={sort} direction={direction} onSort={onSort} />
             <SortHeader field="customerName" label="Customer" sort={sort} direction={direction} onSort={onSort} />
+            <SortHeader field="customerEmail" label="Customer Email" sort={sort} direction={direction} onSort={onSort} />
             <SortHeader field="nickname" label="Nickname" sort={sort} direction={direction} onSort={onSort} />
             {showRepColumn && <SortHeader field="ownerEmail" label="Rep" sort={sort} direction={direction} onSort={onSort} />}
             {showStageColumn && <SortHeader field="stage" label="Stage" sort={sort} direction={direction} onSort={onSort} />}
@@ -173,6 +174,7 @@ export function PipelineTable({
             <SortHeader field="customerDueAt" label="Cust Due" sort={sort} direction={direction} onSort={onSort} />
             <SortHeader field="qty" label="Qty" sort={sort} direction={direction} onSort={onSort} align="right" />
             <SortHeader field="total" label="Total" sort={sort} direction={direction} onSort={onSort} align="right" />
+            <SortHeader field="balanceDue" label="Balance Due" sort={sort} direction={direction} onSort={onSort} align="right" />
             <SortHeader field="statusName" label="Status" sort={sort} direction={direction} onSort={onSort} />
             <SortHeader field="statusSince" label="In Status" sort={sort} direction={direction} onSort={onSort} align="right" />
           </tr>
@@ -206,6 +208,13 @@ export function PipelineTable({
                   ) : (
                     (row.customerName ?? "—")
                   )}
+                </td>
+                <td className="px-3 py-2 text-slate-400 whitespace-nowrap">
+                  {row.customerEmail ? (
+                    <a className="hover:text-[#10b981] hover:underline underline-offset-2" href={`mailto:${row.customerEmail}`}>
+                      {row.customerEmail}
+                    </a>
+                  ) : "—"}
                 </td>
                 <td
                   className="px-3 py-2 text-slate-400"
@@ -243,6 +252,9 @@ export function PipelineTable({
                 </td>
                 <td className="px-3 py-2 text-slate-200 text-right whitespace-nowrap font-medium">
                   {formatMoney(row.total)}
+                </td>
+                <td className="px-3 py-2 text-slate-200 text-right whitespace-nowrap font-medium">
+                  {formatMoney(row.balanceDue)}
                 </td>
                 <td
                   className="px-3 py-2 text-slate-300"

@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { pool } from "@workspace/db";
 import {
   authorizedMailboxIds,
+  canReadMailbox,
   requireThreadRead,
 } from "../lib/emailAccess/authorization";
 import { runMissiveSync } from "../lib/missive/sync";
@@ -80,7 +81,11 @@ async function authorizedThreads(
   query: string,
   limit: number,
   offset: number,
-  status = "",
+  options: {
+    folder?: "inbox" | "sent" | "archived";
+    mailboxId?: string;
+    senderMailboxIds?: string[];
+  } = {},
 ) {
   const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
   const authorization = isAdmin
@@ -96,10 +101,59 @@ async function authorizedThreads(
         AND ($2 = '' OR t.subject ILIKE $3 ESCAPE '\\'
           OR t.counterpart ILIKE $3 ESCAPE '\\'
           OR t.counterpart_email ILIKE $3 ESCAPE '\\'
-          OR t.snippet ILIKE $3 ESCAPE '\\')
-        AND ($6 = '' OR t.status = $6)
+          OR t.snippet ILIKE $3 ESCAPE '\\'
+          OR EXISTS (
+            SELECT 1 FROM correspondence_messages sm
+             WHERE sm.thread_id=t.id
+               AND (sm.subject ILIKE $3 ESCAPE '\\' OR sm.body_text ILIKE $3 ESCAPE '\\')
+          ))
+        AND (
+          $6::uuid IS NULL
+          OR $7 = 'sent'
+          OR t.mailbox_id = $6::uuid
+        )
+        AND (
+          $7 = ''
+          OR ($7 = 'inbox' AND t.status = 'open')
+          OR ($7 = 'archived' AND t.status = 'archived')
+          OR ($7 = 'sent' AND EXISTS (
+            SELECT 1
+              FROM correspondence_messages sent_message
+              JOIN email_mailboxes sent_mailbox
+                ON lower(sent_mailbox.email)=lower(sent_message.from_address)
+             WHERE sent_message.thread_id=t.id
+               AND (
+                 ($6::uuid IS NOT NULL AND sent_mailbox.id=$6::uuid)
+                 OR (
+                   $6::uuid IS NULL
+                   AND (
+                     $8::uuid[] IS NULL
+                     OR sent_mailbox.id=ANY($8::uuid[])
+                     OR EXISTS (
+                       SELECT 1 FROM correspondence_thread_grants sent_grant
+                        WHERE sent_grant.thread_id=t.id
+                          AND sent_grant.staff_id=$1::uuid
+                          AND sent_grant.active=true
+                          AND sent_grant.revoked_at IS NULL
+                          AND (sent_grant.expires_at IS NULL OR sent_grant.expires_at > now())
+                          AND 'read'=ANY(sent_grant.capabilities)
+                     )
+                   )
+                 )
+               )
+          ))
+        )
       ORDER BY t.last_message_at DESC LIMIT $4 OFFSET $5`,
-    [staffId, query, term, limit, offset, status],
+    [
+      staffId,
+      query,
+      term,
+      limit,
+      offset,
+      query ? null : options.mailboxId ?? null,
+      query ? "" : options.folder ?? "",
+      options.senderMailboxIds ?? null,
+    ],
   );
   return {
     threads: result.rows.map(threadJson),
@@ -107,15 +161,63 @@ async function authorizedThreads(
   };
 }
 
+router.get("/correspondence/mailboxes", async (req, res) => {
+  try {
+    const allowed = await authorizedMailboxIds(req.staff!);
+    const result = await pool.query<{
+      id: string;
+      email: string;
+      display_name: string | null;
+    }>(
+      `SELECT id, email, display_name
+         FROM email_mailboxes
+        WHERE id = ANY($1::uuid[])
+        ORDER BY lower(coalesce(display_name, email)), lower(email)`,
+      [allowed],
+    );
+    res.json({
+      mailboxes: result.rows.map((row) => ({
+        id: row.id,
+        email: row.email,
+        displayName: row.display_name,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Correspondence mailbox list failed");
+    res.status(500).json({ error: "Unable to load correspondence mailboxes" });
+  }
+});
+
 router.get("/correspondence/threads", async (req, res) => {
   try {
     const rawQuery = req.query.query ?? req.query.q;
     const query = typeof rawQuery === "string" ? rawQuery.trim().slice(0, 300) : "";
-    const status =
-      typeof req.query.status === "string" &&
-      ["open", "archived", "snoozed"].includes(req.query.status)
-        ? req.query.status
-        : "";
+    const rawFolder = req.query.folder;
+    if (
+      rawFolder !== undefined &&
+      (typeof rawFolder !== "string" ||
+        !["inbox", "sent", "archived"].includes(rawFolder))
+    ) {
+      return void res.status(400).json({ error: "Invalid correspondence folder" });
+    }
+    const folder = rawFolder as "inbox" | "sent" | "archived" | undefined;
+    const rawMailboxId = req.query.mailboxId;
+    if (
+      rawMailboxId !== undefined &&
+      (typeof rawMailboxId !== "string" || !UUID.test(rawMailboxId))
+    ) {
+      return void res.status(404).json({ error: "Mailbox not found or not authorized" });
+    }
+    const mailboxId = rawMailboxId as string | undefined;
+    // A text search is intentionally global across the actor's authorized
+    // correspondence. Folder and mailbox selectors only scope browsing.
+    if (!query && mailboxId && !(await canReadMailbox(req.staff!, mailboxId))) {
+      return void res.status(404).json({ error: "Mailbox not found or not authorized" });
+    }
+    const senderMailboxIds =
+      !query && folder === "sent" && !mailboxId && req.staff!.role !== "admin"
+        ? await authorizedMailboxIds(req.staff!)
+        : undefined;
     const limit = limitOf(req.query.limit);
     const offset = offsetOf(req.query.offset);
     const data = await authorizedThreads(
@@ -124,7 +226,7 @@ router.get("/correspondence/threads", async (req, res) => {
       query,
       limit,
       offset,
-      status,
+      { folder, mailboxId, senderMailboxIds },
     );
     res.json({ ...data, hasMore: offset + data.threads.length < data.total });
   } catch (err) {

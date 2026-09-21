@@ -20,6 +20,7 @@ const ACTIVE_STAGE_IDS = new Set([
 const TERMINAL_STAGE_IDS = new Set([
   "won",
   "done",
+  "receivables",
   "dead",
   "contract_dead_archive",
   "archive",

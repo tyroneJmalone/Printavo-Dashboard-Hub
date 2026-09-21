@@ -1203,7 +1203,7 @@ export const GetCustomerProfileResponse = zod.object({
 
 
 /**
- * @summary Sales pipeline — quotes by stage plus recently won/done invoices
+ * @summary Sales pipeline — quotes by stage, recently won/done invoices, and all open receivables
  */
 export const getPipelineQueryWonDaysMin = 7;
 export const getPipelineQueryWonDaysMax = 365;
@@ -1218,11 +1218,11 @@ export const getPipelineQueryQMax = 500;
 
 export const GetPipelineQueryParams = zod.object({
   "owner": zod.coerce.string().optional().describe('Filter to a single rep by owner email'),
-  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'won', 'done', 'dead', 'contract_dead_archive', 'archive', 'other']).optional().describe('Stage to list rows for. \"active\" (default) combines the working stages (quote, quote_sent, follow_up_1, follow_up_2, nurturing, art, other).\n'),
-  "wonDays": zod.coerce.number().min(getPipelineQueryWonDaysMin).max(getPipelineQueryWonDaysMax).optional().describe('Window (days) for the Won and Done stages'),
+  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'won', 'done', 'receivables', 'dead', 'contract_dead_archive', 'archive', 'other']).optional().describe('Stage to list rows for. \"active\" (default) combines the working stages (quote, quote_sent, follow_up_1, follow_up_2, nurturing, art, other).\n'),
+  "wonDays": zod.coerce.number().min(getPipelineQueryWonDaysMin).max(getPipelineQueryWonDaysMax).optional().describe('Window (days) for the Won and Done stages; ignored by Receivables'),
   "limit": zod.coerce.number().min(1).max(getPipelineQueryLimitMax).optional(),
   "offset": zod.coerce.number().min(getPipelineQueryOffsetMin).optional(),
-  "q": zod.coerce.string().max(getPipelineQueryQMax).optional().describe('Literal case-insensitive search of invoice number, nickname, customer\/contact name, or company'),
+  "q": zod.coerce.string().max(getPipelineQueryQMax).optional().describe('Literal case-insensitive search of invoice number, nickname, customer\/contact name, email, or company'),
   "createdFrom": zod.date().optional(),
   "createdTo": zod.date().optional(),
   "invoiceFrom": zod.date().optional(),
@@ -1231,7 +1231,7 @@ export const GetPipelineQueryParams = zod.object({
   "productionDueTo": zod.date().optional(),
   "customerDueFrom": zod.date().optional(),
   "customerDueTo": zod.date().optional(),
-  "sort": zod.enum(['visualId', 'customerName', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'statusName', 'statusSince']).optional(),
+  "sort": zod.enum(['visualId', 'customerName', 'customerEmail', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'balanceDue', 'statusName', 'statusSince']).optional(),
   "direction": zod.enum(['asc', 'desc']).optional()
 })
 
@@ -1260,6 +1260,7 @@ export const GetPipelineResponse = zod.object({
   "nickname": zod.string().nullish(),
   "customerId": zod.string().nullish(),
   "customerName": zod.string().nullish(),
+  "customerEmail": zod.string().nullish(),
   "ownerEmail": zod.string().nullish(),
   "createdAt": zod.string().nullish(),
   "invoiceAt": zod.coerce.date().nullable(),
@@ -1267,6 +1268,7 @@ export const GetPipelineResponse = zod.object({
   "customerDueAt": zod.coerce.date().nullable(),
   "qty": zod.number(),
   "total": zod.number(),
+  "balanceDue": zod.number(),
   "statusSince": zod.string().nullish().describe('When the order entered its current status'),
   "statusSinceExact": zod.boolean().describe('False when the change predates status tracking — statusSince is then a lower bound (\"at least this long\").\n')
 }))
@@ -1291,7 +1293,7 @@ export const ListPipelineViewsResponseItem = zod.object({
   "config": zod.object({
   "q": zod.string().max(listPipelineViewsResponseConfigQMax).optional(),
   "owner": zod.string().max(listPipelineViewsResponseConfigOwnerMax).optional(),
-  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'dead', 'contract_dead_archive', 'archive']).optional(),
+  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'receivables', 'dead', 'contract_dead_archive', 'archive']).optional(),
   "wonDays": zod.number().min(listPipelineViewsResponseConfigWonDaysMin).max(listPipelineViewsResponseConfigWonDaysMax).optional(),
   "createdFrom": zod.coerce.date().optional(),
   "createdTo": zod.coerce.date().optional(),
@@ -1301,7 +1303,7 @@ export const ListPipelineViewsResponseItem = zod.object({
   "productionDueTo": zod.coerce.date().optional(),
   "customerDueFrom": zod.coerce.date().optional(),
   "customerDueTo": zod.coerce.date().optional(),
-  "sort": zod.enum(['visualId', 'customerName', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'statusName', 'statusSince']).optional(),
+  "sort": zod.enum(['visualId', 'customerName', 'customerEmail', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'balanceDue', 'statusName', 'statusSince']).optional(),
   "direction": zod.enum(['asc', 'desc']).optional()
 }),
   "isDefault": zod.boolean(),
@@ -1330,7 +1332,7 @@ export const CreatePipelineViewBody = zod.object({
   "config": zod.object({
   "q": zod.string().max(createPipelineViewBodyConfigQMax).optional(),
   "owner": zod.string().max(createPipelineViewBodyConfigOwnerMax).optional(),
-  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'dead', 'contract_dead_archive', 'archive']).optional(),
+  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'receivables', 'dead', 'contract_dead_archive', 'archive']).optional(),
   "wonDays": zod.number().min(createPipelineViewBodyConfigWonDaysMin).max(createPipelineViewBodyConfigWonDaysMax).optional(),
   "createdFrom": zod.coerce.date().optional(),
   "createdTo": zod.coerce.date().optional(),
@@ -1340,7 +1342,7 @@ export const CreatePipelineViewBody = zod.object({
   "productionDueTo": zod.coerce.date().optional(),
   "customerDueFrom": zod.coerce.date().optional(),
   "customerDueTo": zod.coerce.date().optional(),
-  "sort": zod.enum(['visualId', 'customerName', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'statusName', 'statusSince']).optional(),
+  "sort": zod.enum(['visualId', 'customerName', 'customerEmail', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'balanceDue', 'statusName', 'statusSince']).optional(),
   "direction": zod.enum(['asc', 'desc']).optional()
 }),
   "isDefault": zod.boolean().optional()
@@ -1361,7 +1363,7 @@ export const CreatePipelineViewResponse = zod.object({
   "config": zod.object({
   "q": zod.string().max(createPipelineViewResponseConfigQMax).optional(),
   "owner": zod.string().max(createPipelineViewResponseConfigOwnerMax).optional(),
-  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'dead', 'contract_dead_archive', 'archive']).optional(),
+  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'receivables', 'dead', 'contract_dead_archive', 'archive']).optional(),
   "wonDays": zod.number().min(createPipelineViewResponseConfigWonDaysMin).max(createPipelineViewResponseConfigWonDaysMax).optional(),
   "createdFrom": zod.coerce.date().optional(),
   "createdTo": zod.coerce.date().optional(),
@@ -1371,7 +1373,7 @@ export const CreatePipelineViewResponse = zod.object({
   "productionDueTo": zod.coerce.date().optional(),
   "customerDueFrom": zod.coerce.date().optional(),
   "customerDueTo": zod.coerce.date().optional(),
-  "sort": zod.enum(['visualId', 'customerName', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'statusName', 'statusSince']).optional(),
+  "sort": zod.enum(['visualId', 'customerName', 'customerEmail', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'balanceDue', 'statusName', 'statusSince']).optional(),
   "direction": zod.enum(['asc', 'desc']).optional()
 }),
   "isDefault": zod.boolean(),
@@ -1403,7 +1405,7 @@ export const UpdatePipelineViewBody = zod.object({
   "config": zod.object({
   "q": zod.string().max(updatePipelineViewBodyConfigQMax).optional(),
   "owner": zod.string().max(updatePipelineViewBodyConfigOwnerMax).optional(),
-  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'dead', 'contract_dead_archive', 'archive']).optional(),
+  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'receivables', 'dead', 'contract_dead_archive', 'archive']).optional(),
   "wonDays": zod.number().min(updatePipelineViewBodyConfigWonDaysMin).max(updatePipelineViewBodyConfigWonDaysMax).optional(),
   "createdFrom": zod.coerce.date().optional(),
   "createdTo": zod.coerce.date().optional(),
@@ -1413,7 +1415,7 @@ export const UpdatePipelineViewBody = zod.object({
   "productionDueTo": zod.coerce.date().optional(),
   "customerDueFrom": zod.coerce.date().optional(),
   "customerDueTo": zod.coerce.date().optional(),
-  "sort": zod.enum(['visualId', 'customerName', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'statusName', 'statusSince']).optional(),
+  "sort": zod.enum(['visualId', 'customerName', 'customerEmail', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'balanceDue', 'statusName', 'statusSince']).optional(),
   "direction": zod.enum(['asc', 'desc']).optional()
 }).optional(),
   "isDefault": zod.boolean().optional()
@@ -1434,7 +1436,7 @@ export const UpdatePipelineViewResponse = zod.object({
   "config": zod.object({
   "q": zod.string().max(updatePipelineViewResponseConfigQMax).optional(),
   "owner": zod.string().max(updatePipelineViewResponseConfigOwnerMax).optional(),
-  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'dead', 'contract_dead_archive', 'archive']).optional(),
+  "stage": zod.enum(['active', 'quote', 'quote_sent', 'follow_up_1', 'follow_up_2', 'nurturing', 'art', 'other', 'won', 'done', 'receivables', 'dead', 'contract_dead_archive', 'archive']).optional(),
   "wonDays": zod.number().min(updatePipelineViewResponseConfigWonDaysMin).max(updatePipelineViewResponseConfigWonDaysMax).optional(),
   "createdFrom": zod.coerce.date().optional(),
   "createdTo": zod.coerce.date().optional(),
@@ -1444,7 +1446,7 @@ export const UpdatePipelineViewResponse = zod.object({
   "productionDueTo": zod.coerce.date().optional(),
   "customerDueFrom": zod.coerce.date().optional(),
   "customerDueTo": zod.coerce.date().optional(),
-  "sort": zod.enum(['visualId', 'customerName', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'statusName', 'statusSince']).optional(),
+  "sort": zod.enum(['visualId', 'customerName', 'customerEmail', 'nickname', 'ownerEmail', 'stage', 'createdAt', 'invoiceAt', 'productionDueAt', 'customerDueAt', 'qty', 'total', 'balanceDue', 'statusName', 'statusSince']).optional(),
   "direction": zod.enum(['asc', 'desc']).optional()
 }),
   "isDefault": zod.boolean(),

@@ -20,6 +20,7 @@ export const PipelineViewConfigStage = {
   other: 'other',
   won: 'won',
   done: 'done',
+  receivables: 'receivables',
   dead: 'dead',
   contract_dead_archive: 'contract_dead_archive',
   archive: 'archive',

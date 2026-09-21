@@ -14,6 +14,7 @@ export const PIPELINE_STAGES = [
   { id: "other", label: "Other" },
   { id: "won", label: "Won" },
   { id: "done", label: "Done" },
+  { id: "receivables", label: "Receivables" },
   { id: "dead", label: "Dead" },
   { id: "contract_dead_archive", label: "Contract Dead/Archive" },
   { id: "archive", label: "Archive/Dup/Ref" },
@@ -25,8 +26,8 @@ const ACTIVE_STAGES = [
   "nurturing", "art", "other",
 ];
 const SORT_IDS = [
-  "visualId", "customerName", "nickname", "ownerEmail", "stage", "createdAt",
-  "invoiceAt", "productionDueAt", "customerDueAt", "qty", "total",
+  "visualId", "customerName", "customerEmail", "nickname", "ownerEmail", "stage", "createdAt",
+  "invoiceAt", "productionDueAt", "customerDueAt", "qty", "total", "balanceDue",
   "statusName", "statusSince",
 ] as const;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -104,9 +105,11 @@ END`;
  */
 const FILTERED_CTE = `WITH base AS (
   SELECT o.printavo_id, o.visual_id, o.order_type, o.status_name, o.nickname,
-         coalesce(o.total, 0)::float8 AS total, o.customer_id,
+         coalesce(o.total, 0)::float8 AS total,
+         coalesce(o.amount_outstanding, 0)::float8 AS balance_due, o.customer_id,
          coalesce(nullif(o.customer_company, ''), o.contact_name) AS customer_name,
-         o.customer_company, o.contact_name, o.owner_email, o.printavo_created_at,
+         o.customer_company, o.contact_name, o.contact_email AS customer_email,
+         o.owner_email, o.printavo_created_at,
          o.invoice_at, o.production_due_at, o.customer_due_at, o.first_seen_at,
          coalesce(nullif(o.data->>'totalQuantity', '')::int, 0) AS qty,
          CASE WHEN o.order_type = 'quote'
@@ -137,6 +140,7 @@ const FILTERED_CTE = `WITH base AS (
        OR coalesce(i.nickname, '') ILIKE $3 ESCAPE '\\'
        OR coalesce(i.customer_name, '') ILIKE $3 ESCAPE '\\'
        OR coalesce(i.contact_name, '') ILIKE $3 ESCAPE '\\'
+        OR coalesce(i.customer_email, '') ILIKE $3 ESCAPE '\\'
        OR coalesce(i.customer_company, '') ILIKE $3 ESCAPE '\\'
        OR EXISTS (
          SELECT 1 FROM pv_customers c
@@ -341,18 +345,21 @@ router.get("/pipeline", async (req, res): Promise<void> => {
         return;
       }
     }
-    const rowStages = stage === "active" ? ACTIVE_STAGES : [stage];
+    const rowStages = stage === "active"
+      ? ACTIVE_STAGES
+      : stage === "receivables" ? ["won", "done"] : [stage];
     const values = [
       wonDays, owner, q ? literalLikePattern(q) : null,
       dates.createdFrom ?? null, dates.createdTo ?? null,
       dates.invoiceFrom ?? null, dates.invoiceTo ?? null,
       dates.productionDueFrom ?? null, dates.productionDueTo ?? null,
       dates.customerDueFrom ?? null, dates.customerDueTo ?? null,
-      Object.values(dates).some(Boolean),
+      Object.values(dates).some(Boolean) || stage === "receivables",
     ];
     const sortExpressions: Record<string, string> = {
       visualId: "i.visual_id",
       customerName: "lower(i.customer_name)",
+      customerEmail: "lower(i.customer_email)",
       nickname: "lower(i.nickname)",
       ownerEmail: "lower(i.owner_email)",
       stage: "array_position($14::text[],i.stage_id)",
@@ -362,6 +369,7 @@ router.get("/pipeline", async (req, res): Promise<void> => {
       customerDueAt: "i.customer_due_at",
       qty: "i.qty",
       total: "i.total",
+      balanceDue: "i.balance_due",
       statusName: "lower(i.status_name)",
       statusSince: "status_since",
     };
@@ -377,10 +385,13 @@ router.get("/pipeline", async (req, res): Promise<void> => {
 
     const ownerValues = [...values];
     ownerValues[1] = null;
+    const ownerReceivableFilter = stage === "receivables"
+      ? "AND order_type='invoice' AND stage_id IN ('won','done') AND balance_due > 0"
+      : "";
     const ownersQ = pool.query(
       `${FILTERED_CTE}
        SELECT owner_email,count(*)::int AS count FROM filtered
-        WHERE owner_email IS NOT NULL GROUP BY owner_email
+        WHERE owner_email IS NOT NULL ${ownerReceivableFilter} GROUP BY owner_email
         ORDER BY count DESC,owner_email`,
       ownerValues,
     );
@@ -391,6 +402,19 @@ router.get("/pipeline", async (req, res): Promise<void> => {
          FROM filtered GROUP BY stage_id`,
       values,
     );
+    const receivableValues = [...values];
+    receivableValues[11] = true;
+    const receivablesQ = pool.query(
+      `${FILTERED_CTE}
+       SELECT count(*)::int AS count,
+              coalesce(sum(balance_due),0)::float8 AS amount
+         FROM filtered
+        WHERE order_type='invoice' AND stage_id IN ('won','done') AND balance_due > 0`,
+      receivableValues,
+    );
+    const receivableRowFilter = stage === "receivables"
+      ? "AND i.order_type='invoice' AND i.balance_due > 0"
+      : "";
     const rowsQ = pool.query(
       `${FILTERED_CTE}
        SELECT i.*,
@@ -407,11 +431,14 @@ router.get("/pipeline", async (req, res): Promise<void> => {
             AND ce.entity_id=i.printavo_id
           ORDER BY ce.occurred_at DESC LIMIT 1
        ) ev ON true
-       WHERE i.stage_id=ANY($13::text[]) AND cardinality($14::text[]) >= 0
+        WHERE i.stage_id=ANY($13::text[]) ${receivableRowFilter}
+          AND cardinality($14::text[]) >= 0
        ORDER BY ${orderSql} LIMIT $15 OFFSET $16`,
       [...values, rowStages, STAGE_IDS, limit, offset],
     );
-    const [ownersR, stagesR, rowsR] = await Promise.all([ownersQ, stagesQ, rowsQ]);
+    const [ownersR, stagesR, receivablesR, rowsR] = await Promise.all([
+      ownersQ, stagesQ, receivablesQ, rowsQ,
+    ]);
     const stageCounts = new Map(stagesR.rows.map((row) => [
       row.stage_id as string,
       { count: row.count as number, amount: row.amount as number },
@@ -425,8 +452,12 @@ router.get("/pipeline", async (req, res): Promise<void> => {
       })),
       stages: PIPELINE_STAGES.map((item) => ({
         ...item,
-        count: stageCounts.get(item.id)?.count ?? 0,
-        amount: stageCounts.get(item.id)?.amount ?? 0,
+        count: item.id === "receivables"
+          ? (receivablesR.rows[0]?.count as number) ?? 0
+          : stageCounts.get(item.id)?.count ?? 0,
+        amount: item.id === "receivables"
+          ? (receivablesR.rows[0]?.amount as number) ?? 0
+          : stageCounts.get(item.id)?.amount ?? 0,
       })),
       total: (rowsR.rows[0]?.total_rows as number) ?? 0,
       limit,
@@ -440,6 +471,7 @@ router.get("/pipeline", async (req, res): Promise<void> => {
         nickname: (row.nickname as string | null) ?? null,
         customerId: (row.customer_id as string | null) ?? null,
         customerName: (row.customer_name as string | null) ?? null,
+        customerEmail: (row.customer_email as string | null) ?? null,
         ownerEmail: (row.owner_email as string | null) ?? null,
         createdAt: row.printavo_created_at
           ? (row.printavo_created_at as Date).toISOString() : null,
@@ -450,6 +482,7 @@ router.get("/pipeline", async (req, res): Promise<void> => {
           ? (row.customer_due_at as Date).toISOString() : null,
         qty: row.qty as number,
         total: row.total as number,
+        balanceDue: row.balance_due as number,
         statusSince: row.status_since ? (row.status_since as Date).toISOString() : null,
         statusSinceExact: row.status_since_exact as boolean,
       })),

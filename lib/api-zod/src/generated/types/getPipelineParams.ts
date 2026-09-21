@@ -19,7 +19,7 @@ owner?: string;
  */
 stage?: GetPipelineStage;
 /**
- * Window (days) for the Won and Done stages
+ * Window (days) for the Won and Done stages; ignored by Receivables
  * @minimum 7
  * @maximum 365
  */
@@ -34,7 +34,7 @@ limit?: number;
  */
 offset?: number;
 /**
- * Literal case-insensitive search of invoice number, nickname, customer/contact name, or company
+ * Literal case-insensitive search of invoice number, nickname, customer/contact name, email, or company
  * @maxLength 500
  */
 q?: string;

@@ -43,15 +43,15 @@ before(async () => {
   );
   await pool.query(
     `INSERT INTO pv_orders
-      (printavo_id,visual_id,order_type,status_name,nickname,total,customer_id,
-       customer_company,contact_name,owner_email,printavo_created_at,invoice_at,
+      (printavo_id,visual_id,order_type,status_name,nickname,total,amount_outstanding,customer_id,
+       customer_company,contact_name,contact_email,owner_email,printavo_created_at,invoice_at,
        production_due_at,customer_due_at,data,content_hash,first_seen_at)
      VALUES
-       ($1,$10,'invoice','Ready to go',concat('Literal % Job ',$9::text),100,$3,
-       'Percent % Company','Ada Person',$4,'2020-01-16T02:00:00Z','2020-01-16',
+       ($1,$10,'invoice','Ready to go',concat('Literal % Job ',$9::text),100,25,$3,
+        'Percent % Company','Ada Person','ada@example.test',$4,'2020-01-16T02:00:00Z','2020-01-16',
         '2020-01-20T00:00:00Z','2020-01-22T00:00:00Z',$5::jsonb,$6,'2020-01-16T02:00:00Z'),
-       ($2,$11,'invoice','Ready to go',concat('Ordinary Job ',$9::text),200,NULL,
-        'Ordinary Company','Bob Person',$8,'2021-02-15T17:00:00Z','2021-02-16',
+       ($2,$11,'invoice','Ready to go',concat('Ordinary Job ',$9::text),200,0,NULL,
+         'Ordinary Company','Bob Person','bob@example.test',$8,'2021-02-15T17:00:00Z','2021-02-16',
        '2021-02-20T00:00:00Z','2021-02-22T00:00:00Z',$5::jsonb,$7,'2021-02-15T17:00:00Z')`,
     [
       orderIds[0], orderIds[1], customerId, users.a.email,
@@ -218,6 +218,46 @@ test("allowlisted sorting applies direction with stable results", async () => {
   );
   const descendingAgeBody = await descendingAge.json() as { rows: Array<{ visualId: number }> };
   assert.deepEqual(descendingAgeBody.rows.map((row) => row.visualId), [visualIds[0], visualIds[1]]);
+});
+
+test("receivables ignores wonDays and returns only unpaid Won/Done invoices", async () => {
+  const response = await request(`/pipeline?stage=receivables&wonDays=7&q=${suffix}`);
+  assert.equal(response.status, 200);
+  const body = await response.json() as {
+    total: number;
+    rows: Array<{
+      visualId: number;
+      customerEmail: string | null;
+      total: number;
+      balanceDue: number;
+    }>;
+    owners: Array<{ email: string; count: number }>;
+    stages: Array<{ id: string; count: number; amount: number }>;
+  };
+  assert.equal(body.total, 1);
+  assert.deepEqual(body.rows.map((row) => ({
+    visualId: row.visualId,
+    customerEmail: row.customerEmail,
+    total: row.total,
+    balanceDue: row.balanceDue,
+  })), [{
+    visualId: visualIds[0],
+    customerEmail: "ada@example.test",
+    total: 100,
+    balanceDue: 25,
+  }]);
+  assert.deepEqual(body.owners, [{ email: users.a.email, count: 1 }]);
+  assert.deepEqual(
+    body.stages.find((stage) => stage.id === "receivables"),
+    { id: "receivables", label: "Receivables", count: 1, amount: 25 },
+  );
+
+  const emailSearch = await request(
+    "/pipeline?stage=receivables&q=ada%40example.test&sort=customerEmail&direction=asc",
+  );
+  assert.equal(emailSearch.status, 200);
+  const emailBody = await emailSearch.json() as { rows: Array<{ visualId: number }> };
+  assert.deepEqual(emailBody.rows.map((row) => row.visualId), [visualIds[0]]);
 });
 
 test("saved views are owner scoped and default switching is serialized", async () => {

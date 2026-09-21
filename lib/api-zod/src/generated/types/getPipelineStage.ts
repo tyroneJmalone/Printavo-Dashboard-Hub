@@ -19,6 +19,7 @@ export const GetPipelineStage = {
   art: 'art',
   won: 'won',
   done: 'done',
+  receivables: 'receivables',
   dead: 'dead',
   contract_dead_archive: 'contract_dead_archive',
   archive: 'archive',

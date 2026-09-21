@@ -23,3 +23,15 @@ role.
 mailboxes for Admin; resolve only selected Groups/ownership/thread grants for
 Manager. Any customer-level correspondence query must accept the resolved
 mailbox set and aggregate only within it.
+
+## Correspondence browsing versus search
+
+Mailbox and folder selection narrow browsing only; regular and AI search must
+still span all correspondence the actor is authorized to search.
+
+**Why:** The user explicitly wants to inspect one person's inbox or archive
+without accidentally missing search results from other mailboxes.
+
+**How to apply:** Never pass the active browsing scope into search as an
+authorization scope. Preserve mailbox policies and thread grants, and label
+the global search scope clearly.

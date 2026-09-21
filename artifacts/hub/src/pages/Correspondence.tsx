@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { useCorrespondenceThreads, useCorrespondenceThread, useCorrespondenceAiSearch } from "@/hooks/use-correspondence";
-import { Search, Sparkles, Mail, Inbox, Archive, MessageCircle, AlertCircle, Loader2 } from "lucide-react";
+import { useCorrespondenceThreads, useCorrespondenceThread, useCorrespondenceAiSearch, useCorrespondenceMailboxes } from "@/hooks/use-correspondence";
+import { Search, Sparkles, Mail, Inbox, Archive, MessageCircle, AlertCircle, Loader2, Send } from "lucide-react";
 
 function ThreadView({ threadId }: { threadId: string }) {
   const { data, isLoading, error } = useCorrespondenceThread(threadId);
@@ -88,13 +88,16 @@ function ThreadView({ threadId }: { threadId: string }) {
 }
 
 export default function Correspondence() {
-  const [activeTab, setActiveTab] = useState<"inbox" | "archived" | "ai">("inbox");
+  const [activeTab, setActiveTab] = useState<"inbox" | "sent" | "archived" | "ai">("inbox");
+  const [mailboxId, setMailboxId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
 
-  const { data: threadsData, isLoading } = useCorrespondenceThreads({
-    status: activeTab === "archived" ? "archived" : (activeTab === "inbox" ? "open" : undefined),
+  const { data: mailboxesData, isLoading: mailboxesLoading } = useCorrespondenceMailboxes();
+  const { data: threadsData, isLoading, error: threadsError } = useCorrespondenceThreads({
+    folder: activeTab === "ai" ? undefined : activeTab,
+    mailboxId: submittedQuery ? undefined : mailboxId || undefined,
     q: activeTab !== "ai" ? submittedQuery : undefined,
     limit: 50
   });
@@ -124,6 +127,29 @@ export default function Correspondence() {
               Correspondence
             </h1>
 
+            <label className="block mb-3">
+              <span className="block text-[11px] font-medium text-slate-400 mb-1.5">
+                Browsing mailbox
+              </span>
+              <select
+                value={mailboxId}
+                disabled={mailboxesLoading}
+                onChange={(event) => {
+                  setMailboxId(event.target.value);
+                  setSelectedThreadId(null);
+                }}
+                className="w-full bg-[#0f172a] border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#059669] disabled:opacity-60"
+              >
+                <option value="">All authorized mailboxes</option>
+                {mailboxesData?.mailboxes.map((mailbox) => (
+                  <option key={mailbox.id} value={mailbox.id}>
+                    {mailbox.displayName || mailbox.email}
+                    {mailbox.displayName ? ` — ${mailbox.email}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <form onSubmit={handleSearchSubmit} className="relative mb-4">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
               <input 
@@ -134,6 +160,9 @@ export default function Correspondence() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </form>
+            <p className="text-[10px] leading-4 text-slate-500 -mt-2 mb-3">
+              Search scope: all correspondence you’re authorized to search, across every mailbox and folder.
+            </p>
 
             <div className="flex gap-1 bg-[#0f172a] p-1 rounded-lg border border-slate-800">
               <button
@@ -143,10 +172,16 @@ export default function Correspondence() {
                 <Inbox size={14} /> Inbox
               </button>
               <button
+                className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md transition-colors ${activeTab === "sent" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`}
+                onClick={() => { setActiveTab("sent"); setSelectedThreadId(null); }}
+              >
+                <Send size={14} /> Sent
+              </button>
+              <button
                 className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md transition-colors ${activeTab === "archived" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"}`}
                 onClick={() => { setActiveTab("archived"); setSelectedThreadId(null); }}
               >
-                <Archive size={14} /> Archive
+                <Archive size={14} /> Archived
               </button>
               <button
                 className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md transition-colors ${activeTab === "ai" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "text-slate-400 hover:text-slate-200"}`}
@@ -173,7 +208,7 @@ export default function Correspondence() {
                     </div>
                     {aiSearchMutation.data.results?.length > 0 && (
                       <div className="divide-y divide-slate-800/60 mt-4">
-                        {aiSearchMutation.data.results.map((res: any) => (
+                        {aiSearchMutation.data.results.map((res) => (
                           <button
                             key={res.threadId}
                             className={`w-full text-left py-3 hover:bg-slate-900/50 transition-colors ${selectedThreadId === res.threadId ? "bg-slate-900 border-l-2 border-[#10b981] px-2" : "border-l-2 border-transparent px-2"}`}
@@ -206,6 +241,10 @@ export default function Correspondence() {
             ) : isLoading ? (
               <div className="flex justify-center p-8">
                 <Loader2 className="animate-spin text-slate-500" size={20} />
+              </div>
+            ) : threadsError ? (
+              <div className="text-center p-8 text-rose-300 text-sm">
+                {threadsError instanceof Error ? threadsError.message : "Unable to load correspondence."}
               </div>
             ) : threads.length === 0 ? (
               <div className="text-center p-8 text-slate-500 text-sm">

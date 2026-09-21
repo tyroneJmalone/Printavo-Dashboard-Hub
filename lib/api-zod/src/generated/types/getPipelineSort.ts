@@ -12,6 +12,7 @@ export type GetPipelineSort = typeof GetPipelineSort[keyof typeof GetPipelineSor
 export const GetPipelineSort = {
   visualId: 'visualId',
   customerName: 'customerName',
+  customerEmail: 'customerEmail',
   nickname: 'nickname',
   ownerEmail: 'ownerEmail',
   stage: 'stage',
@@ -21,6 +22,7 @@ export const GetPipelineSort = {
   customerDueAt: 'customerDueAt',
   qty: 'qty',
   total: 'total',
+  balanceDue: 'balanceDue',
   statusName: 'statusName',
   statusSince: 'statusSince',
 } as const;

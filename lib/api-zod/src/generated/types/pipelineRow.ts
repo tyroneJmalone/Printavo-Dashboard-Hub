@@ -16,6 +16,7 @@ export interface PipelineRow {
   nickname?: string | null;
   customerId?: string | null;
   customerName?: string | null;
+  customerEmail?: string | null;
   ownerEmail?: string | null;
   createdAt?: string | null;
   /** @nullable */
@@ -26,6 +27,7 @@ export interface PipelineRow {
   customerDueAt: Date | null;
   qty: number;
   total: number;
+  balanceDue: number;
   /** When the order entered its current status */
   statusSince?: string | null;
   /** False when the change predates status tracking — statusSince is then a lower bound ("at least this long"). */

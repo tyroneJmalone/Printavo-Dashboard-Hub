@@ -25,6 +25,17 @@ import { PipelineTable } from "./pipeline/PipelineTable";
 
 const WON_WINDOW_OPTIONS = [30, 60, 90, 180, 365];
 const PAGE_SIZE = 200;
+const PIPELINE_MEMORY_VERSION = 1;
+const STAGES = new Set([
+  "active", "quote", "quote_sent", "follow_up_1", "follow_up_2", "nurturing",
+  "art", "other", "won", "done", "receivables", "dead",
+  "contract_dead_archive", "archive",
+]);
+const SORTS = new Set([
+  "visualId", "customerName", "customerEmail", "nickname", "ownerEmail", "stage",
+  "createdAt", "invoiceAt", "productionDueAt", "customerDueAt", "qty", "total",
+  "balanceDue", "statusName", "statusSince",
+]);
 
 export const DEFAULT_CONFIG: PipelineViewConfig = {
   q: "",
@@ -85,6 +96,69 @@ function validateDateRange(from?: string, to?: string) {
   return from && to && from > to ? true : false;
 }
 
+type RememberedPipelineState = {
+  selectedViewId: string | null;
+  config: PipelineViewConfig;
+  page: number;
+};
+
+function storageKey(email: string): string {
+  return `hub.pipeline.last.v${PIPELINE_MEMORY_VERSION}:${encodeURIComponent(email.trim().toLowerCase())}`;
+}
+
+function readRememberedState(email: string): RememberedPipelineState | null {
+  try {
+    const raw = sessionStorage.getItem(storageKey(email));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (parsed.version !== PIPELINE_MEMORY_VERSION || typeof parsed.config !== "object" || !parsed.config) {
+      return null;
+    }
+    const candidate = parsed.config as Record<string, unknown>;
+    const stage = typeof candidate.stage === "string" && STAGES.has(candidate.stage)
+      ? candidate.stage as PipelineViewConfigStage : "active";
+    const sort = typeof candidate.sort === "string" && SORTS.has(candidate.sort)
+      ? candidate.sort as PipelineViewConfigSort : undefined;
+    const direction = candidate.direction === "asc" || candidate.direction === "desc"
+      ? candidate.direction : undefined;
+    const text = (key: string, max: number) =>
+      typeof candidate[key] === "string" ? candidate[key].slice(0, max) : "";
+    const date = (key: string) => {
+      const value = text(key, 10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+    };
+    const wonDays = typeof candidate.wonDays === "number"
+      && Number.isInteger(candidate.wonDays)
+      && candidate.wonDays >= 7
+      && candidate.wonDays <= 365
+      ? candidate.wonDays : 90;
+    return {
+      selectedViewId: typeof parsed.selectedViewId === "string"
+        ? parsed.selectedViewId.slice(0, 100) : null,
+      page: typeof parsed.page === "number" && Number.isInteger(parsed.page) && parsed.page >= 0
+        ? Math.min(parsed.page, 5_000) : 0,
+      config: normalizeConfig({
+        q: text("q", 500),
+        owner: typeof candidate.owner === "string" ? candidate.owner.slice(0, 320) : undefined,
+        stage,
+        wonDays,
+        createdFrom: date("createdFrom"),
+        createdTo: date("createdTo"),
+        invoiceFrom: date("invoiceFrom"),
+        invoiceTo: date("invoiceTo"),
+        productionDueFrom: date("productionDueFrom"),
+        productionDueTo: date("productionDueTo"),
+        customerDueFrom: date("customerDueFrom"),
+        customerDueTo: date("customerDueTo"),
+        sort,
+        direction,
+      }),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function Pipeline() {
   const { email } = useStaff();
   return <PipelineContent key={email} />;
@@ -92,6 +166,7 @@ export default function Pipeline() {
 
 function PipelineContent() {
   const { email: myEmail } = useStaff();
+  const remembered = useRef(readRememberedState(myEmail)).current;
   const { 
     views, 
     viewsLoaded, 
@@ -106,13 +181,15 @@ function PipelineContent() {
   } = usePipelineViews(myEmail);
 
   const [initMode, setInitMode] = useState<"pending" | "view-loaded" | "no-default" | "error">("pending");
-  const [selectedViewId, setSelectedViewId] = useState<string | null>(null);
+  const [selectedViewId, setSelectedViewId] = useState<string | null>(
+    remembered?.selectedViewId ?? null,
+  );
   
-  const [config, setConfig] = useState<PipelineViewConfig>(DEFAULT_CONFIG);
+  const [config, setConfig] = useState<PipelineViewConfig>(remembered?.config ?? DEFAULT_CONFIG);
   const debouncedQ = useDebounce(config.q || "", 400);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(remembered?.page ?? 0);
 
-  const appliedDefaultRep = useRef(false);
+  const appliedDefaultRep = useRef(Boolean(remembered));
 
   // 1. Initialize from default view, fallback to pending, or handle error
   useEffect(() => {
@@ -122,6 +199,13 @@ function PipelineContent() {
       return;
     }
     if (viewsLoaded) {
+      if (remembered) {
+        if (remembered.selectedViewId && !views.some(v => v.id === remembered.selectedViewId)) {
+          setSelectedViewId(null);
+        }
+        setInitMode("view-loaded");
+        return;
+      }
       const defaultView = views.find(v => v.isDefault);
       if (defaultView) {
         setConfig(normalizeConfig(defaultView.config));
@@ -131,13 +215,28 @@ function PipelineContent() {
         setInitMode("no-default");
       }
     }
-  }, [viewsLoaded, viewsError, views, initMode]);
+  }, [viewsLoaded, viewsError, views, initMode, remembered]);
+
+  useEffect(() => {
+    if (initMode === "pending") return;
+    try {
+      sessionStorage.setItem(storageKey(myEmail), JSON.stringify({
+        version: PIPELINE_MEMORY_VERSION,
+        selectedViewId,
+        config,
+        page,
+      }));
+    } catch {
+      // Storage can be unavailable in privacy-restricted browser contexts.
+    }
+  }, [config, initMode, myEmail, page, selectedViewId]);
 
   const selectedView = views.find(v => v.id === selectedViewId);
   const hasExplicitDates = [
     config.createdFrom, config.createdTo, config.invoiceFrom, config.invoiceTo,
     config.productionDueFrom, config.productionDueTo, config.customerDueFrom, config.customerDueTo,
   ].some(Boolean);
+  const isReceivables = config.stage === "receivables";
   const isDirty = selectedView ? !isConfigEqual(config, normalizeConfig(selectedView.config)) : false;
 
   const hasInvalidDates = validateDateRange(config.createdFrom, config.createdTo) ||
@@ -274,7 +373,7 @@ function PipelineContent() {
                 <Search className="absolute left-2.5 top-2 text-slate-400" size={14} />
                 <Input
                   className="pl-8 h-8 bg-slate-900 border-slate-700 text-xs focus-visible:ring-[#10b981]"
-                  placeholder="Search invoice, nickname, customer..."
+                  placeholder="Search invoice, nickname, customer, email..."
                   value={config.q || ""}
                   onChange={(e) => updateConfig({ q: e.target.value })}
                 />
@@ -285,8 +384,12 @@ function PipelineContent() {
               <label className="flex items-center gap-2 text-xs text-slate-400">
                 Won/Done window
                 <select
-                  disabled={hasExplicitDates}
-                  title={hasExplicitDates ? "Your explicit date filters replace this window." : undefined}
+                  disabled={hasExplicitDates || isReceivables}
+                  title={
+                    isReceivables
+                      ? "Receivables includes every unpaid Won/Done invoice."
+                      : hasExplicitDates ? "Your explicit date filters replace this window." : undefined
+                  }
                   value={config.wonDays}
                   onChange={(e) => updateConfig({ wonDays: Number(e.target.value) })}
                   className="bg-slate-900 border border-slate-700 rounded px-2 py-1 h-8 text-xs text-slate-200 focus:outline-none focus:border-[#10b981]"
@@ -299,6 +402,7 @@ function PipelineContent() {
                 </select>
               </label>
               {hasExplicitDates && <span className="text-xs text-slate-400">Using selected date ranges</span>}
+              {isReceivables && <span className="text-xs text-slate-400">All unpaid Won/Done invoices</span>}
             </div>
           </div>
 

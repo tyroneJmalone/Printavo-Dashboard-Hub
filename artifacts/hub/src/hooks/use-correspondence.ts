@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/api";
 
 export interface Thread {
   id: string;
+  mailboxId: string;
   gmailThreadId: string;
   subject: string;
   counterpart: string;
@@ -12,6 +13,30 @@ export interface Thread {
   snippet?: string;
   status: "open" | "archived" | "snoozed";
   participants: string[];
+}
+
+export interface CorrespondenceMailbox {
+  id: string;
+  email: string;
+  displayName: string | null;
+}
+
+export interface AiSearchSource {
+  id: string;
+  threadId: string;
+  subject: string;
+  counterpart: string;
+  from: string;
+  date: string;
+  content: string;
+}
+
+export function useCorrespondenceMailboxes() {
+  return useQuery({
+    queryKey: ["correspondence", "mailboxes"],
+    queryFn: () =>
+      apiFetch<{ mailboxes: CorrespondenceMailbox[] }>("/correspondence/mailboxes"),
+  });
 }
 
 export interface ThreadMessage {
@@ -42,8 +67,8 @@ export function useCorrespondenceSearch() {
 
 export function useCorrespondenceAiSearch() {
   return useMutation({
-    mutationFn: (data: { query: string; customerId?: string }) => 
-      apiFetch<{ results: any[]; summary: string }>("/correspondence/ai-search", {
+    mutationFn: (data: { query: string; customerId?: string }) =>
+      apiFetch<{ results: AiSearchSource[]; summary: string }>("/correspondence/ai-search", {
         method: "POST",
         body: JSON.stringify(data),
       })
@@ -60,7 +85,13 @@ export function useCorrespondenceHistoryImport() {
   });
 }
 
-export function useCorrespondenceThreads(params: Record<string, any>) {
+export function useCorrespondenceThreads(params: {
+  folder?: "inbox" | "sent" | "archived";
+  mailboxId?: string;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}) {
   return useQuery({
     queryKey: ["correspondence", "threads", params],
     queryFn: () => {

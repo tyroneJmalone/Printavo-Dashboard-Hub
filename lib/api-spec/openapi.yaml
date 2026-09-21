@@ -910,7 +910,7 @@ paths:
     get:
       operationId: getPipeline
       tags: [pipeline]
-      summary: Sales pipeline — quotes by stage plus recently won/done invoices
+      summary: Sales pipeline — quotes by stage, recently won/done invoices, and all open receivables
       parameters:
         - name: owner
           in: query
@@ -937,6 +937,7 @@ paths:
                 art,
                 won,
                 done,
+                receivables,
                 dead,
                 contract_dead_archive,
                 archive,
@@ -945,7 +946,7 @@ paths:
         - name: wonDays
           in: query
           required: false
-          description: Window (days) for the Won and Done stages
+          description: Window (days) for the Won and Done stages; ignored by Receivables
           schema: { type: integer, minimum: 7, maximum: 365 }
         - name: limit
           in: query
@@ -958,7 +959,7 @@ paths:
         - name: q
           in: query
           required: false
-          description: Literal case-insensitive search of invoice number, nickname, customer/contact name, or company
+          description: Literal case-insensitive search of invoice number, nickname, customer/contact name, email, or company
           schema: { type: string, maxLength: 500 }
         - name: createdFrom
           in: query
@@ -988,7 +989,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [visualId, customerName, nickname, ownerEmail, stage, createdAt, invoiceAt, productionDueAt, customerDueAt, qty, total, statusName, statusSince]
+            enum: [visualId, customerName, customerEmail, nickname, ownerEmail, stage, createdAt, invoiceAt, productionDueAt, customerDueAt, qty, total, balanceDue, statusName, statusSince]
         - name: direction
           in: query
           schema: { type: string, enum: [asc, desc] }
@@ -8700,7 +8701,7 @@ components:
         owner: { type: string, maxLength: 320 }
         stage:
           type: string
-          enum: [active, quote, quote_sent, follow_up_1, follow_up_2, nurturing, art, other, won, done, dead, contract_dead_archive, archive]
+          enum: [active, quote, quote_sent, follow_up_1, follow_up_2, nurturing, art, other, won, done, receivables, dead, contract_dead_archive, archive]
         wonDays: { type: integer, minimum: 7, maximum: 365 }
         createdFrom: { type: string, format: date }
         createdTo: { type: string, format: date }
@@ -8712,7 +8713,7 @@ components:
         customerDueTo: { type: string, format: date }
         sort:
           type: string
-          enum: [visualId, customerName, nickname, ownerEmail, stage, createdAt, invoiceAt, productionDueAt, customerDueAt, qty, total, statusName, statusSince]
+          enum: [visualId, customerName, customerEmail, nickname, ownerEmail, stage, createdAt, invoiceAt, productionDueAt, customerDueAt, qty, total, balanceDue, statusName, statusSince]
         direction: { type: string, enum: [asc, desc] }
     PipelineView:
       type: object
@@ -8754,6 +8755,7 @@ components:
         nickname: { type: string, nullable: true }
         customerId: { type: string, nullable: true }
         customerName: { type: string, nullable: true }
+        customerEmail: { type: string, nullable: true }
         ownerEmail: { type: string, nullable: true }
         createdAt: { type: string, nullable: true }
         invoiceAt: { type: [string, "null"], format: date }
@@ -8761,6 +8763,7 @@ components:
         customerDueAt: { type: [string, "null"], format: date-time }
         qty: { type: integer }
         total: { type: number }
+        balanceDue: { type: number }
         statusSince:
           type: string
           nullable: true
@@ -8779,6 +8782,7 @@ components:
           statusName,
           qty,
           total,
+          balanceDue,
           invoiceAt,
           productionDueAt,
           customerDueAt,

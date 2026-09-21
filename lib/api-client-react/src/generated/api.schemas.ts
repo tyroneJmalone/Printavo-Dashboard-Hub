@@ -1145,6 +1145,7 @@ export const PipelineViewConfigStage = {
   other: 'other',
   won: 'won',
   done: 'done',
+  receivables: 'receivables',
   dead: 'dead',
   contract_dead_archive: 'contract_dead_archive',
   archive: 'archive',
@@ -1156,6 +1157,7 @@ export type PipelineViewConfigSort = typeof PipelineViewConfigSort[keyof typeof 
 export const PipelineViewConfigSort = {
   visualId: 'visualId',
   customerName: 'customerName',
+  customerEmail: 'customerEmail',
   nickname: 'nickname',
   ownerEmail: 'ownerEmail',
   stage: 'stage',
@@ -1165,6 +1167,7 @@ export const PipelineViewConfigSort = {
   customerDueAt: 'customerDueAt',
   qty: 'qty',
   total: 'total',
+  balanceDue: 'balanceDue',
   statusName: 'statusName',
   statusSince: 'statusSince',
 } as const;
@@ -1246,6 +1249,7 @@ export interface PipelineRow {
   nickname?: string | null;
   customerId?: string | null;
   customerName?: string | null;
+  customerEmail?: string | null;
   ownerEmail?: string | null;
   createdAt?: string | null;
   /** @nullable */
@@ -1256,6 +1260,7 @@ export interface PipelineRow {
   customerDueAt: string | null;
   qty: number;
   total: number;
+  balanceDue: number;
   /** When the order entered its current status */
   statusSince?: string | null;
   /** False when the change predates status tracking — statusSince is then a lower bound ("at least this long"). */
@@ -7865,7 +7870,7 @@ owner?: string;
  */
 stage?: GetPipelineStage;
 /**
- * Window (days) for the Won and Done stages
+ * Window (days) for the Won and Done stages; ignored by Receivables
  * @minimum 7
  * @maximum 365
  */
@@ -7880,7 +7885,7 @@ limit?: number;
  */
 offset?: number;
 /**
- * Literal case-insensitive search of invoice number, nickname, customer/contact name, or company
+ * Literal case-insensitive search of invoice number, nickname, customer/contact name, email, or company
  * @maxLength 500
  */
 q?: string;
@@ -7909,6 +7914,7 @@ export const GetPipelineStage = {
   art: 'art',
   won: 'won',
   done: 'done',
+  receivables: 'receivables',
   dead: 'dead',
   contract_dead_archive: 'contract_dead_archive',
   archive: 'archive',
@@ -7921,6 +7927,7 @@ export type GetPipelineSort = typeof GetPipelineSort[keyof typeof GetPipelineSor
 export const GetPipelineSort = {
   visualId: 'visualId',
   customerName: 'customerName',
+  customerEmail: 'customerEmail',
   nickname: 'nickname',
   ownerEmail: 'ownerEmail',
   stage: 'stage',
@@ -7930,6 +7937,7 @@ export const GetPipelineSort = {
   customerDueAt: 'customerDueAt',
   qty: 'qty',
   total: 'total',
+  balanceDue: 'balanceDue',
   statusName: 'statusName',
   statusSince: 'statusSince',
 } as const;
