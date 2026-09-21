@@ -1,401 +1,349 @@
 import { AppShell } from "@/components/layout/AppShell";
-import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { useStaff } from "@/components/auth/StaffGate";
-import {
-  useGetPipeline,
-  getGetPipelineQueryKey,
-  type GetPipelineParams,
-  type PipelineRow,
-} from "@workspace/api-client-react";
-import { formatMoney, formatNumber, formatDate } from "@/lib/format";
-import { Link } from "wouter";
+import { formatNumber } from "@/lib/format";
 import { useEffect, useRef, useState } from "react";
-import { Filter, Loader2, ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import { Filter, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
+import { 
+  useGetPipeline, 
+  getGetPipelineQueryKey,
+} from "@workspace/api-client-react";
+import type { 
+  PipelineViewConfig, 
+  PipelineViewConfigStage, 
+  PipelineViewConfigSort,
+  GetPipelineParams
+} from "@workspace/api-client-react";
+import { Input } from "@/components/ui/input";
 
-/**
- * Sales Pipeline — quotes bucketed into funnel stages, plus recently won/done
- * invoices (a winning quote becomes an invoice in Printavo). All-team view
- * with per-rep tabs; defaults to "my pipeline" when the logged-in staff
- * member owns quotes.
- */
-
-/** Stage ids the combined "Active" view covers (mirrors the API default). */
-const ACTIVE_STAGE_IDS = new Set([
-  "quote",
-  "quote_sent",
-  "follow_up_1",
-  "follow_up_2",
-  "nurturing",
-  "art",
-  "other",
-]);
-
-/** Terminal stages get muted cards so the working funnel stands out. */
-const TERMINAL_STAGE_IDS = new Set([
-  "won",
-  "done",
-  "dead",
-  "contract_dead_archive",
-  "archive",
-]);
-
-/** Stages where sitting >= AGING_DAYS means a follow-up is overdue. */
-const AGING_STAGE_IDS = new Set([
-  "quote",
-  "quote_sent",
-  "follow_up_1",
-  "follow_up_2",
-]);
-const AGING_DAYS = 7;
+import { usePipelineViews } from "./pipeline/usePipelineViews";
+import { PipelineViewMenu } from "./pipeline/PipelineViewMenu";
+import { PipelineDateRangePop } from "./pipeline/PipelineDateRangePop";
+import { PipelineStageCards } from "./pipeline/PipelineStageCards";
+import { PipelineRepTabs } from "./pipeline/PipelineRepTabs";
+import { PipelineTable } from "./pipeline/PipelineTable";
 
 const WON_WINDOW_OPTIONS = [30, 60, 90, 180, 365];
-
 const PAGE_SIZE = 200;
 
-function repName(email: string): string {
-  const prefix = email.split("@")[0] ?? email;
-  return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+export const DEFAULT_CONFIG: PipelineViewConfig = {
+  q: "",
+  createdFrom: "",
+  createdTo: "",
+  invoiceFrom: "",
+  invoiceTo: "",
+  productionDueFrom: "",
+  productionDueTo: "",
+  customerDueFrom: "",
+  customerDueTo: "",
+  stage: "active",
+  owner: undefined,
+  wonDays: 90,
+  sort: undefined,
+  direction: undefined,
+};
+
+function normalizeConfig(c: Partial<PipelineViewConfig>): PipelineViewConfig {
+  return {
+    q: c.q ?? "",
+    createdFrom: c.createdFrom ?? "",
+    createdTo: c.createdTo ?? "",
+    invoiceFrom: c.invoiceFrom ?? "",
+    invoiceTo: c.invoiceTo ?? "",
+    productionDueFrom: c.productionDueFrom ?? "",
+    productionDueTo: c.productionDueTo ?? "",
+    customerDueFrom: c.customerDueFrom ?? "",
+    customerDueTo: c.customerDueTo ?? "",
+    stage: c.stage ?? "active",
+    owner: c.owner === null ? undefined : c.owner,
+    wonDays: c.wonDays ?? 90,
+    sort: c.sort,
+    direction: c.direction,
+  };
 }
 
-function daysInStatus(since: string | null | undefined): number | null {
-  if (!since) return null;
-  const ms = Date.now() - new Date(since).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return null;
-  return Math.floor(ms / 86_400_000);
+function isConfigEqual(a: PipelineViewConfig, b: PipelineViewConfig) {
+  return (
+    a.q === b.q &&
+    a.createdFrom === b.createdFrom &&
+    a.createdTo === b.createdTo &&
+    a.invoiceFrom === b.invoiceFrom &&
+    a.invoiceTo === b.invoiceTo &&
+    a.productionDueFrom === b.productionDueFrom &&
+    a.productionDueTo === b.productionDueTo &&
+    a.customerDueFrom === b.customerDueFrom &&
+    a.customerDueTo === b.customerDueTo &&
+    a.stage === b.stage &&
+    a.owner === b.owner &&
+    a.wonDays === b.wonDays &&
+    a.sort === b.sort &&
+    a.direction === b.direction
+  );
 }
 
-function timeInStatusLabel(row: PipelineRow): string {
-  if (!row.statusSince) return "—";
-  const ms = Date.now() - new Date(row.statusSince).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return "—";
-  const days = Math.floor(ms / 86_400_000);
-  let label: string;
-  if (days >= 1) {
-    label = `${days}d`;
-  } else {
-    const hours = Math.floor(ms / 3_600_000);
-    label = hours >= 1 ? `${hours}h` : "<1h";
-  }
-  return row.statusSinceExact ? label : `${label}+`;
-}
-
-function isAging(row: PipelineRow): boolean {
-  if (!AGING_STAGE_IDS.has(row.stageId)) return false;
-  const days = daysInStatus(row.statusSince);
-  return days !== null && days >= AGING_DAYS;
+function validateDateRange(from?: string, to?: string) {
+  return from && to && from > to ? true : false;
 }
 
 export default function Pipeline() {
+  const { email } = useStaff();
+  return <PipelineContent key={email} />;
+}
+
+function PipelineContent() {
   const { email: myEmail } = useStaff();
-  const [stage, setStage] = useState<string>("active");
-  const [owner, setOwner] = useState<string | null>(null);
-  const [wonDays, setWonDays] = useState(90);
+  const { 
+    views, 
+    viewsLoaded, 
+    viewsError, 
+    refetchViews,
+    isMutating, 
+    saveView, 
+    createNewView, 
+    toggleDefault, 
+    renameView, 
+    deleteViewById 
+  } = usePipelineViews(myEmail);
+
+  const [initMode, setInitMode] = useState<"pending" | "view-loaded" | "no-default" | "error">("pending");
+  const [selectedViewId, setSelectedViewId] = useState<string | null>(null);
+  
+  const [config, setConfig] = useState<PipelineViewConfig>(DEFAULT_CONFIG);
+  const debouncedQ = useDebounce(config.q || "", 400);
   const [page, setPage] = useState(0);
+
   const appliedDefaultRep = useRef(false);
 
+  // 1. Initialize from default view, fallback to pending, or handle error
+  useEffect(() => {
+    if (initMode !== "pending") return;
+    if (viewsError) {
+      setInitMode("error");
+      return;
+    }
+    if (viewsLoaded) {
+      const defaultView = views.find(v => v.isDefault);
+      if (defaultView) {
+        setConfig(normalizeConfig(defaultView.config));
+        setSelectedViewId(defaultView.id);
+        setInitMode("view-loaded");
+      } else {
+        setInitMode("no-default");
+      }
+    }
+  }, [viewsLoaded, viewsError, views, initMode]);
+
+  const selectedView = views.find(v => v.id === selectedViewId);
+  const hasExplicitDates = [
+    config.createdFrom, config.createdTo, config.invoiceFrom, config.invoiceTo,
+    config.productionDueFrom, config.productionDueTo, config.customerDueFrom, config.customerDueTo,
+  ].some(Boolean);
+  const isDirty = selectedView ? !isConfigEqual(config, normalizeConfig(selectedView.config)) : false;
+
+  const hasInvalidDates = validateDateRange(config.createdFrom, config.createdTo) ||
+                          validateDateRange(config.invoiceFrom, config.invoiceTo) ||
+                          validateDateRange(config.productionDueFrom, config.productionDueTo) ||
+                          validateDateRange(config.customerDueFrom, config.customerDueTo);
+
+  // 2. Main Data Query
   const params: GetPipelineParams = {
-    stage: stage as GetPipelineParams["stage"],
-    owner: owner ?? undefined,
-    wonDays,
+    stage: config.stage as any,
+    wonDays: config.wonDays,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   };
+  if (config.owner !== undefined && config.owner !== null) params.owner = config.owner;
+  if (debouncedQ) params.q = debouncedQ;
+  if (config.createdFrom) params.createdFrom = config.createdFrom;
+  if (config.createdTo) params.createdTo = config.createdTo;
+  if (config.invoiceFrom) params.invoiceFrom = config.invoiceFrom;
+  if (config.invoiceTo) params.invoiceTo = config.invoiceTo;
+  if (config.productionDueFrom) params.productionDueFrom = config.productionDueFrom;
+  if (config.productionDueTo) params.productionDueTo = config.productionDueTo;
+  if (config.customerDueFrom) params.customerDueFrom = config.customerDueFrom;
+  if (config.customerDueTo) params.customerDueTo = config.customerDueTo;
+  if (config.sort) params.sort = config.sort;
+  if (config.direction) params.direction = config.direction;
+
   const { data, isLoading, isError } = useGetPipeline(params, {
-    query: { queryKey: getGetPipelineQueryKey(params) },
+    query: {
+      enabled: initMode !== "pending" && !hasInvalidDates && debouncedQ === (config.q || ""),
+      queryKey: getGetPipelineQueryKey(params)
+    }
   });
 
-  // If the dataset shrinks while sitting on a later page, snap back to page 1.
+  // 3. Default rep logic if no view was loaded
   useEffect(() => {
-    if (data && data.rows.length === 0 && page > 0) setPage(0);
+    if ((initMode === "no-default" || initMode === "error") && data && !appliedDefaultRep.current) {
+      appliedDefaultRep.current = true;
+      const mine = data.owners?.find(o => o.email.toLowerCase() === myEmail.toLowerCase());
+      if (mine) {
+        setConfig(c => ({ ...c, owner: mine.email.toLowerCase() }));
+      }
+    }
+  }, [initMode, data, myEmail]);
+
+  // Snap page on dataset shrinking
+  useEffect(() => {
+    if (data && data.rows?.length === 0 && page > 0) setPage(0);
   }, [data, page]);
 
-  // Default to "my pipeline" once, if the logged-in staff member owns quotes.
-  useEffect(() => {
-    if (!data || appliedDefaultRep.current) return;
-    appliedDefaultRep.current = true;
-    const mine = data.owners.find(
-      (o) => o.email.toLowerCase() === myEmail.toLowerCase(),
-    );
-    if (mine) setOwner(mine.email.toLowerCase());
-  }, [data, myEmail]);
-
-  const selectStage = (id: string) => {
-    setStage((prev) => (prev === id ? "active" : id));
-    setPage(0);
-  };
-  const selectOwner = (o: string | null) => {
-    setOwner(o);
+  const updateConfig = (updates: Partial<PipelineViewConfig>) => {
+    setConfig(c => ({ ...c, ...updates }));
     setPage(0);
   };
 
-  const stages = data?.stages ?? [];
-  const activeCount = stages
-    .filter((s) => ACTIVE_STAGE_IDS.has(s.id))
-    .reduce((sum, s) => sum + s.count, 0);
-  const activeAmount = stages
-    .filter((s) => ACTIVE_STAGE_IDS.has(s.id))
-    .reduce((sum, s) => sum + s.amount, 0);
-  const otherStage = stages.find((s) => s.id === "other");
-  const visibleStages = stages.filter(
-    (s) => s.id !== "other" || (otherStage?.count ?? 0) > 0,
-  );
+  const handleSort = (column: PipelineViewConfigSort) => {
+    setConfig(c => {
+      if (c.sort === column) {
+        if (c.direction === "asc") return { ...c, direction: "desc" };
+        if (c.direction === "desc") return { ...c, sort: undefined, direction: undefined };
+      }
+      return { ...c, sort: column, direction: "asc" };
+    });
+    setPage(0);
+  };
 
-  const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const showRepColumn = owner === null;
-  const showStageColumn = stage === "active";
+  const showRepColumn = config.owner === undefined || config.owner === null;
+  const showStageColumn = config.stage === "active";
 
   return (
     <AppShell>
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex-shrink-0 bg-[#020617] border-b border-slate-800 px-6 py-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
+            <div className="flex items-center gap-4">
               <h1 className="text-xl font-bold text-white flex items-center gap-2 tracking-tight">
                 <Filter className="text-[#10b981]" size={24} />
-                Sales Pipeline
+                Pipeline
               </h1>
-              <p className="text-xs text-slate-400 mt-1">
-                Quotes by stage, plus invoices won in the last {wonDays} days.
-                Rows glowing amber have sat {AGING_DAYS}+ days without a status
-                change — that's the follow-up list.
-              </p>
-            </div>
-            <label className="flex items-center gap-2 text-xs text-slate-400">
-              Won/Done window
-              <select
-                value={wonDays}
-                onChange={(e) => {
-                  setWonDays(Number(e.target.value));
+              
+              <div className="h-6 w-px bg-slate-800 hidden md:block" />
+
+              <PipelineViewMenu
+                views={views}
+                selectedViewId={selectedViewId}
+                isDirty={isDirty}
+                isMutating={isMutating || !viewsLoaded}
+                onSelect={(val) => {
+                  if (val === null) {
+                    setSelectedViewId(null);
+                    setConfig(DEFAULT_CONFIG);
+                  } else {
+                    const v = views.find(x => x.id === val);
+                    if (v) {
+                      setSelectedViewId(v.id);
+                      setConfig(normalizeConfig(v.config));
+                    }
+                  }
                   setPage(0);
                 }}
-                className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-[#10b981]"
-              >
-                {WON_WINDOW_OPTIONS.map((d) => (
-                  <option key={d} value={d}>
-                    {d} days
-                  </option>
-                ))}
-              </select>
-            </label>
+                onSave={() => {
+                  if (selectedViewId) saveView(selectedViewId, config);
+                }}
+                onSaveAs={async (name) => {
+                  const res = await createNewView(name, config);
+                  if (res && res.id) setSelectedViewId(res.id);
+                  return !!res;
+                }}
+                onToggleDefault={() => {
+                  if (selectedViewId && selectedView) {
+                    toggleDefault(selectedViewId, selectedView.isDefault);
+                  }
+                }}
+                onRename={async (name) => {
+                  if (!selectedViewId) return false;
+                  return await renameView(selectedViewId, name);
+                }}
+                onDelete={async () => {
+                  if (selectedViewId) {
+                    const success = await deleteViewById(selectedViewId);
+                    if (success) {
+                      setSelectedViewId(null);
+                      setConfig(DEFAULT_CONFIG);
+                    }
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="relative w-64">
+                <Search className="absolute left-2.5 top-2 text-slate-400" size={14} />
+                <Input
+                  className="pl-8 h-8 bg-slate-900 border-slate-700 text-xs focus-visible:ring-[#10b981]"
+                  placeholder="Search invoice, nickname, customer..."
+                  value={config.q || ""}
+                  onChange={(e) => updateConfig({ q: e.target.value })}
+                />
+              </div>
+
+              <PipelineDateRangePop config={config} onChange={updateConfig} />
+
+              <label className="flex items-center gap-2 text-xs text-slate-400">
+                Won/Done window
+                <select
+                  disabled={hasExplicitDates}
+                  title={hasExplicitDates ? "Your explicit date filters replace this window." : undefined}
+                  value={config.wonDays}
+                  onChange={(e) => updateConfig({ wonDays: Number(e.target.value) })}
+                  className="bg-slate-900 border border-slate-700 rounded px-2 py-1 h-8 text-xs text-slate-200 focus:outline-none focus:border-[#10b981]"
+                >
+                  {WON_WINDOW_OPTIONS.map((d) => (
+                    <option key={d} value={d}>
+                      {d} days
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {hasExplicitDates && <span className="text-xs text-slate-400">Using selected date ranges</span>}
+            </div>
           </div>
 
-          {/* Rep tabs */}
-          <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-            <button
-              onClick={() => selectOwner(null)}
-              className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-                owner === null
-                  ? "bg-[#10b981] text-slate-950"
-                  : "bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500"
-              }`}
-            >
-              All Team
-            </button>
-            {(data?.owners ?? []).map((o) => (
-              <button
-                key={o.email}
-                onClick={() => selectOwner(o.email.toLowerCase())}
-                className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-                  owner === o.email.toLowerCase()
-                    ? "bg-[#10b981] text-slate-950"
-                    : "bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500"
-                }`}
-                title={o.email}
-              >
-                {repName(o.email)}
-                <span className="ml-1.5 opacity-70">{formatNumber(o.count)}</span>
-              </button>
-            ))}
-          </div>
+          {viewsError && (
+            <div role="alert" className="mt-3 text-sm text-amber-300">
+              Saved views could not be loaded. Your saved default has not been applied.{" "}
+              <button type="button" className="underline" onClick={async () => {
+                const result = await refetchViews();
+                if (result.isSuccess) setInitMode("pending");
+              }}>Retry</button>
+            </div>
+          )}
+
+          <PipelineRepTabs 
+            owners={data?.owners ?? []} 
+            activeOwner={config.owner} 
+            onSelect={owner => updateConfig({ owner })} 
+          />
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {/* Stage cards */}
           <div className="px-6 pt-4">
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => selectStage("active")}
-                className={`text-left rounded-lg border px-3 py-2 min-w-[120px] transition-colors ${
-                  stage === "active"
-                    ? "border-[#10b981] bg-[#10b981]/10"
-                    : "border-slate-700 bg-slate-900 hover:border-slate-500"
-                }`}
-              >
-                <div className="text-[10px] uppercase tracking-wider font-semibold text-[#10b981]">
-                  Active Pipeline
-                </div>
-                <div className="text-lg font-bold text-white leading-tight">
-                  {formatNumber(activeCount)}
-                </div>
-                <div className="text-[10px] text-slate-400">
-                  {formatMoney(activeAmount)}
-                </div>
-              </button>
-              {visibleStages.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => selectStage(s.id)}
-                  className={`text-left rounded-lg border px-3 py-2 min-w-[110px] transition-colors ${
-                    stage === s.id
-                      ? "border-[#10b981] bg-[#10b981]/10"
-                      : TERMINAL_STAGE_IDS.has(s.id)
-                        ? "border-slate-800 bg-slate-950 hover:border-slate-600"
-                        : "border-slate-700 bg-slate-900 hover:border-slate-500"
-                  }`}
-                >
-                  <div
-                    className={`text-[10px] uppercase tracking-wider font-semibold ${
-                      TERMINAL_STAGE_IDS.has(s.id)
-                        ? "text-slate-500"
-                        : "text-slate-300"
-                    }`}
-                  >
-                    {s.label}
-                  </div>
-                  <div className="text-lg font-bold text-white leading-tight">
-                    {formatNumber(s.count)}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {formatMoney(s.amount)}
-                  </div>
-                </button>
-              ))}
-            </div>
+            <PipelineStageCards 
+              stages={data?.stages ?? []} 
+              activeStage={config.stage as PipelineViewConfigStage} 
+              onSelect={stage => updateConfig({ stage })} 
+            />
           </div>
 
-          {/* Table */}
           <div className="px-6 py-4">
-            {isError ? (
-              <div className="text-sm text-red-400 py-8 text-center">
-                Failed to load the pipeline. Try refreshing.
-              </div>
-            ) : isLoading ? (
-              <div className="flex items-center justify-center py-16 text-slate-400">
-                <Loader2 className="animate-spin mr-2" size={18} />
-                Loading pipeline…
-              </div>
-            ) : rows.length === 0 ? (
-              <div className="text-sm text-slate-500 py-12 text-center">
-                No orders in this view.
-              </div>
-            ) : (
-              <div className="border border-slate-800 rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-900/70 text-left text-[11px] uppercase tracking-wider text-slate-400">
-                      <th className="px-3 py-2.5 font-semibold">Order</th>
-                      <th className="px-3 py-2.5 font-semibold">Customer</th>
-                      <th className="px-3 py-2.5 font-semibold">Nickname</th>
-                      {showRepColumn && (
-                        <th className="px-3 py-2.5 font-semibold">Rep</th>
-                      )}
-                      {showStageColumn && (
-                        <th className="px-3 py-2.5 font-semibold">Stage</th>
-                      )}
-                      <th className="px-3 py-2.5 font-semibold">Created</th>
-                      <th className="px-3 py-2.5 font-semibold text-right">Qty</th>
-                      <th className="px-3 py-2.5 font-semibold text-right">Total</th>
-                      <th className="px-3 py-2.5 font-semibold">Status</th>
-                      <th className="px-3 py-2.5 font-semibold text-right">
-                        In Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/70">
-                    {rows.map((row) => {
-                      const aging = isAging(row);
-                      return (
-                        <tr
-                          key={row.id}
-                          className={`transition-colors ${
-                            aging
-                              ? "bg-amber-500/[0.06] hover:bg-amber-500/10"
-                              : "hover:bg-slate-900/50"
-                          }`}
-                        >
-                          <td className="px-3 py-2 font-mono text-slate-200 whitespace-nowrap">
-                            <PrintavoOrderLink
-                              orderId={row.id}
-                              visualId={row.visualId}
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-slate-200 max-w-[220px] truncate">
-                            {row.customerId ? (
-                              <Link
-                                href={`/customers/${row.customerId}`}
-                                className="hover:text-[#10b981] hover:underline underline-offset-2"
-                              >
-                                {row.customerName ?? "(no name)"}
-                              </Link>
-                            ) : (
-                              (row.customerName ?? "—")
-                            )}
-                          </td>
-                          <td
-                            className="px-3 py-2 text-slate-400 max-w-[240px] truncate"
-                            title={row.nickname ?? undefined}
-                          >
-                            {row.nickname || "—"}
-                          </td>
-                          {showRepColumn && (
-                            <td className="px-3 py-2 text-slate-400 whitespace-nowrap">
-                              {row.ownerEmail ? repName(row.ownerEmail) : "—"}
-                            </td>
-                          )}
-                          {showStageColumn && (
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                                {stages.find((s) => s.id === row.stageId)
-                                  ?.label ?? row.stageId}
-                              </span>
-                            </td>
-                          )}
-                          <td className="px-3 py-2 text-slate-400 whitespace-nowrap">
-                            {formatDate(row.createdAt)}
-                          </td>
-                          <td className="px-3 py-2 text-slate-300 text-right whitespace-nowrap">
-                            {formatNumber(row.qty)}
-                          </td>
-                          <td className="px-3 py-2 text-slate-200 text-right whitespace-nowrap font-medium">
-                            {formatMoney(row.total)}
-                          </td>
-                          <td
-                            className="px-3 py-2 text-slate-300 max-w-[260px] truncate"
-                            title={row.statusName}
-                          >
-                            {row.statusName}
-                          </td>
-                          <td
-                            className="px-3 py-2 text-right whitespace-nowrap"
-                            title={
-                              row.statusSince
-                                ? `${row.statusSinceExact ? "Since" : "Since at least"} ${formatDate(row.statusSince)}`
-                                : undefined
-                            }
-                          >
-                            <span
-                              className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded ${
-                                aging
-                                  ? "bg-amber-500/15 text-amber-400"
-                                  : "text-slate-400"
-                              }`}
-                            >
-                              {aging && <Flame size={11} />}
-                              {timeInStatusLabel(row)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <PipelineTable 
+              rows={data?.rows ?? []}
+              stages={data?.stages ?? []}
+              sort={config.sort}
+              direction={config.direction}
+              onSort={handleSort}
+              showRepColumn={showRepColumn}
+              showStageColumn={showStageColumn}
+              isLoading={isLoading || initMode === "pending"}
+              isError={isError}
+              hasInvalidDates={hasInvalidDates}
+            />
 
             {/* Pagination */}
-            {total > PAGE_SIZE && (
+            {total > PAGE_SIZE && !hasInvalidDates && (
               <div className="flex items-center justify-between mt-3 text-xs text-slate-400">
                 <span>
                   Showing {page * PAGE_SIZE + 1}–
@@ -428,7 +376,7 @@ export default function Pipeline() {
               Times marked with "+" predate status tracking (began July 8) —
               the order has been in its status at least that long. Merch store
               source quotes are excluded. Won/Done show invoices, since a
-              winning quote becomes an invoice in Printavo.
+              winning quote becomes an invoice in Printavo. Search applies to Invoice Number, Nickname, Customer Name, and Company Name.
             </p>
           </div>
         </div>

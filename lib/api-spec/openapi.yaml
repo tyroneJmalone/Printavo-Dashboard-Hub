@@ -955,6 +955,43 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 0 }
+        - name: q
+          in: query
+          required: false
+          description: Literal case-insensitive search of invoice number, nickname, customer/contact name, or company
+          schema: { type: string, maxLength: 500 }
+        - name: createdFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: createdTo
+          in: query
+          schema: { type: string, format: date }
+        - name: invoiceFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: invoiceTo
+          in: query
+          schema: { type: string, format: date }
+        - name: productionDueFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: productionDueTo
+          in: query
+          schema: { type: string, format: date }
+        - name: customerDueFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: customerDueTo
+          in: query
+          schema: { type: string, format: date }
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [visualId, customerName, nickname, ownerEmail, stage, createdAt, invoiceAt, productionDueAt, customerDueAt, qty, total, statusName, statusSince]
+        - name: direction
+          in: query
+          schema: { type: string, enum: [asc, desc] }
       responses:
         "200":
           description: Pipeline report
@@ -962,6 +999,91 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PipelineReport"
+        "400":
+          description: Invalid pipeline filters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /pipeline/views:
+    get:
+      operationId: listPipelineViews
+      tags: [pipeline]
+      summary: List the authenticated staff user's saved pipeline views
+      responses:
+        "200":
+          description: Saved pipeline views
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PipelineView"
+    post:
+      operationId: createPipelineView
+      tags: [pipeline]
+      summary: Create a saved pipeline view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PipelineViewInput"
+      responses:
+        "201":
+          description: Created saved view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineView"
+        "400":
+          description: Invalid view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /pipeline/views/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      operationId: updatePipelineView
+      tags: [pipeline]
+      summary: Update an owned saved pipeline view
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PipelineViewUpdate"
+      responses:
+        "200":
+          description: Updated saved view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineView"
+        "404":
+          description: View not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePipelineView
+      tags: [pipeline]
+      summary: Delete an owned saved pipeline view
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: View not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /printavo/probe:
     get:
       operationId: probePrintavo
@@ -8570,6 +8692,57 @@ components:
         email: { type: string }
         count: { type: integer }
       required: [email, count]
+    PipelineViewConfig:
+      type: object
+      additionalProperties: false
+      properties:
+        q: { type: string, maxLength: 500 }
+        owner: { type: string, maxLength: 320 }
+        stage:
+          type: string
+          enum: [active, quote, quote_sent, follow_up_1, follow_up_2, nurturing, art, other, won, done, dead, contract_dead_archive, archive]
+        wonDays: { type: integer, minimum: 7, maximum: 365 }
+        createdFrom: { type: string, format: date }
+        createdTo: { type: string, format: date }
+        invoiceFrom: { type: string, format: date }
+        invoiceTo: { type: string, format: date }
+        productionDueFrom: { type: string, format: date }
+        productionDueTo: { type: string, format: date }
+        customerDueFrom: { type: string, format: date }
+        customerDueTo: { type: string, format: date }
+        sort:
+          type: string
+          enum: [visualId, customerName, nickname, ownerEmail, stage, createdAt, invoiceAt, productionDueAt, customerDueAt, qty, total, statusName, statusSince]
+        direction: { type: string, enum: [asc, desc] }
+    PipelineView:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        config:
+          $ref: "#/components/schemas/PipelineViewConfig"
+        isDefault: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, name, config, isDefault, createdAt, updatedAt]
+    PipelineViewInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        config:
+          $ref: "#/components/schemas/PipelineViewConfig"
+        isDefault: { type: boolean }
+      required: [name, config]
+    PipelineViewUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        config:
+          $ref: "#/components/schemas/PipelineViewConfig"
+        isDefault: { type: boolean }
     PipelineRow:
       type: object
       properties:
@@ -8583,6 +8756,9 @@ components:
         customerName: { type: string, nullable: true }
         ownerEmail: { type: string, nullable: true }
         createdAt: { type: string, nullable: true }
+        invoiceAt: { type: [string, "null"], format: date }
+        productionDueAt: { type: [string, "null"], format: date-time }
+        customerDueAt: { type: [string, "null"], format: date-time }
         qty: { type: integer }
         total: { type: number }
         statusSince:
@@ -8603,6 +8779,9 @@ components:
           statusName,
           qty,
           total,
+          invoiceAt,
+          productionDueAt,
+          customerDueAt,
           statusSinceExact,
         ]
     PipelineReport:

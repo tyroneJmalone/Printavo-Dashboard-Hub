@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { GetPipelineDirection } from './getPipelineDirection';
+import type { GetPipelineSort } from './getPipelineSort';
 import type { GetPipelineStage } from './getPipelineStage';
 
 export type GetPipelineParams = {
@@ -31,4 +33,19 @@ limit?: number;
  * @minimum 0
  */
 offset?: number;
+/**
+ * Literal case-insensitive search of invoice number, nickname, customer/contact name, or company
+ * @maxLength 500
+ */
+q?: string;
+createdFrom?: Date;
+createdTo?: Date;
+invoiceFrom?: Date;
+invoiceTo?: Date;
+productionDueFrom?: Date;
+productionDueTo?: Date;
+customerDueFrom?: Date;
+customerDueTo?: Date;
+sort?: GetPipelineSort;
+direction?: GetPipelineDirection;
 };

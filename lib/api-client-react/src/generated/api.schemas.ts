@@ -1131,6 +1131,104 @@ export interface PipelineOwner {
   count: number;
 }
 
+export type PipelineViewConfigStage = typeof PipelineViewConfigStage[keyof typeof PipelineViewConfigStage];
+
+
+export const PipelineViewConfigStage = {
+  active: 'active',
+  quote: 'quote',
+  quote_sent: 'quote_sent',
+  follow_up_1: 'follow_up_1',
+  follow_up_2: 'follow_up_2',
+  nurturing: 'nurturing',
+  art: 'art',
+  other: 'other',
+  won: 'won',
+  done: 'done',
+  dead: 'dead',
+  contract_dead_archive: 'contract_dead_archive',
+  archive: 'archive',
+} as const;
+
+export type PipelineViewConfigSort = typeof PipelineViewConfigSort[keyof typeof PipelineViewConfigSort];
+
+
+export const PipelineViewConfigSort = {
+  visualId: 'visualId',
+  customerName: 'customerName',
+  nickname: 'nickname',
+  ownerEmail: 'ownerEmail',
+  stage: 'stage',
+  createdAt: 'createdAt',
+  invoiceAt: 'invoiceAt',
+  productionDueAt: 'productionDueAt',
+  customerDueAt: 'customerDueAt',
+  qty: 'qty',
+  total: 'total',
+  statusName: 'statusName',
+  statusSince: 'statusSince',
+} as const;
+
+export type PipelineViewConfigDirection = typeof PipelineViewConfigDirection[keyof typeof PipelineViewConfigDirection];
+
+
+export const PipelineViewConfigDirection = {
+  asc: 'asc',
+  desc: 'desc',
+} as const;
+
+export interface PipelineViewConfig {
+  /** @maxLength 500 */
+  q?: string;
+  /** @maxLength 320 */
+  owner?: string;
+  stage?: PipelineViewConfigStage;
+  /**
+     * @minimum 7
+     * @maximum 365
+     */
+  wonDays?: number;
+  createdFrom?: string;
+  createdTo?: string;
+  invoiceFrom?: string;
+  invoiceTo?: string;
+  productionDueFrom?: string;
+  productionDueTo?: string;
+  customerDueFrom?: string;
+  customerDueTo?: string;
+  sort?: PipelineViewConfigSort;
+  direction?: PipelineViewConfigDirection;
+}
+
+export interface PipelineView {
+  id: string;
+  name: string;
+  config: PipelineViewConfig;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PipelineViewInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  config: PipelineViewConfig;
+  isDefault?: boolean;
+}
+
+export interface PipelineViewUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  config?: PipelineViewConfig;
+  isDefault?: boolean;
+}
+
 export type PipelineRowOrderType = typeof PipelineRowOrderType[keyof typeof PipelineRowOrderType];
 
 
@@ -1150,6 +1248,12 @@ export interface PipelineRow {
   customerName?: string | null;
   ownerEmail?: string | null;
   createdAt?: string | null;
+  /** @nullable */
+  invoiceAt: string | null;
+  /** @nullable */
+  productionDueAt: string | null;
+  /** @nullable */
+  customerDueAt: string | null;
   qty: number;
   total: number;
   /** When the order entered its current status */
@@ -7775,6 +7879,21 @@ limit?: number;
  * @minimum 0
  */
 offset?: number;
+/**
+ * Literal case-insensitive search of invoice number, nickname, customer/contact name, or company
+ * @maxLength 500
+ */
+q?: string;
+createdFrom?: string;
+createdTo?: string;
+invoiceFrom?: string;
+invoiceTo?: string;
+productionDueFrom?: string;
+productionDueTo?: string;
+customerDueFrom?: string;
+customerDueTo?: string;
+sort?: GetPipelineSort;
+direction?: GetPipelineDirection;
 };
 
 export type GetPipelineStage = typeof GetPipelineStage[keyof typeof GetPipelineStage];
@@ -7794,6 +7913,33 @@ export const GetPipelineStage = {
   contract_dead_archive: 'contract_dead_archive',
   archive: 'archive',
   other: 'other',
+} as const;
+
+export type GetPipelineSort = typeof GetPipelineSort[keyof typeof GetPipelineSort];
+
+
+export const GetPipelineSort = {
+  visualId: 'visualId',
+  customerName: 'customerName',
+  nickname: 'nickname',
+  ownerEmail: 'ownerEmail',
+  stage: 'stage',
+  createdAt: 'createdAt',
+  invoiceAt: 'invoiceAt',
+  productionDueAt: 'productionDueAt',
+  customerDueAt: 'customerDueAt',
+  qty: 'qty',
+  total: 'total',
+  statusName: 'statusName',
+  statusSince: 'statusSince',
+} as const;
+
+export type GetPipelineDirection = typeof GetPipelineDirection[keyof typeof GetPipelineDirection];
+
+
+export const GetPipelineDirection = {
+  asc: 'asc',
+  desc: 'desc',
 } as const;
 
 export type GetPrintavoOrderHistoryParams = {

@@ -71,3 +71,4 @@ export * from "./knowledgePlaygroundFeedback";
 export * from "./voiceProfiles";
 export * from "./draftBacktest";
 export * from "./reorderRequests";
+export * from "./pipelineViews";

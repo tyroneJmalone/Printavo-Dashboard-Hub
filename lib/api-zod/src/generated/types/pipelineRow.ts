@@ -18,6 +18,12 @@ export interface PipelineRow {
   customerName?: string | null;
   ownerEmail?: string | null;
   createdAt?: string | null;
+  /** @nullable */
+  invoiceAt: Date | null;
+  /** @nullable */
+  productionDueAt: Date | null;
+  /** @nullable */
+  customerDueAt: Date | null;
   qty: number;
   total: number;
   /** When the order entered its current status */

@@ -299,6 +299,9 @@ import type {
   PickCustomerArtworkFolder200,
   PickCustomerArtworkFolderParams,
   PipelineReport,
+  PipelineView,
+  PipelineViewInput,
+  PipelineViewUpdate,
   PoFile,
   PoFileList,
   PollResult,
@@ -3478,7 +3481,7 @@ export const getGetPipelineQueryKey = (params?: GetPipelineParams,) => {
     }
 
 
-export const getGetPipelineQueryOptions = <TData = Awaited<ReturnType<typeof getPipeline>>, TError = ErrorType<unknown>>(params?: GetPipelineParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPipeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetPipelineQueryOptions = <TData = Awaited<ReturnType<typeof getPipeline>>, TError = ErrorType<ErrorResponse>>(params?: GetPipelineParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPipeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -3497,14 +3500,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetPipelineQueryResult = NonNullable<Awaited<ReturnType<typeof getPipeline>>>
-export type GetPipelineQueryError = ErrorType<unknown>
+export type GetPipelineQueryError = ErrorType<ErrorResponse>
 
 
 /**
  * @summary Sales pipeline — quotes by stage plus recently won/done invoices
  */
 
-export function useGetPipeline<TData = Awaited<ReturnType<typeof getPipeline>>, TError = ErrorType<unknown>>(
+export function useGetPipeline<TData = Awaited<ReturnType<typeof getPipeline>>, TError = ErrorType<ErrorResponse>>(
  params?: GetPipelineParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPipeline>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -3521,6 +3524,294 @@ export function useGetPipeline<TData = Awaited<ReturnType<typeof getPipeline>>, 
 
 
 
+
+export const getListPipelineViewsUrl = () => {
+
+
+
+
+  return `/api/pipeline/views`
+}
+
+/**
+ * @summary List the authenticated staff user's saved pipeline views
+ */
+export const listPipelineViews = async ( options?: RequestInit): Promise<PipelineView[]> => {
+
+  return customFetch<PipelineView[]>(getListPipelineViewsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPipelineViewsQueryKey = () => {
+    return [
+    `/api/pipeline/views`
+    ] as const;
+    }
+
+
+export const getListPipelineViewsQueryOptions = <TData = Awaited<ReturnType<typeof listPipelineViews>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPipelineViews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPipelineViewsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPipelineViews>>> = ({ signal }) => listPipelineViews({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPipelineViews>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPipelineViewsQueryResult = NonNullable<Awaited<ReturnType<typeof listPipelineViews>>>
+export type ListPipelineViewsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the authenticated staff user's saved pipeline views
+ */
+
+export function useListPipelineViews<TData = Awaited<ReturnType<typeof listPipelineViews>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPipelineViews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPipelineViewsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePipelineViewUrl = () => {
+
+
+
+
+  return `/api/pipeline/views`
+}
+
+/**
+ * @summary Create a saved pipeline view
+ */
+export const createPipelineView = async (pipelineViewInput: PipelineViewInput, options?: RequestInit): Promise<PipelineView> => {
+
+  return customFetch<PipelineView>(getCreatePipelineViewUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pipelineViewInput)
+  }
+);}
+
+
+
+
+export const getCreatePipelineViewMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPipelineView>>, TError,{data: BodyType<PipelineViewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPipelineView>>, TError,{data: BodyType<PipelineViewInput>}, TContext> => {
+
+const mutationKey = ['createPipelineView'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPipelineView>>, {data: BodyType<PipelineViewInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPipelineView(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePipelineViewMutationResult = NonNullable<Awaited<ReturnType<typeof createPipelineView>>>
+    export type CreatePipelineViewMutationBody = BodyType<PipelineViewInput>
+    export type CreatePipelineViewMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a saved pipeline view
+ */
+export const useCreatePipelineView = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPipelineView>>, TError,{data: BodyType<PipelineViewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPipelineView>>,
+        TError,
+        {data: BodyType<PipelineViewInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePipelineViewMutationOptions(options));
+    }
+
+export const getUpdatePipelineViewUrl = (id: string,) => {
+
+
+
+
+  return `/api/pipeline/views/${id}`
+}
+
+/**
+ * @summary Update an owned saved pipeline view
+ */
+export const updatePipelineView = async (id: string,
+    pipelineViewUpdate: PipelineViewUpdate, options?: RequestInit): Promise<PipelineView> => {
+
+  return customFetch<PipelineView>(getUpdatePipelineViewUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pipelineViewUpdate)
+  }
+);}
+
+
+
+
+export const getUpdatePipelineViewMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePipelineView>>, TError,{id: string;data: BodyType<PipelineViewUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePipelineView>>, TError,{id: string;data: BodyType<PipelineViewUpdate>}, TContext> => {
+
+const mutationKey = ['updatePipelineView'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePipelineView>>, {id: string;data: BodyType<PipelineViewUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePipelineView(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePipelineViewMutationResult = NonNullable<Awaited<ReturnType<typeof updatePipelineView>>>
+    export type UpdatePipelineViewMutationBody = BodyType<PipelineViewUpdate>
+    export type UpdatePipelineViewMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update an owned saved pipeline view
+ */
+export const useUpdatePipelineView = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePipelineView>>, TError,{id: string;data: BodyType<PipelineViewUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePipelineView>>,
+        TError,
+        {id: string;data: BodyType<PipelineViewUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdatePipelineViewMutationOptions(options));
+    }
+
+export const getDeletePipelineViewUrl = (id: string,) => {
+
+
+
+
+  return `/api/pipeline/views/${id}`
+}
+
+/**
+ * @summary Delete an owned saved pipeline view
+ */
+export const deletePipelineView = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeletePipelineViewUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeletePipelineViewMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePipelineView>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePipelineView>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deletePipelineView'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePipelineView>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePipelineView(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePipelineViewMutationResult = NonNullable<Awaited<ReturnType<typeof deletePipelineView>>>
+
+    export type DeletePipelineViewMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete an owned saved pipeline view
+ */
+export const useDeletePipelineView = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePipelineView>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePipelineView>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeletePipelineViewMutationOptions(options));
+    }
 
 export const getProbePrintavoUrl = () => {
 

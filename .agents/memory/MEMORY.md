@@ -64,3 +64,4 @@
 - [Auto-print decoration policy](auto-print-decoration-policy.md) — use Purchasing decoration groups, separate destinations, and no retroactive printing/status changes.
 - [Cap America catalog direction](cap-america-catalog-direction.md) — user wants unified Catalog Search; supplier product photos improve on PDF crops, without implying live inventory or ordering.
 - [Ask AI evidence boundaries](ask-ai-evidence.md) — SQL owns aggregate arithmetic; distinguish measured provenance from model explanations and avoid false semantic-verification claims.
+- [Pipeline date policy](pipeline-date-policy.md) — explicit date ranges replace the implicit Won/Done creation-age window rather than silently hiding older matches.
