@@ -222,7 +222,7 @@ export default function AskAI() {
         </p>
       </div>
 
-      <div className="px-8 py-6 space-y-6 max-w-5xl">
+      <div className="w-full min-w-0 px-4 sm:px-8 py-6 space-y-6">
         <div className="space-y-3">
           <Textarea
             value={question}
