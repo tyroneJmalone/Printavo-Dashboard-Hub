@@ -30,6 +30,11 @@ import {
   destinationMappingForClassification,
   type DecorationLine,
 } from "../../purchasing/decorationClassifier";
+import { businessDaysUntilDue } from "../../purchasing/businessDays";
+import {
+  conditionalAutoPrintDestination,
+  successfulPostPrintCandidates,
+} from "./routing";
 
 /**
  * Auto-print engine (PQ3a). One run at a time (in-memory claim slot,
@@ -309,6 +314,7 @@ interface Candidate {
   statusName: string | null;
   workorderUrl: string | null;
   detailSyncedAt: Date | null;
+  customerDueAt: Date | null;
   targetStatusId: string | null;
   targetStatusName: string | null;
 }
@@ -426,6 +432,7 @@ async function runAutoPrint(
             data: pvOrdersTable.data,
             detailSyncedAt: pvOrdersTable.detailSyncedAt,
             orderType: pvOrdersTable.orderType,
+            customerDueAt: pvOrdersTable.customerDueAt,
           })
           .from(pvOrdersTable)
           .where(inArray(pvOrdersTable.printavoId, ids))
@@ -486,9 +493,22 @@ async function runAutoPrint(
         positiveQuantityOnly: true,
       });
       let target: { statusId: string; statusName: string } | null = null;
-      const mapping = destinationMappingForClassification(classification, mappings);
-      if (mapping) {
-        target = { statusId: mapping.statusId, statusName: mapping.statusName };
+      if (config.routingMode === "conditional") {
+        const matched = conditionalAutoPrintDestination(config.routingRules, {
+          classification,
+          businessDaysOut: row.customerDueAt
+            ? businessDaysUntilDue(new Date(), row.customerDueAt)
+            : null,
+          nickname: row.nickname,
+        });
+        if (matched) {
+          target = { statusId: matched.statusId, statusName: matched.statusName };
+        }
+      } else {
+        const mapping = destinationMappingForClassification(classification, mappings);
+        if (mapping) {
+          target = { statusId: mapping.statusId, statusName: mapping.statusName };
+        }
       }
       const raw = row.data as { workorderUrl?: unknown } | null;
       todo.push({
@@ -501,6 +521,7 @@ async function runAutoPrint(
         workorderUrl:
           typeof raw?.workorderUrl === "string" ? raw.workorderUrl : null,
         detailSyncedAt: row.detailSyncedAt,
+        customerDueAt: row.customerDueAt,
         targetStatusId: target?.statusId ?? null,
         targetStatusName: target?.statusName ?? null,
       });
@@ -508,8 +529,10 @@ async function runAutoPrint(
     await persistSummary(runId, { summary: { ...summary, counts } });
 
     /* 7 — render + print, one order at a time, persist after each */
-    const printedOk: Candidate[] = [];
-    const failed: Candidate[] = [];
+    const printOutcomes: {
+      candidate: Candidate;
+      outcome: "printed" | "failed" | "dry_run";
+    }[] = [];
     if (todo.length > 0) {
       const renderer = await openPdfRenderer();
       try {
@@ -539,6 +562,7 @@ async function runAutoPrint(
             const pdf = await renderer.renderUrl(c.workorderUrl);
             if (dryRun) {
               counts.dryRun += 1;
+              printOutcomes.push({ candidate: c, outcome: "dry_run" });
               await db.insert(pqPrintJobsTable).values({
                 ...base,
                 status: "dry_run",
@@ -573,7 +597,7 @@ async function runAutoPrint(
                 source: "Printavo Hub auto-print",
               });
               counts.printed += 1;
-              printedOk.push(c);
+              printOutcomes.push({ candidate: c, outcome: "printed" });
               await db.insert(pqPrintJobsTable).values({
                 ...base,
                 status: "printed",
@@ -583,7 +607,7 @@ async function runAutoPrint(
             }
           } catch (err) {
             counts.failed += 1;
-            failed.push(c);
+            printOutcomes.push({ candidate: c, outcome: "failed" });
             await db.insert(pqPrintJobsTable).values({
               ...base,
               status: "failed",
@@ -641,11 +665,13 @@ async function runAutoPrint(
           );
         }
       };
-      for (const c of printedOk) {
+      for (const c of successfulPostPrintCandidates(printOutcomes)) {
         if (c.targetStatusId) await appendGuardedLine(c, c.targetStatusId);
       }
       if (config.errorStatusId) {
-        for (const c of failed) {
+        for (const c of printOutcomes
+          .filter((item) => item.outcome === "failed")
+          .map((item) => item.candidate)) {
           await appendGuardedLine(c, config.errorStatusId);
         }
       }

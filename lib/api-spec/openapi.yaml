@@ -11218,6 +11218,25 @@ components:
         statusId: { type: string, minLength: 1 }
         statusName: { type: string }
       required: [category, statusId, statusName]
+    AutoPrintRoutingRule:
+      type: object
+      properties:
+        id: { type: string, minLength: 1 }
+        enabled: { type: boolean }
+        decoration:
+          type: string
+          enum: [any, print, heat, embroidery, mixed]
+        dueComparator:
+          type: ["string", "null"]
+          enum: [more_than, at_most, null]
+        dueBusinessDays: { type: ["integer", "null"], minimum: 0 }
+        nicknameKeywords:
+          type: ["array", "null"]
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 60 }
+        statusId: { type: string, minLength: 1 }
+        statusName: { type: string }
+      required: [id, enabled, decoration, dueComparator, dueBusinessDays, nicknameKeywords, statusId, statusName]
     AutoPrintConfig:
       type: object
       description: "Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored."
@@ -11250,6 +11269,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AutoPrintCategoryMapping"
+        routingMode:
+          type: string
+          enum: [simple, conditional]
+          default: simple
+        routingRules:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintRoutingRule"
       required:
         [
           enabled,
@@ -11264,6 +11291,8 @@ components:
           copies,
           dryRun,
           categoryMappings,
+          routingMode,
+          routingRules,
         ]
     AutoPrintPrinter:
       type: object

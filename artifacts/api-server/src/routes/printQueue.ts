@@ -57,6 +57,7 @@ import {
   listPrintJobs,
 } from "../lib/printQueue/autoPrint/engine";
 import { DECORATION_CATEGORY_LABELS } from "../lib/purchasing/decorationClassifier";
+import { validateAutoPrintRoutingRules } from "../lib/printQueue/autoPrint/configValidation";
 
 const router: IRouter = Router();
 
@@ -463,11 +464,20 @@ router.put("/print-queue/autoprint/config", (req, res) => {
             "scheduleMode" in req.body ? req.body.scheduleMode : "interval",
           dailyTimes:
             "dailyTimes" in req.body ? req.body.dailyTimes : ["06:00"],
+          routingMode:
+            "routingMode" in req.body ? req.body.routingMode : "simple",
+          routingRules:
+            "routingRules" in req.body ? req.body.routingRules : [],
         }
       : req.body;
   const parsed = UpdateAutoPrintConfigBody.safeParse(body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid config" });
+    return;
+  }
+  const invalidRules = validateAutoPrintRoutingRules(parsed.data.routingRules);
+  if (invalidRules) {
+    res.status(400).json({ error: invalidRules });
     return;
   }
   setAutoPrintConfig(parsed.data)

@@ -20,6 +20,9 @@ import {
   DECO_GROUPS,
   type DecoGroup,
 } from "./decorationClassifier";
+import { ruleMatches } from "./ruleMatching";
+export { ruleMatches, nicknameHasKeyword } from "./ruleMatching";
+export type { DecoDueRuleShape } from "./ruleMatching";
 
 export {
   classifyDecorationLines,
@@ -433,63 +436,6 @@ export function composeOrder(
     needOrderingCount,
     orderedCount,
   };
-}
-
-/**
- * Structural rule shape shared by po_status_rules and pq_status_rules —
- * the deco + due-window matching semantics are identical for both engines
- * (PQ2 reuses this; source-status matching is PQ-specific and lives there).
- * nicknameKeywords is purchasing-only; PQ rules simply don't carry it, so
- * the condition is skipped there.
- */
-export interface DecoDueRuleShape {
-  specialMixedDeco: boolean;
-  decoGroup: string | null;
-  dueComparator: string | null;
-  dueBusinessDays: number | null;
-  nicknameKeywords?: unknown;
-}
-
-const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-/**
- * Case-insensitive WHOLE-WORD containment: "Due" matches "Due 5/12" and
- * "HARD DUE DATE" but not "overdue" — substring matching would silently
- * fire rules on unrelated nicknames.
- */
-export function nicknameHasKeyword(nickname: string | null, keywords: string[]): boolean {
-  if (!nickname) return false;
-  return keywords.some((kw) =>
-    new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRegExp(kw)}([^\\p{L}\\p{N}]|$)`, "iu").test(nickname),
-  );
-}
-
-export function ruleMatches(
-  rule: DecoDueRuleShape,
-  comp: OrderComposition,
-  businessDaysOut: number | null,
-  nickname: string | null = null,
-): boolean {
-  if (rule.specialMixedDeco) {
-    if (!comp.mixed) return false;
-  } else if (rule.decoGroup) {
-    if (comp.mixed) return false;
-    if (comp.groups.size !== 1 || !comp.groups.has(rule.decoGroup as DecoGroup)) {
-      return false;
-    }
-  }
-  if (rule.dueComparator && rule.dueBusinessDays != null) {
-    if (businessDaysOut == null) return false;
-    if (rule.dueComparator === "more_than" && businessDaysOut <= rule.dueBusinessDays) {
-      return false;
-    }
-    if (rule.dueComparator === "at_most" && businessDaysOut > rule.dueBusinessDays) {
-      return false;
-    }
-  }
-  const keywords = keywordsFromDb(rule.nicknameKeywords);
-  if (keywords && !nicknameHasKeyword(nickname, keywords)) return false;
-  return true;
 }
 
 /**

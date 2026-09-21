@@ -18,6 +18,7 @@ import {
   type AutoPrintConfig,
   type AutoPrintConfigScheduleMode,
   type AutoPrintCategoryMapping,
+  type AutoPrintRoutingRule,
   type AutoPrintRun,
   type AutoPrintJob,
 } from "@workspace/api-client-react";
@@ -33,6 +34,10 @@ import {
   ChevronDown,
   AlertTriangle,
   Power,
+  Pencil,
+  ArrowUp,
+  ArrowDown,
+  X,
 } from "lucide-react";
 
 function apiError(err: unknown): string | undefined {
@@ -249,6 +254,100 @@ function StatusMultiPicker({
   );
 }
 
+type RuleDecoration = AutoPrintRoutingRule["decoration"];
+type RuleDue = "none" | "more_than" | "at_most";
+
+const RULE_DECORATIONS: Record<RuleDecoration, string> = {
+  any: "Any decoration (catch-all)",
+  print: "Screen print only",
+  heat: "Heat press only",
+  embroidery: "Embroidery only",
+  mixed: "Mixed decoration (2+ types)",
+};
+
+function ConditionalRuleEditor({
+  rule,
+  statuses,
+  onSave,
+  onCancel,
+}: {
+  rule: AutoPrintRoutingRule | null;
+  statuses: { id: string; name: string }[];
+  onSave: (rule: AutoPrintRoutingRule) => void;
+  onCancel: () => void;
+}) {
+  const [decoration, setDecoration] = useState<RuleDecoration>(rule?.decoration ?? "any");
+  const [due, setDue] = useState<RuleDue>(rule?.dueComparator ?? "none");
+  const [days, setDays] = useState(String(rule?.dueBusinessDays ?? 5));
+  const [keywords, setKeywords] = useState(rule?.nicknameKeywords?.join(", ") ?? "");
+  const [statusId, setStatusId] = useState(rule?.statusId ?? "");
+  const status = statuses.find((item) => item.id === statusId);
+  const control =
+    "mt-1 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-[#059669]";
+
+  return (
+    <div className="p-3 bg-slate-900/70 border border-slate-700 rounded-lg flex flex-wrap items-end gap-3">
+      <label className="text-[11px] text-slate-400">
+        Decoration
+        <select value={decoration} onChange={(e) => setDecoration(e.target.value as RuleDecoration)} className={`${control} block`}>
+          {(Object.keys(RULE_DECORATIONS) as RuleDecoration[]).map((value) => (
+            <option key={value} value={value}>{RULE_DECORATIONS[value]}</option>
+          ))}
+        </select>
+      </label>
+      <label className="text-[11px] text-slate-400">
+        Customer due date
+        <select value={due} onChange={(e) => setDue(e.target.value as RuleDue)} className={`${control} block`}>
+          <option value="none">Any due date</option>
+          <option value="more_than">More than N business days out</option>
+          <option value="at_most">Within N business days</option>
+        </select>
+      </label>
+      {due !== "none" && (
+        <label className="text-[11px] text-slate-400">
+          Business days
+          <input type="number" min={0} value={days} onChange={(e) => setDays(e.target.value)} className={`${control} block w-24`} />
+        </label>
+      )}
+      <label className="text-[11px] text-slate-400">
+        Nickname words (optional, comma-separated)
+        <input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="Deadline, Rush" className={`${control} block w-56`} />
+      </label>
+      <label className="text-[11px] text-slate-400">
+        Move to Printavo status
+        <select value={statusId} onChange={(e) => setStatusId(e.target.value)} className={`${control} block max-w-64`}>
+          <option value="">— pick a status —</option>
+          {statuses.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
+      <div className="flex gap-2 ml-auto">
+        <button
+          type="button"
+          disabled={!status}
+          onClick={() => {
+            if (!status) return;
+            const words = keywords.split(",").map((word) => word.trim()).filter(Boolean);
+            onSave({
+              id: rule?.id ?? crypto.randomUUID(),
+              enabled: rule?.enabled ?? true,
+              decoration,
+              dueComparator: due === "none" ? null : due,
+              dueBusinessDays: due === "none" ? null : Math.max(0, Math.floor(Number(days) || 0)),
+              nicknameKeywords: words.length ? words : null,
+              statusId,
+              statusName: status.name,
+            });
+          }}
+          className="px-3 py-2 rounded-lg bg-[#059669]/15 border border-[#059669]/30 text-xs text-[#10b981] disabled:opacity-40"
+        >
+          {rule ? "Save changes" : "Add rule"}
+        </button>
+        <button type="button" onClick={onCancel} className="p-2 text-slate-400 hover:text-white"><X size={14} /></button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Config editor ───────────────────────────────────────────────────── */
 
 function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
@@ -281,6 +380,12 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
   const [mappings, setMappings] = useState<AutoPrintCategoryMapping[]>(
     initial.categoryMappings,
   );
+  const [routingMode, setRoutingMode] = useState(initial.routingMode ?? "simple");
+  const [routingRules, setRoutingRules] = useState<AutoPrintRoutingRule[]>(
+    initial.routingRules ?? [],
+  );
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [addingRule, setAddingRule] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [newTarget, setNewTarget] = useState("");
 
@@ -339,6 +444,8 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
       errorStatusId: errorStatusId || null,
       errorStatusName: errorStatusId ? statusName(errorStatusId) : null,
       categoryMappings: mappings,
+      routingMode,
+      routingRules,
     };
 
     save.mutate({
@@ -686,12 +793,24 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
             After successful printing, move orders by decoration
           </h2>
           <p className="text-[12px] text-slate-400 mt-0.5">
-            Positive-quantity line-item categories decide the destination after
-            the workorder prints successfully. Mixed orders only match Mixed
-            Decoration; mixed or unmapped orders stay where they are.
+            This is independent from Purchasing’s PO-push rules. It runs only
+            after a workorder prints successfully; there is no PO completion
+            guard or suggestion step.
           </p>
         </div>
-        {mappings.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label className={`rounded-lg border p-3 cursor-pointer ${routingMode === "simple" ? "border-[#059669]/60 bg-[#059669]/10" : "border-slate-800"}`}>
+            <input type="radio" name="routing-mode" checked={routingMode === "simple"} onChange={() => setRoutingMode("simple")} className="accent-[#059669] mr-2" />
+            <span className="text-[13px] text-slate-200">Simple mappings</span>
+            <span className="block text-[11px] text-slate-500 ml-5 mt-0.5">One destination per decoration. Existing saved configs use this mode.</span>
+          </label>
+          <label className={`rounded-lg border p-3 cursor-pointer ${routingMode === "conditional" ? "border-[#059669]/60 bg-[#059669]/10" : "border-slate-800"}`}>
+            <input type="radio" name="routing-mode" checked={routingMode === "conditional"} onChange={() => setRoutingMode("conditional")} className="accent-[#059669] mr-2" />
+            <span className="text-[13px] text-slate-200">Conditional rules</span>
+            <span className="block text-[11px] text-slate-500 ml-5 mt-0.5">First enabled match wins, top to bottom. No match leaves the order unchanged.</span>
+          </label>
+        </div>
+        {routingMode === "simple" && mappings.length > 0 && (
           <div className="space-y-1.5">
             {mappings.map((m) => (
               <div
@@ -728,7 +847,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
             ))}
           </div>
         )}
-        <div className="flex flex-wrap items-end gap-2">
+        {routingMode === "simple" && <div className="flex flex-wrap items-end gap-2">
           <label className="block flex-1 min-w-40">
             <span className="text-[11px] uppercase tracking-wide text-slate-500">
               Decoration category
@@ -773,7 +892,71 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
           >
             <Plus size={13} /> Add
           </button>
-        </div>
+        </div>}
+        {routingMode === "simple" && (
+          <p className="text-[11px] text-slate-500">
+            Positive-quantity categories determine decoration. Mixed orders only
+            match Mixed Decoration; unmapped orders stay unchanged.
+          </p>
+        )}
+        {routingMode === "conditional" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] text-slate-500">
+                Decoration, due date, and nickname conditions on one rule are ANDed.
+                Nickname entries are whole-word, case-insensitive OR keywords.
+                Mixed matches only mixed; single-method rules never match mixed.
+              </p>
+              <button type="button" onClick={() => { setAddingRule(true); setEditingRuleId(null); }} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-700 text-xs text-slate-200">
+                <Plus size={13} /> Add rule
+              </button>
+            </div>
+            {routingRules.map((rule, index) => (
+              <div key={rule.id}>
+                <div className={`flex flex-wrap items-center gap-2 rounded-lg bg-[#020617] border border-slate-800 px-3 py-2 ${rule.enabled ? "" : "opacity-50"}`}>
+                  <div className="flex flex-col">
+                    <button type="button" disabled={index === 0} onClick={() => setRoutingRules((current) => { const next = [...current]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; return next; })} className="disabled:opacity-20"><ArrowUp size={12} /></button>
+                    <button type="button" disabled={index === routingRules.length - 1} onClick={() => setRoutingRules((current) => { const next = [...current]; [next[index], next[index + 1]] = [next[index + 1], next[index]]; return next; })} className="disabled:opacity-20"><ArrowDown size={12} /></button>
+                  </div>
+                  <span className="w-5 text-xs text-slate-500">{index + 1}</span>
+                  <div className="flex-1 min-w-56">
+                    <div className="text-[13px] text-slate-200">{RULE_DECORATIONS[rule.decoration]}</div>
+                    <div className="text-[11px] text-slate-500">
+                      {rule.dueComparator ? `${rule.dueComparator === "more_than" ? "more than" : "within"} ${rule.dueBusinessDays} business days` : "any due date"}
+                      {rule.nicknameKeywords?.length ? ` · nickname: ${rule.nicknameKeywords.join(" OR ")}` : ""}
+                    </div>
+                  </div>
+                  <span className="text-xs text-slate-500">→</span>
+                  <span className="text-xs text-[#10b981]">{rule.statusName}</span>
+                  <button type="button" onClick={() => setRoutingRules((current) => current.map((item) => item.id === rule.id ? { ...item, enabled: !item.enabled } : item))} className="text-[11px] text-slate-400">{rule.enabled ? "Disable" : "Enable"}</button>
+                  <button type="button" onClick={() => { setEditingRuleId(rule.id); setAddingRule(false); }} className="text-slate-400"><Pencil size={13} /></button>
+                  <button type="button" onClick={() => setRoutingRules((current) => current.filter((item) => item.id !== rule.id))} className="text-red-400"><Trash2 size={13} /></button>
+                </div>
+                {editingRuleId === rule.id && (
+                  <ConditionalRuleEditor
+                    rule={rule}
+                    statuses={statuses}
+                    onSave={(next) => { setRoutingRules((current) => current.map((item) => item.id === next.id ? next : item)); setEditingRuleId(null); }}
+                    onCancel={() => setEditingRuleId(null)}
+                  />
+                )}
+              </div>
+            ))}
+            {routingRules.length === 0 && !addingRule && <p className="text-xs text-slate-500 py-2">No rules. Printed orders will stay unchanged.</p>}
+            {addingRule && (
+              <ConditionalRuleEditor
+                rule={null}
+                statuses={statuses}
+                onSave={(rule) => { setRoutingRules((current) => [...current, rule]); setAddingRule(false); }}
+                onCancel={() => setAddingRule(false)}
+              />
+            )}
+            <p className="text-[11px] text-slate-500">
+              Business days use the same Mon–Fri shop-holiday calendar as Purchasing
+              and count from the print action to the customer due date.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end">

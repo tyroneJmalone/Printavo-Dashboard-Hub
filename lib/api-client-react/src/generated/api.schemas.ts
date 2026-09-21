@@ -4175,6 +4175,52 @@ export interface AutoPrintCategoryMapping {
   statusName: string;
 }
 
+export type AutoPrintRoutingRuleDecoration = typeof AutoPrintRoutingRuleDecoration[keyof typeof AutoPrintRoutingRuleDecoration];
+
+
+export const AutoPrintRoutingRuleDecoration = {
+  any: 'any',
+  print: 'print',
+  heat: 'heat',
+  embroidery: 'embroidery',
+  mixed: 'mixed',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AutoPrintRoutingRuleDueComparator = typeof AutoPrintRoutingRuleDueComparator[keyof typeof AutoPrintRoutingRuleDueComparator] | null;
+
+
+export const AutoPrintRoutingRuleDueComparator = {
+  more_than: 'more_than',
+  at_most: 'at_most',
+} as const;
+
+export interface AutoPrintRoutingRule {
+  /** @minLength 1 */
+  id: string;
+  enabled: boolean;
+  decoration: AutoPrintRoutingRuleDecoration;
+  /** @nullable */
+  dueComparator: AutoPrintRoutingRuleDueComparator;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  dueBusinessDays: number | null;
+  /**
+     * @maxItems 20
+     * @nullable
+     * @items.minLength 1
+     * @items.maxLength 60
+     */
+  nicknameKeywords: string[] | null;
+  /** @minLength 1 */
+  statusId: string;
+  statusName: string;
+}
+
 /**
  * The one active schedule: interval (scheduleHours) or daily (dailyTimes in America/New_York).
  */
@@ -4184,6 +4230,14 @@ export type AutoPrintConfigScheduleMode = typeof AutoPrintConfigScheduleMode[key
 export const AutoPrintConfigScheduleMode = {
   interval: 'interval',
   daily: 'daily',
+} as const;
+
+export type AutoPrintConfigRoutingMode = typeof AutoPrintConfigRoutingMode[keyof typeof AutoPrintConfigRoutingMode];
+
+
+export const AutoPrintConfigRoutingMode = {
+  simple: 'simple',
+  conditional: 'conditional',
 } as const;
 
 /**
@@ -4220,6 +4274,8 @@ export interface AutoPrintConfig {
   copies: number;
   dryRun: boolean;
   categoryMappings: AutoPrintCategoryMapping[];
+  routingMode: AutoPrintConfigRoutingMode;
+  routingRules: AutoPrintRoutingRule[];
 }
 
 export interface AutoPrintPrinter {

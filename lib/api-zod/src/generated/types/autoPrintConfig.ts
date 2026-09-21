@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AutoPrintCategoryMapping } from './autoPrintCategoryMapping';
+import type { AutoPrintConfigRoutingMode } from './autoPrintConfigRoutingMode';
 import type { AutoPrintConfigScheduleMode } from './autoPrintConfigScheduleMode';
+import type { AutoPrintRoutingRule } from './autoPrintRoutingRule';
 
 /**
  * Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.
@@ -42,4 +44,6 @@ export interface AutoPrintConfig {
   copies: number;
   dryRun: boolean;
   categoryMappings: AutoPrintCategoryMapping[];
+  routingMode: AutoPrintConfigRoutingMode;
+  routingRules: AutoPrintRoutingRule[];
 }

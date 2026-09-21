@@ -20,6 +20,20 @@ export interface CategoryMapping {
   statusName: string;
 }
 
+export type AutoPrintRoutingMode = "simple" | "conditional";
+export type AutoPrintDecoration = "any" | "print" | "heat" | "embroidery" | "mixed";
+
+export interface AutoPrintRoutingRule {
+  id: string;
+  enabled: boolean;
+  decoration: AutoPrintDecoration;
+  dueComparator: "more_than" | "at_most" | null;
+  dueBusinessDays: number | null;
+  nicknameKeywords: string[] | null;
+  statusId: string;
+  statusName: string;
+}
+
 export interface AutoPrintConfig {
   enabled: boolean;
   /** Which one schedule is active: interval or daily. */
@@ -41,6 +55,9 @@ export interface AutoPrintConfig {
   dryRun: boolean;
   /** Decoration category/group → post-print target status. */
   categoryMappings: CategoryMapping[];
+  /** Selects either legacy mappings or the independent, prioritized rule list. */
+  routingMode: AutoPrintRoutingMode;
+  routingRules: AutoPrintRoutingRule[];
 }
 
 export const DEFAULT_AUTO_PRINT_CONFIG: AutoPrintConfig = {
@@ -56,7 +73,51 @@ export const DEFAULT_AUTO_PRINT_CONFIG: AutoPrintConfig = {
   copies: 1,
   dryRun: true,
   categoryMappings: [],
+  routingMode: "simple",
+  routingRules: [],
 };
+
+const DECORATIONS = new Set(["any", "print", "heat", "embroidery", "mixed"]);
+const COMPARATORS = new Set(["more_than", "at_most"]);
+
+export function isValidAutoPrintRoutingRule(value: unknown): value is AutoPrintRoutingRule {
+  if (!value || typeof value !== "object") return false;
+  const r = value as Partial<AutoPrintRoutingRule>;
+  if (
+    typeof r.id !== "string" ||
+    !r.id ||
+    typeof r.enabled !== "boolean" ||
+    !DECORATIONS.has(String(r.decoration)) ||
+    typeof r.statusId !== "string" ||
+    !r.statusId ||
+    typeof r.statusName !== "string"
+  ) return false;
+  if ((r.dueComparator == null) !== (r.dueBusinessDays == null)) return false;
+  if (
+    r.dueComparator != null &&
+    (!COMPARATORS.has(r.dueComparator) ||
+      !Number.isInteger(r.dueBusinessDays) ||
+      (r.dueBusinessDays as number) < 0)
+  ) return false;
+  return (
+    r.nicknameKeywords == null ||
+    (Array.isArray(r.nicknameKeywords) &&
+      r.nicknameKeywords.length <= 20 &&
+      r.nicknameKeywords.every(
+        (word) => typeof word === "string" && word.trim().length > 0 && word.length <= 60,
+      ))
+  );
+}
+
+export function validateAutoPrintRoutingRules(value: unknown): string | null {
+  if (!Array.isArray(value)) return "Conditional rules must be a list";
+  if (value.some((rule) => !isValidAutoPrintRoutingRule(rule))) {
+    return "Each conditional rule needs a valid decoration, paired due comparator and non-negative business-day count, up to 20 nickname keywords, and a target status";
+  }
+  const ids = value.map((rule) => (rule as AutoPrintRoutingRule).id);
+  if (new Set(ids).size !== ids.length) return "Conditional rule ids must be unique";
+  return null;
+}
 
 export function isAutoPrintScheduleMode(
   value: unknown,
@@ -125,5 +186,14 @@ export function normalizeAutoPrintConfig(raw: unknown): AutoPrintConfig {
             typeof m.statusName === "string",
         )
       : d.categoryMappings,
+    routingMode: v.routingMode === "conditional" ? "conditional" : "simple",
+    routingRules: Array.isArray(v.routingRules)
+      ? v.routingRules.filter(isValidAutoPrintRoutingRule).map((rule) => ({
+          ...rule,
+          nicknameKeywords: rule.nicknameKeywords
+            ? [...new Map(rule.nicknameKeywords.map((word) => [word.trim().toLowerCase(), word.trim()])).values()]
+            : null,
+        }))
+      : [],
   };
 }

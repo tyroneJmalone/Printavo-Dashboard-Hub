@@ -7557,6 +7557,14 @@ export const getAutoPrintConfigResponseCopiesMax = 10;
 
 
 
+export const getAutoPrintConfigResponseRoutingModeDefault = `simple`;
+export const getAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin = 0;
+
+export const getAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsItemMax = 60;
+
+export const getAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsMax = 20;
+
+
 
 
 export const GetAutoPrintConfigResponse = zod.object({
@@ -7573,6 +7581,17 @@ export const GetAutoPrintConfigResponse = zod.object({
   "dryRun": zod.boolean(),
   "categoryMappings": zod.array(zod.object({
   "category": zod.string().min(1),
+  "statusId": zod.string().min(1),
+  "statusName": zod.string()
+})),
+  "routingMode": zod.enum(['simple', 'conditional']).default(getAutoPrintConfigResponseRoutingModeDefault),
+  "routingRules": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "enabled": zod.boolean(),
+  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'mixed']),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().min(getAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin).nullable(),
+  "nicknameKeywords": zod.array(zod.string().min(1).max(getAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsItemMax)).max(getAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsMax).nullable(),
   "statusId": zod.string().min(1),
   "statusName": zod.string()
 }))
@@ -7593,6 +7612,14 @@ export const updateAutoPrintConfigBodyCopiesMax = 10;
 
 
 
+export const updateAutoPrintConfigBodyRoutingModeDefault = `simple`;
+export const updateAutoPrintConfigBodyRoutingRulesItemDueBusinessDaysMin = 0;
+
+export const updateAutoPrintConfigBodyRoutingRulesItemNicknameKeywordsItemMax = 60;
+
+export const updateAutoPrintConfigBodyRoutingRulesItemNicknameKeywordsMax = 20;
+
+
 
 
 export const UpdateAutoPrintConfigBody = zod.object({
@@ -7611,6 +7638,17 @@ export const UpdateAutoPrintConfigBody = zod.object({
   "category": zod.string().min(1),
   "statusId": zod.string().min(1),
   "statusName": zod.string()
+})),
+  "routingMode": zod.enum(['simple', 'conditional']).default(updateAutoPrintConfigBodyRoutingModeDefault),
+  "routingRules": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "enabled": zod.boolean(),
+  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'mixed']),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().min(updateAutoPrintConfigBodyRoutingRulesItemDueBusinessDaysMin).nullable(),
+  "nicknameKeywords": zod.array(zod.string().min(1).max(updateAutoPrintConfigBodyRoutingRulesItemNicknameKeywordsItemMax)).max(updateAutoPrintConfigBodyRoutingRulesItemNicknameKeywordsMax).nullable(),
+  "statusId": zod.string().min(1),
+  "statusName": zod.string()
 }))
 }).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.')
 
@@ -7623,6 +7661,14 @@ export const updateAutoPrintConfigResponseDailyTimesMax = 12;
 
 export const updateAutoPrintConfigResponseCopiesMax = 10;
 
+
+
+export const updateAutoPrintConfigResponseRoutingModeDefault = `simple`;
+export const updateAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin = 0;
+
+export const updateAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsItemMax = 60;
+
+export const updateAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsMax = 20;
 
 
 
@@ -7641,6 +7687,17 @@ export const UpdateAutoPrintConfigResponse = zod.object({
   "dryRun": zod.boolean(),
   "categoryMappings": zod.array(zod.object({
   "category": zod.string().min(1),
+  "statusId": zod.string().min(1),
+  "statusName": zod.string()
+})),
+  "routingMode": zod.enum(['simple', 'conditional']).default(updateAutoPrintConfigResponseRoutingModeDefault),
+  "routingRules": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "enabled": zod.boolean(),
+  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'mixed']),
+  "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
+  "dueBusinessDays": zod.number().min(updateAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin).nullable(),
+  "nicknameKeywords": zod.array(zod.string().min(1).max(updateAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsItemMax)).max(updateAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsMax).nullable(),
   "statusId": zod.string().min(1),
   "statusName": zod.string()
 }))
