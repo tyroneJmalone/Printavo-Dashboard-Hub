@@ -65,3 +65,4 @@
 - [Cap America catalog direction](cap-america-catalog-direction.md) — user wants unified Catalog Search; supplier product photos improve on PDF crops, without implying live inventory or ordering.
 - [Ask AI evidence boundaries](ask-ai-evidence.md) — SQL owns aggregate arithmetic; distinguish measured provenance from model explanations and avoid false semantic-verification claims.
 - [Pipeline date policy](pipeline-date-policy.md) — explicit date ranges replace the implicit Won/Done creation-age window rather than silently hiding older matches.
+- [PrintScope renderer compatibility](printscope-renderer-compatibility.md) — MuPDF unitless SVG dimensions can silently omit choke masks even when golden verdicts match.

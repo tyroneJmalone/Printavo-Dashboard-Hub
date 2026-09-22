@@ -22,7 +22,7 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
-packages = ["freetype", "glibcLocales", "gumbo", "harfbuzz", "jbig2dec", "libjpeg_turbo", "mupdf", "openjpeg", "swig", "xcbuild"]
+packages = ["freetype", "glibcLocales", "gumbo", "harfbuzz", "jbig2dec", "lcms2", "libimagequant", "libjpeg", "libjpeg_turbo", "libtiff", "libwebp", "libxcrypt", "mupdf", "openjpeg", "pkg-config", "qpdf", "swig", "tcl", "tk", "xcbuild", "xsimd", "zlib"]
 
 [userenv]
 
