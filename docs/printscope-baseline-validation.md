@@ -35,6 +35,8 @@ Ghostscript is 10.05.1 (the consultant recorded 10.02.1). Despite that differenc
 
 ## Proposed next action
 
-Discuss a narrow compatibility correction with the user because the handoff explicitly protects the PDF modules from changes: accept both unitless and point-suffixed SVG dimensions without changing geometry, measurement DPI, recolour/composition order, or rule thresholds. Add a focused regression for both forms and for unsupported dimensions, then rerun the baseline suite and inspect the preview.
+The initial optional-unit regex proposal is superseded by consultant review. It was not applied. Accepting unitless input while retaining hardcoded `pt` output would change intrinsic scale. Preserve the original SVG opening tag and use its viewBox for mask geometry instead. The consultant also reports a second point-only size parser in `run.py` that must be corrected to preserve artwork-centered zoom.
+
+The consultant reports an updated engine with 17 passing tests and unchanged golden records. That updated archive has not yet been received or validated here. The response additionally requires high-zoom visual verification using `-22968 B`, which is not in the supplied 13-file fixture corpus.
 
 Do not suppress the failed test, weaken its assertion, or proceed with Hub integration while the baseline remains red.

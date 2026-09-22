@@ -1,0 +1,15 @@
+They found a real bug and handled it well — reproduced it, traced past the misleading error message to the actual cause, and stopped rather than patching calibrated code. That's the behaviour you want from a contractor.
+
+But I didn't just approve it. I reproduced the failure here and tested their patch, and it has a problem:
+
+Their fix would have introduced a worse bug. The regex matches fine, but four lines down compose_knockout writes the unit back as a hardcoded literal — so on the newer MuPDF it reads width="1152" and emits width="1152pt". Those aren't the same size; 1pt = 1.333px. Every composed plate would render a third larger than an uncomposed one. It would pass a visual check, and it would surface as plates that don't line up — which is the exact defect PrintScope exists to catch. A preview bug that imitates the bug under inspection is the worst possible outcome.
+
+The real fix is to stop round-tripping the dimensions at all. The mask only needs the viewBox, so 0.4.1 reuses the plate's own <svg> tag verbatim.
+
+There's a second instance they didn't find. run.py has the same pt-only assumption in SVGSIZE. On the newer MuPDF it records width and height as zero, which silently switches off the art bounding box — and with it the zoom-to-artwork behaviour you asked for. No error, no failing test. Their suite doesn't cover it. Same root cause, different file.
+
+On their two questions: yes, it should raise — a silently unmasked plate is a repeat of the bug that already shipped once and was invisible except by measuring. It now raises, gets recorded in the result, and the viewer says the plates are drawn un-choked. And fix, don't pin — their own 13/13 match proves the measurement path is version-stable; pinning would have hidden this class of problem instead of surfacing it.
+
+Engine 0.4.1 is attached: 17 passed, 0 failed, 0 skipped, and all 13 golden records byte-identical to before, which confirms nothing about the verdicts moved.
+
+One thing only they can do, and it's in the note as the last acceptance item: look at a choked preview on their build at high zoom on -22968 B and confirm the base reads visibly smaller than the colour above it. When this broke before, every automated check passed — you caught it by eye.
