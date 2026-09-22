@@ -1,6 +1,7 @@
 import { Switch, Route, useLocation } from "wouter";
 import { PrintScopeJobs } from "./PrintScopeJobs";
 import { PrintScopeRules } from "./PrintScopeRules";
+import { PrintScopePilot } from "./PrintScopePilot";
 import "./Printscope.css";
 import { Shield } from "lucide-react";
 import { useStaff } from "@/components/auth/StaffGate";
@@ -41,6 +42,7 @@ export default function PrintScopeApp() {
           {role === "admin" && (
             <Link href="/printscope/rules" className="text-xs font-semibold hover:text-[#0B6E63]">Rules</Link>
           )}
+          <Link href="/printscope/pilot" className="text-xs font-semibold hover:text-[#0B6E63]">Pilot</Link>
         </div>
         <span className="legend">
           <span className="key"><i style={{ background: "var(--fail)" }}></i>send it back</span>
@@ -51,6 +53,7 @@ export default function PrintScopeApp() {
 
       <Switch>
         <Route path="/printscope/rules" component={PrintScopeRules} />
+        <Route path="/printscope/pilot" component={PrintScopePilot} />
         <Route path="/printscope" component={() => <PrintScopeJobs caps={caps} />} />
         {/* Wildcard catchall */}
         <Route component={() => <PrintScopeJobs caps={caps} />} />

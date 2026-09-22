@@ -21,6 +21,264 @@ export const GetPrintscopeCapabilitiesResponse = zod.object({
 })
 
 
+export const GetPrintscopePilotResponse = zod.object({
+  "pilot": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "environment": zod.string(),
+  "state": zod.enum(['active', 'review', 'expired']),
+  "ruleVersionId": zod.number(),
+  "createdBy": zod.string().uuid(),
+  "startedAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date(),
+  "purgeAfter": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "metrics": zod.object({
+  "imported": zod.number(),
+  "queued": zod.number(),
+  "completed": zod.number(),
+  "failed": zod.number(),
+  "reviewed": zod.number(),
+  "unreviewed": zod.number(),
+  "comparable": zod.number().describe('Latest reviews with pass'),
+  "matching": zod.number().describe('Comparable latest reviews matching engine verdict'),
+  "nonmatching": zod.number().describe('Comparable latest reviews not matching engine verdict'),
+  "uncertain": zod.number().describe('Latest uncertain reviews'),
+  "falseClear": zod.number().describe('Engine pass with latest human flag or fail'),
+  "limitations": zod.array(zod.string())
+})
+})
+
+
+export const StartPrintscopePilotResponse = zod.object({
+  "pilot": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "environment": zod.string(),
+  "state": zod.enum(['active', 'review', 'expired']),
+  "ruleVersionId": zod.number(),
+  "createdBy": zod.string().uuid(),
+  "startedAt": zod.coerce.date(),
+  "endsAt": zod.coerce.date(),
+  "purgeAfter": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
+  "metrics": zod.object({
+  "imported": zod.number(),
+  "queued": zod.number(),
+  "completed": zod.number(),
+  "failed": zod.number(),
+  "reviewed": zod.number(),
+  "unreviewed": zod.number(),
+  "comparable": zod.number().describe('Latest reviews with pass'),
+  "matching": zod.number().describe('Comparable latest reviews matching engine verdict'),
+  "nonmatching": zod.number().describe('Comparable latest reviews not matching engine verdict'),
+  "uncertain": zod.number().describe('Latest uncertain reviews'),
+  "falseClear": zod.number().describe('Engine pass with latest human flag or fail'),
+  "limitations": zod.array(zod.string())
+})
+})
+
+
+export const listPrintscopePilotSourcesQuerySearchMax = 200;
+
+export const listPrintscopePilotSourcesQueryLimitMax = 100;
+
+export const listPrintscopePilotSourcesQueryOffsetMin = 0;
+
+
+
+export const ListPrintscopePilotSourcesQueryParams = zod.object({
+  "search": zod.coerce.string().max(listPrintscopePilotSourcesQuerySearchMax).optional(),
+  "limit": zod.coerce.number().min(1).max(listPrintscopePilotSourcesQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(listPrintscopePilotSourcesQueryOffsetMin).optional()
+})
+
+export const ListPrintscopePilotSourcesResponse = zod.object({
+  "sources": zod.array(zod.object({
+  "sourceId": zod.string().uuid().describe('Stable pv_files source UUID'),
+  "revisionToken": zod.string().nullable().describe('Opaque binding of current row metadata and mirrored object generation; null when the mirror is unavailable'),
+  "sourceGeneration": zod.string().nullable().describe('Exact mirrored object generation required for import binding; null when the mirror is unavailable'),
+  "orderPrintavoId": zod.string(),
+  "visualId": zod.number(),
+  "filename": zod.string(),
+  "bytes": zod.number(),
+  "mirroredAt": zod.coerce.date(),
+  "firstSeenAt": zod.coerce.date(),
+  "eligible": zod.boolean(),
+  "reasons": zod.array(zod.string())
+})),
+  "total": zod.number()
+})
+
+
+export const importPrintscopePilotSourceBodyRevisionTokenMin = 64;
+export const importPrintscopePilotSourceBodyRevisionTokenMax = 64;
+
+
+export const importPrintscopePilotSourceBodyExpectedFilenameMax = 240;
+
+export const importPrintscopePilotSourceBodyExpectedBytesMax = 52428800;
+
+
+
+export const ImportPrintscopePilotSourceBody = zod.object({
+  "pilotId": zod.string().uuid(),
+  "sourceId": zod.string().uuid(),
+  "revisionToken": zod.string().min(importPrintscopePilotSourceBodyRevisionTokenMin).max(importPrintscopePilotSourceBodyRevisionTokenMax),
+  "expectedGeneration": zod.string().min(1),
+  "expectedFilename": zod.string().min(1).max(importPrintscopePilotSourceBodyExpectedFilenameMax),
+  "expectedBytes": zod.number().min(1).max(importPrintscopePilotSourceBodyExpectedBytesMax)
+})
+
+export const ImportPrintscopePilotSourceResponse = zod.object({
+  "id": zod.string(),
+  "state": zod.enum(['uploading', 'queued', 'processing', 'completed', 'failed']),
+  "filename": zod.string(),
+  "byteSize": zod.number(),
+  "sha256": zod.string().nullish(),
+  "ruleVersionId": zod.number(),
+  "submittedBy": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "parentJobId": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish(),
+  "error": zod.record(zod.string(), zod.unknown()).nullish()
+}).and(zod.object({
+  "pilotId": zod.string().uuid(),
+  "provenance": zod.object({
+  "sourceId": zod.string().uuid(),
+  "orderPrintavoId": zod.string(),
+  "visualId": zod.number(),
+  "filename": zod.string(),
+  "bytes": zod.number(),
+  "mirroredAt": zod.coerce.date(),
+  "sourceGeneration": zod.string(),
+  "contentSha256": zod.string(),
+  "importedAt": zod.coerce.date()
+}),
+  "latestReview": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "jobId": zod.string().uuid(),
+  "outcome": zod.enum(['pass', 'flag', 'fail', 'uncertain']),
+  "reason": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "reviewerId": zod.string().uuid(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]).optional(),
+  "assetsExpiredAt": zod.coerce.date().nullable()
+}))
+
+
+export const listPrintscopePilotJobsQueryLimitMax = 100;
+
+export const listPrintscopePilotJobsQueryOffsetMin = 0;
+
+
+
+export const ListPrintscopePilotJobsQueryParams = zod.object({
+  "pilotId": zod.coerce.string().uuid().optional(),
+  "limit": zod.coerce.number().min(1).max(listPrintscopePilotJobsQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(listPrintscopePilotJobsQueryOffsetMin).optional()
+})
+
+export const ListPrintscopePilotJobsResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "id": zod.string(),
+  "state": zod.enum(['uploading', 'queued', 'processing', 'completed', 'failed']),
+  "filename": zod.string(),
+  "byteSize": zod.number(),
+  "sha256": zod.string().nullish(),
+  "ruleVersionId": zod.number(),
+  "submittedBy": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "parentJobId": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish(),
+  "error": zod.record(zod.string(), zod.unknown()).nullish()
+}).and(zod.object({
+  "pilotId": zod.string().uuid(),
+  "provenance": zod.object({
+  "sourceId": zod.string().uuid(),
+  "orderPrintavoId": zod.string(),
+  "visualId": zod.number(),
+  "filename": zod.string(),
+  "bytes": zod.number(),
+  "mirroredAt": zod.coerce.date(),
+  "sourceGeneration": zod.string(),
+  "contentSha256": zod.string(),
+  "importedAt": zod.coerce.date()
+}),
+  "latestReview": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "jobId": zod.string().uuid(),
+  "outcome": zod.enum(['pass', 'flag', 'fail', 'uncertain']),
+  "reason": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "reviewerId": zod.string().uuid(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]).optional(),
+  "assetsExpiredAt": zod.coerce.date().nullable()
+}))),
+  "total": zod.number()
+})
+
+
+export const ListPrintscopePilotReviewsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const listPrintscopePilotReviewsQueryLimitMax = 100;
+
+export const listPrintscopePilotReviewsQueryOffsetMin = 0;
+
+
+
+export const ListPrintscopePilotReviewsQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listPrintscopePilotReviewsQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(listPrintscopePilotReviewsQueryOffsetMin).optional()
+})
+
+export const ListPrintscopePilotReviewsResponse = zod.object({
+  "reviews": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "jobId": zod.string().uuid(),
+  "outcome": zod.enum(['pass', 'flag', 'fail', 'uncertain']),
+  "reason": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "reviewerId": zod.string().uuid(),
+  "createdAt": zod.coerce.date()
+})),
+  "total": zod.number()
+})
+
+
+export const ReviewPrintscopePilotJobParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const reviewPrintscopePilotJobBodyReasonMax = 200;
+
+export const reviewPrintscopePilotJobBodyNoteMax = 2000;
+
+
+
+export const ReviewPrintscopePilotJobBody = zod.object({
+  "outcome": zod.enum(['pass', 'flag', 'fail', 'uncertain']),
+  "reason": zod.string().min(1).max(reviewPrintscopePilotJobBodyReasonMax),
+  "note": zod.string().max(reviewPrintscopePilotJobBodyNoteMax).optional()
+})
+
+export const ReviewPrintscopePilotJobResponse = zod.object({
+  "id": zod.string().uuid(),
+  "jobId": zod.string().uuid(),
+  "outcome": zod.enum(['pass', 'flag', 'fail', 'uncertain']),
+  "reason": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "reviewerId": zod.string().uuid(),
+  "createdAt": zod.coerce.date()
+})
+
+
 export const createPrintscopeUploadBodyFilenameMax = 240;
 
 export const createPrintscopeUploadBodyByteSizeMax = 52428800;

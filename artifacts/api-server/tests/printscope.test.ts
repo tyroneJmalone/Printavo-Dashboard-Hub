@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { parseCsv, toCsv, validateRules, ruleDefinitions, pythonRoot, versionMatches } from "../src/lib/printscope/rules";
 import { safeFilename, childEnvironment, scopedPath, validateProtocol, parseProcStat, verifyRuleSnapshot } from "../src/lib/printscope/worker";
 import { MODULE_DEFS } from "../src/lib/auth/moduleAccess";
-import printscopeRouter, { rerunValues, jobDto } from "../src/routes/printscope";
+import printscopeRouter, { rerunValues, jobDto, revisionToken, sourceBindingMatches, sourceEligibilityReasons, sourceMetadataReasons } from "../src/routes/printscope";
 import { requireAdmin } from "../src/middlewares/requireStaff";
 
 test("filename is display metadata, never a local path", () => {
@@ -92,4 +92,28 @@ test("router explicitly rejects missing staff; rule mutation requires admin", ()
   assert.equal(next, true);
   const put = printscopeRouter.stack.find((s: any) => s.route?.path === "/printscope/rules" && s.route.methods.put);
   assert.equal(put.route.stack[0].handle, requireAdmin);
+});
+test("pilot source eligibility excludes public PDFs, stale mirrors, unsupported names and oversize files", () => {
+  const base = { id: "source", source_kind: "production_file", status: "mirrored", object_path: "/bucket/source", file_name: "separations.ai", byte_size: 123 };
+  assert.deepEqual(sourceEligibilityReasons(base), []);
+  assert.deepEqual(sourceEligibilityReasons({ ...base, source_kind: "public_pdf" }), ["not_production_file"]);
+  assert.deepEqual(sourceEligibilityReasons({ ...base, status: "pending" }), ["not_mirrored"]);
+  assert.deepEqual(sourceEligibilityReasons({ ...base, file_name: "invoice.pdf" }), ["unsupported_filename"]);
+  assert.deepEqual(sourceEligibilityReasons({ ...base, byte_size: 50 * 1024 * 1024 + 1 }), ["unsupported_size"]);
+});
+test("pilot revision binds metadata and exact mirrored generation", () => {
+  const row = { id: "source", order_printavo_id: "order", order_visual_id: 42, file_name: "art.ai", byte_size: 100, mirrored_at: "2026-01-01", object_path: "/private/source" };
+  const token = revisionToken(row, "7");
+  const input = { expectedGeneration: "7", expectedFilename: "art.ai", expectedBytes: 100, revisionToken: token };
+  assert.equal(sourceBindingMatches(row, "7", input, 100), true);
+  assert.equal(sourceBindingMatches(row, "8", input, 100), false);
+  assert.equal(sourceBindingMatches({ ...row, file_name: "changed.ai" }, "7", input, 100), false);
+  assert.equal(sourceBindingMatches(row, "7", input, 99), false);
+});
+test("pilot source metadata failures remain visible and explicitly ineligible", () => {
+  const row = { byte_size: 100 };
+  assert.deepEqual(sourceMetadataReasons(row), ["mirror_object_unavailable"]);
+  assert.deepEqual(sourceMetadataReasons(row, { size: 100 }), ["mirror_generation_unavailable"]);
+  assert.deepEqual(sourceMetadataReasons(row, { generation: "7", size: 99 }), ["mirror_size_mismatch"]);
+  assert.deepEqual(sourceMetadataReasons(row, { generation: "7", size: 100 }), []);
 });

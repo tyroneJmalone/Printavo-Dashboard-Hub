@@ -17,18 +17,160 @@ export interface PrintscopeCapabilities {
   assistedOnly: boolean;
 }
 
-export interface PrintscopeUploadRequest {
+export type PrintscopePilotState = typeof PrintscopePilotState[keyof typeof PrintscopePilotState];
+
+
+export const PrintscopePilotState = {
+  active: 'active',
+  review: 'review',
+  expired: 'expired',
+} as const;
+
+export interface PrintscopePilot {
+  id: string;
+  environment: string;
+  state: PrintscopePilotState;
+  ruleVersionId: number;
+  createdBy: string;
+  startedAt: string;
+  endsAt: string;
+  purgeAfter: string;
+  createdAt: string;
+}
+
+export interface PrintscopePilotMetrics {
+  imported: number;
+  queued: number;
+  completed: number;
+  failed: number;
+  reviewed: number;
+  unreviewed: number;
+  /** Latest reviews with pass */
+  comparable: number;
+  /** Comparable latest reviews matching engine verdict */
+  matching: number;
+  /** Comparable latest reviews not matching engine verdict */
+  nonmatching: number;
+  /** Latest uncertain reviews */
+  uncertain: number;
+  /** Engine pass with latest human flag or fail */
+  falseClear: number;
+  limitations: string[];
+}
+
+export interface PrintscopePilotSummary {
+  pilot: PrintscopePilot | null;
+  metrics: PrintscopePilotMetrics;
+}
+
+export interface PrintscopePilotSource {
+  /** Stable pv_files source UUID */
+  sourceId: string;
+  /**
+     * Opaque binding of current row metadata and mirrored object generation; null when the mirror is unavailable
+     * @nullable
+     */
+  revisionToken: string | null;
+  /**
+     * Exact mirrored object generation required for import binding; null when the mirror is unavailable
+     * @nullable
+     */
+  sourceGeneration: string | null;
+  orderPrintavoId: string;
+  visualId: number;
+  filename: string;
+  bytes: number;
+  mirroredAt: string;
+  firstSeenAt: string;
+  eligible: boolean;
+  reasons: string[];
+}
+
+export interface PrintscopePilotSourceList {
+  sources: PrintscopePilotSource[];
+  total: number;
+}
+
+export interface PrintscopePilotImportInput {
+  pilotId: string;
+  sourceId: string;
+  /**
+     * @minLength 64
+     * @maxLength 64
+     */
+  revisionToken: string;
+  /** @minLength 1 */
+  expectedGeneration: string;
   /**
      * @minLength 1
      * @maxLength 240
      */
-  filename: string;
+  expectedFilename: string;
   /**
      * @minimum 1
      * @maximum 52428800
      */
-  byteSize: number;
-  contentType: string;
+  expectedBytes: number;
+}
+
+export interface PrintscopePilotProvenance {
+  sourceId: string;
+  orderPrintavoId: string;
+  visualId: number;
+  filename: string;
+  bytes: number;
+  mirroredAt: string;
+  sourceGeneration: string;
+  contentSha256: string;
+  importedAt: string;
+}
+
+export type PrintscopePilotReviewOutcome = typeof PrintscopePilotReviewOutcome[keyof typeof PrintscopePilotReviewOutcome];
+
+
+export const PrintscopePilotReviewOutcome = {
+  pass: 'pass',
+  flag: 'flag',
+  fail: 'fail',
+  uncertain: 'uncertain',
+} as const;
+
+export interface PrintscopePilotReview {
+  id: string;
+  jobId: string;
+  outcome: PrintscopePilotReviewOutcome;
+  /** @nullable */
+  reason?: string | null;
+  /** @nullable */
+  note?: string | null;
+  reviewerId: string;
+  createdAt: string;
+}
+
+export type PrintscopePilotReviewInputOutcome = typeof PrintscopePilotReviewInputOutcome[keyof typeof PrintscopePilotReviewInputOutcome];
+
+
+export const PrintscopePilotReviewInputOutcome = {
+  pass: 'pass',
+  flag: 'flag',
+  fail: 'fail',
+  uncertain: 'uncertain',
+} as const;
+
+export interface PrintscopePilotReviewInput {
+  outcome: PrintscopePilotReviewInputOutcome;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  reason: string;
+  /** @maxLength 2000 */
+  note?: string;
+}
+
+export interface PrintscopePilotReviewList {
+  reviews: PrintscopePilotReview[];
+  total: number;
 }
 
 export type PrintscopeJobState = typeof PrintscopeJobState[keyof typeof PrintscopeJobState];
@@ -70,6 +212,33 @@ export interface PrintscopeJob {
   result?: PrintscopeJobResult;
   /** @nullable */
   error?: PrintscopeJobError;
+}
+
+export type PrintscopePilotJob = PrintscopeJob & ({
+  pilotId: string;
+  provenance: PrintscopePilotProvenance;
+  latestReview?: PrintscopePilotReview | null;
+  /** @nullable */
+  assetsExpiredAt: string | null;
+});
+
+export interface PrintscopePilotJobList {
+  jobs: PrintscopePilotJob[];
+  total: number;
+}
+
+export interface PrintscopeUploadRequest {
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  filename: string;
+  /**
+     * @minimum 1
+     * @maximum 52428800
+     */
+  byteSize: number;
+  contentType: string;
 }
 
 export interface PrintscopeUpload {
@@ -7843,6 +8012,47 @@ export type ActivityEndParamParameter = string;
  * Current invoice/quote owner email
  */
 export type ActivityOwnerParamParameter = string;
+
+export type ListPrintscopePilotSourcesParams = {
+/**
+ * @maxLength 200
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListPrintscopePilotJobsParams = {
+pilotId?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListPrintscopePilotReviewsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
 
 export type ListPrintscopeJobsParams = {
 /**

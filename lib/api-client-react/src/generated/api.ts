@@ -268,6 +268,9 @@ import type {
   ListPrintQueueOrdersParams,
   ListPrintscopeJobs200,
   ListPrintscopeJobsParams,
+  ListPrintscopePilotJobsParams,
+  ListPrintscopePilotReviewsParams,
+  ListPrintscopePilotSourcesParams,
   ListRedemptionsParams,
   ListReorderRequestsParams,
   ListRewardAwardsParams,
@@ -326,6 +329,14 @@ import type {
   PrintavoTestInput,
   PrintscopeCapabilities,
   PrintscopeJob,
+  PrintscopePilotImportInput,
+  PrintscopePilotJob,
+  PrintscopePilotJobList,
+  PrintscopePilotReview,
+  PrintscopePilotReviewInput,
+  PrintscopePilotReviewList,
+  PrintscopePilotSourceList,
+  PrintscopePilotSummary,
   PrintscopeRuleVersion,
   PrintscopeRulesRequest,
   PrintscopeUpload,
@@ -529,6 +540,509 @@ export function useGetPrintscopeCapabilities<TData = Awaited<ReturnType<typeof g
 
 
 
+
+export const getGetPrintscopePilotUrl = () => {
+
+
+
+
+  return `/api/printscope/pilot`
+}
+
+export const getPrintscopePilot = async ( options?: RequestInit): Promise<PrintscopePilotSummary> => {
+
+  return customFetch<PrintscopePilotSummary>(getGetPrintscopePilotUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrintscopePilotQueryKey = () => {
+    return [
+    `/api/printscope/pilot`
+    ] as const;
+    }
+
+
+export const getGetPrintscopePilotQueryOptions = <TData = Awaited<ReturnType<typeof getPrintscopePilot>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopePilot>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrintscopePilotQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrintscopePilot>>> = ({ signal }) => getPrintscopePilot({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrintscopePilot>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrintscopePilotQueryResult = NonNullable<Awaited<ReturnType<typeof getPrintscopePilot>>>
+export type GetPrintscopePilotQueryError = ErrorType<unknown>
+
+
+
+export function useGetPrintscopePilot<TData = Awaited<ReturnType<typeof getPrintscopePilot>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopePilot>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrintscopePilotQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartPrintscopePilotUrl = () => {
+
+
+
+
+  return `/api/printscope/pilot/start`
+}
+
+export const startPrintscopePilot = async ( options?: RequestInit): Promise<PrintscopePilotSummary> => {
+
+  return customFetch<PrintscopePilotSummary>(getStartPrintscopePilotUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getStartPrintscopePilotMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startPrintscopePilot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startPrintscopePilot>>, TError,void, TContext> => {
+
+const mutationKey = ['startPrintscopePilot'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startPrintscopePilot>>, void> = () => {
+
+
+          return  startPrintscopePilot(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartPrintscopePilotMutationResult = NonNullable<Awaited<ReturnType<typeof startPrintscopePilot>>>
+
+    export type StartPrintscopePilotMutationError = ErrorType<void>
+
+    export const useStartPrintscopePilot = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startPrintscopePilot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startPrintscopePilot>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStartPrintscopePilotMutationOptions(options));
+    }
+
+export const getListPrintscopePilotSourcesUrl = (params?: ListPrintscopePilotSourcesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/printscope/pilot/sources?${stringifiedParams}` : `/api/printscope/pilot/sources`
+}
+
+export const listPrintscopePilotSources = async (params?: ListPrintscopePilotSourcesParams, options?: RequestInit): Promise<PrintscopePilotSourceList> => {
+
+  return customFetch<PrintscopePilotSourceList>(getListPrintscopePilotSourcesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPrintscopePilotSourcesQueryKey = (params?: ListPrintscopePilotSourcesParams,) => {
+    return [
+    `/api/printscope/pilot/sources`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPrintscopePilotSourcesQueryOptions = <TData = Awaited<ReturnType<typeof listPrintscopePilotSources>>, TError = ErrorType<unknown>>(params?: ListPrintscopePilotSourcesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPrintscopePilotSourcesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrintscopePilotSources>>> = ({ signal }) => listPrintscopePilotSources(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotSources>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPrintscopePilotSourcesQueryResult = NonNullable<Awaited<ReturnType<typeof listPrintscopePilotSources>>>
+export type ListPrintscopePilotSourcesQueryError = ErrorType<unknown>
+
+
+
+export function useListPrintscopePilotSources<TData = Awaited<ReturnType<typeof listPrintscopePilotSources>>, TError = ErrorType<unknown>>(
+ params?: ListPrintscopePilotSourcesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPrintscopePilotSourcesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getImportPrintscopePilotSourceUrl = () => {
+
+
+
+
+  return `/api/printscope/pilot/imports`
+}
+
+export const importPrintscopePilotSource = async (printscopePilotImportInput: PrintscopePilotImportInput, options?: RequestInit): Promise<PrintscopePilotJob> => {
+
+  return customFetch<PrintscopePilotJob>(getImportPrintscopePilotSourceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(printscopePilotImportInput)
+  }
+);}
+
+
+
+
+export const getImportPrintscopePilotSourceMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importPrintscopePilotSource>>, TError,{data: BodyType<PrintscopePilotImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importPrintscopePilotSource>>, TError,{data: BodyType<PrintscopePilotImportInput>}, TContext> => {
+
+const mutationKey = ['importPrintscopePilotSource'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importPrintscopePilotSource>>, {data: BodyType<PrintscopePilotImportInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importPrintscopePilotSource(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportPrintscopePilotSourceMutationResult = NonNullable<Awaited<ReturnType<typeof importPrintscopePilotSource>>>
+    export type ImportPrintscopePilotSourceMutationBody = BodyType<PrintscopePilotImportInput>
+    export type ImportPrintscopePilotSourceMutationError = ErrorType<void>
+
+    export const useImportPrintscopePilotSource = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importPrintscopePilotSource>>, TError,{data: BodyType<PrintscopePilotImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importPrintscopePilotSource>>,
+        TError,
+        {data: BodyType<PrintscopePilotImportInput>},
+        TContext
+      > => {
+      return useMutation(getImportPrintscopePilotSourceMutationOptions(options));
+    }
+
+export const getListPrintscopePilotJobsUrl = (params?: ListPrintscopePilotJobsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/printscope/pilot/jobs?${stringifiedParams}` : `/api/printscope/pilot/jobs`
+}
+
+export const listPrintscopePilotJobs = async (params?: ListPrintscopePilotJobsParams, options?: RequestInit): Promise<PrintscopePilotJobList> => {
+
+  return customFetch<PrintscopePilotJobList>(getListPrintscopePilotJobsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPrintscopePilotJobsQueryKey = (params?: ListPrintscopePilotJobsParams,) => {
+    return [
+    `/api/printscope/pilot/jobs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPrintscopePilotJobsQueryOptions = <TData = Awaited<ReturnType<typeof listPrintscopePilotJobs>>, TError = ErrorType<unknown>>(params?: ListPrintscopePilotJobsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPrintscopePilotJobsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrintscopePilotJobs>>> = ({ signal }) => listPrintscopePilotJobs(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotJobs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPrintscopePilotJobsQueryResult = NonNullable<Awaited<ReturnType<typeof listPrintscopePilotJobs>>>
+export type ListPrintscopePilotJobsQueryError = ErrorType<unknown>
+
+
+
+export function useListPrintscopePilotJobs<TData = Awaited<ReturnType<typeof listPrintscopePilotJobs>>, TError = ErrorType<unknown>>(
+ params?: ListPrintscopePilotJobsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPrintscopePilotJobsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPrintscopePilotReviewsUrl = (id: string,
+    params?: ListPrintscopePilotReviewsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/printscope/pilot/jobs/${id}/reviews?${stringifiedParams}` : `/api/printscope/pilot/jobs/${id}/reviews`
+}
+
+export const listPrintscopePilotReviews = async (id: string,
+    params?: ListPrintscopePilotReviewsParams, options?: RequestInit): Promise<PrintscopePilotReviewList> => {
+
+  return customFetch<PrintscopePilotReviewList>(getListPrintscopePilotReviewsUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPrintscopePilotReviewsQueryKey = (id: string,
+    params?: ListPrintscopePilotReviewsParams,) => {
+    return [
+    `/api/printscope/pilot/jobs/${id}/reviews`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPrintscopePilotReviewsQueryOptions = <TData = Awaited<ReturnType<typeof listPrintscopePilotReviews>>, TError = ErrorType<unknown>>(id: string,
+    params?: ListPrintscopePilotReviewsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPrintscopePilotReviewsQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrintscopePilotReviews>>> = ({ signal }) => listPrintscopePilotReviews(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotReviews>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPrintscopePilotReviewsQueryResult = NonNullable<Awaited<ReturnType<typeof listPrintscopePilotReviews>>>
+export type ListPrintscopePilotReviewsQueryError = ErrorType<unknown>
+
+
+
+export function useListPrintscopePilotReviews<TData = Awaited<ReturnType<typeof listPrintscopePilotReviews>>, TError = ErrorType<unknown>>(
+ id: string,
+    params?: ListPrintscopePilotReviewsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopePilotReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPrintscopePilotReviewsQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewPrintscopePilotJobUrl = (id: string,) => {
+
+
+
+
+  return `/api/printscope/pilot/jobs/${id}/reviews`
+}
+
+export const reviewPrintscopePilotJob = async (id: string,
+    printscopePilotReviewInput: PrintscopePilotReviewInput, options?: RequestInit): Promise<PrintscopePilotReview> => {
+
+  return customFetch<PrintscopePilotReview>(getReviewPrintscopePilotJobUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(printscopePilotReviewInput)
+  }
+);}
+
+
+
+
+export const getReviewPrintscopePilotJobMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewPrintscopePilotJob>>, TError,{id: string;data: BodyType<PrintscopePilotReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewPrintscopePilotJob>>, TError,{id: string;data: BodyType<PrintscopePilotReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewPrintscopePilotJob'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewPrintscopePilotJob>>, {id: string;data: BodyType<PrintscopePilotReviewInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reviewPrintscopePilotJob(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewPrintscopePilotJobMutationResult = NonNullable<Awaited<ReturnType<typeof reviewPrintscopePilotJob>>>
+    export type ReviewPrintscopePilotJobMutationBody = BodyType<PrintscopePilotReviewInput>
+    export type ReviewPrintscopePilotJobMutationError = ErrorType<void>
+
+    export const useReviewPrintscopePilotJob = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewPrintscopePilotJob>>, TError,{id: string;data: BodyType<PrintscopePilotReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewPrintscopePilotJob>>,
+        TError,
+        {id: string;data: BodyType<PrintscopePilotReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewPrintscopePilotJobMutationOptions(options));
+    }
 
 export const getCreatePrintscopeUploadUrl = () => {
 

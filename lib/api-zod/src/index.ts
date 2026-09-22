@@ -48,6 +48,13 @@ export type {
   PickCustomerArtworkFolderParams as PickCustomerArtworkFolderQueryParamsType,
 } from "./generated/types";
 
+// PrintScope review history combines a job path parameter with pagination.
+// Keep the path-param Zod schema bare and alias the generated query type.
+export { ListPrintscopePilotReviewsParams } from "./generated/api";
+export type {
+  ListPrintscopePilotReviewsParams as ListPrintscopePilotReviewsQueryParamsType,
+} from "./generated/types";
+
 // Same collision for the chipply parse-email response (inline allOf for the
 // nullable existingStore ref): bare name = zod schema; TS type aliased.
 export { ParseChipplyEmailResponse } from "./generated/api";

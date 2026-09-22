@@ -52,6 +52,110 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PrintscopeCapabilities" }
+  /printscope/pilot:
+    get:
+      operationId: getPrintscopePilot
+      responses:
+        "200":
+          description: Current environment pilot, lifecycle status, and deterministic metrics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotSummary" }
+  /printscope/pilot/start:
+    post:
+      operationId: startPrintscopePilot
+      responses:
+        "201":
+          description: Newly started 14-day pilot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotSummary" }
+        "200":
+          description: Existing active pilot (idempotent reuse)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotSummary" }
+        "409":
+          description: A pilot already exists but cannot be started again
+  /printscope/pilot/sources:
+    get:
+      operationId: listPrintscopePilotSources
+      parameters:
+        - { name: search, in: query, schema: { type: string, maxLength: 200 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: Eligible mirrored production artwork; storage paths and URLs are never exposed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotSourceList" }
+  /printscope/pilot/imports:
+    post:
+      operationId: importPrintscopePilotSource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrintscopePilotImportInput" }
+      responses:
+        "201":
+          description: Immutable pilot-owned copy verified and queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotJob" }
+        "200":
+          description: Existing idempotent pilot job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotJob" }
+        "409":
+          description: Source revision/generation changed, pilot inactive, or idempotency conflict
+        "422":
+          description: Mirrored input is not a supported PDF-compatible Illustrator file
+  /printscope/pilot/jobs:
+    get:
+      operationId: listPrintscopePilotJobs
+      parameters:
+        - { name: pilotId, in: query, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: Pilot jobs with provenance and latest append-only human review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotJobList" }
+  /printscope/pilot/jobs/{id}/reviews:
+    get:
+      operationId: listPrintscopePilotReviews
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: Newest-first append-only human review history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotReviewList" }
+    post:
+      operationId: reviewPrintscopePilotJob
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrintscopePilotReviewInput" }
+      responses:
+        "201":
+          description: Appended human review; prior reviews remain retained
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopePilotReview" }
+        "409":
+          description: Job is not a completed pilot job
   /printscope/uploads:
     post:
       operationId: createPrintscopeUpload
@@ -7894,6 +7998,127 @@ components:
         maxUploadBytes: { type: integer }
         retention: { type: string }
         assistedOnly: { type: boolean }
+    PrintscopePilot:
+      type: object
+      required: [id, environment, state, ruleVersionId, createdBy, startedAt, endsAt, purgeAfter, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        environment: { type: string }
+        state: { type: string, enum: [active, review, expired] }
+        ruleVersionId: { type: integer }
+        createdBy: { type: string, format: uuid }
+        startedAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        purgeAfter: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    PrintscopePilotMetrics:
+      type: object
+      required: [imported, queued, completed, failed, reviewed, unreviewed, comparable, matching, nonmatching, uncertain, falseClear, limitations]
+      properties:
+        imported: { type: integer }
+        queued: { type: integer }
+        completed: { type: integer }
+        failed: { type: integer }
+        reviewed: { type: integer }
+        unreviewed: { type: integer }
+        comparable: { type: integer, description: Latest reviews with pass, flag, or fail outcome }
+        matching: { type: integer, description: Comparable latest reviews matching engine verdict }
+        nonmatching: { type: integer, description: Comparable latest reviews not matching engine verdict }
+        uncertain: { type: integer, description: Latest uncertain reviews, excluded from comparable denominator }
+        falseClear: { type: integer, description: Engine pass with latest human flag or fail }
+        limitations: { type: array, items: { type: string } }
+    PrintscopePilotSummary:
+      type: object
+      required: [pilot, metrics]
+      properties:
+        pilot: { anyOf: [{ $ref: "#/components/schemas/PrintscopePilot" }, { type: "null" }] }
+        metrics: { $ref: "#/components/schemas/PrintscopePilotMetrics" }
+    PrintscopePilotSource:
+      type: object
+      required: [sourceId, revisionToken, sourceGeneration, orderPrintavoId, visualId, filename, bytes, mirroredAt, firstSeenAt, eligible, reasons]
+      properties:
+        sourceId: { type: string, format: uuid, description: Stable pv_files source UUID }
+        revisionToken: { type: [string, "null"], description: Opaque binding of current row metadata and mirrored object generation; null when the mirror is unavailable }
+        sourceGeneration: { type: [string, "null"], description: Exact mirrored object generation required for import binding; null when the mirror is unavailable }
+        orderPrintavoId: { type: string }
+        visualId: { type: integer }
+        filename: { type: string }
+        bytes: { type: integer }
+        mirroredAt: { type: string, format: date-time }
+        firstSeenAt: { type: string, format: date-time }
+        eligible: { type: boolean }
+        reasons: { type: array, items: { type: string } }
+    PrintscopePilotSourceList:
+      type: object
+      required: [sources, total]
+      properties:
+        sources: { type: array, items: { $ref: "#/components/schemas/PrintscopePilotSource" } }
+        total: { type: integer }
+    PrintscopePilotImportInput:
+      type: object
+      additionalProperties: false
+      required: [pilotId, sourceId, revisionToken, expectedGeneration, expectedFilename, expectedBytes]
+      properties:
+        pilotId: { type: string, format: uuid }
+        sourceId: { type: string, format: uuid }
+        revisionToken: { type: string, minLength: 64, maxLength: 64 }
+        expectedGeneration: { type: string, minLength: 1 }
+        expectedFilename: { type: string, minLength: 1, maxLength: 240 }
+        expectedBytes: { type: integer, minimum: 1, maximum: 52428800 }
+    PrintscopePilotProvenance:
+      type: object
+      required: [sourceId, orderPrintavoId, visualId, filename, bytes, mirroredAt, sourceGeneration, contentSha256, importedAt]
+      properties:
+        sourceId: { type: string, format: uuid }
+        orderPrintavoId: { type: string }
+        visualId: { type: integer }
+        filename: { type: string }
+        bytes: { type: integer }
+        mirroredAt: { type: string, format: date-time }
+        sourceGeneration: { type: string }
+        contentSha256: { type: string }
+        importedAt: { type: string, format: date-time }
+    PrintscopePilotReview:
+      type: object
+      required: [id, jobId, outcome, reviewerId, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        jobId: { type: string, format: uuid }
+        outcome: { type: string, enum: [pass, flag, fail, uncertain] }
+        reason: { type: [string, "null"] }
+        note: { type: [string, "null"] }
+        reviewerId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    PrintscopePilotReviewInput:
+      type: object
+      additionalProperties: false
+      required: [outcome, reason]
+      properties:
+        outcome: { type: string, enum: [pass, flag, fail, uncertain] }
+        reason: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, maxLength: 2000 }
+    PrintscopePilotReviewList:
+      type: object
+      required: [reviews, total]
+      properties:
+        reviews: { type: array, items: { $ref: "#/components/schemas/PrintscopePilotReview" } }
+        total: { type: integer }
+    PrintscopePilotJob:
+      allOf:
+        - { $ref: "#/components/schemas/PrintscopeJob" }
+        - type: object
+          required: [pilotId, provenance, assetsExpiredAt]
+          properties:
+            pilotId: { type: string, format: uuid }
+            provenance: { $ref: "#/components/schemas/PrintscopePilotProvenance" }
+            latestReview: { anyOf: [{ $ref: "#/components/schemas/PrintscopePilotReview" }, { type: "null" }] }
+            assetsExpiredAt: { type: [string, "null"], format: date-time }
+    PrintscopePilotJobList:
+      type: object
+      required: [jobs, total]
+      properties:
+        jobs: { type: array, items: { $ref: "#/components/schemas/PrintscopePilotJob" } }
+        total: { type: integer }
     PrintscopeUploadRequest:
       type: object
       required: [filename, byteSize, contentType]

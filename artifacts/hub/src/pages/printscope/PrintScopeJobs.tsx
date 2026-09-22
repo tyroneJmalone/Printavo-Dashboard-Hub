@@ -247,7 +247,7 @@ export function PrintScopeJobs({ caps }: { caps: PrintscopeCapabilities }) {
   );
 }
 
-function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onReinspect: () => void }) {
+export function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onReinspect?: () => void }) {
   if (!job.result) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 text-ink-2">
@@ -255,7 +255,7 @@ function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onReinspec
         <div className="uppercase tracking-widest text-sm font-semibold border px-4 py-2 rounded-full border-line">
           {job.state}
         </div>
-        {job.state === "failed" && (
+        {job.state === "failed" && onReinspect && (
           <button 
             className="flex items-center gap-2 mt-4 px-4 py-2 bg-fail-bg text-fail border border-fail rounded-md font-semibold"
             onClick={onReinspect}
@@ -368,7 +368,15 @@ function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onReinspec
         )}
       </div>
 
-      <PlateViewer previews={res.previews || []} jobId={job.id} />
+      {(job as any).assetsExpiredAt ? (
+        <section className="blk mt-4">
+          <div className="bg-surface-2 p-4 text-center text-ink-2 text-sm border border-line rounded">
+            Assets for this job have expired and were purged on {new Date((job as any).assetsExpiredAt).toLocaleDateString()}. Results and metadata remain for review history.
+          </div>
+        </section>
+      ) : (
+        <PlateViewer previews={res.previews || []} jobId={job.id} />
+      )}
 
       <section className="blk">
         <div className="blkhead">
@@ -420,7 +428,7 @@ function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onReinspec
         Verdicts are the rule engine's alone — no human judgement is folded into this panel. A yellow means the rule cannot decide from the file and wants a person to look. <b>Could not be verified</b> is not a pass: those checks did not happen.
       </div>
       
-      {job.result && (
+      {job.result && onReinspect && (
         <div className="mt-8 pt-4 border-t border-line text-right">
           <button 
             className="flex items-center gap-2 ml-auto px-4 py-1.5 bg-surface-2 hover:bg-line text-ink-2 text-sm rounded-md font-semibold"
@@ -434,7 +442,7 @@ function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onReinspec
   );
 }
 
-function PlateViewer({ previews, jobId }: { previews: any[], jobId: string }) {
+export function PlateViewer({ previews, jobId }: { previews: any[], jobId: string }) {
   const [ab, setAb] = useState<number>(-1);
   const [zoomPct, setZoomPct] = useState<number>(100);
   const [colourPct, setColourPct] = useState<number>(100);

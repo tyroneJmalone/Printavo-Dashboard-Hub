@@ -5,7 +5,7 @@ import { resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { isDeepStrictEqual } from "node:util";
 import { pool } from "@workspace/db";
-import { objectStorageClient, parseObjectPath } from "../objectStorage";
+import { getPrivateObjectDir, objectStorageClient, parseObjectPath } from "../objectStorage";
 import { pythonRoot, parseCsv, toCsv } from "./rules";
 import { logger } from "../logger";
 
@@ -83,7 +83,7 @@ export function runPython(args: string[], dir: string, timeout = 600_000, signal
 }
 let capability: any = { available: false, reason: "Processing capability has not been checked" };
 export function capabilities() {
-  return { ...capability, maxUploadBytes: MAX_BYTES, assistedOnly: true, retention: "No automatic deletion; retention policy pending." };
+  return { ...capability, maxUploadBytes: MAX_BYTES, assistedOnly: true, retention: "Manual jobs are retained. An explicitly admin-started pilot deletes only its owned original copies and plate previews 30 days after its exact 14-day intake ends; metadata and reviews remain." };
 }
 export async function scopedPath(root: string, relative: string) {
   if (!relative || relative.startsWith("/") || relative.includes("\\") || relative.split("/").includes("..")) throw new Error("ASSET_SCOPE");
@@ -91,11 +91,17 @@ export async function scopedPath(root: string, relative: string) {
   if (!path.startsWith(base + sep) || !(await stat(path)).isFile()) throw new Error("ASSET_SCOPE");
   return path;
 }
-export async function processOne(onlyJobId?: string) {
+export async function processOne(onlyJobId?: string, scopeEnvironment = environment) {
   const token = randomUUID();
-  await pool.query("UPDATE printscope_jobs SET state='failed', error=$2, lease_token=NULL WHERE environment=$1 AND state='processing' AND lease_until < now() AND attempts>=3 AND ($3::uuid IS NULL OR id=$3)", [environment, JSON.stringify({ code: "ATTEMPTS_EXHAUSTED", message: "Inspection interrupted repeatedly. Reinspect to try again." }), onlyJobId ?? null]);
+  await pool.query(`UPDATE printscope_jobs j SET state='failed',error=$2,completed_at=now(),lease_token=NULL,lease_until=NULL
+    FROM printscope_pilots p WHERE j.pilot_id=p.id AND j.environment=$1 AND p.environment=$1 AND p.purge_after<=now()
+    AND j.state IN ('queued','processing')`, [scopeEnvironment, JSON.stringify({ code: "PILOT_ASSETS_EXPIRED", message: "Pilot retention period ended before inspection completed." })]);
+  await pool.query("UPDATE printscope_jobs SET state='failed', error=$2, lease_token=NULL WHERE environment=$1 AND state='processing' AND lease_until < now() AND attempts>=3 AND ($3::uuid IS NULL OR id=$3)", [scopeEnvironment, JSON.stringify({ code: "ATTEMPTS_EXHAUSTED", message: "Inspection interrupted repeatedly. Reinspect to try again." }), onlyJobId ?? null]);
   const job = (await pool.query(`UPDATE printscope_jobs SET state='processing',attempts=attempts+1,lease_token=$2,lease_until=now()+interval '90 seconds'
-    WHERE id=(SELECT id FROM printscope_jobs WHERE environment=$1 AND attempts<3 AND ($3::uuid IS NULL OR id=$3) AND (state='queued' OR (state='processing' AND lease_until<now())) ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`, [environment, token, onlyJobId ?? null])).rows[0];
+    WHERE id=(SELECT j.id FROM printscope_jobs j LEFT JOIN printscope_pilots p ON p.id=j.pilot_id
+      WHERE j.environment=$1 AND j.attempts<3 AND ($3::uuid IS NULL OR j.id=$3)
+      AND (p.id IS NULL OR p.purge_after>now()) AND (j.state='queued' OR (j.state='processing' AND j.lease_until<now()))
+      ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1) RETURNING *`, [scopeEnvironment, token, onlyJobId ?? null])).rows[0];
   if (!job) return;
   const dir = await mkdtemp(resolve(tmpdir(), "printscope-"));
   const abort = new AbortController();
@@ -148,7 +154,9 @@ export async function processOne(onlyJobId?: string) {
       plate.src = `/api/printscope/jobs/${job.id}/plates/${assetId}`;
     }
     await assertLease();
-    const completion = await pool.query("UPDATE printscope_jobs SET state='completed',result=$3,assets=$4,completed_at=now(),lease_until=NULL WHERE id=$1 AND lease_token=$2 AND state='processing' AND lease_until>now()", [job.id, token, JSON.stringify(result), JSON.stringify(assets)]);
+    const completion = await pool.query(`UPDATE printscope_jobs j SET state='completed',result=$3,assets=$4,completed_at=now(),lease_until=NULL
+      WHERE j.id=$1 AND j.lease_token=$2 AND j.state='processing' AND j.lease_until>now()
+      AND NOT EXISTS (SELECT 1 FROM printscope_pilots p WHERE p.id=j.pilot_id AND p.purge_after<=now())`, [job.id, token, JSON.stringify(result), JSON.stringify(assets)]);
     if (!completion.rowCount) throw new Error("LEASE_LOST");
     finalized = true;
   } catch (e) {
@@ -175,6 +183,49 @@ export async function processOne(onlyJobId?: string) {
   }
 }
 let started = false, busy = false;
+export type PilotAssetDelete = (path: string, generation: string) => Promise<void>;
+const deletePilotAsset: PilotAssetDelete = async (path, generation) => {
+  await objectFile(path, generation).delete({ ignoreNotFound: true });
+};
+export async function cleanupExpiredPrintscopePilots(batch = 10, remove: PilotAssetDelete = deletePilotAsset, scopeEnvironment = environment) {
+  const pilots = (await pool.query(`SELECT id FROM printscope_pilots WHERE environment=$1 AND purge_after<=now()
+    AND EXISTS (SELECT 1 FROM printscope_jobs WHERE pilot_id=printscope_pilots.id AND assets_expired_at IS NULL)
+    ORDER BY purge_after LIMIT $2`, [scopeEnvironment, batch])).rows;
+  for (const pilot of pilots) {
+    const jobs = (await pool.query("SELECT id,source_path,generation,assets FROM printscope_jobs WHERE environment=$1 AND pilot_id=$2 AND assets_expired_at IS NULL", [scopeEnvironment, pilot.id])).rows;
+    if (!jobs.length) continue;
+    try {
+      const pilotRoot = `${getPrivateObjectDir()}/printscope/${scopeEnvironment}/pilots/${pilot.id}`;
+      const inOriginalScope = (job: any) => !job.source_path || !job.generation || job.source_path.startsWith(`${pilotRoot}/originals/`);
+      const inPlateScope = (job: any, asset: any) => asset?.path && asset?.generation && asset.path.startsWith(`${pilotRoot}/plates/${job.id}/`);
+      if (jobs.some(job => !inOriginalScope(job) || Object.values(job.assets ?? {}).some(asset => !inPlateScope(job, asset)))) {
+        await pool.query("UPDATE printscope_jobs SET cleanup_attempted_at=now(),cleanup_error='OWNERSHIP_SCOPE_VIOLATION' WHERE environment=$1 AND pilot_id=$2 AND assets_expired_at IS NULL", [scopeEnvironment, pilot.id]);
+        logger.warn({ pilotId: pilot.id, jobs: jobs.length }, "PrintScope pilot cleanup blocked by ownership scope");
+        continue;
+      }
+      await pool.query(`UPDATE printscope_jobs SET state='failed',error=$3,completed_at=COALESCE(completed_at,now()),lease_token=NULL,lease_until=NULL,cleanup_attempted_at=now()
+        WHERE environment=$1 AND pilot_id=$2 AND assets_expired_at IS NULL AND state IN ('queued','processing')`, [scopeEnvironment, pilot.id, JSON.stringify({ code: "PILOT_ASSETS_EXPIRED", message: "Pilot retention period ended." })]);
+      for (const job of jobs) for (const asset of Object.values(job.assets ?? {}) as any[]) {
+        if (asset?.path && asset?.generation) await remove(asset.path, asset.generation);
+      }
+      const originals = new Map<string, string>();
+      for (const job of jobs) if (job.source_path && job.generation) originals.set(job.source_path, job.generation);
+      let originalsDeleted = 0, sharedOriginalsPreserved = 0;
+      for (const [path, generation] of originals) {
+        const shared = (await pool.query(`SELECT 1 FROM printscope_jobs j LEFT JOIN printscope_pilots p ON p.id=j.pilot_id
+          WHERE j.source_path=$1 AND j.generation=$2 AND j.pilot_id IS DISTINCT FROM $3
+          AND (j.pilot_id IS NULL OR p.purge_after>now() OR j.assets_expired_at IS NULL) LIMIT 1`, [path, generation, pilot.id])).rowCount;
+        if (shared) sharedOriginalsPreserved++;
+        else { await remove(path, generation); originalsDeleted++; }
+      }
+      await pool.query("UPDATE printscope_jobs SET assets_expired_at=now(),assets=NULL,cleanup_error=NULL,cleanup_attempted_at=now() WHERE environment=$1 AND pilot_id=$2 AND assets_expired_at IS NULL", [scopeEnvironment, pilot.id]);
+      logger.info({ pilotId: pilot.id, jobs: jobs.length, originalsDeleted, sharedOriginalsPreserved }, "PrintScope pilot assets expired");
+    } catch {
+      await pool.query("UPDATE printscope_jobs SET cleanup_attempted_at=now(),cleanup_error='Storage cleanup will retry' WHERE environment=$1 AND pilot_id=$2 AND assets_expired_at IS NULL", [scopeEnvironment, pilot.id]);
+      logger.warn({ pilotId: pilot.id, jobs: jobs.length }, "PrintScope pilot asset cleanup deferred");
+    }
+  }
+}
 export async function probePrintscope() {
   const dir = await mkdtemp(resolve(tmpdir(), "printscope-probe-"));
   try {
@@ -187,6 +238,7 @@ export async function probePrintscope() {
 export async function startPrintscopeWorker() {
   if (started) return; started = true;
   await probePrintscope();
+  setInterval(() => { void cleanupExpiredPrintscopePilots().catch(() => logger.warn("PrintScope pilot cleanup temporarily unavailable")); }, 60_000).unref();
   if (!capability.available) return;
   setInterval(() => {
     if (busy) return; busy = true;
