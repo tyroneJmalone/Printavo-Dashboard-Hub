@@ -58,7 +58,7 @@ async function groupRss(pid: number) {
 export function runPython(args: string[], dir: string, timeout = 600_000, signal?: AbortSignal): Promise<any> {
   return new Promise((ok, fail) => {
     const child = spawn("python3", [resolve(pythonRoot(), "printscope_worker.py"), ...args], { env: childEnvironment(dir), detached: true, stdio: ["ignore", "pipe", "pipe"] });
-    let out = "", bytes = 0, aborted = false, checking = false, closed = false;
+    let out = "", err = "", bytes = 0, aborted = false, checking = false, closed = false;
     const kill = () => { aborted = true; try { process.kill(-child.pid!, "SIGKILL"); } catch {} };
     signal?.addEventListener("abort", kill, { once: true });
     if (signal?.aborted) kill();
@@ -72,16 +72,24 @@ export function runPython(args: string[], dir: string, timeout = 600_000, signal
     }, 1000);
     const cleanup = () => { closed = true; clearTimeout(timer); clearInterval(memory); signal?.removeEventListener("abort", kill); };
     child.stdout.on("data", b => { bytes += b.length; if (bytes > 65536) kill(); else out += b; });
-    child.stderr.on("data", b => { bytes += b.length; if (bytes > 262144) kill(); });
+    child.stderr.on("data", b => { bytes += b.length; if (bytes > 262144) kill(); else err += b; });
     child.on("error", () => { cleanup(); fail(new Error("ENGINE_UNAVAILABLE")); });
     child.on("close", code => {
       cleanup();
-      if (aborted || code !== 0) { fail(new Error(aborted ? "ENGINE_LIMIT" : "ENGINE_FAILED")); return; }
+      if (aborted || code !== 0) { fail(new Error(aborted ? "ENGINE_LIMIT" : classifyEngineFailure(err))); return; }
       try { ok(JSON.parse(out.trim())); } catch { fail(new Error("ENGINE_PROTOCOL")); }
     });
   });
 }
+export function classifyEngineFailure(stderr: string) {
+  if (/ModuleNotFoundError|No module named/i.test(stderr)) return "ENGINE_PYTHON_DEPENDENCY";
+  if (/(?:gs|mutool).*unavailable|No such file or directory.*(?:gs|mutool)/i.test(stderr)) return "ENGINE_RENDERER_DEPENDENCY";
+  if (/renderer capability check failed|renderer did not produce/i.test(stderr)) return "ENGINE_RENDERER_PROBE";
+  return "ENGINE_FAILED";
+}
 let capability: any = { available: false, reason: "Processing capability has not been checked" };
+let lastProbeAt = 0;
+let probeInFlight: Promise<any> | undefined;
 export function capabilities() {
   return { ...capability, maxUploadBytes: MAX_BYTES, assistedOnly: true, retention: "Manual jobs are retained. An explicitly admin-started pilot deletes only its owned original copies and plate previews 30 days after its exact 14-day intake ends; metadata and reviews remain." };
 }
@@ -227,21 +235,45 @@ export async function cleanupExpiredPrintscopePilots(batch = 10, remove: PilotAs
   }
 }
 export async function probePrintscope() {
+  lastProbeAt = Date.now();
   const dir = await mkdtemp(resolve(tmpdir(), "printscope-probe-"));
   try {
     const probe = await runPython(["--probe"], dir, 30000);
-    capability = probe.available === true && !!process.env.PRIVATE_OBJECT_DIR ? { available: true, engineVersion: probe.engineVersion, measureDpi: probe.measureDpi, ghostscript: String(probe.ghostscript), mupdf: String(probe.mupdf) } : { available: false, reason: "Engine dependencies or private storage unavailable" };
-  } catch { capability = { available: false, reason: "Engine dependencies unavailable" }; }
+    capability = probe.available === true && !!process.env.PRIVATE_OBJECT_DIR ? { available: true, engineVersion: probe.engineVersion, measureDpi: probe.measureDpi, ghostscript: String(probe.ghostscript), mupdf: String(probe.mupdf) } : { available: false, reason: process.env.PRIVATE_OBJECT_DIR ? "ENGINE_PROBE_REJECTED" : "PRIVATE_STORAGE_UNAVAILABLE" };
+  } catch (error) {
+    const code = error instanceof Error && /^ENGINE_[A-Z_]+$/.test(error.message) ? error.message : "ENGINE_PROBE_FAILED";
+    capability = { available: false, reason: code };
+  }
   finally { await rm(dir, { recursive: true, force: true }); }
   return capabilities();
+}
+export async function ensurePrintscopeAvailable(retryAfterMs = 60_000) {
+  if (capability.available) return capabilities();
+  // A caller arriving during a probe must await that probe rather than observe
+  // the stale unavailable snapshot merely because lastProbeAt was just updated.
+  if (probeInFlight) return probeInFlight;
+  if (Date.now() - lastProbeAt < retryAfterMs) return capabilities();
+  const prior = capabilities();
+  probeInFlight = probePrintscope().then(next => {
+    if (next.available) logger.info({ engineVersion: next.engineVersion, ghostscript: next.ghostscript, mupdf: next.mupdf }, "PrintScope processing recovered");
+    else logger.warn({ reason: next.reason, reasonChanged: next.reason !== prior.reason }, "PrintScope processing recovery probe failed");
+    return next;
+  }).finally(() => { probeInFlight = undefined; });
+  return probeInFlight;
 }
 export async function startPrintscopeWorker() {
   if (started) return; started = true;
   await probePrintscope();
+  if (capability.available) logger.info({ engineVersion: capability.engineVersion, ghostscript: capability.ghostscript, mupdf: capability.mupdf }, "PrintScope processing available");
+  else logger.warn({ reason: capability.reason }, "PrintScope processing unavailable");
   setInterval(() => { void cleanupExpiredPrintscopePilots().catch(() => logger.warn("PrintScope pilot cleanup temporarily unavailable")); }, 60_000).unref();
-  if (!capability.available) return;
   setInterval(() => {
-    if (busy) return; busy = true;
+    if (busy) return;
+    if (!capability.available) {
+      void ensurePrintscopeAvailable().catch(() => logger.warn({ reason: "ENGINE_PROBE_FAILED" }, "PrintScope processing recovery probe failed"));
+      return;
+    }
+    busy = true;
     void processOne().catch(() => logger.warn("PrintScope queue temporarily unavailable")).finally(() => { busy = false; });
   }, 3000).unref();
 }

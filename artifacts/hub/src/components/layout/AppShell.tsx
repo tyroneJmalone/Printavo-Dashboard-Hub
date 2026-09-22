@@ -122,7 +122,7 @@ const NAV_GROUPS: NavGroup[] = [
     heading: "Production",
     items: [
       { id: "print", label: "Print Queue", href: "/print-queue", icon: Printer, module: "production" },
-      { id: "printscope", label: "PrintScope", href: "/printscope", icon: Scan, module: "printscope" },
+      { id: "printscope", label: "SepScope", href: "/printscope", icon: Scan, module: "printscope" },
       { id: "pqrules", label: "Queue Rules", href: "/print-queue-rules", icon: Zap, module: "production" },
       { id: "autoprint", label: "Auto-Print", href: "/auto-print", icon: Bot, module: "production" },
       { id: "colors", label: "Color Library", icon: Palette, disabled: true },

@@ -50,9 +50,9 @@ function PilotNotStarted({ role }: { role: string }) {
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-8 text-center max-w-lg mx-auto" style={{ height: "calc(100% - 48px)" }}>
-      <h2 className="text-2xl font-bold mb-4">PrintScope Pilot</h2>
+      <h2 className="text-2xl font-bold mb-4">SepScope Pilot</h2>
       <p className="text-ink-2 mb-8">
-        The pilot is a 14-day production data trial. When started, staff can import existing Printavo order artwork to compare against the PrintScope engine.
+        The pilot is a 14-day production data trial. When started, staff can import existing Printavo order artwork to compare against the SepScope engine.
       </p>
       
       {role === "admin" ? (

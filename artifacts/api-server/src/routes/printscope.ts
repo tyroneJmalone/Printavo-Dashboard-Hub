@@ -3,9 +3,9 @@ import { randomUUID, createHash } from "node:crypto";
 import { pool } from "@workspace/db";
 import { CreatePrintscopeUploadBody, ImportPrintscopePilotSourceBody, ReviewPrintscopePilotJobBody, UpdatePrintscopeRulesBody } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireStaff";
-import { getPrivateObjectDir, parseObjectPath } from "../lib/objectStorage";
+import { getPrivateObjectDir, ObjectStorageSigningError, signObjectUploadURL } from "../lib/objectStorage";
 import { activeRules, ruleDto, ruleDefinitions, validateRules, toCsv, versionMatches } from "../lib/printscope/rules";
-import { capabilities, environment, MAX_BYTES, objectFile, safeFilename } from "../lib/printscope/worker";
+import { capabilities, ensurePrintscopeAvailable, environment, MAX_BYTES, objectFile, safeFilename } from "../lib/printscope/worker";
 
 const router = Router();
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -81,7 +81,7 @@ router.use("/printscope", (req, res, next) => {
   if (!req.staff) { res.status(401).json({ error: "Staff session required" }); return; }
   next();
 });
-router.get("/printscope/capabilities", (_req, res) => { res.json(capabilities()); });
+router.get("/printscope/capabilities", async (_req, res) => { res.json(await ensurePrintscopeAvailable()); });
 router.get("/printscope/pilot", async (_req, res) => {
   const p = (await pool.query("SELECT * FROM printscope_pilots WHERE environment=$1", [environment])).rows[0];
   res.json(await pilotSummary(p));
@@ -229,17 +229,27 @@ router.get("/printscope/jobs", async (req, res) => {
   res.json({ jobs: rows.rows.map(jobDto), total });
 });
 router.post("/printscope/uploads", async (req, res) => {
-  if (!capabilities().available) { res.status(503).json({ error: "Processing unavailable" }); return; }
+  const processing = await ensurePrintscopeAvailable();
+  if (!processing.available) {
+    req.log?.warn({ capabilityReason: processing.reason }, "PrintScope upload rejected because processing is unavailable");
+    res.status(503).json({ error: "Processing unavailable", reason: processing.reason });
+    return;
+  }
   const parsed = CreatePrintscopeUploadBody.safeParse(req.body);
   if (!parsed.success || !safeFilename(parsed.data.filename)) { res.status(400).json({ error: "Upload a PDF-compatible .ai filename without path characters (maximum 50 MiB)" }); return; }
   const { filename, byteSize, contentType } = parsed.data;
   if (!["application/pdf", "application/postscript", "application/illustrator", "application/octet-stream", ""].includes(contentType)) { res.status(400).json({ error: "Unsupported content type" }); return; }
   const version = await activeRules(), id = randomUUID();
   const path = `${getPrivateObjectDir()}/printscope/${environment}/staging/${id}`;
-  const { bucketName, objectName } = parseObjectPath(path);
-  const signed = await fetch("http://127.0.0.1:1106/object-storage/signed-object-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ bucket_name: bucketName, object_name: objectName, method: "PUT", expires_at: new Date(Date.now() + 900000).toISOString() }), signal: AbortSignal.timeout(15000) });
-  if (!signed.ok) { res.status(503).json({ error: "Private upload signing unavailable" }); return; }
-  const { signed_url: uploadURL } = await signed.json() as { signed_url: string };
+  let uploadURL: string;
+  try {
+    uploadURL = await signObjectUploadURL(path);
+  } catch (error) {
+    const signing = error instanceof ObjectStorageSigningError ? error : new ObjectStorageSigningError("unreachable");
+    req.log?.warn({ signingKind: signing.kind, signingStatus: signing.status }, "PrintScope signed upload unavailable");
+    res.status(503).json({ error: "Private upload signing unavailable", reason: signing.message });
+    return;
+  }
   const c = await pool.connect();
   try {
     await c.query("BEGIN"); await c.query("SELECT pg_advisory_xact_lock(728420)");
@@ -308,8 +318,9 @@ router.get("/printscope/jobs/:id/plates/:assetId", async (req, res) => {
   res.set({ "Content-Type": asset.kind === "svg" ? "image/svg+xml" : "image/png", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'", "Content-Disposition": "inline" });
   objectFile(asset.path, asset.generation).createReadStream().on("error", () => { if (!res.headersSent) res.sendStatus(502); else res.destroy(); }).pipe(res);
 });
-const safeError: ErrorRequestHandler = (_err, _req, res, _next) => {
-  if (!res.headersSent) res.status(503).json({ error: "PrintScope is temporarily unavailable; please retry later" });
+const safeError: ErrorRequestHandler = (err: any, req, res, _next) => {
+  req.log?.error({ errorType: err?.name ?? "Error", errorCode: err?.code }, "PrintScope request failed");
+  if (!res.headersSent) res.status(503).json({ error: "SepScope is temporarily unavailable; please retry later" });
 };
 router.use(safeError);
 export default router;

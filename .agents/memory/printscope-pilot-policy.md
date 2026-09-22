@@ -1,7 +1,13 @@
 ---
-name: PrintScope pilot policy
+name: SepScope pilot policy
 description: Approved read-only pilot boundaries and retention consent.
 ---
+
+The user renamed PrintScope to SepScope. Keep existing internal identities and stored-asset namespaces compatible when changing the visible name.
+
+**Why:** A branding change does not authorize migrating historical jobs, changing their retention ownership, or breaking existing links.
+
+**How to apply:** Treat older PrintScope references as the same product and preserve its inspection/pilot safeguards.
 
 The pilot is observational: human judgments compare with engine findings; neither is permission for automatic production approval, upstream status changes, or artwork renaming.
 

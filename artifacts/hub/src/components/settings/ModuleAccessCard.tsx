@@ -13,6 +13,10 @@ function apiError(err: unknown): string | undefined {
   return e?.data?.error ?? e?.message;
 }
 
+function visibleModuleLabel(mod: ModuleAccessModule): string {
+  return mod.key === "printscope" ? "SepScope" : mod.label;
+}
+
 /**
  * Module readiness switches (admin-only). OFF = hidden from the sidebar and
  * blocked at the API for managers/staff. Admins always see everything.
@@ -100,7 +104,7 @@ export function ModuleAccessCard() {
                         mod.enabled ? "text-slate-200" : "text-slate-500"
                       }`}
                     >
-                      {mod.label}
+                      {visibleModuleLabel(mod)}
                     </span>
                     <span
                       role="switch"

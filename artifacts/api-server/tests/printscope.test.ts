@@ -5,14 +5,29 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { parseCsv, toCsv, validateRules, ruleDefinitions, pythonRoot, versionMatches } from "../src/lib/printscope/rules";
-import { safeFilename, childEnvironment, scopedPath, validateProtocol, parseProcStat, verifyRuleSnapshot } from "../src/lib/printscope/worker";
+import { safeFilename, childEnvironment, scopedPath, validateProtocol, parseProcStat, verifyRuleSnapshot, classifyEngineFailure } from "../src/lib/printscope/worker";
 import { MODULE_DEFS } from "../src/lib/auth/moduleAccess";
 import printscopeRouter, { rerunValues, jobDto, revisionToken, sourceBindingMatches, sourceEligibilityReasons, sourceMetadataReasons } from "../src/routes/printscope";
 import { requireAdmin } from "../src/middlewares/requireStaff";
+import { ObjectStorageSigningError, signObjectUploadURL } from "../src/lib/objectStorage";
 
 test("filename is display metadata, never a local path", () => {
   for (const name of ["../x.ai", "C:\\x.ai", "a.ai\n", "x.pdf", "/x.ai", ""]) assert.equal(safeFilename(name), false);
   assert.equal(safeFilename("#22251 F.ai"), true);
+});
+test("object upload signing accepts only a successful HTTPS URL and classifies safe failures", async () => {
+  const okFetch = async () => new Response(JSON.stringify({ signed_url: "https://storage.googleapis.com/private/signed" }), { status: 200 });
+  assert.equal(await signObjectUploadURL("/bucket/.private/object", 900, okFetch as typeof fetch), "https://storage.googleapis.com/private/signed");
+  const httpFetch = async () => new Response("credential detail must not escape", { status: 403 });
+  await assert.rejects(
+    signObjectUploadURL("/bucket/.private/object", 900, httpFetch as typeof fetch),
+    (error: any) => error instanceof ObjectStorageSigningError && error.kind === "http" && error.status === 403 && !error.message.includes("credential detail"),
+  );
+  const malformedFetch = async () => new Response(JSON.stringify({ signed_url: "http://unsafe.invalid" }), { status: 200 });
+  await assert.rejects(
+    signObjectUploadURL("/bucket/.private/object", 900, malformedFetch as typeof fetch),
+    (error: any) => error instanceof ObjectStorageSigningError && error.kind === "invalid_response",
+  );
 });
 test("minimal worker environment excludes application secrets", () => {
   process.env.PRINTSCOPE_TEST_SECRET = "not-inherited";
@@ -20,6 +35,12 @@ test("minimal worker environment excludes application secrets", () => {
   assert.equal(env.PRINTSCOPE_TEST_SECRET, undefined);
   assert.equal(env.DATABASE_URL, undefined);
   assert.equal(env.TMPDIR, "/tmp/test");
+});
+test("worker probe failures expose bounded dependency codes, not stderr", () => {
+  assert.equal(classifyEngineFailure("ModuleNotFoundError: No module named 'pikepdf'"), "ENGINE_PYTHON_DEPENDENCY");
+  assert.equal(classifyEngineFailure("printscope worker: gs is unavailable: [Errno 2]"), "ENGINE_RENDERER_DEPENDENCY");
+  assert.equal(classifyEngineFailure("renderer capability check failed: exit 1"), "ENGINE_RENDERER_PROBE");
+  assert.equal(classifyEngineFailure("arbitrary internal detail"), "ENGINE_FAILED");
 });
 test("asset scope rejects traversal and escaped symlinks", async () => {
   const root = await mkdtemp(resolve(tmpdir(), "ps-test-"));

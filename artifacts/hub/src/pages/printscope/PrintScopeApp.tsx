@@ -13,7 +13,10 @@ export default function PrintScopeApp() {
   const { role, enabledModules } = useStaff();
   
   const { data: caps, isLoading, error } = useGetPrintscopeCapabilities({
-    query: { queryKey: getGetPrintscopeCapabilitiesQueryKey() }
+    query: {
+      queryKey: getGetPrintscopeCapabilitiesQueryKey(),
+      refetchInterval: (query) => query.state.data?.available === false ? 15_000 : false,
+    }
   });
 
   if (isLoading) {
@@ -27,7 +30,7 @@ export default function PrintScopeApp() {
   if (error || !caps) {
     return (
       <div className="flex min-h-full items-center justify-center p-8">
-        <div className="text-center text-slate-500">Failed to load PrintScope capabilities.</div>
+        <div className="text-center text-slate-500">Failed to load SepScope capabilities.</div>
       </div>
     );
   }
@@ -35,7 +38,7 @@ export default function PrintScopeApp() {
   return (
     <div className="printscope-app relative h-full">
       <header className="top">
-        <span className="brand"><span className="dot"></span>PrintScope</span>
+        <span className="brand"><span className="dot"></span>SepScope</span>
         <span className="lbl">separation inspection &middot; Mint Printworks</span>
         <div className="flex gap-4 ml-8">
           <Link href="/printscope" className="text-xs font-semibold hover:text-[#0B6E63]">Jobs</Link>

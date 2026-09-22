@@ -1,9 +1,10 @@
-import { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
 import { 
   useListPrintscopeJobs, 
   getListPrintscopeJobsQueryKey,
   useGetPrintscopeJob,
+  getPrintscopeJob,
   getGetPrintscopeJobQueryKey,
   useCreatePrintscopeUpload,
   useCompletePrintscopeUpload,
@@ -12,7 +13,15 @@ import {
   PrintscopeJob
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, UploadCloud, RefreshCw } from "lucide-react";
+import { Loader2, UploadCloud, RefreshCw, X } from "lucide-react";
+import {
+  nextPendingUpload,
+  runUploadAttempt,
+  type UploadItem
+} from "./uploadOrchestration";
+
+const LOCAL_UPLOAD_LIMIT = 50 * 1024 * 1024;
+const MAX_QUEUED_UPLOADS = 20;
 
 export function PrintScopeJobs({ caps }: { caps: PrintscopeCapabilities }) {
   const [location, setLocation] = useLocation();
@@ -53,62 +62,137 @@ export function PrintScopeJobs({ caps }: { caps: PrintscopeCapabilities }) {
 
   // Upload Logic
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingState, setUploadingState] = useState<{status: string, error?: string}>({ status: "idle" });
-  const [retryFile, setRetryFile] = useState<File | null>(null);
+  const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
+  const uploadItemsRef = useRef<UploadItem[]>([]);
+  const processingUploadsRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const createUpload = useCreatePrintscopeUpload();
   const completeUpload = useCompletePrintscopeUpload();
 
-  const handleUpload = async (file: File) => {
-    try {
-      setUploadingState({ status: "reserving" });
-      setRetryFile(file);
-      
-      const { job, uploadURL } = await createUpload.mutateAsync({
-        data: {
-          filename: file.name,
-          byteSize: file.size,
-          contentType: file.type || "application/pdf"
-        }
-      });
-      
-      setLocation(`/printscope?job=${job.id}`);
-      
-      setUploadingState({ status: "uploading" });
-      const putRes = await fetch(uploadURL, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/pdf" },
-        body: file
-      });
-      
-      if (!putRes.ok) {
-        throw new Error("Failed to upload file to storage.");
-      }
-      
-      setUploadingState({ status: "completing" });
-      await completeUpload.mutateAsync({ id: job.id });
-      
-      setUploadingState({ status: "idle" });
+  const replaceUploadItems = useCallback((next: UploadItem[]) => {
+    uploadItemsRef.current = next;
+    setUploadItems(next);
+  }, []);
+
+  const updateUploadItem = useCallback((id: string, patch: Partial<UploadItem>) => {
+    const next = uploadItemsRef.current.map(item => item.id === id ? { ...item, ...patch } : item);
+    replaceUploadItems(next);
+    return next.find(item => item.id === id)!;
+  }, [replaceUploadItems]);
+
+  const uploadOne = useCallback(async (id: string) => {
+    const item = uploadItemsRef.current.find(candidate => candidate.id === id);
+    if (!item) return;
+
+    const result = await runUploadAttempt(item, {
+      reserve: current => createUpload.mutateAsync({
+          data: {
+            filename: current.filename,
+            byteSize: current.byteSize,
+            contentType: current.contentType
+          }
+      }),
+      put: async (uploadURL, current) => {
+        const response = await fetch(uploadURL, {
+          method: "PUT",
+          headers: { "Content-Type": current.contentType },
+          body: current.file
+        });
+        return { ok: response.ok, status: response.status };
+      },
+      getJob: getPrintscopeJob,
+      complete: jobId => completeUpload.mutateAsync({ id: jobId }),
+      onReserved: jobId => setLocation(`/printscope?job=${jobId}`),
+      onUpdate: updated => updateUploadItem(id, updated)
+    });
+
+    if (result.status === "queued" && result.jobId) {
       queryClient.invalidateQueries({ queryKey: getListPrintscopeJobsQueryKey({ limit: 50, offset: pageOffset }) });
-      queryClient.invalidateQueries({ queryKey: getGetPrintscopeJobQueryKey(job.id) });
-    } catch (e: any) {
-      setUploadingState({ status: "error", error: e.message || "Upload failed." });
+      queryClient.invalidateQueries({ queryKey: getGetPrintscopeJobQueryKey(result.jobId) });
     }
-  };
+  }, [completeUpload, createUpload, pageOffset, queryClient, setLocation, updateUploadItem]);
+
+  const processUploads = useCallback(async () => {
+    if (processingUploadsRef.current) return;
+    processingUploadsRef.current = true;
+    try {
+      let next = nextPendingUpload(uploadItemsRef.current);
+      while (next) {
+        await uploadOne(next.id);
+        next = nextPendingUpload(uploadItemsRef.current);
+      }
+    } finally {
+      processingUploadsRef.current = false;
+      if (uploadItemsRef.current.some(item => item.status === "pending")) {
+        void processUploads();
+      }
+    }
+  }, [uploadOne]);
+
+  const addFiles = useCallback((files: File[]) => {
+    const maxBytes = Math.min(caps.maxUploadBytes, LOCAL_UPLOAD_LIMIT);
+    const serverActiveIds = new Set(
+      (jobsData?.jobs ?? [])
+        .filter(job => job.state === "uploading" || job.state === "queued" || job.state === "processing")
+        .map(job => job.id)
+    );
+    const localActiveNotYetCounted = uploadItemsRef.current.filter(item =>
+      (item.status === "pending" || item.status === "reserving" || item.status === "uploading" || item.status === "completing") &&
+      (!item.jobId || !serverActiveIds.has(item.jobId))
+    ).length;
+    let availableSlots = Math.max(
+      0,
+      MAX_QUEUED_UPLOADS - serverActiveIds.size - localActiveNotYetCounted
+    );
+    const additions = files.map((file, index): UploadItem => {
+      const extension = file.name.toLowerCase().split(".").pop();
+      const base = {
+        id: `${Date.now()}-${index}-${file.name}-${file.size}`,
+        filename: file.name,
+        byteSize: file.size,
+        contentType: file.type || "application/pdf",
+        resumeAt: "reserve" as const
+      };
+      if (extension !== "ai") {
+        return { ...base, status: "error", error: "Unsupported filename. SepScope accepts PDF-compatible .ai files only.", retryable: false };
+      }
+      if (file.size > maxBytes) {
+        return { ...base, status: "error", error: `File exceeds the ${Math.floor(maxBytes / 1024 / 1024)} MiB per-file limit.`, retryable: false };
+      }
+      if (availableSlots === 0) {
+        return { ...base, file, status: "error", error: "Only 20 files can be queued at once. Retry this file after the current queue advances.", retryable: true };
+      }
+      availableSlots -= 1;
+      return { ...base, file, status: "pending", retryable: true };
+    });
+    replaceUploadItems([...uploadItemsRef.current, ...additions]);
+    void processUploads();
+  }, [caps.maxUploadBytes, jobsData?.jobs, processUploads, replaceUploadItems]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > caps.maxUploadBytes) {
-        alert(`File is too large. Maximum size is ${Math.round(caps.maxUploadBytes / 1024 / 1024)}MB.`);
-        return;
-      }
-      handleUpload(file);
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    addFiles(Array.from(e.target.files ?? []));
+    e.target.value = "";
   };
+
+  const retryUpload = (id: string) => {
+    const item = uploadItemsRef.current.find(candidate => candidate.id === id);
+    if (!item || item.status !== "error" || !item.retryable) return;
+    updateUploadItem(id, { status: "pending", error: undefined });
+    void processUploads();
+  };
+
+  const retryFailedUploads = () => {
+    replaceUploadItems(uploadItemsRef.current.map(item =>
+      item.status === "error" && item.retryable ? { ...item, status: "pending", error: undefined } : item
+    ));
+    void processUploads();
+  };
+
+  const hasActiveUploads = uploadItems.some(item =>
+    item.status === "pending" || item.status === "reserving" || item.status === "uploading" || item.status === "completing"
+  );
+  const retryableFailures = uploadItems.filter(item => item.status === "error" && item.retryable).length;
 
   const reinspectJob = useReinspectPrintscopeJob();
   const handleReinspect = (id: string) => {
@@ -137,30 +221,88 @@ export function PrintScopeJobs({ caps }: { caps: PrintscopeCapabilities }) {
           <div className="ml-auto flex gap-2">
             <input 
               type="file" 
-              accept=".ai,.pdf" 
+              accept=".ai"
+              multiple
               ref={fileInputRef} 
               className="hidden" 
               onChange={handleFileChange}
             />
-            {uploadingState.status === "error" && retryFile && (
+            {retryableFailures > 0 && (
               <button 
                 className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded border border-red-200"
-                onClick={() => handleUpload(retryFile)}
-                title={uploadingState.error}
+                onClick={retryFailedUploads}
               >
-                Retry {retryFile.name.substring(0, 10)}...
+                Retry failed ({retryableFailures})
               </button>
             )}
             <button 
               className="flex items-center gap-1 text-xs bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-700"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingState.status !== "idle" && uploadingState.status !== "error"}
             >
-              {uploadingState.status !== "idle" && uploadingState.status !== "error" ? <Loader2 size={12} className="animate-spin" /> : <UploadCloud size={12} />}
-              Upload
+              {hasActiveUploads ? <Loader2 size={12} className="animate-spin" /> : <UploadCloud size={12} />}
+              Add files
             </button>
           </div>
         </div>
+
+        <div
+          className={`m-3 rounded-md border-2 border-dashed p-3 text-center text-xs transition-colors ${
+            isDragging ? "border-[#0B6E63] bg-emerald-50 text-[#0B6E63]" : "border-line text-ink-3"
+          }`}
+          onDragEnter={(event) => { event.preventDefault(); setIsDragging(true); }}
+          onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setIsDragging(true); }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            if (!event.currentTarget.contains(event.relatedTarget as Node)) setIsDragging(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setIsDragging(false);
+            addFiles(Array.from(event.dataTransfer.files));
+          }}
+        >
+          <UploadCloud size={18} className="mx-auto mb-1" />
+          Drop PDF-compatible .ai files here
+          <div className="mt-1 text-[10px]">Up to 20 queued files, 50 MiB each. Reloading loses local files that have not finished uploading.</div>
+        </div>
+
+        {uploadItems.length > 0 && (
+          <div className="mx-3 mb-3 max-h-44 overflow-y-auto rounded border border-line bg-surface-2">
+            {uploadItems.map(item => (
+              <div key={item.id} className="flex w-full min-w-0 flex-wrap items-start gap-2 border-b border-line px-2 py-2 text-xs last:border-b-0">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold" title={item.filename}>{item.filename}</div>
+                  <div className={item.status === "error" ? "mt-0.5 text-fail" : "mt-0.5 text-ink-3"}>
+                    {item.status === "error"
+                      ? item.error
+                      : item.status === "queued"
+                      ? item.serverState === "completed"
+                        ? "Uploaded · inspection completed"
+                        : item.serverState === "failed"
+                        ? "Uploaded · inspection failed"
+                        : item.serverState === "processing"
+                        ? "Uploaded · inspection processing"
+                        : "Uploaded · queued for inspection"
+                      : item.status}
+                    {item.jobId && item.status !== "queued" ? ` · job ${item.jobId}` : ""}
+                  </div>
+                </div>
+                {item.status === "error" && item.retryable && (
+                  <button className="font-semibold text-fail hover:underline" onClick={() => retryUpload(item.id)}>Retry</button>
+                )}
+                {(item.status === "queued" || (item.status === "error" && !item.retryable)) && (
+                  <button
+                    aria-label={`Dismiss ${item.filename}`}
+                    className="text-ink-3 hover:text-ink-1"
+                    onClick={() => replaceUploadItems(uploadItemsRef.current.filter(candidate => candidate.id !== item.id))}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         
         <div className="qlist">
           {jobsLoading && <div className="p-4 text-center text-ink-3">Loading...</div>}

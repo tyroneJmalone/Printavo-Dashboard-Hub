@@ -24,6 +24,56 @@ export const objectStorageClient = new Storage({
   projectId: "",
 });
 
+export class ObjectStorageSigningError extends Error {
+  constructor(
+    readonly kind: "http" | "invalid_response" | "unreachable",
+    readonly status?: number,
+  ) {
+    super(`OBJECT_STORAGE_SIGNING_${kind.toUpperCase()}`);
+    this.name = "ObjectStorageSigningError";
+  }
+}
+
+export async function signObjectUploadURL(
+  path: string,
+  ttlSec = 900,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string> {
+  const { bucketName, objectName } = parseObjectPath(path);
+  let response: Response;
+  try {
+    response = await fetchImpl(
+      `${REPLIT_SIDECAR_ENDPOINT}/object-storage/signed-object-url`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bucket_name: bucketName,
+          object_name: objectName,
+          method: "PUT",
+          expires_at: new Date(Date.now() + ttlSec * 1000).toISOString(),
+        }),
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+  } catch {
+    throw new ObjectStorageSigningError("unreachable");
+  }
+  if (!response.ok) {
+    throw new ObjectStorageSigningError("http", response.status);
+  }
+  try {
+    const body = await response.json() as { signed_url?: unknown };
+    if (typeof body.signed_url !== "string" || !body.signed_url.startsWith("https://")) {
+      throw new ObjectStorageSigningError("invalid_response");
+    }
+    return body.signed_url;
+  } catch (error) {
+    if (error instanceof ObjectStorageSigningError) throw error;
+    throw new ObjectStorageSigningError("invalid_response");
+  }
+}
+
 /** Returns e.g. "/replit-objstore-<id>/.private" (no trailing slash). */
 export function getPrivateObjectDir(): string {
   const dir = process.env.PRIVATE_OBJECT_DIR || "";
