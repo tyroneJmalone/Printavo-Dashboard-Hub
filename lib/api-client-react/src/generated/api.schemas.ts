@@ -5,6 +5,97 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface PrintscopeCapabilities {
+  available: boolean;
+  reason?: string;
+  engineVersion?: string;
+  measureDpi?: number;
+  ghostscript?: string;
+  mupdf?: string;
+  maxUploadBytes: number;
+  retention: string;
+  assistedOnly: boolean;
+}
+
+export interface PrintscopeUploadRequest {
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  filename: string;
+  /**
+     * @minimum 1
+     * @maximum 52428800
+     */
+  byteSize: number;
+  contentType: string;
+}
+
+export type PrintscopeJobState = typeof PrintscopeJobState[keyof typeof PrintscopeJobState];
+
+
+export const PrintscopeJobState = {
+  uploading: 'uploading',
+  queued: 'queued',
+  processing: 'processing',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PrintscopeJobResult = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type PrintscopeJobError = { [key: string]: unknown } | null;
+
+export interface PrintscopeJob {
+  id: string;
+  state: PrintscopeJobState;
+  filename: string;
+  byteSize: number;
+  /** @nullable */
+  sha256?: string | null;
+  ruleVersionId: number;
+  submittedBy: string;
+  createdAt: string;
+  /** @nullable */
+  completedAt?: string | null;
+  /** @nullable */
+  parentJobId?: string | null;
+  /** @nullable */
+  result?: PrintscopeJobResult;
+  /** @nullable */
+  error?: PrintscopeJobError;
+}
+
+export interface PrintscopeUpload {
+  job: PrintscopeJob;
+  uploadURL: string;
+}
+
+export interface PrintscopeRuleRow {[key: string]: string}
+
+export interface PrintscopeRulesRequest {
+  expectedVersion: number;
+  rows: PrintscopeRuleRow[];
+}
+
+export type PrintscopeRuleVersionEditable = { [key: string]: unknown };
+
+export interface PrintscopeRuleVersion {
+  id: number;
+  rows: PrintscopeRuleRow[];
+  hash: string;
+  /** @nullable */
+  createdBy?: string | null;
+  createdAt: string;
+  editable: PrintscopeRuleVersionEditable;
+}
+
 export interface ReorderPortalSizeCount {
   /** Raw Printavo size key, e.g. size_2xl */
   size: string;
@@ -7752,6 +7843,23 @@ export type ActivityEndParamParameter = string;
  * Current invoice/quote owner email
  */
 export type ActivityOwnerParamParameter = string;
+
+export type ListPrintscopeJobsParams = {
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListPrintscopeJobs200 = {
+  jobs: PrintscopeJob[];
+  total: number;
+};
 
 export type ListChangeEventsParams = {
 /**

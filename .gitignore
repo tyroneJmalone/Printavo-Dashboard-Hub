@@ -47,3 +47,8 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# PrintScope runtime output is private and stored durably via App Storage.
+artifacts/api-server/python/**/__pycache__/
+artifacts/api-server/python/printscope-engine/queue/
+artifacts/api-server/python/printscope-engine/site/

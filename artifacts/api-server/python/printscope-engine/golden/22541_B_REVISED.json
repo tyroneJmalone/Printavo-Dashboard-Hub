@@ -1,0 +1,400 @@
+{
+  "adjacency": {
+    "10-230-Green 574 C": {
+      "abutting_pct": 34.3,
+      "abutting_px": 5358,
+      "free_edge_px": 10266,
+      "is_white": false,
+      "perimeter_px": 15624
+    },
+    "4-230-Purple 252 C": {
+      "abutting_pct": 12.7,
+      "abutting_px": 1827,
+      "free_edge_px": 12611,
+      "is_white": false,
+      "perimeter_px": 14438
+    },
+    "5-230-Gold 150 C": {
+      "abutting_pct": 33.7,
+      "abutting_px": 8595,
+      "free_edge_px": 16910,
+      "is_white": false,
+      "perimeter_px": 25505
+    },
+    "7-230-Brown 7572 C": {
+      "abutting_pct": 26.8,
+      "abutting_px": 8669,
+      "free_edge_px": 23664,
+      "is_white": false,
+      "perimeter_px": 32333
+    },
+    "9-230-Pink 1777 C": {
+      "abutting_pct": 27.4,
+      "abutting_px": 5412,
+      "free_edge_px": 14336,
+      "is_white": false,
+      "perimeter_px": 19748
+    }
+  },
+  "bytes": 1709784,
+  "completeness": {
+    "cannot_evaluate": 2,
+    "complete": false,
+    "errors": 0,
+    "judged": 23,
+    "not_applicable": 0,
+    "not_implemented": 12,
+    "unverified": [
+      "ARTWORK_IN_REGISTER: gradient blend present - plates deliberately do not align",
+      "NO_EMPTY_PLATES: gradient shading present - plate usage not reliably measurable"
+    ]
+  },
+  "ctx": {
+    "based_inks": [
+      "10-230-Green 574 C",
+      "4-230-Purple 252 C",
+      "5-230-Gold 150 C",
+      "7-230-Brown 7572 C",
+      "9-230-Pink 1777 C"
+    ],
+    "coverage": {
+      "10-230-Green 574 C": {
+        "on_base_px": 140250,
+        "pct": 98.4,
+        "px": 142501
+      },
+      "4-230-Purple 252 C": {
+        "on_base_px": 143750,
+        "pct": 99.5,
+        "px": 144500
+      },
+      "5-230-Gold 150 C": {
+        "on_base_px": 650823,
+        "pct": 99.7,
+        "px": 652803
+      },
+      "7-230-Brown 7572 C": {
+        "on_base_px": 728933,
+        "pct": 99.7,
+        "px": 731102
+      },
+      "9-230-Pink 1777 C": {
+        "on_base_px": 180723,
+        "pct": 98.9,
+        "px": 182689
+      }
+    },
+    "erosion": {
+      "choke_px": 1,
+      "components_after": 757,
+      "components_before": 216,
+      "vanished": 32
+    },
+    "has_underbase": true,
+    "register_pair": [
+      [
+        197.112,
+        61.013,
+        950.788,
+        749.229
+      ],
+      [
+        197.112,
+        61.013,
+        950.788,
+        749.229
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "trap_stroke_count": 52,
+    "trap_strokes": {
+      "0.75|@devicek": 52
+    }
+  },
+  "filename": "#22541 B REVISED OUTPUT.ai",
+  "fixture": "22541 B REVISED",
+  "results": [
+    {
+      "code": "FILE_PDF_COMPATIBLE",
+      "data": {},
+      "headline": "PDF-compatible .ai, parsed without repair",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "EXPECTED_LAYERS_PRESENT",
+      "data": {},
+      "headline": "Guides, Koozie Guides, PASTE ART HERE, Reg Marks & Info",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "ART_PRESENT",
+      "data": {},
+      "headline": "1199 objects across 4 artboard(s)",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "SWATCH_NAME_STRUCTURE",
+      "data": {},
+      "headline": "8 swatch names follow head-mesh-ink",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "MESH_TALLY",
+      "data": {
+        "tally": {
+          "160": 1,
+          "230": 7
+        }
+      },
+      "headline": "160mesh-1, 230mesh-7",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "REGISTRATION_SWATCH_PRESENT",
+      "data": {},
+      "headline": "registration swatch (All) on 4/4 artboard(s)",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "HEAD_NUMBERS_UNIQUE",
+      "data": {},
+      "headline": "8 head positions, all distinct",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "UNDERBASE_MESH_COARSER",
+      "data": {},
+      "headline": "underbase at 160 mesh, coarsest or equal",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "UNDERBASE_ROLE_AGREES",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "UNDERBASE_CHOKE_PER_OBJECT",
+      "data": {},
+      "headline": "all trap at 0.75pt",
+      "severity": "info",
+      "status": "pass"
+    },
+    {
+      "code": "TRAP_TECHNIQUE_CONSISTENT",
+      "data": {},
+      "headline": "technique A \u2014 choke the base (52 zero-ink strokes)",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "ARTWORK_IN_REGISTER",
+      "data": {},
+      "headline": "gradient blend present - plates deliberately do not align",
+      "severity": "fail",
+      "status": "cannot_evaluate"
+    },
+    {
+      "code": "FILL_STROKE_SAME_COLORANT",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "TRAP_AT_NEGATIVE_SPACE",
+      "data": {},
+      "headline": "trapped \u2014 52 strokes",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "UNDERBASE_NO_CHOKE_UNDER_WHITE",
+      "data": {},
+      "headline": "white present (6-230-White) \u2014 base beneath white needs no choke",
+      "severity": "flag",
+      "status": "info"
+    },
+    {
+      "code": "INK_OVERLAP_NOT_TRAP",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "SWATCH_LABEL_MANIFEST",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "OPACITY_VARIATION_PRESENT",
+      "data": {
+        "alphas": [
+          0.25,
+          0.37,
+          0.4,
+          0.45,
+          0.5
+        ],
+        "soft_masks": 1
+      },
+      "headline": "opacity below 100% present",
+      "severity": "flag",
+      "status": "flag"
+    },
+    {
+      "code": "INK_CHANGE_DECLARED",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "info",
+      "status": "not_implemented"
+    },
+    {
+      "code": "TRIM_ARTIFACT_RESIDUE",
+      "data": {},
+      "headline": "no trim residue pattern",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "GRADIENT_BLEND_ACROSS_ARTBOARDS",
+      "data": {
+        "total": 2
+      },
+      "headline": "2 gradient shading operator(s)",
+      "severity": "flag",
+      "status": "flag"
+    },
+    {
+      "code": "UNDERBASE_COVERAGE",
+      "data": {},
+      "headline": "every colour is either fully based or deliberately unbased",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "UNDERBASE_REQUIRED_DARK",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    },
+    {
+      "code": "UNDERBASE_ABSENT_LIGHT",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "SEPARATION_ONLY_ART",
+      "data": {},
+      "headline": "every fill maps to a named separation",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "NO_PROCESS_PLATES",
+      "data": {},
+      "headline": "no stray CMYK plates",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "NO_EMPTY_PLATES",
+      "data": {},
+      "headline": "gradient shading present - plate usage not reliably measurable",
+      "severity": "fail",
+      "status": "cannot_evaluate"
+    },
+    {
+      "code": "ART_TEXT_OUTLINED",
+      "data": {},
+      "headline": "17 text run(s), all in the margin strip",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "MARKS_TEXT_EXPECTED",
+      "data": {},
+      "headline": "5 text run(s) in the marks block",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "IMAGE_MIN_DPI",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "IMAGE_HARD_MIN_DPI",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    },
+    {
+      "code": "IMAGE_NOT_RGB",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    },
+    {
+      "code": "NO_HAIRLINE_STROKES",
+      "data": {},
+      "headline": "no zero-width strokes",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "STROKE_MIN_WIDTH",
+      "data": {},
+      "headline": "no sub-spec strokes",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "PLATE_COUNT_MATCHES_ORDER",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    },
+    {
+      "code": "ARTBOARDS_REGISTERED",
+      "data": {},
+      "headline": "4 artboard(s), all 16.0 x 11.77 in",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "PRINT_SIZE_VS_LOCATION",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    }
+  ],
+  "sha256": "7040cad0d9c5d3b5b43f78f2c8e45847cd5303aaa171ff505c4facf3fd619eeb",
+  "verdict": "flag"
+}

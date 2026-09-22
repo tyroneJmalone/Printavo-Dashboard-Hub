@@ -43,6 +43,139 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /printscope/capabilities:
+    get:
+      operationId: getPrintscopeCapabilities
+      responses:
+        "200":
+          description: Processing capability and retention policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopeCapabilities" }
+  /printscope/uploads:
+    post:
+      operationId: createPrintscopeUpload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrintscopeUploadRequest" }
+      responses:
+        "201":
+          description: Reserved private upload
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopeUpload" }
+  /printscope/jobs:
+    get:
+      operationId: listPrintscopeJobs
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: Newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobs, total]
+                properties:
+                  jobs: { type: array, items: { $ref: "#/components/schemas/PrintscopeJob" } }
+                  total: { type: integer }
+  /printscope/jobs/{id}:
+    get:
+      operationId: getPrintscopeJob
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Inspection including unchanged engine result shape
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopeJob" }
+  /printscope/jobs/{id}/complete:
+    post:
+      operationId: completePrintscopeUpload
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Verified and queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopeJob" }
+  /printscope/jobs/{id}/reinspect:
+    post:
+      operationId: reinspectPrintscopeJob
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "201":
+          description: New immutable inspection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopeJob" }
+  /printscope/jobs/{id}/plates/{assetId}:
+    get:
+      operationId: getPrintscopePlate
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: assetId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Private scoped SVG or PNG
+          content:
+            image/svg+xml:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+  /printscope/rules:
+    get:
+      operationId: getPrintscopeRules
+      responses:
+        "200":
+          description: Active full snapshot and editability
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopeRuleVersion" }
+    put:
+      operationId: updatePrintscopeRules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrintscopeRulesRequest" }
+      responses:
+        "200":
+          description: New version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopeRuleVersion" }
+        "409":
+          description: Expected version is no longer active
+  /printscope/rules/versions:
+    get:
+      operationId: listPrintscopeRuleVersions
+      responses:
+        "200":
+          description: Immutable rule history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PrintscopeRuleVersion" }
+  /printscope/rules/versions/{id}:
+    get:
+      operationId: getPrintscopeRuleVersion
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Historical full snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrintscopeRuleVersion" }
   /healthz:
     get:
       operationId: healthCheck
@@ -7748,6 +7881,67 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    PrintscopeCapabilities:
+      type: object
+      required: [available, maxUploadBytes, retention, assistedOnly]
+      properties:
+        available: { type: boolean }
+        reason: { type: string }
+        engineVersion: { type: string }
+        measureDpi: { type: integer }
+        ghostscript: { type: string }
+        mupdf: { type: string }
+        maxUploadBytes: { type: integer }
+        retention: { type: string }
+        assistedOnly: { type: boolean }
+    PrintscopeUploadRequest:
+      type: object
+      required: [filename, byteSize, contentType]
+      properties:
+        filename: { type: string, minLength: 1, maxLength: 240 }
+        byteSize: { type: integer, minimum: 1, maximum: 52428800 }
+        contentType: { type: string }
+    PrintscopeUpload:
+      type: object
+      required: [job, uploadURL]
+      properties:
+        job: { $ref: "#/components/schemas/PrintscopeJob" }
+        uploadURL: { type: string }
+    PrintscopeJob:
+      type: object
+      required: [id, state, filename, byteSize, ruleVersionId, submittedBy, createdAt]
+      properties:
+        id: { type: string }
+        state: { type: string, enum: [uploading, queued, processing, completed, failed] }
+        filename: { type: string }
+        byteSize: { type: integer }
+        sha256: { type: [string, "null"] }
+        ruleVersionId: { type: integer }
+        submittedBy: { type: string }
+        createdAt: { type: string }
+        completedAt: { type: [string, "null"] }
+        parentJobId: { type: [string, "null"] }
+        result: { type: [object, "null"], additionalProperties: true }
+        error: { type: [object, "null"], additionalProperties: true }
+    PrintscopeRuleRow:
+      type: object
+      additionalProperties: { type: string }
+    PrintscopeRulesRequest:
+      type: object
+      required: [expectedVersion, rows]
+      properties:
+        expectedVersion: { type: integer }
+        rows: { type: array, items: { $ref: "#/components/schemas/PrintscopeRuleRow" } }
+    PrintscopeRuleVersion:
+      type: object
+      required: [id, rows, hash, createdAt, editable]
+      properties:
+        id: { type: integer }
+        rows: { type: array, items: { $ref: "#/components/schemas/PrintscopeRuleRow" } }
+        hash: { type: string }
+        createdBy: { type: [string, "null"] }
+        createdAt: { type: string }
+        editable: { type: object, additionalProperties: true }
     ReorderPortalSizeCount:
       type: object
       required: [size, label, count]

@@ -266,6 +266,8 @@ import type {
   ListMentionsParams,
   ListPqStatusJobsParams,
   ListPrintQueueOrdersParams,
+  ListPrintscopeJobs200,
+  ListPrintscopeJobsParams,
   ListRedemptionsParams,
   ListReorderRequestsParams,
   ListRewardAwardsParams,
@@ -322,6 +324,12 @@ import type {
   PrintavoStatusesResponse,
   PrintavoSyncResult,
   PrintavoTestInput,
+  PrintscopeCapabilities,
+  PrintscopeJob,
+  PrintscopeRuleVersion,
+  PrintscopeRulesRequest,
+  PrintscopeUpload,
+  PrintscopeUploadRequest,
   ProbeResult,
   ProductSearchRequest,
   ProductSearchResult,
@@ -450,6 +458,771 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetPrintscopeCapabilitiesUrl = () => {
+
+
+
+
+  return `/api/printscope/capabilities`
+}
+
+export const getPrintscopeCapabilities = async ( options?: RequestInit): Promise<PrintscopeCapabilities> => {
+
+  return customFetch<PrintscopeCapabilities>(getGetPrintscopeCapabilitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrintscopeCapabilitiesQueryKey = () => {
+    return [
+    `/api/printscope/capabilities`
+    ] as const;
+    }
+
+
+export const getGetPrintscopeCapabilitiesQueryOptions = <TData = Awaited<ReturnType<typeof getPrintscopeCapabilities>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrintscopeCapabilitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrintscopeCapabilities>>> = ({ signal }) => getPrintscopeCapabilities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeCapabilities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrintscopeCapabilitiesQueryResult = NonNullable<Awaited<ReturnType<typeof getPrintscopeCapabilities>>>
+export type GetPrintscopeCapabilitiesQueryError = ErrorType<unknown>
+
+
+
+export function useGetPrintscopeCapabilities<TData = Awaited<ReturnType<typeof getPrintscopeCapabilities>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrintscopeCapabilitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePrintscopeUploadUrl = () => {
+
+
+
+
+  return `/api/printscope/uploads`
+}
+
+export const createPrintscopeUpload = async (printscopeUploadRequest: PrintscopeUploadRequest, options?: RequestInit): Promise<PrintscopeUpload> => {
+
+  return customFetch<PrintscopeUpload>(getCreatePrintscopeUploadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(printscopeUploadRequest)
+  }
+);}
+
+
+
+
+export const getCreatePrintscopeUploadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPrintscopeUpload>>, TError,{data: BodyType<PrintscopeUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPrintscopeUpload>>, TError,{data: BodyType<PrintscopeUploadRequest>}, TContext> => {
+
+const mutationKey = ['createPrintscopeUpload'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPrintscopeUpload>>, {data: BodyType<PrintscopeUploadRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPrintscopeUpload(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePrintscopeUploadMutationResult = NonNullable<Awaited<ReturnType<typeof createPrintscopeUpload>>>
+    export type CreatePrintscopeUploadMutationBody = BodyType<PrintscopeUploadRequest>
+    export type CreatePrintscopeUploadMutationError = ErrorType<unknown>
+
+    export const useCreatePrintscopeUpload = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPrintscopeUpload>>, TError,{data: BodyType<PrintscopeUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPrintscopeUpload>>,
+        TError,
+        {data: BodyType<PrintscopeUploadRequest>},
+        TContext
+      > => {
+      return useMutation(getCreatePrintscopeUploadMutationOptions(options));
+    }
+
+export const getListPrintscopeJobsUrl = (params?: ListPrintscopeJobsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/printscope/jobs?${stringifiedParams}` : `/api/printscope/jobs`
+}
+
+export const listPrintscopeJobs = async (params?: ListPrintscopeJobsParams, options?: RequestInit): Promise<ListPrintscopeJobs200> => {
+
+  return customFetch<ListPrintscopeJobs200>(getListPrintscopeJobsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPrintscopeJobsQueryKey = (params?: ListPrintscopeJobsParams,) => {
+    return [
+    `/api/printscope/jobs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPrintscopeJobsQueryOptions = <TData = Awaited<ReturnType<typeof listPrintscopeJobs>>, TError = ErrorType<unknown>>(params?: ListPrintscopeJobsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopeJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPrintscopeJobsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrintscopeJobs>>> = ({ signal }) => listPrintscopeJobs(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPrintscopeJobs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPrintscopeJobsQueryResult = NonNullable<Awaited<ReturnType<typeof listPrintscopeJobs>>>
+export type ListPrintscopeJobsQueryError = ErrorType<unknown>
+
+
+
+export function useListPrintscopeJobs<TData = Awaited<ReturnType<typeof listPrintscopeJobs>>, TError = ErrorType<unknown>>(
+ params?: ListPrintscopeJobsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopeJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPrintscopeJobsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPrintscopeJobUrl = (id: string,) => {
+
+
+
+
+  return `/api/printscope/jobs/${id}`
+}
+
+export const getPrintscopeJob = async (id: string, options?: RequestInit): Promise<PrintscopeJob> => {
+
+  return customFetch<PrintscopeJob>(getGetPrintscopeJobUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrintscopeJobQueryKey = (id: string,) => {
+    return [
+    `/api/printscope/jobs/${id}`
+    ] as const;
+    }
+
+
+export const getGetPrintscopeJobQueryOptions = <TData = Awaited<ReturnType<typeof getPrintscopeJob>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeJob>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrintscopeJobQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrintscopeJob>>> = ({ signal }) => getPrintscopeJob(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeJob>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrintscopeJobQueryResult = NonNullable<Awaited<ReturnType<typeof getPrintscopeJob>>>
+export type GetPrintscopeJobQueryError = ErrorType<unknown>
+
+
+
+export function useGetPrintscopeJob<TData = Awaited<ReturnType<typeof getPrintscopeJob>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeJob>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrintscopeJobQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCompletePrintscopeUploadUrl = (id: string,) => {
+
+
+
+
+  return `/api/printscope/jobs/${id}/complete`
+}
+
+export const completePrintscopeUpload = async (id: string, options?: RequestInit): Promise<PrintscopeJob> => {
+
+  return customFetch<PrintscopeJob>(getCompletePrintscopeUploadUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCompletePrintscopeUploadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completePrintscopeUpload>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completePrintscopeUpload>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['completePrintscopeUpload'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completePrintscopeUpload>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  completePrintscopeUpload(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompletePrintscopeUploadMutationResult = NonNullable<Awaited<ReturnType<typeof completePrintscopeUpload>>>
+
+    export type CompletePrintscopeUploadMutationError = ErrorType<unknown>
+
+    export const useCompletePrintscopeUpload = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completePrintscopeUpload>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completePrintscopeUpload>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getCompletePrintscopeUploadMutationOptions(options));
+    }
+
+export const getReinspectPrintscopeJobUrl = (id: string,) => {
+
+
+
+
+  return `/api/printscope/jobs/${id}/reinspect`
+}
+
+export const reinspectPrintscopeJob = async (id: string, options?: RequestInit): Promise<PrintscopeJob> => {
+
+  return customFetch<PrintscopeJob>(getReinspectPrintscopeJobUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getReinspectPrintscopeJobMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reinspectPrintscopeJob>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reinspectPrintscopeJob>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['reinspectPrintscopeJob'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reinspectPrintscopeJob>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  reinspectPrintscopeJob(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReinspectPrintscopeJobMutationResult = NonNullable<Awaited<ReturnType<typeof reinspectPrintscopeJob>>>
+
+    export type ReinspectPrintscopeJobMutationError = ErrorType<unknown>
+
+    export const useReinspectPrintscopeJob = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reinspectPrintscopeJob>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reinspectPrintscopeJob>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getReinspectPrintscopeJobMutationOptions(options));
+    }
+
+export const getGetPrintscopePlateUrl = (id: string,
+    assetId: string,) => {
+
+
+
+
+  return `/api/printscope/jobs/${id}/plates/${assetId}`
+}
+
+export const getPrintscopePlate = async (id: string,
+    assetId: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetPrintscopePlateUrl(id,assetId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrintscopePlateQueryKey = (id: string,
+    assetId: string,) => {
+    return [
+    `/api/printscope/jobs/${id}/plates/${assetId}`
+    ] as const;
+    }
+
+
+export const getGetPrintscopePlateQueryOptions = <TData = Awaited<ReturnType<typeof getPrintscopePlate>>, TError = ErrorType<unknown>>(id: string,
+    assetId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopePlate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrintscopePlateQueryKey(id,assetId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrintscopePlate>>> = ({ signal }) => getPrintscopePlate(id,assetId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && assetId !== null && assetId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrintscopePlate>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrintscopePlateQueryResult = NonNullable<Awaited<ReturnType<typeof getPrintscopePlate>>>
+export type GetPrintscopePlateQueryError = ErrorType<unknown>
+
+
+
+export function useGetPrintscopePlate<TData = Awaited<ReturnType<typeof getPrintscopePlate>>, TError = ErrorType<unknown>>(
+ id: string,
+    assetId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopePlate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrintscopePlateQueryOptions(id,assetId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPrintscopeRulesUrl = () => {
+
+
+
+
+  return `/api/printscope/rules`
+}
+
+export const getPrintscopeRules = async ( options?: RequestInit): Promise<PrintscopeRuleVersion> => {
+
+  return customFetch<PrintscopeRuleVersion>(getGetPrintscopeRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrintscopeRulesQueryKey = () => {
+    return [
+    `/api/printscope/rules`
+    ] as const;
+    }
+
+
+export const getGetPrintscopeRulesQueryOptions = <TData = Awaited<ReturnType<typeof getPrintscopeRules>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrintscopeRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrintscopeRules>>> = ({ signal }) => getPrintscopeRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrintscopeRulesQueryResult = NonNullable<Awaited<ReturnType<typeof getPrintscopeRules>>>
+export type GetPrintscopeRulesQueryError = ErrorType<unknown>
+
+
+
+export function useGetPrintscopeRules<TData = Awaited<ReturnType<typeof getPrintscopeRules>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrintscopeRulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePrintscopeRulesUrl = () => {
+
+
+
+
+  return `/api/printscope/rules`
+}
+
+export const updatePrintscopeRules = async (printscopeRulesRequest: PrintscopeRulesRequest, options?: RequestInit): Promise<PrintscopeRuleVersion> => {
+
+  return customFetch<PrintscopeRuleVersion>(getUpdatePrintscopeRulesUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(printscopeRulesRequest)
+  }
+);}
+
+
+
+
+export const getUpdatePrintscopeRulesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePrintscopeRules>>, TError,{data: BodyType<PrintscopeRulesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePrintscopeRules>>, TError,{data: BodyType<PrintscopeRulesRequest>}, TContext> => {
+
+const mutationKey = ['updatePrintscopeRules'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePrintscopeRules>>, {data: BodyType<PrintscopeRulesRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updatePrintscopeRules(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePrintscopeRulesMutationResult = NonNullable<Awaited<ReturnType<typeof updatePrintscopeRules>>>
+    export type UpdatePrintscopeRulesMutationBody = BodyType<PrintscopeRulesRequest>
+    export type UpdatePrintscopeRulesMutationError = ErrorType<void>
+
+    export const useUpdatePrintscopeRules = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePrintscopeRules>>, TError,{data: BodyType<PrintscopeRulesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePrintscopeRules>>,
+        TError,
+        {data: BodyType<PrintscopeRulesRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdatePrintscopeRulesMutationOptions(options));
+    }
+
+export const getListPrintscopeRuleVersionsUrl = () => {
+
+
+
+
+  return `/api/printscope/rules/versions`
+}
+
+export const listPrintscopeRuleVersions = async ( options?: RequestInit): Promise<PrintscopeRuleVersion[]> => {
+
+  return customFetch<PrintscopeRuleVersion[]>(getListPrintscopeRuleVersionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPrintscopeRuleVersionsQueryKey = () => {
+    return [
+    `/api/printscope/rules/versions`
+    ] as const;
+    }
+
+
+export const getListPrintscopeRuleVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listPrintscopeRuleVersions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopeRuleVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPrintscopeRuleVersionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrintscopeRuleVersions>>> = ({ signal }) => listPrintscopeRuleVersions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPrintscopeRuleVersions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPrintscopeRuleVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listPrintscopeRuleVersions>>>
+export type ListPrintscopeRuleVersionsQueryError = ErrorType<unknown>
+
+
+
+export function useListPrintscopeRuleVersions<TData = Awaited<ReturnType<typeof listPrintscopeRuleVersions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPrintscopeRuleVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPrintscopeRuleVersionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPrintscopeRuleVersionUrl = (id: string,) => {
+
+
+
+
+  return `/api/printscope/rules/versions/${id}`
+}
+
+export const getPrintscopeRuleVersion = async (id: string, options?: RequestInit): Promise<PrintscopeRuleVersion> => {
+
+  return customFetch<PrintscopeRuleVersion>(getGetPrintscopeRuleVersionUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrintscopeRuleVersionQueryKey = (id: string,) => {
+    return [
+    `/api/printscope/rules/versions/${id}`
+    ] as const;
+    }
+
+
+export const getGetPrintscopeRuleVersionQueryOptions = <TData = Awaited<ReturnType<typeof getPrintscopeRuleVersion>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeRuleVersion>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrintscopeRuleVersionQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrintscopeRuleVersion>>> = ({ signal }) => getPrintscopeRuleVersion(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeRuleVersion>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrintscopeRuleVersionQueryResult = NonNullable<Awaited<ReturnType<typeof getPrintscopeRuleVersion>>>
+export type GetPrintscopeRuleVersionQueryError = ErrorType<unknown>
+
+
+
+export function useGetPrintscopeRuleVersion<TData = Awaited<ReturnType<typeof getPrintscopeRuleVersion>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintscopeRuleVersion>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrintscopeRuleVersionQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getHealthCheckUrl = () => {
 

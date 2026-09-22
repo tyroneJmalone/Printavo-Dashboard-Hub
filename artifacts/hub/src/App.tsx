@@ -50,6 +50,7 @@ import CollectionDetail from "./pages/CollectionDetail";
 import GarmentPantones from "./pages/GarmentPantones";
 import ChipplyStores from "./pages/ChipplyStores";
 import ChipplyStoreDetail from "./pages/ChipplyStoreDetail";
+import PrintScopeApp from "./pages/printscope/PrintScopeApp";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import VoiceProfiles from "./pages/VoiceProfiles";
 import ReorderRequests from "./pages/ReorderRequests";
@@ -228,6 +229,7 @@ function HubRoutes() {
       <Route path="/status-rules" component={StatusRules} />
       <Route path="/print-queue" component={PrintQueue} />
       <Route path="/print-queue-rules" component={PrintQueueRules} />
+      <Route path="/printscope/*?" component={PrintScopeApp} />
       <Route path="/auto-print" component={AutoPrint} />
       <Route path="/price-calculator" component={PriceCalculator} />
       <Route path="/label-sorter" component={LabelSorter} />

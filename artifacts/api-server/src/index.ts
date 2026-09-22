@@ -1,4 +1,5 @@
 import app from "./app";
+import { startPrintscopeWorker } from "./lib/printscope/worker";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/sync/scheduler";
 import { startFileMirror } from "./lib/sync/fileMirror";
@@ -45,6 +46,7 @@ app.listen(port, (err) => {
     logger.error({ err }, "insights role setup failed"),
   );
   startScheduler(logger);
+  startPrintscopeWorker().catch(() => logger.warn("PrintScope processing unavailable; other modules unaffected"));
   startFileMirror(logger);
   startAutoPrintScheduler(logger);
   startCatalogScheduler(logger);

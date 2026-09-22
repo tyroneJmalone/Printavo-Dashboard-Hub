@@ -1,0 +1,668 @@
+.printscope-app {
+  --paper: #F1F3F2; --surface: #FFFFFF; --surface-2: #E8ECEA;
+  --ink: #14201D; --ink-2: #4A5A55; --ink-3: #7B8C87;
+  --line: #D3DAD7; --line-2: #BDC7C3;
+  --accent: #0B6E63;
+  --pass: #2F7D4F; --pass-bg: #E2F0E7;
+  --flag: #A35A08; --flag-bg: #FBEDDC;
+  --fail: #A82520; --fail-bg: #FAE3E1;
+  --info: #4A5A55; --info-bg: #E8ECEA;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --body: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --disp: "Archivo", "IBM Plex Sans", system-ui, sans-serif;
+}
+
+.dark .printscope-app {
+  --paper: #0E1614; --surface: #16211E; --surface-2: #1E2C28;
+  --ink: #E4EBE8; --ink-2: #A6B5B0; --ink-3: #7A8983;
+  --line: #2A3A35; --line-2: #3A4C46;
+  --accent: #3FB3A3;
+  --pass: #68C18C; --pass-bg: #13291D;
+  --flag: #E0A253; --flag-bg: #2E2213;
+  --fail: #F08279; --fail-bg: #331816;
+  --info: #A6B5B0; --info-bg: #1E2C28;
+}
+
+.printscope-app {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.printscope-app h1, .printscope-app h2, .printscope-app h3 {
+  font-family: var(--disp);
+  font-weight: 700;
+  text-wrap: balance;
+  margin: 0;
+}
+
+.printscope-app .lbl {
+  font-family: var(--disp);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.printscope-app .num {
+  font-variant-numeric: tabular-nums;
+}
+
+.printscope-app code, .printscope-app .mono {
+  font-family: var(--mono);
+  font-size: .86em;
+}
+
+.printscope-app header.top {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 30;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.printscope-app .brand {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -.01em;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.printscope-app .brand .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.printscope-app .legend {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.printscope-app .key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.printscope-app .key i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.printscope-app .wrap {
+  display: grid;
+  grid-template-columns: 288px minmax(0, 1fr);
+  gap: 0;
+  flex-grow: 1;
+}
+
+@media (max-width: 860px) {
+  .printscope-app .wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.printscope-app aside.rail {
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  padding: 14px 0 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 860px) {
+  .printscope-app aside.rail {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 10px;
+  }
+}
+
+.printscope-app .railhead {
+  padding: 0 16px 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.printscope-app .qlist {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 860px) {
+  .printscope-app .qlist {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 0 16px 4px;
+    scroll-snap-type: x mandatory;
+  }
+}
+
+.printscope-app .qitem {
+  display: grid;
+  grid-template-columns: 4px 1fr;
+  gap: 10px;
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line);
+  font: inherit;
+}
+
+@media (max-width: 860px) {
+  .printscope-app .qitem {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    min-width: 210px;
+    scroll-snap-align: start;
+    overflow: hidden;
+  }
+}
+
+.printscope-app .qitem:last-child {
+  border-bottom: 0;
+}
+
+.printscope-app .qitem .stripe {
+  background: var(--line-2);
+}
+
+.printscope-app .qitem[data-v="fail"] .stripe {
+  background: var(--fail);
+}
+
+.printscope-app .qitem[data-v="flag"] .stripe {
+  background: var(--flag);
+}
+
+.printscope-app .qitem[data-v="pass"] .stripe {
+  background: var(--pass);
+}
+
+.printscope-app .qitem .body {
+  padding: 10px 14px 11px 4px;
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .printscope-app .qitem .body {
+    padding: 9px 12px;
+  }
+}
+
+.printscope-app .qitem:hover {
+  background: var(--surface-2);
+}
+
+.printscope-app .qitem[aria-current="true"] {
+  background: var(--surface-2);
+}
+
+.printscope-app .qitem[aria-current="true"] .fn {
+  color: var(--accent);
+}
+
+.printscope-app .fn {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.printscope-app .qmeta {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 3px;
+  display: flex;
+  gap: 8px;
+}
+
+.printscope-app main.detail {
+  padding: 20px 16px 56px;
+  min-width: 0;
+}
+
+@media (min-width: 861px) {
+  .printscope-app main.detail {
+    padding: 24px 28px 72px;
+  }
+}
+
+.printscope-app .banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-left: 5px solid var(--line-2);
+}
+
+.printscope-app .banner[data-v="fail"] {
+  border-left-color: var(--fail);
+  background: var(--fail-bg);
+}
+
+.printscope-app .banner[data-v="flag"] {
+  border-left-color: var(--flag);
+  background: var(--flag-bg);
+}
+
+.printscope-app .banner[data-v="pass"] {
+  border-left-color: var(--pass);
+  background: var(--pass-bg);
+}
+
+.printscope-app .verdict {
+  font-family: var(--disp);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+
+.printscope-app .banner[data-v="fail"] .verdict {
+  color: var(--fail);
+}
+
+.printscope-app .banner[data-v="flag"] .verdict {
+  color: var(--flag);
+}
+
+.printscope-app .banner[data-v="pass"] .verdict {
+  color: var(--pass);
+}
+
+.printscope-app .bmeta {
+  margin-left: auto;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  font-family: var(--mono);
+}
+
+.printscope-app .tally {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.printscope-app .tally b {
+  font-variant-numeric: tabular-nums;
+}
+
+.printscope-app section.blk {
+  margin-top: 22px;
+}
+
+.printscope-app .blkhead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.printscope-app .plate {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.printscope-app .ptools {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.printscope-app .tab {
+  font: inherit;
+  font-size: 12px;
+  font-family: var(--disp);
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.printscope-app .tab[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.printscope-app .zoom {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.printscope-app .zoom input {
+  width: 120px;
+  accent-color: var(--accent);
+}
+
+.printscope-app .swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+
+.printscope-app .abtag {
+  font-family: var(--disp);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 0 2px 0 6px;
+}
+
+.printscope-app .abtag:first-child {
+  padding-left: 0;
+}
+
+.printscope-app .abtag.base {
+  color: var(--accent);
+}
+
+.printscope-app .swsep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0 2px;
+}
+
+.printscope-app .sw {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 11.5px;
+  font-family: var(--mono);
+  padding: 4px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.printscope-app .sw i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.printscope-app .sw[aria-pressed="false"] {
+  opacity: .38;
+  text-decoration: line-through;
+}
+
+.printscope-app .stage {
+  position: relative;
+  overflow: auto;
+  background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px;
+  height: min(60dvh, 540px);
+  touch-action: pan-x pan-y;
+}
+
+@media (max-width: 860px) {
+  .printscope-app .stage {
+    height: min(52dvh, 400px);
+  }
+}
+
+.printscope-app .canvas {
+  position: relative;
+}
+
+.printscope-app .canvas img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+}
+
+.printscope-app .canvas img + img {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.printscope-app .canvas img.px {
+  image-rendering: auto;
+}
+
+.printscope-app .vecnote {
+  font-size: 11px;
+  color: var(--ink-3);
+  padding: 6px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.printscope-app .rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.printscope-app .rule {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.printscope-app .rule:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  .printscope-app .rule {
+    grid-template-columns: 1fr;
+  }
+}
+
+.printscope-app .st {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 13px 8px;
+  font-family: var(--disp);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.printscope-app .st.pass { background: var(--pass-bg); color: var(--pass); }
+.printscope-app .st.flag { background: var(--flag-bg); color: var(--flag); }
+.printscope-app .st.fail { background: var(--fail-bg); color: var(--fail); }
+.printscope-app .st.info { background: var(--info-bg); color: var(--info); }
+.printscope-app .st.not_applicable { background: transparent; color: var(--ink-3); }
+.printscope-app .st.not_implemented { background: transparent; color: var(--ink-3); }
+.printscope-app .st.cannot_evaluate { background: var(--flag-bg); color: var(--flag); }
+.printscope-app .st.error { background: var(--fail-bg); color: var(--fail); }
+
+.printscope-app .gap {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  background: var(--flag-bg);
+  color: var(--flag);
+  border: 1px solid var(--flag);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-basis: 100%;
+}
+
+.printscope-app .gap b {
+  font-family: var(--disp);
+  letter-spacing: .02em;
+}
+
+@media (max-width: 560px) {
+  .printscope-app .st {
+    justify-content: flex-start;
+    padding: 9px 14px 0;
+  }
+}
+
+.printscope-app .rbody {
+  padding: 12px 16px 14px;
+  min-width: 0;
+}
+
+.printscope-app .rname {
+  font-family: var(--disp);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: .01em;
+}
+
+.printscope-app .rcode {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-left: 6px;
+}
+
+.printscope-app .rhead {
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+.printscope-app .rdet {
+  margin: 7px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.printscope-app .rfix {
+  margin-top: 9px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  border-left: 2px solid var(--line-2);
+  padding-left: 10px;
+}
+
+.printscope-app details.fold {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.printscope-app details.fold > summary {
+  cursor: pointer;
+  padding: 11px 16px;
+  font-family: var(--disp);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  list-style: none;
+}
+
+.printscope-app details.fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.printscope-app details.fold > summary::after {
+  content: " +";
+  color: var(--ink-3);
+}
+
+.printscope-app details.fold[open] > summary::after {
+  content: " \2013";
+}
+
+.printscope-app details.fold .rules {
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--line);
+}
+
+.printscope-app .foot {
+  margin-top: 28px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.printscope-app :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .printscope-app * {
+    transition: none !important;
+  }
+}

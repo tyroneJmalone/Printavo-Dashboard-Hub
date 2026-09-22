@@ -1,0 +1,126 @@
+{
+  "based_ink_pct": 85.0,
+  "engine_version": "0.4.1",
+  "fixtures": [
+    {
+      "bytes": 567367,
+      "complete": true,
+      "filename": "#22499 F OUTPUT.ai",
+      "fixture": "22499 F",
+      "golden": "22499_F.json",
+      "sha256": "7dd0e71d45fdb72f3b3e85eb459e507bbdf85f876b057751e1b4de98ada0d95a",
+      "verdict": "pass"
+    },
+    {
+      "bytes": 398750,
+      "complete": true,
+      "filename": "#21825 F1 OUTPUT.ai",
+      "fixture": "21825 F1",
+      "golden": "21825_F1.json",
+      "sha256": "9855132a9bc6342d924ec35e0da056c337f5f8844b5e0860607c61e82ab713d2",
+      "verdict": "fail"
+    },
+    {
+      "bytes": 1518012,
+      "complete": true,
+      "filename": "#22554 F OUTPUT.ai",
+      "fixture": "22554 F",
+      "golden": "22554_F.json",
+      "sha256": "107e567d985913eee8a07d446db334a5393bb76319b6829a01deee320014cb5b",
+      "verdict": "fail"
+    },
+    {
+      "bytes": 1709784,
+      "complete": false,
+      "filename": "#22541 B REVISED OUTPUT.ai",
+      "fixture": "22541 B REVISED",
+      "golden": "22541_B_REVISED.json",
+      "sha256": "7040cad0d9c5d3b5b43f78f2c8e45847cd5303aaa171ff505c4facf3fd619eeb",
+      "verdict": "flag"
+    },
+    {
+      "bytes": 457778,
+      "complete": true,
+      "filename": "#22583 B OUTPUT.ai",
+      "fixture": "22583 B",
+      "golden": "22583_B.json",
+      "sha256": "ce93ae805b63737fee0a2e40fade4e943e189d87cf16dae3b4711eeb33b16895",
+      "verdict": "pass"
+    },
+    {
+      "bytes": 282206,
+      "complete": true,
+      "filename": "#22591 F OUTPUT.ai",
+      "fixture": "22591 F",
+      "golden": "22591_F.json",
+      "sha256": "2c2f37d39f6c718ec9c45f74f164c191c2ca22dc743a110dce28b76f2f3b3aa7",
+      "verdict": "pass"
+    },
+    {
+      "bytes": 1272203,
+      "complete": false,
+      "filename": "#22617 B OUTPUT.ai",
+      "fixture": "22617 B",
+      "golden": "22617_B.json",
+      "sha256": "dc7b9eb56e929111bfe446960cdb93337c8ada15117d778bd7dc80acc8923064",
+      "verdict": "flag"
+    },
+    {
+      "bytes": 649288,
+      "complete": true,
+      "filename": "#11302 B OUTPUT.ai",
+      "fixture": "11302 B",
+      "golden": "11302_B.json",
+      "sha256": "f73602a990e97f1302f45726f117c9e2c476c5a4a657571b77ed9594c5ad2132",
+      "verdict": "pass"
+    },
+    {
+      "bytes": 1104974,
+      "complete": false,
+      "filename": "#22560 B OUTPUT.ai",
+      "fixture": "22560 B",
+      "golden": "22560_B.json",
+      "sha256": "b290a9190ac5f8e3bbf892869f56ca4c705a3756ffb6c809a764911f57540962",
+      "verdict": "fail"
+    },
+    {
+      "bytes": 349805,
+      "complete": true,
+      "filename": "-22906 LC OUTPUT 1.ai",
+      "fixture": "22906 LC OUTPUT 1",
+      "golden": "22906_LC_OUTPUT_1.json",
+      "sha256": "d57b8ece3c1c4c6cc548f07b52a2e0816eb7959639396e591e7fa108b22f7d8e",
+      "verdict": "pass"
+    },
+    {
+      "bytes": 349936,
+      "complete": true,
+      "filename": "-22906 LC OUTPUT 2.ai",
+      "fixture": "22906 LC OUTPUT 2",
+      "golden": "22906_LC_OUTPUT_2.json",
+      "sha256": "b11866fd2c5a31ed862b1ee8d8179ead2027773d9273d31502329172e891feca",
+      "verdict": "pass"
+    },
+    {
+      "bytes": 784768,
+      "complete": true,
+      "filename": "-22717 B OUTPUT.ai",
+      "fixture": "22717 B",
+      "golden": "22717_B.json",
+      "sha256": "3444771941c5c6431ea46ce26c09bb568c649b92e19682a254ba464703dd431e",
+      "verdict": "pass"
+    },
+    {
+      "bytes": 404829,
+      "complete": true,
+      "filename": "-22771 LC OUTPUT.ai",
+      "fixture": "22771 LC",
+      "golden": "22771_LC.json",
+      "sha256": "92fb9326116f89b37a1dc095d673b8248a20dd3aa5ce3cebc54d3a9aa4172bd8",
+      "verdict": "flag"
+    }
+  ],
+  "measure_dpi": 200,
+  "note": "Verdicts below were produced by this engine at these settings. A port should reproduce them exactly. Measurement settings are listed because the trap thresholds are calibrated to them.",
+  "rules_version": "2008d79feed2"
+}

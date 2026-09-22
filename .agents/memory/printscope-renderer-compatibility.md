@@ -14,3 +14,9 @@ Preserve the source SVG root dimensions and units rather than accepting unitless
 **Why:** The consultant identified that the proposed optional-unit regex alone would convert unitless widths into point widths, changing intrinsic scale by 4/3. The consultant also reports a second point-only size parser in preview metadata that disables artwork-centered zoom. These corrections must be validated against the supplied updated engine, not inferred from its release note.
 
 **How to apply:** Check mask composition and preview-size parsing together. Verify consistent base/color alignment and artwork-centered zoom, as well as explicit disclosure of any unchoked fallback. Numerical golden matches alone cannot establish preview correctness.
+
+Use a real browser for SVG choke-mask acceptance; do not substitute an offline SVG rasterizer.
+
+**Why:** The consultant reports that MuPDF and CairoSVG ignore these SVG masks and therefore produce misleading unchoked renders. Chromium displays the masks. Also, portability tests must explicitly construct both dimension formats rather than assuming the native renderer produces `pt`.
+
+**How to apply:** Use the SHA-pinned `-22906 LC OUTPUT 1.ai` fixture for browser inspection. Keep quantitative golden comparisons separate from visual evidence; do not claim a pixel-area reduction from a qualitative screenshot.

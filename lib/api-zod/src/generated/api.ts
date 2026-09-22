@@ -8,6 +8,198 @@
 import * as zod from 'zod';
 
 
+export const GetPrintscopeCapabilitiesResponse = zod.object({
+  "available": zod.boolean(),
+  "reason": zod.string().optional(),
+  "engineVersion": zod.string().optional(),
+  "measureDpi": zod.number().optional(),
+  "ghostscript": zod.string().optional(),
+  "mupdf": zod.string().optional(),
+  "maxUploadBytes": zod.number(),
+  "retention": zod.string(),
+  "assistedOnly": zod.boolean()
+})
+
+
+export const createPrintscopeUploadBodyFilenameMax = 240;
+
+export const createPrintscopeUploadBodyByteSizeMax = 52428800;
+
+
+
+export const CreatePrintscopeUploadBody = zod.object({
+  "filename": zod.string().min(1).max(createPrintscopeUploadBodyFilenameMax),
+  "byteSize": zod.number().min(1).max(createPrintscopeUploadBodyByteSizeMax),
+  "contentType": zod.string()
+})
+
+export const CreatePrintscopeUploadResponse = zod.object({
+  "job": zod.object({
+  "id": zod.string(),
+  "state": zod.enum(['uploading', 'queued', 'processing', 'completed', 'failed']),
+  "filename": zod.string(),
+  "byteSize": zod.number(),
+  "sha256": zod.string().nullish(),
+  "ruleVersionId": zod.number(),
+  "submittedBy": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "parentJobId": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish(),
+  "error": zod.record(zod.string(), zod.unknown()).nullish()
+}),
+  "uploadURL": zod.string()
+})
+
+
+export const listPrintscopeJobsQueryLimitMax = 100;
+
+export const listPrintscopeJobsQueryOffsetMin = 0;
+
+
+
+export const ListPrintscopeJobsQueryParams = zod.object({
+  "limit": zod.coerce.number().min(1).max(listPrintscopeJobsQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(listPrintscopeJobsQueryOffsetMin).optional()
+})
+
+export const ListPrintscopeJobsResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "id": zod.string(),
+  "state": zod.enum(['uploading', 'queued', 'processing', 'completed', 'failed']),
+  "filename": zod.string(),
+  "byteSize": zod.number(),
+  "sha256": zod.string().nullish(),
+  "ruleVersionId": zod.number(),
+  "submittedBy": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "parentJobId": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish(),
+  "error": zod.record(zod.string(), zod.unknown()).nullish()
+})),
+  "total": zod.number()
+})
+
+
+export const GetPrintscopeJobParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetPrintscopeJobResponse = zod.object({
+  "id": zod.string(),
+  "state": zod.enum(['uploading', 'queued', 'processing', 'completed', 'failed']),
+  "filename": zod.string(),
+  "byteSize": zod.number(),
+  "sha256": zod.string().nullish(),
+  "ruleVersionId": zod.number(),
+  "submittedBy": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "parentJobId": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish(),
+  "error": zod.record(zod.string(), zod.unknown()).nullish()
+})
+
+
+export const CompletePrintscopeUploadParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CompletePrintscopeUploadResponse = zod.object({
+  "id": zod.string(),
+  "state": zod.enum(['uploading', 'queued', 'processing', 'completed', 'failed']),
+  "filename": zod.string(),
+  "byteSize": zod.number(),
+  "sha256": zod.string().nullish(),
+  "ruleVersionId": zod.number(),
+  "submittedBy": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "parentJobId": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish(),
+  "error": zod.record(zod.string(), zod.unknown()).nullish()
+})
+
+
+export const ReinspectPrintscopeJobParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ReinspectPrintscopeJobResponse = zod.object({
+  "id": zod.string(),
+  "state": zod.enum(['uploading', 'queued', 'processing', 'completed', 'failed']),
+  "filename": zod.string(),
+  "byteSize": zod.number(),
+  "sha256": zod.string().nullish(),
+  "ruleVersionId": zod.number(),
+  "submittedBy": zod.string(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish(),
+  "parentJobId": zod.string().nullish(),
+  "result": zod.record(zod.string(), zod.unknown()).nullish(),
+  "error": zod.record(zod.string(), zod.unknown()).nullish()
+})
+
+
+export const GetPrintscopePlateParams = zod.object({
+  "id": zod.coerce.string(),
+  "assetId": zod.coerce.string()
+})
+
+export const GetPrintscopePlateResponse = zod.unknown()
+
+
+export const GetPrintscopeRulesResponse = zod.object({
+  "id": zod.number(),
+  "rows": zod.array(zod.record(zod.string(), zod.string())),
+  "hash": zod.string(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "editable": zod.record(zod.string(), zod.unknown())
+})
+
+
+export const UpdatePrintscopeRulesBody = zod.object({
+  "expectedVersion": zod.number(),
+  "rows": zod.array(zod.record(zod.string(), zod.string()))
+})
+
+export const UpdatePrintscopeRulesResponse = zod.object({
+  "id": zod.number(),
+  "rows": zod.array(zod.record(zod.string(), zod.string())),
+  "hash": zod.string(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "editable": zod.record(zod.string(), zod.unknown())
+})
+
+
+export const ListPrintscopeRuleVersionsResponseItem = zod.object({
+  "id": zod.number(),
+  "rows": zod.array(zod.record(zod.string(), zod.string())),
+  "hash": zod.string(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "editable": zod.record(zod.string(), zod.unknown())
+})
+export const ListPrintscopeRuleVersionsResponse = zod.array(ListPrintscopeRuleVersionsResponseItem)
+
+
+export const GetPrintscopeRuleVersionParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetPrintscopeRuleVersionResponse = zod.object({
+  "id": zod.number(),
+  "rows": zod.array(zod.record(zod.string(), zod.string())),
+  "hash": zod.string(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "editable": zod.record(zod.string(), zod.unknown())
+})
+
+
 /**
  * Returns server health status
  * @summary Health check

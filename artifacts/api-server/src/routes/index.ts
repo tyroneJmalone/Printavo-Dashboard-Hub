@@ -46,6 +46,7 @@ import aiBacktestRouter from "./aiBacktest";
 import reorderPublicRouter from "./reorderPublic";
 import reorderRequestsRouter from "./reorderRequests";
 import knowledgeSourcesRouter from "./knowledgeSources";
+import printscopeRouter from "./printscope";
 
 const router: IRouter = Router();
 
@@ -77,6 +78,7 @@ router.use(requireStaff);
 // claimed by admin-enabled modules. Unclaimed paths (/auth, /sync, staff
 // management, email-activity…) fall through to their existing guards.
 router.use(moduleAccessGate);
+router.use(printscopeRouter);
 router.use(authRouter);
 router.use(staffRouter); // admin-only routes — requireAdmin per route inside
 router.use(syncRouter);

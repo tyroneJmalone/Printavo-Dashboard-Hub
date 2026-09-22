@@ -1,0 +1,295 @@
+{
+  "adjacency": {
+    "1-160&10-160-White&Navy 289": {
+      "abutting_pct": 0.0,
+      "abutting_px": 0,
+      "free_edge_px": 29265,
+      "is_white": true,
+      "perimeter_px": 29265
+    }
+  },
+  "bytes": 282206,
+  "completeness": {
+    "cannot_evaluate": 0,
+    "complete": true,
+    "errors": 0,
+    "judged": 21,
+    "not_applicable": 4,
+    "not_implemented": 12,
+    "unverified": []
+  },
+  "ctx": {
+    "has_underbase": false,
+    "trap_stroke_count": 0,
+    "trap_strokes": {}
+  },
+  "filename": "#22591 F OUTPUT.ai",
+  "fixture": "22591 F",
+  "results": [
+    {
+      "code": "FILE_PDF_COMPATIBLE",
+      "data": {},
+      "headline": "PDF-compatible .ai, parsed without repair",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "EXPECTED_LAYERS_PRESENT",
+      "data": {},
+      "headline": "Guides, Koozie Guides, PASTE ART HERE, Reg Marks & Info",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "ART_PRESENT",
+      "data": {},
+      "headline": "16 objects across 1 artboard(s)",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "SWATCH_NAME_STRUCTURE",
+      "data": {},
+      "headline": "1 swatch names follow head-mesh-ink",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "MESH_TALLY",
+      "data": {
+        "tally": {
+          "160": 1
+        }
+      },
+      "headline": "160mesh-1",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "REGISTRATION_SWATCH_PRESENT",
+      "data": {},
+      "headline": "registration swatch (All) on 1/1 artboard(s)",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "HEAD_NUMBERS_UNIQUE",
+      "data": {},
+      "headline": "1 head positions, all distinct",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "UNDERBASE_MESH_COARSER",
+      "data": {},
+      "headline": "no underbase on this file to compare against",
+      "severity": "flag",
+      "status": "not_applicable"
+    },
+    {
+      "code": "UNDERBASE_ROLE_AGREES",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "UNDERBASE_CHOKE_PER_OBJECT",
+      "data": {},
+      "headline": "no trap strokes present",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "TRAP_TECHNIQUE_CONSISTENT",
+      "data": {},
+      "headline": "no trap present",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "ARTWORK_IN_REGISTER",
+      "data": {},
+      "headline": "needs an underbase and at least one based colour",
+      "severity": "fail",
+      "status": "not_applicable"
+    },
+    {
+      "code": "FILL_STROKE_SAME_COLORANT",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "TRAP_AT_NEGATIVE_SPACE",
+      "data": {},
+      "headline": "no underbase, so nothing to trap against",
+      "severity": "fail",
+      "status": "not_applicable"
+    },
+    {
+      "code": "UNDERBASE_NO_CHOKE_UNDER_WHITE",
+      "data": {},
+      "headline": "white present (1-160&10-160-White&Navy 289) \u2014 base beneath white needs no choke",
+      "severity": "flag",
+      "status": "info"
+    },
+    {
+      "code": "INK_OVERLAP_NOT_TRAP",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "SWATCH_LABEL_MANIFEST",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "OPACITY_VARIATION_PRESENT",
+      "data": {},
+      "headline": "all art at 100% opacity",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "INK_CHANGE_DECLARED",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "info",
+      "status": "not_implemented"
+    },
+    {
+      "code": "TRIM_ARTIFACT_RESIDUE",
+      "data": {},
+      "headline": "no trim residue pattern",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "GRADIENT_BLEND_ACROSS_ARTBOARDS",
+      "data": {},
+      "headline": "no gradient shading",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "UNDERBASE_COVERAGE",
+      "data": {},
+      "headline": "no underbase to measure against",
+      "severity": "fail",
+      "status": "not_applicable"
+    },
+    {
+      "code": "UNDERBASE_REQUIRED_DARK",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    },
+    {
+      "code": "UNDERBASE_ABSENT_LIGHT",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "SEPARATION_ONLY_ART",
+      "data": {},
+      "headline": "every fill maps to a named separation",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "NO_PROCESS_PLATES",
+      "data": {},
+      "headline": "no stray CMYK plates",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "NO_EMPTY_PLATES",
+      "data": {},
+      "headline": "every declared separation carries artwork",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "ART_TEXT_OUTLINED",
+      "data": {},
+      "headline": "3 text run(s), all in the margin strip",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "MARKS_TEXT_EXPECTED",
+      "data": {},
+      "headline": "2 text run(s) in the marks block",
+      "severity": "info",
+      "status": "info"
+    },
+    {
+      "code": "IMAGE_MIN_DPI",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "flag",
+      "status": "not_implemented"
+    },
+    {
+      "code": "IMAGE_HARD_MIN_DPI",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    },
+    {
+      "code": "IMAGE_NOT_RGB",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    },
+    {
+      "code": "NO_HAIRLINE_STROKES",
+      "data": {},
+      "headline": "no zero-width strokes",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "STROKE_MIN_WIDTH",
+      "data": {},
+      "headline": "no sub-spec strokes",
+      "severity": "flag",
+      "status": "pass"
+    },
+    {
+      "code": "PLATE_COUNT_MATCHES_ORDER",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    },
+    {
+      "code": "ARTBOARDS_REGISTERED",
+      "data": {},
+      "headline": "1 artboard(s), all 16.0 x 5.1 in",
+      "severity": "fail",
+      "status": "pass"
+    },
+    {
+      "code": "PRINT_SIZE_VS_LOCATION",
+      "data": {},
+      "headline": "no detector for this rule yet",
+      "severity": "fail",
+      "status": "not_implemented"
+    }
+  ],
+  "sha256": "2c2f37d39f6c718ec9c45f74f164c191c2ca22dc743a110dce28b76f2f3b3aa7",
+  "verdict": "pass"
+}

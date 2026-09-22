@@ -1,0 +1,6 @@
+# Verified working versions. Pin these; pikepdf in particular moves its
+# content-stream API between majors.
+pikepdf==10.13.0.post1
+numpy==2.4.4
+scipy==1.17.1
+Pillow==12.2.0

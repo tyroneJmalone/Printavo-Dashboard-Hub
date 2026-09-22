@@ -45,6 +45,7 @@ const MODULE_PAGE_PREFIXES: Record<string, readonly string[]> = {
   customers: ["/customers"],
   purchasing: ["/vendor-orders", "/po-log", "/tracking", "/status-rules"],
   production: ["/print-queue", "/print-queue-rules", "/auto-print"],
+  printscope: ["/printscope"],
   "ai-quotes": ["/ai-quotes"],
   "price-calculator": ["/price-calculator"],
   shipping: ["/rate-estimator", "/label-sorter"],
@@ -121,6 +122,7 @@ const NAV_GROUPS: NavGroup[] = [
     heading: "Production",
     items: [
       { id: "print", label: "Print Queue", href: "/print-queue", icon: Printer, module: "production" },
+      { id: "printscope", label: "PrintScope", href: "/printscope", icon: Scan, module: "printscope" },
       { id: "pqrules", label: "Queue Rules", href: "/print-queue-rules", icon: Zap, module: "production" },
       { id: "autoprint", label: "Auto-Print", href: "/auto-print", icon: Bot, module: "production" },
       { id: "colors", label: "Color Library", icon: Palette, disabled: true },
