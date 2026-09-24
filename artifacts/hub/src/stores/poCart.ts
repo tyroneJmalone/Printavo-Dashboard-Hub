@@ -362,6 +362,7 @@ function withVendor(i: CartItem, vendor: CartVendor): CartItem {
       sku: null,
       inventoryKey: null,
       sizeIndex: null,
+      vendorSize: null,
     })),
   };
 }
@@ -414,6 +415,7 @@ export const usePoCart = create<PoCartState>((set) => ({
                 sku: null,
                 inventoryKey: null,
                 sizeIndex: null,
+                vendorSize: null,
               })),
             }
           : i,
@@ -546,6 +548,29 @@ export const usePoCart = create<PoCartState>((set) => ({
       return { items: code === null ? autoPickWarehouses(items) : items };
     }),
 }));
+
+/**
+ * Clear an earlier vendor resolution only when this response still belongs to
+ * the cart line's current vendor and style. This prevents a rejected lookup
+ * from leaving old prices/SKUs saveable without letting a stale response wipe
+ * newer user work.
+ */
+export function clearVendorResolutionIfCurrent(
+  key: string,
+  vendor: "sanmar" | "ss",
+  requestedStyle: string,
+): boolean {
+  const current = usePoCart.getState().items.find((item) => item.key === key);
+  if (
+    !current ||
+    current.vendor !== vendor ||
+    current.styleNumber !== requestedStyle
+  ) {
+    return false;
+  }
+  usePoCart.getState().setVendor(key, vendor);
+  return true;
+}
 
 const SANMAR_BRANDS = [
   "port & co",

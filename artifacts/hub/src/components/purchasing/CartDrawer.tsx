@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   usePoCart,
+  clearVendorResolutionIfCurrent,
   warehouseOptionsFor,
   type CartItem,
   type CartVendor,
@@ -25,6 +26,8 @@ import {
   fetchMatchedInventory,
 } from "./cartVendorActions";
 import {
+  brandsConflict,
+  canAutomaticallyApplyVendorMatch,
   findReusableColorMatch,
   sanmarPoNumberTooLong,
   suggestedPoNumber,
@@ -62,12 +65,7 @@ function apiError(err: unknown): string | undefined {
 
 /** True when the vendor matched a different brand than Printavo's line item. */
 function brandMismatch(printavoBrand: string | null, vendorBrand: string | null): boolean {
-  if (!printavoBrand || !vendorBrand) return false;
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const a = norm(printavoBrand);
-  const b = norm(vendorBrand);
-  if (!a || !b) return false;
-  return !(a.includes(b) || b.includes(a));
+  return brandsConflict(printavoBrand, vendorBrand);
 }
 
 function itemTotals(item: CartItem): { qty: number; cost: number; costed: boolean } {
@@ -139,6 +137,11 @@ function CartItemCard({
       onSuccess: (res) => {
         onLookupResult(res);
         if (!res.found) {
+          clearVendorResolutionIfCurrent(
+            item.key,
+            res.vendor,
+            res.styleQueried,
+          );
           toast({
             title: `Style ${res.styleQueried} not found at ${VENDOR_LABELS[item.vendor as CartVendor] ?? res.vendor}`,
             description:
@@ -151,8 +154,17 @@ function CartItemCard({
           item.color,
           res.colors.map((c) => c.colorName),
         );
-        if (colorMatch.value) {
+        const canApply =
+          colorMatch.value &&
+          canAutomaticallyApplyVendorMatch(item.brand, res.brand, res.matchType);
+        if (canApply) {
           applyColor(res, colorMatch.value);
+        } else {
+          clearVendorResolutionIfCurrent(
+            item.key,
+            res.vendor,
+            res.styleQueried,
+          );
         }
       },
       onError: (err) => {
@@ -622,21 +634,37 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       };
     }
     setItemLookup(i.key, res);
+    // Validate response freshness before either applying it OR clearing an old
+    // resolution. A late rejected response must not wipe newer user work.
+    const live = usePoCart.getState().items.find((x) => x.key === i.key);
+    if (!live || live.vendor !== vendor || live.styleNumber !== i.styleNumber) {
+      return { priced: false, note: live ? `${i.styleNumber}: changed during pricing — re-run` : null };
+    }
     if (!res.found) {
+      clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
       return { priced: false, note: `${i.styleNumber}: not found at ${VENDOR_LABELS[vendor]}` };
+    }
+    if (brandsConflict(i.brand, res.brand)) {
+      clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
+      return {
+        priced: false,
+        note: `${i.styleNumber}: brand mismatch (${i.brand ?? "Printavo"} vs ${res.brand ?? "vendor"}) — pick manually`,
+      };
+    }
+    if (res.matchType !== "exact") {
+      clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
+      return {
+        priced: false,
+        note: `${i.styleNumber}: closest match (${res.styleName ?? res.styleQueried}) — pick manually`,
+      };
     }
     const colorMatch = findReusableColorMatch(
       i.color,
       res.colors.map((c) => c.colorName),
     );
     if (!colorMatch.value) {
+      clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
       return { priced: false, note: `${i.styleNumber}: pick the vendor color` };
-    }
-    // The lookup can take 15s+ (SanMar SOAP). If the line's vendor or style
-    // changed mid-flight, this result is for the WRONG product — never apply.
-    const live = usePoCart.getState().items.find((x) => x.key === i.key);
-    if (!live || live.vendor !== vendor || live.styleNumber !== i.styleNumber) {
-      return { priced: false, note: live ? `${i.styleNumber}: changed during pricing — re-run` : null };
     }
     applyLookupColor(i.key, res, colorMatch.value);
     let stockFailed = false;
@@ -653,9 +681,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       flags.push(
         `map size${unpriced.length === 1 ? "" : "s"} ${unpriced.map((s) => s.size).join(", ")}`,
       );
-    }
-    if (res.matchType === "closest") {
-      flags.push(`closest match (${res.styleName ?? res.styleQueried}) — double-check`);
     }
     if (colorMatch.kind === "normalized") {
       flags.push(`closest color (${colorMatch.value}) — double-check`);

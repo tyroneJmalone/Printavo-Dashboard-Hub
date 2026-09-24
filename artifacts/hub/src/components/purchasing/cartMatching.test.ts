@@ -1,11 +1,31 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  brandsConflict,
+  canAutomaticallyApplyVendorMatch,
   findReusableColorMatch,
   findUniqueOneSizeOffer,
   sanmarPoNumberTooLong,
   suggestedPoNumber,
 } from "./cartMatching.ts";
+
+test("conflicting known brands block automatic vendor application", () => {
+  assert.equal(brandsConflict("American Apparel", "Threadfast Apparel"), true);
+  assert.equal(brandsConflict("Next Level", "Next Level Apparel"), false);
+  assert.equal(brandsConflict("BELLA + CANVAS", "Bella Canvas"), false);
+  assert.equal(brandsConflict("Corner", "CornerStone"), true);
+  assert.equal(brandsConflict("Apparel", "Threadfast Apparel"), true);
+  assert.equal(brandsConflict("Independent Trading", "Independent Trading Company"), false);
+  assert.equal(brandsConflict(null, "Threadfast Apparel"), false);
+  assert.equal(
+    canAutomaticallyApplyVendorMatch("American Apparel", "American Apparel", "closest"),
+    false,
+  );
+  assert.equal(
+    canAutomaticallyApplyVendorMatch("American Apparel", "American Apparel", "exact"),
+    true,
+  );
+});
 
 test("normalizes SanMar JetBlack but exposes it as an approximate match", () => {
   assert.deepEqual(findReusableColorMatch("Jet Black", ["Navy", "JetBlack"]), {

@@ -292,6 +292,33 @@ function isNextLevelBrand(value: string | null | undefined): boolean {
   return normalized === "next level" || normalized === "next level apparel";
 }
 
+function isAmericanApparelBrand(value: string | null | undefined): boolean {
+  return normText(value ?? "") === "american apparel";
+}
+
+/**
+ * For a Printavo American Apparel 102A line, S&S's only brand-confirmed nearby
+ * catalog result is style 102. S&S also has a literal 102A belonging to
+ * Threadfast, so this candidate is intentionally vendor-, style-, and
+ * brand-bounded. It remains a closest/review-required result: the live catalog
+ * proves both identities, but does not prove the two American Apparel codes are
+ * manufacturer-equivalent.
+ */
+function americanApparel102Candidate(
+  vendor: VendorId,
+  styleTokens: string[],
+  textTokens: string[],
+  hints: VendorLookupHints,
+): string | null {
+  if (vendor !== "ss") return null;
+  if (!styleTokens.some((token) => normStyle(token) === "102a")) return null;
+  if (hints.brandHint && !isAmericanApparelBrand(hints.brandHint)) return null;
+  if (!isAmericanApparelBrand(hints.brandHint) && !isAmericanApparelBrand(textTokens.join(" "))) {
+    return null;
+  }
+  return "102";
+}
+
 function nextLevel6210Candidate(
   vendor: VendorId,
   styleTokens: string[],
@@ -327,6 +354,13 @@ function styleCandidates(
   const explicit = styleTokens.filter((token) => /[a-z]/.test(token));
   const bareNumeric = styleTokens.filter((token) => /^\d+$/.test(token));
   const out: string[] = [...explicit];
+  const americanApparelCandidate = americanApparel102Candidate(
+    vendor,
+    styleTokens,
+    textTokens,
+    hints,
+  );
+  if (americanApparelCandidate) out.push(americanApparelCandidate);
   const nextLevelCandidate = nextLevel6210Candidate(vendor, styleTokens, textTokens, hints);
   if (nextLevelCandidate) out.push(nextLevelCandidate);
   if (textTokens.length > 0) {
@@ -567,11 +601,20 @@ async function lookupSS(
   const client = getSSClient();
   const { styleTokens, textTokens } = parseQuery(style);
   const candidates = styleCandidates("ss", styleTokens, textTokens, hints);
+  const americanApparelCandidate = americanApparel102Candidate(
+    "ss",
+    styleTokens,
+    textTokens,
+    hints,
+  );
   // S&S's search handles free text reasonably well, but if the combined
   // query returns nothing ("port company pc54"-style input), retry with
   // the style-number candidates — digit tokens first, then initials+digits
   // combos ("sport tek 350" → "350", "st350").
-  let styles = await client.searchStyles(style);
+  // Do not query literal 102A first for a confirmed American Apparel line:
+  // that identifier belongs to Threadfast in S&S and a non-empty response
+  // would otherwise prevent candidate fallback to American Apparel 102.
+  let styles = await client.searchStyles(americanApparelCandidate ?? style);
   if (styles.length === 0) {
     for (const t of candidates.slice(0, MAX_CANDIDATE_TRIES)) {
       if (normText(t) === normText(style)) continue;
@@ -632,6 +675,7 @@ async function lookupSS(
     (!hints.brandHint || hintMatchesBrand(hints.brandHint, chosen.brandName));
   const exact =
     !viaStripped &&
+    !americanApparelCandidate &&
     (literalStyleMatch ||
       (candidates.includes(normText(chosen.styleName)) &&
         textTokensMatch(textTokens, chosen.brandName, chosen.title) &&

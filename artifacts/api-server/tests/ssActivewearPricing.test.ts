@@ -431,3 +431,76 @@ test("Next Level NL6210 resolves to S&S 6210 while conflicting brands stay close
   );
   assert.ok(searched.length <= 5, "conflicting-brand fallback remains bounded");
 });
+
+test("American Apparel 102A surfaces S&S style 102 as review-required, never equivalent", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalAccount = process.env.SS_ACCOUNT_NUMBER;
+  const originalKey = process.env.SS_API_KEY;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalAccount === undefined) delete process.env.SS_ACCOUNT_NUMBER;
+    else process.env.SS_ACCOUNT_NUMBER = originalAccount;
+    if (originalKey === undefined) delete process.env.SS_API_KEY;
+    else process.env.SS_API_KEY = originalKey;
+  });
+  process.env.SS_ACCOUNT_NUMBER = credentials.accountNumber;
+  process.env.SS_API_KEY = credentials.apiKey;
+
+  const searched: string[] = [];
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname.includes("/styles/")) {
+      const term = url.searchParams.get("search") ?? "";
+      searched.push(term);
+      const result =
+        term === "102"
+          ? [{
+              styleID: 11184,
+              styleName: "102",
+              brandName: "American Apparel",
+              title: "Women's Fine Jersey Mid-Length Boxy Tee",
+              styleImage: null,
+            }]
+          : term === "102A"
+            ? [{
+                styleID: 13996,
+                styleName: "102A",
+                brandName: "Threadfast Apparel",
+                title: "Unisex Triblend T-Shirt",
+                styleImage: null,
+              }]
+            : [];
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify([{
+      sku: "AA102-BLACK-M",
+      colorName: "Black",
+      sizeName: "M",
+      piecePrice: 4.75,
+      salePrice: null,
+      customerPrice: null,
+      saleExpiration: null,
+      qty: 20,
+      warehouses: [],
+    }]), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  const corrected = await vendorLookup("ss", "102A", { brandHint: "American Apparel" });
+  assert.equal(corrected.styleName, "102");
+  assert.equal(corrected.brand, "American Apparel");
+  assert.equal(
+    corrected.matchType,
+    "closest",
+    "brand plus a stripped/changed suffix is not evidence of manufacturer equivalence",
+  );
+  assert.deepEqual(searched, ["102"], "confirmed alias must bypass Threadfast's literal 102A");
+
+  const threadfast = await vendorLookup("ss", "102A", { brandHint: "Threadfast Apparel" });
+  assert.equal(threadfast.styleName, "102A");
+  assert.equal(threadfast.brand, "Threadfast Apparel");
+  assert.equal(threadfast.matchType, "exact");
+  assert.deepEqual(searched, ["102", "102A"], "conflicting brand must retain the literal style");
+});

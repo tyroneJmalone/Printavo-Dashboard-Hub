@@ -2,6 +2,52 @@ export type ColorMatch =
   | { kind: "exact" | "normalized"; value: string }
   | { kind: "ambiguous" | "none"; value: null };
 
+function normalizedBrand(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+const NON_IDENTIFYING_BRAND_WORDS = new Set(["apparel", "company", "co", "inc", "llc", "the"]);
+
+function isOnlyNonIdentifyingBrandWords(value: string): boolean {
+  const words = value.split(" ").filter(Boolean);
+  return words.length > 0 && words.every((word) => NON_IDENTIFYING_BRAND_WORDS.has(word));
+}
+
+/** A known conflict blocks automatic pricing/inventory application. Empty brand
+ * data remains reviewable rather than being treated as proof of a conflict. */
+export function brandsConflict(
+  printavoBrand: string | null,
+  vendorBrand: string | null,
+): boolean {
+  if (!printavoBrand || !vendorBrand) return false;
+  const expected = normalizedBrand(printavoBrand);
+  const actual = normalizedBrand(vendorBrand);
+  if (!expected || !actual) return false;
+  if (expected === actual) return false;
+  // Generic words cannot affirm identity ("Apparel" is not enough to accept
+  // Threadfast Apparel). Otherwise use whole-phrase boundaries, matching the
+  // backend's brand-hint rule without substring false positives.
+  if (isOnlyNonIdentifyingBrandWords(expected) || isOnlyNonIdentifyingBrandWords(actual)) {
+    return true;
+  }
+  const paddedExpected = ` ${expected} `;
+  const paddedActual = ` ${actual} `;
+  return !(
+    paddedExpected.includes(` ${actual} `) ||
+    paddedActual.includes(` ${expected} `)
+  );
+}
+
+/** Closest style matches are suggestions for manual review, not permission to
+ * put vendor prices/SKUs/inventory onto a cart line automatically. */
+export function canAutomaticallyApplyVendorMatch(
+  printavoBrand: string | null,
+  vendorBrand: string | null,
+  matchType: "exact" | "closest" | "none",
+): boolean {
+  return matchType === "exact" && !brandsConflict(printavoBrand, vendorBrand);
+}
+
 function normalizedColor(value: string): string {
   return value.trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g, "");
 }

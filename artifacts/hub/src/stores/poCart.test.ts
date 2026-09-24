@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   autoPickWarehouses,
+  clearVendorResolutionIfCurrent,
   usePoCart,
   warehouseOptionsFor,
   type CartItem,
@@ -105,6 +106,82 @@ test("vendor pricing snapshots generic quantity as the exact unique one-size SKU
     sizeIndex: 8,
     vendorSize: "ONE SIZE FITS MOST",
   });
+});
+
+test("resetting the same vendor clears old resolved pricing, identity, and inventory", () => {
+  usePoCart.setState({
+    items: [item({
+      vendor: "ss",
+      resolved: true,
+      vendorCatalogColor: "Black",
+      vendorStyleId: "13996",
+      vendorStyleNumber: "102A",
+      inventory: inventory([{ code: "MA", qty: 20 }]),
+      warehouseCode: "MA",
+      warehouseName: "MA",
+      warehouseManual: true,
+      sizes: [{
+        size: "M",
+        qty: 4,
+        unitCost: 6.25,
+        sku: "THREADFAST-102A-BLACK-M",
+        inventoryKey: "old-key",
+        sizeIndex: 2,
+        vendorSize: "M",
+      }],
+    })],
+  });
+
+  usePoCart.getState().setVendor("line-1", "ss");
+  const reset = usePoCart.getState().items[0];
+  assert.equal(reset.resolved, false);
+  assert.equal(reset.vendorCatalogColor, null);
+  assert.equal(reset.vendorStyleId, null);
+  assert.equal(reset.vendorStyleNumber, null);
+  assert.equal(reset.inventory, null);
+  assert.equal(reset.warehouseCode, null);
+  assert.deepEqual(reset.sizes[0], {
+    size: "M",
+    qty: 4,
+    unitCost: null,
+    sku: null,
+    inventoryKey: null,
+    sizeIndex: null,
+    vendorSize: null,
+  });
+});
+
+test("a stale rejected lookup cannot clear newer vendor or style work", () => {
+  const newer = item({
+    styleNumber: "102",
+    vendor: "ss",
+    resolved: true,
+    vendorStyleId: "11184",
+    vendorStyleNumber: "102",
+    vendorCatalogColor: "Black",
+    sizes: [{
+      size: "M",
+      qty: 4,
+      unitCost: 4.75,
+      sku: "AA102-BLACK-M",
+      inventoryKey: null,
+      sizeIndex: null,
+      vendorSize: "M",
+    }],
+  });
+  usePoCart.setState({ items: [newer] });
+
+  assert.equal(
+    clearVendorResolutionIfCurrent("line-1", "ss", "102A"),
+    false,
+  );
+  assert.deepEqual(usePoCart.getState().items[0], newer);
+
+  assert.equal(
+    clearVendorResolutionIfCurrent("line-1", "sanmar", "102"),
+    false,
+  );
+  assert.deepEqual(usePoCart.getState().items[0], newer);
 });
 
 test("real S&S SP08 OTHER row keeps exact ONE SIZE SKU and exposes live warehouses", () => {

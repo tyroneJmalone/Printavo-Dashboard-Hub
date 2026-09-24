@@ -39,3 +39,11 @@ SanMar sometimes returns 4XL/5XL rows under a SEPARATE, abbreviated `catalogColo
 - Users misremember style numbers ("bella 3000" for the BC3001 jersey tee). Bare-number fallback hitting a DIFFERENT brand (SanMar "3000" = Gildan Light Cotton Tee) is fine ONLY because the closest-match warning fires when typed brand words don't match the result.
 - CONFIRMED from SanMar integration guides (v16.10 + v18.8 PDFs, incl. PromoStandards option): NO keyword/free-text search exists in any SanMar API. Only: exact style(+color/size), full brand dump (getProductInfoByBrand, Bella+Canvas in list since ~v18), full category dump, and monthly-bulk/daily-delta full-catalog CSV dropped on SanMar's FTP (SanMarPDD folder; columns incl. PRODUCT_TITLE, PRODUCT_DESCRIPTION, KEYWORDS, BRAND_NAME, STYLE#). Keyword search must be built LOCALLY from a mirrored catalog (Postgres) — that's SanMar's intended integration pattern. Bulk limited to 1/month, delta 1/day.
 - Exact-vs-closest labeling: match remaining query words against brand+title with WHOLE-WORD comparison only; substring matching lets "co" match "cotton" and suppresses the double-check warning.
+
+## Evidence required for new style aliases
+
+**Rule:** Finding a same-brand catalog product after removing a suffix does not establish manufacturer equivalence. Keep it review-required unless the user or an authoritative source confirms the alias.
+
+**Why:** A live catalog check can prove both products exist without proving they are the same garment. Treating that as alias verification would turn an uncertain alternative into an automatically orderable product.
+
+**How to apply:** When investigating future mismatches, distinguish verified catalog identity from verified equivalence before marking a nonliteral match exact.
