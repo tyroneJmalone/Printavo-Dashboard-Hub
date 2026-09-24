@@ -220,6 +220,14 @@ function normText(s: string): string {
     .trim();
 }
 
+/** Style identity is case-insensitive and punctuation-insensitive. Vendor
+ * responses commonly uppercase codes, while Printavo may store them lowercase
+ * or with separators. This is deliberately stricter than normText: style
+ * identity compares one alphanumeric code, not prose words. */
+function normStyle(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
 /**
  * Split a search query into style-number candidates (tokens containing a
  * digit, e.g. "pc54", "3001", "5000") and plain words (brand/description,
@@ -273,22 +281,29 @@ const BRAND_PREFIXES: ReadonlyArray<readonly [alias: string, prefix: string]> = 
 
 /**
  * Style-number candidates derived from the query, in priority order:
- * known brand-prefix + digits ("bella 3000" → "bc3000" — highest
- * confidence), then the digit-bearing tokens as typed, then generic
+ * explicit alphanumeric style tokens exactly as typed (highest confidence),
+ * then known brand-prefix + bare digits ("bella 3000" → "bc3000"), then bare
+ * numeric tokens, then generic
  * brand-initials + digits combos ("sport tek 350" → "st350" — vendor
  * style codes are often brand initials prefixed to the number).
  */
 function styleCandidates(styleTokens: string[], textTokens: string[]): string[] {
-  const out: string[] = [];
+  // Never spend the limited retry budget on a synthesized candidate before
+  // trying an explicit alphanumeric code Printavo supplied. Bare numeric
+  // tokens are different: brand-prefix candidates must precede them because
+  // "bella 3001" means BC3001 at SanMar, while bare 3001 can be another brand.
+  const explicit = styleTokens.filter((token) => /[a-z]/.test(token));
+  const bareNumeric = styleTokens.filter((token) => /^\d+$/.test(token));
+  const out: string[] = [...explicit];
   if (textTokens.length > 0) {
     const joined = ` ${textTokens.join(" ")} `;
     for (const [alias, prefix] of BRAND_PREFIXES) {
       if (!joined.includes(` ${alias} `)) continue;
       // Only prefix bare numbers — "pc54" already carries its prefix.
-      for (const t of styleTokens) if (/^\d+$/.test(t)) out.push(prefix + t);
+      for (const t of bareNumeric) out.push(prefix + t);
     }
   }
-  out.push(...styleTokens);
+  out.push(...bareNumeric);
   if (textTokens.length > 0) {
     const initials = textTokens.map((t) => t[0]).join("");
     for (const t of styleTokens) {
@@ -300,6 +315,32 @@ function styleCandidates(styleTokens: string[], textTokens: string[]): string[] 
     }
   }
   return Array.from(new Set(out));
+}
+
+function entriesMatchStyle(entries: SanMarProductEntry[], attemptedStyle: string): boolean {
+  const attempted = normStyle(attemptedStyle);
+  return attempted.length > 0 && entries.some((entry) => normStyle(entry.style) === attempted);
+}
+
+function filterEntriesToStyle(
+  entries: SanMarProductEntry[],
+  attemptedStyle: string,
+): SanMarProductEntry[] {
+  const attempted = normStyle(attemptedStyle);
+  return entries.filter((entry) => normStyle(entry.style) === attempted);
+}
+
+function hintMatchesBrand(brandHint: string | null | undefined, brand: string | null): boolean {
+  const hint = normText(brandHint ?? "");
+  const actual = normText(brand ?? "");
+  if (!hint) return true;
+  if (!actual) return false;
+  const paddedHint = ` ${hint} `;
+  const paddedActual = ` ${actual} `;
+  // Phrase-boundary containment supports useful variants such as
+  // "Independent Trading" vs "Independent Trading Company" without letting
+  // vague fragments such as "co" or "corner" match "cotton"/"cornerstone".
+  return paddedHint.includes(` ${actual} `) || paddedActual.includes(` ${hint} `);
 }
 
 /**
@@ -320,21 +361,36 @@ function strippedStyleCandidates(styleTokens: string[]): string[] {
   return Array.from(new Set(out)).filter((t) => !styleTokens.includes(t));
 }
 
-async function lookupSanMar(query: string): Promise<VendorLookupResult> {
+async function lookupSanMar(
+  query: string,
+  hints: VendorLookupHints,
+): Promise<VendorLookupResult> {
   const client = getSanMarClient();
   const { styleTokens, textTokens } = parseQuery(query);
+  const candidates = styleCandidates(styleTokens, textTokens);
   // Direct lookup first — the common case is a bare style number. If SanMar
   // doesn't recognize the whole query, retry the style-number candidates
   // ("port company pc54" → "PC54"; "sport tek 350" → "350" then "ST350" —
   // SanMar SOAP has no keyword search, so initials+digits combos are the only
   // way partial queries can land). SOAP is slow, so cap the retries.
   let entries = await client.getProductInfo(query);
+  // ProductInfo is expected to be exact, but never trust a non-empty fuzzy or
+  // changed vendor response as the requested product. A wrong style must not
+  // become a priced cart line merely because it was the first response.
+  const directCandidate = candidates.find((candidate) => normStyle(candidate) === normStyle(query));
+  if (directCandidate && entriesMatchStyle(entries, directCandidate)) {
+    entries = filterEntriesToStyle(entries, directCandidate);
+  } else if (entries.length > 0 && styleTokens.length > 0) {
+    entries = [];
+  }
   let viaFullQuery = entries.length > 0;
   let viaStripped = false;
   if (entries.length === 0) {
-    for (const t of styleCandidates(styleTokens, textTokens).slice(0, MAX_CANDIDATE_TRIES)) {
+    for (const t of candidates.slice(0, MAX_CANDIDATE_TRIES)) {
       if (normText(t) === normText(query)) continue; // same as the direct try
-      entries = await client.getProductInfo(t.toUpperCase());
+      const response = await client.getProductInfo(t.toUpperCase());
+      if (!entriesMatchStyle(response, t)) continue;
+      entries = filterEntriesToStyle(response, t);
       if (entries.length > 0) break;
     }
   }
@@ -342,8 +398,9 @@ async function lookupSanMar(query: string): Promise<VendorLookupResult> {
     // Last resort: suffix-stripped numbers ("7610N" → "7610"). Always
     // reported as closest — never exact — so the double-check cue fires.
     for (const t of strippedStyleCandidates(styleTokens).slice(0, MAX_CANDIDATE_TRIES)) {
-      entries = await client.getProductInfo(t.toUpperCase());
-      if (entries.length > 0) {
+      const response = await client.getProductInfo(t.toUpperCase());
+      if (entriesMatchStyle(response, t)) {
+        entries = filterEntriesToStyle(response, t);
         viaStripped = true;
         break;
       }
@@ -359,8 +416,11 @@ async function lookupSanMar(query: string): Promise<VendorLookupResult> {
   const exact =
     entries.length > 0 &&
     !viaStripped &&
-    (viaFullQuery ||
-      textTokensMatch(textTokens, first?.brandName ?? null, first?.productTitle ?? null));
+    candidates.includes(normStyle(first?.style ?? "")) &&
+    (hints.brandHint
+      ? hintMatchesBrand(hints.brandHint, first?.brandName ?? null)
+      : viaFullQuery ||
+        textTokensMatch(textTokens, first?.brandName ?? null, first?.productTitle ?? null));
   return {
     found: entries.length > 0,
     matchType: entries.length === 0 ? "none" : exact ? "exact" : "closest",
@@ -571,9 +631,7 @@ export async function vendorLookup(
   hints: VendorLookupHints = {},
 ): Promise<VendorLookupResult> {
   const hintKey =
-    vendor === "ss"
-      ? `:${normText(hints.brandHint ?? "")}:${normText(hints.descriptionHint ?? "")}`
-      : "";
+    `:${normText(hints.brandHint ?? "")}:${normText(hints.descriptionHint ?? "")}`;
   const key = `${vendor}:${style.trim().toUpperCase()}${hintKey}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
@@ -581,7 +639,7 @@ export async function vendorLookup(
   }
   const result =
     vendor === "sanmar"
-      ? await lookupSanMar(style.trim())
+      ? await lookupSanMar(style.trim(), hints)
       : await lookupSSWithinBudget(style.trim(), hints);
   cache.set(key, { at: Date.now(), result });
   return result;

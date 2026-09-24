@@ -538,6 +538,7 @@ function CartItemCard({
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const items = usePoCart((s) => s.items);
   const removeItem = usePoCart((s) => s.removeItem);
+  const clearCart = usePoCart((s) => s.clear);
   const setVendorAll = usePoCart((s) => s.setVendorAll);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -578,6 +579,25 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         for (const k of changed) delete next[k];
         return next;
       });
+  }
+
+  function handleEmptyCart() {
+    if (items.length === 0 || bulk !== null || saving) return;
+    if (
+      !window.confirm(
+        "Empty this unsaved cart? This only removes the current cart items and does not delete any saved POs.",
+      )
+    ) {
+      return;
+    }
+    // Cart state and all drawer-only state must be cleared together. In
+    // particular, stale lookup results must not be available if another line
+    // with the same key is added later.
+    clearCart();
+    setLookupResults({});
+    setPoNumbers({});
+    setTargets({});
+    setNotes("");
   }
 
   /** Price one line: lookup → auto-apply an exact or unique high-confidence
@@ -904,6 +924,15 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 <Search size={12} />
               )}
               {bulk ? `Pricing ${bulk.done}/${bulk.total}…` : "Get pricing — all items"}
+            </button>
+            <button
+              type="button"
+              onClick={handleEmptyCart}
+              disabled={bulk !== null || saving}
+              className="flex items-center justify-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded bg-slate-800 border border-slate-600 text-red-300 hover:bg-red-950/50 hover:border-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 size={12} />
+              Empty Cart
             </button>
           </div>
         )}
