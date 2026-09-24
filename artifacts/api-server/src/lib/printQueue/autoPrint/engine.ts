@@ -35,6 +35,9 @@ import {
   conditionalAutoPrintDestination,
   successfulPostPrintCandidates,
 } from "./routing";
+import { withRendererStartupGuard } from "./rendererStartupGuard";
+
+export { PDF_RENDERER_STARTUP_ERROR_PREFIX } from "./rendererStartupGuard";
 
 /**
  * Auto-print engine (PQ3a). One run at a time (in-memory claim slot,
@@ -455,6 +458,7 @@ async function runAutoPrint(
       }
       return row;
     });
+    counts.candidates = orderRows.length;
 
     /* 5 — line-item decoration classification for mapping */
     const lineItemRows = ids.length
@@ -534,95 +538,123 @@ async function runAutoPrint(
       outcome: "printed" | "failed" | "dry_run";
     }[] = [];
     if (todo.length > 0) {
-      const renderer = await openPdfRenderer();
-      try {
-        let first = true;
-        for (const c of todo) {
-          if (!first) await sleep(INTER_ORDER_DELAY_MS);
-          first = false;
-          const base = {
-            runId,
-            printavoOrderId: c.orderId,
-            visualId: String(c.visualId),
-            nickname: c.nickname,
-            docType: "workorder",
-            sourceStatusId: c.statusId,
-            sourceStatusName: c.statusName,
-            targetStatusId: c.targetStatusId,
-            targetStatusName: c.targetStatusName,
-            printerId: config.printerId,
-            printerName: config.printerName,
-            copies: config.copies,
-            isReprint: false,
-          };
-          try {
-            if (!c.workorderUrl) {
-              throw new Error("No workorder URL on this order");
-            }
-            const pdf = await renderer.renderUrl(c.workorderUrl);
-            if (dryRun) {
-              counts.dryRun += 1;
-              printOutcomes.push({ candidate: c, outcome: "dry_run" });
-              await db.insert(pqPrintJobsTable).values({
-                ...base,
-                status: "dry_run",
-              });
-            } else {
-              if (!c.statusId) {
-                throw new Error(
-                  "Source status is missing; PrintNode submission refused",
-                );
-              }
-              const observedStatus = await fetchLiveOrderStatus(
-                c.orderKind,
-                c.orderId,
-              );
-              const safety = checkPrintSafety({
-                dryRun,
-                observedStatus,
-                expected: {
-                  orderId: c.orderId,
-                  visualId: c.visualId,
-                  sourceStatusId: c.statusId,
-                },
-              });
-              if (!safety.allowed) {
-                throw new Error(safety.reason ?? "Live print safety check failed");
-              }
-              const jobId = await submitPdfPrintJob({
-                printerId: Number(config.printerId),
-                title: `Workorder #${c.visualId}${c.nickname ? ` — ${c.nickname}` : ""}`,
-                pdfBase64: pdf.toString("base64"),
-                copies: config.copies,
-                source: "Printavo Hub auto-print",
-              });
-              counts.printed += 1;
-              printOutcomes.push({ candidate: c, outcome: "printed" });
-              await db.insert(pqPrintJobsTable).values({
-                ...base,
-                status: "printed",
-                printnodeJobId: String(jobId),
-                printedAt: new Date(),
-              });
-            }
-          } catch (err) {
-            counts.failed += 1;
-            printOutcomes.push({ candidate: c, outcome: "failed" });
-            await db.insert(pqPrintJobsTable).values({
-              ...base,
+      await withRendererStartupGuard(
+        todo,
+        openPdfRenderer,
+        async (pending, errorMessage) => {
+          await db.insert(pqPrintJobsTable).values(
+            pending.map((c) => ({
+              runId,
+              printavoOrderId: c.orderId,
+              visualId: String(c.visualId),
+              nickname: c.nickname,
+              docType: "workorder",
+              sourceStatusId: c.statusId,
+              sourceStatusName: c.statusName,
+              targetStatusId: c.targetStatusId,
+              targetStatusName: c.targetStatusName,
+              printerId: config.printerId,
+              printerName: config.printerName,
+              copies: config.copies,
+              isReprint: false,
               status: "failed",
-              errorMessage: err instanceof Error ? err.message : String(err),
-            });
-            log.warn(
-              { err, orderId: c.orderId, visualId: c.visualId },
-              "Auto-print: order failed",
-            );
+              errorMessage,
+            })),
+          );
+          counts.failed += pending.length;
+          await persistSummary(runId, {
+            summary: { ...summary, counts, error: errorMessage },
+          });
+        },
+        async (renderer, pending) => {
+          let first = true;
+          for (const c of pending) {
+            if (!first) await sleep(INTER_ORDER_DELAY_MS);
+            first = false;
+            const base = {
+              runId,
+              printavoOrderId: c.orderId,
+              visualId: String(c.visualId),
+              nickname: c.nickname,
+              docType: "workorder",
+              sourceStatusId: c.statusId,
+              sourceStatusName: c.statusName,
+              targetStatusId: c.targetStatusId,
+              targetStatusName: c.targetStatusName,
+              printerId: config.printerId,
+              printerName: config.printerName,
+              copies: config.copies,
+              isReprint: false,
+            };
+            try {
+              if (!c.workorderUrl) {
+                throw new Error("No workorder URL on this order");
+              }
+              const pdf = await renderer.renderUrl(c.workorderUrl);
+              if (dryRun) {
+                counts.dryRun += 1;
+                printOutcomes.push({ candidate: c, outcome: "dry_run" });
+                await db.insert(pqPrintJobsTable).values({
+                  ...base,
+                  status: "dry_run",
+                });
+              } else {
+                if (!c.statusId) {
+                  throw new Error(
+                    "Source status is missing; PrintNode submission refused",
+                  );
+                }
+                const observedStatus = await fetchLiveOrderStatus(
+                  c.orderKind,
+                  c.orderId,
+                );
+                const safety = checkPrintSafety({
+                  dryRun,
+                  observedStatus,
+                  expected: {
+                    orderId: c.orderId,
+                    visualId: c.visualId,
+                    sourceStatusId: c.statusId,
+                  },
+                });
+                if (!safety.allowed) {
+                  throw new Error(
+                    safety.reason ?? "Live print safety check failed",
+                  );
+                }
+                const jobId = await submitPdfPrintJob({
+                  printerId: Number(config.printerId),
+                  title: `Workorder #${c.visualId}${c.nickname ? ` — ${c.nickname}` : ""}`,
+                  pdfBase64: pdf.toString("base64"),
+                  copies: config.copies,
+                  source: "Printavo Hub auto-print",
+                });
+                counts.printed += 1;
+                printOutcomes.push({ candidate: c, outcome: "printed" });
+                await db.insert(pqPrintJobsTable).values({
+                  ...base,
+                  status: "printed",
+                  printnodeJobId: String(jobId),
+                  printedAt: new Date(),
+                });
+              }
+            } catch (err) {
+              counts.failed += 1;
+              printOutcomes.push({ candidate: c, outcome: "failed" });
+              await db.insert(pqPrintJobsTable).values({
+                ...base,
+                status: "failed",
+                errorMessage: err instanceof Error ? err.message : String(err),
+              });
+              log.warn(
+                { err, orderId: c.orderId, visualId: c.visualId },
+                "Auto-print: order failed",
+              );
+            }
+            await persistSummary(runId, { summary: { ...summary, counts } });
           }
-          await persistSummary(runId, { summary: { ...summary, counts } });
-        }
-      } finally {
-        await renderer.close();
-      }
+        },
+      );
     }
 
     /* 8 — post-print status advance via the ONE Printavo write path */

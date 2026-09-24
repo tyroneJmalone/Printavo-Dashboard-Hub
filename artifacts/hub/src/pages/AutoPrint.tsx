@@ -1041,6 +1041,11 @@ function RunPanel() {
           <p className="text-[12px] text-slate-400 mt-0.5">
             Test run simulates without printing. Print now uses your live settings.
           </p>
+          <p className="text-[12px] text-slate-400 mt-1">
+            If PDF startup fails, affected documents appear as failed in history.
+            After recovery, Print now checks current eligibility again and skips
+            previously printed orders; it does not replay a frozen batch.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button

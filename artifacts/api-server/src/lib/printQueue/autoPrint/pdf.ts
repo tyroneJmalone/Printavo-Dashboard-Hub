@@ -1,6 +1,11 @@
 import { execSync } from "node:child_process";
 import puppeteer, { type Browser } from "puppeteer-core";
+import { logger } from "../../logger";
 import { isAllowedWorkorderUrl } from "../workorderHtml";
+import {
+  closeBrowserBounded,
+  launchBrowserWithRecovery,
+} from "./browserLaunch";
 
 /**
  * Workorder PDF rendering via headless Chromium (PQ3a spike-verified:
@@ -34,15 +39,41 @@ export interface PdfRenderer {
 }
 
 export async function openPdfRenderer(): Promise<PdfRenderer> {
-  const browser: Browser = await puppeteer.launch({
-    executablePath: chromiumPath(),
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-    ],
+  const executablePath = chromiumPath();
+  const browser: Browser = await launchBrowserWithRecovery({
+    logger,
+    launch: async ({ signal, timeoutMs }) => {
+      let launched: Browser | undefined;
+      try {
+        launched = await puppeteer.launch({
+          executablePath,
+          headless: true,
+          // Pipe avoids the DevTools WebSocket URL-on-stdout handshake that
+          // has timed out in production.
+          pipe: true,
+          timeout: timeoutMs,
+          // Keep protocol work aligned with the existing page timeout; the
+          // startup watchdog below is independently capped at 30 seconds.
+          protocolTimeout: PAGE_TIMEOUT_MS,
+          waitForInitialPage: false,
+          signal,
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+          ],
+        });
+        // With pipe transport there is no stdout readiness handshake. A small
+        // CDP command proves Chromium is responsive; the recovery helper's
+        // AbortSignal/watchdog bounds this startup probe.
+        await launched.version();
+        return launched;
+      } catch (error) {
+        if (launched) await closeBrowserBounded(launched);
+        throw error;
+      }
+    },
   });
 
   return {
@@ -85,7 +116,7 @@ export async function openPdfRenderer(): Promise<PdfRenderer> {
       }
     },
     async close(): Promise<void> {
-      await browser.close().catch(() => undefined);
+      await closeBrowserBounded(browser);
     },
   };
 }
