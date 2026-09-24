@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   findReusableColorMatch,
   findUniqueOneSizeOffer,
+  sanmarPoNumberTooLong,
   suggestedPoNumber,
 } from "./cartMatching.ts";
 
@@ -74,7 +75,7 @@ test("does not treat blank/default Printavo size labels as generic quantity", ()
   assert.equal(findUniqueOneSizeOffer("Other", [offer]), null);
 });
 
-test("generates deterministic distinct invoice suffixes and preserves zeroes", () => {
+test("generates contiguous deterministic invoice suffixes and preserves zeroes", () => {
   assert.equal(
     suggestedPoNumber([
       { printavoOrderId: "b", visualId: 12007 },
@@ -82,6 +83,12 @@ test("generates deterministic distinct invoice suffixes and preserves zeroes", (
       { printavoOrderId: "b", visualId: 12007 },
       { printavoOrderId: "c", visualId: 1010 },
     ]),
-    "042-010-007",
+    "042010007",
   );
+});
+
+test("SanMar PO number validation accepts 12 characters and rejects more", () => {
+  assert.equal(sanmarPoNumberTooLong("001002003004"), false);
+  assert.equal(sanmarPoNumberTooLong("001002003004005"), true);
+  assert.equal(sanmarPoNumberTooLong(" MANUAL123456 "), false);
 });

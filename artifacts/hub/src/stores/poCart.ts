@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { findUniqueOneSizeOffer } from "@/components/purchasing/cartMatching";
+import { sortWarehousePreference, warehouseGeographicName } from "./warehouseProximity";
 
 /**
  * Client-only PO cart (never persisted server-side — a PO row is only
@@ -182,7 +183,7 @@ function fullCoverageCodes(item: CartItem): Set<string> {
 
 /**
  * The single warehouse (if any) that fully covers EVERY line in the group,
- * preferring the one with the deepest total stock across the group.
+ * preferring proximity to Concord, NH, then deepest total stock.
  */
 function bestCommonCode(group: CartItem[]): string | null {
   let common: Set<string> | null = null;
@@ -192,19 +193,15 @@ function bestCommonCode(group: CartItem[]): string | null {
     if (common.size === 0) return null;
   }
   if (!common || common.size === 0) return null;
-  let best: string | null = null;
-  let bestQty = -1;
+  const candidates: { code: string; totalQty: number }[] = [];
   for (const code of common) {
-    let qty = 0;
+    let totalQty = 0;
     for (const item of group) {
-      qty += warehouseOptionsFor(item).find((o) => o.code === code)?.totalQty ?? 0;
+      totalQty += warehouseOptionsFor(item).find((o) => o.code === code)?.totalQty ?? 0;
     }
-    if (qty > bestQty) {
-      bestQty = qty;
-      best = code;
-    }
+    candidates.push({ code, totalQty });
   }
-  return best;
+  return sortWarehousePreference(group[0]?.vendor ?? null, candidates)[0]?.code ?? null;
 }
 
 /**
@@ -212,8 +209,9 @@ function bestCommonCode(group: CartItem[]): string | null {
  * Hierarchy per Printavo order within a vendor:
  *   (a) one warehouse that covers ALL of the order's lines,
  *   (b) else one per style+color group,
- *   (c) else per line — best coverage, deepest stock.
- * Ties break toward the warehouse with the most total stock.
+ *   (c) else per line — best coverage, NH proximity, deepest stock.
+ * Proximity applies only among full-coverage choices with known locations.
+ * Unknown/ambiguous locations retain the stock-depth fallback.
  */
 export function autoPickWarehouses(items: CartItem[]): CartItem[] {
   const picks = new Map<string, { code: string; name: string } | null>();
@@ -231,7 +229,11 @@ export function autoPickWarehouses(items: CartItem[]): CartItem[] {
     byVendorOrder.set(gk, g);
   }
   const nameFor = (item: CartItem, code: string): string =>
-    warehouseOptionsFor(item).find((o) => o.code === code)?.name ?? code;
+    warehouseGeographicName(
+      item.vendor,
+      code,
+      warehouseOptionsFor(item).find((o) => o.code === code)?.name ?? code,
+    );
 
   for (const group of byVendorOrder.values()) {
     const withInv = group.filter(
@@ -262,8 +264,20 @@ export function autoPickWarehouses(items: CartItem[]): CartItem[] {
         continue;
       }
       for (const i of sub) {
-        const best = warehouseOptionsFor(i)[0];
-        picks.set(i.key, best ? { code: best.code, name: best.name } : null);
+        const options = warehouseOptionsFor(i);
+        const full = options.filter((option) => option.short.length === 0);
+        const best =
+          sortWarehousePreference(i.vendor, full)[0] ??
+          options[0];
+        picks.set(
+          i.key,
+          best
+            ? {
+                code: best.code,
+                name: warehouseGeographicName(i.vendor, best.code, best.name),
+              }
+            : null,
+        );
       }
     }
   }

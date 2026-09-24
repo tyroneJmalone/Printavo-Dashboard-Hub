@@ -1,6 +1,7 @@
 - [Canonical plan & status report](plan-status-report.md) — Tyler's status PDF is exports/printavo-hub-plan-status.html (styled sheet); update it in place, never create a new-format doc.
 - [Vendor submit runs off the snapshot](vendor-submit-snapshot.md) — any per-line field needed at SanMar/S&S submit time must persist end-to-end, not cart-only.
 - [Purchasing color matching](purchasing-color-matching.md) — PO matching must preserve merchandise identity; palette-family similarity is not permission to order a substitute.
+- [Purchasing warehouse proximity](purchasing-warehouse-proximity.md) — coverage/consolidation first, then NH-relative proximity; regional estimates are not carrier transit guarantees.
 - [Printavo non-nullable field bugs](printavo-non-nullable-bugs.md) — deleted records null "non-nullable" fields; list queries lose ALL data (re-query without field), single-object queries salvage partial.
 - [moMINTum shared live DB rules](momintum-shared-db.md) — email-only identity, never write members.clerk_user_id from hub, JIT-create needs advisory lock (raced once in prod).
 - [SanMar SOAP envelope ordering](sanmar-soap-envelope.md) — strict WSDL sequence order + creds in arg1 or the PO service NPEs; verify via getPreSubmitInfo (no order placed).

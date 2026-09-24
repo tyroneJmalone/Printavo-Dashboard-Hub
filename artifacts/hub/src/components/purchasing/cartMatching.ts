@@ -192,5 +192,11 @@ export function suggestedPoNumber(
   return [...distinct.entries()]
     .sort(([idA, visualA], [idB, visualB]) => visualA - visualB || idA.localeCompare(idB))
     .map(([, visualId]) => String(Math.max(0, Math.trunc(visualId))).padStart(3, "0").slice(-3))
-    .join("-");
+    .join("");
+}
+
+export const SANMAR_PO_NUMBER_MAX_LENGTH = 12;
+
+export function sanmarPoNumberTooLong(poNumber: string): boolean {
+  return poNumber.trim().length > SANMAR_PO_NUMBER_MAX_LENGTH;
 }

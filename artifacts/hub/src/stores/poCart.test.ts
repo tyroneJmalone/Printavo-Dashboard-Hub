@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { usePoCart, type CartItem } from "./poCart.ts";
+import { autoPickWarehouses, usePoCart, type CartItem, type SizeInventory } from "./poCart.ts";
 
 function item(overrides: Partial<CartItem> = {}): CartItem {
   return {
@@ -31,6 +31,28 @@ function item(overrides: Partial<CartItem> = {}): CartItem {
     warehouseManual: false,
     ...overrides,
   };
+}
+
+function inventory(
+  warehouses: Array<{ code: string; name?: string; qty: number }>,
+): SizeInventory[] {
+  return [{
+    size: "M",
+    found: true,
+    warehouses: warehouses.map((w) => ({
+      code: w.code,
+      name: w.name ?? w.code,
+      qty: w.qty,
+      capped: false,
+    })),
+  }];
+}
+
+function stockedItem(overrides: Partial<CartItem> = {}): CartItem {
+  return item({
+    sizes: [{ ...item().sizes[0], size: "M", qty: 10, vendorSize: "M" }],
+    ...overrides,
+  });
 }
 
 test("vendor pricing snapshots generic quantity as the exact unique one-size SKU", () => {
@@ -103,4 +125,124 @@ test("fresh inventory preserves a valid manual warehouse and drops a vanished on
   }]);
   assert.equal(usePoCart.getState().items[0].warehouseCode, "WH2");
   assert.equal(usePoCart.getState().items[0].warehouseManual, false);
+});
+
+test("nearer SanMar full coverage beats deeper far stock", () => {
+  const [picked] = autoPickWarehouses([stockedItem({
+    inventory: inventory([
+      { code: "5", name: "Robbinsville, NJ", qty: 12 },
+      { code: "4", name: "Reno, NV", qty: 900 },
+    ]),
+  })]);
+  assert.equal(picked.warehouseCode, "5");
+});
+
+test("nearer S&S full coverage beats deeper far stock", () => {
+  const [picked] = autoPickWarehouses([stockedItem({
+    vendor: "ss",
+    inventory: inventory([
+      { code: "NJ", name: "Robbinsville, NJ", qty: 11 },
+      { code: "NV", name: "Reno, NV", qty: 800 },
+    ]),
+  })]);
+  assert.equal(picked.warehouseCode, "NJ");
+  assert.equal(picked.warehouseName, "Robbinsville, NJ");
+});
+
+test("S&S NJ beats full-coverage IL and TX regional warehouses", () => {
+  const [picked] = autoPickWarehouses([stockedItem({
+    vendor: "ss",
+    inventory: inventory([
+      { code: "NJ", qty: 11 },
+      { code: "IL", qty: 700 },
+      { code: "TX", qty: 900 },
+    ]),
+  })]);
+  assert.equal(picked.warehouseCode, "NJ");
+});
+
+test("S&S Massachusetts region beats NJ when both fully cover the line", () => {
+  const [picked] = autoPickWarehouses([stockedItem({
+    vendor: "ss",
+    inventory: inventory([
+      { code: "MA", qty: 11 },
+      { code: "NJ", qty: 900 },
+    ]),
+  })]);
+  assert.equal(picked.warehouseCode, "MA");
+  assert.equal(picked.warehouseName, "Massachusetts / Boston region");
+});
+
+test("nearer insufficient stock does not beat full coverage farther away", () => {
+  const [picked] = autoPickWarehouses([stockedItem({
+    inventory: inventory([
+      { code: "5", name: "Robbinsville, NJ", qty: 9 },
+      { code: "2", name: "Cincinnati, OH", qty: 10 },
+    ]),
+  })]);
+  assert.equal(picked.warehouseCode, "2");
+});
+
+test("style-color grouping keeps lines together at the nearer common warehouse", () => {
+  const lines = [
+    stockedItem({
+      key: "a",
+      printavoLineItemId: "a",
+      inventory: inventory([
+        { code: "5", qty: 20 },
+        { code: "4", qty: 500 },
+      ]),
+    }),
+    stockedItem({
+      key: "b",
+      printavoLineItemId: "b",
+      styleNumber: "C112",
+      inventory: inventory([
+        { code: "5", qty: 15 },
+        { code: "4", qty: 600 },
+      ]),
+    }),
+    stockedItem({
+      key: "c",
+      printavoLineItemId: "c",
+      styleNumber: "PC54",
+      inventory: inventory([{ code: "2", qty: 30 }]),
+    }),
+  ];
+  assert.deepEqual(autoPickWarehouses(lines).map((line) => line.warehouseCode), ["5", "5", "2"]);
+});
+
+test("manual warehouse override remains untouched", () => {
+  const manual = stockedItem({
+    warehouseCode: "4",
+    warehouseName: "Reno, NV",
+    warehouseManual: true,
+    inventory: inventory([
+      { code: "5", qty: 20 },
+      { code: "4", qty: 20 },
+    ]),
+  });
+  assert.strictEqual(autoPickWarehouses([manual])[0], manual);
+});
+
+test("unmapped warehouse codes fall back to deepest stock", () => {
+  const [picked] = autoPickWarehouses([stockedItem({
+    vendor: "ss",
+    inventory: inventory([
+      { code: "UNKNOWN-A", qty: 15 },
+      { code: "UNKNOWN-B", qty: 40 },
+    ]),
+  })]);
+  assert.equal(picked.warehouseCode, "UNKNOWN-B");
+});
+
+test("a mixed mapped and unmapped set also falls back to deepest stock", () => {
+  const [picked] = autoPickWarehouses([stockedItem({
+    vendor: "ss",
+    inventory: inventory([
+      { code: "NJ", qty: 15 },
+      { code: "OPAQUE", qty: 40 },
+    ]),
+  })]);
+  assert.equal(picked.warehouseCode, "OPAQUE");
 });

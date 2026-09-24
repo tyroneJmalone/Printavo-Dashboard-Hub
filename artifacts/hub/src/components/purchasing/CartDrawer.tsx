@@ -23,7 +23,11 @@ import {
   applyLookupColor,
   fetchMatchedInventory,
 } from "./cartVendorActions";
-import { findReusableColorMatch, suggestedPoNumber } from "./cartMatching";
+import {
+  findReusableColorMatch,
+  sanmarPoNumberTooLong,
+  suggestedPoNumber,
+} from "./cartMatching";
 import { Link } from "wouter";
 import {
   X,
@@ -737,9 +741,19 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     }
     return [...duplicates];
   })();
+  const sanmarPoNumberInvalid =
+    newPoGroups.includes("sanmar") && sanmarPoNumberTooLong(poNumberFor("sanmar"));
 
   async function handleSave() {
     if (!allReady || !allNewPoNumbersReady) return;
+    if (sanmarPoNumberInvalid) {
+      toast({
+        title: "SanMar PO number is too long",
+        description: "SanMar allows 12 characters maximum. Shorten the displayed PO number before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
     // Validate the whole batch before the first create request. Otherwise two
     // vendor POs for the same invoice could partially save with one PO number.
     if (duplicateNewPoNumbers.length > 0) {
@@ -976,6 +990,12 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 New vendor POs cannot share a PO number. Edit one before saving.
               </div>
             )}
+            {sanmarPoNumberInvalid && (
+              <div className="text-[11px] text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle size={12} />
+                SanMar allows 12 characters maximum. Shorten its PO number before saving.
+              </div>
+            )}
             {!needsPoNumber && (
               <div className="text-xs text-slate-400">
                 All items will be added to existing POs.
@@ -1003,6 +1023,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                   !allReady ||
                   !allNewPoNumbersReady ||
                   duplicateNewPoNumbers.length > 0 ||
+                  sanmarPoNumberInvalid ||
                   saving ||
                   bulk !== null
                 }
