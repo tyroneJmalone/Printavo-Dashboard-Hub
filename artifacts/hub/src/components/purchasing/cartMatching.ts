@@ -143,7 +143,11 @@ export function findReusableColorMatch(
   };
 }
 
-const GENERIC_QUANTITY_LABELS = new Set(["QUANTITY", "QUANTITIY"]);
+// Printavo stores the catch-all one-size column as size_other. The purchasing
+// endpoint strips size_, so real one-size lines (including S&S SP08) arrive as
+// OTHER. This remains conservative: OTHER can map only when the selected vendor
+// color has exactly one recognized one-size offer.
+const GENERIC_QUANTITY_LABELS = new Set(["QUANTITY", "QUANTITIY", "OTHER"]);
 const ONE_SIZE_LABELS = new Set([
   "ONE SIZE",
   "ONE SIZE FITS ALL",

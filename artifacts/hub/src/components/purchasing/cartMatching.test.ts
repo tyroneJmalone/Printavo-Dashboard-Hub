@@ -58,12 +58,23 @@ test("keeps similarly named red and navy choices manual without a clear margin",
   });
 });
 
-test("maps Printavo Quantity typos only to one unambiguous one-size offer", () => {
+test("maps Printavo Quantity aliases only to one unambiguous one-size offer", () => {
   const osfm = { size: "ONE SIZE FITS MOST", sku: "SKU-OSFM" };
   assert.equal(findUniqueOneSizeOffer("Quantity", [osfm, { size: "S", sku: "SKU-S" }]), osfm);
   assert.equal(findUniqueOneSizeOffer("Quantitiy", [{ size: "OS", sku: "SKU-OS" }])?.sku, "SKU-OS");
   assert.equal(
+    findUniqueOneSizeOffer("OTHER", [{ size: "ONE SIZE", sku: "B84095500" }])?.sku,
+    "B84095500",
+  );
+  assert.equal(
     findUniqueOneSizeOffer("Quantity", [osfm, { size: "OS", sku: "SKU-OS" }]),
+    null,
+  );
+  assert.equal(
+    findUniqueOneSizeOffer("OTHER", [
+      { size: "ONE SIZE", sku: "SKU-ONE" },
+      { size: "OS", sku: "SKU-OS" },
+    ]),
     null,
   );
 });
@@ -72,7 +83,6 @@ test("does not treat blank/default Printavo size labels as generic quantity", ()
   const offer = { size: "OS", sku: "SKU-OS" };
   assert.equal(findUniqueOneSizeOffer("", [offer]), null);
   assert.equal(findUniqueOneSizeOffer("defaultBlank", [offer]), null);
-  assert.equal(findUniqueOneSizeOffer("Other", [offer]), null);
 });
 
 test("generates contiguous deterministic invoice suffixes and preserves zeroes", () => {

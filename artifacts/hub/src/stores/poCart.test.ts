@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { autoPickWarehouses, usePoCart, type CartItem, type SizeInventory } from "./poCart.ts";
+import {
+  autoPickWarehouses,
+  usePoCart,
+  warehouseOptionsFor,
+  type CartItem,
+  type SizeInventory,
+} from "./poCart.ts";
 import { warehouseDistanceFromShipTo } from "./warehouseProximity.ts";
 
 test("warehouse distance uses the ship-to ZIP centroid, not the former state reference", () => {
@@ -93,6 +99,50 @@ test("vendor pricing snapshots generic quantity as the exact unique one-size SKU
     sizeIndex: 8,
     vendorSize: "ONE SIZE FITS MOST",
   });
+});
+
+test("real S&S SP08 OTHER row keeps exact ONE SIZE SKU and exposes live warehouses", () => {
+  usePoCart.setState({
+    items: [item({
+      styleNumber: "SP08",
+      color: "Black",
+      brand: "Sportsman",
+      vendor: "ss",
+      sizes: [{
+        ...item().sizes[0],
+        size: "OTHER",
+        qty: 25,
+      }],
+    })],
+  });
+  usePoCart.getState().applyVendorData("line-1", {
+    vendorCatalogColor: "Black",
+    vendorStyleId: "1415",
+    sizes: [{
+      size: "ONE SIZE",
+      unitCost: 2.6,
+      sku: "B84095500",
+      inventoryKey: null,
+      sizeIndex: null,
+    }],
+  });
+
+  const priced = usePoCart.getState().items[0];
+  assert.equal(priced.sizes[0].vendorSize, "ONE SIZE");
+  assert.equal(priced.sizes[0].sku, "B84095500");
+  assert.equal(priced.sizes[0].unitCost, 2.6);
+
+  usePoCart.getState().applyInventory("line-1", [{
+    size: "ONE SIZE",
+    found: true,
+    warehouses: [
+      { code: "MA", name: "MA", qty: 500, capped: false },
+      { code: "PA", name: "PA", qty: 500, capped: false },
+    ],
+  }]);
+  const stocked = usePoCart.getState().items[0];
+  assert.deepEqual(warehouseOptionsFor(stocked).map((option) => option.code), ["MA", "PA"]);
+  assert.equal(stocked.warehouseCode, "MA");
 });
 
 test("ambiguous one-size offers remain unresolved", () => {
