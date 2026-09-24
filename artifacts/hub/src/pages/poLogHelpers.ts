@@ -1,12 +1,13 @@
 export interface PoLogSubmissionState {
   id: string;
   submittedToVendorAt: string | null;
+  pushedToPrintavoAt?: string | null;
+  pushState?: { status: string } | null;
 }
 
 /**
- * A PO only becomes history when submission was positively recorded.
- * Lock/push state is deliberately ignored: previews, unknown responses, and
- * failed submissions must remain actionable in the pending list.
+ * Both vendor submission and a completed Printavo push are required for history.
+ * A failed/running re-push stays actionable even if an older push succeeded.
  */
 export function partitionPoLog<T extends PoLogSubmissionState>(poFiles: T[]): {
   pending: T[];
@@ -15,7 +16,12 @@ export function partitionPoLog<T extends PoLogSubmissionState>(poFiles: T[]): {
   const pending: T[] = [];
   const history: T[] = [];
   for (const po of poFiles) {
-    (po.submittedToVendorAt ? history : pending).push(po);
+    const complete =
+      po.submittedToVendorAt &&
+      po.pushedToPrintavoAt &&
+      po.pushState?.status !== "running" &&
+      po.pushState?.status !== "failed";
+    (complete ? history : pending).push(po);
   }
   return { pending, history };
 }

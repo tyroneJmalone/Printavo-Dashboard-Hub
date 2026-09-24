@@ -6,7 +6,6 @@ import {
   useUnlockPoFile,
   useAdminUnlockPoFile,
   usePushPoFile,
-  useSubmitPoToVendor,
   getListPoFilesQueryKey,
   getGetPoFileHtmlUrl,
   type PoFile,
@@ -31,9 +30,7 @@ import {
   Send,
   AlertTriangle,
   CheckCircle2,
-  PackageCheck,
   ShieldAlert,
-  Wand2,
 } from "lucide-react";
 
 const VENDOR_LABELS: Record<string, string> = {
@@ -104,7 +101,6 @@ function PushStatusPanel({ po }: { po: PoFile }) {
 
   const done = ps.lines.filter((l) => l.status === "done").length;
   const skipped = ps.lines.filter((l) => l.status === "skipped_ordered").length;
-  const suggestions = ps.statusSuggestions ?? [];
   return (
     <div className="mx-5 mb-3 px-4 py-2.5 rounded-lg bg-[#059669]/10 border border-[#059669]/20 text-xs space-y-1.5">
       <div className="flex items-center gap-2 text-[#10b981]">
@@ -116,23 +112,6 @@ function PushStatusPanel({ po }: { po: PoFile }) {
           ? `, PO attached to ${ps.attachedInvoiceIds.length} invoice${ps.attachedInvoiceIds.length === 1 ? "" : "s"}`
           : ""}
       </div>
-      {suggestions.length > 0 && (
-        <div className="flex items-start gap-2 text-sky-300">
-          <Wand2 size={13} className="flex-shrink-0 mt-0.5" />
-          <div>
-            Order status change suggested:{" "}
-            {suggestions.map((s, i) => (
-              <span key={s.suggestionId}>
-                {i > 0 && ", "}
-                <span className="font-mono font-semibold">#{s.visualId ?? s.orderPrintavoId}</span>
-                {" → "}
-                <span className="font-semibold">{s.suggestedStatusName}</span>
-              </span>
-            ))}
-            {" — confirm it in the suggestions card at the top of this page."}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -198,38 +177,6 @@ function PoRow({ po }: { po: PoFile }) {
       },
     },
   });
-
-  const submitToVendor = useSubmitPoToVendor({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListPoFilesQueryKey() });
-        toast({
-          title: `PO ${po.poNumber} marked as submitted to vendor`,
-          description:
-            "Edits are locked (admin PIN can unlock). You can still push it to Printavo.",
-        });
-      },
-      onError: (err) => {
-        toast({
-          title: "Could not mark PO as submitted",
-          description: apiError(err) ?? "Submit failed",
-          variant: "destructive",
-        });
-      },
-    },
-  });
-
-  const confirmSubmitToVendor = () => {
-    const entered = window.prompt(
-      `Mark PO ${po.poNumber} as submitted to ${VENDOR_LABELS[po.vendorName] ?? po.vendorName}?\n\nThis locks the PO against edits — only an admin with the PIN can unlock it afterwards (pushing to Printavo is still allowed).\n\nEnter the vendor's order/confirmation number below (leave blank if you don't have one), or press Cancel.`,
-      "",
-    );
-    if (entered === null) return;
-    submitToVendor.mutate({
-      id: po.id,
-      data: { vendorOrderNumber: entered.trim() || null },
-    });
-  };
 
   const pushing = po.pushState?.status === "running";
   const linkedLines = po.lineItems.filter((li) => li.printavoLineItemId).length;
@@ -352,20 +299,6 @@ function PoRow({ po }: { po: PoFile }) {
             )}
             {!po.submittedToVendorAt && !pushing && (
               <VendorSubmitButton po={po} />
-            )}
-            {!po.submittedToVendorAt && !pushing && (
-              <button
-                onClick={confirmSubmitToVendor}
-                disabled={submitToVendor.isPending}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500/20 transition-colors disabled:opacity-50"
-              >
-                {submitToVendor.isPending ? (
-                  <Loader2 size={13} className="animate-spin" />
-                ) : (
-                  <PackageCheck size={13} />
-                )}
-                Mark ordered
-              </button>
             )}
             {!po.locked && !pushing && (
               <button
