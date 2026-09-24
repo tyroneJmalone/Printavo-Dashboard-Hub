@@ -6,8 +6,10 @@ interface Point {
 }
 
 /**
- * Approximate straight-line proximity to Concord, NH, using representative
- * city-center coordinates. This is deliberately not a driving/transit estimate.
+ * Approximate straight-line proximity to the ship-to ZIP 03062 (Nashua, NH).
+ * ZIP centroid source: https://api.zippopotam.us/us/03062.
+ * Warehouse coordinates remain representative city/region centers.
+ * This is deliberately not a driving/transit estimate.
  *
  * Location mapping sources:
  * - SanMar's canonical warehouse-number list is lib/sanmar/src/types.ts
@@ -27,7 +29,7 @@ interface Point {
  * depth rather than manufacturing a distance.
  */
 
-const CONCORD_NH: Point = { lat: 43.2081, lon: -71.5376 };
+const SHIP_TO_ZIP_CENTROID: Point = { lat: 42.7235, lon: -71.4893 };
 
 const SANMAR_BY_CODE: Record<string, Point> = {
   "1": { lat: 47.6062, lon: -122.3321 }, // Seattle, WA
@@ -92,7 +94,7 @@ function greatCircleMiles(a: Point, b: Point): number {
   return 2 * 3958.8 * Math.asin(Math.sqrt(h));
 }
 
-export function warehouseDistanceFromConcord(
+export function warehouseDistanceFromShipTo(
   vendor: CartVendor | null,
   code: string,
 ): number | null {
@@ -102,7 +104,7 @@ export function warehouseDistanceFromConcord(
       : vendor === "ss"
         ? SS_BY_CODE[code.trim().toUpperCase()]
         : undefined;
-  return point ? greatCircleMiles(CONCORD_NH, point) : null;
+  return point ? greatCircleMiles(SHIP_TO_ZIP_CENTROID, point) : null;
 }
 
 export function warehouseGeographicName(
@@ -125,8 +127,8 @@ export function compareWarehousePreference(
   a: { code: string; totalQty: number },
   b: { code: string; totalQty: number },
 ): number {
-  const aDistance = warehouseDistanceFromConcord(vendor, a.code);
-  const bDistance = warehouseDistanceFromConcord(vendor, b.code);
+  const aDistance = warehouseDistanceFromShipTo(vendor, a.code);
+  const bDistance = warehouseDistanceFromShipTo(vendor, b.code);
   if (aDistance !== null && bDistance !== null && aDistance !== bDistance) {
     return aDistance - bDistance;
   }
@@ -142,7 +144,7 @@ export function sortWarehousePreference<T extends { code: string; totalQty: numb
   options: T[],
 ): T[] {
   const allKnown = options.every(
-    (option) => warehouseDistanceFromConcord(vendor, option.code) !== null,
+    (option) => warehouseDistanceFromShipTo(vendor, option.code) !== null,
   );
   return [...options].sort(
     allKnown

@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { autoPickWarehouses, usePoCart, type CartItem, type SizeInventory } from "./poCart.ts";
+import { warehouseDistanceFromShipTo } from "./warehouseProximity.ts";
+
+test("warehouse distance uses the ship-to ZIP centroid, not the former state reference", () => {
+  const miles = warehouseDistanceFromShipTo("ss", "MA");
+  assert.ok(miles !== null && miles > 25 && miles < 40);
+});
 
 function item(overrides: Partial<CartItem> = {}): CartItem {
   return {
