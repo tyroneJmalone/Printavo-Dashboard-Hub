@@ -2,13 +2,19 @@ import { useState, useMemo, useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { useGetNeedsOrdering, useListPoFiles, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
-import { formatNumber, formatDate } from "@/lib/format";
-import { usePoCart, guessVendor, type CartItem } from "@/stores/poCart";
+import { formatNumber } from "@/lib/format";
+import { usePoCart } from "@/stores/poCart";
 import { CartDrawer } from "@/components/purchasing/CartDrawer";
 import { Truck, Loader2, PackageSearch, Layers, Boxes, CalendarClock, ShoppingCart, Plus, Check, AlertTriangle, Search, Filter } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkCleanupDialog, type SelectedLineItemInfo, type TargetStatus } from "@/components/purchasing/BulkCleanupDialog";
 import { buildOpenPoMembership, stableLineIdentity } from "./vendorOrdersPoMembership";
+import {
+  buildCartItem,
+  formatPrintavoCalendarDate,
+  getOrderUrgency,
+  sortOrdersByUrgency,
+} from "./vendorOrdersHelpers";
 
 function statusPill(name: string | null): string {
   if (!name) return "Unknown";
@@ -26,40 +32,6 @@ function staleWarning(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): str
   return null;
 }
 
-function buildCartItem(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): CartItem {
-  const sizes =
-    li.sizes.length > 0
-      ? li.sizes.map((s) => ({
-          size: s.size,
-          qty: s.count,
-          unitCost: null,
-          sku: null,
-          inventoryKey: null,
-          sizeIndex: null,
-          vendorSize: null,
-        }))
-      : [{ size: "OSFA", qty: li.items > 0 ? li.items : 0, unitCost: null, sku: null, inventoryKey: null, sizeIndex: null, vendorSize: null }];
-  return {
-    key: li.id,
-    printavoLineItemId: li.id,
-    printavoOrderId: order.orderId,
-    visualId: order.visualId,
-    styleNumber: li.itemNumber ?? "",
-    color: li.color,
-    description: li.description,
-    brand: li.brand,
-    vendor: guessVendor(li.brand),
-    vendorCatalogColor: null,
-    vendorStyleId: null,
-    resolved: false,
-    sizes,
-    inventory: null,
-    warehouseCode: null,
-    warehouseName: null,
-    warehouseManual: false,
-  };
-}
-
 export default function VendorOrders() {
   const { data, isLoading, error } = useGetNeedsOrdering();
   const { data: poData, isLoading: poDataLoading, error: poDataError } = useListPoFiles();
@@ -72,6 +44,15 @@ export default function VendorOrders() {
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [missingStyleOnly, setMissingStyleOnly] = useState(false);
+  // Keep date-based urgency current while this screen remains open across
+  // Eastern midnight; the queue itself does not need to change for the cutoff
+  // and sort order to change.
+  const [urgencyNow, setUrgencyNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setUrgencyNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -99,7 +80,7 @@ export default function VendorOrders() {
     if (!data?.orders) return [];
     const lowerQuery = searchQuery.toLowerCase().trim();
     
-    return data.orders.map(order => {
+    const matchingOrders = data.orders.map(order => {
       const filteredLines = order.lineItems.filter(li => {
         if (missingStyleOnly && (li.itemNumber && li.itemNumber.trim() !== '')) {
           return false;
@@ -122,7 +103,8 @@ export default function VendorOrders() {
       });
       return { ...order, lineItems: filteredLines };
     }).filter(order => order.lineItems.length > 0);
-  }, [data?.orders, searchQuery, missingStyleOnly]);
+    return sortOrdersByUrgency(matchingOrders, urgencyNow);
+  }, [data?.orders, searchQuery, missingStyleOnly, urgencyNow]);
 
   // Derived visible IDs
   const visibleIds = useMemo(() => {
@@ -394,10 +376,21 @@ export default function VendorOrders() {
               // Check if all lines in THIS order (that are currently visible) are selected
               const allSelected = order.lineItems.length > 0 && order.lineItems.every(li => selectedIds.has(li.id));
               const someSelected = order.lineItems.some(li => selectedIds.has(li.id));
+              const urgency = getOrderUrgency(order, urgencyNow);
 
               return (
-                <div key={order.orderId} className={`bg-slate-900/40 border transition-colors rounded-xl overflow-hidden ${someSelected ? 'border-[#10b981]/50' : 'border-slate-800'}`}>
-                  <div className="px-5 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-900/60">
+                <div key={order.orderId} className={`border transition-colors rounded-xl overflow-hidden ${
+                  someSelected
+                    ? "bg-slate-900/40 border-[#10b981]/50"
+                    : urgency.urgent
+                      ? "bg-rose-950/20 border-rose-500/60"
+                      : "bg-slate-900/40 border-slate-800"
+                }`}>
+                  <div className={`px-5 py-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+                    urgency.urgent
+                      ? "border-rose-500/30 bg-rose-950/30"
+                      : "border-slate-800 bg-slate-900/60"
+                  }`}>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center h-full">
                          <Checkbox 
@@ -411,7 +404,20 @@ export default function VendorOrders() {
                         <div className="text-base font-bold text-white">
                           <PrintavoOrderLink orderId={order.orderId} visualId={order.visualId} />
                         </div>
-                        <div className="text-xs text-slate-500">{order.nickname || "—"}</div>
+                         <div className="text-xs text-slate-400">{order.nickname || "—"}</div>
+                         {urgency.reasons.length > 0 && (
+                           <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Urgency reasons">
+                             {urgency.reasons.map((reason) => (
+                               <span
+                                 key={`${reason.kind}-${reason.label}`}
+                                 className="inline-flex items-center gap-1 rounded border border-rose-400/50 bg-rose-950/70 px-2 py-0.5 text-[10px] font-bold text-rose-200"
+                               >
+                                 <AlertTriangle size={10} aria-hidden="true" />
+                                 {reason.label}
+                               </span>
+                             ))}
+                           </div>
+                         )}
                       </div>
                       <div className="h-8 w-px bg-slate-800" />
                       <div>
@@ -422,7 +428,7 @@ export default function VendorOrders() {
                     <div className="flex items-center gap-3">
                       <div className="text-xs text-slate-400 flex items-center gap-1.5">
                         <CalendarClock size={13} />
-                        <span>Prod due {formatDate(order.productionDueAt)}</span>
+                        <span>Prod due {formatPrintavoCalendarDate(order.productionDueAt)}</span>
                       </div>
                       <span className="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
                         {statusPill(order.statusName)}

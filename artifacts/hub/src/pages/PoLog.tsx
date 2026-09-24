@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { PoEditor } from "@/components/purchasing/PoEditor";
 import { StatusSuggestionsCard } from "@/components/purchasing/StatusSuggestionsCard";
+import { partitionPoLog } from "./poLogHelpers";
 import { VendorSubmitButton } from "@/components/purchasing/VendorSubmitDialog";
 import { formatNumber } from "@/lib/format";
 import {
@@ -504,6 +505,7 @@ function PoRow({ po }: { po: PoFile }) {
 }
 
 export default function PoLog() {
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { data, isLoading, isFetching, refetch } = useListPoFiles({
     query: {
       queryKey: getListPoFilesQueryKey(),
@@ -514,6 +516,7 @@ export default function PoLog() {
           : false,
     },
   });
+  const { pending, history } = partitionPoLog(data?.poFiles ?? []);
 
   return (
     <AppShell>
@@ -551,7 +554,56 @@ export default function PoLog() {
               <div className="text-xs mt-1">Build one from the Vendor Orders cart.</div>
             </div>
           ) : (
-            data.poFiles.map((po) => <PoRow key={po.id} po={po} />)
+            <>
+              <section className="space-y-3" aria-labelledby="pending-po-heading">
+                <div className="flex items-center gap-2">
+                  <h2 id="pending-po-heading" className="text-sm font-semibold text-white">
+                    Pending purchase orders
+                  </h2>
+                  <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
+                    {pending.length}
+                  </span>
+                </div>
+                {pending.length === 0 ? (
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/30 px-5 py-6 text-sm text-slate-500">
+                    No pending purchase orders.
+                  </div>
+                ) : (
+                  pending.map((po) => <PoRow key={po.id} po={po} />)
+                )}
+              </section>
+
+              <section className="pt-2" aria-labelledby="po-history-heading">
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen((open) => !open)}
+                  aria-expanded={historyOpen}
+                  className="w-full flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/30 px-4 py-3 text-left hover:bg-slate-900/50 transition-colors"
+                >
+                  {historyOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  <h2 id="po-history-heading" className="text-sm font-semibold text-slate-200">
+                    Submitted / processed history
+                  </h2>
+                  <span className="rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-[11px] font-semibold text-slate-300">
+                    {history.length}
+                  </span>
+                  <span className="ml-auto text-[11px] text-slate-500">
+                    {historyOpen ? "Collapse" : "Expand"}
+                  </span>
+                </button>
+                {historyOpen && (
+                  <div className="mt-3 space-y-3">
+                    {history.length === 0 ? (
+                      <div className="rounded-xl border border-slate-800 bg-slate-900/30 px-5 py-6 text-sm text-slate-500">
+                        No submitted purchase orders yet.
+                      </div>
+                    ) : (
+                      history.map((po) => <PoRow key={po.id} po={po} />)
+                    )}
+                  </div>
+                )}
+              </section>
+            </>
           )}
         </div>
       </div>

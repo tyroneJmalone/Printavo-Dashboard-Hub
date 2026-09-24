@@ -105,6 +105,10 @@ export interface CartItem {
   printavoLineItemId: string;
   printavoOrderId: string;
   visualId: number;
+  /** Display-only source invoice metadata. Optional for carts created before
+   * these fields were introduced and for callers outside Vendor Orders. */
+  invoiceNickname?: string | null;
+  productionDueAt?: string | null;
   styleNumber: string;
   color: string | null;
   description: string | null;

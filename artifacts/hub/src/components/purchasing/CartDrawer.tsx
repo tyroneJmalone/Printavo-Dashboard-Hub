@@ -19,6 +19,7 @@ import {
   type CartItem,
   type CartVendor,
 } from "@/stores/poCart";
+import { formatPrintavoCalendarDate } from "@/pages/vendorOrdersHelpers";
 import {
   applyLookupColor,
   fetchMatchedInventory,
@@ -211,12 +212,19 @@ function CartItemCard({
               {item.vendorCatalogColor ?? item.color ?? "—"}
             </span>
           </div>
-          <div className="text-[11px] text-slate-500">
+          <div className="text-[11px] text-slate-400">
             <PrintavoOrderLink
               orderId={item.printavoOrderId}
               visualId={item.visualId}
             />{" "}
-            · {item.brand ?? "—"}
+            {item.invoiceNickname ? ` · ${item.invoiceNickname}` : ""}
+          </div>
+          <div className="mt-0.5 text-[11px] text-slate-500">
+            Prod due {formatPrintavoCalendarDate(item.productionDueAt)}
+          </div>
+          <div className="mt-1 text-xs text-slate-300">
+            <span className="font-medium">{item.brand ?? "—"}</span>
+            <span className="text-slate-500"> · {item.description ?? "No line item description"}</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
