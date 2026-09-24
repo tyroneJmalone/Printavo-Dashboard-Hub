@@ -6,6 +6,10 @@ import {
   useRefreshVendorOrder,
   useRefreshActiveVendorOrders,
   useMarkVendorOrderFailed,
+  useGetCarrierTrackingSettings,
+  getGetCarrierTrackingSettingsQueryKey,
+  useSetCarrierTrackingSettings,
+  useRefreshVendorOrderCarrier,
   type VendorOrder,
   type VendorOrderRefreshResult,
 } from "@workspace/api-client-react";
@@ -161,6 +165,31 @@ export default function VendorTracking() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showAll, setShowAll] = useState(false);
+  const [filter, setFilter] = useState("All");
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const [adminPin, setAdminPin] = useState("");
+  const [confirmFees, setConfirmFees] = useState(false);
+  const { data: carrierSettings } = useGetCarrierTrackingSettings();
+  const saveCarrierSettings = useSetCarrierTrackingSettings({
+    mutation: {
+      onSuccess: () => {
+        setAdminPin("");
+        setConfirmFees(false);
+        queryClient.invalidateQueries({ queryKey: getGetCarrierTrackingSettingsQueryKey() });
+        toast({ title: "Carrier tracking setting saved" });
+      },
+      onError: (err) => toast({ title: "Setting not saved", description: apiError(err) ?? "Request failed", variant: "destructive" }),
+    },
+  });
+  const refreshCarrier = useRefreshVendorOrderCarrier({
+    mutation: {
+      onSuccess: (result) => {
+        queryClient.invalidateQueries({ queryKey: getListVendorOrdersQueryKey() });
+        toast({ title: result.outcome === "error" ? "Carrier check had errors" : "Carrier tracking checked", description: result.message ?? undefined, variant: result.outcome === "error" ? "destructive" : undefined });
+      },
+      onError: (err) => toast({ title: "Carrier check failed", description: apiError(err) ?? "Request failed", variant: "destructive" }),
+    },
+  });
 
   const { data, isLoading } = useListVendorOrders(undefined, {
     query: { queryKey: getListVendorOrdersQueryKey() },
@@ -233,7 +262,15 @@ export default function VendorTracking() {
   });
 
   const orders = data?.orders ?? [];
-  const visible = showAll ? orders : orders.filter((o) => o.mode !== "dry_run");
+  const visible = orders.filter((o) => {
+    if (!showAll && o.mode === "dry_run") return false;
+    const statuses = o.tracking.map((t) => t.carrierStatus);
+    if (filter === "In transit") return statuses.includes("TRANSIT") || statuses.includes("PRE_TRANSIT");
+    if (filter === "Arriving today") return o.tracking.some((t) => t.eta && new Date(t.eta).toDateString() === new Date().toDateString() && t.carrierStatus !== "DELIVERED");
+    if (filter === "Known delivered") return statuses.length > 0 && statuses.every((s) => s === "DELIVERED");
+    if (filter === "Exceptions") return o.status === "unknown" || o.status === "failed" || o.tracking.some((t) => t.carrierStatus === "FAILURE" || t.carrierStatus === "RETURNED" || !!t.carrierError);
+    return true;
+  });
   const activeCount = orders.filter(
     (o) => o.mode === "live" && (o.status === "submitted" || o.status === "unknown") && !o.archived,
   ).length;
@@ -284,6 +321,21 @@ export default function VendorTracking() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4 rounded-lg border border-slate-700 bg-slate-900/70 p-4 text-[12px] text-slate-300">
+            <div className="font-semibold text-slate-100">Carrier tracking · {carrierSettings?.enabled ? "Enabled" : "Off by default"}</div>
+            <p className="mt-1">Vendor checks are free of Shippo tracking requests. External tracking via Shippo may incur usage fees. <a className="text-emerald-400 underline" href="https://support.goshippo.com/hc/en-us/articles/360003855652-Shippo-Subscription-Plan-Overview" target="_blank" rel="noopener noreferrer">Published pricing</a>: $0.02 per unique tracking number created outside Shippo (about $2 per 100), subject to your account terms. Only an admin can enable this.</p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <input type="password" value={adminPin} onChange={(e) => setAdminPin(e.target.value)} placeholder="Admin PIN" aria-label="Carrier opt-in admin PIN" className="rounded border border-slate-700 bg-slate-950 px-2 py-1.5" />
+              {!carrierSettings?.enabled && <label className="flex items-center gap-2"><input type="checkbox" checked={confirmFees} onChange={(e) => setConfirmFees(e.target.checked)} /> I understand and authorize Shippo usage fees</label>}
+              <button type="button" disabled={!adminPin || (!carrierSettings?.enabled && !confirmFees) || saveCarrierSettings.isPending} onClick={() => saveCarrierSettings.mutate({ data: { enabled: !carrierSettings?.enabled, adminPin, confirmFees: carrierSettings?.enabled ? false : confirmFees } })} className="rounded border border-emerald-500/40 px-3 py-1.5 text-emerald-400 disabled:opacity-40">{carrierSettings?.enabled ? "Disable paid tracking" : "Enable paid tracking"}</button>
+            </div>
+          </div>
+          <div className="mb-4 text-xs text-slate-500">Shipment counts and delivery filters cover only packages the vendor has reported so far; they do not confirm the whole PO is complete.</div>
+          <div className="mb-4 flex flex-wrap gap-2" aria-label="Shipment filters">
+            {["All", "In transit", "Arriving today", "Known delivered", "Exceptions"].map((f) => (
+              <button key={f} onClick={() => setFilter(f)} className={`rounded px-3 py-1.5 text-xs border ${filter === f ? "border-emerald-500 text-emerald-300 bg-emerald-500/10" : "border-slate-700 text-slate-400"}`}>{f}</button>
+            ))}
+          </div>
           {isLoading ? (
             <div className="flex items-center justify-center py-16 text-slate-500">
               <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading orders…
@@ -347,7 +399,7 @@ export default function VendorTracking() {
                               : "—"}
                           </td>
                           <td className="px-4 py-3">
-                            {o.tracking.length === 0 ? (
+                             {o.tracking.length === 0 ? (
                               <span className="text-slate-500">—</span>
                             ) : (
                               <div className="flex flex-col gap-1">
@@ -370,6 +422,11 @@ export default function VendorTracking() {
                                     )}
                                   </a>
                                 ))}
+                                 <span className="text-[11px] text-slate-400">
+                                   {o.tracking.filter((t) => t.carrierStatus === "DELIVERED").length}/{o.tracking.length} known shipments delivered
+                                   {o.tracking.some((t) => t.carrierStatus === "DELIVERED") && o.tracking.some((t) => t.carrierStatus !== "DELIVERED") ? " · Some known shipments still pending" : ""}
+                                 </span>
+                                 <button type="button" onClick={() => setExpanded((ids) => ids.includes(o.id) ? ids.filter((id) => id !== o.id) : [...ids, o.id])} className="text-left text-xs text-emerald-400 hover:underline">{expanded.includes(o.id) ? "Hide shipments" : `View ${o.tracking.length} shipment${o.tracking.length === 1 ? "" : "s"}`}</button>
                               </div>
                             )}
                           </td>
@@ -381,6 +438,7 @@ export default function VendorTracking() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             {refreshable && (
+                               <div className="flex flex-col gap-1 items-end">
                               <button
                                 onClick={() => refreshOne.mutate({ id: o.id })}
                                 disabled={refreshOne.isPending || refreshAll.isPending}
@@ -394,9 +452,33 @@ export default function VendorTracking() {
                                 )}
                                 Check vendor
                               </button>
+                               {carrierSettings?.enabled && o.tracking.length > 0 && <button type="button" disabled={refreshCarrier.isPending} onClick={() => refreshCarrier.mutate({ id: o.id })} className="text-emerald-400 hover:underline disabled:opacity-40 text-xs">Check carriers</button>}
+                               </div>
                             )}
                           </td>
                         </tr>
+                        {expanded.includes(o.id) && o.tracking.length > 0 && (
+                          <tr className="bg-slate-900/50"><td colSpan={9} className="p-4">
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {o.tracking.map((t) => <div key={t.trackingNumber} className="rounded border border-slate-700 p-3 text-xs text-slate-300">
+                                <div className="font-semibold text-slate-100">{t.carrier ?? "Carrier unknown"} · {t.trackingNumber}</div>
+                                <div className="mt-1">Carrier: {t.carrierStatus?.replace("_", " ") ?? "Not checked"} {t.carrierStatusDetails ? `· ${t.carrierStatusDetails}` : ""}</div>
+                                <div>Actual origin (carrier): {t.origin ?? "Not reported"}</div>
+                                <div>Estimated arrival (carrier): {fmtDate(t.eta ?? null)}</div>
+                                <div>Delivered (carrier): {fmtDate(t.deliveredAt ?? null)}</div>
+                                <div>Shipped (vendor): {fmtDate(t.shipmentDate)}</div>
+                                <div>Latest carrier event: {fmtDate(t.carrierStatusDate ?? null)}{t.carrierLocation ? ` · ${t.carrierLocation}` : ""}</div>
+                                <div className="text-slate-500">Carrier last checked: {fmtDate(t.carrierCheckedAt ?? null)}</div>
+                                {t.carrierError && <div className="text-amber-400">Last check failed: {t.carrierError} · showing last known data</div>}
+                                {t.carrierHistory && t.carrierHistory.length > 0 && <details className="mt-2"><summary className="cursor-pointer text-emerald-400">Carrier history</summary>
+                                  <ul className="mt-1 space-y-1 border-l border-slate-700 pl-3">
+                                    {t.carrierHistory.map((event, index) => <li key={`${event.date}-${index}`}>{fmtDate(event.date)} · {event.status}{event.details ? ` · ${event.details}` : ""}{event.location ? ` · ${event.location}` : ""}</li>)}
+                                  </ul>
+                                </details>}
+                              </div>)}
+                            </div>
+                          </td></tr>
+                        )}
                         {o.status === "unknown" && (
                           <tr className="bg-[#0b1220]">
                             <td colSpan={9} className="p-0">

@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
 import { requireValidAdminPin } from "../lib/auth/adminPin";
+import { getCarrierTrackingSettings, setCarrierTrackingSettings, refreshCarrierTracking } from "../lib/purchasing/carrierTracking";
 import {
   VendorLookupBody,
   VendorInventoryBody,
@@ -12,6 +13,7 @@ import {
   AdminUnlockPoFileBody,
   VendorSubmitBody,
   MarkVendorOrderFailedBody,
+  SetCarrierTrackingSettingsBody,
   SetVendorShipToBody,
   CreateStatusRuleBody,
   UpdateStatusRuleBody,
@@ -658,6 +660,32 @@ router.get("/purchasing/vendor-orders", (req, res) => {
       req.log.error({ err }, "list vendor orders failed");
       res.status(500).json({ error: "Failed to load vendor orders" });
     });
+});
+
+router.get("/purchasing/carrier-tracking/settings", async (req, res) => {
+  try { res.json(await getCarrierTrackingSettings()); }
+  catch (err) { req.log.error({ err }, "carrier settings read failed"); res.status(500).json({ error: "Could not load carrier settings" }); }
+});
+
+router.put("/purchasing/carrier-tracking/settings", async (req, res) => {
+  const parsed = SetCarrierTrackingSettingsBody.safeParse(req.body);
+  if (!parsed.success || (parsed.data.enabled && !parsed.data.confirmFees)) {
+    res.status(400).json({ error: "Admin PIN and explicit fee confirmation required to enable paid Shippo tracking" });
+    return;
+  }
+  if (!await requireValidAdminPin(req, res, parsed.data.adminPin, "shippo tracking opt-in")) return;
+  try { res.json(await setCarrierTrackingSettings(parsed.data.enabled)); }
+  catch (err) { req.log.error({ err }, "carrier settings save failed"); res.status(500).json({ error: "Could not save carrier settings" }); }
+});
+
+router.post("/purchasing/vendor-orders/:id/refresh-carrier", async (req, res) => {
+  try {
+    const result = await refreshCarrierTracking(req.params.id);
+    res.status(result.outcome === "not_found" ? 404 : 200).json(result);
+  } catch (err) {
+    req.log.error({ err, vendorOrderId: req.params.id }, "carrier refresh failed");
+    res.status(500).json({ error: "Could not refresh carrier tracking" });
+  }
 });
 
 /**

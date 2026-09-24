@@ -1,7 +1,8 @@
 import { db, vendorOrdersTable, poFilesTable, type VendorOrder } from "@workspace/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { SanMarApiError } from "@workspace/sanmar";
 import { SSApiError } from "@workspace/ss-activewear";
+import { mergeVendorTracking } from "./trackingLogic";
 import {
   VendorNotConfigured,
   sanMarClient,
@@ -124,6 +125,19 @@ async function lookupSs(poNumber: string): Promise<VendorLookup> {
 }
 
 async function updateRow(id: string, patch: Partial<VendorOrder>): Promise<VendorOrder> {
+  if (patch.tracking) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const [latest] = await db.select().from(vendorOrdersTable).where(eq(vendorOrdersTable.id, id));
+      if (!latest) throw new Error("Order disappeared during tracking refresh");
+      const existing = (latest.tracking as VendorTrackingEntry[] | null) ?? [];
+      const incoming = patch.tracking as VendorTrackingEntry[];
+      const merged = mergeVendorTracking(existing, incoming);
+      const [saved] = await db.update(vendorOrdersTable).set({ ...patch, tracking: merged, updatedAt: new Date() })
+        .where(and(eq(vendorOrdersTable.id, id), sql`${vendorOrdersTable.tracking} IS NOT DISTINCT FROM ${JSON.stringify(existing)}::jsonb`)).returning();
+      if (saved) return saved;
+    }
+    throw new Error("Tracking changed during vendor refresh; retry later.");
+  }
   const [row] = await db
     .update(vendorOrdersTable)
     .set({ ...patch, updatedAt: new Date() })
@@ -143,6 +157,19 @@ async function updateRowIfStatus(
   expectedStatus: VendorOrder["status"],
   patch: Partial<VendorOrder>,
 ): Promise<VendorOrder | undefined> {
+  if (patch.tracking) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const [latest] = await db.select().from(vendorOrdersTable).where(eq(vendorOrdersTable.id, id));
+      if (!latest || latest.status !== expectedStatus) return undefined;
+      const existing = (latest.tracking as VendorTrackingEntry[] | null) ?? [];
+      const merged = mergeVendorTracking(existing, patch.tracking as VendorTrackingEntry[]);
+      const [saved] = await db.update(vendorOrdersTable).set({ ...patch, tracking: merged, updatedAt: new Date() })
+        .where(and(eq(vendorOrdersTable.id, id), eq(vendorOrdersTable.status, expectedStatus),
+          sql`${vendorOrdersTable.tracking} IS NOT DISTINCT FROM ${JSON.stringify(existing)}::jsonb`)).returning();
+      if (saved) return saved;
+    }
+    throw new Error("Tracking changed during vendor reconciliation; retry later.");
+  }
   const [row] = await db
     .update(vendorOrdersTable)
     .set({ ...patch, updatedAt: new Date() })

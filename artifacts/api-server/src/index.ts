@@ -14,6 +14,7 @@ import { startPoller as startMintbucksPoller } from "./mintbucks/lib/poller";
 import { startTaskSyncPoller } from "./printavoTasks/poller";
 import { startColorEvidenceWorker } from "./lib/catalog/evidenceWorker";
 import { startKnowledgeDriveScheduler } from "./lib/knowledgeDriveScheduler";
+import { refreshDueShipments } from "./lib/purchasing/carrierTracking";
 
 const rawPort = process.env["PORT"];
 
@@ -54,6 +55,12 @@ app.listen(port, (err) => {
   // Email activity tracker — dormant until GOOGLE_SERVICE_ACCOUNT_JSON is set.
   startEmailActivityScheduler(logger);
   startKnowledgeDriveScheduler(logger);
+  if (process.env.NODE_ENV === "production") {
+    // Bounded tick; opt-in and per-package cache/backoff are checked again inside.
+    setInterval(() => {
+      refreshDueShipments().catch((err) => logger.error({ err }, "shipment refresh failed"));
+    }, 60 * 60 * 1000).unref();
+  }
   // Mint Bucks poller: dormant unless MINTBUCKS_POLLER_ENABLED=true (phased
   // ownership handoff — the standalone app keeps polling until Tyler flips it).
   if (isMintbucksConfigured()) {

@@ -87,6 +87,16 @@ export interface VendorTrackingEntry {
   trackingNumber: string;
   shipMethod: string | null;
   shipmentDate: string | null;
+  carrierStatus?: string | null;
+  carrierStatusDate?: string | null;
+  carrierStatusDetails?: string | null;
+  carrierLocation?: string | null;
+  origin?: string | null;
+  eta?: string | null;
+  deliveredAt?: string | null;
+  carrierCheckedAt?: string | null;
+  carrierError?: string | null;
+  carrierHistory?: { status: string; date: string | null; details: string | null; location: string | null }[];
 }
 
 export interface VendorOrderDto {

@@ -67,6 +67,8 @@ import type {
   BulkLineItemProductStatusRequest,
   BulkLineItemProductStatusResponse,
   BulkUpdateTasksInput,
+  CarrierTrackingSettings,
+  CarrierTrackingSettingsInput,
   CatalogColorFamilyRequest,
   CatalogFilters,
   CatalogHealth,
@@ -7851,6 +7853,217 @@ export const useRefreshActiveVendorOrders = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getRefreshActiveVendorOrdersMutationOptions(options));
+    }
+
+export const getGetCarrierTrackingSettingsUrl = () => {
+
+
+
+
+  return `/api/purchasing/carrier-tracking/settings`
+}
+
+export const getCarrierTrackingSettings = async ( options?: RequestInit): Promise<CarrierTrackingSettings> => {
+
+  return customFetch<CarrierTrackingSettings>(getGetCarrierTrackingSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCarrierTrackingSettingsQueryKey = () => {
+    return [
+    `/api/purchasing/carrier-tracking/settings`
+    ] as const;
+    }
+
+
+export const getGetCarrierTrackingSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getCarrierTrackingSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCarrierTrackingSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCarrierTrackingSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCarrierTrackingSettings>>> = ({ signal }) => getCarrierTrackingSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCarrierTrackingSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCarrierTrackingSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getCarrierTrackingSettings>>>
+export type GetCarrierTrackingSettingsQueryError = ErrorType<unknown>
+
+
+
+export function useGetCarrierTrackingSettings<TData = Awaited<ReturnType<typeof getCarrierTrackingSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCarrierTrackingSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCarrierTrackingSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetCarrierTrackingSettingsUrl = () => {
+
+
+
+
+  return `/api/purchasing/carrier-tracking/settings`
+}
+
+/**
+ * @summary Admin PIN required to change paid carrier tracking opt-in.
+ */
+export const setCarrierTrackingSettings = async (carrierTrackingSettingsInput: CarrierTrackingSettingsInput, options?: RequestInit): Promise<CarrierTrackingSettings> => {
+
+  return customFetch<CarrierTrackingSettings>(getSetCarrierTrackingSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(carrierTrackingSettingsInput)
+  }
+);}
+
+
+
+
+export const getSetCarrierTrackingSettingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCarrierTrackingSettings>>, TError,{data: BodyType<CarrierTrackingSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setCarrierTrackingSettings>>, TError,{data: BodyType<CarrierTrackingSettingsInput>}, TContext> => {
+
+const mutationKey = ['setCarrierTrackingSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setCarrierTrackingSettings>>, {data: BodyType<CarrierTrackingSettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setCarrierTrackingSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetCarrierTrackingSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof setCarrierTrackingSettings>>>
+    export type SetCarrierTrackingSettingsMutationBody = BodyType<CarrierTrackingSettingsInput>
+    export type SetCarrierTrackingSettingsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Admin PIN required to change paid carrier tracking opt-in.
+ */
+export const useSetCarrierTrackingSettings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCarrierTrackingSettings>>, TError,{data: BodyType<CarrierTrackingSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setCarrierTrackingSettings>>,
+        TError,
+        {data: BodyType<CarrierTrackingSettingsInput>},
+        TContext
+      > => {
+      return useMutation(getSetCarrierTrackingSettingsMutationOptions(options));
+    }
+
+export const getRefreshVendorOrderCarrierUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/vendor-orders/${id}/refresh-carrier`
+}
+
+/**
+ * @summary Opt-in gated Shippo GET tracking for cached packages; never creates tracking or labels.
+ */
+export const refreshVendorOrderCarrier = async (id: string, options?: RequestInit): Promise<VendorOrderRefreshResult> => {
+
+  return customFetch<VendorOrderRefreshResult>(getRefreshVendorOrderCarrierUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRefreshVendorOrderCarrierMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshVendorOrderCarrier>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshVendorOrderCarrier>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['refreshVendorOrderCarrier'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshVendorOrderCarrier>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  refreshVendorOrderCarrier(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshVendorOrderCarrierMutationResult = NonNullable<Awaited<ReturnType<typeof refreshVendorOrderCarrier>>>
+
+    export type RefreshVendorOrderCarrierMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Opt-in gated Shippo GET tracking for cached packages; never creates tracking or labels.
+ */
+export const useRefreshVendorOrderCarrier = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshVendorOrderCarrier>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshVendorOrderCarrier>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRefreshVendorOrderCarrierMutationOptions(options));
     }
 
 export const getRefreshVendorOrderUrl = (id: string,) => {

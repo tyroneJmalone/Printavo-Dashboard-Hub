@@ -4093,7 +4093,22 @@ export const VendorSubmitResponse = zod.object({
   "carrier": zod.string().nullable(),
   "trackingNumber": zod.string(),
   "shipMethod": zod.string().nullable(),
-  "shipmentDate": zod.string().nullable()
+  "shipmentDate": zod.string().nullable(),
+  "carrierStatus": zod.string().nullish(),
+  "carrierStatusDate": zod.string().nullish(),
+  "carrierStatusDetails": zod.string().nullish(),
+  "carrierLocation": zod.string().nullish(),
+  "origin": zod.string().nullish(),
+  "eta": zod.string().nullish(),
+  "deliveredAt": zod.string().nullish(),
+  "carrierCheckedAt": zod.string().nullish(),
+  "carrierError": zod.string().nullish(),
+  "carrierHistory": zod.array(zod.object({
+  "status": zod.string(),
+  "date": zod.string().nullable(),
+  "details": zod.string().nullable(),
+  "location": zod.string().nullable()
+})).optional()
 })),
   "error": zod.string().nullable(),
   "submittedAt": zod.string().nullable(),
@@ -4129,7 +4144,22 @@ export const ListVendorOrdersResponse = zod.object({
   "carrier": zod.string().nullable(),
   "trackingNumber": zod.string(),
   "shipMethod": zod.string().nullable(),
-  "shipmentDate": zod.string().nullable()
+  "shipmentDate": zod.string().nullable(),
+  "carrierStatus": zod.string().nullish(),
+  "carrierStatusDate": zod.string().nullish(),
+  "carrierStatusDetails": zod.string().nullish(),
+  "carrierLocation": zod.string().nullish(),
+  "origin": zod.string().nullish(),
+  "eta": zod.string().nullish(),
+  "deliveredAt": zod.string().nullish(),
+  "carrierCheckedAt": zod.string().nullish(),
+  "carrierError": zod.string().nullish(),
+  "carrierHistory": zod.array(zod.object({
+  "status": zod.string(),
+  "date": zod.string().nullable(),
+  "details": zod.string().nullable(),
+  "location": zod.string().nullable()
+})).optional()
 })),
   "error": zod.string().nullable(),
   "submittedAt": zod.string().nullable(),
@@ -4167,7 +4197,22 @@ export const RefreshActiveVendorOrdersResponse = zod.object({
   "carrier": zod.string().nullable(),
   "trackingNumber": zod.string(),
   "shipMethod": zod.string().nullable(),
-  "shipmentDate": zod.string().nullable()
+  "shipmentDate": zod.string().nullable(),
+  "carrierStatus": zod.string().nullish(),
+  "carrierStatusDate": zod.string().nullish(),
+  "carrierStatusDetails": zod.string().nullish(),
+  "carrierLocation": zod.string().nullish(),
+  "origin": zod.string().nullish(),
+  "eta": zod.string().nullish(),
+  "deliveredAt": zod.string().nullish(),
+  "carrierCheckedAt": zod.string().nullish(),
+  "carrierError": zod.string().nullish(),
+  "carrierHistory": zod.array(zod.object({
+  "status": zod.string(),
+  "date": zod.string().nullable(),
+  "details": zod.string().nullable(),
+  "location": zod.string().nullable()
+})).optional()
 })),
   "error": zod.string().nullable(),
   "submittedAt": zod.string().nullable(),
@@ -4178,6 +4223,80 @@ export const RefreshActiveVendorOrdersResponse = zod.object({
 }),zod.null()]),
   "message": zod.string().nullable()
 }))
+})
+
+
+export const GetCarrierTrackingSettingsResponse = zod.object({
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Admin PIN required to change paid carrier tracking opt-in.
+ */
+
+
+
+export const SetCarrierTrackingSettingsBody = zod.object({
+  "enabled": zod.boolean(),
+  "adminPin": zod.string().min(1),
+  "confirmFees": zod.boolean()
+})
+
+export const SetCarrierTrackingSettingsResponse = zod.object({
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Opt-in gated Shippo GET tracking for cached packages; never creates tracking or labels.
+ */
+export const RefreshVendorOrderCarrierParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RefreshVendorOrderCarrierResponse = zod.object({
+  "outcome": zod.enum(['refreshed', 'reconciled', 'no_vendor_record', 'not_refreshable', 'not_found', 'not_configured', 'error']).describe('reconciled = an unknown order the vendor confirmed, now marked submitted. no_vendor_record = unknown order the vendor has no record of (stays unknown — may be lag).'),
+  "vendorOrder": zod.union([zod.object({
+  "id": zod.string(),
+  "poFileId": zod.string(),
+  "vendor": zod.string(),
+  "mode": zod.string(),
+  "status": zod.string(),
+  "poNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "vendorOrderNumbers": zod.array(zod.string()),
+  "vendorStatus": zod.string().nullable(),
+  "tracking": zod.array(zod.object({
+  "orderNumber": zod.string().nullable().describe('Vendor\'s own order\/sales-order number the package belongs to.'),
+  "carrier": zod.string().nullable(),
+  "trackingNumber": zod.string(),
+  "shipMethod": zod.string().nullable(),
+  "shipmentDate": zod.string().nullable(),
+  "carrierStatus": zod.string().nullish(),
+  "carrierStatusDate": zod.string().nullish(),
+  "carrierStatusDetails": zod.string().nullish(),
+  "carrierLocation": zod.string().nullish(),
+  "origin": zod.string().nullish(),
+  "eta": zod.string().nullish(),
+  "deliveredAt": zod.string().nullish(),
+  "carrierCheckedAt": zod.string().nullish(),
+  "carrierError": zod.string().nullish(),
+  "carrierHistory": zod.array(zod.object({
+  "status": zod.string(),
+  "date": zod.string().nullable(),
+  "details": zod.string().nullable(),
+  "location": zod.string().nullable()
+})).optional()
+})),
+  "error": zod.string().nullable(),
+  "submittedAt": zod.string().nullable(),
+  "lastStatusCheckAt": zod.string().nullable(),
+  "archived": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),zod.null()]),
+  "message": zod.string().nullable()
 })
 
 
@@ -4205,7 +4324,22 @@ export const RefreshVendorOrderResponse = zod.object({
   "carrier": zod.string().nullable(),
   "trackingNumber": zod.string(),
   "shipMethod": zod.string().nullable(),
-  "shipmentDate": zod.string().nullable()
+  "shipmentDate": zod.string().nullable(),
+  "carrierStatus": zod.string().nullish(),
+  "carrierStatusDate": zod.string().nullish(),
+  "carrierStatusDetails": zod.string().nullish(),
+  "carrierLocation": zod.string().nullish(),
+  "origin": zod.string().nullish(),
+  "eta": zod.string().nullish(),
+  "deliveredAt": zod.string().nullish(),
+  "carrierCheckedAt": zod.string().nullish(),
+  "carrierError": zod.string().nullish(),
+  "carrierHistory": zod.array(zod.object({
+  "status": zod.string(),
+  "date": zod.string().nullable(),
+  "details": zod.string().nullable(),
+  "location": zod.string().nullable()
+})).optional()
 })),
   "error": zod.string().nullable(),
   "submittedAt": zod.string().nullable(),
@@ -4250,7 +4384,22 @@ export const MarkVendorOrderFailedResponse = zod.object({
   "carrier": zod.string().nullable(),
   "trackingNumber": zod.string(),
   "shipMethod": zod.string().nullable(),
-  "shipmentDate": zod.string().nullable()
+  "shipmentDate": zod.string().nullable(),
+  "carrierStatus": zod.string().nullish(),
+  "carrierStatusDate": zod.string().nullish(),
+  "carrierStatusDetails": zod.string().nullish(),
+  "carrierLocation": zod.string().nullish(),
+  "origin": zod.string().nullish(),
+  "eta": zod.string().nullish(),
+  "deliveredAt": zod.string().nullish(),
+  "carrierCheckedAt": zod.string().nullish(),
+  "carrierError": zod.string().nullish(),
+  "carrierHistory": zod.array(zod.object({
+  "status": zod.string(),
+  "date": zod.string().nullable(),
+  "details": zod.string().nullable(),
+  "location": zod.string().nullable()
+})).optional()
 })),
   "error": zod.string().nullable(),
   "submittedAt": zod.string().nullable(),

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CarrierTrackingEvent } from './carrierTrackingEvent';
 
 export interface VendorTrackingEntry {
   /**
@@ -19,4 +20,23 @@ export interface VendorTrackingEntry {
   shipMethod: string | null;
   /** @nullable */
   shipmentDate: string | null;
+  /** @nullable */
+  carrierStatus?: string | null;
+  /** @nullable */
+  carrierStatusDate?: string | null;
+  /** @nullable */
+  carrierStatusDetails?: string | null;
+  /** @nullable */
+  carrierLocation?: string | null;
+  /** @nullable */
+  origin?: string | null;
+  /** @nullable */
+  eta?: string | null;
+  /** @nullable */
+  deliveredAt?: string | null;
+  /** @nullable */
+  carrierCheckedAt?: string | null;
+  /** @nullable */
+  carrierError?: string | null;
+  carrierHistory?: CarrierTrackingEvent[];
 }

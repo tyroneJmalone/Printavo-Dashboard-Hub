@@ -2213,6 +2213,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VendorOrderRefreshAllResult"
+  /purchasing/carrier-tracking/settings:
+    get:
+      operationId: getCarrierTrackingSettings
+      tags: [purchasing]
+      responses:
+        "200":
+          description: Paid external tracking opt-in.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierTrackingSettings"
+    put:
+      operationId: setCarrierTrackingSettings
+      tags: [purchasing]
+      summary: Admin PIN required to change paid carrier tracking opt-in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CarrierTrackingSettingsInput"
+      responses:
+        "200":
+          description: Saved setting.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CarrierTrackingSettings"
+  /purchasing/vendor-orders/{id}/refresh-carrier:
+    post:
+      operationId: refreshVendorOrderCarrier
+      tags: [purchasing]
+      summary: Opt-in gated Shippo GET tracking for cached packages; never creates tracking or labels.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Carrier check result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorOrderRefreshResult"
   /purchasing/vendor-orders/{id}/refresh:
     post:
       operationId: refreshVendorOrder
@@ -10434,7 +10479,40 @@ components:
         trackingNumber: { type: string }
         shipMethod: { type: ["string", "null"] }
         shipmentDate: { type: ["string", "null"] }
+        carrierStatus: { type: ["string", "null"] }
+        carrierStatusDate: { type: ["string", "null"] }
+        carrierStatusDetails: { type: ["string", "null"] }
+        carrierLocation: { type: ["string", "null"] }
+        origin: { type: ["string", "null"] }
+        eta: { type: ["string", "null"] }
+        deliveredAt: { type: ["string", "null"] }
+        carrierCheckedAt: { type: ["string", "null"] }
+        carrierError: { type: ["string", "null"] }
+        carrierHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/CarrierTrackingEvent"
       required: [orderNumber, carrier, trackingNumber, shipMethod, shipmentDate]
+    CarrierTrackingEvent:
+      type: object
+      properties:
+        status: { type: string }
+        date: { type: ["string", "null"] }
+        details: { type: ["string", "null"] }
+        location: { type: ["string", "null"] }
+      required: [status, date, details, location]
+    CarrierTrackingSettings:
+      type: object
+      properties:
+        enabled: { type: boolean }
+      required: [enabled]
+    CarrierTrackingSettingsInput:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        adminPin: { type: string, minLength: 1 }
+        confirmFees: { type: boolean }
+      required: [enabled, adminPin, confirmFees]
     VendorOrder:
       type: object
       properties:

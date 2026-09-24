@@ -69,3 +69,4 @@
 - [Pipeline date policy](pipeline-date-policy.md) — explicit date ranges replace the implicit Won/Done creation-age window rather than silently hiding older matches.
 - [PrintScope renderer compatibility](printscope-renderer-compatibility.md) — MuPDF unitless SVG dimensions can silently omit choke masks even when golden verdicts match.
 - [SepScope pilot policy](printscope-pilot-policy.md) — formerly PrintScope; read-only comparisons and limited pilot-copy expiry, with historical identity preserved.
+- [Shipment tracking policy](shipment-tracking-policy.md) — Shippo connection is not paid-tracking consent; known-package delivery does not prove full PO delivery.

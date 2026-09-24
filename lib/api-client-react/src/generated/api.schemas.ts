@@ -3171,6 +3171,16 @@ export interface VendorSubmitPreview {
   lines: VendorSubmitPreviewLine[];
 }
 
+export interface CarrierTrackingEvent {
+  status: string;
+  /** @nullable */
+  date: string | null;
+  /** @nullable */
+  details: string | null;
+  /** @nullable */
+  location: string | null;
+}
+
 export interface VendorTrackingEntry {
   /**
      * Vendor's own order/sales-order number the package belongs to.
@@ -3184,6 +3194,36 @@ export interface VendorTrackingEntry {
   shipMethod: string | null;
   /** @nullable */
   shipmentDate: string | null;
+  /** @nullable */
+  carrierStatus?: string | null;
+  /** @nullable */
+  carrierStatusDate?: string | null;
+  /** @nullable */
+  carrierStatusDetails?: string | null;
+  /** @nullable */
+  carrierLocation?: string | null;
+  /** @nullable */
+  origin?: string | null;
+  /** @nullable */
+  eta?: string | null;
+  /** @nullable */
+  deliveredAt?: string | null;
+  /** @nullable */
+  carrierCheckedAt?: string | null;
+  /** @nullable */
+  carrierError?: string | null;
+  carrierHistory?: CarrierTrackingEvent[];
+}
+
+export interface CarrierTrackingSettings {
+  enabled: boolean;
+}
+
+export interface CarrierTrackingSettingsInput {
+  enabled: boolean;
+  /** @minLength 1 */
+  adminPin: string;
+  confirmFees: boolean;
 }
 
 export interface VendorOrder {
