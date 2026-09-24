@@ -1,5 +1,5 @@
 import { SanMarClient, type SanMarProductEntry } from "@workspace/sanmar";
-import { SSClient, type SSProduct } from "@workspace/ss-activewear";
+import { SSApiError, SSClient, type SSProduct } from "@workspace/ss-activewear";
 
 /**
  * Unified live vendor catalog lookup (SanMar SOAP / S&S REST).
@@ -82,6 +82,8 @@ export class VendorConfigError extends Error {
 }
 
 const CACHE_TTL_MS = 15 * 60 * 1000;
+/** Leave headroom under the API proxy's 48-second request timeout. */
+const SS_LOOKUP_BUDGET_MS = 40_000;
 const cache = new Map<string, { at: number; result: VendorLookupResult }>();
 
 const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL", "6XL"];
@@ -526,6 +528,26 @@ async function lookupSS(
   };
 }
 
+async function lookupSSWithinBudget(
+  style: string,
+  hints: VendorLookupHints,
+): Promise<VendorLookupResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      lookupSS(style, hints),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new SSApiError("S&S pricing lookup exceeded the 40-second safety limit")),
+          SS_LOOKUP_BUDGET_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 /**
  * Per-warehouse color/size offers for an exact S&S styleID — used by
  * vendor-inventory so stock always comes from the SAME product the lookup
@@ -560,7 +582,7 @@ export async function vendorLookup(
   const result =
     vendor === "sanmar"
       ? await lookupSanMar(style.trim())
-      : await lookupSS(style.trim(), hints);
+      : await lookupSSWithinBudget(style.trim(), hints);
   cache.set(key, { at: Date.now(), result });
   return result;
 }

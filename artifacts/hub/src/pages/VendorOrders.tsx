@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
-import { useGetNeedsOrdering, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
+import { useGetNeedsOrdering, useListPoFiles, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
 import { formatNumber, formatDate } from "@/lib/format";
 import { usePoCart, guessVendor, type CartItem } from "@/stores/poCart";
 import { CartDrawer } from "@/components/purchasing/CartDrawer";
 import { Truck, Loader2, PackageSearch, Layers, Boxes, CalendarClock, ShoppingCart, Plus, Check, AlertTriangle, Search, Filter } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BulkCleanupDialog, type SelectedLineItemInfo, type TargetStatus } from "@/components/purchasing/BulkCleanupDialog";
+import { buildOpenPoMembership, stableLineIdentity } from "./vendorOrdersPoMembership";
 
 function statusPill(name: string | null): string {
   if (!name) return "Unknown";
@@ -61,6 +62,7 @@ function buildCartItem(order: NeedsOrderingOrder, li: NeedsOrderingLineItem): Ca
 
 export default function VendorOrders() {
   const { data, isLoading, error } = useGetNeedsOrdering();
+  const { data: poData, isLoading: poDataLoading, error: poDataError } = useListPoFiles();
   const cartItems = usePoCart((s) => s.items);
   const addItem = usePoCart((s) => s.addItem);
   const removeItem = usePoCart((s) => s.removeItem);
@@ -81,13 +83,16 @@ export default function VendorOrders() {
   // Handlers for filters
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    setSelectedIds(new Set()); // clear selection on filter changes
   };
   
   const handleMissingStyleToggle = (checked: boolean) => {
     setMissingStyleOnly(checked);
-    setSelectedIds(new Set()); // clear selection on filter changes
   };
+
+  const openPoMembership = useMemo(
+    () => buildOpenPoMembership(poData?.poFiles ?? []),
+    [poData?.poFiles],
+  );
 
   // Derived filtered data
   const filteredOrders = useMemo(() => {
@@ -128,18 +133,26 @@ export default function VendorOrders() {
     return ids;
   }, [filteredOrders]);
 
-  // Prune selection if items disappear (e.g. background refetch or filter change)
+  const allQueueIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const order of data?.orders ?? []) {
+      for (const line of order.lineItems) ids.add(line.id);
+    }
+    return ids;
+  }, [data?.orders]);
+
+  // Prune only when a row leaves the queue, never merely due to filtering.
   useEffect(() => {
     setSelectedIds(prev => {
       if (prev.size === 0) return prev;
       const next = new Set<string>();
       for (const id of prev) {
-        if (visibleIds.has(id)) next.add(id);
+        if (allQueueIds.has(id)) next.add(id);
       }
       if (next.size !== prev.size) return next;
       return prev;
     });
-  }, [visibleIds]);
+  }, [allQueueIds]);
 
   const handleSelectAllShown = () => {
     setSelectedIds(new Set(visibleIds));
@@ -150,7 +163,7 @@ export default function VendorOrders() {
   };
 
   const handleAddSelectedToCart = () => {
-    for (const order of filteredOrders) {
+    for (const order of data?.orders ?? []) {
       for (const li of order.lineItems) {
         if (selectedIds.has(li.id)) {
           // The cart's addItem leaves existing entries (and their edits) intact.
@@ -187,7 +200,7 @@ export default function VendorOrders() {
   const selectedItemsData = useMemo(() => {
     if (selectedIds.size === 0) return [];
     const items: SelectedLineItemInfo[] = [];
-    for (const order of filteredOrders) {
+    for (const order of data?.orders ?? []) {
       for (const li of order.lineItems) {
         if (selectedIds.has(li.id)) {
           items.push({
@@ -203,7 +216,7 @@ export default function VendorOrders() {
       }
     }
     return items;
-  }, [selectedIds, filteredOrders, inCart]);
+  }, [selectedIds, data?.orders, inCart]);
 
   const openCleanup = (status: TargetStatus) => {
     // Freeze the exact reviewed set: queue refreshes must not remove results
@@ -228,17 +241,17 @@ export default function VendorOrders() {
 
   const selectedPiecesCount = useMemo(() => {
     let count = 0;
-    for (const order of filteredOrders) {
+    for (const order of data?.orders ?? []) {
       for (const li of order.lineItems) {
         if (selectedIds.has(li.id)) count += (li.items > 0 ? li.items : 0);
       }
     }
     return count;
-  }, [filteredOrders, selectedIds]);
+  }, [data?.orders, selectedIds]);
 
   const uniqueSelectedInvoicesCount = useMemo(() => {
     const orders = new Set<string>();
-    for (const order of filteredOrders) {
+    for (const order of data?.orders ?? []) {
       for (const li of order.lineItems) {
         if (selectedIds.has(li.id)) {
           orders.add(order.orderId);
@@ -246,7 +259,10 @@ export default function VendorOrders() {
       }
     }
     return orders.size;
-  }, [filteredOrders, selectedIds]);
+  }, [data?.orders, selectedIds]);
+
+  const allVisibleSelected =
+    visibleIds.size > 0 && [...visibleIds].every((id) => selectedIds.has(id));
 
   return (
     <AppShell>
@@ -319,16 +335,25 @@ export default function VendorOrders() {
             <div className="flex items-center gap-3">
               {visibleIds.size > 0 && (
                 <button
-                  onClick={visibleIds.size === selectedIds.size && visibleIds.size > 0 ? handleClearSelection : handleSelectAllShown}
+                  onClick={allVisibleSelected ? handleClearSelection : handleSelectAllShown}
                   className="text-xs font-medium text-slate-400 hover:text-white transition-colors"
                 >
-                  {visibleIds.size === selectedIds.size && visibleIds.size > 0 ? "Clear Selection" : "Select All Shown"}
+                  {allVisibleSelected ? "Clear Selection" : "Select All Shown"}
                 </button>
               )}
               <div className="text-xs text-slate-500 bg-slate-800/50 px-2.5 py-1.5 rounded-md border border-slate-800">
                 <span className="font-bold text-white">{visibleIds.size}</span> lines visible
               </div>
             </div>
+          </div>
+          <div
+            className="mt-3 flex items-center gap-2 text-xs text-slate-400"
+            aria-label="Purchase order highlight legend"
+          >
+            <span className="h-3 w-3 rounded-sm border border-amber-400/50 bg-amber-400/15" aria-hidden="true" />
+            <span><strong className="font-semibold text-amber-300">On open PO</strong> — labels show every matching PO number</span>
+            {poDataLoading && <Loader2 className="h-3 w-3 animate-spin" aria-label="Loading purchase order membership" />}
+            {poDataError && <span className="text-red-400" role="status">PO highlights unavailable</span>}
           </div>
         </div>
 
@@ -422,9 +447,20 @@ export default function VendorOrders() {
                         const added = inCart.has(li.id);
                         const isSelected = selectedIds.has(li.id);
                         const isBlankStyle = !li.itemNumber || li.itemNumber.trim() === '';
+                        const poNumbers = openPoMembership.get(stableLineIdentity(order.orderId, li.id)) ?? [];
+                        const isOnOpenPo = poNumbers.length > 0;
                         
                         return (
-                          <tr key={li.id} className={`transition-colors ${isSelected ? 'bg-[#10b981]/10' : 'hover:bg-slate-800/30'}`}>
+                          <tr
+                            key={li.id}
+                            className={`transition-colors border-l-2 ${
+                              isSelected
+                                ? "bg-[#10b981]/10 border-l-[#10b981]"
+                                : isOnOpenPo
+                                  ? "bg-amber-400/[0.07] border-l-amber-400 hover:bg-amber-400/[0.1]"
+                                  : "border-l-transparent hover:bg-slate-800/30"
+                            }`}
+                          >
                             <td className="px-5 py-3">
                                <Checkbox 
                                  checked={isSelected}
@@ -437,6 +473,19 @@ export default function VendorOrders() {
                                 {isBlankStyle ? "Missing style" : li.itemNumber}
                               </div>
                               <div className="text-[11px] text-slate-500">{li.brand || ""}</div>
+                               {isOnOpenPo && (
+                                 <div className="mt-1 flex flex-wrap gap-1" aria-label={`On open purchase order${poNumbers.length === 1 ? "" : "s"} ${poNumbers.join(", ")}`}>
+                                   {poNumbers.map((poNumber) => (
+                                     <span
+                                       key={poNumber}
+                                       className="rounded border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-300"
+                                       aria-label={`Purchase order ${poNumber}`}
+                                     >
+                                       PO {poNumber}
+                                     </span>
+                                   ))}
+                                 </div>
+                               )}
                             </td>
                             <td className="px-5 py-3 text-slate-300">{li.color || "—"}</td>
                             <td className="px-5 py-3 text-slate-400 max-w-[280px]">

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { findUniqueOneSizeOffer } from "@/components/purchasing/cartMatching";
 
 /**
  * Client-only PO cart (never persisted server-side — a PO row is only
@@ -22,8 +23,10 @@ const SIZE_ALIASES: Record<string, string> = {
   XXXXXXL: "6XL",
   "6X": "6XL",
   OS: "OSFA",
+  OSFM: "OSFA",
   "ONE SIZE": "OSFA",
   "ONE SIZE FITS ALL": "OSFA",
+  "ONE SIZE FITS MOST": "OSFA",
   "O/S": "OSFA",
   ADJ: "OSFA",
   ADJUSTABLE: "OSFA",
@@ -432,13 +435,14 @@ export const usePoCart = create<PoCartState>((set) => ({
           resolved: true,
           vendorCatalogColor: data.vendorCatalogColor,
           vendorStyleId: data.vendorStyleId,
-          // a (possibly different) color means the old availability is stale
+          // Availability is stale. Keep a hand-picked warehouse provisionally;
+          // applyInventory validates it against the fresh response.
           inventory: null,
-          warehouseCode: null,
-          warehouseName: null,
-          warehouseManual: false,
           sizes: i.sizes.map((sz) => {
-            const match = data.sizes.find((v) => sizesMatch(sz.size, v.size));
+            const matches = data.sizes.filter((v) => sizesMatch(sz.size, v.size));
+            const match =
+              (matches.length === 1 ? matches[0] : null) ??
+              findUniqueOneSizeOffer(sz.size, data.sizes);
             return match
               ? {
                   ...sz,

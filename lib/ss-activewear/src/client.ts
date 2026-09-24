@@ -1,4 +1,5 @@
 const BASE_URL = "https://api.ssactivewear.com/v2";
+const READ_RETRY_STATUSES = new Set([429, 502, 503, 504]);
 
 /**
  * S&S order endpoints don't return a bare array of orders as the docs imply —
@@ -169,8 +170,27 @@ export class SSApiError extends Error {
 }
 
 function toNum(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function safeHttpError(status: number): string {
+  if (status === 401) return "S&S authentication failed (HTTP 401)";
+  if (status === 403) return "S&S account is not authorized for this catalog request (HTTP 403)";
+  if (status === 404) return "S&S catalog endpoint was not found (HTTP 404)";
+  if (status === 429) return "S&S rate limit reached (HTTP 429)";
+  if (status >= 500) return `S&S service is temporarily unavailable (HTTP ${status})`;
+  return `S&S catalog request failed (HTTP ${status})`;
+}
+
+function expectArray(raw: unknown, resource: string): Record<string, unknown>[] {
+  if (!Array.isArray(raw)) {
+    throw new SSApiError(`S&S returned an unexpected ${resource} response`);
+  }
+  return raw.filter(
+    (item): item is Record<string, unknown> => typeof item === "object" && item !== null,
+  );
 }
 
 export class SSClient {
@@ -181,29 +201,40 @@ export class SSClient {
   }
 
   private async get<T>(path: string, timeoutMs = this.timeoutMs): Promise<T> {
-    let res: Response;
-    try {
-      res = await fetch(`${BASE_URL}${path}`, {
-        headers: { Authorization: this.authHeader, Accept: "application/json" },
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch (err) {
-      throw new SSApiError(
-        `S&S request failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      let res: Response;
+      try {
+        res = await fetch(`${BASE_URL}${path}`, {
+          headers: { Authorization: this.authHeader, Accept: "application/json" },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch (err) {
+        if (attempt === 0) continue;
+        const timedOut =
+          err instanceof Error && (err.name === "AbortError" || err.name === "TimeoutError");
+        throw new SSApiError(
+          timedOut
+            ? `S&S catalog request timed out after ${timeoutMs}ms`
+            : "S&S catalog request could not reach the vendor",
+        );
+      }
+      if (!res.ok) {
+        if (attempt === 0 && READ_RETRY_STATUSES.has(res.status)) continue;
+        throw new SSApiError(safeHttpError(res.status), res.status);
+      }
+      try {
+        return (await res.json()) as T;
+      } catch {
+        throw new SSApiError("S&S returned an unreadable catalog response");
+      }
     }
-    if (!res.ok) {
-      throw new SSApiError(`S&S HTTP ${res.status}`, res.status);
-    }
-    return (await res.json()) as T;
+    throw new SSApiError("S&S catalog request failed");
   }
 
   /** Search styles by style number / name. Returns [] when nothing matches. */
   async searchStyles(term: string): Promise<SSStyle[]> {
     const raw = await this.get<unknown>(`/styles/?search=${encodeURIComponent(term)}`);
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)
+    return expectArray(raw, "styles")
       .map((s) => ({
         styleID: Number(s.styleID),
         styleName: String(s.styleName ?? ""),
@@ -221,9 +252,7 @@ export class SSClient {
    */
   async listAllStyles(): Promise<SSCatalogStyle[]> {
     const raw = await this.get<unknown>(`/styles/`, 120_000);
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)
+    return expectArray(raw, "styles")
       .map((s) => ({
         styleID: Number(s.styleID),
         styleName: String(s.styleName ?? ""),
@@ -240,9 +269,7 @@ export class SSClient {
   /** All SKUs (color × size) for a styleID, incl. pricing + per-warehouse inventory. */
   async getProducts(styleID: number): Promise<SSProduct[]> {
     const raw = await this.get<unknown>(`/products/?styleid=${styleID}`);
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .filter((p): p is Record<string, unknown> => typeof p === "object" && p !== null)
+    return expectArray(raw, "products")
       .map((p) => ({
         sku: String(p.sku ?? ""),
         colorName: String(p.colorName ?? ""),

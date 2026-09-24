@@ -4,6 +4,8 @@ import {
 } from "@workspace/api-client-react";
 import { usePoCart } from "@/stores/poCart";
 
+const inventoryRequestVersions = new Map<string, number>();
+
 /**
  * Shared cart actions used by BOTH the per-item card flow and the cart-wide
  * "Get pricing" bulk flow — keeps color-apply and stock-check behavior
@@ -48,6 +50,8 @@ export async function fetchMatchedInventory(
   res: VendorLookupResult,
   colorName: string,
 ): Promise<void> {
+  const requestVersion = (inventoryRequestVersions.get(key) ?? 0) + 1;
+  inventoryRequestVersions.set(key, requestVersion);
   const current = usePoCart.getState().items.find((i) => i.key === key);
   if (!current) return;
   const vendorSizes = [
@@ -56,6 +60,13 @@ export async function fetchMatchedInventory(
     ),
   ].slice(0, 20);
   if (vendorSizes.length === 0) return;
+  const requestSignature = JSON.stringify({
+    vendor,
+    style: res.styleQueried,
+    styleId: res.styleId,
+    colorName,
+    vendorSizes,
+  });
   const inv = await vendorInventory({
     vendor,
     style: res.styleQueried,
@@ -65,9 +76,31 @@ export async function fetchMatchedInventory(
     catalogColor: colorName,
     sizes: vendorSizes,
   });
-  // Ignore stale responses if the user has since changed the color.
+  // Ignore stale responses after any newer request, color/product change, or
+  // manual size remap. A color-only check is insufficient when two remaps race.
   const cur = usePoCart.getState().items.find((i) => i.key === key);
-  if (!cur || cur.vendorCatalogColor !== inv.catalogColor) return;
+  const liveVendorSizes = cur
+    ? [
+        ...new Set(
+          cur.sizes.map((s) => s.vendorSize).filter((v): v is string => v !== null),
+        ),
+      ].slice(0, 20)
+    : [];
+  const liveSignature = cur
+    ? JSON.stringify({
+        vendor: cur.vendor,
+        style: res.styleQueried,
+        styleId: cur.vendorStyleId,
+        colorName: cur.vendorCatalogColor,
+        vendorSizes: liveVendorSizes,
+      })
+    : null;
+  if (
+    !cur ||
+    inventoryRequestVersions.get(key) !== requestVersion ||
+    liveSignature !== requestSignature ||
+    cur.vendorCatalogColor !== inv.catalogColor
+  ) return;
   usePoCart.getState().applyInventory(
     key,
     inv.sizes.map((s) => ({

@@ -23,6 +23,7 @@ import {
   applyLookupColor,
   fetchMatchedInventory,
 } from "./cartVendorActions";
+import { findReusableColorMatch, suggestedPoNumber } from "./cartMatching";
 import { Link } from "wouter";
 import {
   X,
@@ -43,6 +44,15 @@ const VENDOR_LABELS: Record<CartVendor, string> = {
 
 function money(n: number): string {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function apiError(err: unknown): string | undefined {
+  if (!err || typeof err !== "object" || !("data" in err)) return undefined;
+  const data = (err as { data?: unknown }).data;
+  if (!data || typeof data !== "object") return undefined;
+  const value = (data as { error?: unknown; message?: unknown }).error ??
+    (data as { message?: unknown }).message;
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 300) : undefined;
 }
 
 /** True when the vendor matched a different brand than Printavo's line item. */
@@ -132,13 +142,12 @@ function CartItemCard({
           });
           return;
         }
-        // Auto-pick the vendor color if it matches the Printavo color exactly.
-        const printavoColor = (item.color ?? "").trim().toLowerCase();
-        const exact = res.colors.find(
-          (c) => c.colorName.trim().toLowerCase() === printavoColor,
+        const colorMatch = findReusableColorMatch(
+          item.color,
+          res.colors.map((c) => c.colorName),
         );
-        if (exact) {
-          applyColor(res, exact.colorName);
+        if (colorMatch.value) {
+          applyColor(res, colorMatch.value);
         }
       },
       onError: (err) => {
@@ -163,6 +172,13 @@ function CartItemCard({
     lookupResult?.found && item.vendorCatalogColor
       ? (lookupResult.colors.find((c) => c.colorName === item.vendorCatalogColor)?.sizes ?? [])
       : [];
+  const automaticColorMatch =
+    lookupResult?.found
+      ? findReusableColorMatch(
+          item.color,
+          lookupResult.colors.map((c) => c.colorName),
+        )
+      : null;
   // Rows needing a manual size decision: unpriced (no auto-match) OR matched to a
   // COMBINED vendor size (so Tyler can verify/correct the S→S/M guess). Plain
   // exact matches are left alone to avoid inviting accidental remaps.
@@ -300,6 +316,17 @@ function CartItemCard({
             {lookupResult.matchType === "closest" && (
               <span className="text-amber-400 normal-case font-normal">
                 (closest style match: {lookupResult.styleName})
+              </span>
+            )}
+            {automaticColorMatch?.kind === "normalized" &&
+              item.vendorCatalogColor === automaticColorMatch.value && (
+                <span className="text-amber-400 normal-case font-normal">
+                  {" "}(closest color: {automaticColorMatch.value})
+                </span>
+              )}
+            {automaticColorMatch?.kind === "ambiguous" && !item.vendorCatalogColor && (
+              <span className="text-amber-400 normal-case font-normal">
+                {" "}(similar colors found — pick manually)
               </span>
             )}
           </label>
@@ -503,7 +530,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [poNumber, setPoNumber] = useState("");
+  const [poNumbers, setPoNumbers] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   // Per-vendor save target: "new" (default) or an existing PO id to append to.
@@ -541,9 +568,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       });
   }
 
-  /** Price one line: lookup → auto-apply on EXACT Printavo color match →
-   *  stock check. Anything less than an exact color match is left for the
-   *  card's manual color picker — never guess a color. */
+  /** Price one line: lookup → auto-apply an exact or unique high-confidence
+   *  color match → stock check. Moderate/ambiguous matches stay manual. */
   async function priceOneItem(i: CartItem): Promise<{ priced: boolean; note: string | null }> {
     const vendor = i.vendor as "sanmar" | "ss";
     let res: VendorLookupResult;
@@ -556,18 +582,22 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         brandHint: i.brand,
         descriptionHint: i.description,
       });
-    } catch {
-      return { priced: false, note: `${i.styleNumber}: lookup failed` };
+    } catch (err) {
+      const detail = apiError(err);
+      return {
+        priced: false,
+        note: `${i.styleNumber}: lookup failed${detail ? ` — ${detail}` : ""}`,
+      };
     }
     setItemLookup(i.key, res);
     if (!res.found) {
       return { priced: false, note: `${i.styleNumber}: not found at ${VENDOR_LABELS[vendor]}` };
     }
-    const printavoColor = (i.color ?? "").trim().toLowerCase();
-    const exact = res.colors.find(
-      (c) => c.colorName.trim().toLowerCase() === printavoColor,
+    const colorMatch = findReusableColorMatch(
+      i.color,
+      res.colors.map((c) => c.colorName),
     );
-    if (!exact) {
+    if (!colorMatch.value) {
       return { priced: false, note: `${i.styleNumber}: pick the vendor color` };
     }
     // The lookup can take 15s+ (SanMar SOAP). If the line's vendor or style
@@ -576,10 +606,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     if (!live || live.vendor !== vendor || live.styleNumber !== i.styleNumber) {
       return { priced: false, note: live ? `${i.styleNumber}: changed during pricing — re-run` : null };
     }
-    applyLookupColor(i.key, res, exact.colorName);
+    applyLookupColor(i.key, res, colorMatch.value);
     let stockFailed = false;
     try {
-      await fetchMatchedInventory(i.key, vendor, res, exact.colorName);
+      await fetchMatchedInventory(i.key, vendor, res, colorMatch.value);
     } catch {
       // Non-fatal — the card still lets Tyler save or re-pick the color to retry.
       stockFailed = true;
@@ -594,6 +624,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     }
     if (res.matchType === "closest") {
       flags.push(`closest match (${res.styleName ?? res.styleQueried}) — double-check`);
+    }
+    if (colorMatch.kind === "normalized") {
+      flags.push(`closest color (${colorMatch.value}) — double-check`);
     }
     if (stockFailed) {
       flags.push("stock check failed — no warehouse picked");
@@ -686,12 +719,38 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
   const newPoGroups = [...vendorGroups.keys()].filter((v) => targetFor(v) === "new");
   const needsPoNumber = newPoGroups.length > 0;
+  const poNumberFor = (vendor: CartVendor): string => poNumbers[vendor] ?? "";
+  const generatedPoNumberFor = (vendor: CartVendor): string =>
+    suggestedPoNumber(items.filter((item) => item.vendor === vendor));
+  const allNewPoNumbersReady = newPoGroups.every(
+    (vendor) => poNumberFor(vendor).trim().length > 0,
+  );
+  const duplicateNewPoNumbers = (() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const vendor of newPoGroups) {
+      const number = poNumberFor(vendor).trim();
+      if (!number) continue;
+      const key = number.toLocaleLowerCase();
+      if (seen.has(key)) duplicates.add(number);
+      seen.add(key);
+    }
+    return [...duplicates];
+  })();
 
   async function handleSave() {
-    if (!allReady || (needsPoNumber && poNumber.trim().length === 0)) return;
+    if (!allReady || !allNewPoNumbersReady) return;
+    // Validate the whole batch before the first create request. Otherwise two
+    // vendor POs for the same invoice could partially save with one PO number.
+    if (duplicateNewPoNumbers.length > 0) {
+      toast({
+        title: "New POs need different numbers",
+        description: `Edit one of the duplicate PO numbers: ${duplicateNewPoNumbers.join(", ")}.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
-    const suffixes: Record<CartVendor, string> = { sanmar: "SM", ss: "SS", manual: "M" };
-    const multi = newPoGroups.length > 1;
     const saved: string[] = [];
     const appended: string[] = [];
     let failed: string | null = null;
@@ -723,7 +782,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         }));
         const target = targetFor(vendor);
         if (target === "new") {
-          const num = multi ? `${poNumber.trim()}-${suffixes[vendor]}` : poNumber.trim();
+          // Save exactly what is displayed for this vendor's PO. Never derive
+          // a hidden suffix from another vendor's invoices.
+          const num = poNumberFor(vendor).trim();
           await createPo.mutateAsync({
             data: {
               poNumber: num,
@@ -768,7 +829,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         variant: "destructive",
       });
     } else {
-      setPoNumber("");
+      setPoNumbers({});
       setNotes("");
       setTargets({});
       onClose();
@@ -848,8 +909,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <div className="flex-shrink-0 border-t border-slate-800 p-4 space-y-3 bg-slate-900/60">
             {vendorGroups.size > 1 && (
               <div className="text-[11px] text-slate-400">
-                {vendorGroups.size} vendors in cart — each saves to its own PO
-                {newPoGroups.length > 1 ? " (suffixes added to new PO numbers)" : ""}.
+                {vendorGroups.size} vendors in cart — each saves to its own PO.
               </div>
             )}
             {[...vendorGroups.keys()].map((vendor) => {
@@ -879,19 +939,49 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 </div>
               );
             })}
-            <div className="flex gap-2">
-              {needsPoNumber ? (
-                <input
-                  value={poNumber}
-                  onChange={(e) => setPoNumber(e.target.value)}
-                  placeholder="PO number"
-                  className="flex-1 bg-slate-800 border border-slate-600 rounded px-2.5 py-2 text-sm font-mono text-white"
-                />
-              ) : (
-                <div className="flex-1 flex items-center text-xs text-slate-400">
-                  All items will be added to existing POs.
+            {newPoGroups.map((vendor) => {
+              const generated = generatedPoNumberFor(vendor);
+              const entered = poNumberFor(vendor);
+              return (
+                <div key={`number-${vendor}`} className="flex items-center gap-2">
+                  <span className="w-28 flex-shrink-0 text-[11px] font-semibold text-slate-400">
+                    {VENDOR_LABELS[vendor]} PO #
+                  </span>
+                  <input
+                    value={entered}
+                    onChange={(e) =>
+                      setPoNumbers((current) => ({ ...current, [vendor]: e.target.value }))
+                    }
+                    placeholder="PO number"
+                    className="min-w-0 flex-1 bg-slate-800 border border-slate-600 rounded px-2.5 py-2 text-sm font-mono text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!entered && generated) {
+                        setPoNumbers((current) => ({ ...current, [vendor]: generated }));
+                      }
+                    }}
+                    disabled={entered.length > 0 || generated.length === 0}
+                    className="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[10px] font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+                  >
+                    Generate PO Number
+                  </button>
                 </div>
-              )}
+              );
+            })}
+            {duplicateNewPoNumbers.length > 0 && (
+              <div className="text-[11px] text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle size={12} />
+                New vendor POs cannot share a PO number. Edit one before saving.
+              </div>
+            )}
+            {!needsPoNumber && (
+              <div className="text-xs text-slate-400">
+                All items will be added to existing POs.
+              </div>
+            )}
+            <div className="flex justify-end">
               <div className="text-right">
                 <div className="text-[10px] text-slate-500 uppercase font-semibold">Total</div>
                 <div className="font-mono font-bold text-[#10b981]">
@@ -911,7 +1001,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 onClick={handleSave}
                 disabled={
                   !allReady ||
-                  (needsPoNumber && poNumber.trim().length === 0) ||
+                  !allNewPoNumbersReady ||
+                  duplicateNewPoNumbers.length > 0 ||
                   saving ||
                   bulk !== null
                 }

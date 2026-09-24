@@ -19,6 +19,7 @@
     "test:pantone-verification-integration": "node ./test-pantone-verification-integration.mjs",
     "test:color-measurement": "node ./test-color-measurement.mjs",
     "test:catalog-search": "node ./test-catalog-search.mjs",
+    "test:ss-activewear-pricing": "node ./test-ss-activewear-pricing.mjs",
     "test:missive-access-policy": "node ./test-missive-access-policy.mjs",
     "test:missive-authorization-db": "node ./test-missive-authorization-db.mjs",
     "test:dropbox-policy": "node ./test-dropbox-policy.mjs",
