@@ -319,6 +319,27 @@ function americanApparel102Candidate(
   return "102";
 }
 
+/**
+ * Printavo's American Apparel 307 item is S&S's canonical 307GD. This alias is
+ * deliberately vendor-, style-, and brand-bounded so another brand's numeric
+ * 307 can never be reinterpreted as American Apparel. The shop explicitly
+ * confirmed the equivalence; S&S's live catalog confirms the canonical code.
+ */
+function americanApparel307Candidate(
+  vendor: VendorId,
+  styleTokens: string[],
+  textTokens: string[],
+  hints: VendorLookupHints,
+): string | null {
+  if (vendor !== "ss") return null;
+  if (!styleTokens.some((token) => normStyle(token) === "307")) return null;
+  if (hints.brandHint && !isAmericanApparelBrand(hints.brandHint)) return null;
+  if (!isAmericanApparelBrand(hints.brandHint) && !isAmericanApparelBrand(textTokens.join(" "))) {
+    return null;
+  }
+  return "307gd";
+}
+
 function nextLevel6210Candidate(
   vendor: VendorId,
   styleTokens: string[],
@@ -361,6 +382,13 @@ function styleCandidates(
     hints,
   );
   if (americanApparelCandidate) out.push(americanApparelCandidate);
+  const americanApparel307 = americanApparel307Candidate(
+    vendor,
+    styleTokens,
+    textTokens,
+    hints,
+  );
+  if (americanApparel307) out.push(americanApparel307);
   const nextLevelCandidate = nextLevel6210Candidate(vendor, styleTokens, textTokens, hints);
   if (nextLevelCandidate) out.push(nextLevelCandidate);
   if (textTokens.length > 0) {

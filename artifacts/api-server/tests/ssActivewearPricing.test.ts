@@ -504,3 +504,66 @@ test("American Apparel 102A surfaces S&S style 102 as review-required, never equ
   assert.equal(threadfast.matchType, "exact");
   assert.deepEqual(searched, ["102", "102A"], "conflicting brand must retain the literal style");
 });
+
+test("American Apparel 307 resolves to canonical S&S 307GD with selectable Faded Powder Pink", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalAccount = process.env.SS_ACCOUNT_NUMBER;
+  const originalKey = process.env.SS_API_KEY;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalAccount === undefined) delete process.env.SS_ACCOUNT_NUMBER;
+    else process.env.SS_ACCOUNT_NUMBER = originalAccount;
+    if (originalKey === undefined) delete process.env.SS_API_KEY;
+    else process.env.SS_API_KEY = originalKey;
+  });
+  process.env.SS_ACCOUNT_NUMBER = credentials.accountNumber;
+  process.env.SS_API_KEY = credentials.apiKey;
+
+  const searched: string[] = [];
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname.includes("/styles/")) {
+      const term = url.searchParams.get("search") ?? "";
+      searched.push(term);
+      return new Response(
+        JSON.stringify(
+          term.toLowerCase() === "307gd"
+            ? [{
+                styleID: 11696,
+                styleName: "307GD",
+                brandName: "American Apparel",
+                title: "Women's Heavyweight Cotton Garment-Dyed Muscle Tee",
+                styleImage: null,
+              }]
+            : [],
+        ),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    assert.equal(url.searchParams.get("styleid"), "11696");
+    return new Response(JSON.stringify([{
+      sku: "B03327304",
+      colorName: "Faded Powder Pink",
+      sizeName: "M",
+      piecePrice: 6.04,
+      salePrice: 5.27,
+      customerPrice: 5.27,
+      saleExpiration: "2026-09-24T00:00:00",
+      qty: 0,
+      warehouses: [{ warehouseAbbr: "PA", qty: 0 }],
+    }]), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  const result = await vendorLookup("ss", "307", { brandHint: "American Apparel" });
+  assert.equal(result.styleId, "11696");
+  assert.equal(result.styleName, "307GD");
+  assert.equal(result.brand, "American Apparel");
+  assert.equal(result.matchType, "exact", "the shop explicitly confirmed 307 = 307GD");
+  assert.equal(result.colors[0]?.colorName, "Faded Powder Pink");
+  assert.equal(result.colors[0]?.sizes[0]?.sku, "B03327304");
+  assert.deepEqual(
+    searched.map((value) => value.toLowerCase()),
+    ["307", "307gd"],
+    "the literal lookup must fall back to only the bounded canonical alias",
+  );
+});
