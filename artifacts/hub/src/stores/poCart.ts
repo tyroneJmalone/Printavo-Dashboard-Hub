@@ -110,6 +110,9 @@ export interface CartItem {
   invoiceNickname?: string | null;
   productionDueAt?: string | null;
   styleNumber: string;
+  /** Actual style code returned by the selected vendor. Kept separately from
+   * the Printavo snapshot because aliases can differ (6210M → NL6210/6210). */
+  vendorStyleNumber?: string | null;
   color: string | null;
   description: string | null;
   brand: string | null;
@@ -313,6 +316,7 @@ interface PoCartState {
     data: {
       vendorCatalogColor: string;
       vendorStyleId: string | null;
+      vendorStyleNumber: string | null;
       sizes: {
         size: string;
         unitCost: number | null;
@@ -347,6 +351,7 @@ function withVendor(i: CartItem, vendor: CartVendor): CartItem {
     resolved: false,
     vendorCatalogColor: null,
     vendorStyleId: null,
+    vendorStyleNumber: null,
     inventory: null,
     warehouseCode: null,
     warehouseName: null,
@@ -398,6 +403,7 @@ export const usePoCart = create<PoCartState>((set) => ({
               resolved: false,
               vendorCatalogColor: null,
               vendorStyleId: null,
+              vendorStyleNumber: null,
               inventory: null,
               warehouseCode: null,
               warehouseName: null,
@@ -453,6 +459,7 @@ export const usePoCart = create<PoCartState>((set) => ({
           resolved: true,
           vendorCatalogColor: data.vendorCatalogColor,
           vendorStyleId: data.vendorStyleId,
+          vendorStyleNumber: data.vendorStyleNumber,
           // Availability is stale. Keep a hand-picked warehouse provisionally;
           // applyInventory validates it against the fresh response.
           inventory: null,

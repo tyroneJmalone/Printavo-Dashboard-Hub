@@ -287,7 +287,39 @@ const BRAND_PREFIXES: ReadonlyArray<readonly [alias: string, prefix: string]> = 
  * brand-initials + digits combos ("sport tek 350" → "st350" — vendor
  * style codes are often brand initials prefixed to the number).
  */
-function styleCandidates(styleTokens: string[], textTokens: string[]): string[] {
+function isNextLevelBrand(value: string | null | undefined): boolean {
+  const normalized = normText(value ?? "");
+  return normalized === "next level" || normalized === "next level apparel";
+}
+
+function nextLevel6210Candidate(
+  vendor: VendorId,
+  styleTokens: string[],
+  textTokens: string[],
+  hints: VendorLookupHints,
+): string | null {
+  const recognized = styleTokens.some((token) =>
+    ["6210", "6210m", "nl6210"].includes(normStyle(token)),
+  );
+  if (!recognized) return null;
+
+  // A supplied Printavo brand is authoritative. Never reinterpret another
+  // brand's 6210 as Next Level merely because the number happens to match.
+  if (hints.brandHint && !isNextLevelBrand(hints.brandHint)) return null;
+  const typedBrand = textTokens.join(" ");
+  const styleIdentifiesBrand = styleTokens.some((token) => normStyle(token) === "nl6210");
+  if (!isNextLevelBrand(typedBrand) && !isNextLevelBrand(hints.brandHint) && !styleIdentifiesBrand) {
+    return null;
+  }
+  return vendor === "sanmar" ? "nl6210" : "6210";
+}
+
+function styleCandidates(
+  vendor: VendorId,
+  styleTokens: string[],
+  textTokens: string[],
+  hints: VendorLookupHints,
+): string[] {
   // Never spend the limited retry budget on a synthesized candidate before
   // trying an explicit alphanumeric code Printavo supplied. Bare numeric
   // tokens are different: brand-prefix candidates must precede them because
@@ -295,6 +327,8 @@ function styleCandidates(styleTokens: string[], textTokens: string[]): string[] 
   const explicit = styleTokens.filter((token) => /[a-z]/.test(token));
   const bareNumeric = styleTokens.filter((token) => /^\d+$/.test(token));
   const out: string[] = [...explicit];
+  const nextLevelCandidate = nextLevel6210Candidate(vendor, styleTokens, textTokens, hints);
+  if (nextLevelCandidate) out.push(nextLevelCandidate);
   if (textTokens.length > 0) {
     const joined = ` ${textTokens.join(" ")} `;
     for (const [alias, prefix] of BRAND_PREFIXES) {
@@ -315,6 +349,25 @@ function styleCandidates(styleTokens: string[], textTokens: string[]): string[] 
     }
   }
   return Array.from(new Set(out));
+}
+
+function isNextLevel6210Equivalent(
+  vendor: VendorId,
+  matchedStyle: string | null | undefined,
+  matchedBrand: string | null | undefined,
+  styleTokens: string[],
+  textTokens: string[],
+  hints: VendorLookupHints,
+): boolean {
+  const canonical = nextLevel6210Candidate(vendor, styleTokens, textTokens, hints);
+  // If extra prose was typed, the regular brand/title token check decides
+  // exactness. This special equivalence must not turn "Unknown NL6210" exact.
+  if (textTokens.length > 0 && !isNextLevelBrand(textTokens.join(" "))) return false;
+  return (
+    canonical !== null &&
+    normStyle(matchedStyle ?? "") === normStyle(canonical) &&
+    isNextLevelBrand(matchedBrand)
+  );
 }
 
 function entriesMatchStyle(entries: SanMarProductEntry[], attemptedStyle: string): boolean {
@@ -367,7 +420,7 @@ async function lookupSanMar(
 ): Promise<VendorLookupResult> {
   const client = getSanMarClient();
   const { styleTokens, textTokens } = parseQuery(query);
-  const candidates = styleCandidates(styleTokens, textTokens);
+  const candidates = styleCandidates("sanmar", styleTokens, textTokens, hints);
   // Direct lookup first — the common case is a bare style number. If SanMar
   // doesn't recognize the whole query, retry the style-number candidates
   // ("port company pc54" → "PC54"; "sport tek 350" → "350" then "ST350" —
@@ -416,7 +469,15 @@ async function lookupSanMar(
   const exact =
     entries.length > 0 &&
     !viaStripped &&
-    candidates.includes(normStyle(first?.style ?? "")) &&
+    (candidates.includes(normStyle(first?.style ?? "")) ||
+      isNextLevel6210Equivalent(
+        "sanmar",
+        first?.style,
+        first?.brandName,
+        styleTokens,
+        textTokens,
+        hints,
+      )) &&
     (hints.brandHint
       ? hintMatchesBrand(hints.brandHint, first?.brandName ?? null)
       : viaFullQuery ||
@@ -505,7 +566,7 @@ async function lookupSS(
 ): Promise<VendorLookupResult> {
   const client = getSSClient();
   const { styleTokens, textTokens } = parseQuery(style);
-  const candidates = styleCandidates(styleTokens, textTokens);
+  const candidates = styleCandidates("ss", styleTokens, textTokens, hints);
   // S&S's search handles free text reasonably well, but if the combined
   // query returns nothing ("port company pc54"-style input), retry with
   // the style-number candidates — digit tokens first, then initials+digits
@@ -566,11 +627,23 @@ async function lookupSS(
   // ("bella 3001" → BELLA + CANVAS 3001 = exact; "sport tek 350" → ST350
   // = exact because "sport tek" matches the Sport-Tek brand). Partial
   // digits-only hits stay "closest" so the user double-checks.
+  const literalStyleMatch =
+    chosen.styleName.toLowerCase() === style.toLowerCase() &&
+    (!hints.brandHint || hintMatchesBrand(hints.brandHint, chosen.brandName));
   const exact =
     !viaStripped &&
-    (chosen.styleName.toLowerCase() === style.toLowerCase() ||
+    (literalStyleMatch ||
       (candidates.includes(normText(chosen.styleName)) &&
-        textTokensMatch(textTokens, chosen.brandName, chosen.title)));
+        textTokensMatch(textTokens, chosen.brandName, chosen.title) &&
+        (!hints.brandHint || hintMatchesBrand(hints.brandHint, chosen.brandName))) ||
+      isNextLevel6210Equivalent(
+        "ss",
+        chosen.styleName,
+        chosen.brandName,
+        styleTokens,
+        textTokens,
+        hints,
+      ));
   const products = await client.getProducts(chosen.styleID);
   return {
     found: products.length > 0,

@@ -319,3 +319,115 @@ test("SanMar lookup rejects a vendor response for a different style", async (t) 
   assert.equal(result.styleName, null);
   assert.deepEqual(result.colors, []);
 });
+
+test("Next Level 6210M resolves to SanMar NL6210 without changing vendor", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalAccount = process.env.SANMAR_ACCOUNT_NUMBER;
+  const originalUsername = process.env.SANMAR_USERNAME;
+  const originalPassword = process.env.SANMAR_PASSWORD;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalAccount === undefined) delete process.env.SANMAR_ACCOUNT_NUMBER;
+    else process.env.SANMAR_ACCOUNT_NUMBER = originalAccount;
+    if (originalUsername === undefined) delete process.env.SANMAR_USERNAME;
+    else process.env.SANMAR_USERNAME = originalUsername;
+    if (originalPassword === undefined) delete process.env.SANMAR_PASSWORD;
+    else process.env.SANMAR_PASSWORD = originalPassword;
+  });
+  process.env.SANMAR_ACCOUNT_NUMBER = "test-account";
+  process.env.SANMAR_USERNAME = "test-user";
+  process.env.SANMAR_PASSWORD = "test-password";
+
+  const attempted: string[] = [];
+  globalThis.fetch = async (_input, init) => {
+    const style = String(init?.body ?? "").match(/<style>([^<]*)<\/style>/)?.[1] ?? "";
+    attempted.push(style);
+    return new Response(
+      style.toLowerCase() === "nl6210"
+        ? sanMarProductResponse("NL6210", {
+            brand: "Next Level Apparel",
+            title: "Unisex CVC Tee",
+          })
+        : "",
+      { status: 200, headers: { "content-type": "text/xml" } },
+    );
+  };
+
+  const result = await vendorLookup("sanmar", "6210M", { brandHint: "Next Level" });
+  assert.equal(result.vendor, "sanmar");
+  assert.equal(result.styleName, "NL6210");
+  assert.equal(result.matchType, "exact");
+  assert.equal(result.colors[0]?.sizes[0]?.cost, 17.62, "casePrice remains the cost");
+  assert.deepEqual(attempted.map((value) => value.toLowerCase()), ["6210m", "nl6210"]);
+});
+
+test("Next Level NL6210 resolves to S&S 6210 while conflicting brands stay closest", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalAccount = process.env.SS_ACCOUNT_NUMBER;
+  const originalKey = process.env.SS_API_KEY;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalAccount === undefined) delete process.env.SS_ACCOUNT_NUMBER;
+    else process.env.SS_ACCOUNT_NUMBER = originalAccount;
+    if (originalKey === undefined) delete process.env.SS_API_KEY;
+    else process.env.SS_API_KEY = originalKey;
+  });
+  process.env.SS_ACCOUNT_NUMBER = credentials.accountNumber;
+  process.env.SS_API_KEY = credentials.apiKey;
+
+  const searched: string[] = [];
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname.includes("/styles/")) {
+      const term = url.searchParams.get("search") ?? "";
+      searched.push(term);
+      return new Response(
+        JSON.stringify(
+          term === "6210"
+            ? [{
+                styleID: 6210,
+                styleName: "6210",
+                brandName: "Next Level Apparel",
+                title: "Unisex CVC Tee",
+                styleImage: null,
+              }]
+            : [],
+        ),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    return new Response(
+      JSON.stringify([{
+        sku: "6210-BLACK-M",
+        colorName: "Black",
+        sizeName: "M",
+        piecePrice: 4.5,
+        salePrice: null,
+        customerPrice: null,
+        saleExpiration: null,
+        qty: 12,
+        warehouses: [],
+      }]),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+
+  const exact = await vendorLookup("ss", "NL6210", { brandHint: "Next Level" });
+  assert.equal(exact.vendor, "ss");
+  assert.equal(exact.styleName, "6210");
+  assert.equal(exact.matchType, "exact");
+  assert.deepEqual(searched, ["NL6210", "6210"], "alias fallback stays within two searches");
+
+  const conflicting = await vendorLookup("ss", "6210M", { brandHint: "Different Brand" });
+  assert.equal(conflicting.styleName, "6210");
+  assert.equal(conflicting.matchType, "closest");
+  const conflictingLiteral = await vendorLookup("ss", "6210", {
+    brandHint: "Different Brand",
+  });
+  assert.equal(
+    conflictingLiteral.matchType,
+    "closest",
+    "literal style alone cannot override a conflicting brand",
+  );
+  assert.ok(searched.length <= 5, "conflicting-brand fallback remains bounded");
+});

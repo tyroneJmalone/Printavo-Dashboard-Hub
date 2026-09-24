@@ -802,7 +802,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           printavoLineItemId: i.printavoLineItemId,
           printavoOrderId: i.printavoOrderId,
           visualId: i.visualId,
-          styleNumber: i.styleNumber,
+          // Persist the actual vendor identifier used for pricing/inventory so
+          // later submission cannot send Printavo's non-literal alias.
+          styleNumber: i.vendorStyleNumber ?? i.styleNumber,
           color: i.color,
           vendorCatalogColor: i.vendorCatalogColor,
           description: i.description,

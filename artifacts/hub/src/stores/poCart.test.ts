@@ -72,6 +72,7 @@ test("vendor pricing snapshots generic quantity as the exact unique one-size SKU
   usePoCart.getState().applyVendorData("line-1", {
     vendorCatalogColor: "JetBlack",
     vendorStyleId: "vendor-style-1",
+    vendorStyleNumber: "C112",
     sizes: [
       {
         size: "ONE SIZE FITS MOST",
@@ -90,6 +91,11 @@ test("vendor pricing snapshots generic quantity as the exact unique one-size SKU
     ],
   });
   const row = usePoCart.getState().items[0].sizes[0];
+  assert.equal(
+    usePoCart.getState().items[0].vendorStyleNumber,
+    "C112",
+    "resolved vendor style is retained separately from the Printavo snapshot",
+  );
   assert.deepEqual(row, {
     size: "Quantitiy",
     qty: 17,
@@ -118,6 +124,7 @@ test("real S&S SP08 OTHER row keeps exact ONE SIZE SKU and exposes live warehous
   usePoCart.getState().applyVendorData("line-1", {
     vendorCatalogColor: "Black",
     vendorStyleId: "1415",
+    vendorStyleNumber: "SP08",
     sizes: [{
       size: "ONE SIZE",
       unitCost: 2.6,
@@ -150,6 +157,7 @@ test("ambiguous one-size offers remain unresolved", () => {
   usePoCart.getState().applyVendorData("line-1", {
     vendorCatalogColor: "JetBlack",
     vendorStyleId: "vendor-style-1",
+    vendorStyleNumber: "C112",
     sizes: [
       { size: "OS", unitCost: 4, sku: "OS", inventoryKey: null, sizeIndex: 1 },
       { size: "OSFM", unitCost: 4, sku: "OSFM", inventoryKey: null, sizeIndex: 2 },

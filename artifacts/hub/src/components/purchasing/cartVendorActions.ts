@@ -26,6 +26,7 @@ export function applyLookupColor(
   usePoCart.getState().applyVendorData(key, {
     vendorCatalogColor: color.colorName,
     vendorStyleId: res.styleId,
+    vendorStyleNumber: res.styleName,
     sizes: color.sizes.map((s) => ({
       size: s.size,
       unitCost: s.salePrice ?? s.cost,
@@ -62,14 +63,14 @@ export async function fetchMatchedInventory(
   if (vendorSizes.length === 0) return;
   const requestSignature = JSON.stringify({
     vendor,
-    style: res.styleQueried,
+    style: res.styleName ?? res.styleQueried,
     styleId: res.styleId,
     colorName,
     vendorSizes,
   });
   const inv = await vendorInventory({
     vendor,
-    style: res.styleQueried,
+    style: res.styleName ?? res.styleQueried,
     // Pin stock to the SAME product the lookup priced — a re-search by style
     // number alone can hit another brand's identical number.
     styleId: res.styleId,
@@ -89,7 +90,7 @@ export async function fetchMatchedInventory(
   const liveSignature = cur
     ? JSON.stringify({
         vendor: cur.vendor,
-        style: res.styleQueried,
+        style: cur.vendorStyleNumber ?? res.styleName ?? res.styleQueried,
         styleId: cur.vendorStyleId,
         colorName: cur.vendorCatalogColor,
         vendorSizes: liveVendorSizes,
