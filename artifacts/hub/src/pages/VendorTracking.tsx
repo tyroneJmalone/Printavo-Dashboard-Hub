@@ -4,7 +4,8 @@ import {
   useListVendorOrders,
   getListVendorOrdersQueryKey,
   useRefreshVendorOrder,
-  useRefreshActiveVendorOrders,
+  refreshVendorOrder,
+  refreshVendorOrderCarrier,
   useMarkVendorOrderFailed,
   useGetCarrierTrackingSettings,
   getGetCarrierTrackingSettingsQueryKey,
@@ -169,6 +170,8 @@ export default function VendorTracking() {
   const [expanded, setExpanded] = useState<string[]>([]);
   const [adminPin, setAdminPin] = useState("");
   const [confirmFees, setConfirmFees] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState<{ done: number; total: number; po: string } | null>(null);
+  const [refreshOutcomes, setRefreshOutcomes] = useState<string[]>([]);
   const { data: carrierSettings } = useGetCarrierTrackingSettings();
   const saveCarrierSettings = useSetCarrierTrackingSettings({
     mutation: {
@@ -231,36 +234,6 @@ export default function VendorTracking() {
     },
   });
 
-  const refreshAll = useRefreshActiveVendorOrders({
-    mutation: {
-      onSuccess: (result) => {
-        invalidate();
-        if (result.checked === 0) {
-          toast({ title: "Nothing to check", description: "No active live orders." });
-          return;
-        }
-        const bits = [
-          `${result.checked} checked`,
-          result.reconciled > 0 ? `${result.reconciled} confirmed` : null,
-          result.noRecord > 0 ? `${result.noRecord} still unknown` : null,
-          result.errors > 0 ? `${result.errors} failed to check` : null,
-        ].filter(Boolean);
-        toast({
-          title: "Vendor statuses refreshed",
-          description: bits.join(", "),
-          variant: result.errors > 0 ? "destructive" : undefined,
-        });
-      },
-      onError: (err) => {
-        toast({
-          title: "Refresh failed",
-          description: apiError(err) ?? "Request failed",
-          variant: "destructive",
-        });
-      },
-    },
-  });
-
   const orders = data?.orders ?? [];
   const visible = orders.filter((o) => {
     if (!showAll && o.mode === "dry_run") return false;
@@ -274,6 +247,52 @@ export default function VendorTracking() {
   const activeCount = orders.filter(
     (o) => o.mode === "live" && (o.status === "submitted" || o.status === "unknown") && !o.archived,
   ).length;
+
+  // Individual requests avoid one long batch exceeding the proxy deadline.
+  // Vendor failures must not prevent checking previously known shipments.
+  const refreshActive = async () => {
+    const active = orders.filter((o) => o.mode === "live" && (o.status === "submitted" || o.status === "unknown") && !o.archived);
+    if (!active.length || refreshProgress) return;
+    const outcomes: string[] = [];
+    let carrierPaused = false;
+    setRefreshOutcomes([]);
+    setRefreshProgress({ done: 0, total: active.length, po: active[0].poNumber });
+    try {
+      for (const [index, order] of active.entries()) {
+        let latest = order;
+        let vendorText: string;
+        try {
+          const result = await refreshVendorOrder(order.id);
+          latest = result.vendorOrder ?? order;
+          vendorText = `Vendor: ${result.outcome}${result.message ? ` — ${result.message}` : ""}`;
+        } catch (err) {
+          vendorText = `Vendor: failed — ${apiError(err) ?? (err instanceof Error ? err.message : "Request failed")}`;
+        }
+        let carrierText = "Carrier: disabled";
+        if (carrierSettings?.enabled) {
+          carrierText = carrierPaused ? "Carrier: paused (Shippo account blocked)" : latest.status !== "submitted" || !latest.tracking.length
+            ? "Carrier: no submitted shipments known"
+            : "Carrier: not checked";
+          if (!carrierPaused && latest.status === "submitted" && latest.tracking.length) {
+            try {
+              const result = await refreshVendorOrderCarrier(order.id);
+              carrierText = `Carrier: ${result.outcome}${result.message ? ` — ${result.message}` : ""}`;
+              if (result.message?.startsWith("Shippo account blocked:")) carrierPaused = true;
+            } catch (err) {
+              carrierText = `Carrier: failed — ${apiError(err) ?? (err instanceof Error ? err.message : "Request failed")}`;
+            }
+          }
+        }
+        outcomes.push(`PO ${order.poNumber} · ${vendorText} · ${carrierText}`);
+        setRefreshOutcomes([...outcomes]);
+        setRefreshProgress({ done: index + 1, total: active.length, po: active[index + 1]?.poNumber ?? "" });
+        invalidate();
+      }
+      toast({ title: "Active checks finished", description: `${active.length} orders checked. See per-order outcomes below.` });
+    } finally {
+      setRefreshProgress(null);
+    }
+  };
 
   return (
     <AppShell>
@@ -302,18 +321,18 @@ export default function VendorTracking() {
                 Show previews
               </label>
               <button
-                onClick={() => refreshAll.mutate()}
-                disabled={refreshAll.isPending || activeCount === 0}
+                onClick={() => { void refreshActive(); }}
+                disabled={!!refreshProgress || activeCount === 0}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-medium bg-[#059669]/10 text-[#10b981] border border-[#059669]/30 hover:bg-[#059669]/20 disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid="button-refresh-all"
               >
-                {refreshAll.isPending ? (
+                {refreshProgress ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <RefreshCw className="w-4 h-4" />
                 )}
-                {refreshAll.isPending
-                  ? "Checking vendors…"
+                {refreshProgress
+                  ? `Checking ${refreshProgress.done}/${refreshProgress.total} · PO ${refreshProgress.po}`
                   : `Refresh active (${activeCount})`}
               </button>
             </div>
@@ -321,6 +340,18 @@ export default function VendorTracking() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          {refreshOutcomes.length > 0 && (
+            <div className="mb-4 rounded-lg border border-slate-700 bg-slate-900/70 p-3 text-xs text-slate-300" role="status">
+              <div className="font-semibold text-slate-100 mb-1">Refresh outcomes {refreshProgress ? `(${refreshProgress.done}/${refreshProgress.total})` : ""}</div>
+              {refreshOutcomes.some((line) => line.includes("Shippo account blocked:")) && (
+                <div className="mb-2 text-amber-300">
+                  Shippo needs a valid payment method before carrier checks can resume.{" "}
+                  <a href="https://goshippo.com/user/billing/" target="_blank" rel="noopener noreferrer" className="underline">Open Shippo billing</a>
+                </div>
+              )}
+              {refreshOutcomes.map((line, index) => <div key={index} className="py-0.5">{line}</div>)}
+            </div>
+          )}
           <div className="mb-4 rounded-lg border border-slate-700 bg-slate-900/70 p-4 text-[12px] text-slate-300">
             <div className="font-semibold text-slate-100">Carrier tracking · {carrierSettings?.enabled ? "Enabled" : "Off by default"}</div>
             <p className="mt-1">Vendor checks are free of Shippo tracking requests. External tracking via Shippo may incur usage fees. <a className="text-emerald-400 underline" href="https://support.goshippo.com/hc/en-us/articles/360003855652-Shippo-Subscription-Plan-Overview" target="_blank" rel="noopener noreferrer">Published pricing</a>: $0.02 per unique tracking number created outside Shippo (about $2 per 100), subject to your account terms. Only an admin can enable this.</p>
@@ -441,7 +472,7 @@ export default function VendorTracking() {
                                <div className="flex flex-col gap-1 items-end">
                               <button
                                 onClick={() => refreshOne.mutate({ id: o.id })}
-                                disabled={refreshOne.isPending || refreshAll.isPending}
+                                disabled={refreshOne.isPending || !!refreshProgress}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[12px] font-medium text-slate-300 border border-slate-700 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
                                 data-testid={`button-refresh-${o.id}`}
                               >

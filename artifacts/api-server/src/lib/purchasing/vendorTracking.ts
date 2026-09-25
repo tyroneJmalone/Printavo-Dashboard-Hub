@@ -1,8 +1,8 @@
 import { db, vendorOrdersTable, poFilesTable, type VendorOrder } from "@workspace/db";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { SanMarApiError } from "@workspace/sanmar";
 import { SSApiError } from "@workspace/ss-activewear";
-import { mergeVendorTracking } from "./trackingLogic";
+import { mergeVendorTracking, trackingSnapshotCas } from "./trackingLogic";
 import {
   VendorNotConfigured,
   sanMarClient,
@@ -58,6 +58,22 @@ export interface RefreshAllResult {
 
 function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/** Bounds one HTTP request; the underlying vendor lookup is read-only and
+ * may finish later if its SDK cannot abort, but it must never persist then. */
+export async function withVendorLookupDeadline<T>(lookup: Promise<T>, timeoutMs = 35_000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      lookup,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Vendor lookup timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 interface VendorLookup {
@@ -133,7 +149,7 @@ async function updateRow(id: string, patch: Partial<VendorOrder>): Promise<Vendo
       const incoming = patch.tracking as VendorTrackingEntry[];
       const merged = mergeVendorTracking(existing, incoming);
       const [saved] = await db.update(vendorOrdersTable).set({ ...patch, tracking: merged, updatedAt: new Date() })
-        .where(and(eq(vendorOrdersTable.id, id), sql`${vendorOrdersTable.tracking} IS NOT DISTINCT FROM ${JSON.stringify(existing)}::jsonb`)).returning();
+        .where(and(eq(vendorOrdersTable.id, id), trackingSnapshotCas(vendorOrdersTable.tracking, latest.tracking))).returning();
       if (saved) return saved;
     }
     throw new Error("Tracking changed during vendor refresh; retry later.");
@@ -165,7 +181,7 @@ async function updateRowIfStatus(
       const merged = mergeVendorTracking(existing, patch.tracking as VendorTrackingEntry[]);
       const [saved] = await db.update(vendorOrdersTable).set({ ...patch, tracking: merged, updatedAt: new Date() })
         .where(and(eq(vendorOrdersTable.id, id), eq(vendorOrdersTable.status, expectedStatus),
-          sql`${vendorOrdersTable.tracking} IS NOT DISTINCT FROM ${JSON.stringify(existing)}::jsonb`)).returning();
+          trackingSnapshotCas(vendorOrdersTable.tracking, latest.tracking))).returning();
       if (saved) return saved;
     }
     throw new Error("Tracking changed during vendor reconciliation; retry later.");
@@ -223,10 +239,11 @@ export async function refreshVendorOrderStatus(id: string): Promise<RefreshResul
 
   let lookup: VendorLookup;
   try {
-    lookup =
+    lookup = await withVendorLookupDeadline(
       row.vendor === "sanmar"
-        ? await lookupSanMar(row.poNumber)
-        : await lookupSs(row.poNumber);
+        ? lookupSanMar(row.poNumber)
+        : lookupSs(row.poNumber),
+    );
   } catch (err) {
     if (err instanceof VendorNotConfigured) {
       return { outcome: "not_configured", vendorOrder: toVendorOrderDto(row), message: err.message };
@@ -237,6 +254,9 @@ export async function refreshVendorOrderStatus(id: string): Promise<RefreshResul
         vendorOrder: toVendorOrderDto(row),
         message: `Vendor lookup failed: ${errMsg(err)}`,
       };
+    }
+    if (err instanceof Error && err.message.startsWith("Vendor lookup timed out after")) {
+      return { outcome: "error", vendorOrder: toVendorOrderDto(row), message: err.message };
     }
     throw err;
   }
@@ -322,7 +342,15 @@ export async function refreshActiveVendorOrders(): Promise<RefreshAllResult> {
 
   const results: RefreshResult[] = [];
   for (const row of rows) {
-    results.push(await refreshVendorOrderStatus(row.id));
+    try {
+      results.push(await refreshVendorOrderStatus(row.id));
+    } catch (err) {
+      results.push({
+        outcome: "error",
+        vendorOrder: toVendorOrderDto(row),
+        message: `PO ${row.poNumber}: ${errMsg(err)}`,
+      });
+    }
   }
   return {
     checked: rows.length,

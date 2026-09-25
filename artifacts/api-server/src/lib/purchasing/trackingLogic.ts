@@ -1,4 +1,33 @@
 import type { VendorTrackingEntry } from "./vendorSubmit";
+import { isNull, sql, type AnyColumn } from "drizzle-orm";
+
+/** Compare the raw DB snapshot, not the normalized [] used for merging.
+ * SQL NULL and JSONB [] are different states. */
+export function trackingSnapshotCas(column: AnyColumn, snapshot: unknown) {
+  return snapshot === null
+    ? isNull(column)
+    : sql`${column} IS NOT DISTINCT FROM ${JSON.stringify(snapshot)}::jsonb`;
+}
+
+export class ShippoAccountBlocked extends Error {}
+
+/** Only surface allowlisted wording, never arbitrary Shippo response bodies. */
+export async function assertShippoResponse(response: Response): Promise<void> {
+  if (response.ok) return;
+  if ([401, 402, 403].includes(response.status)) {
+    let detail = "";
+    try {
+      const body: unknown = await response.json();
+      if (body && typeof body === "object" && "detail" in body && typeof body.detail === "string")
+        detail = body.detail;
+    } catch { /* non-JSON auth failure */ }
+    if (/valid payment method|payment method on file|billing/i.test(detail)) {
+      throw new ShippoAccountBlocked("Shippo billing required: add a valid payment method at https://goshippo.com/user/billing/ before checking carriers.");
+    }
+    throw new ShippoAccountBlocked(`Shippo account authorization failed (HTTP ${response.status}); check the Shippo connection and billing.`);
+  }
+  throw new Error(`Shippo tracking returned HTTP ${response.status}`);
+}
 
 const string = (v: unknown): string | null => typeof v === "string" && v.trim() ? v.trim() : null;
 const record = (v: unknown): Record<string, unknown> =>

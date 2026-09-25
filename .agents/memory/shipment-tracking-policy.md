@@ -14,3 +14,11 @@ Delivery evidence belongs to known packages, not the entire PO.
 **Why:** Vendors can report split shipments later. All current tracking numbers being delivered does not prove every ordered line has shipped.
 
 **How to apply:** Preserve “known shipments” wording unless package/quantity coverage is positively reconciled; keep bounded vendor discovery after known packages are delivered.
+
+## Shippo billing errors
+
+Shippo can return HTTP 401 for a missing payment method, not just invalid credentials.
+
+**Why:** A connected account's live tracking request returned an explicit billing-required response. Reconnecting would not fix that cause.
+
+**How to apply:** Inspect and safely classify the response body before recommending reconnection. Surface billing guidance and pause account-blocked batches rather than repeating the same failed request for every package.

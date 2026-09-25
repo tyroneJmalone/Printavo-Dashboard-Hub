@@ -3,11 +3,16 @@ import { appSettingsTable, db, vendorOrdersTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { toVendorOrderDto, type VendorTrackingEntry } from "./vendorSubmit";
 import type { RefreshResult } from "./vendorTracking";
-import { carrierCode, isStaleCarrierUpdate, mayRequestCarrier, normalizeCarrierTracking, withCarrierDeadline } from "./trackingLogic";
+import { assertShippoResponse, carrierCode, isStaleCarrierUpdate, mayRequestCarrier, normalizeCarrierTracking, ShippoAccountBlocked, trackingSnapshotCas, withCarrierDeadline } from "./trackingLogic";
 
 const SETTING_KEY = "shippo_external_tracking_enabled";
 const CACHE_MS = 6 * 60 * 60 * 1000;
+// Each Shippo request has a 15s deadline. Keep a single HTTP refresh under
+// the proxy's ~48s limit even when an order has many split shipments.
+const MAX_SHIPMENTS_PER_REFRESH = 2;
 const inFlight = new Set<string>();
+let accountBlockedUntil = 0;
+const ACCOUNT_BLOCKED_MESSAGE = "Shippo account blocked: add a valid payment method at https://goshippo.com/user/billing/ or check the Shippo connection. No further carriers checked.";
 
 export async function getCarrierTrackingSettings(): Promise<{ enabled: boolean }> {
   const [setting] = await db.select().from(appSettingsTable).where(eq(appSettingsTable.key, SETTING_KEY));
@@ -17,6 +22,7 @@ export async function getCarrierTrackingSettings(): Promise<{ enabled: boolean }
 export async function setCarrierTrackingSettings(enabled: boolean): Promise<{ enabled: boolean }> {
   await db.insert(appSettingsTable).values({ key: SETTING_KEY, value: { enabled } })
     .onConflictDoUpdate({ target: appSettingsTable.key, set: { value: { enabled }, updatedAt: new Date() } });
+  if (enabled) accountBlockedUntil = 0;
   return { enabled };
 }
 
@@ -29,7 +35,7 @@ async function getTracking(carrier: string, number: string): Promise<unknown> {
       `/tracks/${encodeURIComponent(carrier)}/${encodeURIComponent(number)}`,
       { method: "GET", signal },
     );
-    if (!response.ok) throw new Error(`Shippo tracking returned HTTP ${response.status}`);
+    await assertShippoResponse(response);
     return response.json();
   });
 }
@@ -61,7 +67,7 @@ async function persistTracking(id: string, incoming: VendorTrackingEntry): Promi
       carrierError: incoming.carrierError,
     } : t);
     const [saved] = await db.update(vendorOrdersTable).set({ tracking: merged, updatedAt: new Date() })
-      .where(and(eq(vendorOrdersTable.id, id), sql`${vendorOrdersTable.tracking} IS NOT DISTINCT FROM ${JSON.stringify(tracking)}::jsonb`))
+      .where(and(eq(vendorOrdersTable.id, id), trackingSnapshotCas(vendorOrdersTable.tracking, current.tracking)))
       .returning({ id: vendorOrdersTable.id });
     if (saved) return;
   }
@@ -75,18 +81,24 @@ export async function refreshCarrierTracking(id: string): Promise<RefreshResult>
     return { outcome: "not_refreshable", vendorOrder: toVendorOrderDto(row), message: "Only active submitted live orders can use carrier tracking." };
   if (!(await getCarrierTrackingSettings()).enabled)
     return { outcome: "not_refreshable", vendorOrder: toVendorOrderDto(row), message: "Paid Shippo carrier tracking is disabled. An admin must opt in first." };
+  if (Date.now() < accountBlockedUntil)
+    return { outcome: "error", vendorOrder: toVendorOrderDto(row), message: ACCOUNT_BLOCKED_MESSAGE };
   if (inFlight.has(id))
     return { outcome: "not_refreshable", vendorOrder: toVendorOrderDto(row), message: "Carrier check already running." };
   inFlight.add(id);
   try {
     let errors = 0;
     let checked = 0;
+    let attempted = 0;
+    let accountBlocked = false;
     for (const entry of (row.tracking as VendorTrackingEntry[] | null) ?? []) {
       if (!mayRequestCarrier((await getCarrierTrackingSettings()).enabled, entry, Date.now())) continue;
       const carrier = carrierCode(entry.carrier, entry.trackingNumber);
       if (!carrier) continue;
+      if (attempted >= MAX_SHIPMENTS_PER_REFRESH) break;
       // Recheck the persisted opt-in before every chargeable request.
       if (!(await getCarrierTrackingSettings()).enabled) break;
+      attempted++;
       const checkedAt = new Date().toISOString();
       try {
         const result = await getTracking(carrier, entry.trackingNumber);
@@ -94,13 +106,27 @@ export async function refreshCarrierTracking(id: string): Promise<RefreshResult>
         checked++;
       } catch (err) {
         errors++;
+        if (err instanceof ShippoAccountBlocked) {
+          accountBlocked = true;
+          // Avoid hitting Shippo again for every other PO in this process.
+          // Expire the pause so payment-method changes can eventually recover.
+          accountBlockedUntil = Date.now() + 15 * 60_000;
+          // Do not back off this package for 24h: it can be retried once the
+          // billing/connection issue is resolved. Stop before another chargeable request.
+          break;
+        }
         await persistTracking(id, { ...entry, carrierCheckedAt: checkedAt, carrierError: err instanceof Error ? err.message : "Carrier lookup failed" });
       }
     }
     const [updated] = await db.select().from(vendorOrdersTable).where(eq(vendorOrdersTable.id, id));
+    if (accountBlocked) return { outcome: "error", vendorOrder: updated ? toVendorOrderDto(updated) : null,
+      message: ACCOUNT_BLOCKED_MESSAGE };
+    const remaining = ((updated?.tracking as VendorTrackingEntry[] | null) ?? [])
+      .filter((entry) => mayRequestCarrier(true, entry, Date.now())).length;
+    const note = remaining ? ` ${remaining} eligible shipment(s) remain; check again to continue.` : "";
     return { outcome: errors ? "error" : "refreshed", vendorOrder: updated ? toVendorOrderDto(updated) : null,
-      message: errors ? `${errors} carrier lookup(s) failed; previous shipment data retained.` :
-        checked ? `${checked} carrier shipment(s) checked.` : "No eligible shipments need checking (cached, delivered, or carrier unknown)." };
+      message: errors ? `${errors} carrier lookup(s) failed; previous shipment data retained.${note}` :
+        checked ? `${checked} carrier shipment(s) checked.${note}` : "No eligible shipments need checking (cached, delivered, or carrier unknown)." };
   } finally {
     inFlight.delete(id);
   }
