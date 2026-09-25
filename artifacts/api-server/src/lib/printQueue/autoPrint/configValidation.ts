@@ -53,6 +53,8 @@ export interface AutoPrintConfig {
   copies: number;
   /** Simulate runs without sending anything to PrintNode. */
   dryRun: boolean;
+  /** Hide Printavo attachment/mockup blocks from auto-printed workorders. */
+  excludeAttachments: boolean;
   /** Decoration category/group → post-print target status. */
   categoryMappings: CategoryMapping[];
   /** Selects either legacy mappings or the independent, prioritized rule list. */
@@ -72,6 +74,7 @@ export const DEFAULT_AUTO_PRINT_CONFIG: AutoPrintConfig = {
   printerName: null,
   copies: 1,
   dryRun: true,
+  excludeAttachments: false,
   categoryMappings: [],
   routingMode: "simple",
   routingRules: [],
@@ -176,6 +179,10 @@ export function normalizeAutoPrintConfig(raw: unknown): AutoPrintConfig {
         ? v.copies
         : d.copies,
     dryRun: typeof v.dryRun === "boolean" ? v.dryRun : d.dryRun,
+    excludeAttachments:
+      typeof v.excludeAttachments === "boolean"
+        ? v.excludeAttachments
+        : d.excludeAttachments,
     categoryMappings: Array.isArray(v.categoryMappings)
       ? v.categoryMappings.filter(
           (m): m is CategoryMapping =>

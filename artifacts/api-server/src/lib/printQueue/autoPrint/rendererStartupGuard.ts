@@ -2,7 +2,7 @@ export const PDF_RENDERER_STARTUP_ERROR_PREFIX =
   "PDF renderer startup failed before printing: ";
 
 export interface AutoPrintPdfRenderer {
-  renderUrl(url: string): Promise<Buffer>;
+  renderUrl(url: string, options?: { excludeAttachments?: boolean }): Promise<Buffer>;
   close(): Promise<void>;
 }
 

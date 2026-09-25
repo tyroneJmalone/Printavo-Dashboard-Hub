@@ -43,6 +43,8 @@ export interface AutoPrintConfig {
      */
   copies: number;
   dryRun: boolean;
+  /** Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible. */
+  excludeAttachments: boolean;
   categoryMappings: AutoPrintCategoryMapping[];
   routingMode: AutoPrintConfigRoutingMode;
   routingRules: AutoPrintRoutingRule[];

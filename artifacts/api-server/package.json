@@ -12,6 +12,7 @@
     "test:line-item-history": "node ./test-line-item-history.mjs",
     "test:auto-print-live-discovery": "node ./test-auto-print-live-discovery.mjs",
     "test:auto-print-schedule": "node ./test-auto-print-schedule.mjs",
+    "test:auto-print-attachments": "node ./test-auto-print-attachments.mjs",
     "test:auto-print-decoration": "node ./test-auto-print-decoration.mjs",
     "test:report-activity": "node ./test-report-activity.mjs",
     "test:palette-suggestions": "node ./test-palette-suggestions.mjs",

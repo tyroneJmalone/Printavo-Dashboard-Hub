@@ -364,6 +364,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
 
   const [enabled, setEnabled] = useState(initial.enabled);
   const [dryRun, setDryRun] = useState(initial.dryRun);
+  const [excludeAttachments, setExcludeAttachments] = useState(initial.excludeAttachments ?? false);
   const [scheduleHours, setScheduleHours] = useState(String(initial.scheduleHours));
   const [scheduleMode, setScheduleMode] = useState<AutoPrintConfigScheduleMode>(
     initial.scheduleMode === "daily" ? "daily" : "interval",
@@ -434,6 +435,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
     const payload = {
       enabled,
       dryRun,
+      excludeAttachments,
       scheduleHours: Math.min(24, Math.max(1, Number(scheduleHours) || 6)),
       scheduleMode,
       dailyTimes,
@@ -565,6 +567,22 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
             Live mode — runs will physically print and move orders in Printavo.
           </div>
         )}
+
+        <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-[#020617] px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={excludeAttachments}
+            onChange={(e) => setExcludeAttachments(e.target.checked)}
+            className="mt-0.5 accent-[#059669]"
+            data-testid="checkbox-autoprint-exclude-attachments"
+          />
+          <span>
+            <span className="block text-[13px] text-slate-200">Exclude Attachments</span>
+            <span className="block text-[11px] text-slate-500">
+              Omit attachment and mockup pages from auto-printed PDFs. Workorder details still print.
+            </span>
+          </span>
+        </label>
 
         <div className="rounded-lg border border-slate-800 bg-[#020617] p-3 space-y-3">
           <div>

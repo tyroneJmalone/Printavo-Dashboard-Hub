@@ -11762,6 +11762,10 @@ components:
         printerName: { type: ["string", "null"] }
         copies: { type: integer, minimum: 1, maximum: 10 }
         dryRun: { type: boolean }
+        excludeAttachments:
+          type: boolean
+          default: false
+          description: "Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible."
         categoryMappings:
           type: array
           items:
@@ -11787,6 +11791,7 @@ components:
           printerName,
           copies,
           dryRun,
+          excludeAttachments,
           categoryMappings,
           routingMode,
           routingRules,

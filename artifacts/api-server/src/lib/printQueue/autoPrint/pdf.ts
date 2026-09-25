@@ -19,6 +19,18 @@ import {
 
 const PAGE_TIMEOUT_MS = 30_000;
 
+/** Match the manual workorder's attachment selector without hiding order details. */
+export async function applyAutoPrintAttachmentOption(
+  page: { addStyleTag(options: { content: string }): Promise<unknown> },
+  options?: { excludeAttachments?: boolean },
+): Promise<void> {
+  if (options?.excludeAttachments) {
+    await page.addStyleTag({
+      content: ".printing__keep-together { display: none !important; }",
+    });
+  }
+}
+
 function chromiumPath(): string {
   const override = process.env.CHROMIUM_EXECUTABLE_PATH;
   if (override) return override;
@@ -34,7 +46,7 @@ function chromiumPath(): string {
 }
 
 export interface PdfRenderer {
-  renderUrl(url: string): Promise<Buffer>;
+  renderUrl(url: string, options?: { excludeAttachments?: boolean }): Promise<Buffer>;
   close(): Promise<void>;
 }
 
@@ -77,7 +89,7 @@ export async function openPdfRenderer(): Promise<PdfRenderer> {
   });
 
   return {
-    async renderUrl(url: string): Promise<Buffer> {
+    async renderUrl(url: string, options?: { excludeAttachments?: boolean }): Promise<Buffer> {
       if (!isAllowedWorkorderUrl(url)) {
         throw new Error("Workorder URL is not a Printavo page");
       }
@@ -99,6 +111,8 @@ export async function openPdfRenderer(): Promise<PdfRenderer> {
         if (resp && !resp.ok()) {
           throw new Error(`Printavo returned ${resp.status()}`);
         }
+        // Inject after navigation so Printavo's own styles cannot override it.
+        await applyAutoPrintAttachmentOption(page, options);
         const pdf = await page.pdf({
           format: "letter",
           printBackground: true,

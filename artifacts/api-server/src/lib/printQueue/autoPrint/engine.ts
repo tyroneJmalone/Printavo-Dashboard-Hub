@@ -590,7 +590,9 @@ async function runAutoPrint(
               if (!c.workorderUrl) {
                 throw new Error("No workorder URL on this order");
               }
-              const pdf = await renderer.renderUrl(c.workorderUrl);
+              const pdf = await renderer.renderUrl(c.workorderUrl, {
+                excludeAttachments: config.excludeAttachments,
+              });
               if (dryRun) {
                 counts.dryRun += 1;
                 printOutcomes.push({ candidate: c, outcome: "dry_run" });

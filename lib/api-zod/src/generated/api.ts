@@ -8154,7 +8154,7 @@ export const getAutoPrintConfigResponseDailyTimesMax = 12;
 
 export const getAutoPrintConfigResponseCopiesMax = 10;
 
-
+export const getAutoPrintConfigResponseExcludeAttachmentsDefault = false;
 
 export const getAutoPrintConfigResponseRoutingModeDefault = `simple`;
 export const getAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin = 0;
@@ -8178,6 +8178,7 @@ export const GetAutoPrintConfigResponse = zod.object({
   "printerName": zod.string().nullable(),
   "copies": zod.number().min(1).max(getAutoPrintConfigResponseCopiesMax),
   "dryRun": zod.boolean(),
+  "excludeAttachments": zod.boolean().default(getAutoPrintConfigResponseExcludeAttachmentsDefault).describe('Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible.'),
   "categoryMappings": zod.array(zod.object({
   "category": zod.string().min(1),
   "statusId": zod.string().min(1),
@@ -8209,7 +8210,7 @@ export const updateAutoPrintConfigBodyDailyTimesMax = 12;
 
 export const updateAutoPrintConfigBodyCopiesMax = 10;
 
-
+export const updateAutoPrintConfigBodyExcludeAttachmentsDefault = false;
 
 export const updateAutoPrintConfigBodyRoutingModeDefault = `simple`;
 export const updateAutoPrintConfigBodyRoutingRulesItemDueBusinessDaysMin = 0;
@@ -8233,6 +8234,7 @@ export const UpdateAutoPrintConfigBody = zod.object({
   "printerName": zod.string().nullable(),
   "copies": zod.number().min(1).max(updateAutoPrintConfigBodyCopiesMax),
   "dryRun": zod.boolean(),
+  "excludeAttachments": zod.boolean().default(updateAutoPrintConfigBodyExcludeAttachmentsDefault).describe('Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible.'),
   "categoryMappings": zod.array(zod.object({
   "category": zod.string().min(1),
   "statusId": zod.string().min(1),
@@ -8260,7 +8262,7 @@ export const updateAutoPrintConfigResponseDailyTimesMax = 12;
 
 export const updateAutoPrintConfigResponseCopiesMax = 10;
 
-
+export const updateAutoPrintConfigResponseExcludeAttachmentsDefault = false;
 
 export const updateAutoPrintConfigResponseRoutingModeDefault = `simple`;
 export const updateAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin = 0;
@@ -8284,6 +8286,7 @@ export const UpdateAutoPrintConfigResponse = zod.object({
   "printerName": zod.string().nullable(),
   "copies": zod.number().min(1).max(updateAutoPrintConfigResponseCopiesMax),
   "dryRun": zod.boolean(),
+  "excludeAttachments": zod.boolean().default(updateAutoPrintConfigResponseExcludeAttachmentsDefault).describe('Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible.'),
   "categoryMappings": zod.array(zod.object({
   "category": zod.string().min(1),
   "statusId": zod.string().min(1),

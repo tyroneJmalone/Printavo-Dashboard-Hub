@@ -464,6 +464,8 @@ router.put("/print-queue/autoprint/config", (req, res) => {
             "scheduleMode" in req.body ? req.body.scheduleMode : "interval",
           dailyTimes:
             "dailyTimes" in req.body ? req.body.dailyTimes : ["06:00"],
+           excludeAttachments:
+             "excludeAttachments" in req.body ? req.body.excludeAttachments : false,
           routingMode:
             "routingMode" in req.body ? req.body.routingMode : "simple",
           routingRules:
