@@ -4,6 +4,7 @@ import { useClerk } from "@clerk/react";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
+import { activeSidebarItem, toggleSidebarGroup } from "./navAccordion";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
 import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity } from "lucide-react";
 
@@ -160,21 +161,6 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const COLLAPSED_GROUPS_KEY = "hub.nav.collapsedGroups";
-
-function loadCollapsedGroups(): Record<string, boolean> {
-  try {
-    const raw = localStorage.getItem(COLLAPSED_GROUPS_KEY);
-    if (!raw) return {};
-    const parsed: unknown = JSON.parse(raw);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, boolean>)
-      : {};
-  } catch {
-    return {};
-  }
-}
-
 function StaffChip() {
   const { email, role } = useStaff();
   const { signOut } = useClerk();
@@ -220,25 +206,30 @@ export function AppShell({ children }: { children: ReactNode }) {
 function StandaloneAppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { role, capabilities, enabledModules } = useStaff();
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsedGroups);
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      (!item.adminOnly || role === "admin") &&
+      (!item.requiredCapability || capabilities.includes(item.requiredCapability)) &&
+      (item.id !== "garment-pantones" || (role !== "admin" && !enabledModules.includes("product-finder"))) &&
+      (!item.module || role === "admin" || enabledModules.includes(item.module)),
+    ),
+  })).filter((group) => group.items.length > 0);
+  const activeItem = activeSidebarItem(visibleGroups, location);
+  const activeHeading = activeItem?.heading ?? null;
+  const [openGroup, setOpenGroup] = useState<string | null>(activeHeading);
   /** Mobile drawer state — the sidebar is hidden by default below lg. */
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Close the drawer whenever navigation happens.
+  // Navigation reveals the current module and closes all other categories.
+  // Manual collapse remains possible until the next navigation.
   useEffect(() => {
     setSidebarOpen(false);
-  }, [location]);
+    setOpenGroup(activeHeading);
+  }, [location, activeHeading]);
 
   const toggleGroup = (heading: string) => {
-    setCollapsedGroups((prev) => {
-      const next = { ...prev, [heading]: !prev[heading] };
-      try {
-        localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify(next));
-      } catch {
-        // localStorage unavailable — collapse state just won't persist
-      }
-      return next;
-    });
+    setOpenGroup((previous) => toggleSidebarGroup(previous, heading));
   };
   // The vendor badge polls /purchasing — skip it entirely when the
   // Purchasing module is off for this user (the call would only 403).
@@ -301,20 +292,9 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto custom-scrollbar">
-          {NAV_GROUPS.map((rawGroup, gi) => {
-            const group = {
-              ...rawGroup,
-              items: rawGroup.items.filter(
-                (item) =>
-                  (!item.adminOnly || role === "admin") &&
-                  (!item.requiredCapability || capabilities.includes(item.requiredCapability)) &&
-                  (item.id !== "garment-pantones" || (role !== "admin" && !enabledModules.includes("product-finder"))) &&
-                  (!item.module || role === "admin" || enabledModules.includes(item.module)),
-              ),
-            };
-            if (group.items.length === 0) return null;
-            const isCollapsed = group.heading ? !!collapsedGroups[group.heading] : false;
-            const hasActive = group.items.some((item) => item.href && location === item.href);
+          {visibleGroups.map((group, gi) => {
+            const isCollapsed = group.heading ? openGroup !== group.heading : false;
+            const hasActive = group.items.some((item) => item.id === activeItem?.item.id);
             return (
             <div key={gi}>
               {group.heading && (
@@ -336,7 +316,7 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
               {!isCollapsed && (
               <div className="space-y-0.5">
                 {group.items.map((item) => {
-                  const isActive = item.href && location === item.href;
+                   const isActive = item.id === activeItem?.item.id;
                   const badge = item.id === "vendor" ? vendorBadge : item.badge;
                   
                   const content = (
