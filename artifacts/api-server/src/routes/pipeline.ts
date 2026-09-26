@@ -99,6 +99,11 @@ const STAGE_CASE_SQL = `CASE
   ELSE NULL
 END`;
 
+/** Share the exact pipeline stage rules with observed dashboard transitions. */
+export function pipelineStageSql(normalizedStatusSql: string): string {
+  return STAGE_CASE_SQL.replaceAll("n.norm", normalizedStatusSql);
+}
+
 /**
  * $1 wonDays, $2 owner, $3 escaped literal search, $4..$11 date bounds,
  * $12 true when an explicit date range overrides the implicit wonDays cutoff.

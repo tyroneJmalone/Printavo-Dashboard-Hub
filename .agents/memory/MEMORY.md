@@ -70,3 +70,5 @@
 - [PrintScope renderer compatibility](printscope-renderer-compatibility.md) — MuPDF unitless SVG dimensions can silently omit choke masks even when golden verdicts match.
 - [SepScope pilot policy](printscope-pilot-policy.md) — formerly PrintScope; read-only comparisons and limited pilot-copy expiry, with historical identity preserved.
 - [Shipment tracking policy](shipment-tracking-policy.md) — Shippo connection is not paid-tracking consent; known-package delivery does not prove full PO delivery.
+- [Dashboard metric policy](dashboard-metric-policy.md) — Repeat Customer includes qualifying quotes + invoices; preserve distinct time bases, conversion caveats, and decoration overlap.
+- [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — explicit generic JSX tags can break metadata injection; specialize component aliases outside JSX.

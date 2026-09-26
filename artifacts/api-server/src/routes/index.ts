@@ -10,6 +10,7 @@ import syncRouter from "./sync";
 import backupRouter from "./backup";
 import printavoRouter from "./printavo";
 import reportsRouter from "./reports";
+import dashboardRouter from "./dashboard";
 import reportsValidatorRouter from "./reportsValidator";
 import insightsRouter from "./insights";
 import chipplyRouter from "./chipply";
@@ -85,6 +86,7 @@ router.use(syncRouter);
 router.use(backupRouter); // /backup/export is admin-only (requireAdmin per route)
 router.use(printavoRouter);
 router.use(reportsRouter);
+router.use(dashboardRouter);
 router.use(reportsValidatorRouter);
 router.use(insightsRouter);
 router.use(chipplyRouter);

@@ -36,6 +36,7 @@
     "test:line-item-product-status": "node ./test-line-item-product-status.mjs",
     "test:insights-provenance": "node ./test-insights-provenance.mjs",
     "test:pipeline-enhancements": "node ./test-pipeline-enhancements.mjs"
+    ,"test:dashboard-metrics": "node ./test-dashboard-metrics.mjs"
     ,"printscope:pilot-browser-setup": "node ./printscope-pilot-browser-seed.mjs"
     ,"printscope:pilot-browser-cleanup": "node ./printscope-pilot-browser-seed.mjs --cleanup"
     ,"test:printscope-retention-integration": "node ./test-printscope-retention-integration.mjs"

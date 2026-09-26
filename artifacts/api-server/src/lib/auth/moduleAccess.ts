@@ -29,7 +29,7 @@ export interface ModuleDef {
 
 export const MODULE_DEFS: readonly ModuleDef[] = [
   { key: "printscope", label: "SepScope", group: "Production", apiPrefixes: ["/printscope"] },
-  { key: "dashboard", label: "Dashboard", group: "General", apiPrefixes: ["/reports"] },
+  { key: "dashboard", label: "Dashboard", group: "General", apiPrefixes: ["/dashboard"] },
   { key: "reports", label: "Reports", group: "Analyze", apiPrefixes: ["/reports"] },
   { key: "payments", label: "Payments", group: "Analyze", apiPrefixes: ["/reports"] },
   { key: "ask-ai", label: "Ask AI", group: "Analyze", apiPrefixes: ["/insights"] },

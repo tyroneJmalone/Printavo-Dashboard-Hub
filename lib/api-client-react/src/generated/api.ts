@@ -200,6 +200,7 @@ import type {
   HealthStatus,
   HubCalculatorPushRequest,
   HubCalculatorPushResult,
+  HubDashboardMetrics,
   HubInvoiceSearchResponse,
   HubPngUploadRequest,
   HubPngUploadResponse,
@@ -471,6 +472,83 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetDashboardMetricsUrl = () => {
+
+
+
+
+  return `/api/dashboard/metrics`
+}
+
+/**
+ * @summary Dashboard metrics from the local Printavo mirror
+ */
+export const getDashboardMetrics = async ( options?: RequestInit): Promise<HubDashboardMetrics> => {
+
+  return customFetch<HubDashboardMetrics>(getGetDashboardMetricsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardMetricsQueryKey = () => {
+    return [
+    `/api/dashboard/metrics`
+    ] as const;
+    }
+
+
+export const getGetDashboardMetricsQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardMetrics>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardMetricsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardMetrics>>> = ({ signal }) => getDashboardMetrics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardMetrics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardMetricsQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardMetrics>>>
+export type GetDashboardMetricsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Dashboard metrics from the local Printavo mirror
+ */
+
+export function useGetDashboardMetrics<TData = Awaited<ReturnType<typeof getDashboardMetrics>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardMetricsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetPrintscopeCapabilitiesUrl = () => {
 

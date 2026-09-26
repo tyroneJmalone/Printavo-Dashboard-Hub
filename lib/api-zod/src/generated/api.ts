@@ -8,6 +8,234 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Dashboard metrics from the local Printavo mirror
+ */
+export const GetDashboardMetricsResponse = zod.object({
+  "asOf": zod.coerce.date(),
+  "timeZone": zod.enum(['America/New_York']),
+  "periods": zod.object({
+  "today": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
+  "wtd": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
+  "mtd": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
+  "qtd": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
+  "ytd": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+})
+}),
+  "averages": zod.object({
+  "today": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
+  "wtd": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
+  "mtd": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
+  "qtd": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
+  "ytd": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+})
+}),
+  "recentStart": zod.coerce.date(),
+  "recent": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "definitions": zod.record(zod.string(), zod.string()),
+  "coverage": zod.object({
+  "orders": zod.string(),
+  "quotesCreated": zod.string(),
+  "dealsWon": zod.string(),
+  "statusHistoryFrom": zod.coerce.date().nullable(),
+  "quantity": zod.string()
+})
+})
+
+
 export const GetPrintscopeCapabilitiesResponse = zod.object({
   "available": zod.boolean(),
   "reason": zod.string().optional(),

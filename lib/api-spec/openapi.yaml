@@ -43,6 +43,20 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /dashboard/metrics:
+    get:
+      operationId: getDashboardMetrics
+      tags: [dashboard]
+      summary: Dashboard metrics from the local Printavo mirror
+      responses:
+        "200":
+          description: Eastern calendar-to-date metrics, method averages, recent events, and coverage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubDashboardMetrics"
+        "500":
+          description: Aggregation unavailable
   /printscope/capabilities:
     get:
       operationId: getPrintscopeCapabilities
@@ -8030,6 +8044,98 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    HubDashboardMetrics:
+      type: object
+      required: [asOf, timeZone, periods, averages, recentStart, recent, definitions, coverage]
+      properties:
+        asOf: { type: string, format: date }
+        timeZone: { type: string, enum: [America/New_York] }
+        periods: { $ref: "#/components/schemas/HubDashboardPeriods" }
+        averages: { $ref: "#/components/schemas/HubDashboardAverages" }
+        recentStart: { type: string, format: date }
+        recent:
+          type: object
+          required: [quotesCreated, dealsWon]
+          properties:
+            quotesCreated: { $ref: "#/components/schemas/HubDashboardRecentList" }
+            dealsWon: { $ref: "#/components/schemas/HubDashboardRecentList" }
+        definitions:
+          type: object
+          additionalProperties: { type: string }
+        coverage:
+          type: object
+          required: [orders, quotesCreated, dealsWon, statusHistoryFrom, quantity]
+          properties:
+            orders: { type: string }
+            quotesCreated: { type: string }
+            dealsWon: { type: string }
+            statusHistoryFrom: { type: string, format: date-time, nullable: true }
+            quantity: { type: string }
+    HubDashboardPeriod:
+      type: object
+      required: [start, end, totalOrders, totalRevenue, itemsDecorated, netPayments, newCustomers, repeatCustomers]
+      properties:
+        start: { type: string, format: date }
+        end: { type: string, format: date }
+        totalOrders: { type: integer }
+        totalRevenue: { type: number }
+        itemsDecorated: { type: integer, nullable: true }
+        netPayments: { type: number }
+        newCustomers: { type: integer }
+        repeatCustomers: { type: integer }
+    HubDashboardPeriods:
+      type: object
+      required: [today, wtd, mtd, qtd, ytd]
+      properties:
+        today: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        wtd: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        mtd: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        qtd: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        ytd: { $ref: "#/components/schemas/HubDashboardPeriod" }
+    HubDashboardAverage:
+      type: object
+      required: [orders, averageOrderValue, averageOrderVolume, quantityKnownOrders]
+      properties:
+        orders: { type: integer }
+        averageOrderValue: { type: number, nullable: true }
+        averageOrderVolume: { type: number, nullable: true }
+        quantityKnownOrders: { type: integer }
+    HubDashboardAverageMethods:
+      type: object
+      required: [all, print, embroidery, heat]
+      properties:
+        all: { $ref: "#/components/schemas/HubDashboardAverage" }
+        print: { $ref: "#/components/schemas/HubDashboardAverage" }
+        embroidery: { $ref: "#/components/schemas/HubDashboardAverage" }
+        heat: { $ref: "#/components/schemas/HubDashboardAverage" }
+    HubDashboardAverages:
+      type: object
+      required: [today, wtd, mtd, qtd, ytd]
+      properties:
+        today: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        wtd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        mtd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        qtd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        ytd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+    HubDashboardRecentItem:
+      type: object
+      required: [orderId, visualId, customerName, nickname, statusName, occurredAt]
+      properties:
+        orderId: { type: string }
+        visualId: { type: integer }
+        customerName: { type: string, nullable: true }
+        nickname: { type: string, nullable: true }
+        statusName: { type: string, nullable: true }
+        occurredAt: { type: string, format: date-time }
+    HubDashboardRecentList:
+      type: object
+      required: [total, truncated, items]
+      properties:
+        total: { type: integer }
+        truncated: { type: boolean }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/HubDashboardRecentItem" }
     PrintscopeCapabilities:
       type: object
       required: [available, maxUploadBytes, retention, assistedOnly]

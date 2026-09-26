@@ -5,6 +5,95 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type HubDashboardMetricsTimeZone = typeof HubDashboardMetricsTimeZone[keyof typeof HubDashboardMetricsTimeZone];
+
+
+export const HubDashboardMetricsTimeZone = {
+  'America/New_York': 'America/New_York',
+} as const;
+
+export interface HubDashboardRecentItem {
+  orderId: string;
+  visualId: number;
+  customerName: string | null;
+  nickname: string | null;
+  statusName: string | null;
+  occurredAt: string;
+}
+
+export interface HubDashboardRecentList {
+  total: number;
+  truncated: boolean;
+  items: HubDashboardRecentItem[];
+}
+
+export type HubDashboardMetricsRecent = {
+  quotesCreated: HubDashboardRecentList;
+  dealsWon: HubDashboardRecentList;
+};
+
+export type HubDashboardMetricsDefinitions = {[key: string]: string};
+
+export type HubDashboardMetricsCoverage = {
+  orders: string;
+  quotesCreated: string;
+  dealsWon: string;
+  statusHistoryFrom: string | null;
+  quantity: string;
+};
+
+export interface HubDashboardPeriod {
+  start: string;
+  end: string;
+  totalOrders: number;
+  totalRevenue: number;
+  itemsDecorated: number | null;
+  netPayments: number;
+  newCustomers: number;
+  repeatCustomers: number;
+}
+
+export interface HubDashboardPeriods {
+  today: HubDashboardPeriod;
+  wtd: HubDashboardPeriod;
+  mtd: HubDashboardPeriod;
+  qtd: HubDashboardPeriod;
+  ytd: HubDashboardPeriod;
+}
+
+export interface HubDashboardAverage {
+  orders: number;
+  averageOrderValue: number | null;
+  averageOrderVolume: number | null;
+  quantityKnownOrders: number;
+}
+
+export interface HubDashboardAverageMethods {
+  all: HubDashboardAverage;
+  print: HubDashboardAverage;
+  embroidery: HubDashboardAverage;
+  heat: HubDashboardAverage;
+}
+
+export interface HubDashboardAverages {
+  today: HubDashboardAverageMethods;
+  wtd: HubDashboardAverageMethods;
+  mtd: HubDashboardAverageMethods;
+  qtd: HubDashboardAverageMethods;
+  ytd: HubDashboardAverageMethods;
+}
+
+export interface HubDashboardMetrics {
+  asOf: string;
+  timeZone: HubDashboardMetricsTimeZone;
+  periods: HubDashboardPeriods;
+  averages: HubDashboardAverages;
+  recentStart: string;
+  recent: HubDashboardMetricsRecent;
+  definitions: HubDashboardMetricsDefinitions;
+  coverage: HubDashboardMetricsCoverage;
+}
+
 export interface PrintscopeCapabilities {
   available: boolean;
   reason?: string;
