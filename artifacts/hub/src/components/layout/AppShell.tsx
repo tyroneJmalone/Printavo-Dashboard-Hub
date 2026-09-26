@@ -1,11 +1,11 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, createContext, useContext, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
 import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, Zap, Bot, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity, BookOpen, AudioLines } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -81,11 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "reports", label: "Reports", href: "/orders", icon: FileSpreadsheet, module: "reports" },
       { id: "payments", label: "Payments", href: "/payments", icon: CreditCard, module: "payments" },
       { id: "ai", label: "Ask AI", href: "/ask", icon: Sparkles, module: "ask-ai" },
-      { id: "knowledge", label: "Knowledge Base", href: "/knowledge", icon: BookOpen, module: "knowledge" },
-      { id: "ai-connections", label: "AI Connections", href: "/ai-connections", icon: Bot, adminOnly: true },
-      { id: "voice-profiles", label: "Voice Profiles", href: "/voice-profiles", icon: AudioLines },
       { id: "email-activity", label: "Email Activity", href: "/email-activity", icon: Mail, requiredCapability: "view_email_activity" },
-      { id: "email-access", label: "Email Access", href: "/email-activity/access", icon: Shield, adminOnly: true },
       { id: "correspondence", label: "Correspondence", href: "/correspondence", icon: Inbox, module: "correspondence" },
     ],
   },
@@ -117,7 +113,6 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "vendor", label: "Vendor Orders", href: "/vendor-orders", icon: Truck, module: "purchasing" },
       { id: "polog", label: "PO Log", href: "/po-log", icon: ClipboardList, module: "purchasing" },
       { id: "tracking", label: "Order Tracking", href: "/tracking", icon: PackageSearch, module: "purchasing" },
-      { id: "statusrules", label: "Status Rules", href: "/status-rules", icon: Wand2, module: "purchasing" },
     ],
   },
   {
@@ -125,8 +120,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "print", label: "Print Queue", href: "/print-queue", icon: Printer, module: "production" },
       { id: "printscope", label: "SepScope", href: "/printscope", icon: Scan, module: "printscope" },
-      { id: "pqrules", label: "Queue Rules", href: "/print-queue-rules", icon: Zap, module: "production" },
-      { id: "autoprint", label: "Auto-Print", href: "/auto-print", icon: Bot, module: "production" },
       { id: "colors", label: "Color Library", icon: Palette, disabled: true },
     ],
   },
@@ -214,7 +207,17 @@ function StaffChip() {
   );
 }
 
+// Legacy page bodies can be reused in Settings without mounting a second shell.
+const SettingsEmbedContext = createContext(false);
+export const SettingsEmbed = SettingsEmbedContext.Provider;
+
 export function AppShell({ children }: { children: ReactNode }) {
+  const embedded = useContext(SettingsEmbedContext);
+  if (embedded) return <>{children}</>;
+  return <StandaloneAppShell>{children}</StandaloneAppShell>;
+}
+
+function StandaloneAppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { role, capabilities, enabledModules } = useStaff();
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsedGroups);

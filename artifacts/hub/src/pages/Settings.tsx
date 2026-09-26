@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { AppShell } from "@/components/layout/AppShell";
+import { Link, useSearch } from "wouter";
+import { AppShell, SettingsEmbed } from "@/components/layout/AppShell";
+import { canOpenSettingsSection, resolveSettingsSection, settingsHref, settingsSections, type SettingsGroup } from "./settingsNavigation";
+import KnowledgeBase from "./KnowledgeBase";
+import AiContext from "./AiContext";
+import VoiceProfiles from "./VoiceProfiles";
+import EmailAccess from "./EmailAccess";
+import EmailActivitySettings from "./EmailActivitySettings";
+import PrintQueueRules from "./PrintQueueRules";
+import AutoPrint from "./AutoPrint";
+import StatusRules from "./StatusRules";
 import {
   useGetVendorShipTo,
   useSetVendorShipTo,
@@ -72,7 +82,7 @@ const inputCls =
 const labelCls =
   "flex flex-col gap-1.5 text-[11px] text-slate-400 font-semibold uppercase tracking-wide";
 
-export default function Settings() {
+function GeneralShipping() {
   const { toast } = useToast();
   const me = useStaff();
   const queryClient = useQueryClient();
@@ -142,30 +152,7 @@ export default function Settings() {
   };
 
   return (
-    <AppShell>
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="flex-shrink-0 bg-[#020617] border-b border-slate-800 px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <SettingsIcon size={18} className="text-[#10b981]" />
-            <div>
-              <h1 className="text-lg font-semibold text-white leading-none tracking-tight">
-                Settings
-              </h1>
-              <p className="text-xs text-slate-400 mt-1">
-                Configure how vendor orders are placed and shipped.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          {me.role === "admin" && (
-            <div className="max-w-2xl flex flex-col gap-6 mb-6">
-              <StaffAccessCard />
-              <ModuleAccessCard />
-              <AdminPinCard />
-            </div>
-          )}
+        <div className="p-4 lg:p-6">
           {!canPurchasing ? null : isLoading ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 size={22} className="animate-spin text-slate-500" />
@@ -319,6 +306,80 @@ export default function Settings() {
             </form>
           )}
         </div>
+  );
+}
+
+const GROUPS: { id: SettingsGroup; label: string }[] = [
+  { id: "access", label: "Access" },
+  { id: "connections", label: "Connections / Integrations" },
+  { id: "rules", label: "Rules / Automations" },
+];
+
+export default function Settings() {
+  const me = useStaff();
+  // Subscribe to search changes: switching subsections does not change the pathname.
+  const search = useSearch();
+  const requested = resolveSettingsSection(search);
+  const available = settingsSections.filter((section) =>
+    canOpenSettingsSection(section, me.role, me.enabledModules)
+  );
+  const requestedGroup = new URLSearchParams(search).get("group");
+  const active = available.find((section) => section.id === requested?.id) ??
+    available.find((section) => section.group === requestedGroup) ?? available[0];
+  const group = active?.group ?? "access";
+  const sectionHref = (id: string) => settingsHref(id, search);
+  const accessDenied = requested && !available.some((section) => section.id === requested.id);
+
+  const content = () => {
+    switch (active?.id) {
+      case "staff-access": return <StaffAccessCard />;
+      case "module-access": return <ModuleAccessCard />;
+      case "admin-pin": return <AdminPinCard />;
+      case "ai-connections": return <AiContext />;
+      case "knowledge-base": return <KnowledgeBase />;
+      case "email-access": return <EmailAccess />;
+      case "voice-profiles": return <VoiceProfiles />;
+      case "email-tracker": return <EmailActivitySettings />;
+      case "print-queue-rules": return <PrintQueueRules />;
+      case "auto-print": return <AutoPrint />;
+      case "purchasing-status-rules": return <StatusRules />;
+      case "shipping-address": return <GeneralShipping />;
+      default: return <p className="p-6 text-slate-400">No settings are available for your account.</p>;
+    }
+  };
+
+  return (
+    <AppShell>
+      <div className="min-h-full">
+        <header className="border-b border-slate-800 px-4 lg:px-6 py-4 flex items-center gap-2.5">
+          <SettingsIcon size={18} className="text-emerald-400" />
+          <h1 className="text-lg font-semibold text-white">Settings</h1>
+        </header>
+        <nav aria-label="Settings groups" className="flex flex-wrap gap-2 border-b border-slate-800 px-4 lg:px-6 py-3">
+          {GROUPS.filter(({ id }) => available.some((section) => section.group === id)).map(({ id, label }) => {
+            const first = available.find((section) => section.group === id)!;
+            return <Link key={id} href={sectionHref(first.id)} aria-current={group === id ? "page" : undefined}
+              className={`rounded-lg px-3 py-2 text-xs font-semibold ${group === id ? "bg-emerald-600/20 text-emerald-300" : "bg-slate-900 text-slate-400 hover:text-white"}`}>{label}</Link>;
+          })}
+        </nav>
+        <div className="flex flex-col md:flex-row">
+          <nav aria-label="Settings sections" className="flex md:flex-col flex-wrap md:flex-nowrap gap-1 border-b md:border-b-0 md:border-r border-slate-800 p-3 md:w-52 md:shrink-0">
+            {available.filter((section) => section.group === group).map((section) =>
+              <Link key={section.id} href={sectionHref(section.id)} aria-current={active?.id === section.id ? "page" : undefined}
+                className={`rounded-md px-3 py-2 text-xs font-medium ${active?.id === section.id ? "bg-emerald-600/15 text-emerald-300" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}>{section.label}</Link>
+            )}
+          </nav>
+          <div className="flex-1 min-w-0">
+            {accessDenied
+              ? <div role="alert" className="p-6 text-sm text-amber-300">You don't have access to this settings section.</div>
+              : <SettingsEmbed value={true}>{content()}</SettingsEmbed>}
+          </div>
+        </div>
+        {available.some((section) => section.id === "shipping-address") && (
+          <div className="border-t border-slate-800 px-4 lg:px-6 py-3 text-xs text-slate-500">
+            General · <Link href={sectionHref("shipping-address")} className="text-slate-300 hover:text-emerald-300">Shipping address</Link>
+          </div>
+        )}
       </div>
     </AppShell>
   );

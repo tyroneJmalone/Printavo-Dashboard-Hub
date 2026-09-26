@@ -23,14 +23,12 @@ import Payments from "./pages/Payments";
 import VendorOrders from "./pages/VendorOrders";
 import PoLog from "./pages/PoLog";
 import VendorTracking from "./pages/VendorTracking";
-import StatusRules from "./pages/StatusRules";
 import PrintQueue from "./pages/PrintQueue";
-import PrintQueueRules from "./pages/PrintQueueRules";
-import AutoPrint from "./pages/AutoPrint";
 import PriceCalculator from "./pages/PriceCalculator";
 import LabelSorter from "./pages/LabelSorter";
 import RateEstimator from "./pages/RateEstimator";
 import Settings from "./pages/Settings";
+import { legacySettingsHref } from "./pages/settingsNavigation";
 import BackupDashboard from "./pages/BackupDashboard";
 import CustomersDirectory from "./pages/CustomersDirectory";
 import CustomerProfile from "./pages/CustomerProfile";
@@ -41,8 +39,6 @@ import AiQuotesList from "./pages/AiQuotesList";
 import AiQuoteDetail from "./pages/AiQuoteDetail";
 import EmailActivity from "./pages/EmailActivity";
 import EmailDealsReport from "./pages/EmailDealsReport";
-import EmailActivitySettings from "./pages/EmailActivitySettings";
-import EmailAccess from "./pages/EmailAccess";
 import Correspondence from "./pages/Correspondence";
 import ProductFinder from "./pages/ProductFinder";
 import Collections from "./pages/Collections";
@@ -51,10 +47,7 @@ import GarmentPantones from "./pages/GarmentPantones";
 import ChipplyStores from "./pages/ChipplyStores";
 import ChipplyStoreDetail from "./pages/ChipplyStoreDetail";
 import PrintScopeApp from "./pages/printscope/PrintScopeApp";
-import KnowledgeBase from "./pages/KnowledgeBase";
-import VoiceProfiles from "./pages/VoiceProfiles";
 import ReorderRequests from "./pages/ReorderRequests";
-import AiContext from "./pages/AiContext";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
 import { Customers as MintBucksCustomers } from "./pages/mintbucks/Customers";
 import { CustomerDetail as MintBucksCustomerDetail } from "./pages/mintbucks/CustomerDetail";
@@ -197,6 +190,15 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+function LegacySettingsRoute({ path }: { path: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    const destination = legacySettingsHref(path, window.location.search);
+    if (destination) navigate(destination, { replace: true });
+  }, [navigate, path]);
+  return null;
+}
+
 function HubRoutes() {
   return (
     <Switch>
@@ -208,11 +210,11 @@ function HubRoutes() {
       <Route path="/ask" component={AskAI} />
       <Route path="/ai-quotes/:id" component={AiQuoteDetail} />
       <Route path="/ai-quotes" component={AiQuotesList} />
-      <Route path="/knowledge" component={KnowledgeBase} />
-      <Route path="/ai-connections" component={AiContext} />
-      <Route path="/voice-profiles" component={VoiceProfiles} />
-      <Route path="/email-activity/settings" component={EmailActivitySettings} />
-      <Route path="/email-activity/access" component={EmailAccess} />
+      <Route path="/knowledge">{() => <LegacySettingsRoute path="/knowledge" />}</Route>
+      <Route path="/ai-connections">{() => <LegacySettingsRoute path="/ai-connections" />}</Route>
+      <Route path="/voice-profiles">{() => <LegacySettingsRoute path="/voice-profiles" />}</Route>
+      <Route path="/email-activity/settings">{() => <LegacySettingsRoute path="/email-activity/settings" />}</Route>
+      <Route path="/email-activity/access">{() => <LegacySettingsRoute path="/email-activity/access" />}</Route>
       <Route path="/email-activity/deals" component={EmailDealsReport} />
       <Route path="/email-activity" component={EmailActivity} />
       <Route path="/correspondence" component={Correspondence} />
@@ -226,11 +228,11 @@ function HubRoutes() {
       <Route path="/vendor-orders" component={VendorOrders} />
       <Route path="/po-log" component={PoLog} />
       <Route path="/tracking" component={VendorTracking} />
-      <Route path="/status-rules" component={StatusRules} />
+      <Route path="/status-rules">{() => <LegacySettingsRoute path="/status-rules" />}</Route>
       <Route path="/print-queue" component={PrintQueue} />
-      <Route path="/print-queue-rules" component={PrintQueueRules} />
+      <Route path="/print-queue-rules">{() => <LegacySettingsRoute path="/print-queue-rules" />}</Route>
       <Route path="/printscope/*?" component={PrintScopeApp} />
-      <Route path="/auto-print" component={AutoPrint} />
+      <Route path="/auto-print">{() => <LegacySettingsRoute path="/auto-print" />}</Route>
       <Route path="/price-calculator" component={PriceCalculator} />
       <Route path="/label-sorter" component={LabelSorter} />
       <Route path="/rate-estimator" component={RateEstimator} />
