@@ -93,6 +93,8 @@ const NAV_GROUPS: NavGroup[] = [
     heading: "Sales",
     items: [
       { id: "product-finder", label: "Product Finder", href: "/product-finder", icon: Search, module: "product-finder" },
+      // Compatibility link only: staff with garment-pantones but not product-finder
+      // cannot reach the new tab, so their existing standalone route remains visible.
       { id: "garment-pantones", label: "Garment Pantones", href: "/garment-pantones", icon: Palette, module: "garment-pantones" },
       { id: "collections", label: "Collections", href: "/collections", icon: Star, module: "collections" },
       { id: "pipeline", label: "Pipeline", href: "/pipeline", icon: Filter, module: "pipeline" },
@@ -303,6 +305,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 (item) =>
                   (!item.adminOnly || role === "admin") &&
                   (!item.requiredCapability || capabilities.includes(item.requiredCapability)) &&
+                  (item.id !== "garment-pantones" || (role !== "admin" && !enabledModules.includes("product-finder"))) &&
                   (!item.module || role === "admin" || enabledModules.includes(item.module)),
               ),
             };

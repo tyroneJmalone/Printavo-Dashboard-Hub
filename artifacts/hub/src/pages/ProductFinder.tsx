@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
+import { useStaff } from "@/components/auth/StaffGate";
+import { GarmentPantonesContent } from "./GarmentPantones";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1228,6 +1230,8 @@ function CatalogSearchMode({ onSelectStyle }: { onSelectStyle: (styleName: strin
 }
 
 export default function ProductFinder() {
+  const { role, enabledModules } = useStaff();
+  const canUseGarmentPantones = role === "admin" || enabledModules.includes("garment-pantones");
   const [activeTab, setActiveTab] = useState("catalog");
   const [styleQuery, setStyleQuery] = useState("");
   
@@ -1237,8 +1241,8 @@ export default function ProductFinder() {
     const style = params.get("style");
     const tabParam = params.get("tab");
 
-    if (tabParam === "cap-america") {
-      setActiveTab("cap-america");
+    if (tabParam === "cap-america" || (tabParam === "garment-pantones" && canUseGarmentPantones)) {
+      setActiveTab(tabParam);
     }
 
     if (style) {
@@ -1247,7 +1251,7 @@ export default function ProductFinder() {
       // clear the URL param so it doesn't re-trigger on remount
       window.history.replaceState({}, '', '/product-finder');
     }
-  }, [searchString]);
+  }, [searchString, canUseGarmentPantones]);
 
   const handleSelectStyle = (styleName: string) => {
     setStyleQuery(styleName);
@@ -1256,7 +1260,7 @@ export default function ProductFinder() {
 
   return (
     <AppShell>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col min-h-full lg:h-full lg:overflow-hidden bg-[#020617]">
+      <Tabs value={activeTab === "garment-pantones" && !canUseGarmentPantones ? "catalog" : activeTab} onValueChange={setActiveTab} className="flex flex-col min-h-full lg:h-full lg:overflow-hidden bg-[#020617]">
         <div className="flex-shrink-0 border-b border-slate-800 px-6 pt-6 pb-0 z-10 relative">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-lg bg-[#059669]/20 border border-[#059669]/30 flex items-center justify-center text-[#10b981] shadow-inner shadow-[#10b981]/10">
@@ -1265,18 +1269,21 @@ export default function ProductFinder() {
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight">Product Finder</h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                {activeTab === "cap-america"
+                {activeTab === "garment-pantones" && canUseGarmentPantones
+                  ? "Documented Pantones for imported garment colors"
+                  : activeTab === "cap-america"
                   ? "Static catalog sample for Cap America (Inventory unavailable)"
                   : "Catalog & Live stock from SanMar and S&S Activewear"}
               </p>
             </div>
           </div>
 
-          <TabsList className="bg-slate-900 border border-slate-800 p-1 w-full max-w-2xl h-auto grid grid-cols-2 sm:grid-cols-4 rounded-lg mb-0 relative top-[1px]">
+          <TabsList className={`bg-slate-900 border border-slate-800 p-1 w-full ${canUseGarmentPantones ? "max-w-3xl grid-cols-2 sm:grid-cols-5" : "max-w-2xl grid-cols-2 sm:grid-cols-4"} h-auto grid rounded-lg mb-0 relative top-[1px]`}>
             <TabsTrigger value="catalog" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Catalog Search</TabsTrigger>
             <TabsTrigger value="search" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Search by Style</TabsTrigger>
             <TabsTrigger value="invoice" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Check Invoice</TabsTrigger>
             <TabsTrigger value="cap-america" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Cap America Sample</TabsTrigger>
+            {canUseGarmentPantones && <TabsTrigger value="garment-pantones" className="rounded-md data-[state=active]:bg-slate-800 data-[state=active]:text-white font-medium text-xs">Garment Pantones</TabsTrigger>}
           </TabsList>
         </div>
         
@@ -1296,6 +1303,11 @@ export default function ProductFinder() {
            <TabsContent value="cap-america" className="m-0 lg:h-full border-none outline-none p-4 lg:p-6">
              <CapAmericaSampleCatalog />
            </TabsContent>
+            {canUseGarmentPantones && (
+              <TabsContent value="garment-pantones" className="m-0 lg:h-full lg:overflow-y-auto border-none outline-none p-4 lg:p-6">
+                <GarmentPantonesContent />
+              </TabsContent>
+            )}
         </div>
       </Tabs>
     </AppShell>

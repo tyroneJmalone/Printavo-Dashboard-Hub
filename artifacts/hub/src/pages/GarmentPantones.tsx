@@ -47,7 +47,8 @@ function sourceLabel(source: CatalogPantoneIdentity["pantoneSource"]): string {
   return "";
 }
 
-export default function GarmentPantones() {
+/** Shared content for the Product Finder tab and the legacy standalone route. */
+export function GarmentPantonesContent() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -125,8 +126,7 @@ export default function GarmentPantones() {
   const total = query.data?.total ?? 0;
 
   return (
-    <AppShell>
-      <div className="mx-auto w-full max-w-7xl space-y-6 p-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
         <header>
           <h1 className="flex items-center gap-2 text-xl font-bold text-white" data-testid="text-pantone-page-title">
             <Palette className="text-emerald-400" size={24} />
@@ -279,6 +279,17 @@ export default function GarmentPantones() {
             </CardContent>
           </Card>
         </div>
+      </div>
+  );
+}
+
+// Keep the existing route for bookmarked links and staff who have only the
+// garment-pantones module enabled (not product-finder).
+export default function GarmentPantones() {
+  return (
+    <AppShell>
+      <div className="p-6">
+        <GarmentPantonesContent />
       </div>
     </AppShell>
   );
