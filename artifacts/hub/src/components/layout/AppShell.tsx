@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useEffect, useState } from "react";
+import { ReactNode, createContext, useContext, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
@@ -220,6 +220,29 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
   const [openGroup, setOpenGroup] = useState<string | null>(activeHeading);
   /** Mobile drawer state — the sidebar is hidden by default below lg. */
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop preference is independent of the mobile drawer and survives page changes.
+  const [desktopSidebarHidden, setDesktopSidebarHidden] = useState(() => {
+    try {
+      return localStorage.getItem("hub.nav.desktopSidebarHidden") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const desktopMenuButton = useRef<HTMLButtonElement>(null);
+  const mobileMenuButton = useRef<HTMLButtonElement>(null);
+  const setDesktopHidden = (hidden: boolean) => {
+    setDesktopSidebarHidden(hidden);
+    try {
+      localStorage.setItem("hub.nav.desktopSidebarHidden", String(hidden));
+    } catch {
+      // The control still works when browser storage is unavailable.
+    }
+    if (hidden) requestAnimationFrame(() => desktopMenuButton.current?.focus());
+  };
+  const closeMobileMenu = () => {
+    setSidebarOpen(false);
+    requestAnimationFrame(() => mobileMenuButton.current?.focus());
+  };
 
   // Navigation reveals the current module and closes all other categories.
   // Manual collapse remains possible until the next navigation.
@@ -259,14 +282,17 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeMobileMenu}
           aria-hidden="true"
         />
       )}
-      {/* Sidebar — slide-over drawer below lg, static column at lg+ */}
+      {/* Mobile drawer and independently collapsible desktop column. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col bg-[#0f172a] border-r border-slate-800 flex-shrink-0 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0 lg:transition-none ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        id="hub-sidebar"
+        className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col bg-[#0f172a] border-r border-slate-800 flex-shrink-0 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0 lg:transition-none lg:visible ${
+          desktopSidebarHidden ? "lg:hidden" : "lg:flex"
+        } ${
+          sidebarOpen ? "translate-x-0 visible" : "-translate-x-full invisible"
         }`}
       >
         <div className="px-5 py-5 border-b border-slate-800">
@@ -282,9 +308,20 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
             </div>
             <button
               type="button"
-              onClick={() => setSidebarOpen(false)}
+              onClick={closeMobileMenu}
               className="lg:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
               aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDesktopHidden(true)}
+              className="hidden lg:inline-flex p-1.5 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+              aria-label="Hide sidebar"
+              title="Hide sidebar"
+              aria-controls="hub-sidebar"
+              aria-expanded={!desktopSidebarHidden}
             >
               <X size={18} />
             </button>
@@ -382,13 +419,28 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 px-3 py-2 border-b border-slate-800 bg-[#0f172a] flex-shrink-0">
+        {/* Always available on mobile; on desktop it appears when the sidebar is hidden. */}
+        <div className={`${desktopSidebarHidden ? "" : "lg:hidden"} flex items-center gap-3 px-3 py-2 border-b border-slate-800 bg-[#0f172a] flex-shrink-0`}>
           <button
+            ref={mobileMenuButton}
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            className="lg:hidden p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
             aria-label="Open menu"
+            aria-controls="hub-sidebar"
+            aria-expanded={sidebarOpen}
+          >
+            <Menu size={20} />
+          </button>
+          <button
+            ref={desktopMenuButton}
+            type="button"
+            onClick={() => setDesktopHidden(false)}
+            className="hidden lg:inline-flex p-2 rounded-md text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            aria-label="Show sidebar"
+            title="Show sidebar"
+            aria-controls="hub-sidebar"
+            aria-expanded={!desktopSidebarHidden}
           >
             <Menu size={20} />
           </button>
