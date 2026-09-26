@@ -22,7 +22,18 @@ export const KNOWLEDGE_GROUP_LABELS: Readonly<Record<KnowledgeGroupId, string>> 
 
 export const INTERNAL_KNOWLEDGE_GROUP: KnowledgeGroupId = "internal_operational";
 export const KNOWLEDGE_CLASSIFICATION_SETTINGS_KEY = "knowledge_classification";
-const DEFAULT_CATEGORIES = ["general", "policy", "pricing", "production", "shipping", "faq"];
+export const KNOWLEDGE_TOPIC_CATEGORIES = [
+  "Policies & Employee Handbook",
+  "Training & SOPs",
+  "Order & Production Guidelines",
+  "Sales Resources & FAQs",
+  "Branding & Marketing",
+] as const;
+const DEFAULT_CATEGORIES = [
+  "general", "policy", "pricing", "production", "shipping", "faq",
+  ...KNOWLEDGE_TOPIC_CATEGORIES,
+];
+const CATEGORY_FOUNDATION_VERSION = 1;
 
 /**
  * These rules are deliberately explicit and safe by default. They are
@@ -84,6 +95,7 @@ export const knowledgeClassificationSettingsInputSchema = z.object({
 
 const storedSettingsSchema = z.object({
   groups: knowledgeClassificationGroupsSchema,
+  categoryFoundationVersion: z.number().int().nonnegative().optional(),
 });
 
 export class KnowledgeClassificationValidationError extends Error {
@@ -176,6 +188,42 @@ function settingsFromStoredValue(value: unknown): KnowledgeClassificationGroup[]
   return canonicalizeGroups(parsed.data.groups);
 }
 
+/** One-time additive upgrade; never moves a category already assigned by an admin. */
+export function backfillKnowledgeTopicCategories(
+  groups: KnowledgeClassificationGroup[],
+): KnowledgeClassificationGroup[] {
+  const mapped = new Set(groups.flatMap((group) =>
+    group.categories.map((category) => category.toLocaleLowerCase())));
+  return groups.map((group) => ({
+    ...group,
+    rules: [...group.rules],
+    categories: group.id === INTERNAL_KNOWLEDGE_GROUP
+      ? [...group.categories, ...KNOWLEDGE_TOPIC_CATEGORIES.filter(
+        (category) => !mapped.has(category.toLocaleLowerCase()),
+      )]
+      : [...group.categories],
+  }));
+}
+
+export function needsCategoryBackfill(value: unknown): boolean {
+  const parsed = storedSettingsSchema.safeParse(value);
+  if (!parsed.success) throw new Error("Stored knowledge classification settings are invalid");
+  return (parsed.data.categoryFoundationVersion ?? 0) < CATEGORY_FOUNDATION_VERSION;
+}
+
+/** Persist the upgrade marker alongside the editable policy in either write path. */
+export function versionedCategorySettings(
+  groups: KnowledgeClassificationGroup[],
+  existingValue?: unknown,
+): { groups: KnowledgeClassificationGroup[]; categoryFoundationVersion: number } {
+  return {
+    groups: existingValue !== undefined && needsCategoryBackfill(existingValue)
+      ? backfillKnowledgeTopicCategories(groups)
+      : groups,
+    categoryFoundationVersion: CATEGORY_FOUNDATION_VERSION,
+  };
+}
+
 /**
  * Read the current editable classification policy. No row means the safe
  * defaults: all existing common categories remain internal operational.
@@ -195,6 +243,31 @@ export async function getKnowledgeClassificationSettings(): Promise<KnowledgeCla
         categories: [...group.categories],
       })),
       updatedAt: null,
+    };
+  }
+
+  if (needsCategoryBackfill(row.value)) {
+    // Lock and re-read inside the same transaction: competing saves and reads
+    // cannot overwrite each other or bypass the optimistic timestamp check.
+    const upgraded = await db.transaction(async (tx) => {
+      const [current] = await tx.select().from(appSettingsTable)
+        .where(eq(appSettingsTable.key, KNOWLEDGE_CLASSIFICATION_SETTINGS_KEY)).for("update");
+      if (!current) return null;
+      if (!needsCategoryBackfill(current.value)) return current;
+      const value = versionedCategorySettings(settingsFromStoredValue(current.value), current.value);
+      const [updated] = await tx.update(appSettingsTable)
+        .set({ value, updatedAt: new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1)) })
+        .where(and(
+          eq(appSettingsTable.key, KNOWLEDGE_CLASSIFICATION_SETTINGS_KEY),
+          eq(appSettingsTable.updatedAt, current.updatedAt),
+        )).returning();
+      if (!updated) throw new KnowledgeClassificationStaleError();
+      return updated;
+    });
+    if (!upgraded) return getKnowledgeClassificationSettings();
+    return {
+      groups: settingsFromStoredValue(upgraded.value),
+      updatedAt: upgraded.updatedAt.toISOString(),
     };
   }
 
@@ -293,11 +366,11 @@ export async function updateKnowledgeClassificationSettings(
       throw new KnowledgeClassificationStaleError();
     }
 
-    const value = { groups: normalized.groups };
+    const value = versionedCategorySettings(normalized.groups, existing?.value);
     if (existing) {
       const [updated] = await tx
         .update(appSettingsTable)
-        .set({ value, updatedAt: new Date() })
+        .set({ value, updatedAt: new Date(Math.max(Date.now(), existing.updatedAt.getTime() + 1)) })
         .where(
           and(
             eq(appSettingsTable.key, KNOWLEDGE_CLASSIFICATION_SETTINGS_KEY),

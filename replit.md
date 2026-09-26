@@ -2,6 +2,13 @@
 
 Unified internal hub for Mint Printworks that consolidates 11 separate Printavo-connected apps into one platform (plus a future public Reorder Portal), built on a shared Printavo sync engine.
 
+## Knowledge Base organization
+
+The approved category structure, document-review workflow, AI usage boundaries,
+and future team-library search direction are recorded in
+[docs/knowledge-base-organization.md](docs/knowledge-base-organization.md).
+Use that decision record when adding content or extending Knowledge Base features.
+
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)

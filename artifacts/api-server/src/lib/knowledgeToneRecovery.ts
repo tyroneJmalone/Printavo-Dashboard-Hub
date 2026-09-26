@@ -1,5 +1,6 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
+import { KNOWLEDGE_TOPIC_CATEGORIES } from "./knowledgeClassification";
 import {
   chunkExtractedText,
   draftSourceSectionKey,
@@ -30,7 +31,10 @@ export const DraftCandidateSchema = z.object({
   // model returns an unusably short title.
   title: z.string().trim().max(1000),
   body: z.string().trim().min(1).max(6000),
-  category: z.enum(["general", "policy", "pricing", "production", "shipping", "faq"]),
+  category: z.enum([
+    "general", "policy", "pricing", "production", "shipping", "faq",
+    ...KNOWLEDGE_TOPIC_CATEGORIES,
+  ]),
   tags: z.array(z.string().trim().min(1).max(40)).max(8),
   effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   expiresDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
@@ -59,6 +63,7 @@ const FACT_AND_TONE_INSTRUCTIONS = [
   "Tone candidates must preserve preferred terms and avoided terms verbatim where supplied, and must keep each say-this/not-that pair together and faithful to the source.",
   "A tone candidate is wording guidance only. If a tone example mentions a price, deadline, turnaround, or promise, keep it inside the tone candidate as clearly labeled example language and never create a factual candidate from it.",
   "Do not choose a knowledge group. Facts use the existing category-default policy; only explicit tone candidates are eligible for brand_voice.",
+  `For fact categories, use a fitting topic when supported by the source: ${KNOWLEDGE_TOPIC_CATEGORIES.join("; ")}. Legacy categories general, policy, pricing, production, shipping, and faq are also valid. Topic does not grant customer-sharing permission; mixed-audience material should be split into separate reviewable drafts.`,
   "For explicit exact YYYY-MM-DD applicability dates, preserve effectiveDate/expiresDate. For seasonal, anniversary, or month-only language without exact dates, set dateBound=true and dateNote to the source wording; do not make it evergreen.",
   "Keep each tone body compact (at most 1,800 characters) while preserving every preferred/avoided term and paired example; do not silently truncate.",
   "All results remain human-reviewed drafts, never approvals or customer-facing conclusions.",
@@ -76,7 +81,7 @@ const TONE_ONLY_INSTRUCTIONS = [
   "All results are new human-review drafts; never approvals.",
 ].join(" ");
 
-function candidateExtractionPrompt(toneOnly: boolean): string {
+export function candidateExtractionPrompt(toneOnly: boolean): string {
   const mode = toneOnly
     ? "This is a tone/lexicon recovery preview. It is valid for the drafts array to be empty."
     : "This is a normal import. Do not leave a meaningful factual source window uncovered.";

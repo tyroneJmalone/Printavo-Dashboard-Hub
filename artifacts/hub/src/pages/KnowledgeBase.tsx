@@ -89,7 +89,14 @@ const EMPTY_FORM: EntryForm = {
   expiresDate: "",
 };
 
-const CATEGORY_SUGGESTIONS = ["general", "policy", "pricing", "production", "shipping", "faq"];
+const CATEGORY_SUGGESTIONS = [
+  "Policies & Employee Handbook",
+  "Training & SOPs",
+  "Order & Production Guidelines",
+  "Sales Resources & FAQs",
+  "Branding & Marketing",
+  "general", "policy", "pricing", "production", "shipping", "faq",
+];
 
 type EditableMergeCandidate = KnowledgeMergeCandidate & {
   knowledgeGroup: KnowledgeGroup;
@@ -119,6 +126,7 @@ export default function KnowledgeBase() {
 
   const [statusFilter, setStatusFilter] = useState<"" | "draft" | "approved" | "archived">("");
   const [groupFilter, setGroupFilter] = useState<"" | KnowledgeGroup>("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<EntryForm>(EMPTY_FORM);
@@ -142,9 +150,10 @@ export default function KnowledgeBase() {
     (): ListKnowledgeEntriesParams => ({
       ...(statusFilter ? { status: statusFilter } : {}),
       ...(groupFilter ? { knowledgeGroup: groupFilter } : {}),
+      ...(categoryFilter ? { category: categoryFilter } : {}),
       ...(search.trim() ? { q: search.trim() } : {}),
     }),
-    [statusFilter, groupFilter, search],
+    [statusFilter, groupFilter, categoryFilter, search],
   );
   const { data: entries, isLoading } = useListKnowledgeEntries(params, {
     query: { queryKey: getListKnowledgeEntriesQueryKey(params) },
@@ -159,7 +168,7 @@ export default function KnowledgeBase() {
     // previous result set. The key changes above; invalidate any cached list
     // variants as well so a freshly classified entry cannot look stale.
     void qc.invalidateQueries({ queryKey: getListKnowledgeEntriesQueryKey(), exact: false });
-  }, [statusFilter, groupFilter, search, qc]);
+  }, [statusFilter, groupFilter, categoryFilter, search, qc]);
 
   useEffect(() => {
     if (!showCreate || createGroupWasManuallySet.current) return;
@@ -438,7 +447,10 @@ export default function KnowledgeBase() {
           }}
         />
         <datalist id="kb-categories">
-          {CATEGORY_SUGGESTIONS.map((c) => (
+          {Array.from(new Set([
+            ...CATEGORY_SUGGESTIONS,
+            ...(classificationSettings.data?.groups.flatMap((group) => group.categories) ?? []),
+          ])).map((c) => (
             <option key={c} value={c} />
           ))}
         </datalist>
@@ -469,8 +481,8 @@ export default function KnowledgeBase() {
         </select>
       </label>
       <div className="text-[11px] text-slate-500">
-        Usage classification controls where this approved entry may be used. Changing an approved entry’s group
-        requires review again.
+        Category describes the topic; usage controls who may use an approved entry. Split mixed-audience documents
+        into separate entries rather than widening the whole document. Changing an approved entry’s group requires review again.
       </div>
       <div className="flex flex-wrap gap-2">
         <label className="text-[11px] text-slate-500">
@@ -629,6 +641,24 @@ export default function KnowledgeBase() {
               {group === "" ? "All groups" : groupLabel(group)}
             </button>
           ))}
+          <input
+            className={inputCls}
+            aria-label="Filter knowledge by category"
+            placeholder="Filter topic…"
+            list="kb-filter-categories"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+          />
+          <datalist id="kb-filter-categories">
+            {Array.from(new Set([
+              ...CATEGORY_SUGGESTIONS,
+              ...(classificationSettings.data?.groups.flatMap((group) => group.categories) ?? []),
+              ...(entries ?? []).map((entry) => entry.category),
+              ...(categoryFilter ? [categoryFilter] : []),
+            ])).map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </datalist>
           <div className="flex-1" />
           <div className="relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />

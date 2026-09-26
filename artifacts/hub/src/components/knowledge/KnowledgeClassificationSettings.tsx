@@ -323,7 +323,8 @@ export function KnowledgeClassificationSettings({
           <DialogDescription className="text-left text-xs leading-relaxed text-slate-400">
             Configure guidance and topic defaults for the three immutable usage groups. Mappings choose defaults for
             new imports and entries only — they are not retroactive. Uncategorized topics remain Internal Operational
-            Knowledge.
+            Knowledge. A topic describes what an entry is about; usage determines who may use it. Split mixed-audience
+            documents into separate entries rather than widening the whole document.
           </DialogDescription>
         </DialogHeader>
 
