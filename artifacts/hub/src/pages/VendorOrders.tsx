@@ -306,24 +306,24 @@ export default function VendorOrders() {
           </div>
 
           {!isLoading && data && (
-            <div className="grid grid-cols-3 gap-4 mt-5">
-              <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
-                <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1.5"><PackageSearch size={13} /> Orders Needing Purchase</div>
-                <div className="text-2xl font-bold text-white">{formatNumber(data.totalOrders)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mt-3">
+              <div className="bg-slate-900/50 rounded-lg border border-slate-800 px-4 py-2 flex items-center justify-between gap-3">
+                <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5"><PackageSearch size={13} className="shrink-0" /> Orders Needing Purchase</div>
+                <div className="text-2xl font-bold text-white shrink-0" data-testid="text-orders-needing-purchase">{formatNumber(data.totalOrders)}</div>
               </div>
-              <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
-                <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1.5"><Layers size={13} /> Line Items</div>
-                <div className="text-2xl font-bold text-white">{formatNumber(data.totalLineItems)}</div>
+              <div className="bg-slate-900/50 rounded-lg border border-slate-800 px-4 py-2 flex items-center justify-between gap-3">
+                <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5"><Layers size={13} className="shrink-0" /> Line Items</div>
+                <div className="text-2xl font-bold text-white shrink-0" data-testid="text-total-line-items">{formatNumber(data.totalLineItems)}</div>
               </div>
-              <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
-                <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1.5"><Boxes size={13} /> Total Pieces</div>
-                <div className="text-2xl font-bold text-[#10b981]">{formatNumber(data.totalPieces)}</div>
+              <div className="bg-slate-900/50 rounded-lg border border-slate-800 px-4 py-2 flex items-center justify-between gap-3">
+                <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5"><Boxes size={13} className="shrink-0" /> Total Pieces</div>
+                <div className="text-2xl font-bold text-[#10b981] shrink-0" data-testid="text-total-pieces">{formatNumber(data.totalPieces)}</div>
               </div>
             </div>
           )}
 
           {/* Filters Bar */}
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4 flex-1">
               <div className="relative w-full max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
@@ -417,12 +417,12 @@ export default function VendorOrders() {
                       ? "bg-rose-950/20 border-rose-500/60"
                       : "bg-slate-900/40 border-slate-800"
                 }`}>
-                  <div className={`px-5 py-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+                  <div className={`px-5 py-2.5 border-b flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${
                     urgency.urgent
                       ? "border-rose-500/30 bg-rose-950/30"
                       : "border-slate-800 bg-slate-900/60"
                   }`}>
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
                       <div className="flex items-center h-full">
                          <Checkbox 
                            checked={allSelected ? true : someSelected ? "indeterminate" : false}
@@ -436,9 +436,9 @@ export default function VendorOrders() {
                           <PrintavoOrderLink orderId={order.orderId} visualId={order.visualId} />
                         </div>
                          <div className="text-xs text-slate-400">{order.nickname || "—"}</div>
-                         {urgency.reasons.length > 0 && (
-                           <div className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Urgency reasons">
-                             {urgency.reasons.map((reason) => (
+                          {urgency.reasons.some((reason) => reason.kind === "nickname") && (
+                            <div className="mt-1 flex flex-wrap gap-1.5" aria-label="Urgency reasons">
+                              {urgency.reasons.filter((reason) => reason.kind === "nickname").map((reason) => (
                                <span
                                  key={`${reason.kind}-${reason.label}`}
                                  className="inline-flex items-center gap-1 rounded border border-rose-400/50 bg-rose-950/70 px-2 py-0.5 text-[10px] font-bold text-rose-200"
@@ -456,10 +456,25 @@ export default function VendorOrders() {
                         <div className="text-xs text-slate-500">{order.contactName && order.customerCompany ? order.contactName : ""}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-xs text-slate-400 flex items-center gap-1.5">
-                        <CalendarClock size={13} />
-                        <span>Prod due {formatPrintavoCalendarDate(order.productionDueAt)}</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex flex-col items-start gap-1">
+                        {urgency.reasons.some((reason) => reason.kind !== "nickname") && (
+                          <div className="flex flex-wrap gap-1.5" aria-label="Production urgency reasons" data-testid={`status-production-urgency-${order.orderId}`}>
+                            {urgency.reasons.filter((reason) => reason.kind !== "nickname").map((reason) => (
+                              <span
+                                key={`${reason.kind}-${reason.label}`}
+                                className="inline-flex items-center gap-1 rounded border border-rose-400/50 bg-rose-950/70 px-2 py-0.5 text-[10px] font-bold text-rose-200"
+                              >
+                                <AlertTriangle size={10} aria-hidden="true" />
+                                {reason.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                          <CalendarClock size={13} className="shrink-0" />
+                          <span>Prod due {formatPrintavoCalendarDate(order.productionDueAt)}</span>
+                        </div>
                       </div>
                       <span className="inline-flex items-center px-2 py-1 rounded text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
                         {statusPill(order.statusName)}
