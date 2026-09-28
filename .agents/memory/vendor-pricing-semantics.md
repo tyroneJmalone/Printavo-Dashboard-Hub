@@ -31,6 +31,19 @@ SanMar sometimes returns 4XL/5XL rows under a SEPARATE, abbreviated `catalogColo
 
 **How to apply:** do NOT merge these buckets server-side — inventory checks and PO submits require the exact per-bucket catalogColor string per size (merging risks wrong-color orders). Handle it at display time: prefer XS–XL-priced sizes/colors when picking a default price.
 
+**Verified case-only exception:** Gildan 5400 returns Royal for smaller sizes
+and ROYAL for larger sizes. Read-only live ProductInfo, inventory and
+getPreSubmitInfo accepted either spelling for S and 2XL and resolved identical
+per-size inventoryKey/sizeIndex and inventory. Case-only aliases can expose
+the union of offers while retaining both names for saved approvals. This is
+not permission to merge abbreviated, punctuated, heather, or dark variants;
+conflicting same-size offers must stay ambiguous.
+
+**Why:** Names differing only by case split one legitimate color across size
+groups, causing false ambiguity. Preserving original alias names avoids
+invalidating approved corrections; vendor pre-submit evidence establishes the
+specific casing behavior rather than assuming display similarity implies identity.
+
 # Vendor search quirks
 
 - S&S `/styles/?search=` relevance can put the WRONG brand first when brands share a style number (bare "5000" → Bayside, not Gildan). Brand words typed in the query must outweigh S&S's own ordering.

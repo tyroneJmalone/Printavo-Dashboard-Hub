@@ -119,7 +119,7 @@ function ssImageUrl(path: string | null): string | null {
   return SS_IMAGE_BASE + path.replace(/^\/+/, "");
 }
 
-function sanMarToColors(entries: SanMarProductEntry[]): VendorColorOffer[] {
+export function sanMarToColors(entries: SanMarProductEntry[]): VendorColorOffer[] {
   const byColor = new Map<
     string,
     { sizes: VendorSizeOffer[]; swatchImage: string | null; productImage: string | null }
@@ -158,12 +158,24 @@ function sanMarToColors(entries: SanMarProductEntry[]): VendorColorOffer[] {
       warehouses: null,
     });
   }
+  // Preserve every original color spelling (including saved approvals), but
+  // give pure-case aliases the same complete offer set. Do not collapse
+  // conflicting same-size offers: downstream unique-size checks fail closed.
+  const caseGroups = new Map<string, VendorSizeOffer[]>();
+  for (const [name, bucket] of byColor) {
+    const key = name.toLowerCase();
+    const offers = caseGroups.get(key) ?? [];
+    for (const offer of bucket.sizes) {
+      if (!offers.some(existing => JSON.stringify(existing) === JSON.stringify(offer))) offers.push(offer);
+    }
+    caseGroups.set(key, offers);
+  }
   return Array.from(byColor.entries())
     .map(([colorName, bucket]) => ({
       colorName,
       swatchImage: bucket.swatchImage,
       productImage: bucket.productImage,
-      sizes: bucket.sizes.sort((a, b) => sizeRank(a.size) - sizeRank(b.size)),
+      sizes: caseGroups.get(colorName.toLowerCase())!.sort((a, b) => sizeRank(a.size) - sizeRank(b.size)),
     }))
     .sort((a, b) => a.colorName.localeCompare(b.colorName));
 }
@@ -296,6 +308,22 @@ function isAmericanApparelBrand(value: string | null | undefined): boolean {
   return normText(value ?? "") === "american apparel";
 }
 
+function isBellaCanvasBrand(value: string | null | undefined): boolean {
+  return ["bella", "bella canvas", "bella and canvas"].includes(normText(value ?? ""));
+}
+
+/** Live SanMar ProductInfo confirms BC3001CVC is Bella + Canvas's CVC tee;
+ * 3001CVC itself returns no entries. Do not generalize this suffix alias to
+ * other brands, vendors, or styles. */
+function bella3001CVCCandidate(
+  vendor: VendorId, styleTokens: string[], textTokens: string[], hints: VendorLookupHints,
+): string | null {
+  if (vendor !== "sanmar" || !styleTokens.includes("3001cvc")) return null;
+  if (hints.brandHint && !isBellaCanvasBrand(hints.brandHint)) return null;
+  if (!isBellaCanvasBrand(hints.brandHint) && !isBellaCanvasBrand(textTokens.join(" "))) return null;
+  return "bc3001cvc";
+}
+
 /**
  * For a Printavo American Apparel 102A line, S&S's only brand-confirmed nearby
  * catalog result is style 102. S&S also has a literal 102A belonging to
@@ -375,6 +403,8 @@ function styleCandidates(
   const explicit = styleTokens.filter((token) => /[a-z]/.test(token));
   const bareNumeric = styleTokens.filter((token) => /^\d+$/.test(token));
   const out: string[] = [...explicit];
+  const bellaCandidate = bella3001CVCCandidate(vendor, styleTokens, textTokens, hints);
+  if (bellaCandidate) out.push(bellaCandidate);
   const americanApparelCandidate = americanApparel102Candidate(
     vendor,
     styleTokens,
@@ -506,6 +536,9 @@ async function lookupSanMar(
       const response = await client.getProductInfo(t.toUpperCase());
       if (!entriesMatchStyle(response, t)) continue;
       entries = filterEntriesToStyle(response, t);
+      if (t === bella3001CVCCandidate("sanmar", styleTokens, textTokens, hints)) {
+        entries = entries.filter(entry => isBellaCanvasBrand(entry.brandName));
+      }
       if (entries.length > 0) break;
     }
   }

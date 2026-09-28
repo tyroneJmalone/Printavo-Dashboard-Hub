@@ -113,6 +113,7 @@ function editDistance(a: string, b: string): number {
 export function findReusableColorMatch(
   printavoColor: string | null,
   vendorColors: readonly string[],
+  offers?: readonly { colorName: string; sizes: readonly { size: string }[] }[],
 ): ColorMatch {
   const source = printavoColor?.trim();
   if (!source) return { kind: "none", value: null };
@@ -121,7 +122,19 @@ export function findReusableColorMatch(
     (candidate) => candidate.trim().toLocaleLowerCase() === source.toLocaleLowerCase(),
   );
   if (exact.length === 1) return { kind: "exact", value: exact[0] };
-  if (exact.length > 1) return { kind: "ambiguous", value: null };
+  if (exact.length > 1) {
+    // Only pure-case aliases with identical live offers can share identity.
+    // Names alone remain ambiguous; punctuation, palette and modifiers do
+    // not participate. Reject conflicting same-size offers even if mirrored.
+    const buckets = exact.map(name => offers?.find(c => c.colorName === name));
+    const first = buckets[0];
+    if (first && exact.every(name => name.toLowerCase() === exact[0].toLowerCase()) &&
+        new Set(first.sizes.map(s => s.size.toUpperCase())).size === first.sizes.length &&
+        buckets.every(bucket => bucket && JSON.stringify(bucket.sizes) === JSON.stringify(first.sizes))) {
+      return { kind: "exact", value: exact.find(name => name === source) ?? [...exact].sort()[0] };
+    }
+    return { kind: "ambiguous", value: null };
+  }
 
   const normalized = normalizedColor(source);
   if (!normalized) return { kind: "none", value: null };

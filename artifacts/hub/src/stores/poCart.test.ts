@@ -151,6 +151,27 @@ test("resetting the same vendor clears old resolved pricing, identity, and inven
   });
 });
 
+test("case-unioned conflicting offers cannot reuse a previously picked size or SKU", () => {
+  for (const vendorCatalogColor of ["Royal", "ROYAL"]) {
+    usePoCart.setState({ items: [stockedItem({
+      styleNumber: "5400", vendorStyleNumber: "5400", vendorCatalogColor,
+      resolved: true, brand: "Gildan", color: "Royal",
+      sizes: [{ ...stockedItem().sizes[0], unitCost: 5.89, sku: "prior", inventoryKey: "prior" }],
+    })] });
+    usePoCart.getState().applyVendorData("line-1", {
+      vendorCatalogColor, vendorStyleId: null, vendorStyleNumber: "5400",
+      sizes: [
+        { size: "M", unitCost: 5.89, sku: "first", inventoryKey: "first", sizeIndex: 1 },
+        { size: "M", unitCost: 99, sku: "second", inventoryKey: "second", sizeIndex: 2 },
+      ],
+    });
+    const row = usePoCart.getState().items[0].sizes[0];
+    assert.equal(row.unitCost, null);
+    assert.equal(row.sku, null);
+    assert.equal(row.inventoryKey, null);
+  }
+});
+
 test("a stale rejected lookup cannot clear newer vendor or style work", () => {
   const newer = item({
     styleNumber: "102",

@@ -3,9 +3,10 @@ import { catalogSearch, type CatalogSearchHit, type VendorLookupResult } from "@
 import type { CartItem } from "../../stores/poCart";
 
 /** Explicit merchandise approval, separate from loose catalog color-family suggestions. */
-export function QueueMatchReview({ item, result, onStyle, onApprove }: {
+export function QueueMatchReview({ item, result, unresolved = true, onStyle, onApprove }: {
   item: CartItem;
   result?: VendorLookupResult;
+  unresolved?: boolean;
   onStyle: (item: CartItem, style: string, brand: string | null) => Promise<void>;
   onApprove: (item: CartItem, color: string) => Promise<void>;
 }) {
@@ -25,8 +26,8 @@ export function QueueMatchReview({ item, result, onStyle, onApprove }: {
     catch (error) { if (alive.current) setMessage(error instanceof Error ? error.message : "Match operation failed."); }
     finally { if (alive.current) setBusy(false); }
   }
-  return <details className="pt-1">
-    <summary data-testid={`review-match-${item.key}`} className="cursor-pointer text-sky-300">Review vendor style / color</summary>
+  return <details className="pt-1" open={unresolved || undefined}>
+    <summary data-testid={`review-match-${item.key}`} className="cursor-pointer text-sky-300">Search {vendor === "ss" ? "S&S" : "SanMar"} style / review color</summary>
     <div className="space-y-2 pt-2">
       <div className="text-amber-300">Approve only the exact merchandise intended. Saves a reusable match; Printavo is unchanged.</div>
       <input data-testid={`search-vendor-style-${item.key}`} aria-label="Search vendor catalog"
@@ -36,7 +37,7 @@ export function QueueMatchReview({ item, result, onStyle, onApprove }: {
         onClick={() => void run(async () => {
           const response = await catalogSearch({ q: query.trim(), vendor, limit: 15 });
           if (alive.current) { setHits(response.hits); setMessage(response.hits.length ? "Select a style, then approve its color." : "No catalog styles found."); }
-        })}>Search {vendor === "ss" ? "S&S" : "SanMar"} catalog</button>
+         })}>Search {vendor === "ss" ? "S&S" : "SanMar"} style</button>
       {hits.map(hit => <button type="button" key={hit.id} disabled={busy}
         data-testid={`choose-vendor-style-${item.key}-${hit.id}`}
         className="block text-left border border-slate-700 rounded p-2 w-full"

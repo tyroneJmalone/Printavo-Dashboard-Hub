@@ -175,6 +175,7 @@ function CartItemCard({
         const colorMatch = findReusableColorMatch(
           item.color,
           res.colors.map((c) => c.colorName),
+          res.colors,
         );
         if (learned.approvedColor) colorMatch.value = learned.approvedColor;
         if (item.vendorStyleId === res.styleId &&
@@ -227,6 +228,7 @@ function CartItemCard({
       ? findReusableColorMatch(
           item.color,
           lookupResult.colors.map((c) => c.colorName),
+          lookupResult.colors,
         )
       : null;
   // Rows needing a manual size decision: unpriced (no auto-match) OR matched to a
@@ -732,6 +734,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     const colorMatch = findReusableColorMatch(
       i.color,
       res.colors.map((c) => c.colorName),
+      res.colors,
     );
     if (res.approvedColor) colorMatch.value = res.approvedColor;
     // A previously reviewed color on the same product is authoritative.

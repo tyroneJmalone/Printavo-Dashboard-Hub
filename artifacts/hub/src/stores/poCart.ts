@@ -476,8 +476,9 @@ export const usePoCart = create<PoCartState>((set) => ({
           warehouseManual: compatible && !!i.warehouseManual,
           sizes: i.sizes.map((sz) => {
             const matches = data.sizes.filter((v) => sizesMatch(sz.size, v.size));
+            const previouslyPicked = compatible ? data.sizes.filter((v) => v.size === sz.vendorSize) : [];
             const match =
-              (compatible ? data.sizes.find((v) => v.size === sz.vendorSize) : null) ??
+              (previouslyPicked.length === 1 ? previouslyPicked[0] : null) ??
               (matches.length === 1 ? matches[0] : null) ??
               findUniqueOneSizeOffer(sz.size, data.sizes);
             return match

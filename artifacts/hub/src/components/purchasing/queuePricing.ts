@@ -139,7 +139,7 @@ export function priceQueueItem(item: CartItem, result: VendorLookupResult, now =
       !canAutomaticallyApplyVendorMatch(item.brand, result.brand, result.matchType)) {
     throw new Error("No exact current vendor product match — search and approve a replacement.");
   }
-  const match = findReusableColorMatch(item.color, result.colors.map(c => c.colorName));
+  const match = findReusableColorMatch(item.color, result.colors.map(c => c.colorName), result.colors);
   const color = result.colors.find(c => c.colorName === (approval ? approval.vendorColor : match.value));
   if (approval && !approvedStyle) throw new Error("Approved style no longer matches the vendor response.");
   if (!color) throw new Error("Choose and approve a vendor color.");

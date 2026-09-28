@@ -597,6 +597,7 @@ export default function VendorOrders() {
                                   </div>
                                   <div className="text-slate-500">{quote.message}</div>
                                   <QueueMatchReview key={pricingContext(item)} item={item}
+                                    unresolved={!quote.item.resolved}
                                     result={pricing.result(item)} onStyle={pricing.chooseStyle} onApprove={pricing.approve} />
                                   <details>
                                     <summary className="cursor-pointer text-slate-400" data-testid={`edit-purchase-${li.id}`}>Edit purchase inputs</summary>
