@@ -178,25 +178,28 @@ WITH calendar AS (
       nickname, status_name, quote_created_at, true, 1
     FROM conversions WHERE quote_created_at IS NOT NULL
   ) q ORDER BY coalesce(customer_id, printavo_id), visual_id, priority, quote_created_at, printavo_id
+), close_orders AS (
+  -- Pick the current invoice before applying eligibility or date boundaries.
+  -- Unknown customers must never merge with one another (or a customer ID).
+  SELECT DISTINCT ON (o.customer_id, o.visual_id,
+    CASE WHEN o.customer_id IS NULL THEN o.printavo_id END)
+    o.*,
+    ${pipelineStageSql("lower(regexp_replace(coalesce(o.status_name, ''), '\\s+', ' ', 'g'))")} AS close_stage
+  FROM pv_orders o
+  WHERE o.order_type IN ('quote', 'invoice')
+  ORDER BY o.customer_id, o.visual_id,
+    CASE WHEN o.customer_id IS NULL THEN o.printavo_id END,
+    CASE WHEN o.order_type = 'invoice' THEN 0 ELSE 1 END,
+    o.printavo_created_at, o.printavo_id
 ), close_stats AS (
-  SELECT r.key, count(q.printavo_id)::int AS quotes,
-    count(q.printavo_id) FILTER (WHERE q.converted)::int AS converted,
-    -- No audited, complete quote-history source exists for any period yet.
-    -- Dated conversion snapshots establish individual membership, NOT coverage:
-    -- quotes created and converted before seeding/between polls can be absent.
-    -- Keep the calculation gated until a trustworthy cohort coverage source exists.
-    false AS coverage_complete,
-    EXISTS (SELECT 1 FROM conversions c
-      WHERE c.quote_created_at IS NULL
-        AND (c.conversion_observed_at AT TIME ZONE 'America/New_York')::date >= r.start_day
-        AND coalesce(c.status_name, '') !~* '(merch|contract|dead|archive|reference)'
-        AND NOT EXISTS (SELECT 1 FROM quote_cohorts known
-          WHERE known.customer_id = c.customer_id AND known.visual_id = c.visual_id)
-    ) AS unknown_dates
-  FROM ranges r LEFT JOIN quote_cohorts q
-    ON (q.quote_created_at AT TIME ZONE 'America/New_York')::date BETWEEN r.start_day AND r.end_day
-    AND coalesce(q.status_name, '') !~* '(merch|contract|dead|archive|reference)'
-  GROUP BY r.key, r.start_day
+  SELECT r.key, count(o.printavo_id)::int AS quotes,
+    count(o.printavo_id) FILTER (WHERE o.order_type = 'invoice'
+      AND o.close_stage IN ('won', 'done'))::int AS converted
+  FROM ranges r LEFT JOIN close_orders o
+    ON (o.printavo_created_at AT TIME ZONE 'America/New_York')::date BETWEEN r.start_day AND r.end_day
+    AND coalesce(o.status_name, '') !~* '(merch|contract|dead|archive|reference)'
+    AND ${notChipplySql("o.nickname")}
+  GROUP BY r.key
 ), quote_events AS (
   SELECT printavo_id, visual_id, coalesce(nullif(customer_company, ''), contact_name) AS customer_name,
     nickname, status_name, quote_created_at AS occurred_at
@@ -252,12 +255,9 @@ SELECT (SELECT today::text FROM bounds) AS as_of,
   ) a) AS activity,
   (SELECT jsonb_object_agg(key, jsonb_build_object(
     'quotes', quotes, 'converted', converted,
-    'percentage', CASE WHEN NOT coverage_complete OR quotes = 0 OR unknown_dates THEN NULL ELSE 100.0 * converted / quotes END,
-    'coverageComplete', coverage_complete AND NOT unknown_dates,
-    'note', CASE WHEN unknown_dates
-      THEN 'Incomplete history: legacy conversions have unknown quote creation dates; rate unavailable.'
-      WHEN NOT coverage_complete THEN 'Pending quote history: complete cohort coverage has not been established. The current mirror cannot recover original quote dates or quote origin for past invoices; quotes converted before seeding or between polls may be missing. Rate unavailable, not zero.'
-      ELSE NULL END
+    'percentage', CASE WHEN quotes = 0 THEN NULL ELSE (100.0 * converted / quotes)::float8 END,
+    'coverageComplete', true,
+    'note', 'Current synced mirror only, using current Printavo createdAt in Eastern time, not restored original quote dates. Missing creation dates are omitted; historical completeness is not asserted. Customer + visual ID is a logical-order heuristic; invoices take priority and unknown customers remain separate.'
   )) FROM close_stats) AS close_rate,
   (SELECT recent_start::text FROM bounds) AS recent_start,
   (SELECT jsonb_object_agg(i.key, jsonb_build_object(
@@ -313,7 +313,7 @@ export async function getDashboardMetrics() {
       repeatCustomers: "Number of qualifying quote/invoice logical orders from customers with a prior qualifying logical order across synced history; not distinct customers or reorders. Statuses containing ARCHIVE, DUPLICATED or REFERENCE and Chipply shells excluded. Customer + visual ID is the conversion identity heuristic; a reused visual ID for the same customer could merge unrelated orders. A converted invoice may have a new Printavo created timestamp, so its reported period is not guaranteed to be the original quote creation period.",
       averages: "Invoices created in period; method matched against canonical Purchasing line-item categories. Mixed-method invoices can appear in multiple method selections. Value uses whole tax-inclusive invoice total; volume averages known mirrored line-item quantities per order only. Null means no eligible denominator.",
       quotesCreated: "Quotes by original Printavo creation timestamp, including conversions with preserved trustworthy quote history; customer + visual ID deduplicated.",
-      closeRate: "Quotes created in the selected Eastern period that have converted, divided by all qualifying quotes created in that period. A percentage requires established complete cohort coverage; observed counts alone are not a complete denominator. Both populations exclude current statuses containing Merch, Contract, Dead, Archive or Reference, independently and case-insensitively, and Chipply shells. Conversion may occur after the period ends. Null if coverage is unestablished, denominator is zero, or legacy unknown creation dates could affect the cohort.",
+      closeRate: "Current invoices classified won or done by the exact pipeline priority rules divided by eligible quote/invoice logical orders, using current Printavo createdAt within the selected Eastern period (not restored original quote dates). Customer + visual ID deduplicated, preferring invoices; unknown customers remain separate. Both populations exclude any current status containing Merch, Contract, Dead, Archive or Reference case-insensitively, and Chipply shells. Quotes never enter the numerator. Zero eligible orders yields null; eligible orders with no won invoices yields zero. coverageComplete means this current-mirror calculation is available, not complete historical quote coverage.",
       dealsWon: "First observed status transition from outside won/done into pipeline won/done for each customer + visual ID in the reporting horizon. Activity uses the selected Eastern period; legacy recent uses the last 7 days. Observation time is sync poll time, not the Printavo status-change time.",
     },
     coverage: {

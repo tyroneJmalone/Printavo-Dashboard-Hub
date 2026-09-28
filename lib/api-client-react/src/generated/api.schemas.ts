@@ -99,10 +99,17 @@ export interface HubDashboardActivity {
   ytd: HubDashboardActivityPeriod;
 }
 
+/**
+ * Current-mirror won/done invoices divided by eligible quote/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.
+ */
 export interface HubDashboardCloseRate {
+  /** Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate. */
   quotes: number;
+  /** Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions. */
   converted: number;
+  /** 100 times won invoices / eligible orders; null only for zero eligible orders. */
   percentage: number | null;
+  /** Current-mirror stage-based computation is available; does not assert complete historical quote coverage. */
   coverageComplete: boolean;
   note: string;
 }

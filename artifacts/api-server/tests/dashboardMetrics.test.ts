@@ -28,8 +28,8 @@ test("SQL retains separate populations, complete-detail quantity, status history
   assert.match(DASHBOARD_SQL, /NOT IN \('won', 'done'\)/);
   assert.match(DASHBOARD_SQL, /o\.order_type = 'quote'/);
   assert.match(DASHBOARD_SQL, /transaction_date BETWEEN/);
-  assert.match(DASHBOARD_SQL, /false AS coverage_complete/);
-  assert.match(DASHBOARD_SQL, /WHEN NOT coverage_complete OR quotes = 0 OR unknown_dates THEN NULL/);
+  assert.match(DASHBOARD_SQL, /o\.close_stage IN \('won', 'done'\)/);
+  assert.match(DASHBOARD_SQL, /WHEN quotes = 0 THEN NULL/);
 });
 
 test("read-only dev smoke: helper aggregate shape, counts and elapsed time", {
@@ -124,7 +124,7 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     await client.query("UPDATE pv_orders SET detail_sync_state = 'incomplete' WHERE printavo_id = 'x2'");
     const incomplete = (await client.query(DASHBOARD_SQL)).rows[0];
     assert.equal(incomplete.periods.today.itemsDecorated, null);
-    assert.equal(row.close_rate.today.percentage, null); // undated legacy conversion
+    assert.equal(row.close_rate.today.percentage, 20); // one won invoice / five eligible logical orders
     assert.equal(row.close_rate.lw.percentage, null); // zero denominator
     assert.equal(row.activity.lw.quotesCreated.total, 0);
 
@@ -143,13 +143,9 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     const noHistory = (await client.query(fixedSql)).rows[0].close_rate.lw;
     assert.equal(noHistory.quotes, 1);
     assert.equal(noHistory.converted, 0);
-    assert.equal(noHistory.percentage, null); // no conversion records is not a genuine zero
-    assert.equal(noHistory.coverageComplete, false);
-    assert.match(noHistory.note, /Pending quote history/);
-    // Counterfactual trusted-coverage fixture only: production has no such source.
-    // Verify the gated calculation retains true zero/nonzero capability.
-    const coveredSql = fixedSql.replace("false AS coverage_complete", "true AS coverage_complete");
-    assert.equal((await client.query(coveredSql)).rows[0].close_rate.lw.percentage, 0);
+    assert.equal(noHistory.percentage, 0); // current eligible quote, genuinely no won invoices
+    assert.equal(noHistory.coverageComplete, true);
+    assert.match(noHistory.note, /current Printavo createdAt/);
     const event = async (id: string, visual: number, date: string | null) => {
       await client.query(`INSERT INTO pg_temp.change_events
         (entity_type, entity_id, visual_id, event_type, old_value, new_value, occurred_at)
@@ -172,24 +168,55 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     assert.equal(cohort.periods.lw.end, "2025-12-28"); // not today
     assert.equal(cohort.periods.lw.totalOrders, 5); // rate exclusions do not affect base totals
     assert.equal(cohort.averages.lw.all.orders, 5);
-    assert.equal(cohort.close_rate.lw.quotes, 3); // open, converted, Sunday
-    assert.equal(cohort.close_rate.lw.converted, 1); // conversion after cohort end
-    assert.equal(cohort.close_rate.lw.percentage, null); // individual evidence does not establish coverage
-    assert.ok(Math.abs((await client.query(coveredSql)).rows[0].close_rate.lw.percentage - 100 / 3) < 0.000001);
-    assert.equal(cohort.close_rate.today.percentage, null);
-    assert.equal(cohort.close_rate.lw.coverageComplete, false);
+    assert.equal(cohort.close_rate.lw.quotes, 2); // open, Sunday; original quote event date is irrelevant
+    assert.equal(cohort.close_rate.lw.converted, 0);
+    assert.equal(cohort.close_rate.lw.percentage, 0);
+    assert.equal(cohort.close_rate.today.percentage, 0);
+    assert.equal(cohort.close_rate.lw.coverageComplete, true);
     assert.equal(cohort.activity.lw.quotesCreated.total, 13);
     assert.equal(cohort.activity.lw.quotesCreated.items.length, 12);
     assert.equal(cohort.activity.lw.quotesCreated.truncated, true);
     await event("converted", 302, null); // known dated evidence prevents duplicate unknown poison
-    assert.equal((await client.query(fixedSql)).rows[0].close_rate.lw.converted, 1);
+    assert.equal((await client.query(fixedSql)).rows[0].close_rate.lw.converted, 0);
     await add("legacy", 340, "invoice", "2026-01-01T12:00:00-05:00");
     await event("legacy", 340, null);
     const unknown = (await client.query(fixedSql)).rows[0];
-    assert.equal(unknown.close_rate.lw.percentage, null);
-    assert.equal((await client.query(coveredSql)).rows[0].close_rate.lw.percentage, null);
-    assert.match(unknown.close_rate.lw.note, /unknown quote creation dates/);
+    assert.equal(unknown.close_rate.lw.percentage, 0);
     assert.equal(unknown.activity.lw.quotesCreated.total, 13);
+    // Close Rate is independently computable without any historical events.
+    await client.query("TRUNCATE pg_temp.pv_orders, pg_temp.change_events");
+    const empty = (await client.query(fixedSql)).rows[0];
+    for (const key of ["today", "wtd", "lw", "mtd", "qtd", "ytd"]) {
+      assert.deepEqual([empty.close_rate[key].quotes, empty.close_rate[key].converted,
+        empty.close_rate[key].percentage, empty.close_rate[key].coverageComplete], [0, 0, null, true]);
+    }
+    const date = "2026-01-01T12:00:00-05:00";
+    await add("won", 500, "invoice", date, "READY   TO GO");
+    await add("done", 501, "invoice", date, "Complete");
+    await add("won-quote", 502, "quote", date, "Ready to Go");
+    await add("done-quote", 503, "quote", date, "Complete");
+    await add("art-conflict", 504, "invoice", date, "Art Complete Ready to Go");
+    await add("nurture-conflict", 505, "invoice", date, "Nurturing Complete");
+    await add("duplicate-conflict", 506, "invoice", date, "Duplicated Complete");
+    await add("literal-won", 507, "invoice", date, "Won"); // not a pipeline won status
+    await add("same-quote", 500, "quote", "2025-12-24T12:00:00-05:00", "Quote");
+    await add("null-one", 508, "invoice", date, "Need 2 Order");
+    await add("null-two", 508, "quote", date, "Quote");
+    await client.query("UPDATE pg_temp.pv_orders SET customer_id = NULL WHERE visual_id = 508");
+    for (const [i, status] of ["mErCh", "cOnTrAcT", "dEaD", "aRcHiVe", "rEfErEnCe"].entries()) {
+      await add(`exclude-win-${i}`, 520 + i, "invoice", date, `${status} Complete Ready to Go`);
+      await add(`exclude-quote-${i}`, 530 + i, "quote", date, `${status} Quote`);
+    }
+    await add("shell-won", 540, "invoice", date, "Complete");
+    await client.query("UPDATE pg_temp.pv_orders SET nickname = '123456 Store HEAT:' WHERE printavo_id = 'shell-won'");
+    const statusRate = (await client.query(fixedSql)).rows[0];
+    for (const key of ["today", "wtd", "mtd", "qtd", "ytd"]) {
+      assert.equal(statusRate.close_rate[key].quotes, 10);
+      assert.equal(statusRate.close_rate[key].converted, 3);
+      assert.equal(statusRate.close_rate[key].percentage, 30);
+      assert.equal(typeof statusRate.close_rate[key].percentage, "number");
+    }
+    assert.equal(statusRate.close_rate.lw.percentage, null); // invoice wins identity before date filtering
     for (const boundary of [
       { today: "2026-03-09", start: "2026-03-02", end: "2026-03-08",
         inside: "2026-03-09T03:59:59Z", outside: "2026-03-09T04:00:00Z" },
@@ -197,8 +224,8 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
         inside: "2026-11-02T04:59:59Z", outside: "2026-11-02T05:00:00Z" },
     ]) {
       await client.query("TRUNCATE pg_temp.pv_orders, pg_temp.change_events");
-      await add("dst-in", 401, "invoice", boundary.inside);
-      await add("dst-out", 402, "invoice", boundary.outside);
+      await add("dst-in", 401, "invoice", boundary.inside, "Complete");
+      await add("dst-out", 402, "invoice", boundary.outside, "Ready to Go");
       const dst = (await client.query(DASHBOARD_SQL.replace(
         "(now() AT TIME ZONE 'America/New_York')::date AS today",
         `'${boundary.today}'::date AS today`,
@@ -207,6 +234,10 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
       assert.equal(dst.periods.lw.end, boundary.end);
       assert.equal(dst.periods.lw.totalOrders, 1);
       assert.equal(dst.periods.today.totalOrders, 1);
+      assert.equal(dst.close_rate.lw.quotes, 1);
+      assert.equal(dst.close_rate.lw.converted, 1);
+      assert.equal(dst.close_rate.lw.percentage, 100);
+      assert.equal(dst.close_rate.today.percentage, 100);
     }
   } finally {
     await client.query("ROLLBACK");

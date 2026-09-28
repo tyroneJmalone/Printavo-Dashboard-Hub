@@ -394,47 +394,47 @@ export const GetDashboardMetricsResponse = zod.object({
 }),
   "closeRate": zod.object({
   "today": zod.object({
-  "quotes": zod.number(),
-  "converted": zod.number(),
-  "percentage": zod.number().nullable(),
-  "coverageComplete": zod.boolean(),
+  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
+  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
   "note": zod.string()
-}),
+}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
   "wtd": zod.object({
-  "quotes": zod.number(),
-  "converted": zod.number(),
-  "percentage": zod.number().nullable(),
-  "coverageComplete": zod.boolean(),
+  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
+  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
   "note": zod.string()
-}),
+}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
   "lw": zod.object({
-  "quotes": zod.number(),
-  "converted": zod.number(),
-  "percentage": zod.number().nullable(),
-  "coverageComplete": zod.boolean(),
+  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
+  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
   "note": zod.string()
-}),
+}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
   "mtd": zod.object({
-  "quotes": zod.number(),
-  "converted": zod.number(),
-  "percentage": zod.number().nullable(),
-  "coverageComplete": zod.boolean(),
+  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
+  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
   "note": zod.string()
-}),
+}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
   "qtd": zod.object({
-  "quotes": zod.number(),
-  "converted": zod.number(),
-  "percentage": zod.number().nullable(),
-  "coverageComplete": zod.boolean(),
+  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
+  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
   "note": zod.string()
-}),
+}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
   "ytd": zod.object({
-  "quotes": zod.number(),
-  "converted": zod.number(),
-  "percentage": zod.number().nullable(),
-  "coverageComplete": zod.boolean(),
+  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
+  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
   "note": zod.string()
-})
+}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.')
 }),
   "recentStart": zod.coerce.date(),
   "recent": zod.object({

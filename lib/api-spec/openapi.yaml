@@ -8149,12 +8149,13 @@ components:
         ytd: { $ref: "#/components/schemas/HubDashboardCloseRate" }
     HubDashboardCloseRate:
       type: object
+      description: Current-mirror won/done invoices divided by eligible quote/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.
       required: [quotes, converted, percentage, coverageComplete, note]
       properties:
-        quotes: { type: integer }
-        converted: { type: integer }
-        percentage: { type: number, nullable: true }
-        coverageComplete: { type: boolean }
+        quotes: { type: integer, description: "Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate." }
+        converted: { type: integer, description: "Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions." }
+        percentage: { type: number, nullable: true, description: "100 times won invoices / eligible orders; null only for zero eligible orders." }
+        coverageComplete: { type: boolean, description: "Current-mirror stage-based computation is available; does not assert complete historical quote coverage." }
         note: { type: string }
     HubDashboardRecentItem:
       type: object
