@@ -312,16 +312,18 @@ function isBellaCanvasBrand(value: string | null | undefined): boolean {
   return ["bella", "bella canvas", "bella and canvas"].includes(normText(value ?? ""));
 }
 
-/** Live SanMar ProductInfo confirms BC3001CVC is Bella + Canvas's CVC tee;
- * 3001CVC itself returns no entries. Do not generalize this suffix alias to
- * other brands, vendors, or styles. */
-function bella3001CVCCandidate(
+/** User-authorized SanMar Bella prefix convention. Preserve the entire code:
+ * suffixes identify garments, not disposable search decoration. An explicit
+ * brand hint is authoritative; a code alone never establishes Bella identity. */
+function bellaCanvasCandidates(
   vendor: VendorId, styleTokens: string[], textTokens: string[], hints: VendorLookupHints,
-): string | null {
-  if (vendor !== "sanmar" || !styleTokens.includes("3001cvc")) return null;
+): string[] | null {
+  if (vendor !== "sanmar" || styleTokens.length === 0) return null;
   if (hints.brandHint && !isBellaCanvasBrand(hints.brandHint)) return null;
   if (!isBellaCanvasBrand(hints.brandHint) && !isBellaCanvasBrand(textTokens.join(" "))) return null;
-  return "bc3001cvc";
+  return Array.from(new Set(styleTokens.flatMap(token =>
+    token.startsWith("bc") ? [token] : [token, `bc${token}`],
+  )));
 }
 
 /**
@@ -396,6 +398,8 @@ function styleCandidates(
   textTokens: string[],
   hints: VendorLookupHints,
 ): string[] {
+  const bellaCandidates = bellaCanvasCandidates(vendor, styleTokens, textTokens, hints);
+  if (bellaCandidates) return bellaCandidates;
   // Never spend the limited retry budget on a synthesized candidate before
   // trying an explicit alphanumeric code Printavo supplied. Bare numeric
   // tokens are different: brand-prefix candidates must precede them because
@@ -403,8 +407,6 @@ function styleCandidates(
   const explicit = styleTokens.filter((token) => /[a-z]/.test(token));
   const bareNumeric = styleTokens.filter((token) => /^\d+$/.test(token));
   const out: string[] = [...explicit];
-  const bellaCandidate = bella3001CVCCandidate(vendor, styleTokens, textTokens, hints);
-  if (bellaCandidate) out.push(bellaCandidate);
   const americanApparelCandidate = americanApparel102Candidate(
     vendor,
     styleTokens,
@@ -424,6 +426,9 @@ function styleCandidates(
   if (textTokens.length > 0) {
     const joined = ` ${textTokens.join(" ")} `;
     for (const [alias, prefix] of BRAND_PREFIXES) {
+      // SanMar Bella candidates require recognized brand identity above;
+      // do not bypass that guard through the older loose-word heuristic.
+      if (vendor === "sanmar" && prefix === "bc") continue;
       if (!joined.includes(` ${alias} `)) continue;
       // Only prefix bare numbers — "pc54" already carries its prefix.
       for (const t of bareNumeric) out.push(prefix + t);
@@ -433,7 +438,8 @@ function styleCandidates(
   if (textTokens.length > 0) {
     const initials = textTokens.map((t) => t[0]).join("");
     for (const t of styleTokens) {
-      out.push(initials + t);
+      if (vendor !== "sanmar" || initials !== "bc" ||
+          !isBellaCanvasBrand(textTokens.join(" "))) out.push(initials + t);
       // A single brand word may also abbreviate to its first two letters
       // ("sport 350" → "sp350"-style codes). Cheap extra guess — wrong
       // guesses just return "Invalid style" quickly.
@@ -513,6 +519,7 @@ async function lookupSanMar(
   const client = getSanMarClient();
   const { styleTokens, textTokens } = parseQuery(query);
   const candidates = styleCandidates("sanmar", styleTokens, textTokens, hints);
+  const bellaCandidates = bellaCanvasCandidates("sanmar", styleTokens, textTokens, hints);
   // Direct lookup first — the common case is a bare style number. If SanMar
   // doesn't recognize the whole query, retry the style-number candidates
   // ("port company pc54" → "PC54"; "sport tek 350" → "350" then "ST350" —
@@ -528,6 +535,7 @@ async function lookupSanMar(
   } else if (entries.length > 0 && styleTokens.length > 0) {
     entries = [];
   }
+  if (bellaCandidates) entries = entries.filter(entry => isBellaCanvasBrand(entry.brandName));
   let viaFullQuery = entries.length > 0;
   let viaStripped = false;
   if (entries.length === 0) {
@@ -536,13 +544,13 @@ async function lookupSanMar(
       const response = await client.getProductInfo(t.toUpperCase());
       if (!entriesMatchStyle(response, t)) continue;
       entries = filterEntriesToStyle(response, t);
-      if (t === bella3001CVCCandidate("sanmar", styleTokens, textTokens, hints)) {
+      if (bellaCandidates) {
         entries = entries.filter(entry => isBellaCanvasBrand(entry.brandName));
       }
       if (entries.length > 0) break;
     }
   }
-  if (entries.length === 0) {
+  if (entries.length === 0 && !bellaCandidates) {
     // Last resort: suffix-stripped numbers ("7610N" → "7610"). Always
     // reported as closest — never exact — so the double-check cue fires.
     for (const t of strippedStyleCandidates(styleTokens).slice(0, MAX_CANDIDATE_TRIES)) {
@@ -574,8 +582,10 @@ async function lookupSanMar(
         hints,
       )) &&
     (hints.brandHint
-      ? hintMatchesBrand(hints.brandHint, first?.brandName ?? null)
+      ? (bellaCandidates !== null && isBellaCanvasBrand(first?.brandName)) ||
+        hintMatchesBrand(hints.brandHint, first?.brandName ?? null)
       : viaFullQuery ||
+        (bellaCandidates !== null && isBellaCanvasBrand(first?.brandName)) ||
         textTokensMatch(textTokens, first?.brandName ?? null, first?.productTitle ?? null));
   return {
     found: entries.length > 0,

@@ -233,7 +233,7 @@ test("SanMar lookup prioritizes the exact alphanumeric style across case and pro
   assert.equal(vagueBrand.matchType, "closest", "a partial brand fragment must not count as a match");
 });
 
-test("SanMar lookup tries a known brand prefix before a bare numeric style", async (t) => {
+test("SanMar Bella lookup tries the original code first but rejects another brand before prefix fallback", async (t) => {
   const originalFetch = globalThis.fetch;
   const originalAccount = process.env.SANMAR_ACCOUNT_NUMBER;
   const originalUsername = process.env.SANMAR_USERNAME;
@@ -282,8 +282,8 @@ test("SanMar lookup tries a known brand prefix before a bare numeric style", asy
   assert.equal(result.matchType, "exact");
   assert.deepEqual(
     attempted.map((value) => value.toLowerCase()),
-    ["bella 3001", "bc3001"],
-    "BC3001 must resolve before the ambiguous bare 3001 candidate",
+    ["bella 3001", "3001", "bc3001"],
+    "Try the original style first; the wrong-brand response must not suppress BC3001",
   );
 });
 

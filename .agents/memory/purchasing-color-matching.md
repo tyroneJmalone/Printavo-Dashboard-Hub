@@ -19,3 +19,13 @@ substitute merchandise across brands or styles.
 
 **How to apply:** Revalidate remembered targets against current vendor offers;
 show approval-storage failures without discarding the user's current selection.
+
+The user authorized automatic recognition of spacing-only differences and
+leading Heather/Heathered/Ht/Hth variants when they identify one vendor color.
+
+**Why:** Source labels commonly differ from vendor abbreviations; these are
+formatting conventions, not approval to substitute heather for plain fabric.
+
+**How to apply:** Keep modifiers meaningful and preserve the selected vendor's
+original color spelling. Multiple normalized vendor colors still require review;
+do not union different color buckets to satisfy missing sizes.

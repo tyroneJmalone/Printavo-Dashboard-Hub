@@ -55,6 +55,14 @@ specific casing behavior rather than assuming display similarity implies identit
 
 ## Evidence required for new style aliases
 
+**User-approved Bella exception:** For recognized Bella + Canvas at SanMar,
+try the original full style, then the same code with BC prefixed. Preserve
+suffixes and require the returned brand and full candidate style to agree.
+
+**Why:** The user explicitly requested broadening the established SanMar Bella
+prefix convention beyond 3001CVC; this is not permission to strip suffixes or
+extend the convention to other brands/vendors.
+
 **Rule:** Finding a same-brand catalog product after removing a suffix does not establish manufacturer equivalence. Keep it review-required unless the user or an authoritative source confirms the alias.
 
 **Why:** A live catalog check can prove both products exist without proving they are the same garment. Treating that as alias verification would turn an uncertain alternative into an automatically orderable product.

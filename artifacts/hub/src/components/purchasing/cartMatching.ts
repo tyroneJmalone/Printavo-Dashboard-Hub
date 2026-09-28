@@ -48,14 +48,11 @@ export function canAutomaticallyApplyVendorMatch(
   return matchType === "exact" && !brandsConflict(printavoBrand, vendorBrand);
 }
 
-function normalizedColor(value: string): string {
-  return value.trim().toLocaleLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-
 const COLOR_TOKEN_ALIASES: Readonly<Record<string, string>> = {
   dk: "dark",
   lt: "light",
   hthr: "heather",
+  heathered: "heather",
   gry: "gray",
   grey: "gray",
   grn: "green",
@@ -68,9 +65,30 @@ const PROTECTED_COLOR_MODIFIERS = new Set([
   "solid",
 ]);
 
+// Only the leading color prefix is expanded, never letters inside a word.
+// Attached short forms require a recognized color/modifier stem: "HtClay"
+// is a color abbreviation, but "HTML" must not become "Heather ML". Unknown
+// attached short forms stay manual; separated Ht/Hth can name any color.
+const ATTACHED_HEATHER_BASE = /^(?:clay|black|white|navy|blue|red|green|gray|grey|charcoal|royal|brown|tan|sand|cream|natural|oatmeal|olive|orange|yellow|gold|pink|purple|maroon|burgundy|indigo|teal|aqua|mint|sage|mauve|lavender|orchid|coral|peach|stone|slate|forest|denim|dark|light|solid)(?:$|[^a-z])/i;
+
+function expandHeatherPrefix(value: string): string {
+  const full = /^(heathered|heather)(.*)$/i.exec(value);
+  if (full) {
+    return `heather ${full[2].replace(/^(dark|light|solid)(?=[a-z])/i, "$1 ")}`;
+  }
+  const short = /^(hthr|hth|ht)(.*)$/i.exec(value);
+  if (!short) return value;
+  const rest = short[2];
+  const expandedRest = rest.replace(/^(dark|light|solid)(?=[a-z])/i, "$1 ");
+  if (rest && !/^[^a-z0-9]/i.test(rest) &&
+      !ATTACHED_HEATHER_BASE.test(expandedRest)) {
+    return value;
+  }
+  return `heather ${expandedRest}`;
+}
+
 function colorTokens(value: string): string[] {
-  return value
-    .trim()
+  return expandHeatherPrefix(value.trim())
     .toLocaleLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .split(" ")
@@ -136,23 +154,16 @@ export function findReusableColorMatch(
     return { kind: "ambiguous", value: null };
   }
 
-  const normalized = normalizedColor(source);
-  if (!normalized) return { kind: "none", value: null };
-  const approximate = vendorColors.filter(
-    (candidate) => normalizedColor(candidate) === normalized,
-  );
-  if (approximate.length === 1) return { kind: "normalized", value: approximate[0] };
-  if (approximate.length > 1) return { kind: "ambiguous", value: null };
-
   const sourceTokens = colorTokens(source);
+  if (!sourceTokens.length) return { kind: "none", value: null };
   const sourceAliased = sourceTokens.join(" ");
   const sourceModifiers = modifierSignature(sourceTokens);
+  // Consider all formatting/abbreviation identities together. An earlier
+  // spacing-only return could hide a second bucket such as HeatherClay/HthClay.
+  // This chooses one original catalog name; it never merges vendor offers.
   const aliasMatches = vendorColors.filter((candidate) => {
     const tokens = colorTokens(candidate);
-    return (
-      modifierSignature(tokens) === sourceModifiers &&
-      tokens.join(" ") === sourceAliased
-    );
+    return tokens.join("") === sourceTokens.join("");
   });
   if (aliasMatches.length === 1) return { kind: "normalized", value: aliasMatches[0] };
   if (aliasMatches.length > 1) return { kind: "ambiguous", value: null };

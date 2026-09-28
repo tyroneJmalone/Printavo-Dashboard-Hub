@@ -41,6 +41,74 @@ test("leaves normalized color collisions for manual selection", () => {
   });
 });
 
+test("Heather formatting and leading abbreviations match one original vendor name", () => {
+  for (const source of [
+    "HeatherClay", "HeatheredClay", "Heathered Clay", "HthClay", "HtClay",
+    "Hth Clay", "Ht Clay", "hTcLaY", "HTHCLAY", "heatheredclay",
+  ]) {
+    assert.deepEqual(findReusableColorMatch(source, ["Clay", "Heather Clay"]), {
+      kind: "normalized", value: "Heather Clay",
+    }, source);
+    assert.deepEqual(findReusableColorMatch("Heather Clay", [source]), {
+      kind: "normalized", value: source,
+    }, `reverse: ${source}`);
+  }
+  assert.deepEqual(findReusableColorMatch(" Jet \t Black ", ["JetBlack"]), {
+    kind: "normalized", value: "JetBlack",
+  });
+});
+
+test("format aliases cannot hide additional vendor buckets, even with identical offers", () => {
+  for (const names of [
+    ["HeatherClay", "HthClay"],
+    ["Heather Clay", "Heathered Clay"],
+    ["HtClay", "Hth Clay"],
+  ]) {
+    const offers = names.map(colorName => ({ colorName, sizes: [{ size: "S", sku: "same" }] }));
+    assert.deepEqual(findReusableColorMatch("Ht Clay", names, offers), {
+      kind: "ambiguous", value: null,
+    });
+  }
+  // Existing unique exact matches still take precedence over format aliases.
+  assert.deepEqual(findReusableColorMatch("Heather Clay", ["Heather Clay", "HtClay"]), {
+    kind: "exact", value: "Heather Clay",
+  });
+});
+
+test("attached heather names preserve plain, dark, light and solid distinctions", () => {
+  for (const [source, target] of [
+    ["Clay", "HeatherClay"], ["HeatherClay", "Clay"],
+    ["HtDarkClay", "Heather Light Clay"], ["hthlightclay", "Heather Dark Clay"],
+    ["HeatherSolidClay", "Heather Clay"],
+  ]) {
+    assert.equal(findReusableColorMatch(source, [target]).value, null, `${source}/${target}`);
+  }
+  assert.deepEqual(findReusableColorMatch("hthdarkclay", ["Heather Dark Clay", "Heather Light Clay"]), {
+    kind: "normalized", value: "Heather Dark Clay",
+  });
+});
+
+test("short heather prefixes are anchored and guarded against genuine words", () => {
+  for (const [source, target] of [
+    ["HTML", "Heather ML"], ["Htaccess", "Heather access"],
+    ["BrightClay", "Brigheather Clay"], ["Night Clay", "NigHeather Clay"],
+  ]) {
+    assert.equal(findReusableColorMatch(source, [target]).value, null, source);
+  }
+});
+
+test("case-only live-offer exception remains distinct from formatting aliases", () => {
+  const sizes = [{ size: "S", sku: "SKU-S" }, { size: "2XL", sku: "SKU-2XL" }];
+  const offers = ["Royal", "ROYAL"].map(colorName => ({ colorName, sizes }));
+  assert.deepEqual(findReusableColorMatch("Royal", ["Royal", "ROYAL"], offers), {
+    kind: "exact", value: "Royal",
+  });
+  assert.equal(findReusableColorMatch("Royal", ["Royal", "ROYAL"]).value, null);
+  assert.equal(findReusableColorMatch("Royal", ["Royal", "ROYAL"], [
+    offers[0], { colorName: "ROYAL", sizes: [{ size: "S", sku: "different" }] },
+  ]).value, null);
+});
+
 test("accepts unique common abbreviations and clear minor typos", () => {
   assert.deepEqual(findReusableColorMatch("Dk Navy Hthr", ["Dark Navy Heather", "Red"]), {
     kind: "normalized",

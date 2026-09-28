@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { findReusableColorMatch } from "./cartMatching";
 import type { PoFile, VendorLookupResult, VendorSizeOffer } from "@workspace/api-client-react";
 import { usePoCart, type CartItem } from "../../stores/poCart";
 import {
@@ -29,6 +31,42 @@ const response: VendorLookupResult = {
     sizes: [size("S", 3), size("2XL", 5)] }],
   cached: false, fetchedAt: new Date(now).toISOString(),
 };
+
+test("queue and cart share color resolution and preserve exact catalog/SKU identity", () => {
+  const cartSource = readFileSync(new URL("./CartDrawer.tsx", import.meta.url), "utf8");
+  assert.match(cartSource, /findReusableColorMatch,[\s\S]*?from "\.\/cartMatching"/);
+  assert.match(cartSource, /findReusableColorMatch\(\s*item\.color,/);
+  for (const source of ["HeatherClay", "Heathered Clay", "HtClay", "HthClay", "Ht Clay", "Hth Clay"]) {
+    const result = { ...response, colors: [{ ...response.colors[0], colorName: "Heather Clay" }] };
+    const before = JSON.stringify(result);
+    const match = findReusableColorMatch(source, result.colors.map(c => c.colorName), result.colors);
+    const priced = priceQueueItem({ ...item, color: source }, result, now);
+    assert.equal(priced.color, source);
+    assert.equal(priced.vendorCatalogColor, match.value);
+    assert.equal(priced.vendorCatalogColor, "Heather Clay");
+    assert.equal(priced.sizes[0].sku, result.colors[0].sizes[0].sku);
+    assert.equal(priced.sizes[0].inventoryKey, result.colors[0].sizes[0].inventoryKey);
+    assert.equal(priced.sizes[0].sizeIndex, result.colors[0].sizes[0].sizeIndex);
+    assert.equal(JSON.stringify(result), before);
+  }
+  const ambiguous = { ...response, colors: ["HeatherClay", "HthClay"].map(colorName => ({
+    ...response.colors[0], colorName,
+  })) };
+  assert.throws(() => priceQueueItem({ ...item, color: "Heather Clay" }, ambiguous, now),
+    /Choose and approve a vendor color/);
+  const split = { ...response, colors: [
+    { ...response.colors[0], colorName: "HtClay", sizes: [size("S", 3)] },
+    { ...response.colors[0], colorName: "Heather Clay", sizes: [size("2XL", 5)] },
+  ] };
+  const exact = priceQueueItem({ ...item, color: "HtClay" }, split, now);
+  assert.equal(exact.vendorCatalogColor, "HtClay");
+  assert.equal(exact.sizes[0].sku, "sku-S");
+  assert.equal(exact.sizes[1].sku, null, "never borrow a SKU from another formatting bucket");
+  assert.equal(exact.sizes[1].unitCost, null);
+  const abbreviatedCatalog = { ...response, colors: [{ ...response.colors[0], colorName: "hTHcLAY" }] };
+  assert.equal(priceQueueItem({ ...item, color: "Heather Clay" }, abbreviatedCatalog, now).vendorCatalogColor,
+    "hTHcLAY", "output is the untouched vendor spelling, not the normalization key");
+});
 
 test("explicit approved color keeps source label and exact vendor snapshot", () => {
   const priced = priceQueueItem({ ...item, color: "Customer black" }, response, now,
