@@ -28,6 +28,8 @@ test("SQL retains separate populations, complete-detail quantity, status history
   assert.match(DASHBOARD_SQL, /NOT IN \('won', 'done'\)/);
   assert.match(DASHBOARD_SQL, /o\.order_type = 'quote'/);
   assert.match(DASHBOARD_SQL, /transaction_date BETWEEN/);
+  assert.match(DASHBOARD_SQL, /false AS coverage_complete/);
+  assert.match(DASHBOARD_SQL, /WHEN NOT coverage_complete OR quotes = 0 OR unknown_dates THEN NULL/);
 });
 
 test("read-only dev smoke: helper aggregate shape, counts and elapsed time", {
@@ -138,6 +140,16 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     };
     await add("open", 301, "quote", "2025-12-23T12:00:00-05:00");
     await add("converted", 302, "invoice", "2026-01-01T12:00:00-05:00");
+    const noHistory = (await client.query(fixedSql)).rows[0].close_rate.lw;
+    assert.equal(noHistory.quotes, 1);
+    assert.equal(noHistory.converted, 0);
+    assert.equal(noHistory.percentage, null); // no conversion records is not a genuine zero
+    assert.equal(noHistory.coverageComplete, false);
+    assert.match(noHistory.note, /Pending quote history/);
+    // Counterfactual trusted-coverage fixture only: production has no such source.
+    // Verify the gated calculation retains true zero/nonzero capability.
+    const coveredSql = fixedSql.replace("false AS coverage_complete", "true AS coverage_complete");
+    assert.equal((await client.query(coveredSql)).rows[0].close_rate.lw.percentage, 0);
     const event = async (id: string, visual: number, date: string | null) => {
       await client.query(`INSERT INTO pg_temp.change_events
         (entity_type, entity_id, visual_id, event_type, old_value, new_value, occurred_at)
@@ -162,7 +174,8 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     assert.equal(cohort.averages.lw.all.orders, 5);
     assert.equal(cohort.close_rate.lw.quotes, 3); // open, converted, Sunday
     assert.equal(cohort.close_rate.lw.converted, 1); // conversion after cohort end
-    assert.ok(Math.abs(cohort.close_rate.lw.percentage - 100 / 3) < 0.000001);
+    assert.equal(cohort.close_rate.lw.percentage, null); // individual evidence does not establish coverage
+    assert.ok(Math.abs((await client.query(coveredSql)).rows[0].close_rate.lw.percentage - 100 / 3) < 0.000001);
     assert.equal(cohort.close_rate.today.percentage, null);
     assert.equal(cohort.close_rate.lw.coverageComplete, false);
     assert.equal(cohort.activity.lw.quotesCreated.total, 13);
@@ -174,6 +187,7 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     await event("legacy", 340, null);
     const unknown = (await client.query(fixedSql)).rows[0];
     assert.equal(unknown.close_rate.lw.percentage, null);
+    assert.equal((await client.query(coveredSql)).rows[0].close_rate.lw.percentage, null);
     assert.match(unknown.close_rate.lw.note, /unknown quote creation dates/);
     assert.equal(unknown.activity.lw.quotesCreated.total, 13);
     for (const boundary of [

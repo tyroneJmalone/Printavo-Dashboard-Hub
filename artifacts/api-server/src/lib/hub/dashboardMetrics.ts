@@ -181,6 +181,11 @@ WITH calendar AS (
 ), close_stats AS (
   SELECT r.key, count(q.printavo_id)::int AS quotes,
     count(q.printavo_id) FILTER (WHERE q.converted)::int AS converted,
+    -- No audited, complete quote-history source exists for any period yet.
+    -- Dated conversion snapshots establish individual membership, NOT coverage:
+    -- quotes created and converted before seeding/between polls can be absent.
+    -- Keep the calculation gated until a trustworthy cohort coverage source exists.
+    false AS coverage_complete,
     EXISTS (SELECT 1 FROM conversions c
       WHERE c.quote_created_at IS NULL
         AND (c.conversion_observed_at AT TIME ZONE 'America/New_York')::date >= r.start_day
@@ -247,11 +252,12 @@ SELECT (SELECT today::text FROM bounds) AS as_of,
   ) a) AS activity,
   (SELECT jsonb_object_agg(key, jsonb_build_object(
     'quotes', quotes, 'converted', converted,
-    'percentage', CASE WHEN quotes = 0 OR unknown_dates THEN NULL ELSE 100.0 * converted / quotes END,
-    'coverageComplete', false,
+    'percentage', CASE WHEN NOT coverage_complete OR quotes = 0 OR unknown_dates THEN NULL ELSE 100.0 * converted / quotes END,
+    'coverageComplete', coverage_complete AND NOT unknown_dates,
     'note', CASE WHEN unknown_dates
       THEN 'Incomplete history: legacy conversions have unknown quote creation dates; rate unavailable.'
-      ELSE 'Observed cohort only; sync can miss quotes created and converted between polls or before seeding. No complete-history coverage marker exists.' END
+      WHEN NOT coverage_complete THEN 'Pending quote history: complete cohort coverage has not been established. The current mirror cannot recover original quote dates or quote origin for past invoices; quotes converted before seeding or between polls may be missing. Rate unavailable, not zero.'
+      ELSE NULL END
   )) FROM close_stats) AS close_rate,
   (SELECT recent_start::text FROM bounds) AS recent_start,
   (SELECT jsonb_object_agg(i.key, jsonb_build_object(
@@ -307,7 +313,7 @@ export async function getDashboardMetrics() {
       repeatCustomers: "Number of qualifying quote/invoice logical orders from customers with a prior qualifying logical order across synced history; not distinct customers or reorders. Statuses containing ARCHIVE, DUPLICATED or REFERENCE and Chipply shells excluded. Customer + visual ID is the conversion identity heuristic; a reused visual ID for the same customer could merge unrelated orders. A converted invoice may have a new Printavo created timestamp, so its reported period is not guaranteed to be the original quote creation period.",
       averages: "Invoices created in period; method matched against canonical Purchasing line-item categories. Mixed-method invoices can appear in multiple method selections. Value uses whole tax-inclusive invoice total; volume averages known mirrored line-item quantities per order only. Null means no eligible denominator.",
       quotesCreated: "Quotes by original Printavo creation timestamp, including conversions with preserved trustworthy quote history; customer + visual ID deduplicated.",
-      closeRate: "Observed quotes created in the selected Eastern period that eventually converted, divided by observed quotes created in that period. Both populations exclude current statuses containing Merch, Contract, Dead, Archive or Reference, independently and case-insensitively, and Chipply shells. Conversion may occur after the period ends. Null if denominator is zero or legacy unknown creation dates could affect the cohort.",
+      closeRate: "Quotes created in the selected Eastern period that have converted, divided by all qualifying quotes created in that period. A percentage requires established complete cohort coverage; observed counts alone are not a complete denominator. Both populations exclude current statuses containing Merch, Contract, Dead, Archive or Reference, independently and case-insensitively, and Chipply shells. Conversion may occur after the period ends. Null if coverage is unestablished, denominator is zero, or legacy unknown creation dates could affect the cohort.",
       dealsWon: "First observed status transition from outside won/done into pipeline won/done for each customer + visual ID in the reporting horizon. Activity uses the selected Eastern period; legacy recent uses the last 7 days. Observation time is sync poll time, not the Printavo status-change time.",
     },
     coverage: {

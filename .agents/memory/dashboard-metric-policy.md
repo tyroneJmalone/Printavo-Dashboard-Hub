@@ -43,8 +43,13 @@ from both numerator and denominator.
 divided by current open quotes. An invoice may be created after its quote's
 reporting period ends. Older conversion events lack original quote dates.
 
-**How to apply:** Keep unknown historical dates unavailable, never invent them
-from invoice creation or observation time. Label observed-only rates as partial
-coverage. Preserve original quote-date evidence atomically before removing
+**How to apply:** Keep unknown historical rates unavailable, never invent them
+from invoice creation or observation time. Missing conversion events do not
+prove zero conversions: the live mirror had invoices and open quotes but no
+conversion events, causing a misleading 0% in every populated period.
+Individual observed conversions also do not prove full cohort coverage. Keep
+the rate unavailable until trustworthy cohort coverage is established; show
+known counts separately, not as the complete denominator.
+Preserve original quote-date evidence atomically before removing
 converted quotes, even during quiet seed runs; suppressing notifications must
 not suppress historical evidence.

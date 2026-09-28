@@ -300,8 +300,8 @@ function CloseRatePanel({ data }: { data: HubDashboardMetrics }) {
   const [period, setPeriod] = useState<PeriodKey>("mtd");
   const c = data.closeRate[period];
   const pr = data.periods[period];
-  const qualifier = c.coverageComplete ? "" : "observed ";
-  const big = c.quotes === 0 ? "No quotes" : c.percentage == null ? DASH : `${c.percentage.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
+  const available = c.coverageComplete && c.percentage != null;
+  const big = available ? `${c.percentage!.toLocaleString("en-US", { maximumFractionDigits: 1 })}%` : c.coverageComplete && c.quotes === 0 ? "No quotes" : DASH;
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900/40 flex flex-col">
       <div className="px-5 py-4 border-b border-slate-800 space-y-3">
@@ -313,19 +313,21 @@ function CloseRatePanel({ data }: { data: HubDashboardMetrics }) {
       <div className="p-5">
         <div className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Quotes created, later converted</div>
         <div className={`font-bold font-mono mt-1 ${c.quotes === 0 ? "text-lg text-slate-400" : "text-3xl text-white"}`} data-testid="text-close-rate"
-          title={c.percentage == null && c.quotes > 0 ? "Close rate unavailable for this period" : undefined}>
+          title={!available ? "Close rate unavailable for this period" : undefined}>
           {big}
         </div>
-        {c.percentage == null && c.quotes > 0 && <div className="text-[11px] text-slate-500">Unavailable, not zero</div>}
+        {!c.coverageComplete && <div className="text-[11px] text-slate-500">Pending quote history · unavailable, not zero</div>}
         <div className="text-xs text-slate-400 mt-2 font-mono tabular-nums" data-testid="text-close-rate-fraction">
-          {formatNumber(c.converted)} of {formatNumber(c.quotes)} {qualifier}quotes converted
+          {c.coverageComplete
+            ? `${formatNumber(c.converted)} of ${formatNumber(c.quotes)} quotes converted`
+            : `Known quote records: ${formatNumber(c.quotes)} · Known conversions: ${formatNumber(c.converted)}`}
         </div>
         <div className="text-[11px] text-slate-500 mt-1">{periodRange(pr.start, pr.end, period)} (Eastern)</div>
       </div>
       <div className="px-5 py-3 border-t border-slate-800 text-[11px] text-slate-500 space-y-1 mt-auto">
-        {!c.coverageComplete && <p className="text-amber-400/80">Partial coverage: counts are observed/known quotes only.</p>}
+        {!c.coverageComplete && <p className="text-amber-400/80">Observed counts only, not the full quote cohort or a close-rate denominator.</p>}
         {c.note && <p data-testid="text-close-rate-note" className={c.coverageComplete ? "" : "text-amber-400/80"}>{c.note}</p>}
-        <p>Cohort: quotes created in the period that eventually converted to an invoice, not invoices divided by quotes in the same window.</p>
+        <p>Close rate requires all qualifying quotes created in the period and how many have since converted to invoices. It is not invoices divided by current quotes or by all current orders.</p>
         <p>Excluded from close rate only: any status containing Merch, Contract, Dead, Archive, or Reference (case-insensitive). These are non-sales or retired records.</p>
       </div>
     </section>
