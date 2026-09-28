@@ -1,19 +1,22 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { periodBounds, DASHBOARD_SQL, getDashboardMetrics } from "../src/lib/hub/dashboardMetrics";
+import { periodBounds, periodRanges, DASHBOARD_SQL, getDashboardMetrics } from "../src/lib/hub/dashboardMetrics";
 
 test("Eastern calendar starts are Monday, quarter and year; DST does not shift dates", () => {
   assert.deepEqual(periodBounds("2026-01-01"), {
-    today: "2026-01-01", wtd: "2025-12-29", mtd: "2026-01-01",
+    today: "2026-01-01", wtd: "2025-12-29", lw: "2025-12-22", mtd: "2026-01-01",
     qtd: "2026-01-01", ytd: "2026-01-01",
   });
   assert.deepEqual(periodBounds("2026-04-01"), {
-    today: "2026-04-01", wtd: "2026-03-30", mtd: "2026-04-01",
+    today: "2026-04-01", wtd: "2026-03-30", lw: "2026-03-23", mtd: "2026-04-01",
     qtd: "2026-04-01", ytd: "2026-01-01",
   });
   assert.equal(periodBounds("2026-03-08").wtd, "2026-03-02");
   assert.equal(periodBounds("2026-11-01").wtd, "2026-10-26");
   assert.throws(() => periodBounds("2026-02-30"));
+  assert.deepEqual(periodRanges("2026-01-01").lw, { start: "2025-12-22", end: "2025-12-28" });
+  assert.deepEqual(periodRanges("2026-03-09").lw, { start: "2026-03-02", end: "2026-03-08" });
+  assert.deepEqual(periodRanges("2026-11-02").lw, { start: "2026-10-26", end: "2026-11-01" });
 });
 
 test("SQL retains separate populations, complete-detail quantity, status history and shell filters", () => {
@@ -57,6 +60,10 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     for (const table of ["pv_orders", "pv_customers", "pv_line_items", "pv_imprints", "pv_payments", "change_events"]) {
       await client.query(`CREATE TEMP TABLE ${table} (LIKE public.${table} INCLUDING DEFAULTS) ON COMMIT DROP`);
     }
+    // LIKE INCLUDING DEFAULTS otherwise inherits the public event sequence;
+    // nextval is not rolled back, even though every fixture row is temporary.
+    await client.query("CREATE TEMP SEQUENCE dashboard_fixture_event_id");
+    await client.query("ALTER TABLE pg_temp.change_events ALTER COLUMN id SET DEFAULT nextval('pg_temp.dashboard_fixture_event_id')");
     const today = (await client.query(
       "SELECT (now() AT TIME ZONE 'America/New_York')::date::text AS today",
     )).rows[0].today as string;
@@ -115,6 +122,78 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     await client.query("UPDATE pv_orders SET detail_sync_state = 'incomplete' WHERE printavo_id = 'x2'");
     const incomplete = (await client.query(DASHBOARD_SQL)).rows[0];
     assert.equal(incomplete.periods.today.itemsDecorated, null);
+    assert.equal(row.close_rate.today.percentage, null); // undated legacy conversion
+    assert.equal(row.close_rate.lw.percentage, null); // zero denominator
+    assert.equal(row.activity.lw.quotesCreated.total, 0);
+
+    // Reset temporary fixtures only. Exercise a fixed cross-year reporting day.
+    await client.query("TRUNCATE pg_temp.pv_orders, pg_temp.change_events, pg_temp.pv_line_items, pg_temp.pv_imprints, pg_temp.pv_payments, pg_temp.pv_customers");
+    const fixedSql = DASHBOARD_SQL.replace(
+      "(now() AT TIME ZONE 'America/New_York')::date AS today",
+      "'2026-01-01'::date AS today",
+    );
+    const add = async (id: string, visual: number, type: string, date: string, status = "Quote") => {
+      await insertOrder(id, visual, `c${visual}`, type, status);
+      await client.query("UPDATE pg_temp.pv_orders SET printavo_created_at = $2::timestamptz WHERE printavo_id = $1", [id, date]);
+    };
+    await add("open", 301, "quote", "2025-12-23T12:00:00-05:00");
+    await add("converted", 302, "invoice", "2026-01-01T12:00:00-05:00");
+    const event = async (id: string, visual: number, date: string | null) => {
+      await client.query(`INSERT INTO pg_temp.change_events
+        (entity_type, entity_id, visual_id, event_type, old_value, new_value, occurred_at)
+        VALUES ('order',$1,$2,'converted',$3::jsonb,$4::jsonb,'2026-01-01T12:00:00-05:00')`,
+      [id, visual, JSON.stringify({ printavoId: `q-${id}`, orderType: "quote",
+        quoteHistoryVersion: "1", quoteCreatedAt: date, customerId: `c${visual}` }),
+      JSON.stringify({ printavoId: id, orderType: "invoice" })]);
+    };
+    await event("converted", 302, "2025-12-24T12:00:00-05:00");
+    await event("converted", 302, "2025-12-24T12:00:00-05:00"); // repeated evidence, one cohort
+    for (const [i, status] of ["mErCh", "cOnTrAcT", "dEaD", "aRcHiVe", "rEfErEnCe"].entries()) {
+      await add(`excluded${i}`, 310 + i, "invoice", "2025-12-24T12:00:00-05:00", `In ${status} review`);
+      await event(`excluded${i}`, 310 + i, "2025-12-24T12:00:00-05:00");
+      await add(`excludedQuote${i}`, 320 + i, "quote", "2025-12-24T12:00:00-05:00", status);
+    }
+    await add("sunday", 330, "quote", "2025-12-29T04:59:59Z");
+    await add("monday", 331, "quote", "2025-12-29T05:00:00Z");
+    const cohort = (await client.query(fixedSql)).rows[0];
+    assert.equal(cohort.periods.lw.start, "2025-12-22");
+    assert.equal(cohort.periods.lw.end, "2025-12-28"); // not today
+    assert.equal(cohort.periods.lw.totalOrders, 5); // rate exclusions do not affect base totals
+    assert.equal(cohort.averages.lw.all.orders, 5);
+    assert.equal(cohort.close_rate.lw.quotes, 3); // open, converted, Sunday
+    assert.equal(cohort.close_rate.lw.converted, 1); // conversion after cohort end
+    assert.ok(Math.abs(cohort.close_rate.lw.percentage - 100 / 3) < 0.000001);
+    assert.equal(cohort.close_rate.today.percentage, null);
+    assert.equal(cohort.close_rate.lw.coverageComplete, false);
+    assert.equal(cohort.activity.lw.quotesCreated.total, 13);
+    assert.equal(cohort.activity.lw.quotesCreated.items.length, 12);
+    assert.equal(cohort.activity.lw.quotesCreated.truncated, true);
+    await event("converted", 302, null); // known dated evidence prevents duplicate unknown poison
+    assert.equal((await client.query(fixedSql)).rows[0].close_rate.lw.converted, 1);
+    await add("legacy", 340, "invoice", "2026-01-01T12:00:00-05:00");
+    await event("legacy", 340, null);
+    const unknown = (await client.query(fixedSql)).rows[0];
+    assert.equal(unknown.close_rate.lw.percentage, null);
+    assert.match(unknown.close_rate.lw.note, /unknown quote creation dates/);
+    assert.equal(unknown.activity.lw.quotesCreated.total, 13);
+    for (const boundary of [
+      { today: "2026-03-09", start: "2026-03-02", end: "2026-03-08",
+        inside: "2026-03-09T03:59:59Z", outside: "2026-03-09T04:00:00Z" },
+      { today: "2026-11-02", start: "2026-10-26", end: "2026-11-01",
+        inside: "2026-11-02T04:59:59Z", outside: "2026-11-02T05:00:00Z" },
+    ]) {
+      await client.query("TRUNCATE pg_temp.pv_orders, pg_temp.change_events");
+      await add("dst-in", 401, "invoice", boundary.inside);
+      await add("dst-out", 402, "invoice", boundary.outside);
+      const dst = (await client.query(DASHBOARD_SQL.replace(
+        "(now() AT TIME ZONE 'America/New_York')::date AS today",
+        `'${boundary.today}'::date AS today`,
+      ))).rows[0];
+      assert.equal(dst.periods.lw.start, boundary.start);
+      assert.equal(dst.periods.lw.end, boundary.end);
+      assert.equal(dst.periods.lw.totalOrders, 1);
+      assert.equal(dst.periods.today.totalOrders, 1);
+    }
   } finally {
     await client.query("ROLLBACK");
     client.release();

@@ -10,6 +10,7 @@ import type { HubDashboardAverageMethods } from './hubDashboardAverageMethods';
 export interface HubDashboardAverages {
   today: HubDashboardAverageMethods;
   wtd: HubDashboardAverageMethods;
+  lw: HubDashboardAverageMethods;
   mtd: HubDashboardAverageMethods;
   qtd: HubDashboardAverageMethods;
   ytd: HubDashboardAverageMethods;

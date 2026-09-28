@@ -56,6 +56,7 @@ export interface HubDashboardPeriod {
 export interface HubDashboardPeriods {
   today: HubDashboardPeriod;
   wtd: HubDashboardPeriod;
+  lw: HubDashboardPeriod;
   mtd: HubDashboardPeriod;
   qtd: HubDashboardPeriod;
   ytd: HubDashboardPeriod;
@@ -78,9 +79,41 @@ export interface HubDashboardAverageMethods {
 export interface HubDashboardAverages {
   today: HubDashboardAverageMethods;
   wtd: HubDashboardAverageMethods;
+  lw: HubDashboardAverageMethods;
   mtd: HubDashboardAverageMethods;
   qtd: HubDashboardAverageMethods;
   ytd: HubDashboardAverageMethods;
+}
+
+export interface HubDashboardActivityPeriod {
+  quotesCreated: HubDashboardRecentList;
+  dealsWon: HubDashboardRecentList;
+}
+
+export interface HubDashboardActivity {
+  today: HubDashboardActivityPeriod;
+  wtd: HubDashboardActivityPeriod;
+  lw: HubDashboardActivityPeriod;
+  mtd: HubDashboardActivityPeriod;
+  qtd: HubDashboardActivityPeriod;
+  ytd: HubDashboardActivityPeriod;
+}
+
+export interface HubDashboardCloseRate {
+  quotes: number;
+  converted: number;
+  percentage: number | null;
+  coverageComplete: boolean;
+  note: string;
+}
+
+export interface HubDashboardCloseRates {
+  today: HubDashboardCloseRate;
+  wtd: HubDashboardCloseRate;
+  lw: HubDashboardCloseRate;
+  mtd: HubDashboardCloseRate;
+  qtd: HubDashboardCloseRate;
+  ytd: HubDashboardCloseRate;
 }
 
 export interface HubDashboardMetrics {
@@ -88,6 +121,8 @@ export interface HubDashboardMetrics {
   timeZone: HubDashboardMetricsTimeZone;
   periods: HubDashboardPeriods;
   averages: HubDashboardAverages;
+  activity: HubDashboardActivity;
+  closeRate: HubDashboardCloseRates;
   recentStart: string;
   recent: HubDashboardMetricsRecent;
   definitions: HubDashboardMetricsDefinitions;

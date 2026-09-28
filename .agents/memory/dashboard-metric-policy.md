@@ -18,9 +18,10 @@ a conversion-aware identity heuristic, not a guaranteed global identifier.
 Report mirror-history and conversion-date limitations rather than inventing
 original quote dates.
 
-Use Eastern calendar periods with Monday-start weeks. The five requested
-periods are Today, WTD, MTD, QTD, and YTD; recent activity is the last seven
-calendar days including today. Average Order Volume means pieces per order.
+Use Eastern calendar periods with Monday-start weeks. The requested
+periods are Today, WTD, LW, MTD, QTD, and YTD across performance, averages,
+activity, and Close Rate. LW is the previous full Monday–Sunday, not rolling
+seven days. Average Order Volume means pieces per order.
 Decoration-method selections may overlap for mixed-method orders; whole-order
 revenue is not allocated decoration revenue.
 
@@ -32,3 +33,18 @@ totals remain distinct. Items Decorated is recorded decorated-group quantity,
 not proof of completed production. Recent wins require observed entry into the
 pipeline won/done stages, not creation date or current status alone. Preserve
 known-history caveats. Chipply revenue and shell-order behavior remain separate.
+
+Close Rate uses quote-creation cohorts: eventually converted quotes divided by
+all qualifying quotes created in the selected period. Exclude current statuses
+containing any of Merch, Contract, Dead, Archive, Reference case-insensitively
+from both numerator and denominator.
+
+**Why:** The user wants actual quote-to-invoice conversion, not invoice count
+divided by current open quotes. An invoice may be created after its quote's
+reporting period ends. Older conversion events lack original quote dates.
+
+**How to apply:** Keep unknown historical dates unavailable, never invent them
+from invoice creation or observation time. Label observed-only rates as partial
+coverage. Preserve original quote-date evidence atomically before removing
+converted quotes, even during quiet seed runs; suppressing notifications must
+not suppress historical evidence.

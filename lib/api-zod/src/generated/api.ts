@@ -35,6 +35,16 @@ export const GetDashboardMetricsResponse = zod.object({
   "newCustomers": zod.number(),
   "repeatCustomers": zod.number()
 }),
+  "lw": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
   "mtd": zod.object({
   "start": zod.coerce.date(),
   "end": zod.coerce.date(),
@@ -119,6 +129,32 @@ export const GetDashboardMetricsResponse = zod.object({
   "quantityKnownOrders": zod.number()
 })
 }),
+  "lw": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
   "mtd": zod.object({
   "all": zod.object({
   "orders": zod.number(),
@@ -196,6 +232,208 @@ export const GetDashboardMetricsResponse = zod.object({
   "averageOrderVolume": zod.number().nullable(),
   "quantityKnownOrders": zod.number()
 })
+})
+}),
+  "activity": zod.object({
+  "today": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "wtd": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "lw": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "mtd": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "qtd": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "ytd": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+})
+}),
+  "closeRate": zod.object({
+  "today": zod.object({
+  "quotes": zod.number(),
+  "converted": zod.number(),
+  "percentage": zod.number().nullable(),
+  "coverageComplete": zod.boolean(),
+  "note": zod.string()
+}),
+  "wtd": zod.object({
+  "quotes": zod.number(),
+  "converted": zod.number(),
+  "percentage": zod.number().nullable(),
+  "coverageComplete": zod.boolean(),
+  "note": zod.string()
+}),
+  "lw": zod.object({
+  "quotes": zod.number(),
+  "converted": zod.number(),
+  "percentage": zod.number().nullable(),
+  "coverageComplete": zod.boolean(),
+  "note": zod.string()
+}),
+  "mtd": zod.object({
+  "quotes": zod.number(),
+  "converted": zod.number(),
+  "percentage": zod.number().nullable(),
+  "coverageComplete": zod.boolean(),
+  "note": zod.string()
+}),
+  "qtd": zod.object({
+  "quotes": zod.number(),
+  "converted": zod.number(),
+  "percentage": zod.number().nullable(),
+  "coverageComplete": zod.boolean(),
+  "note": zod.string()
+}),
+  "ytd": zod.object({
+  "quotes": zod.number(),
+  "converted": zod.number(),
+  "percentage": zod.number().nullable(),
+  "coverageComplete": zod.boolean(),
+  "note": zod.string()
 })
 }),
   "recentStart": zod.coerce.date(),

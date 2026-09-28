@@ -179,43 +179,61 @@ export async function upsertOrder(
     return { outcome: "updated", events: emitted };
   }
 
-  let converted = false;
-  if (orderType === "invoice") {
-    const [priorQuote] = await db
-      .select()
-      .from(pvOrdersTable)
-      .where(
-        and(
-          eq(pvOrdersTable.visualId, node.visualId),
-          eq(pvOrdersTable.orderType, "quote"),
-        ),
-      )
-      .limit(1);
-    if (priorQuote) {
-      await db
-        .delete(pvOrdersTable)
-        .where(eq(pvOrdersTable.printavoId, priorQuote.printavoId));
-      row.firstSeenAt = priorQuote.firstSeenAt;
+  return db.transaction(async tx => {
+    let converted = false;
+    if (orderType === "invoice" && row.customerId != null) {
+      const priorQuotes = await tx
+        .select()
+        .from(pvOrdersTable)
+        .where(
+          and(
+            eq(pvOrdersTable.visualId, node.visualId),
+            eq(pvOrdersTable.customerId, row.customerId),
+            eq(pvOrdersTable.orderType, "quote"),
+          ),
+        )
+        .limit(2)
+        .for("update");
+      // Ambiguous customer/visual identity must not destroy either quote.
+      const priorQuote = priorQuotes.length === 1 ? priorQuotes[0] : undefined;
+      if (priorQuote) {
+        await tx
+          .delete(pvOrdersTable)
+          .where(eq(pvOrdersTable.printavoId, priorQuote.printavoId));
+        row.firstSeenAt = priorQuote.firstSeenAt;
+        events.push({
+          ...base,
+          eventType: "converted",
+          field: "orderType",
+          oldValue: {
+            printavoId: priorQuote.printavoId, orderType: "quote",
+            quoteHistoryVersion: "1",
+            quoteCreatedAt: priorQuote.printavoCreatedAt?.toISOString() ?? null,
+            customerId: priorQuote.customerId, statusName: priorQuote.statusName,
+          },
+          newValue: {
+            printavoId: node.id, orderType: "invoice",
+            customerId: row.customerId, statusName: row.statusName,
+          },
+        });
+        converted = true;
+      }
+    }
+    if (!converted) {
       events.push({
         ...base,
-        eventType: "converted",
-        field: "orderType",
-        oldValue: { printavoId: priorQuote.printavoId, orderType: "quote" },
-        newValue: { printavoId: node.id, orderType: "invoice" },
+        eventType: "created",
+        newValue: { statusName: row.statusName, total: row.total },
       });
-      converted = true;
     }
-  }
-  if (!converted) {
-    events.push({
-      ...base,
-      eventType: "created",
-      newValue: { statusName: row.statusName, total: row.total },
-    });
-  }
-  await db.insert(pvOrdersTable).values(row);
-  const emitted = await persistEvents(events, opts);
-  return { outcome: converted ? "converted" : "created", events: emitted };
+    await tx.insert(pvOrdersTable).values(row);
+    // Conversion evidence is a preservation record, including during quiet seed
+    // runs. It must commit atomically with replacement of the original quote.
+    const retainedEvents = opts.emitEvents ? events : events.filter(e => e.eventType === "converted");
+    if (retainedEvents.length) await tx.insert(changeEventsTable).values(retainedEvents);
+    const emitted = retainedEvents.length;
+    return { outcome: converted ? "converted" : "created", events: emitted };
+  });
 }
 
 export async function upsertCustomer(

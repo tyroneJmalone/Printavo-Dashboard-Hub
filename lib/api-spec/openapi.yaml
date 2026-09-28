@@ -8046,12 +8046,14 @@ components:
   schemas:
     HubDashboardMetrics:
       type: object
-      required: [asOf, timeZone, periods, averages, recentStart, recent, definitions, coverage]
+      required: [asOf, timeZone, periods, averages, activity, closeRate, recentStart, recent, definitions, coverage]
       properties:
         asOf: { type: string, format: date }
         timeZone: { type: string, enum: [America/New_York] }
         periods: { $ref: "#/components/schemas/HubDashboardPeriods" }
         averages: { $ref: "#/components/schemas/HubDashboardAverages" }
+        activity: { $ref: "#/components/schemas/HubDashboardActivity" }
+        closeRate: { $ref: "#/components/schemas/HubDashboardCloseRates" }
         recentStart: { type: string, format: date }
         recent:
           type: object
@@ -8085,10 +8087,11 @@ components:
         repeatCustomers: { type: integer }
     HubDashboardPeriods:
       type: object
-      required: [today, wtd, mtd, qtd, ytd]
+      required: [today, wtd, lw, mtd, qtd, ytd]
       properties:
         today: { $ref: "#/components/schemas/HubDashboardPeriod" }
         wtd: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        lw: { $ref: "#/components/schemas/HubDashboardPeriod" }
         mtd: { $ref: "#/components/schemas/HubDashboardPeriod" }
         qtd: { $ref: "#/components/schemas/HubDashboardPeriod" }
         ytd: { $ref: "#/components/schemas/HubDashboardPeriod" }
@@ -8110,13 +8113,49 @@ components:
         heat: { $ref: "#/components/schemas/HubDashboardAverage" }
     HubDashboardAverages:
       type: object
-      required: [today, wtd, mtd, qtd, ytd]
+      required: [today, wtd, lw, mtd, qtd, ytd]
       properties:
         today: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
         wtd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        lw: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
         mtd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
         qtd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
         ytd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+    HubDashboardActivity:
+      type: object
+      required: [today, wtd, lw, mtd, qtd, ytd]
+      properties:
+        today: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        wtd: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        lw: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        mtd: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        qtd: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        ytd: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+    HubDashboardActivityPeriod:
+      type: object
+      required: [quotesCreated, dealsWon]
+      properties:
+        quotesCreated: { $ref: "#/components/schemas/HubDashboardRecentList" }
+        dealsWon: { $ref: "#/components/schemas/HubDashboardRecentList" }
+    HubDashboardCloseRates:
+      type: object
+      required: [today, wtd, lw, mtd, qtd, ytd]
+      properties:
+        today: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        wtd: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        lw: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        mtd: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        qtd: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        ytd: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+    HubDashboardCloseRate:
+      type: object
+      required: [quotes, converted, percentage, coverageComplete, note]
+      properties:
+        quotes: { type: integer }
+        converted: { type: integer }
+        percentage: { type: number, nullable: true }
+        coverageComplete: { type: boolean }
+        note: { type: string }
     HubDashboardRecentItem:
       type: object
       required: [orderId, visualId, customerName, nickname, statusName, occurredAt]

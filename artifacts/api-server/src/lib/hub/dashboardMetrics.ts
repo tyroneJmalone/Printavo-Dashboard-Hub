@@ -2,7 +2,7 @@ import { pool } from "@workspace/db";
 import { notChipplySql } from "../chipply/matching";
 import { pipelineStageSql } from "../../routes/pipeline";
 
-export const PERIOD_KEYS = ["today", "wtd", "mtd", "qtd", "ytd"] as const;
+export const PERIOD_KEYS = ["today", "wtd", "lw", "mtd", "qtd", "ytd"] as const;
 export type DashboardPeriod = typeof PERIOD_KEYS[number];
 export const METHOD_KEYS = ["all", "print", "embroidery", "heat"] as const;
 export type DashboardMethod = typeof METHOD_KEYS[number];
@@ -22,10 +22,20 @@ export function periodBounds(today: string): Record<DashboardPeriod, string> {
   return {
     today,
     wtd: iso(week),
+    lw: iso(new Date(week.valueOf() - 7 * 86400000)),
     mtd: iso(new Date(Date.UTC(year, month, 1))),
     qtd: iso(new Date(Date.UTC(year, Math.floor(month / 3) * 3, 1))),
     ytd: iso(new Date(Date.UTC(year, 0, 1))),
   };
+}
+
+export function periodRanges(today: string) {
+  const starts = periodBounds(today);
+  const lastSunday = new Date(`${starts.wtd}T00:00:00Z`);
+  lastSunday.setUTCDate(lastSunday.getUTCDate() - 1);
+  return Object.fromEntries(PERIOD_KEYS.map(key => [key, {
+    start: starts[key], end: key === "lw" ? lastSunday.toISOString().slice(0, 10) : today,
+  }])) as Record<DashboardPeriod, { start: string; end: string }>;
 }
 
 // Canonical Purchasing normalization: normalize hyphens and collapse whitespace.
@@ -36,6 +46,7 @@ WITH calendar AS (
   SELECT (now() AT TIME ZONE 'America/New_York')::date AS today
 ), bounds AS (
   SELECT today, date_trunc('week', today::timestamp)::date AS wtd,
+    date_trunc('week', today::timestamp)::date - 7 AS lw,
     date_trunc('month', today::timestamp)::date AS mtd,
     date_trunc('quarter', today::timestamp)::date AS qtd,
     date_trunc('year', today::timestamp)::date AS ytd,
@@ -59,7 +70,7 @@ WITH calendar AS (
     AND ${notChipplySql("o.nickname")}
     -- The Monday week may begin before Jan 1; YTD alone is not enough.
     AND (o.printavo_created_at AT TIME ZONE 'America/New_York')::date
-      BETWEEN least(b.wtd, b.ytd) AND b.today
+      BETWEEN least(b.lw, b.ytd) AND b.today
 ), line_groups AS (
   SELECT li.order_id, li.group_id, sum(greatest(li.items, 0))::bigint AS qty,
     bool_or(${CATEGORY_SQL} = 'screen printing') AS print,
@@ -89,8 +100,9 @@ WITH calendar AS (
   ) AS customer_order_number
   FROM logical_orders l
 ), ranges AS (
-  SELECT 'today' AS key, today AS start_day, today FROM bounds
+  SELECT 'today' AS key, today AS start_day, today AS end_day FROM bounds
   UNION ALL SELECT 'wtd', wtd, today FROM bounds
+  UNION ALL SELECT 'lw', lw, wtd - 1 FROM bounds
   UNION ALL SELECT 'mtd', mtd, today FROM bounds
   UNION ALL SELECT 'qtd', qtd, today FROM bounds
   UNION ALL SELECT 'ytd', ytd, today FROM bounds
@@ -100,21 +112,21 @@ WITH calendar AS (
     CASE WHEN count(i.printavo_id) FILTER (WHERE i.detail_sync_state <> 'complete') > 0
       THEN NULL ELSE coalesce(sum(q.decorated_qty), 0)::bigint::int END AS items_decorated
   FROM ranges r LEFT JOIN invoice_population i
-    ON i.created_day BETWEEN r.start_day AND r.today
+    ON i.created_day BETWEEN r.start_day AND r.end_day
   LEFT JOIN order_quantities q ON q.order_id = i.printavo_id AND i.detail_sync_state = 'complete'
   GROUP BY r.key
 ), customer_stats AS (
   SELECT r.key,
     (SELECT count(*)::int FROM pv_customers c
       WHERE (c.printavo_created_at AT TIME ZONE 'America/New_York')::date
-        BETWEEN r.start_day AND r.today) AS new_customers,
+        BETWEEN r.start_day AND r.end_day) AS new_customers,
     (SELECT count(*)::int FROM repeat_orders o
-      WHERE o.customer_order_number > 1 AND o.created_day BETWEEN r.start_day AND r.today) AS repeat_customers
+      WHERE o.customer_order_number > 1 AND o.created_day BETWEEN r.start_day AND r.end_day) AS repeat_customers
   FROM ranges r
 ), payment_stats AS (
   SELECT r.key, coalesce(sum(p.amount), 0)::float8 AS net_payments
   FROM ranges r LEFT JOIN pv_payments p
-    ON p.transaction_date BETWEEN r.start_day AND r.today
+    ON p.transaction_date BETWEEN r.start_day AND r.end_day
     AND NOT EXISTS (SELECT 1 FROM pv_orders shell
       WHERE (shell.printavo_id = p.order_id
         OR (p.order_id IS NULL AND shell.visual_id = p.order_visual_id))
@@ -129,7 +141,7 @@ WITH calendar AS (
     count(q.qty)::int AS quantity_known_orders
   FROM ranges r CROSS JOIN (VALUES ('all'), ('print'), ('embroidery'), ('heat')) m(method)
   LEFT JOIN invoice_population i
-    ON i.created_day BETWEEN r.start_day AND r.today
+    ON i.created_day BETWEEN r.start_day AND r.end_day
     AND (m.method = 'all' OR (i.detail_sync_state = 'complete' AND EXISTS (
       SELECT 1 FROM order_quantities mq WHERE mq.order_id = i.printavo_id
         AND CASE m.method WHEN 'print' THEN mq.print
@@ -137,13 +149,53 @@ WITH calendar AS (
     )))
   LEFT JOIN order_quantities q ON q.order_id = i.printavo_id AND i.detail_sync_state = 'complete'
   GROUP BY r.key, m.method
-), quote_events AS (
-  SELECT o.printavo_id, o.visual_id, coalesce(nullif(o.customer_company, ''), o.contact_name) AS customer_name,
-    o.nickname, o.status_name, o.printavo_created_at AS occurred_at
-  FROM pv_orders o CROSS JOIN bounds b
-  WHERE o.order_type = 'quote'
+), conversions AS (
+  SELECT o.*, e.occurred_at AS conversion_observed_at,
+    CASE WHEN e.old_value->>'quoteHistoryVersion' = '1'
+      AND e.old_value->>'customerId' = o.customer_id
+      AND e.visual_id = o.visual_id
+      THEN (e.old_value->>'quoteCreatedAt')::timestamptz END AS quote_created_at
+  FROM change_events e JOIN pv_orders o
+    ON o.printavo_id = e.new_value->>'printavoId'
+    AND o.printavo_id = e.entity_id AND o.visual_id = e.visual_id
+  WHERE e.entity_type = 'order' AND e.event_type = 'converted'
+    AND e.old_value->>'orderType' = 'quote' AND o.order_type = 'invoice'
     AND ${notChipplySql("o.nickname")}
-    AND (o.printavo_created_at AT TIME ZONE 'America/New_York')::date BETWEEN b.recent_start AND b.today
+), quote_cohorts AS (
+  -- Existing quote timestamps take priority; never substitute invoice creation.
+  SELECT DISTINCT ON (coalesce(customer_id, printavo_id), visual_id) * FROM (
+    SELECT coalesce(i.printavo_id, o.printavo_id) AS printavo_id, o.visual_id, o.customer_id, o.customer_company, o.contact_name,
+      o.nickname, CASE WHEN i.printavo_id IS NOT NULL THEN i.status_name ELSE o.status_name END AS status_name,
+      o.printavo_created_at AS quote_created_at, i.printavo_id IS NOT NULL AS converted,
+      0 AS priority
+    FROM pv_orders o LEFT JOIN pv_orders i ON i.customer_id = o.customer_id
+      AND i.visual_id = o.visual_id AND i.order_type = 'invoice'
+    WHERE o.order_type = 'quote' AND o.printavo_created_at IS NOT NULL
+      AND ${notChipplySql("o.nickname")}
+      AND (i.printavo_id IS NULL OR ${notChipplySql("i.nickname")})
+    UNION ALL
+    SELECT printavo_id, visual_id, customer_id, customer_company, contact_name,
+      nickname, status_name, quote_created_at, true, 1
+    FROM conversions WHERE quote_created_at IS NOT NULL
+  ) q ORDER BY coalesce(customer_id, printavo_id), visual_id, priority, quote_created_at, printavo_id
+), close_stats AS (
+  SELECT r.key, count(q.printavo_id)::int AS quotes,
+    count(q.printavo_id) FILTER (WHERE q.converted)::int AS converted,
+    EXISTS (SELECT 1 FROM conversions c
+      WHERE c.quote_created_at IS NULL
+        AND (c.conversion_observed_at AT TIME ZONE 'America/New_York')::date >= r.start_day
+        AND coalesce(c.status_name, '') !~* '(merch|contract|dead|archive|reference)'
+        AND NOT EXISTS (SELECT 1 FROM quote_cohorts known
+          WHERE known.customer_id = c.customer_id AND known.visual_id = c.visual_id)
+    ) AS unknown_dates
+  FROM ranges r LEFT JOIN quote_cohorts q
+    ON (q.quote_created_at AT TIME ZONE 'America/New_York')::date BETWEEN r.start_day AND r.end_day
+    AND coalesce(q.status_name, '') !~* '(merch|contract|dead|archive|reference)'
+  GROUP BY r.key, r.start_day
+), quote_events AS (
+  SELECT printavo_id, visual_id, coalesce(nullif(customer_company, ''), contact_name) AS customer_name,
+    nickname, status_name, quote_created_at AS occurred_at
+  FROM quote_cohorts
 ), won_events AS (
   SELECT DISTINCT ON (o.customer_id, o.visual_id)
     o.printavo_id, o.visual_id, coalesce(nullif(o.customer_company, ''), o.contact_name) AS customer_name,
@@ -160,7 +212,7 @@ WITH calendar AS (
   WHERE e.entity_type = 'order' AND e.event_type = 'status_change'
     AND o.order_type IN ('quote', 'invoice')
     AND ${notChipplySql("o.nickname")}
-    AND (e.occurred_at AT TIME ZONE 'America/New_York')::date BETWEEN b.recent_start AND b.today
+    AND (e.occurred_at AT TIME ZONE 'America/New_York')::date BETWEEN least(b.lw, b.ytd) AND b.today
     AND ${pipelineStageSql("lower(regexp_replace(coalesce(e.new_value #>> '{}', ''), '\\s+', ' ', 'g'))")} IN ('won', 'done')
     AND coalesce(${pipelineStageSql("lower(regexp_replace(coalesce(e.old_value #>> '{}', ''), '\\s+', ' ', 'g'))")}, 'other') NOT IN ('won', 'done')
   ORDER BY o.customer_id, o.visual_id, e.occurred_at, e.id
@@ -169,12 +221,41 @@ WITH calendar AS (
   UNION ALL SELECT 'dealsWon', w.* FROM won_events w
 ), ranked_recent AS (
   SELECT *, row_number() OVER (PARTITION BY kind ORDER BY occurred_at DESC, visual_id DESC, printavo_id) AS rank
-  FROM recent
+  FROM recent CROSS JOIN bounds b
+  WHERE (occurred_at AT TIME ZONE 'America/New_York')::date BETWEEN b.recent_start AND b.today
+), activity_ranked AS (
+  SELECT r.key, a.*, row_number() OVER (PARTITION BY r.key, a.kind
+    ORDER BY occurred_at DESC, visual_id DESC, printavo_id) AS rank,
+    count(*) OVER (PARTITION BY r.key, a.kind)::int AS total
+  FROM ranges r JOIN recent a
+    ON (a.occurred_at AT TIME ZONE 'America/New_York')::date BETWEEN r.start_day AND r.end_day
+), activity_lists AS (
+  SELECT r.key, k.kind, jsonb_build_object(
+    'total', coalesce(max(a.total), 0), 'truncated', coalesce(max(a.total), 0) > 12,
+    'items', coalesce(jsonb_agg(jsonb_build_object('orderId', a.printavo_id,
+      'visualId', a.visual_id, 'customerName', a.customer_name, 'nickname', a.nickname,
+      'statusName', a.status_name, 'occurredAt', a.occurred_at)
+      ORDER BY a.occurred_at DESC, a.visual_id DESC, a.printavo_id)
+      FILTER (WHERE a.rank <= 12), '[]'::jsonb)) AS list
+  FROM ranges r CROSS JOIN (VALUES ('quotesCreated'), ('dealsWon')) k(kind)
+  LEFT JOIN activity_ranked a ON a.key = r.key AND a.kind = k.kind
+  GROUP BY r.key, k.kind
 )
 SELECT (SELECT today::text FROM bounds) AS as_of,
+  (SELECT jsonb_object_agg(key, lists) FROM (
+    SELECT key, jsonb_object_agg(kind, list) AS lists FROM activity_lists GROUP BY key
+  ) a) AS activity,
+  (SELECT jsonb_object_agg(key, jsonb_build_object(
+    'quotes', quotes, 'converted', converted,
+    'percentage', CASE WHEN quotes = 0 OR unknown_dates THEN NULL ELSE 100.0 * converted / quotes END,
+    'coverageComplete', false,
+    'note', CASE WHEN unknown_dates
+      THEN 'Incomplete history: legacy conversions have unknown quote creation dates; rate unavailable.'
+      ELSE 'Observed cohort only; sync can miss quotes created and converted between polls or before seeding. No complete-history coverage marker exists.' END
+  )) FROM close_stats) AS close_rate,
   (SELECT recent_start::text FROM bounds) AS recent_start,
   (SELECT jsonb_object_agg(i.key, jsonb_build_object(
-    'start', r.start_day::text, 'end', r.today::text,
+    'start', r.start_day::text, 'end', r.end_day::text,
     'totalOrders', i.total_orders, 'totalRevenue', i.total_revenue,
     'itemsDecorated', i.items_decorated, 'netPayments', p.net_payments,
     'newCustomers', c.new_customers, 'repeatCustomers', c.repeat_customers
@@ -210,6 +291,8 @@ export async function getDashboardMetrics() {
     timeZone: "America/New_York",
     periods: row.periods,
     averages: row.averages,
+    activity: row.activity,
+    closeRate: row.close_rate,
     recentStart: row.recent_start as string,
     recent: {
       quotesCreated: row.recent?.quotesCreated ?? { total: 0, truncated: false, items: [] },
@@ -223,12 +306,13 @@ export async function getDashboardMetrics() {
       newCustomers: "Printavo customer creation timestamp, not mirror first-seen time.",
       repeatCustomers: "Number of qualifying quote/invoice logical orders from customers with a prior qualifying logical order across synced history; not distinct customers or reorders. Statuses containing ARCHIVE, DUPLICATED or REFERENCE and Chipply shells excluded. Customer + visual ID is the conversion identity heuristic; a reused visual ID for the same customer could merge unrelated orders. A converted invoice may have a new Printavo created timestamp, so its reported period is not guaranteed to be the original quote creation period.",
       averages: "Invoices created in period; method matched against canonical Purchasing line-item categories. Mixed-method invoices can appear in multiple method selections. Value uses whole tax-inclusive invoice total; volume averages known mirrored line-item quantities per order only. Null means no eligible denominator.",
-      quotesCreated: "Current unconverted quotes by Printavo creation timestamp. Converted/deleted quotes lack a trustworthy preserved quote creation timestamp in the mirror and are not included.",
-      dealsWon: "First observed status transition from outside won/done into pipeline won/done for each customer + visual ID in the last 7 Eastern calendar days. Observation time is sync poll time, not the Printavo status-change time.",
+      quotesCreated: "Quotes by original Printavo creation timestamp, including conversions with preserved trustworthy quote history; customer + visual ID deduplicated.",
+      closeRate: "Observed quotes created in the selected Eastern period that eventually converted, divided by observed quotes created in that period. Both populations exclude current statuses containing Merch, Contract, Dead, Archive or Reference, independently and case-insensitively, and Chipply shells. Conversion may occur after the period ends. Null if denominator is zero or legacy unknown creation dates could affect the cohort.",
+      dealsWon: "First observed status transition from outside won/done into pipeline won/done for each customer + visual ID in the reporting horizon. Activity uses the selected Eastern period; legacy recent uses the last 7 days. Observation time is sync poll time, not the Printavo status-change time.",
     },
     coverage: {
-      orders: "Synced Printavo mirror only; historical seed is limited, so repeat history before the seed is unknown. Original quote creation date is not retained when conversion replaces a quote with an invoice; repeat event periods may shift to the invoice's Printavo created date.",
-      quotesCreated: "Current unconverted quotes only; converted quotes cannot be reconstructed reliably from change events.",
+      orders: "Synced Printavo mirror only; historical seed is limited, so repeat history before the seed is unknown. Repeat event periods use current order creation and may shift to invoice creation on conversion. Versioned conversion snapshots preserve original quote dates for cohort/activity only; legacy history remains incomplete.",
+      quotesCreated: "Includes only current quote dates and versioned conversion snapshots. Legacy conversions without original dates are omitted, never assigned invoice or observation dates. Quotes created and converted between polls remain invisible; complete history is not guaranteed.",
       dealsWon: "Only status changes observed by sync; seed/current states without a recorded transition are excluded.",
       statusHistoryFrom: row.status_history_from instanceof Date
         ? row.status_history_from.toISOString() : row.status_history_from ?? null,

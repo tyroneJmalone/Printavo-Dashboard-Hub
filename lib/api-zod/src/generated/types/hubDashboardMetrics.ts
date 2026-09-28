@@ -5,7 +5,9 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { HubDashboardActivity } from './hubDashboardActivity';
 import type { HubDashboardAverages } from './hubDashboardAverages';
+import type { HubDashboardCloseRates } from './hubDashboardCloseRates';
 import type { HubDashboardMetricsCoverage } from './hubDashboardMetricsCoverage';
 import type { HubDashboardMetricsDefinitions } from './hubDashboardMetricsDefinitions';
 import type { HubDashboardMetricsRecent } from './hubDashboardMetricsRecent';
@@ -17,6 +19,8 @@ export interface HubDashboardMetrics {
   timeZone: HubDashboardMetricsTimeZone;
   periods: HubDashboardPeriods;
   averages: HubDashboardAverages;
+  activity: HubDashboardActivity;
+  closeRate: HubDashboardCloseRates;
   recentStart: Date;
   recent: HubDashboardMetricsRecent;
   definitions: HubDashboardMetricsDefinitions;
