@@ -289,7 +289,7 @@ function RecentPanel({ data }: { data: HubDashboardMetrics }) {
         </p>
         <p>{tab === "quotes" ? data.coverage.quotesCreated : data.coverage.dealsWon}</p>
         {tab === "quotes"
-          ? <p>Quotes already converted to invoices may be missing here because their original quote timestamp is not retained.</p>
+          ? <p>{data.closeRate[period].estimatedDateOrders > 0 ? `Estimated period allocation: ${formatNumber(data.closeRate[period].estimatedDateOrders)} converted quotes use invoice creation dates.` : "Retained quote dates are used for this period; mirror history may be incomplete."}</p>
           : <p>Wins are observed status changes{data.coverage.statusHistoryFrom ? `, tracked since ${etFmt(data.coverage.statusHistoryFrom, { month: "short", day: "numeric", year: "numeric" })}` : ""}.</p>}
       </div>
     </section>
@@ -311,19 +311,20 @@ function CloseRatePanel({ data }: { data: HubDashboardMetrics }) {
         <PeriodControls value={period} onChange={setPeriod} options={PERIODS} testPrefix="button-close-period" />
       </div>
       <div className="p-5">
-        <div className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Won invoices of eligible orders</div>
+        <div className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Converted to invoices / Total quotes (including converted)</div>
         <div className={`font-bold font-mono mt-1 ${c.quotes === 0 ? "text-lg text-slate-400" : "text-3xl text-white"}`} data-testid="text-close-rate"
           title={!available ? "Close rate unavailable for this period" : undefined}>
           {big}
         </div>
+        {c.estimatedDateOrders > 0 && <div className="text-xs text-amber-400 mt-1">Estimated · {formatNumber(c.estimatedDateOrders)} converted quotes use invoice creation dates</div>}
         <div className="text-xs text-slate-400 mt-2 font-mono tabular-nums" data-testid="text-close-rate-fraction">
-          {formatNumber(c.converted)} won invoices of {formatNumber(c.quotes)} eligible orders
+          {formatNumber(c.converted)} converted to invoices of {formatNumber(c.quotes)} total quotes (including converted)
         </div>
         <div className="text-[11px] text-slate-500 mt-1">{periodRange(pr.start, pr.end, period)} (Eastern)</div>
       </div>
       <div className="px-5 py-3 border-t border-slate-800 text-[11px] text-slate-500 space-y-1 mt-auto">
         {c.note && <p data-testid="text-close-rate-note" className={c.coverageComplete ? "" : "text-amber-400/80"}>{c.note}</p>}
-        <p>Won and completed invoices (pipeline stages) divided by eligible quote/invoice logical orders created in this period. Current status is used; no recorded conversion event is required.</p>
+        <p>Every invoice began as a quote. Original quote dates are preferred; historical invoice dates are an estimated fallback, not verified quote creation dates.</p>
         <p>Excluded from close rate only: any status containing Merch, Contract, Dead, Archive, or Reference (case-insensitive). These are non-sales or retired records.</p>
       </div>
     </section>

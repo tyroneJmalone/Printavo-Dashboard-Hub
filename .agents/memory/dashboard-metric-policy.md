@@ -39,17 +39,23 @@ all qualifying quotes created in the selected period. Exclude current statuses
 containing any of Merch, Contract, Dead, Archive, Reference case-insensitively
 from both numerator and denominator.
 
-**Why:** The user wants actual quote-to-invoice conversion, not invoice count
-divided by current open quotes. An invoice may be created after its quote's
-reporting period ends. Older conversion events lack original quote dates.
+**Why:** The user explicitly confirmed that EVERY invoice starts as a quote.
+Thus converted invoices remain in the original quote population: denominator
+is eligible open quotes plus eligible invoices, numerator is eligible invoices.
+Do not gate conversion on observed change events or current won status.
+Counting remaining quotes alone produced the misleading small denominator.
+This supersedes the intermediary pipeline-status-only interpretation.
 
-**How to apply:** Keep unknown historical rates unavailable, never invent them
-from invoice creation or observation time. Missing conversion events do not
-prove zero conversions: the live mirror had invoices and open quotes but no
-conversion events, causing a misleading 0% in every populated period.
-Individual observed conversions also do not prove full cohort coverage. Keep
-the rate unavailable until trustworthy cohort coverage is established; show
-known counts separately, not as the complete denominator.
+**How to apply:** Count each logical order once. Prefer preserved original quote
+creation dates, including conversions after the selected period ends. Older
+invoices lack verified original quote dates: stored Printavo creation dates
+can supply estimated period allocation, but rates using them MUST be labeled
+estimated and disclose how many invoice dates are unverified. The all-invoices-
+began-as-quotes business rule establishes origin, not timestamp preservation.
+Do not call this an exact historical cohort rate or reintroduce an all-null
+gate solely because conversion events are absent. Zero denominator remains
+unavailable, not zero. Quotes Created activity should include converted quotes
+consistently with the same eligible population and date caveat.
 Preserve original quote-date evidence atomically before removing
 converted quotes, even during quiet seed runs; suppressing notifications must
 not suppress historical evidence.

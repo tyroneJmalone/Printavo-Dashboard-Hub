@@ -100,17 +100,19 @@ export interface HubDashboardActivity {
 }
 
 /**
- * Current-mirror won/done invoices divided by eligible quote/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.
+ * Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.
  */
 export interface HubDashboardCloseRate {
-  /** Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate. */
+  /** Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate. */
   quotes: number;
-  /** Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions. */
+  /** Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events. */
   converted: number;
-  /** 100 times won invoices / eligible orders; null only for zero eligible orders. */
+  /** 100 times converted / total quotes; estimated when fallback invoice dates are used; null for zero denominator. */
   percentage: number | null;
-  /** Current-mirror stage-based computation is available; does not assert complete historical quote coverage. */
+  /** Current-mirror computation is available; does not assert complete historical quote or date coverage. */
   coverageComplete: boolean;
+  /** Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists. */
+  estimatedDateOrders: number;
   note: string;
 }
 

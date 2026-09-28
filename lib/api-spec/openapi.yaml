@@ -8149,13 +8149,14 @@ components:
         ytd: { $ref: "#/components/schemas/HubDashboardCloseRate" }
     HubDashboardCloseRate:
       type: object
-      description: Current-mirror won/done invoices divided by eligible quote/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.
-      required: [quotes, converted, percentage, coverageComplete, note]
+      description: Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.
+      required: [quotes, converted, percentage, coverageComplete, estimatedDateOrders, note]
       properties:
-        quotes: { type: integer, description: "Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate." }
-        converted: { type: integer, description: "Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions." }
-        percentage: { type: number, nullable: true, description: "100 times won invoices / eligible orders; null only for zero eligible orders." }
-        coverageComplete: { type: boolean, description: "Current-mirror stage-based computation is available; does not assert complete historical quote coverage." }
+        quotes: { type: integer, description: "Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate." }
+        converted: { type: integer, description: "Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events." }
+        percentage: { type: number, nullable: true, description: "100 times converted / total quotes; estimated when fallback invoice dates are used; null for zero denominator." }
+        coverageComplete: { type: boolean, description: "Current-mirror computation is available; does not assert complete historical quote or date coverage." }
+        estimatedDateOrders: { type: integer, description: "Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists." }
         note: { type: string }
     HubDashboardRecentItem:
       type: object

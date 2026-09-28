@@ -394,47 +394,53 @@ export const GetDashboardMetricsResponse = zod.object({
 }),
   "closeRate": zod.object({
   "today": zod.object({
-  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
-  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
-  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
-  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
   "note": zod.string()
-}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
   "wtd": zod.object({
-  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
-  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
-  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
-  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
   "note": zod.string()
-}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
   "lw": zod.object({
-  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
-  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
-  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
-  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
   "note": zod.string()
-}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
   "mtd": zod.object({
-  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
-  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
-  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
-  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
   "note": zod.string()
-}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
   "qtd": zod.object({
-  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
-  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
-  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
-  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
   "note": zod.string()
-}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.'),
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
   "ytd": zod.object({
-  "quotes": zod.number().describe('Compatibility name: eligible logical orders, not raw quotes. Customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
-  "converted": zod.number().describe('Compatibility name: invoices in exact pipeline won or done stages, not recorded conversions.'),
-  "percentage": zod.number().nullable().describe('100 times won invoices \/ eligible orders; null only for zero eligible orders.'),
-  "coverageComplete": zod.boolean().describe('Current-mirror stage-based computation is available; does not assert complete historical quote coverage.'),
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
   "note": zod.string()
-}).describe('Current-mirror won\/done invoices divided by eligible quote\/invoice logical orders, using current Printavo createdAt in the Eastern period, not original quote dates.')
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.')
 }),
   "recentStart": zod.coerce.date(),
   "recent": zod.object({
