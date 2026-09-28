@@ -6,6 +6,7 @@ import {
   createQueueLookup, freshLookup, isCurrentPricingRequest, lookupContext, priceQueueItem,
   pricingContext, purchaseCost, purchaseTotal, savedSourceVendor, selectedPurchaseTotals,
   shouldAutoPrice,
+  queueSourceVendor, applySelectedQueueVendor,
 } from "./queuePricing";
 
 const now = Date.parse("2026-07-10T12:00:00Z");
@@ -28,6 +29,38 @@ const response: VendorLookupResult = {
     sizes: [size("S", 3), size("2XL", 5)] }],
   cached: false, fetchedAt: new Date(now).toISOString(),
 };
+
+test("explicit approved color keeps source label and exact vendor snapshot", () => {
+  const priced = priceQueueItem({ ...item, color: "Customer black" }, response, now,
+    { vendorStyleId: "123", vendorStyle: "5000", vendorColor: "Black" });
+  assert.equal(priced.color, "Customer black");
+  assert.equal(priced.vendorCatalogColor, "Black");
+  assert.equal(priced.vendorStyleNumber, "5000");
+  assert.equal(priced.sizes[0].sku, "sku-S");
+});
+
+test("suggested vendor defaults never replace an explicit choice or cleared choice", () => {
+  const suggested = { ...item, brand: "Port & Company" };
+  assert.equal(queueSourceVendor(suggested, [], {}), "sanmar");
+  assert.equal(queueSourceVendor(suggested, [], { [item.key]: "ss" }), "ss");
+  assert.equal(queueSourceVendor(suggested, [], { [item.key]: null }), null);
+});
+
+test("bulk assignment includes unresolved styles and colors across invoice selections", () => {
+  const lines = [item, { ...item, key: "missing", printavoOrderId: "other", styleNumber: "", color: "Unmatched" },
+    { ...item, key: "unselected" }];
+  const sources = applySelectedQueueVendor(lines, new Set(["line1", "missing"]), { unselected: "ss" }, "sanmar");
+  assert.deepEqual(sources, { line1: "sanmar", missing: "sanmar", unselected: "ss" });
+});
+
+test("approved replacement is exact and never guesses a removed color/style", () => {
+  const approval = { vendorStyleId: "123", vendorStyle: "5000", vendorColor: "Black" };
+  assert.equal(priceQueueItem({ ...item, brand: "Other", styleNumber: "old" }, response, now, approval).resolved, true);
+  assert.throws(() => priceQueueItem(item, { ...response, matchType: "closest" }, now, approval));
+  assert.throws(() => priceQueueItem(item, response, now, { ...approval, vendorStyle: "different" }));
+  assert.throws(() => priceQueueItem(item, response, now, { ...approval, vendorColor: "Black Heather" }));
+  assert.throws(() => priceQueueItem(item, { ...response, vendor: "sanmar" }, now, approval));
+});
 
 test("mocked lookup keeps size-specific purchase prices and cart vendor context", () => {
   const priced = priceQueueItem(item, response, now);

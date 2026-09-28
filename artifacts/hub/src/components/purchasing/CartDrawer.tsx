@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import {
   useVendorLookup,
-  vendorLookup,
   useCreatePoFile,
   useAppendPoLineItems,
   useListPoFiles,
@@ -23,6 +22,11 @@ import {
 import { formatPrintavoCalendarDate } from "@/pages/vendorOrdersHelpers";
 import {
   applyLookupColor,
+  beginCartLookup,
+  lookupCartLine,
+  approveCartSelection,
+  type CartLookupResult,
+  cartItemsNeedingPricing,
   fetchMatchedInventory,
 } from "./cartVendorActions";
 import {
@@ -101,6 +105,8 @@ function CartItemCard({
   const { toast } = useToast();
 
   const [invPending, setInvPending] = useState(false);
+  const [approvalPending, setApprovalPending] = useState(false);
+  const [approvalMessage, setApprovalMessage] = useState<string | null>(null);
   const [manualCostInput, setManualCostInput] = useState("");
   // Printavo's style number sometimes differs from the vendor's (e.g. "1000C"
   // in Printavo vs "1000" at S&S) — let the user correct it before lookup.
@@ -128,19 +134,35 @@ function CartItemCard({
   }
 
   function applyColor(res: VendorLookupResult, colorName: string) {
+    setApprovalMessage(null);
     if (!applyLookupColor(item.key, res, colorName)) return;
     void refetchInventory(res, colorName);
   }
 
   const lookup = useVendorLookup({
     mutation: {
-      onSuccess: (res) => {
+      mutationFn: ({ data }) => lookupCartLine(
+        usePoCart.getState().items.find((i) => i.key === item.key) ?? item, data,
+      ),
+      onMutate: () => ({ isCurrent: beginCartLookup(item.key) }),
+      onSuccess: (res, _variables, context) => {
+        if (!context?.isCurrent()) return;
         onLookupResult(res);
+        const learned = res as CartLookupResult;
+        if (learned.mappingWarning) toast({
+          title: "Approved match needs attention",
+          description: learned.mappingWarning,
+          variant: "destructive",
+        });
+        if (learned.mappingRejected) {
+          clearVendorResolutionIfCurrent(item.key, res.vendor, item.styleNumber);
+          return;
+        }
         if (!res.found) {
           clearVendorResolutionIfCurrent(
             item.key,
             res.vendor,
-            res.styleQueried,
+            item.styleNumber,
           );
           toast({
             title: `Style ${res.styleQueried} not found at ${VENDOR_LABELS[item.vendor as CartVendor] ?? res.vendor}`,
@@ -154,20 +176,31 @@ function CartItemCard({
           item.color,
           res.colors.map((c) => c.colorName),
         );
+        if (learned.approvedColor) colorMatch.value = learned.approvedColor;
+        if (item.vendorStyleId === res.styleId &&
+            item.vendorStyleNumber === res.styleName &&
+            res.colors.some((c) => c.colorName === item.vendorCatalogColor)) {
+          colorMatch.value = item.vendorCatalogColor;
+        }
         const canApply =
-          colorMatch.value &&
-          canAutomaticallyApplyVendorMatch(item.brand, res.brand, res.matchType);
+          (learned.approvedColor || colorMatch.value) &&
+          (learned.approvedColor ||
+            canAutomaticallyApplyVendorMatch(item.brand, res.brand, res.matchType));
         if (canApply) {
-          applyColor(res, colorMatch.value);
+          applyColor(res, colorMatch.value!);
         } else {
           clearVendorResolutionIfCurrent(
             item.key,
             res.vendor,
-            res.styleQueried,
+            item.styleNumber,
           );
         }
       },
-      onError: (err) => {
+      onError: (err, _variables, context) => {
+        if (!context?.isCurrent()) return;
+        if (item.vendor === "sanmar" || item.vendor === "ss")
+          clearVendorResolutionIfCurrent(item.key, item.vendor, item.styleNumber);
+        onLookupResult(null);
         toast({
           title: "Vendor lookup failed",
           description: err instanceof Error ? err.message : "Vendor API unavailable",
@@ -385,6 +418,31 @@ function CartItemCard({
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            disabled={approvalPending || !item.vendorCatalogColor || !lookupResult.styleName}
+            className="mt-2 text-xs text-emerald-400 hover:text-emerald-300 disabled:opacity-40"
+            onClick={async () => {
+              if (approvalPending || !window.confirm(
+                `Approve and remember ${item.sourceStyleNumber ?? item.styleNumber} / ${item.color ?? ""} → ${lookupResult.styleName} / ${item.vendorCatalogColor}? Future matching purchases will reuse this after live validation.`,
+              )) return;
+              setApprovalPending(true);
+              setApprovalMessage(null);
+              try {
+                await approveCartSelection(item, lookupResult);
+                setApprovalMessage("Approved match saved for future purchases.");
+              } catch (err) {
+                const message = `Match not saved: ${err instanceof Error ? err.message : "service unavailable"}. Your current selection is unchanged.`;
+                setApprovalMessage(message);
+                toast({ title: "Could not save approved match", description: message, variant: "destructive" });
+              } finally {
+                setApprovalPending(false);
+              }
+            }}
+          >
+            {approvalPending ? "Saving approval…" : "Approve & remember this match"}
+          </button>
+          {approvalMessage && <p role="status" className="mt-1 text-xs text-amber-300">{approvalMessage}</p>}
         </div>
       )}
 
@@ -565,6 +623,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [lookupResults, setLookupResults] = useState<Record<string, VendorLookupResult>>({});
   // Non-null while bulk pricing runs.
   const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
+  const bulkRunning = useRef(false);
 
   const createPo = useCreatePoFile();
   const appendLines = useAppendPoLineItems();
@@ -581,9 +640,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     });
 
   function handleVendorAll(vendor: CartVendor) {
+    if (bulkRunning.current) return;
     // Lookup results for items switching vendors are stale — drop them.
     // (Items already on this vendor keep their results and pricing.)
-    const changed = items.filter((i) => i.vendor !== vendor).map((i) => i.key);
+    const changed = usePoCart.getState().items
+      .filter((i) => i.vendor !== vendor).map((i) => i.key);
     setVendorAll(vendor);
     if (changed.length > 0)
       setLookupResults((prev) => {
@@ -591,6 +652,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         for (const k of changed) delete next[k];
         return next;
       });
+    if (vendor !== "manual") void handlePriceAll();
   }
 
   function handleEmptyCart() {
@@ -616,9 +678,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
    *  color match → stock check. Moderate/ambiguous matches stay manual. */
   async function priceOneItem(i: CartItem): Promise<{ priced: boolean; note: string | null }> {
     const vendor = i.vendor as "sanmar" | "ss";
-    let res: VendorLookupResult;
+    const isCurrent = beginCartLookup(i.key);
+    let res: CartLookupResult;
     try {
-      res = await vendorLookup({
+      res = await lookupCartLine(i, {
         vendor,
         style: i.styleNumber,
         // Printavo brand/description disambiguate when brands share a style
@@ -627,12 +690,16 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         descriptionHint: i.description,
       });
     } catch (err) {
-      const detail = apiError(err);
+      if (!isCurrent()) return { priced: false, note: null };
+      clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
+      setItemLookup(i.key, null);
+      const detail = apiError(err) ?? (err instanceof Error ? err.message : undefined);
       return {
         priced: false,
         note: `${i.styleNumber}: lookup failed${detail ? ` — ${detail}` : ""}`,
       };
     }
+    if (!isCurrent()) return { priced: false, note: `${i.styleNumber}: changed during pricing — re-run` };
     setItemLookup(i.key, res);
     // Validate response freshness before either applying it OR clearing an old
     // resolution. A late rejected response must not wipe newer user work.
@@ -644,14 +711,18 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
       return { priced: false, note: `${i.styleNumber}: not found at ${VENDOR_LABELS[vendor]}` };
     }
-    if (brandsConflict(i.brand, res.brand)) {
+    if (res.mappingRejected) {
+      clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
+      return { priced: false, note: `${i.styleNumber}: ${res.mappingWarning}` };
+    }
+    if (!res.approvedColor && brandsConflict(i.brand, res.brand)) {
       clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
       return {
         priced: false,
         note: `${i.styleNumber}: brand mismatch (${i.brand ?? "Printavo"} vs ${res.brand ?? "vendor"}) — pick manually`,
       };
     }
-    if (res.matchType !== "exact") {
+    if (!res.approvedColor && res.matchType !== "exact") {
       clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
       return {
         priced: false,
@@ -662,6 +733,13 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       i.color,
       res.colors.map((c) => c.colorName),
     );
+    if (res.approvedColor) colorMatch.value = res.approvedColor;
+    // A previously reviewed color on the same product is authoritative.
+    if (i.vendorStyleId === res.styleId &&
+        i.vendorStyleNumber === res.styleName &&
+        res.colors.some((c) => c.colorName === i.vendorCatalogColor)) {
+      colorMatch.value = i.vendorCatalogColor;
+    }
     if (!colorMatch.value) {
       clearVendorResolutionIfCurrent(i.key, vendor, i.styleNumber);
       return { priced: false, note: `${i.styleNumber}: pick the vendor color` };
@@ -677,6 +755,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     const cur = usePoCart.getState().items.find((x) => x.key === i.key);
     const unpriced = cur?.sizes.filter((s) => s.qty > 0 && s.unitCost === null) ?? [];
     const flags: string[] = [];
+    if (res.mappingWarning) flags.push(res.mappingWarning);
     if (unpriced.length > 0) {
       flags.push(
         `map size${unpriced.length === 1 ? "" : "s"} ${unpriced.map((s) => s.size).join(", ")}`,
@@ -686,20 +765,18 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       flags.push(`closest color (${colorMatch.value}) — double-check`);
     }
     if (stockFailed) {
-      flags.push("stock check failed — no warehouse picked");
+      flags.push("stock check failed — warehouse not verified; retry Get all prices");
     }
     return { priced: true, note: flags.length > 0 ? `${i.styleNumber}: ${flags.join("; ")}` : null };
   }
 
   async function handlePriceAll() {
-    // Skip lines already fully priced — re-running would clobber hand-mapped
-    // sizes and hand-picked warehouses.
-    const eligible = items.filter(
-      (i) =>
-        (i.vendor === "sanmar" || i.vendor === "ss") &&
-        !(i.resolved && itemTotals(i).costed),
-    );
-    const noVendor = items.filter((i) => !i.vendor).length;
+    if (bulkRunning.current) return;
+    // A cost alone is not a completed lookup cycle: cards need catalog offers
+    // for their dropdowns AND inventory for the warehouse selector.
+    const currentItems = usePoCart.getState().items;
+    const eligible = cartItemsNeedingPricing(lookupResults);
+    const noVendor = currentItems.filter((i) => !i.vendor).length;
     if (eligible.length === 0) {
       toast({
         title: "Nothing to price",
@@ -710,6 +787,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       });
       return;
     }
+    bulkRunning.current = true;
     setBulk({ done: 0, total: eligible.length });
     let priced = 0;
     const attention: string[] = [];
@@ -727,6 +805,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     };
     await Promise.all(Array.from({ length: Math.min(2, queue.length) }, () => worker()));
     setBulk(null);
+    bulkRunning.current = false;
     const skipped =
       noVendor > 0 ? ` · ${noVendor} item${noVendor === 1 ? "" : "s"} with no vendor skipped` : "";
     if (attention.length === 0) {
@@ -941,7 +1020,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <option value="manual">Manual cost</option>
             </select>
             <button
-              onClick={handlePriceAll}
+              onClick={() => void handlePriceAll()}
               disabled={bulk !== null}
               className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded bg-slate-800 border border-slate-600 text-slate-200 hover:bg-slate-700 transition-colors disabled:opacity-50"
             >

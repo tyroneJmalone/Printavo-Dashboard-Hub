@@ -1,9 +1,21 @@
 import type { PoFile, VendorLookupRequest, VendorLookupResult, VendorSizeOffer } from "@workspace/api-client-react";
-import { sizesMatch, type CartItem } from "../../stores/poCart";
+import { guessVendor, sizesMatch, type CartItem, type CartVendor } from "../../stores/poCart";
 import { canAutomaticallyApplyVendorMatch, findReusableColorMatch, findUniqueOneSizeOffer } from "./cartMatching";
 
 // Same upper bound as the existing read-only vendor lookup service.
 export const PRICE_MAX_AGE = 15 * 60 * 1000;
+
+export function queueSourceVendor(item: CartItem, files: PoFile[], manual: Record<string, CartVendor | null>) {
+  return Object.prototype.hasOwnProperty.call(manual, item.key)
+    ? manual[item.key] : savedSourceVendor(item, files) ?? guessVendor(item.brand);
+}
+
+export function applySelectedQueueVendor(items: CartItem[], selected: Set<string>,
+  current: Record<string, CartVendor | null>, vendor: CartVendor) {
+  const next = { ...current };
+  for (const item of items) if (selected.has(item.key)) next[item.key] = vendor;
+  return next;
+}
 
 /** Only an explicitly saved, vendor-resolved PO for this exact invoice line
  * and unchanged product is evidence. Brand heuristics are suggestions only. */
@@ -117,14 +129,20 @@ export function purchaseCost(offer: VendorSizeOffer, now = Date.now()): number |
     sale > 0 && sale < regular && validDate && end >= now ? sale : regular;
 }
 
-export function priceQueueItem(item: CartItem, result: VendorLookupResult, now = Date.now()): CartItem {
+export type QueueApproval = { vendorStyle: string; vendorColor: string; vendorStyleId: string | null };
+
+export function priceQueueItem(item: CartItem, result: VendorLookupResult, now = Date.now(), approval?: QueueApproval): CartItem {
+  const approvedStyle = approval && result.styleId === approval.vendorStyleId &&
+    result.styleName?.trim().toLowerCase() === approval.vendorStyle.trim().toLowerCase();
   if (result.vendor !== item.vendor || !freshLookup(result, now) || !result.found ||
+      !(approvedStyle && result.matchType === "exact") &&
       !canAutomaticallyApplyVendorMatch(item.brand, result.brand, result.matchType)) {
-    throw new Error("No exact current vendor product match — review in PO Cart.");
+    throw new Error("No exact current vendor product match — search and approve a replacement.");
   }
   const match = findReusableColorMatch(item.color, result.colors.map(c => c.colorName));
-  const color = result.colors.find(c => c.colorName === match.value);
-  if (!color) throw new Error("Color needs manual review in PO Cart.");
+  const color = result.colors.find(c => c.colorName === (approval ? approval.vendorColor : match.value));
+  if (approval && !approvedStyle) throw new Error("Approved style no longer matches the vendor response.");
+  if (!color) throw new Error("Choose and approve a vendor color.");
   return {
     ...item, resolved: true, vendorCatalogColor: color.colorName,
     vendorStyleId: result.styleId, vendorStyleNumber: result.styleName,

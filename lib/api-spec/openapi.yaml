@@ -1428,6 +1428,68 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/approved-mapping:
+    get:
+      operationId: getPurchasingApprovedMapping
+      tags: [purchasing]
+      summary: Retrieve an explicitly approved exact source mapping
+      description: Returns stored approval only. Callers must validate against current vendor offers before use.
+      parameters:
+        - in: query
+          name: vendor
+          required: true
+          schema: { type: string, enum: [sanmar, ss] }
+        - in: query
+          name: sourceStyle
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - in: query
+          name: sourceBrand
+          required: true
+          schema: { type: string, maxLength: 200 }
+        - in: query
+          name: sourceColor
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        "200":
+          description: Approved target, or null when no approval exists
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PurchasingApprovedMapping"
+                  - type: "null"
+        "400":
+          description: Invalid source context
+        "500":
+          description: Approval storage unavailable
+    put:
+      operationId: approvePurchasingMapping
+      tags: [purchasing]
+      summary: Explicitly approve a vendor style and color for an exact source context
+      description: Staff authenticated and purchasing-module gated. Verifies target against vendor catalog before storing approval with actor and timestamp. Never submits a vendor order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchasingMappingApproval"
+      responses:
+        "200":
+          description: Saved approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchasingApprovedMapping"
+        "400":
+          description: Invalid approval
+        "422":
+          description: Target style or color could not be verified
+        "503":
+          description: Vendor catalog unavailable
+        "500":
+          description: Approval could not be saved
   /purchasing/vendor-lookup:
     post:
       operationId: vendorLookup
@@ -8044,6 +8106,23 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    PurchasingApprovedMapping:
+      type: object
+      required: [vendorStyleId, vendorStyle, vendorColor]
+      properties:
+        vendorStyleId: { type: [string, "null"], maxLength: 100 }
+        vendorStyle: { type: string, minLength: 1, maxLength: 200 }
+        vendorColor: { type: string, minLength: 1, maxLength: 200 }
+    PurchasingMappingApproval:
+      allOf:
+        - $ref: "#/components/schemas/PurchasingApprovedMapping"
+        - type: object
+          required: [vendor, sourceStyle, sourceBrand, sourceColor]
+          properties:
+            vendor: { type: string, enum: [sanmar, ss] }
+            sourceStyle: { type: string, minLength: 1, maxLength: 200 }
+            sourceBrand: { type: string, maxLength: 200 }
+            sourceColor: { type: string, minLength: 1, maxLength: 200 }
     HubDashboardMetrics:
       type: object
       required: [asOf, timeZone, periods, averages, activity, closeRate, recentStart, recent, definitions, coverage]

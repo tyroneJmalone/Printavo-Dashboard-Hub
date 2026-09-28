@@ -8,3 +8,14 @@ Purchasing can resolve unique formatting differences, common abbreviations, and 
 **Why:** Catalog palette helpers suggest visually related colors; applying that looser logic to purchasing could order the wrong garment. Light, dark, heather, and solid modifiers can identify different sellable variants.
 
 **How to apply:** Reuse normalization only when it preserves product identity. Keep exact vendor catalog-color and size/SKU identifiers in the saved PO snapshot even when the displayed Printavo labels differ.
+
+Remembered purchasing corrections must represent explicit staff approval, scoped
+to the source vendor, style, brand, and color. Do not reuse catalog palette-family
+corrections as purchasing approvals or learn from an automatic suggestion.
+
+**Why:** The user requested that queue and cart color corrections share learning.
+That convenience must not turn a one-product correction into permission to
+substitute merchandise across brands or styles.
+
+**How to apply:** Revalidate remembered targets against current vendor offers;
+show approval-storage failures without discarding the user's current selection.

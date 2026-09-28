@@ -110,6 +110,8 @@ export interface CartItem {
   invoiceNickname?: string | null;
   productionDueAt?: string | null;
   styleNumber: string;
+  /** Original Printavo style, retained when staff correct the vendor style. */
+  sourceStyleNumber?: string;
   /** Actual style code returned by the selected vendor. Kept separately from
    * the Printavo snapshot because aliases can differ (6210M → NL6210/6210). */
   vendorStyleNumber?: string | null;
@@ -400,6 +402,7 @@ export const usePoCart = create<PoCartState>((set) => ({
           ? {
               ...i,
               styleNumber,
+              sourceStyleNumber: i.sourceStyleNumber ?? i.styleNumber,
               // a different style invalidates any prior vendor resolution
               resolved: false,
               vendorCatalogColor: null,
@@ -456,6 +459,9 @@ export const usePoCart = create<PoCartState>((set) => ({
     set((s) => ({
       items: s.items.map((i) => {
         if (i.key !== key) return i;
+        const compatible = i.vendorCatalogColor === data.vendorCatalogColor &&
+          i.vendorStyleId === data.vendorStyleId &&
+          i.vendorStyleNumber === data.vendorStyleNumber;
         return {
           ...i,
           resolved: true,
@@ -465,9 +471,13 @@ export const usePoCart = create<PoCartState>((set) => ({
           // Availability is stale. Keep a hand-picked warehouse provisionally;
           // applyInventory validates it against the fresh response.
           inventory: null,
+          warehouseCode: compatible && i.warehouseManual ? i.warehouseCode : null,
+          warehouseName: compatible && i.warehouseManual ? i.warehouseName : null,
+          warehouseManual: compatible && !!i.warehouseManual,
           sizes: i.sizes.map((sz) => {
             const matches = data.sizes.filter((v) => sizesMatch(sz.size, v.size));
             const match =
+              (compatible ? data.sizes.find((v) => v.size === sz.vendorSize) : null) ??
               (matches.length === 1 ? matches[0] : null) ??
               findUniqueOneSizeOffer(sz.size, data.sizes);
             return match
@@ -498,6 +508,7 @@ export const usePoCart = create<PoCartState>((set) => ({
         i.key === key
           ? {
               ...i,
+              inventory: null,
               sizes: i.sizes.map((sz) =>
                 sz.size === printavoSize
                   ? {

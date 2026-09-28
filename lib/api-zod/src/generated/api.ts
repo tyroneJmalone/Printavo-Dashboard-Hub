@@ -2557,6 +2557,84 @@ export const BulkSetLineItemProductStatusResponse = zod.object({
 
 
 /**
+ * Returns stored approval only. Callers must validate against current vendor offers before use.
+ * @summary Retrieve an explicitly approved exact source mapping
+ */
+export const getPurchasingApprovedMappingQuerySourceStyleMax = 200;
+
+export const getPurchasingApprovedMappingQuerySourceBrandMax = 200;
+
+export const getPurchasingApprovedMappingQuerySourceColorMax = 200;
+
+
+
+export const GetPurchasingApprovedMappingQueryParams = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "sourceStyle": zod.coerce.string().min(1).max(getPurchasingApprovedMappingQuerySourceStyleMax),
+  "sourceBrand": zod.coerce.string().max(getPurchasingApprovedMappingQuerySourceBrandMax),
+  "sourceColor": zod.coerce.string().min(1).max(getPurchasingApprovedMappingQuerySourceColorMax)
+})
+
+export const getPurchasingApprovedMappingResponseOneVendorStyleIdMax = 100;
+
+export const getPurchasingApprovedMappingResponseOneVendorStyleMax = 200;
+
+export const getPurchasingApprovedMappingResponseOneVendorColorMax = 200;
+
+
+
+export const GetPurchasingApprovedMappingResponse = zod.union([zod.object({
+  "vendorStyleId": zod.string().max(getPurchasingApprovedMappingResponseOneVendorStyleIdMax).nullable(),
+  "vendorStyle": zod.string().min(1).max(getPurchasingApprovedMappingResponseOneVendorStyleMax),
+  "vendorColor": zod.string().min(1).max(getPurchasingApprovedMappingResponseOneVendorColorMax)
+}),zod.null()])
+
+
+/**
+ * Staff authenticated and purchasing-module gated. Verifies target against vendor catalog before storing approval with actor and timestamp. Never submits a vendor order.
+ * @summary Explicitly approve a vendor style and color for an exact source context
+ */
+export const approvePurchasingMappingBodyOneVendorStyleIdMax = 100;
+
+export const approvePurchasingMappingBodyOneVendorStyleMax = 200;
+
+export const approvePurchasingMappingBodyOneVendorColorMax = 200;
+
+export const approvePurchasingMappingBodyTwoSourceStyleMax = 200;
+
+export const approvePurchasingMappingBodyTwoSourceBrandMax = 200;
+
+export const approvePurchasingMappingBodyTwoSourceColorMax = 200;
+
+
+
+export const ApprovePurchasingMappingBody = zod.object({
+  "vendorStyleId": zod.string().max(approvePurchasingMappingBodyOneVendorStyleIdMax).nullable(),
+  "vendorStyle": zod.string().min(1).max(approvePurchasingMappingBodyOneVendorStyleMax),
+  "vendorColor": zod.string().min(1).max(approvePurchasingMappingBodyOneVendorColorMax)
+}).and(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']),
+  "sourceStyle": zod.string().min(1).max(approvePurchasingMappingBodyTwoSourceStyleMax),
+  "sourceBrand": zod.string().max(approvePurchasingMappingBodyTwoSourceBrandMax),
+  "sourceColor": zod.string().min(1).max(approvePurchasingMappingBodyTwoSourceColorMax)
+}))
+
+export const approvePurchasingMappingResponseVendorStyleIdMax = 100;
+
+export const approvePurchasingMappingResponseVendorStyleMax = 200;
+
+export const approvePurchasingMappingResponseVendorColorMax = 200;
+
+
+
+export const ApprovePurchasingMappingResponse = zod.object({
+  "vendorStyleId": zod.string().max(approvePurchasingMappingResponseVendorStyleIdMax).nullable(),
+  "vendorStyle": zod.string().min(1).max(approvePurchasingMappingResponseVendorStyleMax),
+  "vendorColor": zod.string().min(1).max(approvePurchasingMappingResponseVendorColorMax)
+})
+
+
+/**
  * Fetches all colors/sizes with cost and inventory for a style from SanMar or S&S Activewear. Cached in-memory ~15 minutes per vendor+style.
  * @summary Live vendor catalog lookup by style
  */

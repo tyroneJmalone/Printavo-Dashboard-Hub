@@ -190,6 +190,7 @@ import type {
   GetPipelineParams,
   GetPricingMatrixBreakdownParams,
   GetPrintavoOrderHistoryParams,
+  GetPurchasingApprovedMappingParams,
   GetRecentActivityParams,
   GetStatusActivityOrdersParams,
   GetStatusActivityParams,
@@ -347,6 +348,8 @@ import type {
   ProbeResult,
   ProductSearchRequest,
   ProductSearchResult,
+  PurchasingApprovedMapping,
+  PurchasingMappingApproval,
   PushStartResponse,
   Quote,
   QuoteInput,
@@ -5494,6 +5497,162 @@ export const useBulkSetLineItemProductStatus = <TError = ErrorType<ErrorResponse
         TContext
       > => {
       return useMutation(getBulkSetLineItemProductStatusMutationOptions(options));
+    }
+
+export const getGetPurchasingApprovedMappingUrl = (params: GetPurchasingApprovedMappingParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/purchasing/approved-mapping?${stringifiedParams}` : `/api/purchasing/approved-mapping`
+}
+
+/**
+ * Returns stored approval only. Callers must validate against current vendor offers before use.
+ * @summary Retrieve an explicitly approved exact source mapping
+ */
+export const getPurchasingApprovedMapping = async (params: GetPurchasingApprovedMappingParams, options?: RequestInit): Promise<PurchasingApprovedMapping | null> => {
+
+  return customFetch<PurchasingApprovedMapping | null>(getGetPurchasingApprovedMappingUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPurchasingApprovedMappingQueryKey = (params?: GetPurchasingApprovedMappingParams,) => {
+    return [
+    `/api/purchasing/approved-mapping`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPurchasingApprovedMappingQueryOptions = <TData = Awaited<ReturnType<typeof getPurchasingApprovedMapping>>, TError = ErrorType<void>>(params: GetPurchasingApprovedMappingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPurchasingApprovedMapping>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPurchasingApprovedMappingQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPurchasingApprovedMapping>>> = ({ signal }) => getPurchasingApprovedMapping(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPurchasingApprovedMapping>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPurchasingApprovedMappingQueryResult = NonNullable<Awaited<ReturnType<typeof getPurchasingApprovedMapping>>>
+export type GetPurchasingApprovedMappingQueryError = ErrorType<void>
+
+
+/**
+ * @summary Retrieve an explicitly approved exact source mapping
+ */
+
+export function useGetPurchasingApprovedMapping<TData = Awaited<ReturnType<typeof getPurchasingApprovedMapping>>, TError = ErrorType<void>>(
+ params: GetPurchasingApprovedMappingParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPurchasingApprovedMapping>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPurchasingApprovedMappingQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApprovePurchasingMappingUrl = () => {
+
+
+
+
+  return `/api/purchasing/approved-mapping`
+}
+
+/**
+ * Staff authenticated and purchasing-module gated. Verifies target against vendor catalog before storing approval with actor and timestamp. Never submits a vendor order.
+ * @summary Explicitly approve a vendor style and color for an exact source context
+ */
+export const approvePurchasingMapping = async (purchasingMappingApproval: PurchasingMappingApproval, options?: RequestInit): Promise<PurchasingApprovedMapping> => {
+
+  return customFetch<PurchasingApprovedMapping>(getApprovePurchasingMappingUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(purchasingMappingApproval)
+  }
+);}
+
+
+
+
+export const getApprovePurchasingMappingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvePurchasingMapping>>, TError,{data: BodyType<PurchasingMappingApproval>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approvePurchasingMapping>>, TError,{data: BodyType<PurchasingMappingApproval>}, TContext> => {
+
+const mutationKey = ['approvePurchasingMapping'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvePurchasingMapping>>, {data: BodyType<PurchasingMappingApproval>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  approvePurchasingMapping(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApprovePurchasingMappingMutationResult = NonNullable<Awaited<ReturnType<typeof approvePurchasingMapping>>>
+    export type ApprovePurchasingMappingMutationBody = BodyType<PurchasingMappingApproval>
+    export type ApprovePurchasingMappingMutationError = ErrorType<void>
+
+    /**
+ * @summary Explicitly approve a vendor style and color for an exact source context
+ */
+export const useApprovePurchasingMapping = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvePurchasingMapping>>, TError,{data: BodyType<PurchasingMappingApproval>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approvePurchasingMapping>>,
+        TError,
+        {data: BodyType<PurchasingMappingApproval>},
+        TContext
+      > => {
+      return useMutation(getApprovePurchasingMappingMutationOptions(options));
     }
 
 export const getVendorLookupUrl = () => {

@@ -5,6 +5,8 @@ import { useGetNeedsOrdering, useListPoFiles, type NeedsOrderingOrder, type Need
 import { formatNumber } from "@/lib/format";
 import { usePoCart, guessVendor, type CartVendor, type CartItem } from "@/stores/poCart";
 import { useQueuePricing } from "@/components/purchasing/useQueuePricing";
+import { QueueMatchReview } from "@/components/purchasing/QueueMatchReview";
+import { applySelectedQueueVendor, queueSourceVendor } from "@/components/purchasing/queuePricing";
 import { pricingContext, purchaseTotal, savedSourceVendor, selectedPurchaseTotals } from "@/components/purchasing/queuePricing";
 import { CartDrawer } from "@/components/purchasing/CartDrawer";
 import { Truck, Loader2, PackageSearch, Layers, Boxes, CalendarClock, ShoppingCart, Plus, Check, AlertTriangle, Search, Filter } from "lucide-react";
@@ -67,8 +69,7 @@ export default function VendorOrders() {
       const base = buildCartItem(order, line);
       const edit = lineEdits[base.key];
       const item = edit?.source === pricingContext(base) ? { ...base, ...edit.values } : base;
-      return { ...item, vendor: Object.prototype.hasOwnProperty.call(sourceVendors, item.key)
-        ? sourceVendors[item.key] : savedSourceVendor(item, poData?.poFiles ?? []) };
+      return { ...item, vendor: queueSourceVendor(item, poData?.poFiles ?? [], sourceVendors) };
     })), [data?.orders, poData?.poFiles, sourceVendors, lineEdits]);
   const editPurchaseItem = (order: NeedsOrderingOrder, line: NeedsOrderingLineItem,
     item: CartItem, changes: Partial<Pick<CartItem, "styleNumber" | "color" | "sizes">>) => {
@@ -568,7 +569,7 @@ export default function VendorOrders() {
                                   </select>
                                   {!item.vendor && suggestion && <div className="text-amber-300">Suggestion only: {sourceLabel(suggestion)}</div>}
                                   {item.vendor && !Object.prototype.hasOwnProperty.call(sourceVendors, li.id) &&
-                                    <div className="text-slate-400">Source: saved PO for this invoice line</div>}
+                                    <div className="text-slate-400">{savedSourceVendor(item, poData?.poFiles ?? []) ? "Source: saved PO for this invoice line" : "Suggested vendor — change if needed"}</div>}
                                   {quote.item.vendorCatalogColor && quote.item.vendorCatalogColor !== item.color &&
                                     <div className="text-amber-300">Matched vendor color: {quote.item.vendorCatalogColor} — verify before saving</div>}
                                   {quote.item.sizes.filter(s => s.qty > 0).map((s, index) =>
@@ -580,6 +581,8 @@ export default function VendorOrders() {
                                     {!totals.pricedSizes ? "Price unavailable — incomplete" : totals.incomplete ? `Known subtotal ${purchaseMoney(totals.total)} · Incomplete (unpriced sizes excluded)` : `Extended ${purchaseMoney(totals.total)}`}
                                   </div>
                                   <div className="text-slate-500">{quote.message}</div>
+                                  <QueueMatchReview key={pricingContext(item)} item={item}
+                                    result={pricing.result(item)} onStyle={pricing.chooseStyle} onApprove={pricing.approve} />
                                   <details>
                                     <summary className="cursor-pointer text-slate-400" data-testid={`edit-purchase-${li.id}`}>Edit purchase inputs</summary>
                                     <div className="space-y-1 pt-1">
@@ -668,9 +671,21 @@ export default function VendorOrders() {
                 </div>)}
                 <div className="text-slate-500">Shipping terms not configured. Estimates exclude shipping/tax; SanMar broken-case charges may be higher. Recent vendor responses may be reused for up to 15 minutes.</div>
               </div>
+              <label className="text-xs text-slate-300">Apply vendor to selected lines / invoices
+                <select data-testid="bulk-source-vendor" aria-label="Apply vendor to selected lines and invoices"
+                  value="" className="ml-2 bg-slate-900 border border-slate-700 rounded p-2"
+                  onChange={e => {
+                    const vendor = e.target.value as CartVendor;
+                    if (vendor) setSourceVendors(previous => applySelectedQueueVendor(queueItems, selectedIds, previous, vendor));
+                  }}>
+                  <option value="">Choose vendor…</option>
+                  <option value="sanmar">SanMar</option>
+                  <option value="ss">S&amp;S Activewear</option>
+                </select>
+              </label>
               <button data-testid="get-selected-prices"
                 onClick={async () => {
-                  for (const item of queueItems) if (selectedIds.has(item.key)) await pricing.price(item);
+                  await Promise.all(queueItems.filter(item => selectedIds.has(item.key)).map(item => pricing.price(item)));
                 }}
                 className="px-3 py-2 text-sm border border-slate-700 rounded-lg text-slate-200">
                 Get Prices
@@ -678,7 +693,7 @@ export default function VendorOrders() {
               <button data-testid="refresh-selected-prices"
                 title="Recheck selected lines. The vendor service may reuse its recent cached response."
                 onClick={async () => {
-                  for (const item of queueItems) if (selectedIds.has(item.key)) await pricing.price(item, true);
+                  await Promise.all(queueItems.filter(item => selectedIds.has(item.key)).map(item => pricing.price(item, true)));
                 }}
                 className="px-3 py-2 text-sm border border-slate-700 rounded-lg text-slate-200">
                 Refresh Prices

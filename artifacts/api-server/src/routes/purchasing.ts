@@ -2,6 +2,8 @@ import { Router, type IRouter, type Response } from "express";
 import { requireValidAdminPin } from "../lib/auth/adminPin";
 import { getCarrierTrackingSettings, setCarrierTrackingSettings, refreshCarrierTracking } from "../lib/purchasing/carrierTracking";
 import {
+  GetPurchasingApprovedMappingQueryParams,
+  ApprovePurchasingMappingBody,
   VendorLookupBody,
   VendorInventoryBody,
   ProductSearchBody,
@@ -28,7 +30,8 @@ import { searchCatalog, catalogFilters } from "../lib/catalog/search";
 import { catalogHealth, runCatalogRefresh, isRefreshActive } from "../lib/catalog/refresh";
 import { normColorName } from "../lib/catalog/importers";
 import { COLOR_FAMILIES } from "../lib/catalog/tagger";
-import { db, catalogTagOverridesTable, catalogColorFamiliesTable } from "@workspace/db";
+import { db, catalogTagOverridesTable, catalogColorFamiliesTable, purchasingApprovedMappingsTable } from "@workspace/db";
+import { normalizeMappingSource, verifiedMappingTarget } from "../lib/purchasing/approvedMappingPolicy";
 import { sql, and, eq } from "drizzle-orm";
 import { loadNeedsOrdering } from "../lib/purchasing/needsOrdering";
 import { vendorLookup, VendorConfigError } from "../lib/purchasing/vendorLookup";
@@ -86,6 +89,89 @@ import {
  */
 
 const router: IRouter = Router();
+
+// Mounted behind requireStaff + moduleAccessGate, like all purchasing mutations.
+router.get("/purchasing/approved-mapping", async (req, res) => {
+  // Generated query schemas coerce strings; reject absent/repeated values first.
+  if (["vendor", "sourceStyle", "sourceBrand", "sourceColor"].some((key) => typeof req.query[key] !== "string")) {
+    res.status(400).json({ error: "Vendor, source style, brand and color are required query strings" });
+    return;
+  }
+  const parsed = GetPurchasingApprovedMappingQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid purchasing mapping source context" });
+    return;
+  }
+  const { vendor } = parsed.data;
+  const sourceStyle = normalizeMappingSource(parsed.data.sourceStyle);
+  const sourceBrand = normalizeMappingSource(parsed.data.sourceBrand);
+  const sourceColor = normalizeMappingSource(parsed.data.sourceColor);
+  if (!sourceStyle || !sourceColor) {
+    res.status(400).json({ error: "Source style and color must not be blank" });
+    return;
+  }
+  try {
+    const t = purchasingApprovedMappingsTable;
+    const [mapping] = await db.select({
+      vendorStyleId: t.vendorStyleId, vendorStyle: t.vendorStyle, vendorColor: t.vendorColor,
+    }).from(t).where(and(
+      eq(t.vendor, vendor), eq(t.sourceStyle, sourceStyle),
+      eq(t.sourceBrand, sourceBrand), eq(t.sourceColor, sourceColor),
+    )).limit(1);
+    res.json(mapping ?? null);
+  } catch (err) {
+    req.log.error({ err }, "Purchasing approval lookup failed");
+    res.status(500).json({ error: "Could not load approved purchasing mapping" });
+  }
+});
+
+router.put("/purchasing/approved-mapping", async (req, res) => {
+  // No automatic learning: this endpoint is called only on explicit user approval.
+  if (!req.staff) {
+    res.status(401).json({ error: "Staff authentication required" });
+    return;
+  }
+  const parsed = ApprovePurchasingMappingBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid purchasing mapping approval" });
+    return;
+  }
+  const input = parsed.data;
+  const sourceStyle = normalizeMappingSource(input.sourceStyle);
+  const sourceBrand = normalizeMappingSource(input.sourceBrand);
+  const sourceColor = normalizeMappingSource(input.sourceColor);
+  if (!sourceStyle || !sourceColor || !input.vendorStyle.trim() || !input.vendorColor.trim()) {
+    res.status(400).json({ error: "Source and target style and color must not be blank" });
+    return;
+  }
+  let target;
+  try {
+    // One existing bounded catalog lookup, no fuzzy auto-selection or vendor order calls.
+    target = verifiedMappingTarget(input, await vendorLookup(input.vendor, input.vendorStyle));
+  } catch (err) {
+    req.log.error({ err }, "Purchasing approval vendor verification failed");
+    res.status(503).json({ error: "Vendor catalog unavailable; approval was not saved. Try again." });
+    return;
+  }
+  if (!target) {
+    res.status(422).json({ error: "Selected vendor style and color could not be verified; approval was not saved." });
+    return;
+  }
+  try {
+    const t = purchasingApprovedMappingsTable;
+    const approval = { ...target, approvedByEmail: req.staff.email, approvedAt: new Date() };
+    await db.insert(t).values({
+      vendor: input.vendor, sourceStyle, sourceBrand, sourceColor, ...approval,
+    }).onConflictDoUpdate({
+      target: [t.vendor, t.sourceStyle, t.sourceBrand, t.sourceColor],
+      set: approval,
+    });
+    res.json(target);
+  } catch (err) {
+    req.log.error({ err }, "Purchasing approval save failed");
+    res.status(500).json({ error: "Could not save approved purchasing mapping. Try again." });
+  }
+});
 
 /** Postgres unique-constraint violation (code 23505), possibly wrapped. */
 function isUniqueViolation(err: unknown): boolean {

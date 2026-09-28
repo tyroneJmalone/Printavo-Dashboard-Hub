@@ -5,6 +5,48 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface PurchasingApprovedMapping {
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  vendorStyleId: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  vendorStyle: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  vendorColor: string;
+}
+
+export type PurchasingMappingApprovalVendor = typeof PurchasingMappingApprovalVendor[keyof typeof PurchasingMappingApprovalVendor];
+
+
+export const PurchasingMappingApprovalVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
+export type PurchasingMappingApproval = PurchasingApprovedMapping & {
+  vendor: PurchasingMappingApprovalVendor;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  sourceStyle: string;
+  /** @maxLength 200 */
+  sourceBrand: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  sourceColor: string;
+};
+
 export type HubDashboardMetricsTimeZone = typeof HubDashboardMetricsTimeZone[keyof typeof HubDashboardMetricsTimeZone];
 
 
@@ -8517,6 +8559,32 @@ beforeSnapshotId?: number;
  */
 beforeEventId?: number;
 };
+
+export type GetPurchasingApprovedMappingParams = {
+vendor: GetPurchasingApprovedMappingVendor;
+/**
+ * @minLength 1
+ * @maxLength 200
+ */
+sourceStyle: string;
+/**
+ * @maxLength 200
+ */
+sourceBrand: string;
+/**
+ * @minLength 1
+ * @maxLength 200
+ */
+sourceColor: string;
+};
+
+export type GetPurchasingApprovedMappingVendor = typeof GetPurchasingApprovedMappingVendor[keyof typeof GetPurchasingApprovedMappingVendor];
+
+
+export const GetPurchasingApprovedMappingVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
 
 export type GetFinderOrderParams = {
 /**
