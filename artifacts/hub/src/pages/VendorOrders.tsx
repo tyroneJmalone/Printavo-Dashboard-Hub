@@ -3,7 +3,9 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { useGetNeedsOrdering, useListPoFiles, type NeedsOrderingOrder, type NeedsOrderingLineItem } from "@workspace/api-client-react";
 import { formatNumber } from "@/lib/format";
-import { usePoCart } from "@/stores/poCart";
+import { usePoCart, guessVendor, type CartVendor, type CartItem } from "@/stores/poCart";
+import { useQueuePricing } from "@/components/purchasing/useQueuePricing";
+import { pricingContext, purchaseTotal, savedSourceVendor, selectedPurchaseTotals } from "@/components/purchasing/queuePricing";
 import { CartDrawer } from "@/components/purchasing/CartDrawer";
 import { Truck, Loader2, PackageSearch, Layers, Boxes, CalendarClock, ShoppingCart, Plus, Check, AlertTriangle, Search, Filter } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -56,6 +58,34 @@ export default function VendorOrders() {
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sourceVendors, setSourceVendors] = useState<Record<string, CartVendor | null>>({});
+  const [lineEdits, setLineEdits] = useState<Record<string, {
+    source: string; values: Pick<CartItem, "styleNumber" | "color" | "sizes">;
+  }>>({});
+  const queueItems = useMemo(() => (data?.orders ?? []).flatMap(order =>
+    order.lineItems.map(line => {
+      const base = buildCartItem(order, line);
+      const edit = lineEdits[base.key];
+      const item = edit?.source === pricingContext(base) ? { ...base, ...edit.values } : base;
+      return { ...item, vendor: Object.prototype.hasOwnProperty.call(sourceVendors, item.key)
+        ? sourceVendors[item.key] : savedSourceVendor(item, poData?.poFiles ?? []) };
+    })), [data?.orders, poData?.poFiles, sourceVendors, lineEdits]);
+  const editPurchaseItem = (order: NeedsOrderingOrder, line: NeedsOrderingLineItem,
+    item: CartItem, changes: Partial<Pick<CartItem, "styleNumber" | "color" | "sizes">>) => {
+    setLineEdits(edits => ({ ...edits, [line.id]: {
+      source: pricingContext(buildCartItem(order, line)),
+      values: { styleNumber: item.styleNumber, color: item.color, sizes: item.sizes, ...changes },
+    } }));
+  };
+  const pricing = useQueuePricing(queueItems);
+  const queueById = new Map(queueItems.map(item => [item.key, item]));
+  const selectedSpend = selectedPurchaseTotals(queueItems.map(item => pricing.read(item).item), selectedIds);
+  const purchaseMoney = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const sourceLabel = (vendor: string) => vendor === "sanmar" ? "SanMar" : vendor === "ss" ? "S&S" : "Unassigned";
+  const cartItemWithPrice = (order: NeedsOrderingOrder, line: NeedsOrderingLineItem) => {
+    const item = queueById.get(line.id);
+    return item ? pricing.read(item).item : { ...buildCartItem(order, line), vendor: null };
+  };
   
   // Cleanup Dialog State
   const [dialogTargetStatus, setDialogTargetStatus] = useState<TargetStatus | null>(null);
@@ -149,7 +179,7 @@ export default function VendorOrders() {
       for (const li of order.lineItems) {
         if (selectedIds.has(li.id)) {
           // The cart's addItem leaves existing entries (and their edits) intact.
-          addItem(buildCartItem(order, li));
+          addItem(cartItemWithPrice(order, li));
         }
       }
     }
@@ -444,6 +474,7 @@ export default function VendorOrders() {
                         <th className="px-5 py-2.5 font-semibold">Description</th>
                         <th className="px-5 py-2.5 font-semibold">Sizes</th>
                         <th className="px-5 py-2.5 font-semibold text-right">Qty</th>
+                        <th className="px-5 py-2.5 font-semibold">Source / Purchase estimate</th>
                         <th className="px-5 py-2.5 font-semibold text-right">Cart</th>
                       </tr>
                     </thead>
@@ -517,13 +548,78 @@ export default function VendorOrders() {
                               </div>
                             </td>
                             <td className="px-5 py-3 text-right font-mono font-bold text-[#10b981]">{formatNumber(li.items)}</td>
+                            <td className="px-5 py-3 min-w-64">
+                              {(() => {
+                                const item = queueById.get(li.id)!;
+                                const quote = pricing.read(item);
+                                const totals = purchaseTotal(quote.item);
+                                const suggestion = guessVendor(li.brand);
+                                return <div className="space-y-1 text-xs" data-testid={`purchase-price-${li.id}`}>
+                                  <select
+                                    data-testid={`select-source-vendor-${li.id}`}
+                                    aria-label={`Source vendor for ${li.itemNumber ?? li.id}`}
+                                    className="bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"
+                                    value={item.vendor ?? ""}
+                                    onChange={e => setSourceVendors(v => ({ ...v, [li.id]: (e.target.value || null) as CartVendor | null }))}
+                                  >
+                                    <option value="">Choose vendor</option>
+                                    <option value="sanmar">SanMar</option>
+                                    <option value="ss">S&amp;S Activewear</option>
+                                  </select>
+                                  {!item.vendor && suggestion && <div className="text-amber-300">Suggestion only: {sourceLabel(suggestion)}</div>}
+                                  {item.vendor && !Object.prototype.hasOwnProperty.call(sourceVendors, li.id) &&
+                                    <div className="text-slate-400">Source: saved PO for this invoice line</div>}
+                                  {quote.item.vendorCatalogColor && quote.item.vendorCatalogColor !== item.color &&
+                                    <div className="text-amber-300">Matched vendor color: {quote.item.vendorCatalogColor} — verify before saving</div>}
+                                  {quote.item.sizes.filter(s => s.qty > 0).map((s, index) =>
+                                    <div key={index} className="font-mono text-slate-300">
+                                      {s.size} × {s.qty}: {s.unitCost === null ? "Price unavailable" :
+                                        `${purchaseMoney(s.unitCost)} ea · ${purchaseMoney(s.unitCost * s.qty)}`}
+                                    </div>)}
+                                  <div className={totals.incomplete ? "text-amber-300" : "text-emerald-400"}>
+                                    {!totals.pricedSizes ? "Price unavailable — incomplete" : totals.incomplete ? `Known subtotal ${purchaseMoney(totals.total)} · Incomplete (unpriced sizes excluded)` : `Extended ${purchaseMoney(totals.total)}`}
+                                  </div>
+                                  <div className="text-slate-500">{quote.message}</div>
+                                  <details>
+                                    <summary className="cursor-pointer text-slate-400" data-testid={`edit-purchase-${li.id}`}>Edit purchase inputs</summary>
+                                    <div className="space-y-1 pt-1">
+                                      <div className="text-amber-300">Local purchase inputs only; Printavo is unchanged.</div>
+                                      <input aria-label="Purchase style" data-testid={`purchase-style-${li.id}`}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded p-1"
+                                        value={item.styleNumber}
+                                        onChange={e => editPurchaseItem(order, li, item, { styleNumber: e.target.value })} />
+                                      <input aria-label="Purchase color" data-testid={`purchase-color-${li.id}`}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded p-1"
+                                        value={item.color ?? ""}
+                                        onChange={e => editPurchaseItem(order, li, item, { color: e.target.value })} />
+                                      {item.sizes.map((size, index) => <div key={index} className="flex gap-1">
+                                        <input aria-label={`Purchase size ${index + 1}`} data-testid={`purchase-size-${li.id}-${index}`}
+                                          className="w-20 bg-slate-900 border border-slate-700 rounded p-1"
+                                          value={size.size}
+                                          onChange={e => editPurchaseItem(order, li, item, { sizes: item.sizes.map((s, n) => n === index ? { ...s, size: e.target.value } : s) })} />
+                                        <input aria-label={`Purchase quantity ${index + 1}`} data-testid={`purchase-qty-${li.id}-${index}`}
+                                          type="number" min="0" step="1"
+                                          className="w-20 bg-slate-900 border border-slate-700 rounded p-1"
+                                          value={size.qty}
+                                          onChange={e => {
+                                            const qty = Number(e.target.value);
+                                            if (Number.isSafeInteger(qty) && qty >= 0) editPurchaseItem(order, li, item, {
+                                              sizes: item.sizes.map((s, n) => n === index ? { ...s, qty } : s),
+                                            });
+                                          }} />
+                                      </div>)}
+                                    </div>
+                                  </details>
+                                </div>;
+                              })()}
+                            </td>
                             <td className="px-5 py-3 text-right">
                               <button
                                 onClick={() => {
                                   if (added) {
                                     removeItem(li.id);
                                   } else {
-                                    addItem(buildCartItem(order, li));
+                                    addItem(cartItemWithPrice(order, li));
                                     setCartOpen(true);
                                   }
                                 }}
@@ -565,6 +661,28 @@ export default function VendorOrders() {
             </div>
             
             <div className="flex flex-wrap items-center gap-3">
+              <div className="text-xs text-slate-300" data-testid="selected-vendor-spend">
+                {[...selectedSpend].map(([vendor, totals]) => <div key={vendor}>
+                  {sourceLabel(vendor)} selected spend: {totals.pricedSizes ? purchaseMoney(totals.total) : "— no resolved prices"}
+                  {totals.incomplete && <span className="text-amber-300"> · Incomplete — unpriced sizes excluded</span>}
+                </div>)}
+                <div className="text-slate-500">Shipping terms not configured. Estimates exclude shipping/tax; SanMar broken-case charges may be higher. Recent vendor responses may be reused for up to 15 minutes.</div>
+              </div>
+              <button data-testid="get-selected-prices"
+                onClick={async () => {
+                  for (const item of queueItems) if (selectedIds.has(item.key)) await pricing.price(item);
+                }}
+                className="px-3 py-2 text-sm border border-slate-700 rounded-lg text-slate-200">
+                Get Prices
+              </button>
+              <button data-testid="refresh-selected-prices"
+                title="Recheck selected lines. The vendor service may reuse its recent cached response."
+                onClick={async () => {
+                  for (const item of queueItems) if (selectedIds.has(item.key)) await pricing.price(item, true);
+                }}
+                className="px-3 py-2 text-sm border border-slate-700 rounded-lg text-slate-200">
+                Refresh Prices
+              </button>
               <button
                 onClick={handleAddSelectedToCart}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-[#059669] hover:bg-[#047857] text-white text-sm font-bold rounded-lg transition-colors"
