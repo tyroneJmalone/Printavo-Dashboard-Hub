@@ -101,6 +101,7 @@ import type {
   CorrespondenceAiSearchResponse,
   CorrespondenceHistoryImportRequest,
   CorrespondenceHistoryImportResponse,
+  CorrespondenceReadableBody,
   CorrespondenceSearchRequest,
   CorrespondenceThreadDetail,
   CorrespondenceThreadList,
@@ -23266,6 +23267,88 @@ export function useGetCorrespondenceThread<TData = Awaited<ReturnType<typeof get
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCorrespondenceThreadQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCorrespondenceReadableBodyUrl = (id: string,
+    messageId: string,) => {
+
+
+
+
+  return `/api/correspondence/threads/${id}/messages/${messageId}/readable-body`
+}
+
+/**
+ * @summary Read a Missive message as plain text after checking current thread access
+ */
+export const getCorrespondenceReadableBody = async (id: string,
+    messageId: string, options?: RequestInit): Promise<CorrespondenceReadableBody> => {
+
+  return customFetch<CorrespondenceReadableBody>(getGetCorrespondenceReadableBodyUrl(id,messageId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCorrespondenceReadableBodyQueryKey = (id: string,
+    messageId: string,) => {
+    return [
+    `/api/correspondence/threads/${id}/messages/${messageId}/readable-body`
+    ] as const;
+    }
+
+
+export const getGetCorrespondenceReadableBodyQueryOptions = <TData = Awaited<ReturnType<typeof getCorrespondenceReadableBody>>, TError = ErrorType<void>>(id: string,
+    messageId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCorrespondenceReadableBody>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCorrespondenceReadableBodyQueryKey(id,messageId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCorrespondenceReadableBody>>> = ({ signal }) => getCorrespondenceReadableBody(id,messageId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && messageId !== null && messageId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCorrespondenceReadableBody>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCorrespondenceReadableBodyQueryResult = NonNullable<Awaited<ReturnType<typeof getCorrespondenceReadableBody>>>
+export type GetCorrespondenceReadableBodyQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read a Missive message as plain text after checking current thread access
+ */
+
+export function useGetCorrespondenceReadableBody<TData = Awaited<ReturnType<typeof getCorrespondenceReadableBody>>, TError = ErrorType<void>>(
+ id: string,
+    messageId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCorrespondenceReadableBody>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCorrespondenceReadableBodyQueryOptions(id,messageId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import express from "express";
 import { pool, type StaffUser } from "@workspace/db";
 import correspondenceRouter from "../src/routes/correspondence.ts";
+import { htmlToText } from "../src/lib/emailActivity/gmail.ts";
 
 const suffix = randomUUID().slice(0, 8);
 const ids = {
@@ -16,6 +17,8 @@ const ids = {
   archived: randomUUID(),
   hidden: randomUUID(),
   granted: randomUUID(),
+  visibleMessage: randomUUID(),
+  hiddenMessage: randomUUID(),
 };
 const actor: StaffUser = {
   id: ids.staff,
@@ -65,9 +68,9 @@ before(async () => {
        (id,mailbox_id,provider,provider_thread_id,subject,status,last_message_at)
      VALUES
        ($1,$6,'fixture','inbox-${suffix}','Inbox ${suffix}','open',now()),
-       ($2,$6,'fixture','sent-${suffix}','Sent ${suffix}','open',now()-interval '1 minute'),
+       ($2,$6,'missive','sent-${suffix}','Sent ${suffix}','open',now()-interval '1 minute'),
        ($3,$6,'fixture','archived-${suffix}','Archived ${suffix}','archived',now()-interval '2 minutes'),
-       ($4,$7,'fixture','hidden-${suffix}','Hidden global ${suffix}','open',now()-interval '3 minutes'),
+       ($4,$7,'missive','hidden-${suffix}','Hidden global ${suffix}','open',now()-interval '3 minutes'),
        ($5,$7,'fixture','granted-${suffix}','Granted global ${suffix}','open',now()-interval '4 minutes')`,
     [
       ids.inbox,
@@ -81,16 +84,18 @@ before(async () => {
   );
   await pool.query(
     `INSERT INTO correspondence_messages
-       (thread_id,mailbox_id,provider,provider_message_id,from_address,subject,body_text,delivered_at)
+       (id,thread_id,mailbox_id,provider,provider_message_id,from_address,subject,body_text,delivered_at)
      VALUES
-       ($1,$3,'fixture','sent-message-${suffix}',$4,'Sent body','global needle',now()),
-       ($2,$5,'fixture','hidden-message-${suffix}','outside@example.test','Hidden body','global needle',now())`,
+       ($6,$1,$3,'missive','sent-message-${suffix}',$4,'Sent body','global needle',now()),
+       ($7,$2,$5,'missive','hidden-message-${suffix}','outside@example.test','Hidden body','global needle',now())`,
     [
       ids.sent,
       ids.hidden,
       ids.visibleMailbox,
       `visible-${suffix}@example.test`,
       ids.hiddenMailbox,
+      ids.visibleMessage,
+      ids.hiddenMessage,
     ],
   );
   await pool.query(
@@ -177,4 +182,25 @@ test("global search ignores selectors and honors thread-level grants", async () 
   assert.deepEqual(mailboxes.json.mailboxes.map((mailbox: any) => mailbox.id), [
     ids.visibleMailbox,
   ]);
+});
+
+test("readable body requires thread access and message/thread binding before any provider fetch", async () => {
+  const path = (threadId: string, messageId: string) =>
+    `/correspondence/threads/${threadId}/messages/${messageId}/readable-body`;
+  const denied = await body(path(ids.hidden, ids.hiddenMessage));
+  assert.equal(denied.response.status, 404);
+
+  const wrongThread = await body(path(ids.inbox, ids.visibleMessage));
+  assert.equal(wrongThread.response.status, 404);
+
+  const unresolvableAccount = await body(path(ids.sent, ids.visibleMessage));
+  assert.equal(unresolvableAccount.response.status, 503);
+  assert.match(unresolvableAccount.json.error, /account is unavailable/i);
+});
+
+test("Missive HTML conversion preserves readable structure and removes executable content", () => {
+  assert.equal(
+    htmlToText("<p>Hello&nbsp;world</p><p>Second line<br>next</p><script>evil()</script>"),
+    "Hello world\n\nSecond line\nnext",
+  );
 });

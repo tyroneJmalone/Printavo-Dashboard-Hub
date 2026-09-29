@@ -6434,6 +6434,29 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CorrespondenceThreadDetail" }
         "404": { description: Not found or inaccessible }
+  /correspondence/threads/{id}/messages/{messageId}/readable-body:
+    get:
+      operationId: getCorrespondenceReadableBody
+      tags: [correspondence]
+      summary: Read a Missive message as plain text after checking current thread access
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Readable plain-text body
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CorrespondenceReadableBody" }
+        "404": { description: Thread or message not found or inaccessible }
+        "502": { description: Missive message fetch failed or original body unavailable }
+        "503": { description: No matching Missive account for this mailbox }
   /correspondence/search:
     post:
       operationId: searchCorrespondence
@@ -14004,6 +14027,11 @@ components:
         subject: { type: string }
         date: { type: string }
         snippet: { type: string }
+        bodyText: { type: string }
+    CorrespondenceReadableBody:
+      type: object
+      required: [bodyText]
+      properties:
         bodyText: { type: string }
     CorrespondenceThreadDetail:
       type: object

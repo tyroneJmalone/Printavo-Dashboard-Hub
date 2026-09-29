@@ -12146,6 +12146,19 @@ export const GetCorrespondenceThreadResponse = zod.object({
 
 
 /**
+ * @summary Read a Missive message as plain text after checking current thread access
+ */
+export const GetCorrespondenceReadableBodyParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "messageId": zod.coerce.string().uuid()
+})
+
+export const GetCorrespondenceReadableBodyResponse = zod.object({
+  "bodyText": zod.string()
+})
+
+
+/**
  * @summary Search only authorized correspondence
  */
 export const SearchCorrespondenceBody = zod.object({

@@ -202,6 +202,7 @@ export * from './correspondenceAiSource';
 export * from './correspondenceHistoryImportRequest';
 export * from './correspondenceHistoryImportResponse';
 export * from './correspondenceMessage';
+export * from './correspondenceReadableBody';
 export * from './correspondenceSearchRequest';
 export * from './correspondenceThread';
 export * from './correspondenceThreadDetail';

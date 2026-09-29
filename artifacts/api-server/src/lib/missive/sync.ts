@@ -15,6 +15,7 @@ import { and, asc, eq } from "drizzle-orm";
 import type { Logger } from "pino";
 import { missiveAccounts, missiveGet, missivePath } from "./client";
 import { normalizeMessageId } from "./accessPolicy";
+import { htmlToText } from "../emailActivity/gmail";
 
 type Json = Record<string, unknown>;
 
@@ -265,7 +266,7 @@ async function upsertMessage(threadId: string, mailboxId: string, message: Json)
   const rawRfc = stringValue(message.email_message_id ?? message.message_id) || null;
   const rfcMessageId = normalizeMessageId(rawRfc);
   const bodyHtmlRemote = stringValue(message.body);
-  const bodyText = stripHtml(bodyHtmlRemote);
+  const bodyText = htmlToText(bodyHtmlRemote);
   const deliveredAt = epochDate(message.delivered_at ?? message.created_at);
   const fromField =
     typeof message.from_field === "object" && message.from_field !== null
@@ -302,7 +303,7 @@ async function upsertMessage(threadId: string, mailboxId: string, message: Json)
     snippet: stringValue(message.preview) || bodyText.slice(0, 300),
     bodyText,
     // Remote HTML is intentionally not persisted until a battle-tested
-    // sanitizer is introduced. The full visible content remains in bodyText.
+    // sanitizer is introduced. Only plain text is stored.
     bodyHtml: "",
     attachments,
     deliveredAt,
@@ -393,7 +394,7 @@ async function hydrateConversation(
     counterpart: stringValue(fromField.name) || stringValue(fromField.address) || "Unknown",
     counterpartEmail: stringValue(fromField.address).toLowerCase(),
     status: conversation.closed_at ? "archived" : conversation.snoozed_until ? "snoozed" : "open",
-    snippet: stringValue(newest.preview) || stripHtml(stringValue(newest.body)).slice(0, 300),
+    snippet: stringValue(newest.preview) || htmlToText(stringValue(newest.body)).slice(0, 300),
     webUrl: stringValue(conversation.web_url) || null,
     firstMessageAt: epochDate(oldest.delivered_at ?? oldest.created_at),
     lastMessageAt: epochDate(

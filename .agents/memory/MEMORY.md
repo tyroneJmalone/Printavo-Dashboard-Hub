@@ -74,3 +74,4 @@
 - [Dashboard metric policy](dashboard-metric-policy.md) — Repeat Customer includes qualifying quotes + invoices; preserve distinct time bases, conversion caveats, and decoration overlap.
 - [PostgreSQL fixture sequences](postgres-fixture-sequences.md) — temp tables copying defaults can advance public sequences despite rollback; give fixtures their own sequences.
 - [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — explicit generic JSX tags can break metadata injection; specialize component aliases outside JSX.
+- [Correspondence spacing recovery](correspondence-spacing-recovery.md) — old imports lost whitespace; recover from provider on demand, never guess paragraphs or truncate full messages.

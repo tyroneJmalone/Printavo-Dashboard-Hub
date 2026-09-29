@@ -7,6 +7,9 @@ import {
   requireThreadRead,
 } from "../lib/emailAccess/authorization";
 import { runMissiveSync } from "../lib/missive/sync";
+import { missiveAccountForMailbox } from "../lib/missive/client";
+import { missiveReadableBody } from "../lib/missive/readableBody";
+import { GetCorrespondenceReadableBodyResponse } from "@workspace/api-zod";
 
 const router = Router();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -316,6 +319,53 @@ router.get("/correspondence/threads/:id", async (req, res) => {
     }
     req.log.error({ err }, "Correspondence thread load failed");
     res.status(500).json({ error: "Unable to load thread" });
+  }
+});
+
+router.get("/correspondence/threads/:id/messages/:messageId/readable-body", async (req, res): Promise<void> => {
+  const id = String(req.params.id);
+  const messageId = String(req.params.messageId);
+  if (!UUID.test(id) || !UUID.test(messageId)) {
+    res.status(404).json({ error: "Message not found" });
+    return;
+  }
+  try {
+    // Authorize before even looking up the message, including on cache hits.
+    await requireThreadRead(req.staff!, id);
+    const result = await pool.query<{
+      provider_message_id: string;
+      email: string;
+      display_name: string | null;
+    }>(
+      `SELECT m.provider_message_id, mailbox.email, mailbox.display_name
+         FROM correspondence_messages m
+         JOIN correspondence_threads t ON t.id=m.thread_id
+         JOIN email_mailboxes mailbox ON mailbox.id=t.mailbox_id
+        WHERE m.id=$2::uuid AND m.thread_id=$1::uuid
+          AND m.mailbox_id=t.mailbox_id
+          AND m.provider='missive' AND t.provider='missive'
+        LIMIT 1`,
+      [id, messageId],
+    );
+    const message = result.rows[0];
+    if (!message?.provider_message_id) {
+      res.status(404).json({ error: "Message not found" });
+      return;
+    }
+    const account = missiveAccountForMailbox(message.email, message.display_name, { strict: true });
+    if (!account) {
+      res.status(503).json({ error: "Missive account is unavailable for this mailbox" });
+      return;
+    }
+    const bodyText = await missiveReadableBody(account, message.provider_message_id);
+    res.json(GetCorrespondenceReadableBodyResponse.parse({ bodyText }));
+  } catch (err) {
+    if ((err as { status?: number }).status === 404) {
+      res.status(404).json({ error: "Message not found or inaccessible" });
+      return;
+    }
+    req.log.error({ err }, "Correspondence readable body load failed");
+    res.status(502).json({ error: "Unable to load readable message body from Missive" });
   }
 });
 

@@ -196,7 +196,17 @@ async function missiveRequest<T>(
 export function missiveAccountForMailbox(
   email: string,
   displayName?: string | null,
-): MissiveAccount {
+): MissiveAccount;
+export function missiveAccountForMailbox(
+  email: string,
+  displayName: string | null | undefined,
+  options: { strict: true },
+): MissiveAccount | null;
+export function missiveAccountForMailbox(
+  email: string,
+  displayName?: string | null,
+  options?: { strict: true },
+): MissiveAccount | null {
   const accounts = missiveAccounts();
   const localPart = (email.split("@")[0] ?? "").toLowerCase();
   const name = (displayName ?? "").toLowerCase();
@@ -206,6 +216,13 @@ export function missiveAccountForMailbox(
       a.label !== "connector" &&
       (localPart.startsWith(a.label) || a.label.startsWith(localPart) || name.includes(a.label)),
   );
+  if (options?.strict) {
+    if (match) return match;
+    // The primary account belongs to Tyler; never guess primary for another
+    // mailbox just because its owner has no configured personal token.
+    const primary = accounts.find((a) => a.label === "primary" || a.label === "connector");
+    return email.trim().toLowerCase() === "tyler@mintprintworks.com" ? primary ?? null : null;
+  }
   return match ?? accounts[0]!;
 }
 

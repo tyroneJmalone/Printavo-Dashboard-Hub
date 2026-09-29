@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { CorrespondenceEmailBody } from "@/components/email/CorrespondenceEmailBody";
 import { useCorrespondenceThreads, useCorrespondenceThread, useCorrespondenceAiSearch, useCorrespondenceMailboxes } from "@/hooks/use-correspondence";
 import { Search, Sparkles, Mail, Inbox, Archive, MessageCircle, AlertCircle, Loader2, Send } from "lucide-react";
 
@@ -66,8 +67,8 @@ function ThreadView({ threadId }: { threadId: string }) {
                   })}
                 </div>
               </div>
-              <div className="p-4 text-sm text-slate-300 leading-relaxed">
-                <div className="whitespace-pre-wrap">{msg.bodyText || msg.snippet}</div>
+              <div className="p-4 text-sm text-slate-300 leading-7">
+                <CorrespondenceEmailBody threadId={threadId} messageId={msg.id} body={msg.bodyText || msg.snippet || ""} />
                 {msg.attachments && msg.attachments.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-slate-800/60 flex flex-wrap gap-2">
                     {msg.attachments.map(att => (

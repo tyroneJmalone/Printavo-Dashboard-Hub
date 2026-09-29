@@ -6740,6 +6740,10 @@ export interface CorrespondenceMessage {
   bodyText: string;
 }
 
+export interface CorrespondenceReadableBody {
+  bodyText: string;
+}
+
 export type CorrespondenceThreadDetailCommentsItem = { [key: string]: unknown };
 
 export type CorrespondenceThreadDetailOrderLinksItem = { [key: string]: unknown };
