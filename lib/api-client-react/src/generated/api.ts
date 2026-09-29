@@ -79,6 +79,12 @@ import type {
   CatalogSearchResult,
   CatalogTagOverrideRequest,
   ChangeEventItem,
+  ChipplyCategoryCommitRequest,
+  ChipplyCategoryCommitResponse,
+  ChipplyCategoryInvoiceResponse,
+  ChipplyCategoryInvoicesResponse,
+  ChipplyCategoryPreviewRequest,
+  ChipplyCategoryPreviewResponse,
   ChipplyStoreDetailResponse,
   ChipplyStoreEnvelope,
   ChipplyStoreStylesResponse,
@@ -161,6 +167,7 @@ import type {
   EvaluateStatusRulesResponse,
   FinderOrder,
   GetBrandBreakdownParams,
+  GetChipplyCategoryInvoiceParams,
   GetColorBreakdownParams,
   GetCombinedBoxLabelsHtmlParams,
   GetCombinedPackingSlipsHtmlParams,
@@ -245,6 +252,7 @@ import type {
   ListAutoPrintRunsParams,
   ListCatalogPantonesParams,
   ListChangeEventsParams,
+  ListChipplyCategoryInvoicesParams,
   ListChipplyStoresParams,
   ListCollections200,
   ListCollectionsParams,
@@ -475,6 +483,295 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListChipplyCategoryInvoicesUrl = (params?: ListChipplyCategoryInvoicesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/chipply/category-review/invoices?${stringifiedParams}` : `/api/chipply/category-review/invoices`
+}
+
+export const listChipplyCategoryInvoices = async (params?: ListChipplyCategoryInvoicesParams, options?: RequestInit): Promise<ChipplyCategoryInvoicesResponse> => {
+
+  return customFetch<ChipplyCategoryInvoicesResponse>(getListChipplyCategoryInvoicesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListChipplyCategoryInvoicesQueryKey = (params?: ListChipplyCategoryInvoicesParams,) => {
+    return [
+    `/api/chipply/category-review/invoices`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListChipplyCategoryInvoicesQueryOptions = <TData = Awaited<ReturnType<typeof listChipplyCategoryInvoices>>, TError = ErrorType<unknown>>(params?: ListChipplyCategoryInvoicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChipplyCategoryInvoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListChipplyCategoryInvoicesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listChipplyCategoryInvoices>>> = ({ signal }) => listChipplyCategoryInvoices(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listChipplyCategoryInvoices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListChipplyCategoryInvoicesQueryResult = NonNullable<Awaited<ReturnType<typeof listChipplyCategoryInvoices>>>
+export type ListChipplyCategoryInvoicesQueryError = ErrorType<unknown>
+
+
+
+export function useListChipplyCategoryInvoices<TData = Awaited<ReturnType<typeof listChipplyCategoryInvoices>>, TError = ErrorType<unknown>>(
+ params?: ListChipplyCategoryInvoicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listChipplyCategoryInvoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListChipplyCategoryInvoicesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetChipplyCategoryInvoiceUrl = (orderId: string,
+    params?: GetChipplyCategoryInvoiceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/chipply/category-review/invoices/${orderId}?${stringifiedParams}` : `/api/chipply/category-review/invoices/${orderId}`
+}
+
+export const getChipplyCategoryInvoice = async (orderId: string,
+    params?: GetChipplyCategoryInvoiceParams, options?: RequestInit): Promise<ChipplyCategoryInvoiceResponse> => {
+
+  return customFetch<ChipplyCategoryInvoiceResponse>(getGetChipplyCategoryInvoiceUrl(orderId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChipplyCategoryInvoiceQueryKey = (orderId: string,
+    params?: GetChipplyCategoryInvoiceParams,) => {
+    return [
+    `/api/chipply/category-review/invoices/${orderId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetChipplyCategoryInvoiceQueryOptions = <TData = Awaited<ReturnType<typeof getChipplyCategoryInvoice>>, TError = ErrorType<unknown>>(orderId: string,
+    params?: GetChipplyCategoryInvoiceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyCategoryInvoice>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChipplyCategoryInvoiceQueryKey(orderId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChipplyCategoryInvoice>>> = ({ signal }) => getChipplyCategoryInvoice(orderId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderId !== null && orderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChipplyCategoryInvoice>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChipplyCategoryInvoiceQueryResult = NonNullable<Awaited<ReturnType<typeof getChipplyCategoryInvoice>>>
+export type GetChipplyCategoryInvoiceQueryError = ErrorType<unknown>
+
+
+
+export function useGetChipplyCategoryInvoice<TData = Awaited<ReturnType<typeof getChipplyCategoryInvoice>>, TError = ErrorType<unknown>>(
+ orderId: string,
+    params?: GetChipplyCategoryInvoiceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyCategoryInvoice>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChipplyCategoryInvoiceQueryOptions(orderId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPreviewChipplyCategoriesUrl = () => {
+
+
+
+
+  return `/api/chipply/category-review/preview`
+}
+
+export const previewChipplyCategories = async (chipplyCategoryPreviewRequest: ChipplyCategoryPreviewRequest, options?: RequestInit): Promise<ChipplyCategoryPreviewResponse> => {
+
+  return customFetch<ChipplyCategoryPreviewResponse>(getPreviewChipplyCategoriesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chipplyCategoryPreviewRequest)
+  }
+);}
+
+
+
+
+export const getPreviewChipplyCategoriesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewChipplyCategories>>, TError,{data: BodyType<ChipplyCategoryPreviewRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewChipplyCategories>>, TError,{data: BodyType<ChipplyCategoryPreviewRequest>}, TContext> => {
+
+const mutationKey = ['previewChipplyCategories'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewChipplyCategories>>, {data: BodyType<ChipplyCategoryPreviewRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewChipplyCategories(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewChipplyCategoriesMutationResult = NonNullable<Awaited<ReturnType<typeof previewChipplyCategories>>>
+    export type PreviewChipplyCategoriesMutationBody = BodyType<ChipplyCategoryPreviewRequest>
+    export type PreviewChipplyCategoriesMutationError = ErrorType<unknown>
+
+    export const usePreviewChipplyCategories = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewChipplyCategories>>, TError,{data: BodyType<ChipplyCategoryPreviewRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewChipplyCategories>>,
+        TError,
+        {data: BodyType<ChipplyCategoryPreviewRequest>},
+        TContext
+      > => {
+      return useMutation(getPreviewChipplyCategoriesMutationOptions(options));
+    }
+
+export const getCommitChipplyCategoriesUrl = () => {
+
+
+
+
+  return `/api/chipply/category-review/commit`
+}
+
+export const commitChipplyCategories = async (chipplyCategoryCommitRequest: ChipplyCategoryCommitRequest, options?: RequestInit): Promise<ChipplyCategoryCommitResponse> => {
+
+  return customFetch<ChipplyCategoryCommitResponse>(getCommitChipplyCategoriesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chipplyCategoryCommitRequest)
+  }
+);}
+
+
+
+
+export const getCommitChipplyCategoriesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitChipplyCategories>>, TError,{data: BodyType<ChipplyCategoryCommitRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof commitChipplyCategories>>, TError,{data: BodyType<ChipplyCategoryCommitRequest>}, TContext> => {
+
+const mutationKey = ['commitChipplyCategories'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof commitChipplyCategories>>, {data: BodyType<ChipplyCategoryCommitRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  commitChipplyCategories(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CommitChipplyCategoriesMutationResult = NonNullable<Awaited<ReturnType<typeof commitChipplyCategories>>>
+    export type CommitChipplyCategoriesMutationBody = BodyType<ChipplyCategoryCommitRequest>
+    export type CommitChipplyCategoriesMutationError = ErrorType<unknown>
+
+    export const useCommitChipplyCategories = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitChipplyCategories>>, TError,{data: BodyType<ChipplyCategoryCommitRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof commitChipplyCategories>>,
+        TError,
+        {data: BodyType<ChipplyCategoryCommitRequest>},
+        TContext
+      > => {
+      return useMutation(getCommitChipplyCategoriesMutationOptions(options));
+    }
 
 export const getGetDashboardMetricsUrl = () => {
 

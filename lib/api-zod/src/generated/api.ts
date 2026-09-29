@@ -8,6 +8,175 @@
 import * as zod from 'zod';
 
 
+export const listChipplyCategoryInvoicesQueryPageDefault = 1;
+
+export const listChipplyCategoryInvoicesQueryPageSizeDefault = 25;
+export const listChipplyCategoryInvoicesQueryPageSizeMax = 100;
+
+export const listChipplyCategoryInvoicesQueryMissingOnlyDefault = true;
+
+export const ListChipplyCategoryInvoicesQueryParams = zod.object({
+  "page": zod.coerce.number().min(1).default(listChipplyCategoryInvoicesQueryPageDefault),
+  "pageSize": zod.coerce.number().min(1).max(listChipplyCategoryInvoicesQueryPageSizeMax).default(listChipplyCategoryInvoicesQueryPageSizeDefault),
+  "search": zod.coerce.string().optional().describe('Nickname or visual invoice number search'),
+  "status": zod.coerce.string().optional().describe('Exact status NAME from statuses (not ID)'),
+  "missingOnly": zod.coerce.boolean().default(listChipplyCategoryInvoicesQueryMissingOnlyDefault),
+  "categoryId": zod.coerce.string().optional().describe('Invoice has a line in this official category')
+})
+
+export const ListChipplyCategoryInvoicesResponse = zod.object({
+  "invoices": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "statusId": zod.string().nullable(),
+  "invoiceAt": zod.string().nullable(),
+  "detailSyncState": zod.string(),
+  "detailSyncedAt": zod.string().nullable(),
+  "lineItemCount": zod.number(),
+  "missingCategoryCount": zod.number(),
+  "quantity": zod.number(),
+  "recommendation": zod.object({
+  "category": zod.union([zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+}),zod.null()]),
+  "message": zod.string()
+})
+})),
+  "total": zod.number(),
+  "page": zod.number(),
+  "pageSize": zod.number(),
+  "statuses": zod.array(zod.string()),
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})),
+  "coverage": zod.string(),
+  "selectionCap": zod.number()
+})
+
+
+export const GetChipplyCategoryInvoiceParams = zod.object({
+  "orderId": zod.coerce.string()
+})
+
+export const getChipplyCategoryInvoiceQueryPageDefault = 1;
+
+export const getChipplyCategoryInvoiceQueryPageSizeDefault = 25;
+export const getChipplyCategoryInvoiceQueryPageSizeMax = 100;
+
+
+
+export const GetChipplyCategoryInvoiceQueryParams = zod.object({
+  "page": zod.coerce.number().min(1).default(getChipplyCategoryInvoiceQueryPageDefault),
+  "pageSize": zod.coerce.number().min(1).max(getChipplyCategoryInvoiceQueryPageSizeMax).default(getChipplyCategoryInvoiceQueryPageSizeDefault)
+})
+
+export const GetChipplyCategoryInvoiceResponse = zod.object({
+  "invoice": zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "statusId": zod.string().nullable(),
+  "invoiceAt": zod.string().nullable(),
+  "detailSyncState": zod.string(),
+  "detailSyncedAt": zod.string().nullable(),
+  "lineItemCount": zod.number(),
+  "missingCategoryCount": zod.number(),
+  "quantity": zod.number(),
+  "recommendation": zod.object({
+  "category": zod.union([zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+}),zod.null()]),
+  "message": zod.string()
+})
+}),
+  "lineItems": zod.array(zod.object({
+  "lineItemId": zod.string(),
+  "orderId": zod.string(),
+  "itemNumber": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "color": zod.string().nullable(),
+  "brand": zod.string().nullable(),
+  "quantity": zod.number(),
+  "currentCategoryId": zod.string().nullable(),
+  "currentCategoryName": zod.string().nullable()
+})),
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})),
+  "recommendation": zod.object({
+  "category": zod.union([zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+}),zod.null()]),
+  "message": zod.string()
+}),
+  "total": zod.number(),
+  "page": zod.number(),
+  "pageSize": zod.number(),
+  "coverage": zod.string(),
+  "selectionCap": zod.number()
+})
+
+
+export const previewChipplyCategoriesBodySelectionsItemOrderIdMax = 200;
+
+export const previewChipplyCategoriesBodySelectionsItemLineItemIdMax = 200;
+
+export const previewChipplyCategoriesBodySelectionsMax = 100;
+
+export const previewChipplyCategoriesBodyOverwriteDefault = false;
+
+export const PreviewChipplyCategoriesBody = zod.object({
+  "selections": zod.array(zod.object({
+  "orderId": zod.string().min(1).max(previewChipplyCategoriesBodySelectionsItemOrderIdMax),
+  "lineItemId": zod.string().min(1).max(previewChipplyCategoriesBodySelectionsItemLineItemIdMax)
+})).min(1).max(previewChipplyCategoriesBodySelectionsMax),
+  "overwrite": zod.boolean().default(previewChipplyCategoriesBodyOverwriteDefault),
+  "targetCategoryId": zod.string().optional().describe('Optional official category ID for explicit assignment; omit for status recommendation mode')
+})
+
+export const PreviewChipplyCategoriesResponse = zod.object({
+  "previewId": zod.string(),
+  "lines": zod.array(zod.object({
+  "orderId": zod.string(),
+  "lineItemId": zod.string(),
+  "currentCategoryId": zod.string().nullable(),
+  "currentCategoryName": zod.string().nullable(),
+  "recommendedCategoryId": zod.string().nullable(),
+  "recommendedCategoryName": zod.string().nullable(),
+  "statusName": zod.string(),
+  "statusId": zod.string(),
+  "eligible": zod.boolean(),
+  "message": zod.string()
+})),
+  "expiresAt": zod.string(),
+  "selectionCap": zod.number()
+})
+
+
+export const CommitChipplyCategoriesBody = zod.object({
+  "previewId": zod.string().uuid()
+})
+
+export const CommitChipplyCategoriesResponse = zod.object({
+  "results": zod.array(zod.object({
+  "orderId": zod.string(),
+  "lineItemId": zod.string(),
+  "outcome": zod.enum(['updated', 'skipped', 'conflict', 'failed', 'unknown']),
+  "message": zod.string()
+})),
+  "updated": zod.number(),
+  "failed": zod.number()
+})
+
+
 /**
  * @summary Dashboard metrics from the local Printavo mirror
  */

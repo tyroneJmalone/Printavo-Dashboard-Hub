@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
+import { InvoiceCategories } from "@/components/chipply/InvoiceCategories";
 import {
   useListChipplyStores,
   getListChipplyStoresQueryKey,
@@ -766,7 +767,7 @@ export function ImportEmailDialog({
 // ── Page ──────────────────────────────────────────────────────────────
 
 export default function ChipplyStores() {
-  const [tab, setTab] = useState<"stores" | "detected">("stores");
+  const [tab, setTab] = useState<"stores" | "detected" | "categories">("stores");
   const [importOpen, setImportOpen] = useState(false);
   const [prefill, setPrefill] = useState<ChipplyStoreCandidate | null>(null);
 
@@ -853,7 +854,7 @@ export default function ChipplyStores() {
           </div>
         )}
 
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => setTab("stores")}
@@ -877,8 +878,17 @@ export default function ChipplyStores() {
             <Radar size={14} />
             Detected in Printavo
           </button>
+          <button
+            type="button"
+            data-testid="button-tab-invoice-categories"
+            onClick={() => setTab("categories")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${tab === "categories" ? "bg-[#059669] text-white" : "bg-slate-800 text-slate-300 hover:text-white"}`}
+          >
+            Invoice categories
+          </button>
         </div>
 
+        {tab === "categories" && <InvoiceCategories />}
         {tab === "stores" && (
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             {storesQuery.isLoading ? (

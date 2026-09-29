@@ -1,5 +1,7 @@
 export * from "./generated/api";
 export * from "./generated/types";
+export { GetChipplyCategoryInvoiceParams } from "./generated/api";
+export type { GetChipplyCategoryInvoiceParams as GetChipplyCategoryInvoiceQueryParamsType } from "./generated/types";
 
 // getPrintavoOrderHistory has a path parameter plus query pagination params,
 // and orval emits the same params name in both generated surfaces.

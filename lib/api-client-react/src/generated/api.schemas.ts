@@ -5,6 +5,153 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ChipplyOfficialCategory {
+  id: string;
+  name: string;
+}
+
+export interface ChipplyCategoryRecommendation {
+  category: ChipplyOfficialCategory | null;
+  message: string;
+}
+
+export interface ChipplyCategoryInvoice {
+  orderId: string;
+  visualId: number;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  statusName: string | null;
+  /** @nullable */
+  statusId: string | null;
+  /** @nullable */
+  invoiceAt: string | null;
+  detailSyncState: string;
+  /** @nullable */
+  detailSyncedAt: string | null;
+  lineItemCount: number;
+  missingCategoryCount: number;
+  quantity: number;
+  recommendation: ChipplyCategoryRecommendation;
+}
+
+export interface ChipplyCategoryInvoicesResponse {
+  invoices: ChipplyCategoryInvoice[];
+  total: number;
+  page: number;
+  pageSize: number;
+  statuses: string[];
+  categories: ChipplyOfficialCategory[];
+  coverage: string;
+  selectionCap: number;
+}
+
+export interface ChipplyCategoryLineItem {
+  lineItemId: string;
+  orderId: string;
+  /** @nullable */
+  itemNumber: string | null;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  color: string | null;
+  /** @nullable */
+  brand: string | null;
+  quantity: number;
+  /** @nullable */
+  currentCategoryId: string | null;
+  /** @nullable */
+  currentCategoryName: string | null;
+}
+
+export interface ChipplyCategoryInvoiceResponse {
+  invoice: ChipplyCategoryInvoice;
+  lineItems: ChipplyCategoryLineItem[];
+  categories: ChipplyOfficialCategory[];
+  recommendation: ChipplyCategoryRecommendation;
+  total: number;
+  page: number;
+  pageSize: number;
+  coverage: string;
+  selectionCap: number;
+}
+
+export interface ChipplyCategorySelection {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  orderId: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  lineItemId: string;
+}
+
+export interface ChipplyCategoryPreviewRequest {
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  selections: ChipplyCategorySelection[];
+  overwrite?: boolean;
+  /** Optional official category ID for explicit assignment; omit for status recommendation mode */
+  targetCategoryId?: string;
+}
+
+export interface ChipplyCategoryPreviewLine {
+  orderId: string;
+  lineItemId: string;
+  /** @nullable */
+  currentCategoryId: string | null;
+  /** @nullable */
+  currentCategoryName: string | null;
+  /** @nullable */
+  recommendedCategoryId: string | null;
+  /** @nullable */
+  recommendedCategoryName: string | null;
+  statusName: string;
+  statusId: string;
+  eligible: boolean;
+  message: string;
+}
+
+export interface ChipplyCategoryPreviewResponse {
+  previewId: string;
+  lines: ChipplyCategoryPreviewLine[];
+  expiresAt: string;
+  selectionCap: number;
+}
+
+export interface ChipplyCategoryCommitRequest {
+  previewId: string;
+}
+
+export type ChipplyCategoryResultOutcome = typeof ChipplyCategoryResultOutcome[keyof typeof ChipplyCategoryResultOutcome];
+
+
+export const ChipplyCategoryResultOutcome = {
+  updated: 'updated',
+  skipped: 'skipped',
+  conflict: 'conflict',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+export interface ChipplyCategoryResult {
+  orderId: string;
+  lineItemId: string;
+  outcome: ChipplyCategoryResultOutcome;
+  message: string;
+}
+
+export interface ChipplyCategoryCommitResponse {
+  results: ChipplyCategoryResult[];
+  updated: number;
+  failed: number;
+}
+
 export interface PurchasingApprovedMapping {
   /**
      * @maxLength 100
@@ -8255,6 +8402,43 @@ export type ActivityEndParamParameter = string;
  * Current invoice/quote owner email
  */
 export type ActivityOwnerParamParameter = string;
+
+export type ListChipplyCategoryInvoicesParams = {
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+/**
+ * Nickname or visual invoice number search
+ */
+search?: string;
+/**
+ * Exact status NAME from statuses (not ID)
+ */
+status?: string;
+missingOnly?: boolean;
+/**
+ * Invoice has a line in this official category
+ */
+categoryId?: string;
+};
+
+export type GetChipplyCategoryInvoiceParams = {
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+};
 
 export type ListPrintscopePilotSourcesParams = {
 /**

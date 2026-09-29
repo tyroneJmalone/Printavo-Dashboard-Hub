@@ -111,7 +111,7 @@ const NAV_GROUPS: NavGroup[] = [
     heading: "Purchasing",
     items: [
       { id: "reorder", label: "Reorder Scan", icon: Scan, disabled: true },
-      { id: "vendor", label: "Vendor Orders", href: "/vendor-orders", icon: Truck, module: "purchasing" },
+      { id: "vendor", label: "PO Queue", href: "/vendor-orders", icon: Truck, module: "purchasing" },
       { id: "polog", label: "PO Log", href: "/po-log", icon: ClipboardList, module: "purchasing" },
       { id: "tracking", label: "Order Tracking", href: "/tracking", icon: PackageSearch, module: "purchasing" },
     ],

@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import categoryReviewRouter from "./chipplyCategoryReview";
 import {
   db,
   pool,
@@ -33,6 +34,7 @@ import {
  */
 
 const router: IRouter = Router();
+router.use(categoryReviewRouter);
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

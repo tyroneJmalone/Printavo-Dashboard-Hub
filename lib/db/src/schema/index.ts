@@ -74,3 +74,4 @@ export * from "./draftBacktest";
 export * from "./reorderRequests";
 export * from "./pipelineViews";
 export * from "./purchasingApprovedMappings";
+export * from "./chipplyCategoryReviews";

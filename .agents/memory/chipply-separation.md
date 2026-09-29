@@ -21,3 +21,7 @@ description: Chipply web-store module invariants — revenue isolation and no-li
 **Chipply has TWO ids** (from real exports, Jul 25 2026): the **Sales Order #** (e.g. 553498) is what appears in Printavo nickname prefixes = our `event_id`; the store **eid** (e.g. 351861) appears only in chipply.com URLs. Never conflate them.
 
 **Export field traps**: SalesReport CSV appends a summary row with a BLANK Store Name duplicating the totals — skip nameless rows; money comes as 4-decimal strings; the email's "Total Dollars" = Sell Price, NOT the CSV's Order Total (which adds shipping/handling/tax).
+
+**Category recommendations use invoice STATUS, not nickname method.**
+**Why:** The user requested bulk category correction to avoid maintaining Chipply-imported line categories manually and to enable decoration/quantity reporting. Nicknames identify the invoices; statuses supply the proposed decoration category. Actual account statuses observed 2026-09-28 contain `MERCH - PRINT`, `MERCH - EMB`, and `MERCH - HEAT`, including completed stages, not merely the unhyphenated labels in the request.
+**How to apply:** Keep review/confirmation before upstream edits, preserve existing categories unless explicitly approved for overwrite, and support manual assignment for ambiguous/unmapped statuses. These production classifications do not authorize combining Chipply revenue or behavior metrics with Printavo's other orders.
