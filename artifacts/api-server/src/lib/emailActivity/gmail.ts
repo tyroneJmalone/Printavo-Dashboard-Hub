@@ -95,7 +95,7 @@ function decodeBody(data: string): string {
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
 }
 
-function findBody(part: GmailMessagePart | undefined, mimeType: string): string | null {
+export function findBody(part: GmailMessagePart | undefined, mimeType: string): string | null {
   if (!part) return null;
   if (part.mimeType === mimeType && part.body?.data) return decodeBody(part.body.data);
   for (const child of part.parts ?? []) {
@@ -105,22 +105,129 @@ function findBody(part: GmailMessagePart | undefined, mimeType: string): string 
   return null;
 }
 
-function htmlToText(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/[ \t]+/g, " ")
+const HTML_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ",
+  copy: "©", reg: "®", trade: "™", euro: "€", pound: "£", yen: "¥",
+  bull: "•", hellip: "…", ndash: "–", mdash: "—",
+  lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”",
+};
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#(?:x[0-9a-f]+|[0-9]+)|[a-z]+);?/gi, (entity, value: string) => {
+    if (value[0] !== "#") return HTML_ENTITIES[value.toLowerCase()] ?? entity;
+    const hex = value[1]?.toLowerCase() === "x";
+    const codePoint = Number.parseInt(value.slice(hex ? 2 : 1), hex ? 16 : 10);
+    return codePoint > 0 && codePoint <= 0x10ffff && !(codePoint >= 0xd800 && codePoint <= 0xdfff)
+      ? String.fromCodePoint(codePoint)
+      : "\uFFFD";
+  });
+}
+
+/** Read a tag's end without treating a quoted > in an attribute as the end. */
+function tagEnd(html: string, start: number): number {
+  let quote = "";
+  for (let i = start + 1; i < html.length; i++) {
+    const char = html[i];
+    if (quote) {
+      if (char === quote) quote = "";
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    } else if (char === ">") {
+      return i + 1;
+    }
+  }
+  return -1;
+}
+
+/** Convert untrusted HTML email to text only; never parse into a browser DOM or load assets. */
+export function htmlToText(html: string): string {
+  let text = "";
+  let position = 0;
+  let hidden: string | null = null;
+  let quoteDepth = 0;
+  let preformatted = false;
+
+  const newline = (count = 1) => {
+    text = text.replace(/[ \t]+$/g, "");
+    const existing = text.match(/\n*$/)?.[0].length ?? 0;
+    text += "\n".repeat(Math.max(0, count - existing));
+  };
+  const append = (raw: string) => {
+    if (!raw) return;
+    const content = decodeEntities(preformatted ? raw : raw.replace(/\s+/g, " "));
+    if (!content.trim()) {
+      if (text && !/[ \n]$/.test(text)) text += " ";
+      return;
+    }
+    if (quoteDepth && (text === "" || text.endsWith("\n"))) text += "> ".repeat(quoteDepth);
+    text += content;
+  };
+
+  while (position < html.length) {
+    const open = html.indexOf("<", position);
+    if (open < 0) {
+      if (!hidden) append(html.slice(position));
+      break;
+    }
+    if (!hidden) append(html.slice(position, open));
+    if (html.startsWith("<!--", open)) {
+      const end = html.indexOf("-->", open + 4);
+      if (end < 0) break;
+      position = end + 3;
+      continue;
+    }
+    const end = tagEnd(html, open);
+    if (end < 0) {
+      if (!hidden) append(html.slice(open));
+      break;
+    }
+    const match = /^<\s*(\/?)\s*([a-z][\w:-]*)\b/i.exec(html.slice(open, end));
+    position = end;
+    if (!match) continue;
+    const closing = Boolean(match[1]);
+    const tag = match[2].toLowerCase();
+    if (hidden) {
+      if (closing && tag === hidden) hidden = null;
+      continue;
+    }
+    if (!closing && (tag === "script" || tag === "style" || tag === "head" || tag === "svg")) {
+      hidden = tag;
+      continue;
+    }
+    if (tag === "br") text += "\n";
+    else if (tag === "hr") newline(2);
+    else if (tag === "p") newline(2);
+    else if (tag === "blockquote") {
+      newline();
+      quoteDepth = Math.max(0, quoteDepth + (closing ? -1 : 1));
+      if (closing) newline();
+    } else if (tag === "li") {
+      newline();
+      if (!closing) text += `${quoteDepth ? "> ".repeat(quoteDepth) : ""}• `;
+    } else if (tag === "td" || tag === "th") {
+      if (closing) text = text.replace(/[ \t]+$/g, "") + "\t";
+    } else if (tag === "pre") {
+      newline();
+      preformatted = !closing;
+    } else if (/^(div|section|article|header|footer|tr|table|ul|ol|h[1-6])$/.test(tag)) {
+      newline();
+    }
+  }
+  return text
+    .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** Use the HTML alternative only to recover structure from a flattened plain part. */
+export function readableMessageBody(payload: GmailMessagePart | undefined): string {
+  const plain = findBody(payload, "text/plain");
+  const html = findBody(payload, "text/html");
+  const formatted = html ? htmlToText(html) : "";
+  const body = !plain?.trim() || (!plain.includes("\n") && formatted.includes("\n"))
+    ? formatted || plain || ""
+    : plain;
+  return body.trim().slice(0, 12_000);
 }
 
 export class GmailMailboxClient {
@@ -206,9 +313,6 @@ export class GmailMailboxClient {
   /** Live, on-demand body fetch for authorized previews. The caller must not persist it. */
   async getMessageBody(id: string): Promise<string> {
     const message = await this.get<GmailMessageFull>(`/messages/${id}`, { format: "full" });
-    const plain = findBody(message.payload, "text/plain");
-    const html = plain ? null : findBody(message.payload, "text/html");
-    const body = (plain ?? (html ? htmlToText(html) : "")).trim();
-    return body.slice(0, 12_000);
+    return readableMessageBody(message.payload);
   }
 }

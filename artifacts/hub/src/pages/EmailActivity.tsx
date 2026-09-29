@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { EmailBody } from "@/components/email/EmailBody";
 import { Link } from "wouter";
 import {
   useGetEmailActivityStatus,
@@ -171,7 +172,7 @@ function EmailSubjectLink({
             </div>
             {isLoading && <span className="text-slate-500">Loading email body…</span>}
             {isError && <span className="text-rose-300">Email body preview is unavailable.</span>}
-            {data?.body}
+            {data?.body && <EmailBody body={data.body} />}
           </div>,
           document.body,
         )}
@@ -194,10 +195,10 @@ function EmailSubjectLink({
                   <X size={18} />
                 </button>
               </div>
-              <div className="min-h-40 flex-1 overflow-y-auto whitespace-pre-wrap px-5 py-4 text-sm leading-6 text-slate-300 custom-scrollbar">
+              <div className="min-h-40 flex-1 overflow-y-auto px-5 py-4 text-sm leading-7 text-slate-300 custom-scrollbar">
                 {isLoading && <span className="text-slate-500">Loading email body…</span>}
                 {isError && <span className="text-rose-300">Email body is unavailable.</span>}
-                {data?.body}
+                {data?.body && <EmailBody key={`${mailboxId}:${id}`} body={data.body} allowPlainText />}
               </div>
             </div>
           </div>,
