@@ -4,6 +4,21 @@ A curated, dated log of explanations, insights, and decisions from our build cha
 
 ---
 
+## September 2026
+
+### Sep 29 — Marketing module, including Jotform: full brainstorm retained
+
+**Deferred; not started.** See [the complete marketing discussion record](marketing-module-brainstorm.md) for source integrations, proposed pages, campaign-to-order attribution, Jotform inquiry handoff, RB2B limitations, suggested tools, strategy experiments, privacy/consent safeguards and phased options. This expands the older external-analytics idea rather than authorizing a separate build.
+
+### Sep 29 — Expanded records for three recent logged ideas
+
+**Deferred; not started.** See [the detailed operations and customer-growth notes](recent-operations-ideas.md) for:
+1. Google Sheet in-house inventory flags, with later reservations and physical-pull confirmation.
+2. Warehouse and submission-date notes beside work-order product status, including print-time and matching limitations.
+3. Manual-first Google review requests, duplicate prevention, known-reviewer suppression, branded emails/pages and later automation.
+
+These records preserve the recent discussions' reasoning, examples, alternatives and unresolved questions, not only their backlog summaries. No operational changes are authorized by logging.
+
 ## August 2026
 
 ### Aug 31 — Missive drafting patterns are built and measurable; voice-matched drafts work; production publish is the remaining switch

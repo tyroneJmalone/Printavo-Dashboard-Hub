@@ -1,0 +1,186 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hub — Marketing and Future Ideas</title><style>body{margin:0;background:#f2f5f4;color:#20352e;font:16px/1.65 system-ui,sans-serif}main{max-width:980px;margin:32px auto;padding:36px;background:white;border-radius:12px}h1,h2,h3{line-height:1.25}h1{font-size:32px;color:#145a43;margin-top:32px}h2{border-top:1px solid #dce6e1;padding-top:28px;margin-top:36px}h3{margin-top:28px}a{color:#087657}blockquote{border-left:3px solid #229771;padding:10px 20px;background:#eef7f2;margin:14px 0}.table{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}td{border:1px solid #dce6e1;padding:10px;vertical-align:top}tr:first-child{font-weight:700;background:#eef7f2}.bullet{margin:5px 0;padding-left:12px}code{background:#eef1ef;padding:2px 5px}nav{padding:16px;background:#eef7f2}hr{border:0;border-top:3px solid #145a43;margin:50px 0}@media(max-width:600px){main{margin:0;padding:20px;border-radius:0}h1{font-size:27px}}@media print{body{background:white}main{margin:0;padding:0;max-width:none}.table{overflow:visible}h2,h3{break-after:avoid}tr{break-inside:avoid}}</style></head><body><main><nav><strong>Hub — Future Ideas & Discussion Records</strong><br>September 29, 2026 · Documentation only; no implementation approved.<br><a href="#marketing">Marketing & Jotform</a> · <a href="#operations">Inventory, printing & review requests</a></nav><section id="marketing"><h1>Marketing module — discussion record</h1>
+<p>Recorded: September 29, 2026.</p>
+<p>Status: <strong>Deferred idea; documented for future consideration. No implementation, integrations, sending, or ad changes authorized.</strong></p>
+<h2>Purpose and direction</h2>
+<p>Build a Hub marketing module that answers:</p>
+<p>1. What is working?</p>
+<p>2. What produces actual customers and repeat business?</p>
+<p>3. What should the team try next?</p>
+<p>The user proposed Google Analytics, Meta Ads, Constant Contact, and RB2B, then explicitly added Jotform. The recommendation is to connect marketing activity to Hub customers, opportunities, quotes, and orders rather than build another isolated dashboard of traffic and impressions. Everything below is a proposed direction, not approved scope.</p>
+<h2>Sources and their roles</h2>
+<div class="table"><table>
+<tr><td>Source</td><td>Useful information</td><td>Proposed use</td></tr>
+<tr><td>Google Analytics 4</td><td>Traffic sources, landing pages, engagement, tracked form submissions/key events</td><td>Identify channels and pages producing inquiries rather than visits alone</td></tr>
+<tr><td>Meta Ads</td><td>Spend, reach, frequency, clicks, creative performance, platform-reported conversions</td><td>Compare campaigns, spot creative fatigue, and investigate expensive traffic that does not produce inquiries</td></tr>
+<tr><td>Constant Contact</td><td>Sends, clicks, bounces, unsubscribes, opens and engagement history</td><td>Compare topics/audiences and connect attributable engagement to subsequent inquiries, quotes and orders</td></tr>
+<tr><td>RB2B</td><td>Available identified visitor/company and visit information</td><td>Suggest potential prospects, returning customers and opportunity matches for staff review</td></tr>
+<tr><td>Jotform</td><td>Inquiry submissions, form identity, submitted fields, available source/campaign information and explicit consent</td><td>Connect marketing traffic to a real inquiry and sales handoff</td></tr>
+<tr><td>Hub / Printavo</td><td>Customers, opportunities, quotes, orders, repeat business and sales</td><td>Provide business outcomes the marketing platforms cannot independently verify</td></tr>
+</table></div>
+<p>Permissions, subscription entitlements, available fields, historical access, and API limits need validation before implementation. No connection was established during this discussion. RB2B documents webhook delivery and repeat-visitor options; its documentation warns that missed payloads may not be replayable. Do not promise complete historical recovery or universal visitor identification.</p>
+<h2>Proposed pages</h2>
+<h3>1. Weekly overview</h3>
+<p>Show ad spend, website inquiries, qualified opportunities, new customers, linked orders/revenue, and cost per inquiry/acquired customer where supported. Show date ranges, data freshness, connection failures, missing coverage and unknown attribution.</p>
+<p>Accompany charts with short, evidence-backed explanations. Illustrative finding, not observed data:</p>
+<blockquote>Traffic increased but quote requests stayed flat. Additional traffic mainly reached a landing page with a lower inquiry rate. Investigate the page and targeting before increasing spend.</blockquote>
+<p>Each recommendation must link to supporting measurements. The AI should explain computed results, not invent arithmetic, causation or statistically meaningful conclusions from small samples.</p>
+<h3>2. Channels and campaigns</h3>
+<p>Compare spend → visits → inquiries → quotes → wins → revenue across paid social, email, organic search, paid search and referrals. Group related ads, emails and landing pages into a cross-channel campaign, such as “Fall Team Stores.”</p>
+<p>Questions this should answer:</p>
+<p class="bullet">• Are emails producing repeat orders or only website visits?</p>
+<p class="bullet">• Which ads lead to qualified inquiries and quotes?</p>
+<p class="bullet">• Which channels bring customers who return?</p>
+<p class="bullet">• How do team-store campaigns compare with company-apparel campaigns?</p>
+<p class="bullet">• Where in the inquiry-to-order process do opportunities stop progressing?</p>
+<p>Keep Chipply outcomes separate from standard Printavo revenue. Chipply store sales and their production invoice shells must not be added together.</p>
+<h3>3. Audience and opportunities</h3>
+<p>Possible views: identified visitors not in Hub, returning customers, potential open-opportunity matches, companies with repeated relevant-page interest, and campaign engagement worth staff review.</p>
+<p>Illustrative alert:</p>
+<blockquote>A visitor appears to match an existing customer and returned to the team-store page. Review the identity match and customer history before deciding whether to follow up.</blockquote>
+<p>RB2B identity and browsing activity are signals, not proven buying intent. A company-domain match does not establish individual identity. Do not automatically enroll identified visitors in Constant Contact. Correspondence-derived context must obey the viewing staff member's current mailbox/thread permissions.</p>
+<h3>4. Strategy and experiments</h3>
+<p>Maintain a reviewable experiment list with evidence, hypothesis, owner, dates, budget if applicable, success measure and outcome.</p>
+<div class="table"><table>
+<tr><td>Opportunity</td><td>Example experiment</td><td>Measure</td></tr>
+<tr><td>Relevant traffic, few inquiries</td><td>Simplify the inquiry form</td><td>Qualified inquiry rate</td></tr>
+<tr><td>Email clicks, few quote requests</td><td>Test a clearer call to action</td><td>Requests from tracked links</td></tr>
+<tr><td>Seasonal interest from returning customers</td><td>Send a relevant campaign to opted-in contacts</td><td>Opportunities and orders</td></tr>
+<tr><td>Rising Meta frequency and declining results</td><td>Test new creative</td><td>Cost per qualified inquiry</td></tr>
+</table></div>
+<p>Preserve what was tried and what happened so the team does not repeatedly receive the same untested advice. Strategic recommendations should consider customer segments, seasonality and production capacity, not only more traffic or spend.</p>
+<h2>Jotform: an early-phase priority</h2>
+<p>The intended connection is:</p>
+<p><strong>Ad / email / search → website → Jotform → Hub opportunity → quote → order.</strong></p>
+<p>Proposed capabilities:</p>
+<p class="bullet">• Unified inquiry inbox, labeled by form and purpose: quote request, team-store interest, contact request, etc.</p>
+<p class="bullet">• Source/campaign capture where supported. Campaign tags must survive the website and embedded-form journey; this does not happen automatically.</p>
+<p class="bullet">• Suggested existing-customer/new-prospect matches, with review before uncertain merges.</p>
+<p class="bullet">• Owner and next-action assignment; possible merch opportunity creation after review.</p>
+<p class="bullet">• Awaiting-action views and time-to-first-response measurement only where activity evidence is reliable.</p>
+<p class="bullet">• Lead-quality reporting by campaign: inquiries, qualified inquiries, quotes, won orders and linked revenue.</p>
+<p class="bullet">• Distinguish existing-customer service requests from new-business inquiries.</p>
+<p class="bullet">• Exclude spam and test submissions from marketing results.</p>
+<p class="bullet">• Deduplicate repeat delivery of a submission so it cannot create duplicate opportunities.</p>
+<p class="bullet">• Preserve explicit marketing consent separately from permission to respond to an inquiry. A quote request is not automatic newsletter consent.</p>
+<p>Open design questions include which forms exist, how they are embedded, which fields/consent are captured, how the team currently responds, and how an inquiry should become an opportunity. None was resolved in this brainstorm.</p>
+<h2>Additional tools worth evaluating</h2>
+<p>1. <strong>Google Search Console:</strong> high priority. Search queries/pages, impressions and clicks complement GA4. Find relevant queries with weak click-through, useful landing pages, and service-specific content opportunities.</p>
+<p>2. <strong>Google Ads:</strong> if used, compare search-driven inquiries with Meta-driven inquiries and link paid-search costs to supported outcomes.</p>
+<p>3. <strong>Google Business Profile:</strong> local-discovery reporting where accessible and review monitoring. Related to the separate review-request idea, not a prerequisite for sending review invitations.</p>
+<p>4. <strong>Microsoft Clarity:</strong> a diagnostic companion for friction on low-converting pages through available recordings/heatmaps. Do not assume all its information belongs in Hub or is API-accessible. Review consent and sensitive-field masking.</p>
+<p>5. <strong>Call tracking:</strong> CallRail or suitable existing phone-system reporting if phone inquiries are significant. Otherwise campaigns producing calls can appear ineffective.</p>
+<p>Do not add services merely to fill a dashboard. Search Console and trustworthy inquiry tracking may provide more value than several new analytics subscriptions.</p>
+<h2>Attribution and measurement guardrails</h2>
+<p>Keep three categories explicitly separate:</p>
+<p>1. <strong>Platform-reported:</strong> a vendor reports a conversion under its own attribution settings.</p>
+<p>2. <strong>Hub-linked:</strong> evidence connects a tracked inquiry to a customer, quote or order.</p>
+<p>3. <strong>Possible influence:</strong> activity preceded an order, but causation is unproven.</p>
+<p>Do not sum overlapping channel conversion counts as unique customers. Standardize campaign tags on ads and email links, capture sources on forms, retain an optional “How did you hear about us?” answer, and show Unknown/Unattributed totals. Account for the delay between lead creation and order conversion when comparing time windows.</p>
+<p>Email opens are weakened by privacy features; clicks can include automated activity. Weight actual inquiries and orders more heavily. Do not claim true acquisition cost or ROI when costs, identities, attribution or profit inputs are incomplete. A linked sale alone does not prove incremental marketing impact.</p>
+<h2>Proposed rollout</h2>
+<p>1. <strong>Read-only reporting and inquiry foundation:</strong> GA4, Meta, Constant Contact, Search Console and Jotform; weekly scorecard, channel views and initial inquiry capture. Jotform was promoted into this early stage after the user added it.</p>
+<p>2. <strong>Hub outcome linking:</strong> improve campaign capture and customer/opportunity linkage; connect quotes/orders; introduce staff-reviewed RB2B signals.</p>
+<p>3. <strong>Strategy support:</strong> evidence-backed weekly summaries, experiment tracking and planning around segments, seasons and capacity.</p>
+<p>4. <strong>Approved actions:</strong> prepare audiences, campaign briefs, follow-up tasks and proposed budget changes. Require explicit approval before campaigns, enrollments or ad-spend changes.</p>
+<p>Recommendation: begin with a weekly review page and campaign-to-sales view, with Jotform supplying the inquiry connection. The eventual weekly meeting should answer what changed, what produced business, what remains unknown, and the few experiments worth trying next.</p>
+<h2>Sources consulted during brainstorming</h2>
+<p class="bullet">• <a href="https://developers.google.com/analytics/devguides/reporting/data/v1">GA4 Data API</a></p>
+<p class="bullet">• <a href="https://developer.constantcontact.com/api_guide/email_bulk_campaign_summary_report.html">Constant Contact campaign reporting</a></p>
+<p class="bullet">• <a href="https://support.rb2b.com/en/articles/8976614-setup-guide-webhook">RB2B webhooks</a></p>
+<p class="bullet">• <a href="https://support.rb2b.com/en/articles/8891294-what-is-rb2b-and-how-does-it-work">RB2B overview</a></p>
+<p class="bullet">• <a href="https://developers.google.com/webmaster-tools/v1/searchanalytics/query">Search Console reporting</a></p>
+<p>These establish reporting possibilities, not verified access to the user's accounts. Jotform's exact integration capabilities and Meta's current permissions/version requirements remain implementation-time checks.</p></section><hr><section id="operations"><h1>Operations and customer-growth ideas — detailed discussion record</h1>
+<p>Recorded: September 29, 2026. Reconstructed from the recent discussions to expand the original short backlog entries.</p>
+<p><strong>All three ideas are deferred, not started. Logging is not authorization to implement, connect accounts, alter purchases/prints, or send emails.</strong> Recommendations and phased options below are proposals, not approved requirements.</p>
+<h2>1. In-house inventory visibility in Purchasing</h2>
+<h3>User's problem and proposal</h3>
+<p>The team sometimes has products in stock but lacks a dependable way to pull available inventory before buying more. The user proposed linking a live Google Sheet to Purchasing so matching PO Queue lines are flagged.</p>
+<h3>Recommended first phase</h3>
+<p>Use the sheet as a read-only inventory source, with one row per specific style, color and size, plus on-hand quantity and shelf/bin location. Match conservatively; approved naming translations may be needed, but similar colors or styles are not substitutes.</p>
+<p>Example sheet:</p>
+<div class="table"><table>
+<tr><td>Style</td><td>Color</td><td>Size</td><td>On hand</td><td>Location</td></tr>
+<tr><td>PC54</td><td>Black</td><td>XL</td><td>24</td><td>Shelf B2</td></tr>
+<tr><td>PC54</td><td>Black</td><td>L</td><td>12</td><td>Shelf B2</td></tr>
+</table></div>
+<p>The queue could display:</p>
+<blockquote>In-house stock available: 24 of 36 needed. Shelf B2. Inventory checked 2 minutes ago.</blockquote>
+<p>Refresh periodically and provide manual refresh. Describe this as synchronized, not instantaneously live. Show stale/unavailable data explicitly; a failed sheet connection must not silently look like zero stock.</p>
+<p>Initially leave vendor quantities unchanged. A matching sheet row does not establish that the items are usable, correctly counted or uncommitted. This first stage tests list quality, matching and whether the team uses the alerts.</p>
+<h3>Reservation and pull workflow as a later phase</h3>
+<p>Distinguish “inventory exists” from “inventory is set aside for this order.”</p>
+<p>Example: order needs 36 shirts; sheet says 24; staff confirms/reserves 20 usable shirts; purchasing shows <strong>20 from inventory / 16 to purchase</strong>.</p>
+<p>Proposed workflow: <strong>Review → Reserve → Confirm physically pulled → Purchase remainder</strong>.</p>
+<p>Main risk: two orders see the same stock and both rely on it. Hub reservations should be order-specific and record staff responsibility and pull state.</p>
+<p><strong>Available to reserve = on hand − active reservations.</strong></p>
+<p>Canceling/changing an order must release or review its reservations. Define exactly when/how the sheet's on-hand balance is reduced, so a reservation and physical pull cannot deduct stock twice or leave used stock available.</p>
+<h3>Longer-term option and unresolved questions</h3>
+<p>Hub could eventually own inventory/reservations while the sheet becomes a count/import/export tool; a full inventory system is not necessary to begin.</p>
+<p>Before planning, inspect whether the current sheet has style/color/size detail, how reliably shelf withdrawals are recorded, who maintains counts, and how reserved/pulled stock should affect on-hand quantities.</p>
+<h2>2. Warehouse and ordered-date notes on auto-printed work orders</h2>
+<h3>User's proposal</h3>
+<p>Show where each line item was ordered from and the date, next to its printed product status.</p>
+<h3>Feasibility findings from read-only investigation</h3>
+<p>Auto-print currently renders the upstream Printavo work-order page through Chromium. It does not locally generate each product row. Hub saves PO snapshots containing Printavo line/order references and optional warehouse code/name, plus a PO-level vendor-submission timestamp. The current PDF path would need augmentation and reliable line-to-row matching.</p>
+<p>Suggested display:</p>
+<blockquote>Ordered · SanMar — [warehouse] · PO submitted 9/29/26</blockquote>
+<p>Place a compact note beside or beneath the status. Leave upstream Printavo product-status text unchanged.</p>
+<h3>Essential distinctions and safeguards</h3>
+<p class="bullet">• Use the actual stored PO vendor-submission timestamp, not PO creation, Printavo push or the date a person marked the product Ordered.</p>
+<p class="bullet">• A submission timestamp is not necessarily supplier acceptance or shipment confirmation.</p>
+<p class="bullet">• The date is PO-level; do not portray it as independent per-line confirmation.</p>
+<p class="bullet">• Show multiple purchases/warehouses separately, ideally with quantities.</p>
+<p class="bullet">• Warehouse is saved at whole-PO-line level; do not invent per-size allocations without evidence.</p>
+<p class="bullet">• Manual/external/older purchases may lack warehouse or submission information; show it unavailable rather than infer it.</p>
+<p class="bullet">• Exact matching matters when lines are duplicated, changed, replaced or split. Do not join on style name alone.</p>
+<p class="bullet">• The printed note reflects available evidence at render time. Later purchases cannot update paper already printed.</p>
+<p class="bullet">• Printing a saved Hub PO after the work order is not the same as submitting a vendor order and cannot supply a vendor-submission timestamp that did not exist when the work order was rendered.</p>
+<h3>Possible approaches</h3>
+<p>Preferred: safely annotate the fetched work-order markup before PDF generation if exact row matching is reliable. An added purchasing page/overlay is an alternative if inline matching proves unsafe, though it is less aligned with the requested next-to-status placement.</p>
+<p>Code-investigation pointers, to recheck when planning: API printQueue autoPrint engine/pdf rendering and workorder presentation; purchasing PO snapshots, vendor submission and PO push. These observations establish feasibility only; no printing changes were made.</p>
+<h2>3. Google review requests from Hub</h2>
+<h3>User's goal</h3>
+<p>Replace a manual review-request process with a Hub view of recently completed orders, allowing one or multiple requests by email. Start manually and later automate. Avoid repeated requests, especially to people who already reviewed.</p>
+<h3>Proposed interface</h3>
+<p>Group eligible orders by recipient, not one independently sendable row per order. Prefer fulfilled/picked-up/delivered evidence to production completion, because finished work may not have reached the customer.</p>
+<p>Tabs: <strong>Ready to request / Requested / Reviewed / Excluded</strong>.</p>
+<p>Show contact/customer, relevant orders, fulfillment date and request status. Provide:</p>
+<p class="bullet">• Single/bulk selection and separate personalized emails to each recipient.</p>
+<p class="bullet">• Preview and recipient correction when the billing contact is not appropriate.</p>
+<p class="bullet">• Mark Already reviewed, Don't request or Remind me later.</p>
+<p class="bullet">• Request history on the customer profile.</p>
+<h3>Duplicate prevention and suppression</h3>
+<p>Suggested default: one initial request per known person, not per order; no automatic reminders initially.</p>
+<p>Deduplicate email addresses across records and selected orders. Recheck eligibility at sending time and guard against simultaneous staff sends. Record recipient, sender, time and related orders. Import past manual request history and known reviewers before the first batch.</p>
+<p>Suppress known reviewers regardless of rating, opt-outs, email spam complaints and bounced addresses. A dissatisfied customer's service complaint should not become a mechanism for selectively soliciting only positive reviewers. Any temporary operational delay should use a neutral policy, not expected review sentiment.</p>
+<p>People using multiple addresses may need identity linking or manual suppression; do not claim perfect person-level deduplication.</p>
+<h3>The reviewer-identity limitation</h3>
+<p>Google's reviews API exposes reviewer display information, not their email address. Therefore:</p>
+<p class="bullet">• Staff can mark a known reviewer and optionally retain the review link.</p>
+<p class="bullet">• A future integration could import reviews and suggest contact matches for confirmation.</p>
+<p class="bullet">• A name match is not proof of identity.</p>
+<p class="bullet">• Clicking the Google link does not prove a review was submitted.</p>
+<p class="bullet">• An “Already reviewed” self-report can stop further requests without being labeled independently verified.</p>
+<h3>Email and customer-facing pages</h3>
+<p>Recommend a clean Mint-branded email with logo, short personal message, real reply address and one prominent button directly to Google's review form. An extra landing page adds friction.</p>
+<p>Illustrative copy:</p>
+<blockquote>Subject: Thanks for your recent order, Sarah</blockquote>
+<p>&gt;</p>
+<blockquote>Hi Sarah,</blockquote>
+<blockquote>Thanks for working with Mint Printworks on your team shirts. If you have a moment, we'd appreciate an honest Google review of your experience.</blockquote>
+<p>&gt;</p>
+<blockquote>Leave a Google review</blockquote>
+<p>&gt;</p>
+<blockquote>Thanks,</blockquote>
+<blockquote>The Mint Printworks team</blockquote>
+<p>Provide an unobtrusive stop-review-requests option. Small branded pages could confirm opt-out or “already reviewed.” A QR code on packing/pickup materials could point to the same Google destination.</p>
+<p>No incentives, predetermined positive wording, or rating-first pages that send only satisfied customers to Google. Invite honest feedback.</p>
+<h3>Tools and rollout</h3>
+<p class="bullet">• <strong>Google direct review link:</strong> simplest initial destination; no review-reading integration necessary.</p>
+<p class="bullet">• <strong>Existing Resend setup:</strong> first sending option to evaluate for branding and delivery/bounce handling.</p>
+<p class="bullet">• <strong>Missive:</strong> alternative if shared-inbox workflow is the priority; verify actual sending support/permissions.</p>
+<p class="bullet">• <strong>Google Business Profile API:</strong> later monitoring and staff-confirmed matching, subject to API/account access.</p>
+<p class="bullet">• <strong>Dedicated review service:</strong> consider if SMS, multi-location operations or broader review monitoring justify it. Do not assume it solves reviewer identity.</p>
+<p>Stages: <strong>Manual select/preview/send → Hub-suggested batches with staff approval → optional automatic send after a fulfillment delay</strong>.</p>
+<p>Automation should reuse suppression/history controls, provide daily limits and a pause switch. Sender setup, past request history, fulfillment signals and relevant consent/compliance requirements need review before implementation.</p>
+<p>Sources: <a href="https://support.google.com/business/answer/7035772">Google review-request guidance</a>, <a href="https://developers.google.com/my-business/reference/rest/v4/accounts.locations.reviews#reviewer">Google reviewer fields</a>.</p></section></main></body></html>

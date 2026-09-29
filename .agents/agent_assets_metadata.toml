@@ -71,7 +71,7 @@ logical_id = "d6deb1b7-f8ee-441a-a7ff-c4f7d3d63ae3"
 [[outputs]]
 id = "iXQvqxEa1G3JixaO-MnsF"
 uri = "file://exports/printavo-hub-plan-status.html"
-type = "text"
+type = "html"
 title = "Printavo Hub — Detailed Plan, Status & Roadmap (HTML)"
 description = "Editable and print-ready source for the updated canonical Hub status report."
 logical_id = "97b59143-b8c4-4a97-a79c-0556eea91364"
@@ -85,7 +85,7 @@ content_type = "text/html"
 [[outputs]]
 id = "lJCmJaQVjOlfqb-JY95_t"
 uri = "file://exports/printavo-hub-complete-synopsis.html"
-type = "text"
+type = "html"
 title = "Printavo Hub — Complete Synopsis & Team Feedback Guide"
 description = "Plain-language guide to every Hub section, module, and page, including intended purpose, current maturity, feedback prompts, and prioritization worksheet."
 logical_id = "ef2f8003-0c38-4138-8fa6-d5ed7e56ac7e"
@@ -109,3 +109,17 @@ mtime_ms = 1788918116228
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/27891715-4b62-4d6d-a8ee-635d75370f0a/9c5c1374-8874-48de-a324-5e5e17f6f2d0"
 storage_version_token = "1788918122197439"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "gZAz9Ois9kv_tLvjC-Vbr"
+uri = "file://exports/hub-future-ideas-september-29-2026.html"
+type = "html"
+title = "Hub — Marketing & Future Ideas"
+description = "Full marketing and Jotform brainstorm, plus expanded inventory, work-order annotation, and Google review-request notes. All deferred; no implementation authorized."
+logical_id = "16f554d8-13b6-481f-bd78-68519f630173"
+content_hash = "sha256:990303b8146346347fea33d49ee32e6b0baf76f4c53957fc61da31abb3da14ae"
+size = 24971
+mtime_ms = 1790665116891
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/16f554d8-13b6-481f-bd78-68519f630173/70ff663b-8f5c-4345-8b4c-a7d8024ebc38"
+storage_version_token = "1790665117782380"
+content_type = "text/html"
