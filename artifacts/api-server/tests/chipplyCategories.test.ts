@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { categoryMutation, commitReview, recommendation, staleLine, validSelection, validateSelections, type ReviewLine } from "../src/lib/chipply/categoryReview";
 
-const categories = [{ id: "screen", name: "Screen Printing" }, { id: "emb", name: "Embroidery" }, { id: "heat", name: "HEAT APPLIED GRAPHICS" }];
+const categories = [{ id: "screen", name: "Screen Printing" }, { id: "emb", name: "Embroidery" }, { id: "heat", name: "HEAT APPLIED GRAPHICS" }, { id: "mixed", name: "Mixed Decoration" }];
 const selection = { orderId: "order", lineItemId: "line" };
 const live = { id: "line", position: 7, category: null, lineItemGroup: { order: { __typename: "Invoice", id: "order", nickname: "123456 Store", status: { id: "s", name: "MERCH PRINT: Complete" } } } };
 const line: ReviewLine = { ...selection, currentCategoryId: null, currentCategoryName: null, recommendedCategoryId: "screen", recommendedCategoryName: "Screen Printing", statusName: "MERCH PRINT: Complete", statusId: "s", eligible: true, message: "Ready" };
@@ -17,16 +17,18 @@ test("empty, duplicate, whitespace duplicate and over-cap selections are rejecte
 
 test("every method and stage normalizes whitespace/case, ignores status IDs", () => {
   for (const stage of ["NEW", "Art Approval", "In Production", "Complete", "Archived"]) {
-    for (const [token, id] of [["PRINT", "screen"], ["EMB", "emb"], ["HEAT", "heat"]]) {
+    for (const [token, id] of [["PRINT", "screen"], ["EMB", "emb"], ["HEAT", "heat"], ["MIXED", "mixed"]]) {
       assert.equal(recommendation(`🟢 merch  \n ${token} : ${stage}`, categories).category?.id, id);
     }
   }
   for (const stage of ["Waiting 4 Blanks", "Ready 4 Production", "Ready 2 Pick/Pack", "Pick/Pack COMPLETE"]) {
-    for (const [token, id] of [["PRINT", "screen"], ["EMB", "emb"], ["HEAT", "heat"]]) {
+    for (const [token, id] of [["PRINT", "screen"], ["EMB", "emb"], ["HEAT", "heat"], ["MIXED", "mixed"]]) {
       assert.equal(recommendation(`🟢 MERCH - ${token} ${stage}`, categories).category?.id, id);
     }
   }
-  assert.equal(recommendation("🟢 MERCH - MIXED DECO Ready 4 Production", categories).category, null);
+  assert.equal(recommendation("🟢 MERCH - MIXED DECO Ready 4 Production", categories).category?.id, "mixed");
+  assert.equal(recommendation("MERCH MIXED", []).category, null);
+  assert.equal(recommendation("MERCH MIXED", [...categories, { id: "dupe-mixed", name: " MIXED  DECORATION " }]).category, null);
   assert.equal(recommendation("MERCH PRINT / MERCH EMB", categories).category, null);
   assert.equal(recommendation("Other", categories).category, null);
   assert.equal(recommendation("MERCH PRINT", []).category, null);

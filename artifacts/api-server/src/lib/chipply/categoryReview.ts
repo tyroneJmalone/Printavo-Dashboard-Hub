@@ -21,7 +21,7 @@ export function recommendation(status: string, categories: Category[]) {
   // at each production stage. Accept that observed separator as well as the
   // requested literal "MERCH PRINT/EMB/HEAT"; don't strip other punctuation.
   const normalized = normalizeStatus(status).replace(/\bMERCH\s*-\s*/g, "MERCH ");
-  const names = [["MERCH PRINT", "Screen Printing"], ["MERCH EMB", "Embroidery"], ["MERCH HEAT", "HEAT APPLIED GRAPHICS"]]
+  const names = [["MERCH PRINT", "Screen Printing"], ["MERCH EMB", "Embroidery"], ["MERCH HEAT", "HEAT APPLIED GRAPHICS"], ["MERCH MIXED", "Mixed Decoration"]]
     .filter(([token]) => normalized.includes(token!)).map(([, name]) => name!);
   if (names.length !== 1) return { category: null, message: names.length ? "Ambiguous decoration methods in status." : "No category recommendation for this status." };
   const matches = categories.filter(c => normalizeStatus(c.name) === normalizeStatus(names[0]!));

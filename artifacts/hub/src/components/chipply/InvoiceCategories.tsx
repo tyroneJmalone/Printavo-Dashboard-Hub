@@ -90,7 +90,7 @@ export function InvoiceCategories() {
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-2">
       <h2 className="text-lg font-semibold text-white">Invoice categories</h2>
       <p className="text-sm text-slate-400">All nickname-recognized Chipply invoices in the Printavo mirror, including stores not imported here and every status. This is not a live completeness guarantee; newly synced invoices appear after refresh.</p>
-      <p className="text-xs text-slate-400">MERCH PRINT → Screen Printing · MERCH EMB → Embroidery · MERCH HEAT → HEAT APPLIED GRAPHICS. Recommendations cover waiting, ready, and complete stages. Unrecognized statuses require a manual category choice.</p>
+      <p className="text-xs text-slate-400">MERCH PRINT → Screen Printing · MERCH EMB → Embroidery · MERCH HEAT → HEAT APPLIED GRAPHICS · MERCH MIXED → Mixed Decoration. Recommendations cover waiting, ready, and complete stages. Unrecognized statuses require a manual category choice.</p>
     </div>
     <div className="flex flex-wrap gap-3 items-center">
       <input data-testid="input-category-search" aria-label="Search invoices" placeholder="Search nickname or invoice…" className={`${categoryInputClass} flex-1 min-w-48`} value={search} onChange={(event) => changeFilter(() => setSearch(event.target.value))} />
