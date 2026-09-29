@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
+import { DetailedStoreData } from "@/components/chipply/DetailedData";
+import { ThreadLinks } from "@/components/merchPipeline/ThreadLinks";
 import {
   useGetChipplyStore,
   getGetChipplyStoreQueryKey,
@@ -333,6 +335,7 @@ export default function ChipplyStoreDetail() {
 
   return (
     <AppShell>
+      <div className="px-6 pt-4"><ThreadLinks storeId={id} suggestedSearch={detailQuery.data?.store?.storeName ?? ""} /></div>
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
         <div>
           <Link
@@ -402,6 +405,8 @@ export default function ChipplyStoreDetail() {
             </div>
           </div>
         </div>
+
+        <DetailedStoreData storeId={id} />
 
         {!editing ? (
           <>

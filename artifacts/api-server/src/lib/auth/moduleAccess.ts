@@ -38,7 +38,7 @@ export const MODULE_DEFS: readonly ModuleDef[] = [
   { key: "product-finder", label: "Product Finder", group: "Sales", apiPrefixes: ["/purchasing"] },
   { key: "garment-pantones", label: "Garment Pantones", group: "Sales", apiPrefixes: ["/purchasing"] },
   { key: "collections", label: "Collections", group: "Sales", apiPrefixes: ["/collections"] },
-  { key: "pipeline", label: "Pipeline", group: "Sales", apiPrefixes: ["/pipeline", "/reports"] },
+  { key: "pipeline", label: "Pipeline", group: "Sales", apiPrefixes: ["/pipeline", "/merch-pipeline", "/reports"] },
   { key: "status-activity", label: "Status Activity", group: "Sales", apiPrefixes: ["/status-activity", "/reports"] },
   { key: "chipply", label: "Chipply Stores", group: "Sales", apiPrefixes: ["/chipply"] },
   { key: "reorder", label: "Reorder Requests", group: "Sales", apiPrefixes: ["/reorder-requests"] },

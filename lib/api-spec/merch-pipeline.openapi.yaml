@@ -1,0 +1,173 @@
+openapi: 3.1.0
+info: { title: Merch pipeline contract fragment, version: 1.0.0 }
+paths:
+  /merch-pipeline/opportunities:
+    get:
+      operationId: listMerchOpportunities
+      responses:
+        '200': { description: Array of opportunities, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/MerchOpportunity' } } } } }
+    post:
+      operationId: createMerchOpportunity
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MerchOpportunityCreateInput' } } } }
+      responses:
+        '201': { description: Created opportunity, content: { application/json: { schema: { $ref: '#/components/schemas/MerchOpportunity' } } } }
+  /merch-pipeline/opportunities/{id}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updateMerchOpportunity
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MerchOpportunityInput' } } } }
+      responses:
+        '200': { description: Updated opportunity; archived boolean archives or restores, content: { application/json: { schema: { $ref: '#/components/schemas/MerchOpportunity' } } } }
+    delete:
+      operationId: deleteMerchOpportunity
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MerchConfirmation' } } } }
+      responses:
+        '204': { description: Deleted only if archived and unlinked; requires confirmed true JSON body }
+        '409': { description: Archive and unlink before deleting }
+  /merch-pipeline/staff:
+    get:
+      operationId: listMerchStaff
+      responses:
+        '200': { description: Staff account IDs and display email only, content: { application/json: { schema: { type: array, items: { type: object, required: [id, email], properties: { id: { type: string, format: uuid }, email: { type: string } } } } } } }
+  /merch-pipeline/stores:
+    get:
+      operationId: listMerchStoreChoices
+      parameters:
+        - { in: query, name: q, schema: { type: string, maxLength: 300 } }
+      responses:
+        '200': { description: "Existing store IDs, names and event IDs; q search", content: { application/json: { schema: { type: array, items: { type: object, required: [id, name, eventId], properties: { id: { type: string, format: uuid }, name: { type: string }, eventId: { type: [string, 'null'] } } } } } } }
+  /merch-pipeline/opportunities/{id}/threads:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: listMerchThreads
+      parameters:
+        - { in: query, name: search, schema: { type: string, minLength: 2, maxLength: 300 } }
+      responses:
+        '200': { description: Authorized links or search suggestions, content: { application/json: { schema: { $ref: '#/components/schemas/MerchThreadResults' } } } }
+    post:
+      operationId: linkMerchThread
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MerchThreadLinkInput' } } } }
+      responses:
+        '201': { description: Confirmed threadId or validated manual Missive URL link, content: { application/json: { schema: { type: object, required: [id], properties: { id: { type: string, format: uuid } } } } } }
+  /merch-pipeline/opportunities/{id}/threads/{linkId}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      - { in: path, name: linkId, required: true, schema: { type: string, format: uuid } }
+    delete:
+      operationId: unlinkMerchThread
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MerchConfirmation' } } } }
+      responses:
+        '204': { description: Confirmed unlink with current thread read authorization }
+  /chipply/stores/{id}/threads:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: listStoreThreads
+      parameters:
+        - { in: query, name: search, schema: { type: string, minLength: 2, maxLength: 300 } }
+      responses:
+        '200': { description: Same authorized thread contract as opportunity threads, content: { application/json: { schema: { $ref: '#/components/schemas/MerchThreadResults' } } } }
+    post:
+      operationId: linkStoreThread
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MerchThreadLinkInput' } } } }
+      responses:
+        '201': { description: Confirmed link; never grants mailbox access, content: { application/json: { schema: { type: object, required: [id], properties: { id: { type: string, format: uuid } } } } } }
+  /chipply/stores/{id}/threads/{linkId}:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      - { in: path, name: linkId, required: true, schema: { type: string, format: uuid } }
+    delete:
+      operationId: unlinkStoreThread
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/MerchConfirmation' } } } }
+      responses:
+        '204': { description: Confirmed authorized unlink }
+components:
+  schemas:
+    MerchConfirmation:
+      type: object
+      required: [confirmed]
+      properties: { confirmed: { type: boolean, enum: [true] } }
+    MerchThreadLinkInput:
+      type: object
+      additionalProperties: false
+      required: [confirmed]
+      description: Exactly one of threadId or manualUrl is required. Manual URL must be a direct HTTPS Missive thread URL with a UUID.
+      properties:
+        confirmed: { type: boolean, enum: [true] }
+        threadId: { type: string, format: uuid }
+        manualUrl: { type: string, format: uri }
+    MerchThreadResults:
+      type: object
+      properties:
+        links:
+          type: array
+          items:
+            type: object
+            required: [id, threadId, subject, url]
+            properties:
+              id: { type: string, format: uuid }
+              threadId: { type: [string, 'null'], format: uuid }
+              subject: { type: [string, 'null'] }
+              url: { type: [string, 'null'] }
+        suggestions:
+          type: array
+          items:
+            type: object
+            required: [id, subject]
+            properties:
+              id: { type: string, format: uuid }
+              subject: { type: [string, 'null'] }
+              webUrl: { type: [string, 'null'] }
+    MerchOpportunityInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 300 }
+        stage: { type: string, enum: ['Target/Prospect/Inquiry', Discovery, 'Real Deal/Scheduled', 'Gathering/Building', Live, Closed] }
+        ownerId: { type: [string, 'null'], format: uuid }
+        nextAction: { type: string, maxLength: 2000 }
+        dueDate: { type: [string, 'null'], format: date }
+        chipplyStoreId: { type: [string, 'null'], format: uuid }
+        eventId: { type: [string, 'null'], maxLength: 100 }
+        archived: { type: boolean }
+        details:
+          type: object
+          additionalProperties: false
+          properties:
+            status: { type: string }
+            dashboardUrl: { type: string, format: uri }
+            previewUrl: { type: string, format: uri }
+            websiteUrl: { type: string, format: uri }
+            launchDate: { type: [string, 'null'], format: date }
+            closeDate: { type: [string, 'null'], format: date }
+            inHandDate: { type: [string, 'null'], format: date }
+            fundraiser: { type: boolean }
+            payee: { type: string }
+            processes: { type: string }
+            audience: { type: string }
+            repeat: { type: boolean }
+            partial: { type: boolean }
+            inHouse: { type: boolean }
+            notes: { type: string }
+            mailingAddress: { type: string }
+            checkDate: { type: [string, 'null'], format: date }
+            checkAmount: { type: [string, 'null'], pattern: '^\d{1,10}(\.\d{1,2})?$' }
+            payoutNotes: { type: string }
+    MerchOpportunityCreateInput:
+      allOf:
+        - { $ref: '#/components/schemas/MerchOpportunityInput' }
+        - type: object
+          required: [name]
+          properties:
+            name: { type: string, minLength: 1, maxLength: 300 }
+    MerchOpportunity:
+      allOf:
+        - { $ref: '#/components/schemas/MerchOpportunityInput' }
+        - type: object
+          required: [id, name, stage, ownerId, nextAction, dueDate, chipplyStoreId, eventId, archived, details, createdAt, updatedAt]
+          properties:
+            id: { type: string, format: uuid }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }

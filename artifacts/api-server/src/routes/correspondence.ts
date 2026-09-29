@@ -75,7 +75,7 @@ function threadJson(row: Record<string, unknown>) {
   };
 }
 
-async function authorizedThreads(
+export async function authorizedThreads(
   staffId: string,
   isAdmin: boolean,
   query: string,

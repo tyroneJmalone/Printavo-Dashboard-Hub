@@ -1,0 +1,192 @@
+# Merge paths/components into openapi.yaml before central code generation.
+paths:
+  /chipply/data/preview:
+    post:
+      operationId: previewChipplyData
+      tags: [Chipply]
+      summary: Review one bounded CSV/XLSX detailed Data Export without importing
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary, description: "CSV/XLSX, maximum 5 MB, 10000 lines, one Sales Order" }
+      responses:
+        "200":
+          description: Actor-bound preview expires after 30 minutes
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplyDataPreview" }
+        "400": { description: Invalid file or inconsistent repeating order money }
+  /chipply/data/confirm:
+    post:
+      operationId: confirmChipplyData
+      tags: [Chipply]
+      summary: Atomically create/link store and activate reviewed complete snapshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [previewId, replaceCurrent]
+              properties:
+                previewId: { type: string, format: uuid }
+                replaceCurrent: { type: boolean, description: "Explicitly replace all current lines; missing rows are not merged. Previous versions remain auditable." }
+      responses:
+        "200":
+          description: Confirmed snapshot; repeated current source hash is idempotent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [storeId, snapshotId, idempotent]
+                properties:
+                  storeId: { type: string, format: uuid }
+                  snapshotId: { type: string, format: uuid }
+                  idempotent: { type: boolean }
+        "409": { description: Expired/stale preview or replacement not explicitly authorized }
+  /chipply/data/stores/{storeId}:
+    get:
+      operationId: getChipplyDataDetail
+      tags: [Chipply]
+      summary: Current source dollars and recomputed mirrored production attribution
+      parameters:
+        - { name: storeId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Chipply-only detailed snapshot, never Printavo invoice revenue
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplyDataDetail" }
+        "404": { description: Store has no detailed snapshot }
+  /chipply/data/stores/{storeId}/overrides:
+    post:
+      operationId: reviewChipplyDataMatch
+      tags: [Chipply]
+      summary: Audit a manual candidate selection without overriding quantity/method evidence
+      parameters:
+        - { name: storeId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [snapshotId, rowOrdinal, invoiceId, reason]
+              properties:
+                snapshotId: { type: string, format: uuid }
+                rowOrdinal: { type: integer, minimum: 1 }
+                invoiceId: { type: string, minLength: 1, maxLength: 100 }
+                reason: { type: string, minLength: 5, maxLength: 1000 }
+      responses:
+        "200":
+          description: Updated detail; mismatched quantities still remain unallocated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplyDataDetail" }
+        "409": { description: Stale snapshot or invoice not in same-event same-process candidates }
+components:
+  schemas:
+    ChipplyDataCentsMap:
+      type: object
+      additionalProperties: { type: integer, minimum: -9007199254740991, maximum: 9007199254740991 }
+      description: "Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components."
+    ChipplyDataSummary:
+      type: object
+      required: [lineCount, orderCount, quantity, itemTotalCents, orderTotalCents, orderComponentsCents, unitComponentsExtendedCents]
+      properties:
+        lineCount: { type: integer }
+        orderCount: { type: integer }
+        quantity: { type: integer }
+        itemTotalCents: { type: integer, minimum: -9007199254740991, maximum: 9007199254740991 }
+        orderTotalCents: { type: integer, minimum: -9007199254740991, maximum: 9007199254740991 }
+        orderComponentsCents: { $ref: "#/components/schemas/ChipplyDataCentsMap" }
+        unitComponentsExtendedCents: { $ref: "#/components/schemas/ChipplyDataCentsMap" }
+    ChipplyDataReconciliation:
+      type: object
+      required: [outcome, actualMethod, invoiceId, candidateInvoiceIds, reason]
+      properties:
+        outcome: { type: string, enum: [matched, reviewed, ambiguous, quantity-mismatch, incomplete, unmatched, unverified] }
+        actualMethod: { type: [string, "null"], description: "screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)" }
+        invoiceId: { type: [string, "null"] }
+        candidateInvoiceIds: { type: array, items: { type: string } }
+        reason: { type: string }
+    ChipplyDataLine:
+      type: object
+      required: [rowOrdinal, orderNumber, orderDate, processName, plannedMethod, style, color, size, productName, vendor, quantity, itemTotalCents, unitCents, reconciliation]
+      properties:
+        rowOrdinal: { type: integer, description: "Stable one-based row identity in immutable source snapshot; identical legitimate lines retained" }
+        orderNumber: { type: string }
+        orderDate: { type: string, format: date, description: "Export calendar date, no timezone shift" }
+        processName: { type: string }
+        plannedMethod: { type: [string, "null"] }
+        style: { type: string }
+        color: { type: string }
+        size: { type: string }
+        productName: { type: string }
+        vendor: { type: string }
+        quantity: { type: integer }
+        itemTotalCents: { type: integer, minimum: -9007199254740991, maximum: 9007199254740991 }
+        unitCents: { $ref: "#/components/schemas/ChipplyDataCentsMap" }
+        reconciliation: { $ref: "#/components/schemas/ChipplyDataReconciliation" }
+    ChipplyDataPreview:
+      type: object
+      required: [previewId, expiresAt, salesOrder, storeName, sourceHash, existingStore, detectedInvoiceCount, currentSnapshotId, requiresReplacement, summary, lines, warnings]
+      properties:
+        previewId: { type: string, format: uuid }
+        expiresAt: { type: string, format: date-time }
+        salesOrder: { type: string }
+        storeName: { type: string }
+        sourceHash: { type: string }
+        existingStore:
+          type: [object, "null"]
+          required: [id, storeName]
+          properties:
+            id: { type: string, format: uuid }
+            storeName: { type: string }
+        detectedInvoiceCount: { type: integer }
+        currentSnapshotId: { type: [string, "null"] }
+        requiresReplacement: { type: boolean }
+        summary: { $ref: "#/components/schemas/ChipplyDataSummary" }
+        lines: { type: array, items: { $ref: "#/components/schemas/ChipplyDataLine" } }
+        warnings: { type: array, items: { type: string } }
+    ChipplyDataOverride:
+      type: object
+      required: [rowOrdinal, invoiceId, reason, actor, createdAt]
+      properties:
+        rowOrdinal: { type: integer }
+        invoiceId: { type: string }
+        reason: { type: string }
+        actor: { type: string }
+        createdAt: { type: string, format: date-time }
+    ChipplyDataVersion:
+      type: object
+      required: [id, sourceHash, sourceName, createdAt, actor]
+      properties:
+        id: { type: string, format: uuid }
+        sourceHash: { type: string }
+        sourceName: { type: string }
+        createdAt: { type: string, format: date-time }
+        actor: { type: string }
+    ChipplyDataDetail:
+      type: object
+      required: [storeId, snapshotId, sourceHash, salesOrder, storeName, sourceName, importedAt, summary, lines, overrides, versions, warnings]
+      properties:
+        storeId: { type: string, format: uuid }
+        snapshotId: { type: string, format: uuid }
+        sourceHash: { type: string }
+        salesOrder: { type: string }
+        storeName: { type: string }
+        sourceName: { type: string }
+        importedAt: { type: string, format: date-time }
+        summary: { $ref: "#/components/schemas/ChipplyDataSummary" }
+        lines: { type: array, items: { $ref: "#/components/schemas/ChipplyDataLine" } }
+        overrides: { type: array, items: { $ref: "#/components/schemas/ChipplyDataOverride" } }
+        versions: { type: array, items: { $ref: "#/components/schemas/ChipplyDataVersion" } }
+        warnings: { type: array, items: { type: string } }

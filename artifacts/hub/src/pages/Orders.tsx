@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { ChipplyReport, ReportSourceSelector } from "@/components/chipply/ChipplyReport";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
 import { ActivityOrderDetailPanel } from "@/components/ActivityOrderDetailPanel";
@@ -82,6 +83,12 @@ function formatObservedAt(value: string | null | undefined): string {
 }
 
 export default function Orders() {
+  const [source, setSource] = useState<"printavo" | "chipply">(() => new URLSearchParams(window.location.search).get("source") === "chipply" ? "chipply" : "printavo");
+  if (source === "chipply") return <AppShell><div className="flex h-full flex-col overflow-auto"><ReportSourceSelector source={source} onChange={setSource} /><ChipplyReport /></div></AppShell>;
+  return <PrintavoReports onSourceChange={setSource} />;
+}
+
+function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printavo" | "chipply") => void }) {
   const [activeTab, setActiveTab] = useState<BreakdownType>('table');
   const [reportMode, setReportMode] = useState<ReportMode>("normal");
   const [activityPreset, setActivityPreset] = useState<ActivityPreset>("today");
@@ -225,6 +232,7 @@ export default function Orders() {
   return (
     <AppShell>
       <div className="flex flex-col h-full overflow-auto">
+        <ReportSourceSelector source="printavo" onChange={onSourceChange} />
         <div className="flex-shrink-0 bg-[#020617] border-b border-slate-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>

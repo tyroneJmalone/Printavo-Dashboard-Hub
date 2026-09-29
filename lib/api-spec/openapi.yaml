@@ -43,6 +43,32 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /chipply/data/preview:
+    $ref: './chipply-data.openapi.yaml#/paths/~1chipply~1data~1preview'
+  /chipply/data/confirm:
+    $ref: './chipply-data.openapi.yaml#/paths/~1chipply~1data~1confirm'
+  /chipply/data/stores/{storeId}:
+    $ref: './chipply-data.openapi.yaml#/paths/~1chipply~1data~1stores~1{storeId}'
+  /chipply/data/stores/{storeId}/overrides:
+    $ref: './chipply-data.openapi.yaml#/paths/~1chipply~1data~1stores~1{storeId}~1overrides'
+  /merch-pipeline/opportunities:
+    $ref: './merch-pipeline.openapi.yaml#/paths/~1merch-pipeline~1opportunities'
+  /merch-pipeline/opportunities/{id}:
+    $ref: './merch-pipeline.openapi.yaml#/paths/~1merch-pipeline~1opportunities~1{id}'
+  /merch-pipeline/staff:
+    $ref: './merch-pipeline.openapi.yaml#/paths/~1merch-pipeline~1staff'
+  /merch-pipeline/stores:
+    $ref: './merch-pipeline.openapi.yaml#/paths/~1merch-pipeline~1stores'
+  /merch-pipeline/opportunities/{id}/threads:
+    $ref: './merch-pipeline.openapi.yaml#/paths/~1merch-pipeline~1opportunities~1{id}~1threads'
+  /merch-pipeline/opportunities/{id}/threads/{linkId}:
+    $ref: './merch-pipeline.openapi.yaml#/paths/~1merch-pipeline~1opportunities~1{id}~1threads~1{linkId}'
+  /chipply/stores/{id}/threads:
+    $ref: './merch-pipeline.openapi.yaml#/paths/~1chipply~1stores~1{id}~1threads'
+  /chipply/stores/{id}/threads/{linkId}:
+    $ref: './merch-pipeline.openapi.yaml#/paths/~1chipply~1stores~1{id}~1threads~1{linkId}'
+  /reports/chipply:
+    $ref: './chipply-reports.fragment.yaml#/paths/~1reports~1chipply'
   /chipply/category-review/invoices:
     get:
       operationId: listChipplyCategoryInvoices
@@ -8171,6 +8197,38 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    ChipplyDataCentsMap:
+      $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataCentsMap'
+    ChipplyDataSummary:
+      $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataSummary'
+    ChipplyDataReconciliation:
+      $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataReconciliation'
+    ChipplyDataLine:
+      $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataLine'
+    ChipplyDataPreview:
+      $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataPreview'
+    ChipplyDataOverride:
+      $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataOverride'
+    ChipplyDataVersion:
+      $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataVersion'
+    ChipplyDataDetail:
+      $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataDetail'
+    MerchConfirmation:
+      $ref: './merch-pipeline.openapi.yaml#/components/schemas/MerchConfirmation'
+    MerchThreadLinkInput:
+      $ref: './merch-pipeline.openapi.yaml#/components/schemas/MerchThreadLinkInput'
+    MerchThreadResults:
+      $ref: './merch-pipeline.openapi.yaml#/components/schemas/MerchThreadResults'
+    MerchOpportunityInput:
+      $ref: './merch-pipeline.openapi.yaml#/components/schemas/MerchOpportunityInput'
+    MerchOpportunityCreateInput:
+      $ref: './merch-pipeline.openapi.yaml#/components/schemas/MerchOpportunityCreateInput'
+    MerchOpportunity:
+      $ref: './merch-pipeline.openapi.yaml#/components/schemas/MerchOpportunity'
+    ChipplyReportLine:
+      $ref: './chipply-reports.fragment.yaml#/components/schemas/ChipplyReportLine'
+    ChipplyReport:
+      $ref: './chipply-reports.fragment.yaml#/components/schemas/ChipplyReport'
     ChipplyOfficialCategory:
       type: object
       required: [id, name]

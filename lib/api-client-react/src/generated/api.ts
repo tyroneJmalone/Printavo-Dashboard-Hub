@@ -85,6 +85,9 @@ import type {
   ChipplyCategoryInvoicesResponse,
   ChipplyCategoryPreviewRequest,
   ChipplyCategoryPreviewResponse,
+  ChipplyDataDetail,
+  ChipplyDataPreview,
+  ChipplyReport,
   ChipplyStoreDetailResponse,
   ChipplyStoreEnvelope,
   ChipplyStoreStylesResponse,
@@ -92,6 +95,8 @@ import type {
   CollectionDetail,
   Comment,
   CommentInput,
+  ConfirmChipplyData200,
+  ConfirmChipplyDataBody,
   CorrespondenceAiSearchRequest,
   CorrespondenceAiSearchResponse,
   CorrespondenceHistoryImportRequest,
@@ -168,6 +173,7 @@ import type {
   FinderOrder,
   GetBrandBreakdownParams,
   GetChipplyCategoryInvoiceParams,
+  GetChipplyReportParams,
   GetColorBreakdownParams,
   GetCombinedBoxLabelsHtmlParams,
   GetCombinedPackingSlipsHtmlParams,
@@ -246,6 +252,8 @@ import type {
   KnowledgeToneRecoveryPreviewInput,
   KnowledgeToneRecoveryPreviewResponse,
   LinkCustomerArtworkFolder200,
+  LinkMerchThread201,
+  LinkStoreThread201,
   List,
   ListAiAuditEventsParams,
   ListAutoPrintJobsParams,
@@ -276,6 +284,10 @@ import type {
   ListKnowledgePlaygroundFeedbackParams,
   ListListsParams,
   ListMentionsParams,
+  ListMerchStaff200Item,
+  ListMerchStoreChoices200Item,
+  ListMerchStoreChoicesParams,
+  ListMerchThreadsParams,
   ListPqStatusJobsParams,
   ListPrintQueueOrdersParams,
   ListPrintscopeJobs200,
@@ -287,6 +299,7 @@ import type {
   ListReorderRequestsParams,
   ListRewardAwardsParams,
   ListStatusSuggestionsParams,
+  ListStoreThreadsParams,
   ListTasksParams,
   ListUpdate,
   ListVendorOrdersParams,
@@ -296,6 +309,12 @@ import type {
   Member,
   MemberInput,
   MemberUpdate,
+  MerchConfirmation,
+  MerchOpportunity,
+  MerchOpportunityCreateInput,
+  MerchOpportunityInput,
+  MerchThreadLinkInput,
+  MerchThreadResults,
   MessageResult,
   MissiveWebhookSecret,
   MissiveWebhookSettings,
@@ -329,6 +348,7 @@ import type {
   PqStatusJobsResponse,
   PqStatusRule,
   PqStatusRulesResponse,
+  PreviewChipplyDataBody,
   PrintQueueOrdersResponse,
   PrintavoConnectionResult,
   PrintavoLinkStatus,
@@ -376,6 +396,7 @@ import type {
   ReportFilterOptions,
   ReportSummary,
   RequestMbUploadUrl200,
+  ReviewChipplyDataMatchBody,
   ReviewDraftBacktestItemRequest,
   ReviewDraftPatternEventRequest,
   RewardAward,
@@ -483,6 +504,1225 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getPreviewChipplyDataUrl = () => {
+
+
+
+
+  return `/api/chipply/data/preview`
+}
+
+/**
+ * @summary Review one bounded CSV/XLSX detailed Data Export without importing
+ */
+export const previewChipplyData = async (previewChipplyDataBody: PreviewChipplyDataBody, options?: RequestInit): Promise<ChipplyDataPreview> => {
+    const formData = new FormData();
+formData.append(`file`, previewChipplyDataBody.file);
+
+  return customFetch<ChipplyDataPreview>(getPreviewChipplyDataUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+export const getPreviewChipplyDataMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewChipplyData>>, TError,{data: BodyType<PreviewChipplyDataBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewChipplyData>>, TError,{data: BodyType<PreviewChipplyDataBody>}, TContext> => {
+
+const mutationKey = ['previewChipplyData'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewChipplyData>>, {data: BodyType<PreviewChipplyDataBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewChipplyData(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewChipplyDataMutationResult = NonNullable<Awaited<ReturnType<typeof previewChipplyData>>>
+    export type PreviewChipplyDataMutationBody = BodyType<PreviewChipplyDataBody>
+    export type PreviewChipplyDataMutationError = ErrorType<void>
+
+    /**
+ * @summary Review one bounded CSV/XLSX detailed Data Export without importing
+ */
+export const usePreviewChipplyData = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewChipplyData>>, TError,{data: BodyType<PreviewChipplyDataBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewChipplyData>>,
+        TError,
+        {data: BodyType<PreviewChipplyDataBody>},
+        TContext
+      > => {
+      return useMutation(getPreviewChipplyDataMutationOptions(options));
+    }
+
+export const getConfirmChipplyDataUrl = () => {
+
+
+
+
+  return `/api/chipply/data/confirm`
+}
+
+/**
+ * @summary Atomically create/link store and activate reviewed complete snapshot
+ */
+export const confirmChipplyData = async (confirmChipplyDataBody: ConfirmChipplyDataBody, options?: RequestInit): Promise<ConfirmChipplyData200> => {
+
+  return customFetch<ConfirmChipplyData200>(getConfirmChipplyDataUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(confirmChipplyDataBody)
+  }
+);}
+
+
+
+
+export const getConfirmChipplyDataMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmChipplyData>>, TError,{data: BodyType<ConfirmChipplyDataBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmChipplyData>>, TError,{data: BodyType<ConfirmChipplyDataBody>}, TContext> => {
+
+const mutationKey = ['confirmChipplyData'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmChipplyData>>, {data: BodyType<ConfirmChipplyDataBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmChipplyData(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmChipplyDataMutationResult = NonNullable<Awaited<ReturnType<typeof confirmChipplyData>>>
+    export type ConfirmChipplyDataMutationBody = BodyType<ConfirmChipplyDataBody>
+    export type ConfirmChipplyDataMutationError = ErrorType<void>
+
+    /**
+ * @summary Atomically create/link store and activate reviewed complete snapshot
+ */
+export const useConfirmChipplyData = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmChipplyData>>, TError,{data: BodyType<ConfirmChipplyDataBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmChipplyData>>,
+        TError,
+        {data: BodyType<ConfirmChipplyDataBody>},
+        TContext
+      > => {
+      return useMutation(getConfirmChipplyDataMutationOptions(options));
+    }
+
+export const getGetChipplyDataDetailUrl = (storeId: string,) => {
+
+
+
+
+  return `/api/chipply/data/stores/${storeId}`
+}
+
+/**
+ * @summary Current source dollars and recomputed mirrored production attribution
+ */
+export const getChipplyDataDetail = async (storeId: string, options?: RequestInit): Promise<ChipplyDataDetail> => {
+
+  return customFetch<ChipplyDataDetail>(getGetChipplyDataDetailUrl(storeId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChipplyDataDetailQueryKey = (storeId: string,) => {
+    return [
+    `/api/chipply/data/stores/${storeId}`
+    ] as const;
+    }
+
+
+export const getGetChipplyDataDetailQueryOptions = <TData = Awaited<ReturnType<typeof getChipplyDataDetail>>, TError = ErrorType<void>>(storeId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyDataDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChipplyDataDetailQueryKey(storeId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChipplyDataDetail>>> = ({ signal }) => getChipplyDataDetail(storeId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: storeId !== null && storeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChipplyDataDetail>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChipplyDataDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getChipplyDataDetail>>>
+export type GetChipplyDataDetailQueryError = ErrorType<void>
+
+
+/**
+ * @summary Current source dollars and recomputed mirrored production attribution
+ */
+
+export function useGetChipplyDataDetail<TData = Awaited<ReturnType<typeof getChipplyDataDetail>>, TError = ErrorType<void>>(
+ storeId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyDataDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChipplyDataDetailQueryOptions(storeId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewChipplyDataMatchUrl = (storeId: string,) => {
+
+
+
+
+  return `/api/chipply/data/stores/${storeId}/overrides`
+}
+
+/**
+ * @summary Audit a manual candidate selection without overriding quantity/method evidence
+ */
+export const reviewChipplyDataMatch = async (storeId: string,
+    reviewChipplyDataMatchBody: ReviewChipplyDataMatchBody, options?: RequestInit): Promise<ChipplyDataDetail> => {
+
+  return customFetch<ChipplyDataDetail>(getReviewChipplyDataMatchUrl(storeId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reviewChipplyDataMatchBody)
+  }
+);}
+
+
+
+
+export const getReviewChipplyDataMatchMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewChipplyDataMatch>>, TError,{storeId: string;data: BodyType<ReviewChipplyDataMatchBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewChipplyDataMatch>>, TError,{storeId: string;data: BodyType<ReviewChipplyDataMatchBody>}, TContext> => {
+
+const mutationKey = ['reviewChipplyDataMatch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewChipplyDataMatch>>, {storeId: string;data: BodyType<ReviewChipplyDataMatchBody>}> = (props) => {
+          const {storeId,data} = props ?? {};
+
+          return  reviewChipplyDataMatch(storeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewChipplyDataMatchMutationResult = NonNullable<Awaited<ReturnType<typeof reviewChipplyDataMatch>>>
+    export type ReviewChipplyDataMatchMutationBody = BodyType<ReviewChipplyDataMatchBody>
+    export type ReviewChipplyDataMatchMutationError = ErrorType<void>
+
+    /**
+ * @summary Audit a manual candidate selection without overriding quantity/method evidence
+ */
+export const useReviewChipplyDataMatch = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewChipplyDataMatch>>, TError,{storeId: string;data: BodyType<ReviewChipplyDataMatchBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewChipplyDataMatch>>,
+        TError,
+        {storeId: string;data: BodyType<ReviewChipplyDataMatchBody>},
+        TContext
+      > => {
+      return useMutation(getReviewChipplyDataMatchMutationOptions(options));
+    }
+
+export const getListMerchOpportunitiesUrl = () => {
+
+
+
+
+  return `/api/merch-pipeline/opportunities`
+}
+
+export const listMerchOpportunities = async ( options?: RequestInit): Promise<MerchOpportunity[]> => {
+
+  return customFetch<MerchOpportunity[]>(getListMerchOpportunitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMerchOpportunitiesQueryKey = () => {
+    return [
+    `/api/merch-pipeline/opportunities`
+    ] as const;
+    }
+
+
+export const getListMerchOpportunitiesQueryOptions = <TData = Awaited<ReturnType<typeof listMerchOpportunities>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMerchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMerchOpportunitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMerchOpportunities>>> = ({ signal }) => listMerchOpportunities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMerchOpportunities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMerchOpportunitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listMerchOpportunities>>>
+export type ListMerchOpportunitiesQueryError = ErrorType<unknown>
+
+
+
+export function useListMerchOpportunities<TData = Awaited<ReturnType<typeof listMerchOpportunities>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMerchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMerchOpportunitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMerchOpportunityUrl = () => {
+
+
+
+
+  return `/api/merch-pipeline/opportunities`
+}
+
+export const createMerchOpportunity = async (merchOpportunityCreateInput: MerchOpportunityCreateInput, options?: RequestInit): Promise<MerchOpportunity> => {
+
+  return customFetch<MerchOpportunity>(getCreateMerchOpportunityUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(merchOpportunityCreateInput)
+  }
+);}
+
+
+
+
+export const getCreateMerchOpportunityMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMerchOpportunity>>, TError,{data: BodyType<MerchOpportunityCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMerchOpportunity>>, TError,{data: BodyType<MerchOpportunityCreateInput>}, TContext> => {
+
+const mutationKey = ['createMerchOpportunity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMerchOpportunity>>, {data: BodyType<MerchOpportunityCreateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMerchOpportunity(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMerchOpportunityMutationResult = NonNullable<Awaited<ReturnType<typeof createMerchOpportunity>>>
+    export type CreateMerchOpportunityMutationBody = BodyType<MerchOpportunityCreateInput>
+    export type CreateMerchOpportunityMutationError = ErrorType<unknown>
+
+    export const useCreateMerchOpportunity = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMerchOpportunity>>, TError,{data: BodyType<MerchOpportunityCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMerchOpportunity>>,
+        TError,
+        {data: BodyType<MerchOpportunityCreateInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMerchOpportunityMutationOptions(options));
+    }
+
+export const getUpdateMerchOpportunityUrl = (id: string,) => {
+
+
+
+
+  return `/api/merch-pipeline/opportunities/${id}`
+}
+
+export const updateMerchOpportunity = async (id: string,
+    merchOpportunityInput: MerchOpportunityInput, options?: RequestInit): Promise<MerchOpportunity> => {
+
+  return customFetch<MerchOpportunity>(getUpdateMerchOpportunityUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(merchOpportunityInput)
+  }
+);}
+
+
+
+
+export const getUpdateMerchOpportunityMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMerchOpportunity>>, TError,{id: string;data: BodyType<MerchOpportunityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMerchOpportunity>>, TError,{id: string;data: BodyType<MerchOpportunityInput>}, TContext> => {
+
+const mutationKey = ['updateMerchOpportunity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMerchOpportunity>>, {id: string;data: BodyType<MerchOpportunityInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMerchOpportunity(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMerchOpportunityMutationResult = NonNullable<Awaited<ReturnType<typeof updateMerchOpportunity>>>
+    export type UpdateMerchOpportunityMutationBody = BodyType<MerchOpportunityInput>
+    export type UpdateMerchOpportunityMutationError = ErrorType<unknown>
+
+    export const useUpdateMerchOpportunity = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMerchOpportunity>>, TError,{id: string;data: BodyType<MerchOpportunityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMerchOpportunity>>,
+        TError,
+        {id: string;data: BodyType<MerchOpportunityInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateMerchOpportunityMutationOptions(options));
+    }
+
+export const getDeleteMerchOpportunityUrl = (id: string,) => {
+
+
+
+
+  return `/api/merch-pipeline/opportunities/${id}`
+}
+
+export const deleteMerchOpportunity = async (id: string,
+    merchConfirmation: MerchConfirmation, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteMerchOpportunityUrl(id),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(merchConfirmation)
+  }
+);}
+
+
+
+
+export const getDeleteMerchOpportunityMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMerchOpportunity>>, TError,{id: string;data: BodyType<MerchConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMerchOpportunity>>, TError,{id: string;data: BodyType<MerchConfirmation>}, TContext> => {
+
+const mutationKey = ['deleteMerchOpportunity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMerchOpportunity>>, {id: string;data: BodyType<MerchConfirmation>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  deleteMerchOpportunity(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMerchOpportunityMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMerchOpportunity>>>
+    export type DeleteMerchOpportunityMutationBody = BodyType<MerchConfirmation>
+    export type DeleteMerchOpportunityMutationError = ErrorType<void>
+
+    export const useDeleteMerchOpportunity = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMerchOpportunity>>, TError,{id: string;data: BodyType<MerchConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMerchOpportunity>>,
+        TError,
+        {id: string;data: BodyType<MerchConfirmation>},
+        TContext
+      > => {
+      return useMutation(getDeleteMerchOpportunityMutationOptions(options));
+    }
+
+export const getListMerchStaffUrl = () => {
+
+
+
+
+  return `/api/merch-pipeline/staff`
+}
+
+export const listMerchStaff = async ( options?: RequestInit): Promise<ListMerchStaff200Item[]> => {
+
+  return customFetch<ListMerchStaff200Item[]>(getListMerchStaffUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMerchStaffQueryKey = () => {
+    return [
+    `/api/merch-pipeline/staff`
+    ] as const;
+    }
+
+
+export const getListMerchStaffQueryOptions = <TData = Awaited<ReturnType<typeof listMerchStaff>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMerchStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMerchStaffQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMerchStaff>>> = ({ signal }) => listMerchStaff({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMerchStaff>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMerchStaffQueryResult = NonNullable<Awaited<ReturnType<typeof listMerchStaff>>>
+export type ListMerchStaffQueryError = ErrorType<unknown>
+
+
+
+export function useListMerchStaff<TData = Awaited<ReturnType<typeof listMerchStaff>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMerchStaff>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMerchStaffQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMerchStoreChoicesUrl = (params?: ListMerchStoreChoicesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/merch-pipeline/stores?${stringifiedParams}` : `/api/merch-pipeline/stores`
+}
+
+export const listMerchStoreChoices = async (params?: ListMerchStoreChoicesParams, options?: RequestInit): Promise<ListMerchStoreChoices200Item[]> => {
+
+  return customFetch<ListMerchStoreChoices200Item[]>(getListMerchStoreChoicesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMerchStoreChoicesQueryKey = (params?: ListMerchStoreChoicesParams,) => {
+    return [
+    `/api/merch-pipeline/stores`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMerchStoreChoicesQueryOptions = <TData = Awaited<ReturnType<typeof listMerchStoreChoices>>, TError = ErrorType<unknown>>(params?: ListMerchStoreChoicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMerchStoreChoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMerchStoreChoicesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMerchStoreChoices>>> = ({ signal }) => listMerchStoreChoices(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMerchStoreChoices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMerchStoreChoicesQueryResult = NonNullable<Awaited<ReturnType<typeof listMerchStoreChoices>>>
+export type ListMerchStoreChoicesQueryError = ErrorType<unknown>
+
+
+
+export function useListMerchStoreChoices<TData = Awaited<ReturnType<typeof listMerchStoreChoices>>, TError = ErrorType<unknown>>(
+ params?: ListMerchStoreChoicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMerchStoreChoices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMerchStoreChoicesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMerchThreadsUrl = (id: string,
+    params?: ListMerchThreadsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/merch-pipeline/opportunities/${id}/threads?${stringifiedParams}` : `/api/merch-pipeline/opportunities/${id}/threads`
+}
+
+export const listMerchThreads = async (id: string,
+    params?: ListMerchThreadsParams, options?: RequestInit): Promise<MerchThreadResults> => {
+
+  return customFetch<MerchThreadResults>(getListMerchThreadsUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMerchThreadsQueryKey = (id: string,
+    params?: ListMerchThreadsParams,) => {
+    return [
+    `/api/merch-pipeline/opportunities/${id}/threads`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMerchThreadsQueryOptions = <TData = Awaited<ReturnType<typeof listMerchThreads>>, TError = ErrorType<unknown>>(id: string,
+    params?: ListMerchThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMerchThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMerchThreadsQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMerchThreads>>> = ({ signal }) => listMerchThreads(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMerchThreads>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMerchThreadsQueryResult = NonNullable<Awaited<ReturnType<typeof listMerchThreads>>>
+export type ListMerchThreadsQueryError = ErrorType<unknown>
+
+
+
+export function useListMerchThreads<TData = Awaited<ReturnType<typeof listMerchThreads>>, TError = ErrorType<unknown>>(
+ id: string,
+    params?: ListMerchThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMerchThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMerchThreadsQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLinkMerchThreadUrl = (id: string,) => {
+
+
+
+
+  return `/api/merch-pipeline/opportunities/${id}/threads`
+}
+
+export const linkMerchThread = async (id: string,
+    merchThreadLinkInput: MerchThreadLinkInput, options?: RequestInit): Promise<LinkMerchThread201> => {
+
+  return customFetch<LinkMerchThread201>(getLinkMerchThreadUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(merchThreadLinkInput)
+  }
+);}
+
+
+
+
+export const getLinkMerchThreadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkMerchThread>>, TError,{id: string;data: BodyType<MerchThreadLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkMerchThread>>, TError,{id: string;data: BodyType<MerchThreadLinkInput>}, TContext> => {
+
+const mutationKey = ['linkMerchThread'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkMerchThread>>, {id: string;data: BodyType<MerchThreadLinkInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  linkMerchThread(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkMerchThreadMutationResult = NonNullable<Awaited<ReturnType<typeof linkMerchThread>>>
+    export type LinkMerchThreadMutationBody = BodyType<MerchThreadLinkInput>
+    export type LinkMerchThreadMutationError = ErrorType<unknown>
+
+    export const useLinkMerchThread = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkMerchThread>>, TError,{id: string;data: BodyType<MerchThreadLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkMerchThread>>,
+        TError,
+        {id: string;data: BodyType<MerchThreadLinkInput>},
+        TContext
+      > => {
+      return useMutation(getLinkMerchThreadMutationOptions(options));
+    }
+
+export const getUnlinkMerchThreadUrl = (id: string,
+    linkId: string,) => {
+
+
+
+
+  return `/api/merch-pipeline/opportunities/${id}/threads/${linkId}`
+}
+
+export const unlinkMerchThread = async (id: string,
+    linkId: string,
+    merchConfirmation: MerchConfirmation, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUnlinkMerchThreadUrl(id,linkId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(merchConfirmation)
+  }
+);}
+
+
+
+
+export const getUnlinkMerchThreadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkMerchThread>>, TError,{id: string;linkId: string;data: BodyType<MerchConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkMerchThread>>, TError,{id: string;linkId: string;data: BodyType<MerchConfirmation>}, TContext> => {
+
+const mutationKey = ['unlinkMerchThread'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkMerchThread>>, {id: string;linkId: string;data: BodyType<MerchConfirmation>}> = (props) => {
+          const {id,linkId,data} = props ?? {};
+
+          return  unlinkMerchThread(id,linkId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlinkMerchThreadMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkMerchThread>>>
+    export type UnlinkMerchThreadMutationBody = BodyType<MerchConfirmation>
+    export type UnlinkMerchThreadMutationError = ErrorType<unknown>
+
+    export const useUnlinkMerchThread = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkMerchThread>>, TError,{id: string;linkId: string;data: BodyType<MerchConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlinkMerchThread>>,
+        TError,
+        {id: string;linkId: string;data: BodyType<MerchConfirmation>},
+        TContext
+      > => {
+      return useMutation(getUnlinkMerchThreadMutationOptions(options));
+    }
+
+export const getListStoreThreadsUrl = (id: string,
+    params?: ListStoreThreadsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/chipply/stores/${id}/threads?${stringifiedParams}` : `/api/chipply/stores/${id}/threads`
+}
+
+export const listStoreThreads = async (id: string,
+    params?: ListStoreThreadsParams, options?: RequestInit): Promise<MerchThreadResults> => {
+
+  return customFetch<MerchThreadResults>(getListStoreThreadsUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStoreThreadsQueryKey = (id: string,
+    params?: ListStoreThreadsParams,) => {
+    return [
+    `/api/chipply/stores/${id}/threads`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStoreThreadsQueryOptions = <TData = Awaited<ReturnType<typeof listStoreThreads>>, TError = ErrorType<unknown>>(id: string,
+    params?: ListStoreThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStoreThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStoreThreadsQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStoreThreads>>> = ({ signal }) => listStoreThreads(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStoreThreads>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStoreThreadsQueryResult = NonNullable<Awaited<ReturnType<typeof listStoreThreads>>>
+export type ListStoreThreadsQueryError = ErrorType<unknown>
+
+
+
+export function useListStoreThreads<TData = Awaited<ReturnType<typeof listStoreThreads>>, TError = ErrorType<unknown>>(
+ id: string,
+    params?: ListStoreThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStoreThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStoreThreadsQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLinkStoreThreadUrl = (id: string,) => {
+
+
+
+
+  return `/api/chipply/stores/${id}/threads`
+}
+
+export const linkStoreThread = async (id: string,
+    merchThreadLinkInput: MerchThreadLinkInput, options?: RequestInit): Promise<LinkStoreThread201> => {
+
+  return customFetch<LinkStoreThread201>(getLinkStoreThreadUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(merchThreadLinkInput)
+  }
+);}
+
+
+
+
+export const getLinkStoreThreadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkStoreThread>>, TError,{id: string;data: BodyType<MerchThreadLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkStoreThread>>, TError,{id: string;data: BodyType<MerchThreadLinkInput>}, TContext> => {
+
+const mutationKey = ['linkStoreThread'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkStoreThread>>, {id: string;data: BodyType<MerchThreadLinkInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  linkStoreThread(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkStoreThreadMutationResult = NonNullable<Awaited<ReturnType<typeof linkStoreThread>>>
+    export type LinkStoreThreadMutationBody = BodyType<MerchThreadLinkInput>
+    export type LinkStoreThreadMutationError = ErrorType<unknown>
+
+    export const useLinkStoreThread = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkStoreThread>>, TError,{id: string;data: BodyType<MerchThreadLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkStoreThread>>,
+        TError,
+        {id: string;data: BodyType<MerchThreadLinkInput>},
+        TContext
+      > => {
+      return useMutation(getLinkStoreThreadMutationOptions(options));
+    }
+
+export const getUnlinkStoreThreadUrl = (id: string,
+    linkId: string,) => {
+
+
+
+
+  return `/api/chipply/stores/${id}/threads/${linkId}`
+}
+
+export const unlinkStoreThread = async (id: string,
+    linkId: string,
+    merchConfirmation: MerchConfirmation, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUnlinkStoreThreadUrl(id,linkId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(merchConfirmation)
+  }
+);}
+
+
+
+
+export const getUnlinkStoreThreadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkStoreThread>>, TError,{id: string;linkId: string;data: BodyType<MerchConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkStoreThread>>, TError,{id: string;linkId: string;data: BodyType<MerchConfirmation>}, TContext> => {
+
+const mutationKey = ['unlinkStoreThread'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkStoreThread>>, {id: string;linkId: string;data: BodyType<MerchConfirmation>}> = (props) => {
+          const {id,linkId,data} = props ?? {};
+
+          return  unlinkStoreThread(id,linkId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlinkStoreThreadMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkStoreThread>>>
+    export type UnlinkStoreThreadMutationBody = BodyType<MerchConfirmation>
+    export type UnlinkStoreThreadMutationError = ErrorType<unknown>
+
+    export const useUnlinkStoreThread = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkStoreThread>>, TError,{id: string;linkId: string;data: BodyType<MerchConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlinkStoreThread>>,
+        TError,
+        {id: string;linkId: string;data: BodyType<MerchConfirmation>},
+        TContext
+      > => {
+      return useMutation(getUnlinkStoreThreadMutationOptions(options));
+    }
+
+export const getGetChipplyReportUrl = (params?: GetChipplyReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/chipply?${stringifiedParams}` : `/api/reports/chipply`
+}
+
+/**
+ * Reads local Chipply snapshots and current Printavo mirror metadata only. Revenue is original item cents. Order-level fees and totals are intentionally omitted from all line scopes. Missing imports are coverage gaps, never zero revenue. CSV uses identical filters and exports all matching lines. Coverage is global before filtering. Unknown dates are excluded by date range filters.
+ * @summary Separate Chipply line revenue and reconciled production report
+ */
+export const getChipplyReport = async (params?: GetChipplyReportParams, options?: RequestInit): Promise<ChipplyReport | string> => {
+
+  return customFetch<ChipplyReport | string>(getGetChipplyReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChipplyReportQueryKey = (params?: GetChipplyReportParams,) => {
+    return [
+    `/api/reports/chipply`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetChipplyReportQueryOptions = <TData = Awaited<ReturnType<typeof getChipplyReport>>, TError = ErrorType<void>>(params?: GetChipplyReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChipplyReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChipplyReport>>> = ({ signal }) => getChipplyReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChipplyReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChipplyReportQueryResult = NonNullable<Awaited<ReturnType<typeof getChipplyReport>>>
+export type GetChipplyReportQueryError = ErrorType<void>
+
+
+/**
+ * @summary Separate Chipply line revenue and reconciled production report
+ */
+
+export function useGetChipplyReport<TData = Awaited<ReturnType<typeof getChipplyReport>>, TError = ErrorType<void>>(
+ params?: GetChipplyReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChipplyReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListChipplyCategoryInvoicesUrl = (params?: ListChipplyCategoryInvoicesParams,) => {
   const normalizedParams = new URLSearchParams();

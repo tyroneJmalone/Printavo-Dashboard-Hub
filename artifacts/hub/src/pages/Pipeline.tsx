@@ -15,6 +15,7 @@ import type {
   GetPipelineParams
 } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
+import { MerchPipeline } from "@/components/merchPipeline/MerchPipeline";
 
 import { usePipelineViews } from "./pipeline/usePipelineViews";
 import { PipelineViewMenu } from "./pipeline/PipelineViewMenu";
@@ -161,10 +162,16 @@ function readRememberedState(email: string): RememberedPipelineState | null {
 
 export default function Pipeline() {
   const { email } = useStaff();
-  return <PipelineContent key={email} />;
+  const [tab, setTab] = useState<"printavo" | "merch">("printavo");
+  const tabs = <div className="flex gap-2 px-6 py-3 border-b border-slate-800 bg-slate-950">
+    <button className={`px-3 py-2 rounded text-sm ${tab === "printavo" ? "bg-emerald-900 text-white" : "text-slate-400"}`} onClick={() => setTab("printavo")}>Printavo pipeline</button>
+    <button className={`px-3 py-2 rounded text-sm ${tab === "merch" ? "bg-emerald-900 text-white" : "text-slate-400"}`} onClick={() => setTab("merch")}>Merch prelaunch</button>
+  </div>;
+  if (tab === "merch") return <AppShell>{tabs}<MerchPipeline /></AppShell>;
+  return <PipelineContent key={email} tabs={tabs} />;
 }
 
-function PipelineContent() {
+function PipelineContent({ tabs }: { tabs: React.ReactNode }) {
   const { email: myEmail } = useStaff();
   const remembered = useRef(readRememberedState(myEmail)).current;
   const { 
@@ -310,6 +317,7 @@ function PipelineContent() {
 
   return (
     <AppShell>
+      {tabs}
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex-shrink-0 bg-[#020617] border-b border-slate-800 px-6 py-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">

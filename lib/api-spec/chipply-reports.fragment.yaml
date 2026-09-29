@@ -1,0 +1,111 @@
+# Merge paths and schemas into the central OpenAPI document.
+paths:
+  /reports/chipply:
+    get:
+      operationId: getChipplyReport
+      tags: [Reports]
+      summary: Separate Chipply line revenue and reconciled production report
+      description: >
+        Reads local Chipply snapshots and current Printavo mirror metadata only.
+        Revenue is original item cents. Order-level fees and totals are intentionally
+        omitted from all line scopes. Missing imports are coverage gaps, never zero
+        revenue. CSV uses identical filters and exports all matching lines. Coverage
+        is global before filtering. Unknown dates are excluded by date range filters.
+      parameters:
+        - {name: store, in: query, schema: {type: string}, description: Case-insensitive store name or event substring}
+        - {name: customer, in: query, schema: {type: string}}
+        - {name: plannedMethod, in: query, schema: {type: string}}
+        - {name: actualMethod, in: query, schema: {type: string}, description: Exact method or Unallocated}
+        - {name: methodChanged, in: query, schema: {type: string, enum: ["yes", "no", unallocated]}}
+        - {name: outcome, in: query, schema: {type: string, enum: [matched, reviewed, ambiguous, quantity-mismatch, incomplete, unmatched, unverified]}}
+        - {name: status, in: query, schema: {type: string}}
+        - {name: vendor, in: query, schema: {type: string}}
+        - {name: product, in: query, schema: {type: string}}
+        - {name: style, in: query, schema: {type: string}}
+        - {name: dateBasis, in: query, schema: {type: string, enum: [closed, transaction], default: closed}}
+        - {name: start, in: query, schema: {type: string, format: date}, description: Inclusive calendar date}
+        - {name: end, in: query, schema: {type: string, format: date}, description: Inclusive calendar date}
+        - {name: format, in: query, schema: {type: string, enum: [json, csv], default: json}}
+      responses:
+        "200":
+          description: Filtered line report or CSV; never contains Printavo dollars or allocated order fees
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ChipplyReport"}
+            text/csv:
+              schema: {type: string}
+        "400":
+          description: Invalid filters
+        "500":
+          description: Report unavailable; revenue is not replaced with zero
+components:
+  schemas:
+    ChipplyReportLine:
+      type: object
+      required: [storeId, storeName, eventId, customer, closedAt, transactionDate, rowOrdinal, orderNumber, processName, plannedMethod, actualMethod, methodChanged, outcome, reason, invoiceId, status, nickname, vendor, product, style, color, size, quantity, itemTotalCents]
+      properties:
+        storeId: {type: string}
+        storeName: {type: string}
+        eventId: {type: [string, "null"]}
+        customer: {type: [string, "null"]}
+        closedAt: {type: [string, "null"], format: date}
+        transactionDate: {type: [string, "null"], format: date}
+        rowOrdinal: {type: integer}
+        orderNumber: {type: string}
+        processName: {type: [string, "null"]}
+        plannedMethod: {type: [string, "null"]}
+        actualMethod: {type: [string, "null"], description: Null means Unallocated; never substituted from planned method}
+        methodChanged: {type: [boolean, "null"]}
+        outcome: {type: string}
+        reason: {type: [string, "null"]}
+        invoiceId: {type: [string, "null"]}
+        status: {type: [string, "null"]}
+        nickname: {type: [string, "null"]}
+        vendor: {type: [string, "null"]}
+        product: {type: [string, "null"]}
+        style: {type: [string, "null"]}
+        color: {type: [string, "null"]}
+        size: {type: [string, "null"]}
+        quantity: {type: integer}
+        itemTotalCents: {type: integer}
+    ChipplyReport:
+      type: object
+      required: [source, filters, summary, lines, coverage, warnings]
+      properties:
+        source: {type: string, enum: [chipply]}
+        filters:
+          type: object
+          additionalProperties: {type: string}
+        summary:
+          type: object
+          required: [lineCount, storeCount, orderCount, quantity, itemTotalCents, unallocatedItemTotalCents]
+          properties:
+            lineCount: {type: integer}
+            storeCount: {type: integer}
+            orderCount: {type: integer, description: Distinct store plus order-number pairs}
+            quantity: {type: integer}
+            itemTotalCents: {type: integer}
+            unallocatedItemTotalCents: {type: integer}
+        lines:
+          type: array
+          items: {$ref: "#/components/schemas/ChipplyReportLine"}
+        coverage:
+          type: object
+          required: [scope, totalStores, storesWithDetailedFinancials, missingStores, linesMissingTransactionDate, linesMissingClosedDate]
+          properties:
+            scope: {type: string}
+            totalStores: {type: integer}
+            storesWithDetailedFinancials: {type: integer}
+            linesMissingTransactionDate: {type: integer}
+            linesMissingClosedDate: {type: integer}
+            missingStores:
+              type: array
+              items:
+                type: object
+                required: [storeId, storeName, eventId, hasDetailedFinancials]
+                properties:
+                  storeId: {type: string}
+                  storeName: {type: string}
+                  eventId: {type: [string, "null"]}
+                  hasDetailedFinancials: {type: boolean}
+        warnings: {type: array, items: {type: string}}

@@ -29,3 +29,11 @@ description: Chipply web-store module invariants — revenue isolation and no-li
 **Planned versus actual decoration:** Verified Printavo decoration overrides the original Chipply Process method for production classification and attribution of the matching Chipply line-item revenue. Preserve the original Chipply method and financial values.
 **Why:** The user explicitly described HEAT→PRINT and PRINT→HEAT changes after production invoices are created. Invoice nicknames are generally updated; decoration-specific Printavo statuses are consistently updated.
 **How to apply:** Do not require the method token to remain identical when matching a process across systems. Match within the same store sales-order identifier, use the remaining process description and product details, and reconcile quantities. Equal total quantities alone are not unique identity evidence. Changed attribution must move the same source dollars, never duplicate them or substitute Printavo shell invoice amounts. Flag ambiguous matches and stale line categories for review rather than silently overwriting them.
+
+**Reconciliation must not invent product equivalence.**
+**Why:** The authorized sample comparison exposed a real Black-versus-Steel color discrepancy and a generic Printavo `size_other` value against a named source size. Equal process totals concealed both problems.
+**How to apply:** Normalize representational size prefixes, but never assume `other` means OSFA or treat distinct colors as aliases. A process-group mismatch remains unallocated until the evidence is resolved; manual invoice selection is not permission to bypass product/quantity checks.
+
+**Pre-launch merch work is a separate lifecycle from production.**
+**Why:** The user's team needs to track prospects, discovery, scheduling, store building, live stores, and closed stores before production invoices exist. Store closure does not mean production is complete.
+**How to apply:** Preserve the opportunity's identity when attaching a later store/event. Ownership assigns sales responsibility, not email visibility. Follow-up assistance must respect current correspondence access and must not infer “no reply” from inaccessible email.

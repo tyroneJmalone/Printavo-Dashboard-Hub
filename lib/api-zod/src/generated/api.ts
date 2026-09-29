@@ -8,6 +8,730 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Review one bounded CSV/XLSX detailed Data Export without importing
+ */
+export const PreviewChipplyDataBody = zod.object({
+  "file": zod.instanceof(File).describe('CSV\/XLSX, maximum 5 MB, 10000 lines, one Sales Order')
+})
+
+export const previewChipplyDataResponseSummaryItemTotalCentsMin = -9007199254740991;
+export const previewChipplyDataResponseSummaryItemTotalCentsMax = 9007199254740991;
+
+export const previewChipplyDataResponseSummaryOrderTotalCentsMin = -9007199254740991;
+export const previewChipplyDataResponseSummaryOrderTotalCentsMax = 9007199254740991;
+
+export const previewChipplyDataResponseSummaryOrderComponentsCentsMinOne = -9007199254740991;
+export const previewChipplyDataResponseSummaryOrderComponentsCentsMaxOne = 9007199254740991;
+
+export const previewChipplyDataResponseSummaryUnitComponentsExtendedCentsMinOne = -9007199254740991;
+export const previewChipplyDataResponseSummaryUnitComponentsExtendedCentsMaxOne = 9007199254740991;
+
+export const previewChipplyDataResponseLinesItemItemTotalCentsMin = -9007199254740991;
+export const previewChipplyDataResponseLinesItemItemTotalCentsMax = 9007199254740991;
+
+export const previewChipplyDataResponseLinesItemUnitCentsMinOne = -9007199254740991;
+export const previewChipplyDataResponseLinesItemUnitCentsMaxOne = 9007199254740991;
+
+
+
+export const PreviewChipplyDataResponse = zod.object({
+  "previewId": zod.string().uuid(),
+  "expiresAt": zod.coerce.date(),
+  "salesOrder": zod.string(),
+  "storeName": zod.string(),
+  "sourceHash": zod.string(),
+  "existingStore": zod.object({
+  "id": zod.string().uuid(),
+  "storeName": zod.string()
+}).nullable(),
+  "detectedInvoiceCount": zod.number(),
+  "currentSnapshotId": zod.string().nullable(),
+  "requiresReplacement": zod.boolean(),
+  "summary": zod.object({
+  "lineCount": zod.number(),
+  "orderCount": zod.number(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number().min(previewChipplyDataResponseSummaryItemTotalCentsMin).max(previewChipplyDataResponseSummaryItemTotalCentsMax),
+  "orderTotalCents": zod.number().min(previewChipplyDataResponseSummaryOrderTotalCentsMin).max(previewChipplyDataResponseSummaryOrderTotalCentsMax),
+  "orderComponentsCents": zod.record(zod.string(), zod.number().min(previewChipplyDataResponseSummaryOrderComponentsCentsMinOne).max(previewChipplyDataResponseSummaryOrderComponentsCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
+  "unitComponentsExtendedCents": zod.record(zod.string(), zod.number().min(previewChipplyDataResponseSummaryUnitComponentsExtendedCentsMinOne).max(previewChipplyDataResponseSummaryUnitComponentsExtendedCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.')
+}),
+  "lines": zod.array(zod.object({
+  "rowOrdinal": zod.number().describe('Stable one-based row identity in immutable source snapshot; identical legitimate lines retained'),
+  "orderNumber": zod.string(),
+  "orderDate": zod.coerce.date().describe('Export calendar date, no timezone shift'),
+  "processName": zod.string(),
+  "plannedMethod": zod.string().nullable(),
+  "style": zod.string(),
+  "color": zod.string(),
+  "size": zod.string(),
+  "productName": zod.string(),
+  "vendor": zod.string(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number().min(previewChipplyDataResponseLinesItemItemTotalCentsMin).max(previewChipplyDataResponseLinesItemItemTotalCentsMax),
+  "unitCents": zod.record(zod.string(), zod.number().min(previewChipplyDataResponseLinesItemUnitCentsMinOne).max(previewChipplyDataResponseLinesItemUnitCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
+  "reconciliation": zod.object({
+  "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
+  "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
+  "invoiceId": zod.string().nullable(),
+  "candidateInvoiceIds": zod.array(zod.string()),
+  "reason": zod.string()
+})
+})),
+  "warnings": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Atomically create/link store and activate reviewed complete snapshot
+ */
+export const ConfirmChipplyDataBody = zod.object({
+  "previewId": zod.string().uuid(),
+  "replaceCurrent": zod.boolean().describe('Explicitly replace all current lines; missing rows are not merged. Previous versions remain auditable.')
+})
+
+export const ConfirmChipplyDataResponse = zod.object({
+  "storeId": zod.string().uuid(),
+  "snapshotId": zod.string().uuid(),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary Current source dollars and recomputed mirrored production attribution
+ */
+export const GetChipplyDataDetailParams = zod.object({
+  "storeId": zod.coerce.string().uuid()
+})
+
+export const getChipplyDataDetailResponseSummaryItemTotalCentsMin = -9007199254740991;
+export const getChipplyDataDetailResponseSummaryItemTotalCentsMax = 9007199254740991;
+
+export const getChipplyDataDetailResponseSummaryOrderTotalCentsMin = -9007199254740991;
+export const getChipplyDataDetailResponseSummaryOrderTotalCentsMax = 9007199254740991;
+
+export const getChipplyDataDetailResponseSummaryOrderComponentsCentsMinOne = -9007199254740991;
+export const getChipplyDataDetailResponseSummaryOrderComponentsCentsMaxOne = 9007199254740991;
+
+export const getChipplyDataDetailResponseSummaryUnitComponentsExtendedCentsMinOne = -9007199254740991;
+export const getChipplyDataDetailResponseSummaryUnitComponentsExtendedCentsMaxOne = 9007199254740991;
+
+export const getChipplyDataDetailResponseLinesItemItemTotalCentsMin = -9007199254740991;
+export const getChipplyDataDetailResponseLinesItemItemTotalCentsMax = 9007199254740991;
+
+export const getChipplyDataDetailResponseLinesItemUnitCentsMinOne = -9007199254740991;
+export const getChipplyDataDetailResponseLinesItemUnitCentsMaxOne = 9007199254740991;
+
+
+
+export const GetChipplyDataDetailResponse = zod.object({
+  "storeId": zod.string().uuid(),
+  "snapshotId": zod.string().uuid(),
+  "sourceHash": zod.string(),
+  "salesOrder": zod.string(),
+  "storeName": zod.string(),
+  "sourceName": zod.string(),
+  "importedAt": zod.coerce.date(),
+  "summary": zod.object({
+  "lineCount": zod.number(),
+  "orderCount": zod.number(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number().min(getChipplyDataDetailResponseSummaryItemTotalCentsMin).max(getChipplyDataDetailResponseSummaryItemTotalCentsMax),
+  "orderTotalCents": zod.number().min(getChipplyDataDetailResponseSummaryOrderTotalCentsMin).max(getChipplyDataDetailResponseSummaryOrderTotalCentsMax),
+  "orderComponentsCents": zod.record(zod.string(), zod.number().min(getChipplyDataDetailResponseSummaryOrderComponentsCentsMinOne).max(getChipplyDataDetailResponseSummaryOrderComponentsCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
+  "unitComponentsExtendedCents": zod.record(zod.string(), zod.number().min(getChipplyDataDetailResponseSummaryUnitComponentsExtendedCentsMinOne).max(getChipplyDataDetailResponseSummaryUnitComponentsExtendedCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.')
+}),
+  "lines": zod.array(zod.object({
+  "rowOrdinal": zod.number().describe('Stable one-based row identity in immutable source snapshot; identical legitimate lines retained'),
+  "orderNumber": zod.string(),
+  "orderDate": zod.coerce.date().describe('Export calendar date, no timezone shift'),
+  "processName": zod.string(),
+  "plannedMethod": zod.string().nullable(),
+  "style": zod.string(),
+  "color": zod.string(),
+  "size": zod.string(),
+  "productName": zod.string(),
+  "vendor": zod.string(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number().min(getChipplyDataDetailResponseLinesItemItemTotalCentsMin).max(getChipplyDataDetailResponseLinesItemItemTotalCentsMax),
+  "unitCents": zod.record(zod.string(), zod.number().min(getChipplyDataDetailResponseLinesItemUnitCentsMinOne).max(getChipplyDataDetailResponseLinesItemUnitCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
+  "reconciliation": zod.object({
+  "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
+  "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
+  "invoiceId": zod.string().nullable(),
+  "candidateInvoiceIds": zod.array(zod.string()),
+  "reason": zod.string()
+})
+})),
+  "overrides": zod.array(zod.object({
+  "rowOrdinal": zod.number(),
+  "invoiceId": zod.string(),
+  "reason": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "versions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "sourceHash": zod.string(),
+  "sourceName": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "actor": zod.string()
+})),
+  "warnings": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Audit a manual candidate selection without overriding quantity/method evidence
+ */
+export const ReviewChipplyDataMatchParams = zod.object({
+  "storeId": zod.coerce.string().uuid()
+})
+
+
+export const reviewChipplyDataMatchBodyInvoiceIdMax = 100;
+
+export const reviewChipplyDataMatchBodyReasonMin = 5;
+export const reviewChipplyDataMatchBodyReasonMax = 1000;
+
+
+
+export const ReviewChipplyDataMatchBody = zod.object({
+  "snapshotId": zod.string().uuid(),
+  "rowOrdinal": zod.number().min(1),
+  "invoiceId": zod.string().min(1).max(reviewChipplyDataMatchBodyInvoiceIdMax),
+  "reason": zod.string().min(reviewChipplyDataMatchBodyReasonMin).max(reviewChipplyDataMatchBodyReasonMax)
+})
+
+export const reviewChipplyDataMatchResponseSummaryItemTotalCentsMin = -9007199254740991;
+export const reviewChipplyDataMatchResponseSummaryItemTotalCentsMax = 9007199254740991;
+
+export const reviewChipplyDataMatchResponseSummaryOrderTotalCentsMin = -9007199254740991;
+export const reviewChipplyDataMatchResponseSummaryOrderTotalCentsMax = 9007199254740991;
+
+export const reviewChipplyDataMatchResponseSummaryOrderComponentsCentsMinOne = -9007199254740991;
+export const reviewChipplyDataMatchResponseSummaryOrderComponentsCentsMaxOne = 9007199254740991;
+
+export const reviewChipplyDataMatchResponseSummaryUnitComponentsExtendedCentsMinOne = -9007199254740991;
+export const reviewChipplyDataMatchResponseSummaryUnitComponentsExtendedCentsMaxOne = 9007199254740991;
+
+export const reviewChipplyDataMatchResponseLinesItemItemTotalCentsMin = -9007199254740991;
+export const reviewChipplyDataMatchResponseLinesItemItemTotalCentsMax = 9007199254740991;
+
+export const reviewChipplyDataMatchResponseLinesItemUnitCentsMinOne = -9007199254740991;
+export const reviewChipplyDataMatchResponseLinesItemUnitCentsMaxOne = 9007199254740991;
+
+
+
+export const ReviewChipplyDataMatchResponse = zod.object({
+  "storeId": zod.string().uuid(),
+  "snapshotId": zod.string().uuid(),
+  "sourceHash": zod.string(),
+  "salesOrder": zod.string(),
+  "storeName": zod.string(),
+  "sourceName": zod.string(),
+  "importedAt": zod.coerce.date(),
+  "summary": zod.object({
+  "lineCount": zod.number(),
+  "orderCount": zod.number(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number().min(reviewChipplyDataMatchResponseSummaryItemTotalCentsMin).max(reviewChipplyDataMatchResponseSummaryItemTotalCentsMax),
+  "orderTotalCents": zod.number().min(reviewChipplyDataMatchResponseSummaryOrderTotalCentsMin).max(reviewChipplyDataMatchResponseSummaryOrderTotalCentsMax),
+  "orderComponentsCents": zod.record(zod.string(), zod.number().min(reviewChipplyDataMatchResponseSummaryOrderComponentsCentsMinOne).max(reviewChipplyDataMatchResponseSummaryOrderComponentsCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
+  "unitComponentsExtendedCents": zod.record(zod.string(), zod.number().min(reviewChipplyDataMatchResponseSummaryUnitComponentsExtendedCentsMinOne).max(reviewChipplyDataMatchResponseSummaryUnitComponentsExtendedCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.')
+}),
+  "lines": zod.array(zod.object({
+  "rowOrdinal": zod.number().describe('Stable one-based row identity in immutable source snapshot; identical legitimate lines retained'),
+  "orderNumber": zod.string(),
+  "orderDate": zod.coerce.date().describe('Export calendar date, no timezone shift'),
+  "processName": zod.string(),
+  "plannedMethod": zod.string().nullable(),
+  "style": zod.string(),
+  "color": zod.string(),
+  "size": zod.string(),
+  "productName": zod.string(),
+  "vendor": zod.string(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number().min(reviewChipplyDataMatchResponseLinesItemItemTotalCentsMin).max(reviewChipplyDataMatchResponseLinesItemItemTotalCentsMax),
+  "unitCents": zod.record(zod.string(), zod.number().min(reviewChipplyDataMatchResponseLinesItemUnitCentsMinOne).max(reviewChipplyDataMatchResponseLinesItemUnitCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
+  "reconciliation": zod.object({
+  "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
+  "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
+  "invoiceId": zod.string().nullable(),
+  "candidateInvoiceIds": zod.array(zod.string()),
+  "reason": zod.string()
+})
+})),
+  "overrides": zod.array(zod.object({
+  "rowOrdinal": zod.number(),
+  "invoiceId": zod.string(),
+  "reason": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "versions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "sourceHash": zod.string(),
+  "sourceName": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "actor": zod.string()
+})),
+  "warnings": zod.array(zod.string())
+})
+
+
+export const listMerchOpportunitiesResponseOneNameMax = 300;
+
+export const listMerchOpportunitiesResponseOneNextActionMax = 2000;
+
+export const listMerchOpportunitiesResponseOneEventIdMax = 100;
+
+export const listMerchOpportunitiesResponseOneDetailsCheckAmountRegExp = new RegExp('^\\d{1,10}(\\.\\d{1,2})?$');
+
+
+export const ListMerchOpportunitiesResponseItem = zod.object({
+  "name": zod.string().min(1).max(listMerchOpportunitiesResponseOneNameMax),
+  "stage": zod.enum(['Target/Prospect/Inquiry', 'Discovery', 'Real Deal/Scheduled', 'Gathering/Building', 'Live', 'Closed']),
+  "ownerId": zod.string().uuid().nullable(),
+  "nextAction": zod.string().max(listMerchOpportunitiesResponseOneNextActionMax),
+  "dueDate": zod.coerce.date().nullable(),
+  "chipplyStoreId": zod.string().uuid().nullable(),
+  "eventId": zod.string().max(listMerchOpportunitiesResponseOneEventIdMax).nullable(),
+  "archived": zod.boolean(),
+  "details": zod.object({
+  "status": zod.string().optional(),
+  "dashboardUrl": zod.string().url().optional(),
+  "previewUrl": zod.string().url().optional(),
+  "websiteUrl": zod.string().url().optional(),
+  "launchDate": zod.coerce.date().nullish(),
+  "closeDate": zod.coerce.date().nullish(),
+  "inHandDate": zod.coerce.date().nullish(),
+  "fundraiser": zod.boolean().optional(),
+  "payee": zod.string().optional(),
+  "processes": zod.string().optional(),
+  "audience": zod.string().optional(),
+  "repeat": zod.boolean().optional(),
+  "partial": zod.boolean().optional(),
+  "inHouse": zod.boolean().optional(),
+  "notes": zod.string().optional(),
+  "mailingAddress": zod.string().optional(),
+  "checkDate": zod.coerce.date().nullish(),
+  "checkAmount": zod.string().regex(listMerchOpportunitiesResponseOneDetailsCheckAmountRegExp).nullish(),
+  "payoutNotes": zod.string().optional()
+})
+}).and(zod.object({
+  "id": zod.string().uuid(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+export const ListMerchOpportunitiesResponse = zod.array(ListMerchOpportunitiesResponseItem)
+
+
+export const createMerchOpportunityBodyOneNameMax = 300;
+
+export const createMerchOpportunityBodyOneNextActionMax = 2000;
+
+export const createMerchOpportunityBodyOneEventIdMax = 100;
+
+export const createMerchOpportunityBodyOneDetailsCheckAmountRegExp = new RegExp('^\\d{1,10}(\\.\\d{1,2})?$');
+export const createMerchOpportunityBodyTwoNameMax = 300;
+
+
+
+export const CreateMerchOpportunityBody = zod.object({
+  "name": zod.string().min(1).max(createMerchOpportunityBodyOneNameMax),
+  "stage": zod.enum(['Target/Prospect/Inquiry', 'Discovery', 'Real Deal/Scheduled', 'Gathering/Building', 'Live', 'Closed']).optional(),
+  "ownerId": zod.string().uuid().nullish(),
+  "nextAction": zod.string().max(createMerchOpportunityBodyOneNextActionMax).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "chipplyStoreId": zod.string().uuid().nullish(),
+  "eventId": zod.string().max(createMerchOpportunityBodyOneEventIdMax).nullish(),
+  "archived": zod.boolean().optional(),
+  "details": zod.object({
+  "status": zod.string().optional(),
+  "dashboardUrl": zod.string().url().optional(),
+  "previewUrl": zod.string().url().optional(),
+  "websiteUrl": zod.string().url().optional(),
+  "launchDate": zod.coerce.date().nullish(),
+  "closeDate": zod.coerce.date().nullish(),
+  "inHandDate": zod.coerce.date().nullish(),
+  "fundraiser": zod.boolean().optional(),
+  "payee": zod.string().optional(),
+  "processes": zod.string().optional(),
+  "audience": zod.string().optional(),
+  "repeat": zod.boolean().optional(),
+  "partial": zod.boolean().optional(),
+  "inHouse": zod.boolean().optional(),
+  "notes": zod.string().optional(),
+  "mailingAddress": zod.string().optional(),
+  "checkDate": zod.coerce.date().nullish(),
+  "checkAmount": zod.string().regex(createMerchOpportunityBodyOneDetailsCheckAmountRegExp).nullish(),
+  "payoutNotes": zod.string().optional()
+}).optional()
+}).and(zod.object({
+  "name": zod.string().min(1).max(createMerchOpportunityBodyTwoNameMax)
+}))
+
+export const createMerchOpportunityResponseOneNameMax = 300;
+
+export const createMerchOpportunityResponseOneNextActionMax = 2000;
+
+export const createMerchOpportunityResponseOneEventIdMax = 100;
+
+export const createMerchOpportunityResponseOneDetailsCheckAmountRegExp = new RegExp('^\\d{1,10}(\\.\\d{1,2})?$');
+
+
+export const CreateMerchOpportunityResponse = zod.object({
+  "name": zod.string().min(1).max(createMerchOpportunityResponseOneNameMax),
+  "stage": zod.enum(['Target/Prospect/Inquiry', 'Discovery', 'Real Deal/Scheduled', 'Gathering/Building', 'Live', 'Closed']),
+  "ownerId": zod.string().uuid().nullable(),
+  "nextAction": zod.string().max(createMerchOpportunityResponseOneNextActionMax),
+  "dueDate": zod.coerce.date().nullable(),
+  "chipplyStoreId": zod.string().uuid().nullable(),
+  "eventId": zod.string().max(createMerchOpportunityResponseOneEventIdMax).nullable(),
+  "archived": zod.boolean(),
+  "details": zod.object({
+  "status": zod.string().optional(),
+  "dashboardUrl": zod.string().url().optional(),
+  "previewUrl": zod.string().url().optional(),
+  "websiteUrl": zod.string().url().optional(),
+  "launchDate": zod.coerce.date().nullish(),
+  "closeDate": zod.coerce.date().nullish(),
+  "inHandDate": zod.coerce.date().nullish(),
+  "fundraiser": zod.boolean().optional(),
+  "payee": zod.string().optional(),
+  "processes": zod.string().optional(),
+  "audience": zod.string().optional(),
+  "repeat": zod.boolean().optional(),
+  "partial": zod.boolean().optional(),
+  "inHouse": zod.boolean().optional(),
+  "notes": zod.string().optional(),
+  "mailingAddress": zod.string().optional(),
+  "checkDate": zod.coerce.date().nullish(),
+  "checkAmount": zod.string().regex(createMerchOpportunityResponseOneDetailsCheckAmountRegExp).nullish(),
+  "payoutNotes": zod.string().optional()
+})
+}).and(zod.object({
+  "id": zod.string().uuid(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+export const UpdateMerchOpportunityParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateMerchOpportunityBodyNameMax = 300;
+
+export const updateMerchOpportunityBodyNextActionMax = 2000;
+
+export const updateMerchOpportunityBodyEventIdMax = 100;
+
+export const updateMerchOpportunityBodyDetailsCheckAmountRegExp = new RegExp('^\\d{1,10}(\\.\\d{1,2})?$');
+
+
+export const UpdateMerchOpportunityBody = zod.object({
+  "name": zod.string().min(1).max(updateMerchOpportunityBodyNameMax).optional(),
+  "stage": zod.enum(['Target/Prospect/Inquiry', 'Discovery', 'Real Deal/Scheduled', 'Gathering/Building', 'Live', 'Closed']).optional(),
+  "ownerId": zod.string().uuid().nullish(),
+  "nextAction": zod.string().max(updateMerchOpportunityBodyNextActionMax).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "chipplyStoreId": zod.string().uuid().nullish(),
+  "eventId": zod.string().max(updateMerchOpportunityBodyEventIdMax).nullish(),
+  "archived": zod.boolean().optional(),
+  "details": zod.object({
+  "status": zod.string().optional(),
+  "dashboardUrl": zod.string().url().optional(),
+  "previewUrl": zod.string().url().optional(),
+  "websiteUrl": zod.string().url().optional(),
+  "launchDate": zod.coerce.date().nullish(),
+  "closeDate": zod.coerce.date().nullish(),
+  "inHandDate": zod.coerce.date().nullish(),
+  "fundraiser": zod.boolean().optional(),
+  "payee": zod.string().optional(),
+  "processes": zod.string().optional(),
+  "audience": zod.string().optional(),
+  "repeat": zod.boolean().optional(),
+  "partial": zod.boolean().optional(),
+  "inHouse": zod.boolean().optional(),
+  "notes": zod.string().optional(),
+  "mailingAddress": zod.string().optional(),
+  "checkDate": zod.coerce.date().nullish(),
+  "checkAmount": zod.string().regex(updateMerchOpportunityBodyDetailsCheckAmountRegExp).nullish(),
+  "payoutNotes": zod.string().optional()
+}).optional()
+})
+
+export const updateMerchOpportunityResponseOneNameMax = 300;
+
+export const updateMerchOpportunityResponseOneNextActionMax = 2000;
+
+export const updateMerchOpportunityResponseOneEventIdMax = 100;
+
+export const updateMerchOpportunityResponseOneDetailsCheckAmountRegExp = new RegExp('^\\d{1,10}(\\.\\d{1,2})?$');
+
+
+export const UpdateMerchOpportunityResponse = zod.object({
+  "name": zod.string().min(1).max(updateMerchOpportunityResponseOneNameMax),
+  "stage": zod.enum(['Target/Prospect/Inquiry', 'Discovery', 'Real Deal/Scheduled', 'Gathering/Building', 'Live', 'Closed']),
+  "ownerId": zod.string().uuid().nullable(),
+  "nextAction": zod.string().max(updateMerchOpportunityResponseOneNextActionMax),
+  "dueDate": zod.coerce.date().nullable(),
+  "chipplyStoreId": zod.string().uuid().nullable(),
+  "eventId": zod.string().max(updateMerchOpportunityResponseOneEventIdMax).nullable(),
+  "archived": zod.boolean(),
+  "details": zod.object({
+  "status": zod.string().optional(),
+  "dashboardUrl": zod.string().url().optional(),
+  "previewUrl": zod.string().url().optional(),
+  "websiteUrl": zod.string().url().optional(),
+  "launchDate": zod.coerce.date().nullish(),
+  "closeDate": zod.coerce.date().nullish(),
+  "inHandDate": zod.coerce.date().nullish(),
+  "fundraiser": zod.boolean().optional(),
+  "payee": zod.string().optional(),
+  "processes": zod.string().optional(),
+  "audience": zod.string().optional(),
+  "repeat": zod.boolean().optional(),
+  "partial": zod.boolean().optional(),
+  "inHouse": zod.boolean().optional(),
+  "notes": zod.string().optional(),
+  "mailingAddress": zod.string().optional(),
+  "checkDate": zod.coerce.date().nullish(),
+  "checkAmount": zod.string().regex(updateMerchOpportunityResponseOneDetailsCheckAmountRegExp).nullish(),
+  "payoutNotes": zod.string().optional()
+})
+}).and(zod.object({
+  "id": zod.string().uuid(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+
+
+export const DeleteMerchOpportunityParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteMerchOpportunityBody = zod.object({
+  "confirmed": zod.literal(true)
+})
+
+export const DeleteMerchOpportunityResponse = zod.void()
+
+
+export const ListMerchStaffResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "email": zod.string()
+})
+export const ListMerchStaffResponse = zod.array(ListMerchStaffResponseItem)
+
+
+export const listMerchStoreChoicesQueryQMax = 300;
+
+
+
+export const ListMerchStoreChoicesQueryParams = zod.object({
+  "q": zod.coerce.string().max(listMerchStoreChoicesQueryQMax).optional()
+})
+
+export const ListMerchStoreChoicesResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "name": zod.string(),
+  "eventId": zod.string().nullable()
+})
+export const ListMerchStoreChoicesResponse = zod.array(ListMerchStoreChoicesResponseItem)
+
+
+export const ListMerchThreadsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const listMerchThreadsQuerySearchMin = 2;
+export const listMerchThreadsQuerySearchMax = 300;
+
+
+
+export const ListMerchThreadsQueryParams = zod.object({
+  "search": zod.coerce.string().min(listMerchThreadsQuerySearchMin).max(listMerchThreadsQuerySearchMax).optional()
+})
+
+export const ListMerchThreadsResponse = zod.object({
+  "links": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "threadId": zod.string().uuid().nullable(),
+  "subject": zod.string().nullable(),
+  "url": zod.string().nullable()
+})).optional(),
+  "suggestions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "subject": zod.string().nullable(),
+  "webUrl": zod.string().nullish()
+})).optional()
+})
+
+
+export const LinkMerchThreadParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const LinkMerchThreadBody = zod.object({
+  "confirmed": zod.literal(true),
+  "threadId": zod.string().uuid().optional(),
+  "manualUrl": zod.string().url().optional()
+}).describe('Exactly one of threadId or manualUrl is required. Manual URL must be a direct HTTPS Missive thread URL with a UUID.')
+
+export const LinkMerchThreadResponse = zod.object({
+  "id": zod.string().uuid()
+})
+
+
+export const UnlinkMerchThreadParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "linkId": zod.coerce.string().uuid()
+})
+
+export const UnlinkMerchThreadBody = zod.object({
+  "confirmed": zod.literal(true)
+})
+
+export const UnlinkMerchThreadResponse = zod.void()
+
+
+export const ListStoreThreadsParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const listStoreThreadsQuerySearchMin = 2;
+export const listStoreThreadsQuerySearchMax = 300;
+
+
+
+export const ListStoreThreadsQueryParams = zod.object({
+  "search": zod.coerce.string().min(listStoreThreadsQuerySearchMin).max(listStoreThreadsQuerySearchMax).optional()
+})
+
+export const ListStoreThreadsResponse = zod.object({
+  "links": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "threadId": zod.string().uuid().nullable(),
+  "subject": zod.string().nullable(),
+  "url": zod.string().nullable()
+})).optional(),
+  "suggestions": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "subject": zod.string().nullable(),
+  "webUrl": zod.string().nullish()
+})).optional()
+})
+
+
+export const LinkStoreThreadParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const LinkStoreThreadBody = zod.object({
+  "confirmed": zod.literal(true),
+  "threadId": zod.string().uuid().optional(),
+  "manualUrl": zod.string().url().optional()
+}).describe('Exactly one of threadId or manualUrl is required. Manual URL must be a direct HTTPS Missive thread URL with a UUID.')
+
+export const LinkStoreThreadResponse = zod.object({
+  "id": zod.string().uuid()
+})
+
+
+export const UnlinkStoreThreadParams = zod.object({
+  "id": zod.coerce.string().uuid(),
+  "linkId": zod.coerce.string().uuid()
+})
+
+export const UnlinkStoreThreadBody = zod.object({
+  "confirmed": zod.literal(true)
+})
+
+export const UnlinkStoreThreadResponse = zod.void()
+
+
+/**
+ * Reads local Chipply snapshots and current Printavo mirror metadata only. Revenue is original item cents. Order-level fees and totals are intentionally omitted from all line scopes. Missing imports are coverage gaps, never zero revenue. CSV uses identical filters and exports all matching lines. Coverage is global before filtering. Unknown dates are excluded by date range filters.
+ * @summary Separate Chipply line revenue and reconciled production report
+ */
+export const getChipplyReportQueryDateBasisDefault = `closed`;
+export const getChipplyReportQueryFormatDefault = `json`;
+
+export const GetChipplyReportQueryParams = zod.object({
+  "store": zod.coerce.string().optional().describe('Case-insensitive store name or event substring'),
+  "customer": zod.coerce.string().optional(),
+  "plannedMethod": zod.coerce.string().optional(),
+  "actualMethod": zod.coerce.string().optional().describe('Exact method or Unallocated'),
+  "methodChanged": zod.enum(['yes', 'no', 'unallocated']).optional(),
+  "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']).optional(),
+  "status": zod.coerce.string().optional(),
+  "vendor": zod.coerce.string().optional(),
+  "product": zod.coerce.string().optional(),
+  "style": zod.coerce.string().optional(),
+  "dateBasis": zod.enum(['closed', 'transaction']).default(getChipplyReportQueryDateBasisDefault),
+  "start": zod.date().optional().describe('Inclusive calendar date'),
+  "end": zod.date().optional().describe('Inclusive calendar date'),
+  "format": zod.enum(['json', 'csv']).default(getChipplyReportQueryFormatDefault)
+})
+
+export const GetChipplyReportResponse = zod.object({
+  "source": zod.enum(['chipply']),
+  "filters": zod.record(zod.string(), zod.string()),
+  "summary": zod.object({
+  "lineCount": zod.number(),
+  "storeCount": zod.number(),
+  "orderCount": zod.number().describe('Distinct store plus order-number pairs'),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number(),
+  "unallocatedItemTotalCents": zod.number()
+}),
+  "lines": zod.array(zod.object({
+  "storeId": zod.string(),
+  "storeName": zod.string(),
+  "eventId": zod.string().nullable(),
+  "customer": zod.string().nullable(),
+  "closedAt": zod.coerce.date().nullable(),
+  "transactionDate": zod.coerce.date().nullable(),
+  "rowOrdinal": zod.number(),
+  "orderNumber": zod.string(),
+  "processName": zod.string().nullable(),
+  "plannedMethod": zod.string().nullable(),
+  "actualMethod": zod.string().nullable().describe('Null means Unallocated; never substituted from planned method'),
+  "methodChanged": zod.boolean().nullable(),
+  "outcome": zod.string(),
+  "reason": zod.string().nullable(),
+  "invoiceId": zod.string().nullable(),
+  "status": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "vendor": zod.string().nullable(),
+  "product": zod.string().nullable(),
+  "style": zod.string().nullable(),
+  "color": zod.string().nullable(),
+  "size": zod.string().nullable(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number()
+})),
+  "coverage": zod.object({
+  "scope": zod.string(),
+  "totalStores": zod.number(),
+  "storesWithDetailedFinancials": zod.number(),
+  "linesMissingTransactionDate": zod.number(),
+  "linesMissingClosedDate": zod.number(),
+  "missingStores": zod.array(zod.object({
+  "storeId": zod.string(),
+  "storeName": zod.string(),
+  "eventId": zod.string().nullable(),
+  "hasDetailedFinancials": zod.boolean()
+}))
+}),
+  "warnings": zod.array(zod.string())
+})
+
+
 export const listChipplyCategoryInvoicesQueryPageDefault = 1;
 
 export const listChipplyCategoryInvoicesQueryPageSizeDefault = 25;

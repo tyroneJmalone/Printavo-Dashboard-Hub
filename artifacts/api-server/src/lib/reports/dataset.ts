@@ -1,6 +1,7 @@
 import { db } from "@workspace/db";
 import { sql, type SQL } from "drizzle-orm";
 import type { ReportFilters } from "./filters";
+import { notChipplySql } from "../chipply/matching";
 import {
   emptyActivityBreakdown,
   type ActivityBreakdown,
@@ -58,7 +59,7 @@ export interface ReportOrder {
 const ET = "America/New_York";
 
 function orderConditions(f: ReportFilters): SQL[] {
-  const conds: SQL[] = [];
+  const conds: SQL[] = [sql.raw(notChipplySql("nickname"))];
   if (f.orderType !== "all") {
     conds.push(sql`order_type = ${f.orderType}`);
   }

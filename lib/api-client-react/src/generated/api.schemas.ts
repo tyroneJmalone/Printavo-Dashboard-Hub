@@ -5,6 +5,343 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.
+ */
+export interface ChipplyDataCentsMap {[key: string]: number}
+
+export interface ChipplyDataSummary {
+  lineCount: number;
+  orderCount: number;
+  quantity: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  itemTotalCents: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  orderTotalCents: number;
+  orderComponentsCents: ChipplyDataCentsMap;
+  unitComponentsExtendedCents: ChipplyDataCentsMap;
+}
+
+export type ChipplyDataReconciliationOutcome = typeof ChipplyDataReconciliationOutcome[keyof typeof ChipplyDataReconciliationOutcome];
+
+
+export const ChipplyDataReconciliationOutcome = {
+  matched: 'matched',
+  reviewed: 'reviewed',
+  ambiguous: 'ambiguous',
+  'quantity-mismatch': 'quantity-mismatch',
+  incomplete: 'incomplete',
+  unmatched: 'unmatched',
+  unverified: 'unverified',
+} as const;
+
+export interface ChipplyDataReconciliation {
+  outcome: ChipplyDataReconciliationOutcome;
+  /**
+     * screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)
+     * @nullable
+     */
+  actualMethod: string | null;
+  /** @nullable */
+  invoiceId: string | null;
+  candidateInvoiceIds: string[];
+  reason: string;
+}
+
+export interface ChipplyDataLine {
+  /** Stable one-based row identity in immutable source snapshot; identical legitimate lines retained */
+  rowOrdinal: number;
+  orderNumber: string;
+  /** Export calendar date, no timezone shift */
+  orderDate: string;
+  processName: string;
+  /** @nullable */
+  plannedMethod: string | null;
+  style: string;
+  color: string;
+  size: string;
+  productName: string;
+  vendor: string;
+  quantity: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  itemTotalCents: number;
+  unitCents: ChipplyDataCentsMap;
+  reconciliation: ChipplyDataReconciliation;
+}
+
+/**
+ * @nullable
+ */
+export type ChipplyDataPreviewExistingStore = {
+  id: string;
+  storeName: string;
+} | null;
+
+export interface ChipplyDataPreview {
+  previewId: string;
+  expiresAt: string;
+  salesOrder: string;
+  storeName: string;
+  sourceHash: string;
+  /** @nullable */
+  existingStore: ChipplyDataPreviewExistingStore;
+  detectedInvoiceCount: number;
+  /** @nullable */
+  currentSnapshotId: string | null;
+  requiresReplacement: boolean;
+  summary: ChipplyDataSummary;
+  lines: ChipplyDataLine[];
+  warnings: string[];
+}
+
+export interface ChipplyDataOverride {
+  rowOrdinal: number;
+  invoiceId: string;
+  reason: string;
+  actor: string;
+  createdAt: string;
+}
+
+export interface ChipplyDataVersion {
+  id: string;
+  sourceHash: string;
+  sourceName: string;
+  createdAt: string;
+  actor: string;
+}
+
+export interface ChipplyDataDetail {
+  storeId: string;
+  snapshotId: string;
+  sourceHash: string;
+  salesOrder: string;
+  storeName: string;
+  sourceName: string;
+  importedAt: string;
+  summary: ChipplyDataSummary;
+  lines: ChipplyDataLine[];
+  overrides: ChipplyDataOverride[];
+  versions: ChipplyDataVersion[];
+  warnings: string[];
+}
+
+export interface MerchConfirmation {
+  confirmed: true;
+}
+
+/**
+ * Exactly one of threadId or manualUrl is required. Manual URL must be a direct HTTPS Missive thread URL with a UUID.
+ */
+export interface MerchThreadLinkInput {
+  confirmed: true;
+  threadId?: string;
+  manualUrl?: string;
+}
+
+export type MerchThreadResultsLinksItem = {
+  id: string;
+  /** @nullable */
+  threadId: string | null;
+  /** @nullable */
+  subject: string | null;
+  /** @nullable */
+  url: string | null;
+};
+
+export type MerchThreadResultsSuggestionsItem = {
+  id: string;
+  /** @nullable */
+  subject: string | null;
+  /** @nullable */
+  webUrl?: string | null;
+};
+
+export interface MerchThreadResults {
+  links?: MerchThreadResultsLinksItem[];
+  suggestions?: MerchThreadResultsSuggestionsItem[];
+}
+
+export type MerchOpportunityInputStage = typeof MerchOpportunityInputStage[keyof typeof MerchOpportunityInputStage];
+
+
+export const MerchOpportunityInputStage = {
+  'Target/Prospect/Inquiry': 'Target/Prospect/Inquiry',
+  Discovery: 'Discovery',
+  'Real_Deal/Scheduled': 'Real Deal/Scheduled',
+  'Gathering/Building': 'Gathering/Building',
+  Live: 'Live',
+  Closed: 'Closed',
+} as const;
+
+export type MerchOpportunityInputDetails = {
+  status?: string;
+  dashboardUrl?: string;
+  previewUrl?: string;
+  websiteUrl?: string;
+  /** @nullable */
+  launchDate?: string | null;
+  /** @nullable */
+  closeDate?: string | null;
+  /** @nullable */
+  inHandDate?: string | null;
+  fundraiser?: boolean;
+  payee?: string;
+  processes?: string;
+  audience?: string;
+  repeat?: boolean;
+  partial?: boolean;
+  inHouse?: boolean;
+  notes?: string;
+  mailingAddress?: string;
+  /** @nullable */
+  checkDate?: string | null;
+  /**
+     * @nullable
+     * @pattern ^\d{1,10}(\.\d{1,2})?$
+     */
+  checkAmount?: string | null;
+  payoutNotes?: string;
+};
+
+export interface MerchOpportunityInput {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  name?: string;
+  stage?: MerchOpportunityInputStage;
+  /** @nullable */
+  ownerId?: string | null;
+  /** @maxLength 2000 */
+  nextAction?: string;
+  /** @nullable */
+  dueDate?: string | null;
+  /** @nullable */
+  chipplyStoreId?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  eventId?: string | null;
+  archived?: boolean;
+  details?: MerchOpportunityInputDetails;
+}
+
+export type MerchOpportunityCreateInput = MerchOpportunityInput & {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  name: string;
+};
+
+export type MerchOpportunity = MerchOpportunityInput & {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export interface ChipplyReportLine {
+  storeId: string;
+  storeName: string;
+  /** @nullable */
+  eventId: string | null;
+  /** @nullable */
+  customer: string | null;
+  /** @nullable */
+  closedAt: string | null;
+  /** @nullable */
+  transactionDate: string | null;
+  rowOrdinal: number;
+  orderNumber: string;
+  /** @nullable */
+  processName: string | null;
+  /** @nullable */
+  plannedMethod: string | null;
+  /**
+     * Null means Unallocated; never substituted from planned method
+     * @nullable
+     */
+  actualMethod: string | null;
+  /** @nullable */
+  methodChanged: boolean | null;
+  outcome: string;
+  /** @nullable */
+  reason: string | null;
+  /** @nullable */
+  invoiceId: string | null;
+  /** @nullable */
+  status: string | null;
+  /** @nullable */
+  nickname: string | null;
+  /** @nullable */
+  vendor: string | null;
+  /** @nullable */
+  product: string | null;
+  /** @nullable */
+  style: string | null;
+  /** @nullable */
+  color: string | null;
+  /** @nullable */
+  size: string | null;
+  quantity: number;
+  itemTotalCents: number;
+}
+
+export type ChipplyReportSource = typeof ChipplyReportSource[keyof typeof ChipplyReportSource];
+
+
+export const ChipplyReportSource = {
+  chipply: 'chipply',
+} as const;
+
+export type ChipplyReportFilters = {[key: string]: string};
+
+export type ChipplyReportSummary = {
+  lineCount: number;
+  storeCount: number;
+  /** Distinct store plus order-number pairs */
+  orderCount: number;
+  quantity: number;
+  itemTotalCents: number;
+  unallocatedItemTotalCents: number;
+};
+
+export type ChipplyReportCoverageMissingStoresItem = {
+  storeId: string;
+  storeName: string;
+  /** @nullable */
+  eventId: string | null;
+  hasDetailedFinancials: boolean;
+};
+
+export type ChipplyReportCoverage = {
+  scope: string;
+  totalStores: number;
+  storesWithDetailedFinancials: number;
+  linesMissingTransactionDate: number;
+  linesMissingClosedDate: number;
+  missingStores: ChipplyReportCoverageMissingStoresItem[];
+};
+
+export interface ChipplyReport {
+  source: ChipplyReportSource;
+  filters: ChipplyReportFilters;
+  summary: ChipplyReportSummary;
+  lines: ChipplyReportLine[];
+  coverage: ChipplyReportCoverage;
+  warnings: string[];
+}
+
 export interface ChipplyOfficialCategory {
   id: string;
   name: string;
@@ -8402,6 +8739,149 @@ export type ActivityEndParamParameter = string;
  * Current invoice/quote owner email
  */
 export type ActivityOwnerParamParameter = string;
+
+export type PreviewChipplyDataBody = {
+  /** CSV/XLSX, maximum 5 MB, 10000 lines, one Sales Order */
+  file: Blob;
+};
+
+export type ConfirmChipplyDataBody = {
+  previewId: string;
+  /** Explicitly replace all current lines; missing rows are not merged. Previous versions remain auditable. */
+  replaceCurrent: boolean;
+};
+
+export type ConfirmChipplyData200 = {
+  storeId: string;
+  snapshotId: string;
+  idempotent: boolean;
+};
+
+export type ReviewChipplyDataMatchBody = {
+  snapshotId: string;
+  /** @minimum 1 */
+  rowOrdinal: number;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  invoiceId: string;
+  /**
+     * @minLength 5
+     * @maxLength 1000
+     */
+  reason: string;
+};
+
+export type ListMerchStaff200Item = {
+  id: string;
+  email: string;
+};
+
+export type ListMerchStoreChoicesParams = {
+/**
+ * @maxLength 300
+ */
+q?: string;
+};
+
+export type ListMerchStoreChoices200Item = {
+  id: string;
+  name: string;
+  /** @nullable */
+  eventId: string | null;
+};
+
+export type ListMerchThreadsParams = {
+/**
+ * @minLength 2
+ * @maxLength 300
+ */
+search?: string;
+};
+
+export type LinkMerchThread201 = {
+  id: string;
+};
+
+export type ListStoreThreadsParams = {
+/**
+ * @minLength 2
+ * @maxLength 300
+ */
+search?: string;
+};
+
+export type LinkStoreThread201 = {
+  id: string;
+};
+
+export type GetChipplyReportParams = {
+/**
+ * Case-insensitive store name or event substring
+ */
+store?: string;
+customer?: string;
+plannedMethod?: string;
+/**
+ * Exact method or Unallocated
+ */
+actualMethod?: string;
+methodChanged?: GetChipplyReportMethodChanged;
+outcome?: GetChipplyReportOutcome;
+status?: string;
+vendor?: string;
+product?: string;
+style?: string;
+dateBasis?: GetChipplyReportDateBasis;
+/**
+ * Inclusive calendar date
+ */
+start?: string;
+/**
+ * Inclusive calendar date
+ */
+end?: string;
+format?: GetChipplyReportFormat;
+};
+
+export type GetChipplyReportMethodChanged = typeof GetChipplyReportMethodChanged[keyof typeof GetChipplyReportMethodChanged];
+
+
+export const GetChipplyReportMethodChanged = {
+  yes: 'yes',
+  no: 'no',
+  unallocated: 'unallocated',
+} as const;
+
+export type GetChipplyReportOutcome = typeof GetChipplyReportOutcome[keyof typeof GetChipplyReportOutcome];
+
+
+export const GetChipplyReportOutcome = {
+  matched: 'matched',
+  reviewed: 'reviewed',
+  ambiguous: 'ambiguous',
+  'quantity-mismatch': 'quantity-mismatch',
+  incomplete: 'incomplete',
+  unmatched: 'unmatched',
+  unverified: 'unverified',
+} as const;
+
+export type GetChipplyReportDateBasis = typeof GetChipplyReportDateBasis[keyof typeof GetChipplyReportDateBasis];
+
+
+export const GetChipplyReportDateBasis = {
+  closed: 'closed',
+  transaction: 'transaction',
+} as const;
+
+export type GetChipplyReportFormat = typeof GetChipplyReportFormat[keyof typeof GetChipplyReportFormat];
+
+
+export const GetChipplyReportFormat = {
+  json: 'json',
+  csv: 'csv',
+} as const;
 
 export type ListChipplyCategoryInvoicesParams = {
 /**

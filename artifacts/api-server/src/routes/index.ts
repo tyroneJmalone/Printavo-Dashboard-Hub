@@ -14,6 +14,7 @@ import dashboardRouter from "./dashboard";
 import reportsValidatorRouter from "./reportsValidator";
 import insightsRouter from "./insights";
 import chipplyRouter from "./chipply";
+import chipplyDataRouter from "./chipplyData";
 import purchasingRouter from "./purchasing";
 import collectionsRouter from "./collections";
 import catalogPantonesRouter from "./catalogPantones";
@@ -24,6 +25,7 @@ import shippingRouter from "./shipping";
 import customersRouter from "./customers";
 import customerBrandingRouter from "./customerBranding";
 import pipelineRouter from "./pipeline";
+import merchPipelineRouter from "./merchPipeline";
 import statusActivityRouter from "./statusActivity";
 import emailActivityRouter from "./emailActivity";
 import aiQuotesRouter from "./aiQuotes";
@@ -89,6 +91,7 @@ router.use(reportsRouter);
 router.use(dashboardRouter);
 router.use(reportsValidatorRouter);
 router.use(insightsRouter);
+router.use(chipplyDataRouter);
 router.use(chipplyRouter);
 router.use(purchasingRouter);
 router.use(collectionsRouter);
@@ -100,6 +103,7 @@ router.use(shippingRouter);
 router.use(customersRouter); // category manage routes are admin-only inside
 router.use(customerBrandingRouter); // branding/artwork writes are admin-only inside
 router.use(pipelineRouter);
+router.use(merchPipelineRouter);
 router.use(statusActivityRouter);
 router.use(emailActivityRouter); // config is admin-only; analytics are mailbox-ACL scoped
 router.use(aiQuotesRouter);

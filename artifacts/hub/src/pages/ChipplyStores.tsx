@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import { InvoiceCategories } from "@/components/chipply/InvoiceCategories";
+import { DetailedDataImport } from "@/components/chipply/DetailedData";
 import {
   useListChipplyStores,
   getListChipplyStoresQueryKey,
@@ -767,7 +768,7 @@ export function ImportEmailDialog({
 // ── Page ──────────────────────────────────────────────────────────────
 
 export default function ChipplyStores() {
-  const [tab, setTab] = useState<"stores" | "detected" | "categories">("stores");
+  const [tab, setTab] = useState<"stores" | "detected" | "categories">(() => new URLSearchParams(window.location.search).get("tab") === "categories" ? "categories" : "stores");
   const [importOpen, setImportOpen] = useState(false);
   const [prefill, setPrefill] = useState<ChipplyStoreCandidate | null>(null);
 
@@ -809,6 +810,8 @@ export default function ChipplyStores() {
             Import store
           </Button>
         </div>
+
+        <DetailedDataImport />
 
         {stores.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

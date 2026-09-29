@@ -1,3 +1,4 @@
+export * from "./chipplyData";
 export * from "./printscope";
 // Export your models here. Add one export per file
 // export * from "./posts";
@@ -73,5 +74,6 @@ export * from "./voiceProfiles";
 export * from "./draftBacktest";
 export * from "./reorderRequests";
 export * from "./pipelineViews";
+export * from "./merchPipeline";
 export * from "./purchasingApprovedMappings";
 export * from "./chipplyCategoryReviews";

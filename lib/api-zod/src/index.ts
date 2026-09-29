@@ -1,5 +1,20 @@
 export * from "./generated/api";
 export * from "./generated/types";
+// Multipart bodies and mixed path/query parameters have overlapping generated names.
+export {
+  ConfirmChipplyDataBody,
+  PreviewChipplyDataBody,
+  ReviewChipplyDataMatchBody,
+  ListMerchThreadsParams,
+  ListStoreThreadsParams,
+} from "./generated/api";
+export type {
+  ConfirmChipplyDataBody as ConfirmChipplyDataBodyType,
+  PreviewChipplyDataBody as PreviewChipplyDataBodyType,
+  ReviewChipplyDataMatchBody as ReviewChipplyDataMatchBodyType,
+  ListMerchThreadsParams as ListMerchThreadsQueryParamsType,
+  ListStoreThreadsParams as ListStoreThreadsQueryParamsType,
+} from "./generated/types";
 export { GetChipplyCategoryInvoiceParams } from "./generated/api";
 export type { GetChipplyCategoryInvoiceParams as GetChipplyCategoryInvoiceQueryParamsType } from "./generated/types";
 

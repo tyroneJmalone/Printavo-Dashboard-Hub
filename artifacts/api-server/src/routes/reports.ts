@@ -3,6 +3,8 @@ import { db } from "@workspace/db";
 import { sql, type SQL } from "drizzle-orm";
 import { parseReportFilters, filtersEcho } from "../lib/reports/filters";
 import { loadReportOrders, type ReportOrder } from "../lib/reports/dataset";
+import { parseChipplyReportFilters, chipplyReportCsv } from "../lib/reports/chipplyData";
+import { loadChipplyReport } from "../lib/reports/chipplyLoader";
 import {
   computeStats,
   statusBreakdown,
@@ -32,6 +34,28 @@ import {
  */
 
 const router: IRouter = Router();
+
+router.get("/reports/chipply", (req, res) => {
+  (async () => {
+    let filters;
+    try {
+      filters = parseChipplyReportFilters(req.query as Record<string, unknown>);
+      if (req.query.format !== undefined && !["json", "csv"].includes(String(req.query.format))) throw new Error("Invalid format");
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Invalid filters" });
+      return;
+    }
+    const report = await loadChipplyReport(filters);
+    if (req.query.format === "csv") {
+      res.type("text/csv").attachment("chipply-report.csv").send(chipplyReportCsv(report.lines));
+    } else {
+      res.json(report);
+    }
+  })().catch(err => {
+    req.log.error({ err }, "Chipply report failed");
+    res.status(500).json({ error: "Chipply report could not be loaded. No revenue totals are available." });
+  });
+});
 
 async function withOrders(
   req: Request,
