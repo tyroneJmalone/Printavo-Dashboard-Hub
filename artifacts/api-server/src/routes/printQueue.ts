@@ -573,7 +573,12 @@ router.get("/print-queue/autoprint/runs/:id", (req, res) => {
 router.get("/print-queue/autoprint/jobs", (req, res) => {
   const runId = typeof req.query.runId === "string" ? req.query.runId : undefined;
   const limit = Number(req.query.limit) || 50;
-  listPrintJobs({ runId, limit })
+  const offset = req.query.offset === undefined ? 0 : Number(req.query.offset);
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    res.status(400).json({ error: "offset must be a nonnegative integer" });
+    return;
+  }
+  listPrintJobs({ runId, limit, offset })
     .then((jobs) => res.json({ jobs }))
     .catch((err) => {
       req.log.error({ err }, "autoprint job list failed");

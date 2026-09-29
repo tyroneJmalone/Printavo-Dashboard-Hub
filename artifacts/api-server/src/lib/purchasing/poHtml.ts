@@ -98,6 +98,11 @@ export function renderPoHtml(po: PoFileDto): string {
   table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
   th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #66717d; border-bottom: 2px solid #e3e8ee; padding: 8px 8px; }
   td { border-bottom: 1px solid #eef1f4; padding: 8px 8px; vertical-align: top; }
+  .po-line-items > tbody > tr:nth-child(even) > td { background-color: #eeeeee; }
+  .po-line-items > tbody > tr:nth-child(odd) > td { background-color: #ffffff; }
+  .po-line-items { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .po-line-items > tbody > tr { break-inside: avoid; }
+  .po-line-items > thead { display: table-header-group; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .small { font-size: 12px; }
   .desc { max-width: 260px; }
@@ -144,7 +149,7 @@ export function renderPoHtml(po: PoFileDto): string {
     </div>
   </div>
   ${po.notes ? `<div class="notes">${esc(po.notes)}</div>` : ""}
-  <table>
+  <table class="po-line-items">
     <thead>
       <tr>
         <th>Style</th><th>Color</th><th>Description</th><th>Sizes</th>

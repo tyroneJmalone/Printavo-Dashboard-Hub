@@ -1,4 +1,5 @@
-import { pgTable, uuid, text, boolean, integer, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, boolean, integer, timestamp, index, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Auto-print job history (PQ3a) — one row per order per doc type per run.
@@ -31,6 +32,15 @@ export const pqPrintJobsTable = pgTable(
     /** pending | printed | failed | dry_run | skipped */
     status: text("status").notNull(),
     errorMessage: text("error_message"),
+    reason: text("reason"),
+    priorJobId: uuid("prior_job_id"),
+    priorPrintedAt: timestamp("prior_printed_at", { withTimezone: true }),
+    contentFingerprint: text("content_fingerprint"),
+    eligibilityCycle: text("eligibility_cycle"),
+    attemptKey: text("attempt_key"),
+    hubPoId: text("hub_po_id"),
+    hubPoNumber: text("hub_po_number"),
+    snapshotMetadata: jsonb("snapshot_metadata"),
     isReprint: boolean("is_reprint").notNull().default(false),
     printedAt: timestamp("printed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -40,6 +50,8 @@ export const pqPrintJobsTable = pgTable(
     index("pq_print_jobs_order_idx").on(t.printavoOrderId),
     index("pq_print_jobs_visual_idx").on(t.visualId),
     index("pq_print_jobs_created_idx").on(t.createdAt),
+    uniqueIndex("pq_print_jobs_attempt_key_idx").on(t.attemptKey),
+    uniqueIndex("pq_print_jobs_hub_po_run_idx").on(t.runId, t.hubPoId).where(sql`${t.docType} = 'hub_po'`),
   ],
 );
 

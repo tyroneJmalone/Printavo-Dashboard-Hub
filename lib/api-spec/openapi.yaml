@@ -4431,6 +4431,10 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1, maximum: 200 }
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
       responses:
         "200":
           description: Jobs
@@ -12058,6 +12062,10 @@ components:
     AutoPrintRunCounts:
       type: object
       properties:
+        skipped: { type: integer }
+        reprinted: { type: integer }
+        poPrinted: { type: integer }
+        poFailed: { type: integer }
         candidates: { type: integer }
         alreadyPrinted: { type: integer }
         detailPending: { type: integer }
@@ -12109,7 +12117,7 @@ components:
       required: [runs]
     AutoPrintJob:
       type: object
-      description: "status: pending | printed | failed | dry_run | skipped. Printed rows are the dedup source — an order matching by printavoOrderId OR visualId never auto-prints twice."
+      description: "Persisted print and skip audit. Reprints require observed source reentry and changed line items after the last successful print. Pending/unknown submissions require reconciliation, never automatic retry."
       properties:
         id: { type: string }
         runId: { type: string }
@@ -12124,7 +12132,15 @@ components:
         printnodeJobId: { type: ["string", "null"] }
         printerName: { type: ["string", "null"] }
         copies: { type: integer }
-        status: { type: string, enum: [pending, printed, failed, dry_run, skipped] }
+        status: { type: string, enum: [pending, printed, failed, dry_run, skipped, submission_unknown] }
+        reason: { type: ["string", "null"] }
+        priorJobId: { type: ["string", "null"] }
+        priorPrintedAt: { type: ["string", "null"] }
+        contentFingerprint: { type: ["string", "null"] }
+        eligibilityCycle: { type: ["string", "null"] }
+        hubPoId: { type: ["string", "null"] }
+        hubPoNumber: { type: ["string", "null"] }
+        snapshotMetadata: { type: ["object", "null"], additionalProperties: true }
         errorMessage: { type: ["string", "null"] }
         isReprint: { type: boolean }
         printedAt: { type: ["string", "null"] }

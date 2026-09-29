@@ -76,6 +76,7 @@ export * from './autoPrintConfig';
 export * from './autoPrintConfigRoutingMode';
 export * from './autoPrintConfigScheduleMode';
 export * from './autoPrintJob';
+export * from './autoPrintJobSnapshotMetadata';
 export * from './autoPrintJobsResponse';
 export * from './autoPrintJobStatus';
 export * from './autoPrintPrinter';

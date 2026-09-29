@@ -15,4 +15,5 @@ export const AutoPrintJobStatus = {
   failed: 'failed',
   dry_run: 'dry_run',
   skipped: 'skipped',
+  submission_unknown: 'submission_unknown',
 } as const;

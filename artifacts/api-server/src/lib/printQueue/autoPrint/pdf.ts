@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import puppeteer, { type Browser } from "puppeteer-core";
 import { logger } from "../../logger";
 import { isAllowedWorkorderUrl } from "../workorderHtml";
+import { WORKORDER_PRESENTATION_CSS } from "../workorderPresentation";
 import {
   closeBrowserBounded,
   launchBrowserWithRecovery,
@@ -45,8 +46,15 @@ function chromiumPath(): string {
   );
 }
 
+export interface WorkorderPdfOptions {
+  excludeAttachments?: boolean;
+  isReprint?: boolean;
+}
+
 export interface PdfRenderer {
-  renderUrl(url: string, options?: { excludeAttachments?: boolean }): Promise<Buffer>;
+  renderUrl(url: string, options?: WorkorderPdfOptions): Promise<Buffer>;
+  /** Trusted, locally generated Hub PO HTML only; never navigates to Printavo. */
+  renderHtml(html: string): Promise<Buffer>;
   close(): Promise<void>;
 }
 
@@ -89,7 +97,7 @@ export async function openPdfRenderer(): Promise<PdfRenderer> {
   });
 
   return {
-    async renderUrl(url: string, options?: { excludeAttachments?: boolean }): Promise<Buffer> {
+    async renderUrl(url: string, options?: WorkorderPdfOptions): Promise<Buffer> {
       if (!isAllowedWorkorderUrl(url)) {
         throw new Error("Workorder URL is not a Printavo page");
       }
@@ -113,6 +121,15 @@ export async function openPdfRenderer(): Promise<PdfRenderer> {
         }
         // Inject after navigation so Printavo's own styles cannot override it.
         await applyAutoPrintAttachmentOption(page, options);
+        await page.addStyleTag({ content: WORKORDER_PRESENTATION_CSS });
+        if (options?.isReprint) {
+          await page.evaluate(`(() => {
+            const banner = document.createElement("div");
+            banner.className = "pq-reprint-banner";
+            banner.textContent = "UPDATED / REPRINT";
+            document.body.prepend(banner);
+          })()`);
+        }
         const pdf = await page.pdf({
           format: "letter",
           printBackground: true,
@@ -126,6 +143,29 @@ export async function openPdfRenderer(): Promise<PdfRenderer> {
         return Buffer.from(pdf);
       } finally {
         await page.close().catch(() => undefined);
+        await context.close().catch(() => undefined);
+      }
+    },
+    async renderHtml(html: string): Promise<Buffer> {
+      const context = await browser.createBrowserContext();
+      try {
+        const page = await context.newPage();
+        // Hub POs embed their logos. Disallow remote resources and scripts:
+        // rendering must not cause external writes, auth, or print actions.
+        await page.setJavaScriptEnabled(false);
+        await page.setRequestInterception(true);
+        page.on("request", (request) => {
+          if (/^(data:|about:)/i.test(request.url())) void request.continue();
+          else void request.abort();
+        });
+        await page.setContent(html, { waitUntil: "load", timeout: PAGE_TIMEOUT_MS });
+        const pdf = await page.pdf({
+          format: "letter",
+          printBackground: true,
+          margin: { top: "0.4in", bottom: "0.4in", left: "0.4in", right: "0.4in" },
+        });
+        return Buffer.from(pdf);
+      } finally {
         await context.close().catch(() => undefined);
       }
     },

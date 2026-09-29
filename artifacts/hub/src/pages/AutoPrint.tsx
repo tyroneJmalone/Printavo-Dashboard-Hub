@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, type HistoryFilter } from "./autoPrintHistoryHelpers";
 import {
   useGetAutoPrintConfig,
   getGetAutoPrintConfigQueryKey,
@@ -11,7 +12,7 @@ import {
   getGetAutoPrintRunQueryKey,
   useListAutoPrintRuns,
   getListAutoPrintRunsQueryKey,
-  useListAutoPrintJobs,
+  listAutoPrintJobs,
   getListAutoPrintJobsQueryKey,
   useListPrintavoStatuses,
   getListPrintavoStatusesQueryKey,
@@ -22,7 +23,7 @@ import {
   type AutoPrintRun,
   type AutoPrintJob,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   Bot,
@@ -69,6 +70,7 @@ const JOB_STATUS_STYLES: Record<string, string> = {
   failed: "bg-red-500/15 text-red-300",
   pending: "bg-slate-500/15 text-slate-300",
   skipped: "bg-slate-500/15 text-slate-300",
+  submission_unknown: "bg-amber-500/15 text-amber-300",
 };
 
 const DAILY_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -399,9 +401,9 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
     if (scheduleMode === "daily") {
       const times = dailyTimes.filter(isDailyTime).map(formatDailyTime);
       const visibleTimes = times.length > 0 ? times : [formatDailyTime(DEFAULT_DAILY_TIME)];
-      return `At ${visibleTimes.join(", ")} Eastern Time, new orders in the source statuses are printed once and moved by decoration category.`;
+      return `At ${visibleTimes.join(", ")} Eastern Time, eligible orders in the source statuses are sent to the printer and moved by decoration category.`;
     }
-    return `Every ${scheduleHours || "6"} hours, new orders in the source statuses are printed once and moved by decoration category.`;
+    return `Every ${scheduleHours || "6"} hours, eligible orders in the source statuses are sent to the printer and moved by decoration category.`;
   }, [dailyTimes, scheduleHours, scheduleMode]);
 
   const save = useUpdateAutoPrintConfig({
@@ -564,7 +566,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
         {!dryRun && (
           <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-200">
             <AlertTriangle size={13} />
-            Live mode — runs will physically print and move orders in Printavo.
+            Live mode — runs send documents to the printer and move orders in Printavo.
           </div>
         )}
 
@@ -808,11 +810,11 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
       <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 space-y-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-100">
-            After successful printing, move orders by decoration
+            After successful printer submission, move orders by decoration
           </h2>
           <p className="text-[12px] text-slate-400 mt-0.5">
             This is independent from Purchasing’s PO-push rules. It runs only
-            after a workorder prints successfully; there is no PO completion
+            after a workorder is accepted by PrintNode; there is no PO completion
             guard or suggestion step.
           </p>
         </div>
@@ -999,10 +1001,13 @@ function countsLine(run: AutoPrintRun): string {
   const c = run.counts;
   const bits = [
     `${c.candidates} candidate${c.candidates === 1 ? "" : "s"}`,
-    c.printed > 0 ? `${c.printed} printed` : null,
+    c.printed > 0 ? `${c.printed} workorders sent to printer` : null,
+    (c.reprinted ?? 0) > 0 ? `${c.reprinted} reprints (included)` : null,
+    (c.poPrinted ?? 0) > 0 ? `${c.poPrinted} PO copies sent to printer` : null,
+    (c.poFailed ?? 0) > 0 ? `${c.poFailed} PO copies failed` : null,
     c.dryRun > 0 ? `${c.dryRun} simulated` : null,
     c.failed > 0 ? `${c.failed} failed` : null,
-    c.alreadyPrinted > 0 ? `${c.alreadyPrinted} already printed` : null,
+    (c.skipped ?? 0) > 0 ? `${c.skipped} skipped` : c.alreadyPrinted > 0 ? `${c.alreadyPrinted} previously sent` : null,
     c.detailPending > 0 ? `${c.detailPending} awaiting detail sync` : null,
     c.deferred > 0 ? `${c.deferred} deferred to next run` : null,
   ].filter(Boolean);
@@ -1062,7 +1067,7 @@ function RunPanel() {
           <p className="text-[12px] text-slate-400 mt-1">
             If PDF startup fails, affected documents appear as failed in history.
             After recovery, Print now checks current eligibility again and skips
-            previously printed orders; it does not replay a frozen batch.
+            ineligible orders; it does not replay a frozen batch.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1098,7 +1103,7 @@ function RunPanel() {
         >
           <AlertTriangle size={15} className="text-amber-300 flex-shrink-0" />
           <span className="text-[13px] text-amber-200 flex-1 min-w-48">
-            This will physically print workorders and move orders in Printavo.
+            This will send workorders to the printer and move orders in Printavo.
             Are you sure?
           </span>
           <div className="flex items-center gap-2">
@@ -1161,8 +1166,76 @@ function RunPanel() {
   );
 }
 
+function RunJobs({ run }: { run: AutoPrintRun }) {
+  const [filter, setFilter] = useState<HistoryFilter>("all");
+  const pageSize = 200;
+  const history = useInfiniteQuery({
+    queryKey: [...getListAutoPrintJobsQueryKey({ runId: run.id }), "pages"],
+    initialPageParam: 0,
+    queryFn: ({ pageParam, signal }) => listAutoPrintJobs({ runId: run.id, limit: pageSize, offset: pageParam }, { signal }),
+    getNextPageParam: (last, pages) => nextHistoryOffset(last.jobs.length, pages.length, pageSize),
+    refetchInterval: run.status === "running" ? 15000 : false,
+  });
+  const jobs = history.data?.pages.flatMap((page) => page.jobs) ?? [];
+  const visible = jobs.filter((job) => matchesHistoryFilter(job, filter));
+  const olderSkips = !history.hasNextPage && hasUnrecordedSkips(run.counts, jobs);
+
+  return (
+    <div id={`run-jobs-${run.id}`} className="mt-3 space-y-3 border-t border-slate-800 pt-3">
+      <label className="flex flex-wrap items-center gap-2 text-slate-300">
+        Show documents
+        <select aria-label="Filter run documents" value={filter} onChange={(event) => setFilter(event.target.value as HistoryFilter)} className="rounded-lg bg-slate-800 border border-slate-700 px-2 py-1.5">
+          <option value="all">All documents</option>
+          <option value="skipped">Skipped invoices</option>
+          <option value="reprints">Reprints</option>
+          <option value="purchase_orders">PO copies</option>
+          <option value="needs_review">Needs review</option>
+        </select>
+        <span className="text-slate-500">{visible.length} matching / {jobs.length} loaded</span>
+      </label>
+      {history.isLoading && <p role="status" className="text-slate-400">Loading run documents…</p>}
+      {history.isError && <div role="alert" className="text-red-300">Could not load run documents. {apiError(history.error) ?? history.error.message} <button type="button" onClick={() => history.refetch()} className="underline">Retry</button></div>}
+      {!history.isLoading && !history.isError && olderSkips && <p className="text-amber-300">Older run: skipped details were not recorded.</p>}
+      {!history.isLoading && !history.isError && visible.length === 0 && !olderSkips && (
+        <p className="text-slate-400">{history.hasNextPage ? "No matches in loaded documents. Load more to continue checking this run." : "No recorded documents match this filter."}</p>
+      )}
+      <div className="max-h-[32rem] overflow-y-auto custom-scrollbar space-y-2">
+        {visible.map((job: AutoPrintJob) => (
+          <div key={job.id} data-testid={`row-job-${job.id}`} className="rounded-lg border border-slate-800 bg-[#0f172a] p-3 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-slate-200">{isPurchaseOrder(job) ? `PO copy #${job.hubPoNumber ?? job.hubPoId ?? "not recorded"}` : "Workorder"}</span>
+              <a href={`https://www.printavo.com/invoices/${encodeURIComponent(job.orderId)}`} target="_blank" rel="noreferrer" className="text-sky-300 underline underline-offset-2">Invoice #{job.visualId ?? job.orderId}</a>
+              {job.isReprint && <span className="rounded bg-violet-500/15 text-violet-300 px-1.5 py-0.5">Reprint</span>}
+              <span className={`rounded px-1.5 py-0.5 ${JOB_STATUS_STYLES[job.status] ?? "text-slate-300"}`}>{jobStatusLabel(job.status)}</span>
+            </div>
+            {job.nickname && <p className="text-slate-300">{job.nickname}</p>}
+            <p className="text-slate-400">{fmtTime(job.printedAt ?? job.createdAt)} · {job.copies} {job.copies === 1 ? "copy" : "copies"} · {job.printerName ?? "Printer not recorded"}</p>
+            {(job.reason || job.status === "skipped") && <p className="text-slate-300">{jobReasonLabel(job.reason)}</p>}
+            {(job.priorJobId || job.priorPrintedAt) && <p className="text-slate-400 break-all">Prior submission: {job.priorPrintedAt ? fmtTime(job.priorPrintedAt) : "time not recorded"}{job.priorJobId ? ` · Job ${job.priorJobId}` : ""}</p>}
+            {needsReconciliation(job) && <p role="note" className="text-amber-300">Do not automatically resend. Check PrintNode and the physical printer and reconcile this attempt first; paper output is not confirmed.</p>}
+            {job.targetStatusName && <p className="text-slate-400">Routing destination: {job.targetStatusName}</p>}
+            {job.errorMessage && <p className="text-red-300">{job.errorMessage}</p>}
+            <details className="text-slate-500">
+              <summary className="cursor-pointer">Audit details</summary>
+              <dl className="mt-1 break-all">
+                <dt>Job ID</dt><dd>{job.id}</dd>
+                <dt>PrintNode job ID</dt><dd>{job.printnodeJobId ?? "Not recorded"}</dd>
+                <dt>Reason code</dt><dd>{job.reason ?? "Not recorded"}</dd>
+                <dt>Eligibility cycle</dt><dd>{job.eligibilityCycle ?? "Not recorded"}</dd>
+                <dt>Line-item fingerprint</dt><dd>{job.contentFingerprint ?? "Not recorded"}</dd>
+              </dl>
+            </details>
+          </div>
+        ))}
+      </div>
+      {history.hasNextPage && <button type="button" disabled={history.isFetchingNextPage} onClick={() => history.fetchNextPage()} className="rounded-lg border border-slate-700 px-3 py-2 text-slate-200 disabled:opacity-50">{history.isFetchingNextPage ? "Loading…" : "Load more documents from this run"}</button>}
+    </div>
+  );
+}
+
 function HistoryTables() {
-  const { data: runData } = useListAutoPrintRuns(
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const { data: runData, isLoading, isError, refetch } = useListAutoPrintRuns(
     { limit: 10 },
     {
       query: {
@@ -1171,23 +1244,14 @@ function HistoryTables() {
       },
     },
   );
-  const { data: jobData } = useListAutoPrintJobs(
-    { limit: 50 },
-    {
-      query: {
-        queryKey: getListAutoPrintJobsQueryKey({ limit: 50 }),
-        refetchInterval: 15000,
-      },
-    },
-  );
   const runs = runData?.runs ?? [];
-  const jobs = jobData?.jobs ?? [];
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+    <div className="space-y-4">
       <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4">
         <h2 className="text-sm font-semibold text-slate-100 mb-3">Recent runs</h2>
-        {runs.length === 0 ? (
+        <p className="text-[12px] text-slate-400 mb-3">Showing the latest 10 runs. Expand a run to review its invoices, skipped reasons, reprints, and separate PO copies. “Sent to printer” means PrintNode accepted the job, not confirmed paper output.</p>
+        {isLoading ? <p className="text-slate-400 text-xs">Loading runs…</p> : isError ? <p role="alert" className="text-red-300 text-xs">Could not load runs. <button type="button" onClick={() => refetch()} className="underline">Retry</button></p> : runs.length === 0 ? (
           <p className="text-[12px] text-slate-500">No runs yet.</p>
         ) : (
           <div className="space-y-1.5">
@@ -1219,55 +1283,18 @@ function HistoryTables() {
                 </div>
                 <div className="text-slate-400 mt-1">{countsLine(r)}</div>
                 {r.error && <div className="text-red-300 mt-0.5">{r.error}</div>}
+                {r.advanceSkipped && <div className="text-amber-300 mt-0.5">{r.advanceSkipped}</div>}
+                <button type="button" aria-expanded={expandedRunId === r.id} aria-controls={`run-jobs-${r.id}`} onClick={() => setExpandedRunId(expandedRunId === r.id ? null : r.id)} className="mt-2 flex items-center gap-1 text-sky-300 underline underline-offset-2">
+                  <ChevronDown size={13} className={expandedRunId === r.id ? "rotate-180" : ""} />
+                  {expandedRunId === r.id ? "Hide" : "View"} run documents & skipped invoices
+                </button>
+                {expandedRunId === r.id && <RunJobs key={r.id} run={r} />}
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4">
-        <h2 className="text-sm font-semibold text-slate-100 mb-3">
-          Printed workorders
-        </h2>
-        {jobs.length === 0 ? (
-          <p className="text-[12px] text-slate-500">Nothing printed yet.</p>
-        ) : (
-          <div className="max-h-96 overflow-y-auto custom-scrollbar space-y-1.5">
-            {jobs.map((j: AutoPrintJob) => (
-              <div
-                key={j.id}
-                className="rounded-lg bg-[#020617] border border-slate-800 px-3 py-2 text-[12px]"
-                data-testid={`row-job-${j.id}`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-200 font-medium">
-                    #{j.visualId ?? "?"}
-                  </span>
-                  <span className="text-slate-400 truncate flex-1">
-                    {j.nickname ?? ""}
-                  </span>
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${
-                      JOB_STATUS_STYLES[j.status] ?? "bg-slate-500/15 text-slate-300"
-                    }`}
-                  >
-                    {j.status === "dry_run" ? "simulated" : j.status}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-slate-500 mt-1">
-                  <span>{fmtTime(j.printedAt ?? j.createdAt)}</span>
-                  {j.targetStatusName && (
-                    <span className="truncate">→ {j.targetStatusName}</span>
-                  )}
-                </div>
-                {j.errorMessage && (
-                  <div className="text-red-300 mt-0.5">{j.errorMessage}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -1292,6 +1319,11 @@ export default function AutoPrint() {
         </div>
 
         <RunPanel />
+        <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 text-[12px] text-slate-400 space-y-1">
+          <h2 className="font-semibold text-slate-200">Duplicate protection & eligible reprints</h2>
+          <p>A previously sent invoice is eligible for a reprint only after an observed return to Ordered (a configured source status) and changed line items compared with its last successful submission. Simply running again does not qualify it.</p>
+          <p>Legacy prints without a comparable baseline are skipped for review. Pending or unknown submissions are never automatically resent; reconcile them with PrintNode and the printer first.</p>
+        </div>
 
         {isLoading || !config ? (
           <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">

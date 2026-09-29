@@ -8894,6 +8894,10 @@ export const StartAutoPrintRunResponse = zod.object({
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
   "counts": zod.object({
+  "skipped": zod.number().optional(),
+  "reprinted": zod.number().optional(),
+  "poPrinted": zod.number().optional(),
+  "poFailed": zod.number().optional(),
   "candidates": zod.number(),
   "alreadyPrinted": zod.number(),
   "detailPending": zod.number(),
@@ -8929,6 +8933,10 @@ export const ListAutoPrintRunsResponse = zod.object({
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
   "counts": zod.object({
+  "skipped": zod.number().optional(),
+  "reprinted": zod.number().optional(),
+  "poPrinted": zod.number().optional(),
+  "poFailed": zod.number().optional(),
   "candidates": zod.number(),
   "alreadyPrinted": zod.number(),
   "detailPending": zod.number(),
@@ -8960,6 +8968,10 @@ export const GetAutoPrintRunResponse = zod.object({
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
   "counts": zod.object({
+  "skipped": zod.number().optional(),
+  "reprinted": zod.number().optional(),
+  "poPrinted": zod.number().optional(),
+  "poFailed": zod.number().optional(),
   "candidates": zod.number(),
   "alreadyPrinted": zod.number(),
   "detailPending": zod.number(),
@@ -8980,11 +8992,15 @@ export const GetAutoPrintRunResponse = zod.object({
  */
 export const listAutoPrintJobsQueryLimitMax = 200;
 
+export const listAutoPrintJobsQueryOffsetDefault = 0;
+export const listAutoPrintJobsQueryOffsetMin = 0;
+
 
 
 export const ListAutoPrintJobsQueryParams = zod.object({
   "runId": zod.coerce.string().optional(),
-  "limit": zod.coerce.number().min(1).max(listAutoPrintJobsQueryLimitMax).optional()
+  "limit": zod.coerce.number().min(1).max(listAutoPrintJobsQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(listAutoPrintJobsQueryOffsetMin).default(listAutoPrintJobsQueryOffsetDefault)
 })
 
 export const ListAutoPrintJobsResponse = zod.object({
@@ -9002,12 +9018,20 @@ export const ListAutoPrintJobsResponse = zod.object({
   "printnodeJobId": zod.string().nullable(),
   "printerName": zod.string().nullable(),
   "copies": zod.number(),
-  "status": zod.enum(['pending', 'printed', 'failed', 'dry_run', 'skipped']),
+  "status": zod.enum(['pending', 'printed', 'failed', 'dry_run', 'skipped', 'submission_unknown']),
+  "reason": zod.string().nullish(),
+  "priorJobId": zod.string().nullish(),
+  "priorPrintedAt": zod.string().nullish(),
+  "contentFingerprint": zod.string().nullish(),
+  "eligibilityCycle": zod.string().nullish(),
+  "hubPoId": zod.string().nullish(),
+  "hubPoNumber": zod.string().nullish(),
+  "snapshotMetadata": zod.record(zod.string(), zod.unknown()).nullish(),
   "errorMessage": zod.string().nullable(),
   "isReprint": zod.boolean(),
   "printedAt": zod.string().nullable(),
   "createdAt": zod.string()
-}).describe('status: pending | printed | failed | dry_run | skipped. Printed rows are the dedup source — an order matching by printavoOrderId OR visualId never auto-prints twice.'))
+}).describe('Persisted print and skip audit. Reprints require observed source reentry and changed line items after the last successful print. Pending\/unknown submissions require reconciliation, never automatic retry.'))
 })
 
 

@@ -1,0 +1,61 @@
+export type HistoryJob = {
+  status: string;
+  docType: string;
+  hubPoId?: string | null;
+  hubPoNumber?: string | null;
+  reason?: string | null;
+  isReprint: boolean;
+};
+
+export const HISTORY_FILTERS = ["all", "skipped", "reprints", "purchase_orders", "needs_review"] as const;
+export type HistoryFilter = typeof HISTORY_FILTERS[number];
+
+export function nextHistoryOffset(lastPageLength: number, pageCount: number, pageSize = 200): number | undefined {
+  return lastPageLength === pageSize ? pageCount * pageSize : undefined;
+}
+
+export function isPurchaseOrder(job: HistoryJob): boolean {
+  return Boolean(job.hubPoId || job.hubPoNumber) || /(^|_)po($|_)|purchase/i.test(job.docType);
+}
+
+export function needsReconciliation(job: HistoryJob): boolean {
+  return job.status === "pending" || job.status === "submission_unknown" ||
+    job.reason === "prior_submission_unresolved" ||
+    job.reason === "concurrent_or_previously_reserved_attempt";
+}
+
+export function matchesHistoryFilter(job: HistoryJob, filter: HistoryFilter): boolean {
+  if (filter === "skipped") return job.status === "skipped" && !isPurchaseOrder(job);
+  if (filter === "reprints") return job.isReprint;
+  if (filter === "purchase_orders") return isPurchaseOrder(job);
+  if (filter === "needs_review") return needsReconciliation(job) || job.status === "failed" || job.reason === "prior_print_baseline_missing";
+  return true;
+}
+
+export function jobStatusLabel(status: string): string {
+  return ({ printed: "Sent to printer", dry_run: "Simulated", submission_unknown: "Submission unknown", pending: "Pending — review required", skipped: "Skipped", failed: "Failed" } as Record<string, string>)[status] ?? status;
+}
+
+const REASONS: Record<string, string> = {
+  prior_print_baseline_missing: "An earlier print has no comparable line-item baseline. Skipped for manual review; changes cannot be verified safely.",
+  no_source_reentry_after_print: "No observed return to an Ordered/source status after the prior print.",
+  line_items_unchanged: "Line items are unchanged since the prior print.",
+  prior_submission_unresolved: "A prior submission is pending or its outcome is unknown. Reconcile it before any resend.",
+  submission_outcome_unknown_manual_reconciliation_required: "The submission outcome is unknown. Check PrintNode and the printer before considering a resend.",
+  concurrent_or_previously_reserved_attempt: "Another attempt already reserved this document. Review its outcome before any resend.",
+  run_limit_deferred: "Deferred because this run reached its document limit.",
+  live_detail_missing_or_incomplete: "Current invoice details are missing or incomplete.",
+  no_longer_in_source_status: "Invoice is no longer in a configured source status.",
+  live_status_unavailable: "Current invoice status could not be verified.",
+  source_status_history_unverifiable: "Status history could not be verified safely.",
+  line_items_changed_during_render_or_detail_unavailable: "Line items changed while rendering, or current details became unavailable.",
+};
+
+export function jobReasonLabel(reason: string | null | undefined): string {
+  return reason ? REASONS[reason] ?? reason : "No reason recorded.";
+}
+
+export function hasUnrecordedSkips(counts: { skipped?: number; alreadyPrinted: number }, jobs: HistoryJob[]): boolean {
+  // Older summaries are hydrated by the API with skipped: 0.
+  return (counts.skipped ?? 0) === 0 && counts.alreadyPrinted > 0 && !jobs.some((job) => job.status === "skipped");
+}

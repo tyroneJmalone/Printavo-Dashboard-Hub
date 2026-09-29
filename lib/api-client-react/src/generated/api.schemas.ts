@@ -4786,6 +4786,10 @@ export interface StartAutoPrintRunRequest {
 }
 
 export interface AutoPrintRunCounts {
+  skipped?: number;
+  reprinted?: number;
+  poPrinted?: number;
+  poFailed?: number;
   candidates: number;
   alreadyPrinted: number;
   detailPending: number;
@@ -4850,10 +4854,16 @@ export const AutoPrintJobStatus = {
   failed: 'failed',
   dry_run: 'dry_run',
   skipped: 'skipped',
+  submission_unknown: 'submission_unknown',
 } as const;
 
 /**
- * status: pending | printed | failed | dry_run | skipped. Printed rows are the dedup source — an order matching by printavoOrderId OR visualId never auto-prints twice.
+ * @nullable
+ */
+export type AutoPrintJobSnapshotMetadata = { [key: string]: unknown } | null;
+
+/**
+ * Persisted print and skip audit. Reprints require observed source reentry and changed line items after the last successful print. Pending/unknown submissions require reconciliation, never automatic retry.
  */
 export interface AutoPrintJob {
   id: string;
@@ -4878,6 +4888,22 @@ export interface AutoPrintJob {
   printerName: string | null;
   copies: number;
   status: AutoPrintJobStatus;
+  /** @nullable */
+  reason?: string | null;
+  /** @nullable */
+  priorJobId?: string | null;
+  /** @nullable */
+  priorPrintedAt?: string | null;
+  /** @nullable */
+  contentFingerprint?: string | null;
+  /** @nullable */
+  eligibilityCycle?: string | null;
+  /** @nullable */
+  hubPoId?: string | null;
+  /** @nullable */
+  hubPoNumber?: string | null;
+  /** @nullable */
+  snapshotMetadata?: AutoPrintJobSnapshotMetadata;
   /** @nullable */
   errorMessage: string | null;
   isReprint: boolean;
@@ -9291,6 +9317,10 @@ runId?: string;
  * @maximum 200
  */
 limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type ListListsParams = {

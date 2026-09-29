@@ -4,13 +4,16 @@ import {
   pqPrintRunsTable,
   pqPrintJobsTable,
   pvOrdersTable,
-  pvLineItemsTable,
+  changeEventsTable,
+  pvStatusesTable,
   type PqPrintRun,
   type PqPrintJob,
 } from "@workspace/db";
-import { eq, desc, inArray, and, or } from "drizzle-orm";
+import { eq, desc, inArray, and, or, sql } from "drizzle-orm";
 import { upsertOrder } from "../../sync/upserts";
-import { refreshOrderDetail, newDetailAgg } from "../../sync/detail";
+import { applyOrderDetail, newDetailAgg } from "../../sync/detail";
+import { singleOrderDetailQuery, type SingleOrderDetail, type PvOrderDetailNode } from "@workspace/printavo";
+import { getPrintavoClient } from "../../printavoGateway";
 import { getAutoPrintConfig, type AutoPrintConfig } from "./config";
 import { openPdfRenderer } from "./pdf";
 import {
@@ -24,11 +27,10 @@ import {
   LiveDiscoveryError,
 } from "./liveDiscovery";
 import { checkPrintSafety } from "./printSafety";
-import { planAutoPrintDetails } from "./candidatePlanning";
+import { decideReprint, lineItemFingerprint, printAttemptKey, canReservePrint, observedSourceMembership, hubPoOrdersFromOutcomes, definitiveFailureCandidates, verifiedConversionOrderIds } from "./candidatePlanning";
 import {
   classifyDecorationLines,
   destinationMappingForClassification,
-  type DecorationLine,
 } from "../../purchasing/decorationClassifier";
 import { businessDaysUntilDue } from "../../purchasing/businessDays";
 import {
@@ -36,15 +38,15 @@ import {
   successfulPostPrintCandidates,
 } from "./routing";
 import { withRendererStartupGuard } from "./rendererStartupGuard";
+import { runHubPoBatch } from "./hubPoBatch";
 
 export { PDF_RENDERER_STARTUP_ERROR_PREFIX } from "./rendererStartupGuard";
 
 /**
  * Auto-print engine (PQ3a). One run at a time (in-memory claim slot,
  * pq_status_jobs pattern). Per-order outcomes are persisted to
- * pq_print_jobs as each order finishes, so a restart can never lose track
- * of what was already sent to the printer — those rows are also the dedup
- * source ("already printed").
+ * pq_print_jobs, with a durable locked reservation before delivery. Pending
+ * or ambiguous submissions block further automatic delivery after a restart.
  *
  * Printavo writes (post-print status advance) go EXCLUSIVELY through
  * startPqStatusJob('autoprint', ...) — same stale guard, same throttled
@@ -77,6 +79,10 @@ export function anyRunActive(): boolean {
 /* ── Summary / DTO shapes ────────────────────────────────────────────── */
 
 export interface RunCounts {
+  skipped: number;
+  reprinted: number;
+  poPrinted: number;
+  poFailed: number;
   candidates: number;
   alreadyPrinted: number;
   detailPending: number;
@@ -113,6 +119,14 @@ export interface PqPrintRunDto {
 }
 
 export interface PqPrintJobDto {
+  reason: string | null;
+  priorJobId: string | null;
+  priorPrintedAt: string | null;
+  contentFingerprint: string | null;
+  eligibilityCycle: string | null;
+  hubPoId: string | null;
+  hubPoNumber: string | null;
+  snapshotMetadata: unknown;
   id: string;
   runId: string;
   orderId: string;
@@ -134,6 +148,10 @@ export interface PqPrintJobDto {
 }
 
 const EMPTY_COUNTS: RunCounts = {
+  skipped: 0,
+  reprinted: 0,
+  poPrinted: 0,
+  poFailed: 0,
   candidates: 0,
   alreadyPrinted: 0,
   detailPending: 0,
@@ -179,6 +197,14 @@ function toRunDto(row: PqPrintRun): PqPrintRunDto {
 
 function toJobDto(row: PqPrintJob): PqPrintJobDto {
   return {
+    reason: row.reason,
+    priorJobId: row.priorJobId,
+    priorPrintedAt: row.priorPrintedAt?.toISOString() ?? null,
+    contentFingerprint: row.contentFingerprint,
+    eligibilityCycle: row.eligibilityCycle,
+    hubPoId: row.hubPoId,
+    hubPoNumber: row.hubPoNumber,
+    snapshotMetadata: row.snapshotMetadata,
     id: row.id,
     runId: row.runId,
     orderId: row.printavoOrderId,
@@ -309,6 +335,11 @@ export async function startAutoPrintRun(
 }
 
 interface Candidate {
+  contentFingerprint: string;
+  eligibilityCycle: string;
+  priorJobId: string | null;
+  priorPrintedAt: Date | null;
+  isReprint: boolean;
   orderId: string;
   orderKind: "invoice" | "quote";
   visualId: number;
@@ -348,49 +379,54 @@ async function runAutoPrint(
     const visuals = live.orders.map((order) => String(order.node.visualId));
 
     /*
-     * 2 — dedup against printed history and apply the run cap BEFORE detail
-     * refresh. Quote→invoice conversion can mint a new id for the same visual
-     * id, so both identity forms remain part of the history check.
+     * 2 — load print/attempt history and bound detail work. Previously printed
+     * orders must still be evaluated for source reentry AND changed products.
+     * Quote→invoice conversion retains its logical visual identity.
      */
     const printedRows = liveIds.length
       ? await db
-          .select({
-            orderId: pqPrintJobsTable.printavoOrderId,
-            visualId: pqPrintJobsTable.visualId,
-          })
+          .select()
           .from(pqPrintJobsTable)
           .where(
             and(
-              eq(pqPrintJobsTable.status, "printed"),
               eq(pqPrintJobsTable.docType, "workorder"),
               or(
                 inArray(pqPrintJobsTable.printavoOrderId, liveIds),
                 inArray(pqPrintJobsTable.visualId, visuals),
               ),
             ),
-          )
+          ).orderBy(desc(sql`coalesce(${pqPrintJobsTable.printedAt}, ${pqPrintJobsTable.createdAt})`), desc(pqPrintJobsTable.id))
       : [];
-    const printedIds = new Set(printedRows.map((r) => r.orderId));
-    const printedVisuals = new Set(
-      printedRows.map((r) => r.visualId).filter((v): v is string => v != null),
-    );
-    const plan = planAutoPrintDetails(
-      live.orders,
-      (liveOrder) => ({
-        orderId: liveOrder.node.id,
-        visualId: liveOrder.node.visualId,
-      }),
-      printedIds,
-      printedVisuals,
-      MAX_ORDERS_PER_RUN,
-    );
-    counts.alreadyPrinted += plan.alreadyPrinted;
-    counts.deferred += plan.deferred;
-    const selectedLiveOrders = plan.selected;
+    const priorFor = (id: string, visual: number) => printedRows.find((r) =>
+      r.status === "printed" && (r.printavoOrderId === id || r.visualId === String(visual))) ?? null;
+    const skip = async (order: { id: string; visualId: number; nickname?: string | null; status?: { id: string; name: string | null } | null }, reason: string) => {
+      const prior = priorFor(order.id, order.visualId);
+      await db.insert(pqPrintJobsTable).values({
+        runId, printavoOrderId: order.id, visualId: String(order.visualId), nickname: order.nickname,
+        sourceStatusId: order.status?.id, sourceStatusName: order.status?.name,
+        docType: "workorder", status: "skipped", reason, priorJobId: prior?.id,
+        priorPrintedAt: prior?.printedAt, copies: config.copies,
+      });
+      counts.skipped++;
+      if (prior) counts.alreadyPrinted++;
+    };
+    counts.candidates = live.orders.length;
+    // Rotate bounded detail work by last observation so unchanged older orders
+    // cannot permanently starve new/reentered invoices beyond the cap.
+    const lastAttempt = (id: string, visual: number) => Math.max(0, ...printedRows
+      .filter((r) => r.printavoOrderId === id || r.visualId === String(visual))
+      .map((r) => r.createdAt.getTime()));
+    const prioritized = [...live.orders].sort((a, b) =>
+      lastAttempt(a.node.id, a.node.visualId) - lastAttempt(b.node.id, b.node.visualId));
+    const selectedLiveOrders = prioritized.slice(0, MAX_ORDERS_PER_RUN);
+    for (const order of prioritized.slice(MAX_ORDERS_PER_RUN)) {
+      counts.deferred++;
+      await skip(order.node, "run_limit_deferred");
+    }
 
     /*
      * 3 — mirror list fields for every live order, but force-refresh detail
-     * only for the bounded, unprinted work list. These are local mirror
+     * only for the bounded evaluation list. These are local mirror
      * writes only (also allowed by the existing dry-run contract); no Printavo
      * mutation is used here.
      */
@@ -402,19 +438,30 @@ async function runAutoPrint(
       );
     }
     const detailAgg = newDetailAgg();
+    const freshDetails = new Map<string, PvOrderDetailNode>();
     for (const liveOrder of selectedLiveOrders) {
-      const detailOutcome = await refreshOrderDetail(
-        liveOrder.node.id,
-        liveOrder.kind,
-        detailAgg,
-        log,
-        { force: true, syncRunId: null },
-      );
-      if (detailOutcome !== "written" && detailOutcome !== "unchanged") {
-        throw new LiveDiscoveryError(
-          `Live auto-print candidate ${liveOrder.node.id} detail refresh was ${detailOutcome}; refusing to print incomplete data`,
-          "request",
-        );
+      try {
+        const fetchedAt = new Date();
+        const data = await getPrintavoClient().query<SingleOrderDetail>(singleOrderDetailQuery(
+          liveOrder.kind === "invoices" ? "invoice" : "quote", liveOrder.node.id,
+        ));
+        const node = data.invoice ?? data.quote;
+        if (!node || node.id !== liveOrder.node.id || Number(node.visualId) !== liveOrder.node.visualId ||
+          node.lineItemGroups.pageInfo.hasNextPage ||
+          node.lineItemGroups.nodes.some((g) => g.lineItems.pageInfo.hasNextPage)) {
+          counts.detailPending++;
+          await skip(liveOrder.node, "live_detail_missing_or_incomplete");
+          continue;
+        }
+        const outcome = await applyOrderDetail(node, liveOrder.kind, detailAgg, log, { force: true, syncRunId: null, fetchedAt });
+        if (outcome !== "written" && outcome !== "unchanged") {
+          await skip(liveOrder.node, `live_detail_${outcome}`);
+          continue;
+        }
+        freshDetails.set(node.id, node);
+      } catch (error) {
+        counts.detailPending++;
+        await skip(liveOrder.node, `live_detail_unavailable: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -423,7 +470,7 @@ async function runAutoPrint(
      * order that disappeared from the live status-scoped result can never
      * become a candidate, and no local status query is used as a fallback.
      */
-    const ids = selectedLiveOrders.map((order) => order.node.id);
+    const ids = [...freshDetails.keys()];
     const mirroredRows = ids.length
       ? await db
           .select({
@@ -448,35 +495,27 @@ async function runAutoPrint(
       );
     }
     const sourceStatusIds = new Set(config.sourceStatusIds);
-    const orderRows = ids.map((id) => {
-      const row = rowsById.get(id);
-      if (!row || !row.statusId || !sourceStatusIds.has(row.statusId)) {
-        throw new LiveDiscoveryError(
-          `Live auto-print candidate ${id} is no longer in a configured source status after refresh`,
-          "request",
-        );
-      }
-      return row;
-    });
-    counts.candidates = orderRows.length;
+    const orderRows = ids.map((id) => rowsById.get(id)!);
+    const events = ids.length ? await db.select().from(changeEventsTable).where(and(
+      eq(changeEventsTable.entityType, "order"),
+      eq(changeEventsTable.field, "status"),
+      eq(changeEventsTable.eventType, "status_change"),
+      or(inArray(changeEventsTable.entityId, ids), inArray(changeEventsTable.visualId, live.orders.map((o) => o.node.visualId))),
+    )).orderBy(desc(changeEventsTable.occurredAt), desc(changeEventsTable.id)) : [];
+    // Legacy observations use names; newer/wrapped shapes may carry ids.
+    // Unknown or ambiguous observations never establish source reentry.
+    const allStatuses = await db.select().from(pvStatusesTable);
+    const configuredStatuses = allStatuses.filter((s) => sourceStatusIds.has(s.printavoId));
+    const knownSourceIds = new Set([...configuredStatuses.map((s) => s.printavoId),
+      ...live.orders.filter((o) => o.node.status?.name).map((o) => o.node.status!.id)]);
+    const recordedStatuses = [...allStatuses.map((s) => ({ id: s.printavoId, name: s.name })),
+      ...live.orders.filter((o) => o.node.status?.name).map((o) => ({ id: o.node.status!.id, name: o.node.status!.name! }))];
+    const conversions = ids.length ? await db.select().from(changeEventsTable).where(and(
+      eq(changeEventsTable.entityType, "order"), eq(changeEventsTable.eventType, "converted"),
+      inArray(changeEventsTable.entityId, ids),
+    )) : [];
 
-    /* 5 — line-item decoration classification for mapping */
-    const lineItemRows = ids.length
-      ? await db
-          .select({
-            orderId: pvLineItemsTable.orderId,
-            categoryName: pvLineItemsTable.categoryName,
-            items: pvLineItemsTable.items,
-          })
-          .from(pvLineItemsTable)
-          .where(inArray(pvLineItemsTable.orderId, ids))
-      : [];
-    const linesByOrder = new Map<string, DecorationLine[]>();
-    for (const r of lineItemRows) {
-      const lines = linesByOrder.get(r.orderId) ?? [];
-      lines.push({ categoryName: r.categoryName, items: r.items });
-      linesByOrder.set(r.orderId, lines);
-    }
+    /* 5 — decoration destination configuration */
     const mappings = config.categoryMappings.map((m) => ({
       category: m.category,
       statusId: m.statusId,
@@ -486,14 +525,53 @@ async function runAutoPrint(
     /* 6 — build the work list */
     const todo: Candidate[] = [];
     for (const row of orderRows) {
-      const lines = linesByOrder.get(row.printavoId);
-      if (!lines && !row.detailSyncedAt) {
-        // Line items arrive with the detail sync — defer instead of printing
-        // with a silently-missed category mapping.
-        counts.detailPending += 1;
+      const detail = freshDetails.get(row.printavoId)!;
+      const liveOrder = selectedLiveOrders.find((o) => o.node.id === row.printavoId)!;
+      try {
+        const current = await fetchLiveOrderStatus(row.orderType === "invoice" ? "invoice" : "quote", row.printavoId);
+        if (!current?.statusId || !sourceStatusIds.has(current.statusId) ||
+          current.orderId !== row.printavoId || current.visualId !== row.visualId) {
+          await skip(liveOrder.node, "no_longer_in_source_status");
+          continue;
+        }
+        row.statusId = current.statusId;
+        row.statusName = current.statusName;
+      } catch {
+        await skip(liveOrder.node, "live_status_unavailable");
         continue;
       }
-      const classification = classifyDecorationLines(lines ?? [], {
+      const prior = priorFor(row.printavoId, row.visualId);
+      const convertedFrom = verifiedConversionOrderIds({ orderId: row.printavoId, visualId: row.visualId }, conversions);
+      if (prior && prior.printavoOrderId !== row.printavoId && !convertedFrom.includes(prior.printavoOrderId)) {
+        await skip(liveOrder.node, "prior_visual_identity_unverified");
+        continue;
+      }
+      if (prior && config.sourceStatusIds.some((id) => !knownSourceIds.has(id))) {
+        await skip(liveOrder.node, "source_status_history_unverifiable");
+        continue;
+      }
+      if (printedRows.some((r) => (r.printavoOrderId === row.printavoId || r.visualId === String(row.visualId)) &&
+        (r.status === "pending" || r.status === "submission_unknown"))) {
+        await skip(liveOrder.node, "prior_submission_unresolved");
+        continue;
+      }
+      const fingerprint = lineItemFingerprint(detail.lineItemGroups.nodes.flatMap((g) =>
+        g.lineItems.nodes.map((line) => ({ ...line }))));
+      const reentry = events.find((e) => (e.entityId === row.printavoId ||
+        (e.visualId === row.visualId && convertedFrom.includes(e.entityId))) &&
+        observedSourceMembership(e.oldValue, recordedStatuses, sourceStatusIds) === false &&
+        observedSourceMembership(e.newValue, recordedStatuses, sourceStatusIds) === true) ?? null;
+      const decision = decideReprint({ prior, fingerprint, reentry });
+      if (!decision.allowed) {
+        await skip(liveOrder.node, decision.reason!);
+        continue;
+      }
+      // Use the same authoritative response as the fingerprint, not mutable
+      // mirror rows which another sync could replace during this run.
+      const freshLines = detail.lineItemGroups.nodes.flatMap((g) => g.lineItems.nodes);
+      const classification = classifyDecorationLines(freshLines.map((line) => ({
+        categoryName: line.category?.name ?? null, items: line.items,
+      })), {
         positiveQuantityOnly: true,
       });
       let target: { statusId: string; statusName: string } | null = null;
@@ -516,6 +594,11 @@ async function runAutoPrint(
       }
       const raw = row.data as { workorderUrl?: unknown } | null;
       todo.push({
+        contentFingerprint: fingerprint,
+        eligibilityCycle: decision.cycle,
+        priorJobId: prior?.id ?? null,
+        priorPrintedAt: prior?.printedAt ?? null,
+        isReprint: decision.isReprint,
         orderId: row.printavoId,
         orderKind: row.orderType === "invoice" ? "invoice" : "quote",
         visualId: row.visualId,
@@ -536,6 +619,7 @@ async function runAutoPrint(
     const printOutcomes: {
       candidate: Candidate;
       outcome: "printed" | "failed" | "dry_run";
+      definitivePreSubmitFailure?: boolean;
     }[] = [];
     if (todo.length > 0) {
       await withRendererStartupGuard(
@@ -556,7 +640,7 @@ async function runAutoPrint(
               printerId: config.printerId,
               printerName: config.printerName,
               copies: config.copies,
-              isReprint: false,
+              isReprint: c.isReprint,
               status: "failed",
               errorMessage,
             })),
@@ -584,14 +668,21 @@ async function runAutoPrint(
               printerId: config.printerId,
               printerName: config.printerName,
               copies: config.copies,
-              isReprint: false,
+              isReprint: c.isReprint,
+              priorJobId: c.priorJobId,
+              priorPrintedAt: c.priorPrintedAt,
+              eligibilityCycle: c.eligibilityCycle,
             };
+            let reservedId: string | null = null;
+            let submitted = false;
+            let definitivePreSubmitFailure = true;
             try {
               if (!c.workorderUrl) {
                 throw new Error("No workorder URL on this order");
               }
               const pdf = await renderer.renderUrl(c.workorderUrl, {
                 excludeAttachments: config.excludeAttachments,
+                isReprint: c.isReprint,
               });
               if (dryRun) {
                 counts.dryRun += 1;
@@ -624,36 +715,106 @@ async function runAutoPrint(
                     safety.reason ?? "Live print safety check failed",
                   );
                 }
+                const verification = await getPrintavoClient().query<SingleOrderDetail>(
+                  singleOrderDetailQuery(c.orderKind, c.orderId),
+                );
+                const verified = verification.invoice ?? verification.quote;
+                if (!verified || verified.id !== c.orderId || Number(verified.visualId) !== c.visualId ||
+                  verified.lineItemGroups.pageInfo.hasNextPage ||
+                  verified.lineItemGroups.nodes.some((g) => g.lineItems.pageInfo.hasNextPage) ||
+                  lineItemFingerprint(verified.lineItemGroups.nodes.flatMap((g) => g.lineItems.nodes.map((l) => ({ ...l })))) !== c.contentFingerprint) {
+                  await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname }, "line_items_changed_during_render_or_detail_unavailable");
+                  continue;
+                }
+                const finalSafety = checkPrintSafety({
+                  dryRun,
+                  observedStatus: await fetchLiveOrderStatus(c.orderKind, c.orderId),
+                  expected: { orderId: c.orderId, visualId: c.visualId, sourceStatusId: c.statusId },
+                });
+                if (!finalSafety.allowed) {
+                  await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname }, "live_source_status_changed_after_render");
+                  continue;
+                }
+                // Serialize logical-order claims across processes. The durable claim is
+                // committed BEFORE the irreversible network call; ambiguity never retries.
+                definitivePreSubmitFailure = false;
+                const claim = await db.transaction(async (tx) => {
+                  const logical = `visual:${c.visualId}`;
+                  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${logical}, 0))`);
+                  const history = await tx.select().from(pqPrintJobsTable).where(and(
+                    eq(pqPrintJobsTable.docType, "workorder"),
+                    or(eq(pqPrintJobsTable.printavoOrderId, c.orderId), eq(pqPrintJobsTable.visualId, String(c.visualId))),
+                    inArray(pqPrintJobsTable.status, ["pending", "submission_unknown", "printed"]),
+                  )).orderBy(desc(sql`coalesce(${pqPrintJobsTable.printedAt}, ${pqPrintJobsTable.createdAt})`), desc(pqPrintJobsTable.id));
+                  if (!canReservePrint(history, c.priorJobId)) return null;
+                  const [reserved] = await tx.insert(pqPrintJobsTable).values({
+                    ...base, status: "pending",
+                    attemptKey: printAttemptKey(logical, c.eligibilityCycle, c.contentFingerprint),
+                  }).onConflictDoNothing().returning();
+                  return reserved ?? null;
+                });
+                if (!claim) {
+                  await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname }, "concurrent_or_previously_reserved_attempt");
+                  continue;
+                }
+                reservedId = claim.id;
+                submitted = true;
                 const jobId = await submitPdfPrintJob({
                   printerId: Number(config.printerId),
-                  title: `Workorder #${c.visualId}${c.nickname ? ` — ${c.nickname}` : ""}`,
+                  title: `${c.isReprint ? "UPDATED / REPRINT — " : ""}Workorder #${c.visualId}${c.nickname ? ` — ${c.nickname}` : ""}`,
                   pdfBase64: pdf.toString("base64"),
                   copies: config.copies,
                   source: "Printavo Hub auto-print",
                 });
-                counts.printed += 1;
-                printOutcomes.push({ candidate: c, outcome: "printed" });
-                await db.insert(pqPrintJobsTable).values({
-                  ...base,
+                if (!Number.isSafeInteger(jobId) || jobId <= 0) {
+                  throw new Error("PrintNode returned no valid job id; submission requires manual reconciliation");
+                }
+                await db.update(pqPrintJobsTable).set({
                   status: "printed",
                   printnodeJobId: String(jobId),
                   printedAt: new Date(),
-                });
+                  contentFingerprint: c.contentFingerprint,
+                }).where(eq(pqPrintJobsTable.id, reservedId));
+                counts.printed += 1;
+                if (c.isReprint) counts.reprinted += 1;
+                printOutcomes.push({ candidate: c, outcome: "printed" });
               }
             } catch (err) {
               counts.failed += 1;
-              printOutcomes.push({ candidate: c, outcome: "failed" });
-              await db.insert(pqPrintJobsTable).values({
-                ...base,
-                status: "failed",
+              printOutcomes.push({ candidate: c, outcome: "failed", definitivePreSubmitFailure });
+              const failure = {
+                status: submitted ? "submission_unknown" : "failed",
                 errorMessage: err instanceof Error ? err.message : String(err),
-              });
+                reason: submitted ? "submission_outcome_unknown_manual_reconciliation_required" : null,
+              };
+              if (reservedId) await db.update(pqPrintJobsTable).set(failure).where(eq(pqPrintJobsTable.id, reservedId));
+              else await db.insert(pqPrintJobsTable).values({ ...base, ...failure });
               log.warn(
                 { err, orderId: c.orderId, visualId: c.visualId },
                 "Auto-print: order failed",
               );
             }
             await persistSummary(runId, { summary: { ...summary, counts } });
+          }
+          // Saved Hub PO snapshots only, once per run, and only for successfully
+          // submitted workorders. PO errors never change workorder outcomes.
+          if (!dryRun && config.printerId) {
+            try {
+              const po = await runHubPoBatch({
+                runId,
+                successfullyPrintedOrders: hubPoOrdersFromOutcomes(printOutcomes, conversions),
+                printerId: config.printerId,
+                printerName: config.printerName,
+                dryRun,
+                renderPdf: (html) => renderer.renderHtml(html),
+              });
+              counts.poPrinted += po.printed;
+              counts.poFailed += po.failed + po.unknown;
+              if (po.warnings.length) summary.error = `Workorders completed; Hub PO warning: ${po.warnings.join("; ")}`;
+            } catch (error) {
+              counts.poFailed++;
+              summary.error = `Workorders completed; Hub PO batch failed: ${error instanceof Error ? error.message : String(error)}`;
+            }
           }
         },
       );
@@ -703,9 +864,7 @@ async function runAutoPrint(
         if (c.targetStatusId) await appendGuardedLine(c, c.targetStatusId);
       }
       if (config.errorStatusId) {
-        for (const c of printOutcomes
-          .filter((item) => item.outcome === "failed")
-          .map((item) => item.candidate)) {
+        for (const c of definitiveFailureCandidates(printOutcomes)) {
           await appendGuardedLine(c, config.errorStatusId);
         }
       }
@@ -771,19 +930,23 @@ export async function listPrintRuns(limit: number): Promise<PqPrintRunDto[]> {
 export async function listPrintJobs(opts: {
   runId?: string;
   limit: number;
+  offset?: number;
 }): Promise<PqPrintJobDto[]> {
-  const limit = Math.min(Math.max(opts.limit, 1), 200);
+  const limit = Number.isFinite(opts.limit) ? Math.min(Math.max(Math.trunc(opts.limit), 1), 200) : 50;
+  const offset = Number.isSafeInteger(opts.offset) && opts.offset! >= 0 ? opts.offset! : 0;
   const rows = opts.runId
     ? await db
         .select()
         .from(pqPrintJobsTable)
         .where(eq(pqPrintJobsTable.runId, opts.runId))
-        .orderBy(desc(pqPrintJobsTable.createdAt))
+        .orderBy(desc(pqPrintJobsTable.createdAt), desc(pqPrintJobsTable.id))
+        .offset(offset)
         .limit(limit)
     : await db
         .select()
         .from(pqPrintJobsTable)
-        .orderBy(desc(pqPrintJobsTable.createdAt))
+        .orderBy(desc(pqPrintJobsTable.createdAt), desc(pqPrintJobsTable.id))
+        .offset(offset)
         .limit(limit);
   return rows.map(toJobDto);
 }

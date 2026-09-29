@@ -1,6 +1,7 @@
 import type { Logger } from "pino";
 import { db, pvOrdersTable } from "@workspace/db";
 import { inArray } from "drizzle-orm";
+import { REPRINT_BANNER_HTML, WORKORDER_PRESENTATION_CSS } from "./workorderPresentation";
 
 /**
  * Print Queue — combined workorder HTML (PQ1).
@@ -188,6 +189,9 @@ export interface CombinedHtmlOptions {
   nonce: string;
   /** Hide attachment/mockup pages (Printavo's .printing__keep-together blocks). */
   excludeAttachments?: boolean;
+  /** Mark all selected workorders as reprints, or only the specified orders. */
+  isReprint?: boolean;
+  reprintOrderIds?: string[];
 }
 
 /**
@@ -221,7 +225,7 @@ export async function buildCombinedWorkordersHtml(
       <span class="pq-label">${label}</span>
       <button type="button" class="pq-exclude-btn" data-exclude-idx="${i}">Exclude</button>
     </div>
-    <div class="pq-page">${content}</div>
+    <div class="pq-page">${opts.isReprint || opts.reprintOrderIds?.includes(f.printavoId) ? REPRINT_BANNER_HTML : ""}${content}</div>
   </div>${i < total - 1 ? `\n  <div class="pq-divider">&#8213; page break &#8213;</div>` : ""}`;
     })
     .join("\n  ");
@@ -234,6 +238,7 @@ ${base}
 <title>Workorders (${total})</title>
 ${head}
 <style>
+  ${WORKORDER_PRESENTATION_CSS}
   ${opts.excludeAttachments ? ".printing__keep-together { display: none !important; }" : ""}
 
   @media print {

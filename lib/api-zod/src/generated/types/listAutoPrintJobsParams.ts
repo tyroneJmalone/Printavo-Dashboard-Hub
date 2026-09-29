@@ -13,4 +13,8 @@ runId?: string;
  * @maximum 200
  */
 limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };

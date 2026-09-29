@@ -5,10 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AutoPrintJobSnapshotMetadata } from './autoPrintJobSnapshotMetadata';
 import type { AutoPrintJobStatus } from './autoPrintJobStatus';
 
 /**
- * status: pending | printed | failed | dry_run | skipped. Printed rows are the dedup source — an order matching by printavoOrderId OR visualId never auto-prints twice.
+ * Persisted print and skip audit. Reprints require observed source reentry and changed line items after the last successful print. Pending/unknown submissions require reconciliation, never automatic retry.
  */
 export interface AutoPrintJob {
   id: string;
@@ -33,6 +34,22 @@ export interface AutoPrintJob {
   printerName: string | null;
   copies: number;
   status: AutoPrintJobStatus;
+  /** @nullable */
+  reason?: string | null;
+  /** @nullable */
+  priorJobId?: string | null;
+  /** @nullable */
+  priorPrintedAt?: string | null;
+  /** @nullable */
+  contentFingerprint?: string | null;
+  /** @nullable */
+  eligibilityCycle?: string | null;
+  /** @nullable */
+  hubPoId?: string | null;
+  /** @nullable */
+  hubPoNumber?: string | null;
+  /** @nullable */
+  snapshotMetadata?: AutoPrintJobSnapshotMetadata;
   /** @nullable */
   errorMessage: string | null;
   isReprint: boolean;

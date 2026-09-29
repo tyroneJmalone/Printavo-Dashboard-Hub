@@ -22,19 +22,19 @@ function errorMessage(error: unknown): string {
  * If startup is exhausted, the complete pending document list is handed to
  * one persistence callback and `work` is never entered.
  */
-export async function withRendererStartupGuard<Document, Result>(
+export async function withRendererStartupGuard<Document, Result, Renderer extends AutoPrintPdfRenderer>(
   documents: readonly Document[],
-  openRenderer: () => Promise<AutoPrintPdfRenderer>,
+  openRenderer: () => Promise<Renderer>,
   recordStartupFailures: (
     documents: readonly Document[],
     message: string,
   ) => Promise<void>,
   work: (
-    renderer: AutoPrintPdfRenderer,
+    renderer: Renderer,
     documents: readonly Document[],
   ) => Promise<Result>,
 ): Promise<Result> {
-  let renderer: AutoPrintPdfRenderer;
+  let renderer: Renderer;
   try {
     renderer = await openRenderer();
   } catch (error) {
