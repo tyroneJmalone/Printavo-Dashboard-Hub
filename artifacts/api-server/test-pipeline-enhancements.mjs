@@ -14,7 +14,7 @@ await build({
     js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);",
   },
 });
-const result = spawnSync(process.execPath, ["--enable-source-maps", "--test", outfile], {
+const result = spawnSync(process.execPath, ["--enable-source-maps", "--test", ...process.argv.slice(2), outfile], {
   stdio: "inherit",
   env: { ...process.env, NODE_ENV: "production" },
 });

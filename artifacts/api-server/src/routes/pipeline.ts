@@ -80,17 +80,22 @@ const viewUpdateSchema = z.object({
 
 const NORM_SQL = `lower(regexp_replace(coalesce(o.status_name, ''), '\\s+', ' ', 'g'))`;
 const STAGE_CASE_SQL = `CASE
-  WHEN n.norm LIKE '%contract%' AND (n.norm LIKE '%dead%' OR n.norm LIKE '%archive%')
+  WHEN n.norm LIKE '%contract%' AND (n.norm ~ '\\mdead\\M' OR n.norm LIKE '%archive%')
     THEN 'contract_dead_archive'
-  WHEN n.norm LIKE '%dead%' THEN 'dead'
+  WHEN n.norm ~ '\\mdead\\M' THEN 'dead'
   WHEN n.norm LIKE '%archive%' OR n.norm LIKE '%duplicat%' OR n.norm LIKE '%reference%'
     THEN 'archive'
-  WHEN n.norm LIKE '%nurtur%' THEN 'nurturing'
-  WHEN n.norm ~ '\\yart' OR n.norm LIKE '%proof%' OR n.norm LIKE '%digitiz%'
+  WHEN n.norm LIKE '%nurtur%' OR n.norm LIKE '%approved%' OR n.norm ~ '\\yart'
+    THEN 'nurturing'
+  WHEN n.norm LIKE '%proof%' OR n.norm LIKE '%digitiz%'
     OR n.norm LIKE '%separat%' OR n.norm LIKE '%png%' OR n.norm LIKE '%revision%'
     THEN 'art'
-  WHEN n.norm LIKE '%complete%' THEN 'done'
+  WHEN n.norm LIKE '%complete%' OR n.norm LIKE '%picked up%'
+    OR n.norm LIKE '%shipped%' OR n.norm LIKE '%delivered%'
+    OR n.norm LIKE '%billed%' THEN 'done'
   WHEN n.norm LIKE '%waiting 4 blanks%' OR n.norm LIKE '%ready to go%'
+    OR n.norm LIKE '%ready 2 go%' OR n.norm LIKE '%ready 4 production%'
+    OR n.norm LIKE '%ready 2 pick/pack%'
     OR n.norm LIKE '%need to order%' OR n.norm LIKE '%need 2 order%' THEN 'won'
   WHEN n.norm LIKE '%follow up 2%' THEN 'follow_up_2'
   WHEN n.norm LIKE '%follow up 1%' THEN 'follow_up_1'
@@ -126,7 +131,8 @@ const FILTERED_CTE = `WITH base AS (
 ), included AS (
   SELECT * FROM base
    WHERE stage_id IS NOT NULL
-     AND ((order_type = 'quote' AND stage_id NOT IN ('won', 'done'))
+     AND (stage_id = 'nurturing'
+       OR (order_type = 'quote' AND stage_id NOT IN ('won', 'done'))
        OR (stage_id IN ('won', 'done')
          AND ($12::boolean OR printavo_created_at >= now() - make_interval(days => $1::int))))
 ), filtered AS (

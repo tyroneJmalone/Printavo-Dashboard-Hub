@@ -3,7 +3,7 @@ import { after, before, test } from "node:test";
 import { randomUUID } from "node:crypto";
 import express from "express";
 import { pool, type StaffUser } from "@workspace/db";
-import pipelineRouter, { literalLikePattern } from "../src/routes/pipeline.ts";
+import pipelineRouter, { literalLikePattern, pipelineStageSql } from "../src/routes/pipeline.ts";
 
 const suffix = randomUUID().slice(0, 8);
 const users = {
@@ -109,6 +109,90 @@ async function request(path: string, init: RequestInit = {}, user: "a" | "b" = "
 
 test("literal LIKE escaping treats percent and underscore as text", () => {
   assert.equal(literalLikePattern(String.raw`a%b_c\d`), String.raw`%a\%b\_c\\d%`);
+});
+
+test("expanded Pipeline status mappings use normalized names and preserve precedence", async () => {
+  const cases = [
+    ["PRINT - Ready 2 Go", "won"],
+    ["PRINT - FIRM DEADLINE! Ready 2 Go", "won"],
+    ["MERCH - HEAT Ready 4 Production", "won"],
+    ["MERCH - PRINT Ready 2 Pick/Pack", "won"],
+    ["EMB - PICKED UP", "done"],
+    ["PRINT - SHIPPED📦", "done"],
+    ["EMB - DELIVERED🚚", "done"],
+    ["CONTRACT - BILLED", "done"],
+    ["MERCH COMMITMENT - BILLED/SENT", "done"],
+    ["QUOTE - NURTURING - Needs Payment", "nurturing"],
+    ["NURTURING - Needs Sizes", "nurturing"],
+    ["ORDER FULLY APPROVED! (Art & Quote/Invoice)", "nurturing"],
+    ["QUOTE - Approved", "nurturing"],
+    ["ART - Need Proof", "nurturing"],
+    ["ART - COMPLETE", "nurturing"],
+    ["  art  -  approved!  ", "nurturing"],
+    ["PRINT -  READY  2  GO", "won"],
+    ["QUOTE - Dead - Art Approved", "dead"],
+    ["CONTRACT - Archive - Approved", "contract_dead_archive"],
+    ["QUOTE - Duplicated / Reference / Archive", "archive"],
+    ["DIGITIZING SUBMITTED - seps.io", "art"],
+    ["Seps.io - PARTIALLY ORDERED", null],
+  ];
+  const result = await pool.query<{ status: string; stage: string | null }>(
+    `SELECT status, ${pipelineStageSql("lower(regexp_replace(status, '\\s+', ' ', 'g'))")} AS stage
+       FROM unnest($1::text[]) WITH ORDINALITY AS s(status, position) ORDER BY position`,
+    [cases.map(([status]) => status)],
+  );
+  assert.deepEqual(result.rows.map(({ status, stage }) => [status, stage]), cases);
+});
+
+test("Nurturing includes quotes and invoices in rows, Active and stage totals without the Won age cutoff", async () => {
+  try {
+    for (const orderType of ["quote", "invoice"]) {
+      for (const status of ["QUOTE - NURTURING - Needs Sizes", "Nurturing - Waiting", "ORDER APPROVED!", "ART - COMPLETE"]) {
+        await pool.query("UPDATE pv_orders SET order_type=$2,status_name=$3 WHERE printavo_id=$1",
+          [orderIds[0], orderType, status]);
+        for (const stage of ["active", "nurturing"]) {
+          const response = await request(`/pipeline?stage=${stage}&wonDays=7&owner=${encodeURIComponent(users.a.email)}&q=${suffix}`);
+          assert.equal(response.status, 200);
+          const body = await response.json() as { rows: Array<{ visualId: number }>; stages: Array<{ id: string; count: number; amount: number }> };
+          assert.deepEqual(body.rows.map(row => row.visualId), [visualIds[0]], `${orderType}: ${status} in ${stage}`);
+          assert.equal(body.stages.find(item => item.id === "nurturing")?.count, 1);
+          assert.equal(body.stages.find(item => item.id === "nurturing")?.amount, 100);
+        }
+      }
+    }
+    // An explicit date still excludes records outside the chosen range.
+    const filtered = await (await request(`/pipeline?stage=nurturing&invoiceFrom=2021-01-01&q=${suffix}`)).json() as { total: number };
+    assert.equal(filtered.total, 0);
+    await pool.query("UPDATE pv_orders SET status_name='MERCH STORE SOURCE - Art Approved' WHERE printavo_id=$1", [orderIds[0]]);
+    const source = await (await request(`/pipeline?stage=active&q=${suffix}`)).json() as { total: number };
+    assert.equal(source.total, 0);
+  } finally {
+    await pool.query("UPDATE pv_orders SET order_type='invoice',status_name='Ready to go' WHERE printavo_id=$1", [orderIds[0]]);
+  }
+});
+
+test("new Won and Done invoice statuses appear in matching stages and retain the date-window rule", async () => {
+  try {
+    for (const [status, stage] of [
+      ["PRINT - Ready 2 Go", "won"],
+      ["MERCH - PRINT Ready 4 Production", "won"],
+      ["MERCH - PRINT Ready 2 Pick/Pack", "won"],
+      ["EMB - Picked Up", "done"], ["PRINT - Shipped", "done"],
+      ["PRINT - Delivered", "done"], ["CONTRACT - Billed", "done"],
+    ]) {
+      await pool.query("UPDATE pv_orders SET status_name=$2 WHERE printavo_id=$1", [orderIds[0], status]);
+      const path = `/pipeline?stage=${stage}&owner=${encodeURIComponent(users.a.email)}&q=${suffix}`;
+      const recent = await (await request(path)).json() as { total: number };
+      assert.equal(recent.total, 0, `${status} retains default cutoff`);
+      const dated = await (await request(`${path}&invoiceFrom=2020-01-16&invoiceTo=2020-01-16`)).json() as {
+        rows: Array<{ visualId: number }>; stages: Array<{ id: string; count: number }>;
+      };
+      assert.deepEqual(dated.rows.map(row => row.visualId), [visualIds[0]], status);
+      assert.equal(dated.stages.find(item => item.id === stage)?.count, 1);
+    }
+  } finally {
+    await pool.query("UPDATE pv_orders SET status_name='Ready to go' WHERE printavo_id=$1", [orderIds[0]]);
+  }
 });
 
 test("explicit date filters override wonDays and are inclusive", async () => {
