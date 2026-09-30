@@ -6,9 +6,11 @@
  * decoration category even when its imprints are empty or were not synced.
  */
 
-export type DecoGroup = "print" | "heat" | "embroidery";
+export type DecoGroup = "print" | "heat" | "embroidery" | "samples";
 export type DecorationKind = DecoGroup | "mixed";
 
+// Purchasing's rule picker retains its original methods; SAMPLES is an
+// auto-print destination and does not add a new Purchasing rule option.
 export const DECO_GROUPS: readonly DecoGroup[] = [
   "print",
   "heat",
@@ -20,13 +22,15 @@ export const DECORATION_CATEGORY_LABELS = [
   "Screen Printing",
   "Heat Applied Graphics",
   "Embroidery",
+  "SAMPLES",
   "Mixed Decoration",
 ] as const;
 
 /**
- * Keep this line-category map aligned with Purchasing's original
- * CATEGORY_TO_GROUP. Aliases below are for saved auto-print destination
- * mappings only; adding aliases here would change Purchasing matching.
+ * Keep the original line-category matches aligned with Purchasing's
+ * CATEGORY_TO_GROUP. SAMPLES is an additional exact category. Aliases below
+ * are for saved auto-print mappings only; adding aliases here would broaden
+ * Purchasing's live line-category matches.
  */
 const LINE_CATEGORY_TO_GROUP: Readonly<Record<string, DecoGroup>> = {
   "screen printing": "print",
@@ -35,6 +39,7 @@ const LINE_CATEGORY_TO_GROUP: Readonly<Record<string, DecoGroup>> = {
   embroidery: "embroidery",
   "embroidery - personalizations": "embroidery",
   "embroidery - set up/digitizing": "embroidery",
+  samples: "samples",
 };
 
 const CATEGORY_ALIASES: Readonly<Record<string, DecoGroup>> = {
@@ -54,6 +59,7 @@ const CATEGORY_ALIASES: Readonly<Record<string, DecoGroup>> = {
   "embroidery - set up": "embroidery",
   "embroidery - digitizing": "embroidery",
   emb: "embroidery",
+  sample: "samples",
 };
 
 const MIXED_CATEGORY_ALIASES = new Set([

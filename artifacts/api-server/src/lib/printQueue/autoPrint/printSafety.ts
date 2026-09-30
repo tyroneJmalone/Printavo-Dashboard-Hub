@@ -2,6 +2,24 @@ import {
   liveOrderStatusMatches,
   type LiveOrderStatus,
 } from "./liveDiscovery";
+import { isInternalReplacementInvoice } from "../../purchasing/internalInvoicePolicy";
+
+export const INTERNAL_REPLACEMENT_WORKORDER_SKIP_REASON =
+  "internal_replacements_invoice_no_workorder";
+
+/** Partition before applying the per-run cap so the internal invoice cannot take a slot. */
+export function selectAutoPrintWorkorders<T>(
+  prioritized: readonly T[],
+  limit: number,
+  visualIdOf: (order: T) => number | string | null | undefined,
+): { selected: T[]; excluded: T[]; deferred: T[] } {
+  const eligible: T[] = [];
+  const excluded: T[] = [];
+  for (const order of prioritized) {
+    (isInternalReplacementInvoice(visualIdOf(order)) ? excluded : eligible).push(order);
+  }
+  return { selected: eligible.slice(0, limit), excluded, deferred: eligible.slice(limit) };
+}
 
 export interface PrintSafetyCheck {
   dryRun: boolean;
@@ -26,6 +44,13 @@ export interface PrintSafetyResult {
 export function checkPrintSafety(
   input: PrintSafetyCheck,
 ): PrintSafetyResult {
+  if (isInternalReplacementInvoice(input.expected.visualId) ||
+      isInternalReplacementInvoice(input.observedStatus?.visualId)) {
+    return {
+      allowed: false,
+      reason: "Internal replacements invoice #22787 needs no AutoPrint workorder",
+    };
+  }
   if (input.dryRun) {
     return { allowed: false, reason: "Dry run — PrintNode submission disabled" };
   }

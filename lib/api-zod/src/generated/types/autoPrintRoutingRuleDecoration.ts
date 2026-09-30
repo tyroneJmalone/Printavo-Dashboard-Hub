@@ -14,5 +14,6 @@ export const AutoPrintRoutingRuleDecoration = {
   print: 'print',
   heat: 'heat',
   embroidery: 'embroidery',
+  samples: 'samples',
   mixed: 'mixed',
 } as const;

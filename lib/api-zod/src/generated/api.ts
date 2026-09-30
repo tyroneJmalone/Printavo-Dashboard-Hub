@@ -9631,7 +9631,7 @@ export const GetAutoPrintConfigResponse = zod.object({
   "routingRules": zod.array(zod.object({
   "id": zod.string().min(1),
   "enabled": zod.boolean(),
-  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'mixed']),
+  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'samples', 'mixed']),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
   "dueBusinessDays": zod.number().min(getAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin).nullable(),
   "nicknameKeywords": zod.array(zod.string().min(1).max(getAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsItemMax)).max(getAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsMax).nullable(),
@@ -9687,7 +9687,7 @@ export const UpdateAutoPrintConfigBody = zod.object({
   "routingRules": zod.array(zod.object({
   "id": zod.string().min(1),
   "enabled": zod.boolean(),
-  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'mixed']),
+  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'samples', 'mixed']),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
   "dueBusinessDays": zod.number().min(updateAutoPrintConfigBodyRoutingRulesItemDueBusinessDaysMin).nullable(),
   "nicknameKeywords": zod.array(zod.string().min(1).max(updateAutoPrintConfigBodyRoutingRulesItemNicknameKeywordsItemMax)).max(updateAutoPrintConfigBodyRoutingRulesItemNicknameKeywordsMax).nullable(),
@@ -9739,7 +9739,7 @@ export const UpdateAutoPrintConfigResponse = zod.object({
   "routingRules": zod.array(zod.object({
   "id": zod.string().min(1),
   "enabled": zod.boolean(),
-  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'mixed']),
+  "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'samples', 'mixed']),
   "dueComparator": zod.union([zod.literal('more_than'),zod.literal('at_most'),zod.literal(null)]).nullable(),
   "dueBusinessDays": zod.number().min(updateAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin).nullable(),
   "nicknameKeywords": zod.array(zod.string().min(1).max(updateAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsItemMax)).max(updateAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsMax).nullable(),

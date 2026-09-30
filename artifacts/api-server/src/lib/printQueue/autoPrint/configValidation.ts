@@ -21,7 +21,7 @@ export interface CategoryMapping {
 }
 
 export type AutoPrintRoutingMode = "simple" | "conditional";
-export type AutoPrintDecoration = "any" | "print" | "heat" | "embroidery" | "mixed";
+export type AutoPrintDecoration = "any" | "print" | "heat" | "embroidery" | "samples" | "mixed";
 
 export interface AutoPrintRoutingRule {
   id: string;
@@ -80,7 +80,7 @@ export const DEFAULT_AUTO_PRINT_CONFIG: AutoPrintConfig = {
   routingRules: [],
 };
 
-const DECORATIONS = new Set(["any", "print", "heat", "embroidery", "mixed"]);
+const DECORATIONS = new Set(["any", "print", "heat", "embroidery", "samples", "mixed"]);
 const COMPARATORS = new Set(["more_than", "at_most"]);
 
 export function isValidAutoPrintRoutingRule(value: unknown): value is AutoPrintRoutingRule {

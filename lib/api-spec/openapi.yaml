@@ -12218,7 +12218,7 @@ components:
         enabled: { type: boolean }
         decoration:
           type: string
-          enum: [any, print, heat, embroidery, mixed]
+          enum: [any, print, heat, embroidery, samples, mixed]
         dueComparator:
           type: ["string", "null"]
           enum: [more_than, at_most, null]

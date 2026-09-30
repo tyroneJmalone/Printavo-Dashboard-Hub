@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { hubPoOrdersFromOutcomes } from "../src/lib/printQueue/autoPrint/candidatePlanning";
-import { checkPrintSafety } from "../src/lib/printQueue/autoPrint/printSafety";
+import {
+  checkPrintSafety,
+  selectAutoPrintWorkorders,
+  INTERNAL_REPLACEMENT_WORKORDER_SKIP_REASON,
+} from "../src/lib/printQueue/autoPrint/printSafety";
 import { runHubPoBatch } from "../src/lib/printQueue/autoPrint/hubPoBatch";
 import type { PoFileDto } from "../src/lib/purchasing/poFiles";
 
@@ -53,4 +57,42 @@ test("engine live source fence rejects moved, missing and wrong-identity observa
     assert.equal(checkPrintSafety({ dryRun: false, observedStatus, expected }).allowed, false);
   }
   assert.equal(checkPrintSafety({ dryRun: true, observedStatus: current, expected }).allowed, false);
+});
+
+test("AutoPrint excludes the internal replacements invoice before the run cap for scheduled, manual and dry runs", () => {
+  const orders = [
+    { id: "replacement", visualId: 22787 },
+    { id: "normal", visualId: 22788 },
+    { id: "later", visualId: 22789 },
+  ];
+  for (const trigger of ["scheduled", "manual"] as const) {
+    for (const dryRun of [true, false]) {
+      const { selected, excluded, deferred } = selectAutoPrintWorkorders(orders, 1, (o) => o.visualId);
+      assert.deepEqual(excluded.map((o) => o.id), ["replacement"], `${trigger}/${dryRun}`);
+      assert.deepEqual(selected.map((o) => o.id), ["normal"], `${trigger}/${dryRun}`);
+      assert.deepEqual(deferred.map((o) => o.id), ["later"], `${trigger}/${dryRun}`);
+      assert.match(INTERNAL_REPLACEMENT_WORKORDER_SKIP_REASON, /internal_replacements_invoice_no_workorder/);
+    }
+  }
+});
+
+test("final AutoPrint submission/advance fence refuses 22787 even when status matches or an old attempt is retried", () => {
+  for (const dryRun of [false, true]) {
+    const expected = { orderId: "replacement", visualId: 22787, sourceStatusId: "ordered" };
+    const observedStatus = { orderId: "replacement", visualId: 22787, statusId: "ordered", statusName: "Ordered" };
+    const blocked = checkPrintSafety({ dryRun, observedStatus, expected });
+    assert.equal(blocked.allowed, false);
+    assert.match(blocked.reason ?? "", /22787.*no AutoPrint workorder/);
+  }
+  const expected = { orderId: "replacement", visualId: 22788, sourceStatusId: "ordered" };
+  assert.equal(checkPrintSafety({
+    dryRun: false,
+    expected,
+    observedStatus: { orderId: "replacement", visualId: 22787, statusId: "ordered", statusName: "Ordered" },
+  }).allowed, false);
+  assert.equal(checkPrintSafety({
+    dryRun: false,
+    expected,
+    observedStatus: { orderId: "replacement", visualId: 22788, statusId: "ordered", statusName: "Ordered" },
+  }).allowed, true);
 });

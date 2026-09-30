@@ -44,6 +44,7 @@ const REASONS: Record<string, string> = {
   submission_outcome_unknown_manual_reconciliation_required: "The submission outcome is unknown. Check PrintNode and the printer before considering a resend.",
   concurrent_or_previously_reserved_attempt: "Another attempt already reserved this document. Review its outcome before any resend.",
   run_limit_deferred: "Deferred because this run reached its document limit.",
+  internal_replacements_invoice_no_workorder: "Internal replacement invoice #22787 — no workorder needed. Its line items remain on the PO.",
   live_detail_missing_or_incomplete: "Current invoice details are missing or incomplete.",
   no_longer_in_source_status: "Invoice is no longer in a configured source status.",
   live_status_unavailable: "Current invoice status could not be verified.",

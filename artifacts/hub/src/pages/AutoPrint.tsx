@@ -99,6 +99,7 @@ const DECORATION_GROUP_LABELS = [
   "Screen Printing",
   "Heat Applied Graphics",
   "Embroidery",
+  "SAMPLES",
   "Mixed Decoration",
 ] as const;
 
@@ -125,6 +126,8 @@ const DECORATION_GROUP_ALIASES: Record<string, (typeof DECORATION_GROUP_LABELS)[
   "embroidery - set up": "Embroidery",
   "embroidery - digitizing": "Embroidery",
   emb: "Embroidery",
+  samples: "SAMPLES",
+  sample: "SAMPLES",
   "mixed decoration": "Mixed Decoration",
   "mixed decorations": "Mixed Decoration",
 };
@@ -264,6 +267,7 @@ const RULE_DECORATIONS: Record<RuleDecoration, string> = {
   print: "Screen print only",
   heat: "Heat press only",
   embroidery: "Embroidery only",
+  samples: "SAMPLES only",
   mixed: "Mixed decoration (2+ types)",
 };
 

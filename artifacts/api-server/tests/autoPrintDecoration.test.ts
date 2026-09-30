@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   classifyDecorationLines,
+  DECORATION_CATEGORY_LABELS,
   destinationMappingForClassification,
   decorationKindForCategory,
 } from "../src/lib/purchasing/decorationClassifier.ts";
@@ -13,6 +14,7 @@ import {
   normalizeAutoPrintConfig,
   validateAutoPrintRoutingRules,
 } from "../src/lib/printQueue/autoPrint/configValidation.ts";
+import { UpdateAutoPrintConfigBody } from "../../../lib/api-zod/src/generated/api.ts";
 
 const mappings = [
   { category: "Screen Printing", statusId: "screen-status", statusName: "Screen" },
@@ -99,6 +101,82 @@ test("known category aliases normalize for lines and saved mappings", () => {
   );
 });
 
+test("SAMPLES is an exact line category with a stable mapping label and saved alias", () => {
+  assert.equal(DECORATION_CATEGORY_LABELS.includes("SAMPLES"), true);
+  assert.equal(decorationKindForCategory(" sample "), "samples");
+  const classification = classifyDecorationLines(
+    [
+      { categoryName: "  SAMPLES  ", items: 2 },
+      { categoryName: "Shipping", items: 1 },
+      { categoryName: "Sample", items: 3 }, // alias only applies to saved mappings
+      { categoryName: "SAMPLES - setup", items: 1 },
+    ],
+    { positiveQuantityOnly: true },
+  );
+  assert.deepEqual([...classification.groups], ["samples"]);
+  assert.equal(classification.kind, "samples");
+  assert.equal(
+    destinationMappingForClassification(classification, [
+      { category: " sample ", statusId: "sample-status", statusName: "Sample" },
+    ])?.statusId,
+    "sample-status",
+  );
+});
+
+test("SAMPLES positive quantity and mixed composition follow existing routing rules", () => {
+  const sampleMapping = { category: "SAMPLES", statusId: "samples-status", statusName: "Samples" };
+  const mixedMapping = { category: "Mixed Decoration", statusId: "mixed-status", statusName: "Mixed" };
+  const rules = [
+    { id: "samples", decoration: "samples" as const, enabled: true, dueComparator: null, dueBusinessDays: null, nicknameKeywords: null, statusId: "samples-status", statusName: "Samples" },
+    { id: "mixed", decoration: "mixed" as const, enabled: true, dueComparator: null, dueBusinessDays: null, nicknameKeywords: null, statusId: "mixed-status", statusName: "Mixed" },
+  ];
+  const candidate = (lines: { categoryName: string; items: number }[]) => ({
+    classification: classifyDecorationLines(lines, { positiveQuantityOnly: true }),
+    businessDaysOut: null,
+    nickname: null,
+  });
+  const onlyZero = candidate([{ categoryName: "SAMPLES", items: 0 }]);
+  assert.equal(onlyZero.classification.kind, null);
+  assert.equal(destinationMappingForClassification(onlyZero.classification, [sampleMapping]), null);
+  assert.equal(conditionalAutoPrintDestination(rules, onlyZero), null);
+
+  const sampleOnly = candidate([
+    { categoryName: "SAMPLES", items: 4 },
+    { categoryName: "Embroidery", items: 0 },
+  ]);
+  assert.equal(sampleOnly.classification.kind, "samples");
+  assert.equal(destinationMappingForClassification(sampleOnly.classification, [sampleMapping])?.statusId, "samples-status");
+  assert.equal(conditionalAutoPrintDestination(rules, sampleOnly)?.id, "samples");
+
+  const mixed = candidate([
+    { categoryName: "SAMPLES", items: 4 },
+    { categoryName: "Embroidery", items: 1 },
+  ]);
+  assert.equal(mixed.classification.kind, "mixed");
+  assert.equal(destinationMappingForClassification(mixed.classification, [sampleMapping, mixedMapping])?.statusId, "mixed-status");
+  assert.equal(destinationMappingForClassification(mixed.classification, [sampleMapping]), null);
+  assert.equal(conditionalAutoPrintDestination(rules, mixed)?.id, "mixed");
+});
+
+test("API schema accepts SAMPLES conditional rules and config normalization retains them on reload", () => {
+  const rule = {
+    id: "sample-only", enabled: true, decoration: "samples", dueComparator: null,
+    dueBusinessDays: null, nicknameKeywords: null, statusId: "sample-status", statusName: "Sample",
+  };
+  const payload = {
+    ...normalizeAutoPrintConfig(null),
+    categoryMappings: [{ category: "SAMPLES", statusId: "sample-status", statusName: "Sample" }],
+    routingMode: "conditional",
+    routingRules: [rule],
+  };
+  const parsed = UpdateAutoPrintConfigBody.safeParse(payload);
+  assert.equal(parsed.success, true);
+  assert.equal(validateAutoPrintRoutingRules(payload.routingRules), null);
+  const reloaded = normalizeAutoPrintConfig(JSON.parse(JSON.stringify(parsed.data)));
+  assert.deepEqual(reloaded.categoryMappings, payload.categoryMappings);
+  assert.deepEqual(reloaded.routingRules, [rule]);
+});
+
 test("zero, negative, and missing quantities do not classify for auto-print", () => {
   const classification = classifyDecorationLines(
     [
@@ -122,6 +200,7 @@ test("default shared classification retains Purchasing zero-quantity semantics",
   ]);
 
   assert.equal(classification.kind, "print");
+  assert.equal(classifyDecorationLines([{ categoryName: "SAMPLES", items: 0 }]).kind, "samples");
 });
 
 test("unknown saved mappings stay unmatched instead of silently routing", () => {

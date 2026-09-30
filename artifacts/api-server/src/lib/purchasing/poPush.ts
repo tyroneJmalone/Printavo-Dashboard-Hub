@@ -1,6 +1,6 @@
 import type { Logger } from "pino";
-import { db, poFilesTable, type PoFile as PoFileRow } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, poFilesTable, pvOrdersTable, type PoFile as PoFileRow } from "@workspace/db";
+import { eq, inArray } from "drizzle-orm";
 import {
   poPushLineItemQuery,
   lineItemUpdateMutation,
@@ -16,6 +16,7 @@ import { newDetailAgg } from "../sync/detail";
 import { newHtmlToken, type PoFileLineItem } from "./poFiles";
 import { claimPush, releasePush } from "./pushRegistry";
 import { evaluateAfterPush, type CreatedStatusSuggestion } from "./statusRules";
+import { poAttachmentTargets } from "./internalInvoicePolicy";
 
 /**
  * Push a PO to Printavo (P3c).
@@ -343,17 +344,13 @@ async function runPush(poFileId: string, logger: Logger): Promise<void> {
 
     /* 2 — attach the PO document once per distinct invoice */
     const fileUrl = publicPoHtmlUrl(row.htmlToken, row.poNumber);
-    const attachTargets = new Map<string, number | null>();
-    for (const line of state.lines) {
-      if (
-        (line.status === "done" || line.status === "skipped_ordered") &&
-        line.printavoOrderId &&
-        !state.attachedInvoiceIds.includes(line.printavoOrderId) &&
-        !attachTargets.has(line.printavoOrderId)
-      ) {
-        attachTargets.set(line.printavoOrderId, line.visualId);
-      }
-    }
+    const orderIds = [...new Set(state.lines.flatMap((line) => line.printavoOrderId ? [line.printavoOrderId] : []))];
+    // Older snapshots may lack a visual number; also check the current mirror.
+    const knownOrders = orderIds.length
+      ? await db.select({ id: pvOrdersTable.printavoId, visualId: pvOrdersTable.visualId })
+        .from(pvOrdersTable).where(inArray(pvOrdersTable.printavoId, orderIds))
+      : [];
+    const attachTargets = poAttachmentTargets(state.lines, state.attachedInvoiceIds, knownOrders);
     const attachErrors: string[] = [];
     for (const [invoiceId, visualId] of attachTargets) {
       try {

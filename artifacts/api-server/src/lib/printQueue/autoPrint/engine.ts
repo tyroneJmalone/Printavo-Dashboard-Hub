@@ -26,7 +26,8 @@ import {
   fetchLiveOrderStatus,
   LiveDiscoveryError,
 } from "./liveDiscovery";
-import { checkPrintSafety } from "./printSafety";
+import { checkPrintSafety, selectAutoPrintWorkorders, INTERNAL_REPLACEMENT_WORKORDER_SKIP_REASON } from "./printSafety";
+import { isInternalReplacementInvoice } from "../../purchasing/internalInvoicePolicy";
 import { decideReprint, lineItemFingerprint, printAttemptKey, canReservePrint, observedSourceMembership, hubPoOrdersFromOutcomes, definitiveFailureCandidates, verifiedConversionOrderIds } from "./candidatePlanning";
 import {
   classifyDecorationLines,
@@ -418,8 +419,13 @@ async function runAutoPrint(
       .map((r) => r.createdAt.getTime()));
     const prioritized = [...live.orders].sort((a, b) =>
       lastAttempt(a.node.id, a.node.visualId) - lastAttempt(b.node.id, b.node.visualId));
-    const selectedLiveOrders = prioritized.slice(0, MAX_ORDERS_PER_RUN);
-    for (const order of prioritized.slice(MAX_ORDERS_PER_RUN)) {
+    const { selected: selectedLiveOrders, excluded, deferred } = selectAutoPrintWorkorders(
+      prioritized, MAX_ORDERS_PER_RUN, (order) => order.node.visualId,
+    );
+    for (const order of excluded) {
+      await skip(order.node, INTERNAL_REPLACEMENT_WORKORDER_SKIP_REASON);
+    }
+    for (const order of deferred) {
       counts.deferred++;
       await skip(order.node, "run_limit_deferred");
     }
@@ -726,13 +732,17 @@ async function runAutoPrint(
                   await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname }, "line_items_changed_during_render_or_detail_unavailable");
                   continue;
                 }
+                const finalSafetyStatus = await fetchLiveOrderStatus(c.orderKind, c.orderId);
                 const finalSafety = checkPrintSafety({
                   dryRun,
-                  observedStatus: await fetchLiveOrderStatus(c.orderKind, c.orderId),
+                  observedStatus: finalSafetyStatus,
                   expected: { orderId: c.orderId, visualId: c.visualId, sourceStatusId: c.statusId },
                 });
                 if (!finalSafety.allowed) {
-                  await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname }, "live_source_status_changed_after_render");
+                  await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname },
+                    isInternalReplacementInvoice(c.visualId) || isInternalReplacementInvoice(finalSafetyStatus?.visualId)
+                      ? INTERNAL_REPLACEMENT_WORKORDER_SKIP_REASON
+                      : "live_source_status_changed_after_render");
                   continue;
                 }
                 // Serialize logical-order claims across processes. The durable claim is
@@ -758,6 +768,14 @@ async function runAutoPrint(
                   continue;
                 }
                 reservedId = claim.id;
+                // Last gate at the irreversible delivery boundary, including manual
+                // runs and any future retry using this engine.
+                const submissionSafety = checkPrintSafety({
+                  dryRun,
+                  observedStatus: await fetchLiveOrderStatus(c.orderKind, c.orderId),
+                  expected: { orderId: c.orderId, visualId: c.visualId, sourceStatusId: c.statusId },
+                });
+                if (!submissionSafety.allowed) throw new Error(submissionSafety.reason ?? "AutoPrint submission refused");
                 submitted = true;
                 const jobId = await submitPdfPrintJob({
                   printerId: Number(config.printerId),
