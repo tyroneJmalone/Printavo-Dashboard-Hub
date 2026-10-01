@@ -123,3 +123,31 @@ mtime_ms = 1790665116891
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/16f554d8-13b6-481f-bd78-68519f630173/70ff663b-8f5c-4345-8b4c-a7d8024ebc38"
 storage_version_token = "1790665117782380"
 content_type = "text/html"
+
+[[outputs]]
+id = "eVgI7-AbKgurqN3a8ZS9b"
+uri = "file://exports/sepscope-complete-rules-2026-10-01.pdf"
+type = "pdf"
+title = "SepScope — Complete Rules Catalogue"
+description = "All 38 rules with full view fields and stored definitions, including 13 Not Built rules. Shareable consultant reference."
+logical_id = "4675c68c-b140-44f3-9e1c-275f58c1de2e"
+content_hash = "sha256:e718b045d66f6d19ef8d93e19803fcffd911880479b7f3bfc1841f77e07b7077"
+size = 610492
+mtime_ms = 1790830560732
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/4675c68c-b140-44f3-9e1c-275f58c1de2e/8607598e-662a-45b7-8369-f47c442a078b"
+storage_version_token = "1790830572474135"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "_D6pWF95VcmQpi446VRbD"
+uri = "file://exports/sepscope-rules-consultant-worksheet-2026-10-01.csv"
+type = "table"
+title = "SepScope — Consultant Worksheet"
+description = "Spreadsheet-ready catalogue preserving every stored field, with columns for proposed definitions, exceptions, and validation samples."
+logical_id = "9810db99-b37d-4814-a5c6-67b437aa0f5d"
+content_hash = "sha256:0a2c05249863761635ed703dcd512453fc43a2a7204ff2142c0d220fb25f5fbf"
+size = 28081
+mtime_ms = 1790830504884
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/9810db99-b37d-4814-a5c6-67b437aa0f5d/704bcc72-7872-462b-8621-9264f2646219"
+storage_version_token = "1790830573006771"
+content_type = "text/csv"
