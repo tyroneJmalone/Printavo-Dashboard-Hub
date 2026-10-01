@@ -1,16 +1,17 @@
+import type { ReactNode } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { PrintScopeJobs } from "./PrintScopeJobs";
 import { PrintScopeRules } from "./PrintScopeRules";
 import { PrintScopePilot } from "./PrintScopePilot";
 import "./Printscope.css";
-import { Shield } from "lucide-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { useGetPrintscopeCapabilities, getGetPrintscopeCapabilitiesQueryKey } from "@workspace/api-client-react";
 import { Loader2 } from "lucide-react";
+import { AppShell } from "@/components/layout/AppShell";
 import { Link } from "wouter";
 
 export default function PrintScopeApp() {
-  const { role, enabledModules } = useStaff();
+  const { role } = useStaff();
   
   const { data: caps, isLoading, error } = useGetPrintscopeCapabilities({
     query: {
@@ -19,33 +20,32 @@ export default function PrintScopeApp() {
     }
   });
 
+  let content: ReactNode;
   if (isLoading) {
-    return (
+    content = (
       <div className="flex min-h-full items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
       </div>
     );
   }
 
-  if (error || !caps) {
-    return (
+  else if (error || !caps) {
+    content = (
       <div className="flex min-h-full items-center justify-center p-8">
         <div className="text-center text-slate-500">Failed to load SepScope capabilities.</div>
       </div>
     );
-  }
-
-  return (
+  } else content = (
     <div className="printscope-app relative h-full">
       <header className="top">
         <span className="brand"><span className="dot"></span>SepScope</span>
         <span className="lbl">separation inspection &middot; Mint Printworks</span>
         <div className="flex gap-4 ml-8">
-          <Link href="/printscope" className="text-xs font-semibold hover:text-[#0B6E63]">Jobs</Link>
+          <Link href="/printscope" className="text-xs font-semibold hover:text-[var(--accent)]">Jobs</Link>
           {role === "admin" && (
-            <Link href="/printscope/rules" className="text-xs font-semibold hover:text-[#0B6E63]">Rules</Link>
+            <Link href="/printscope/rules" className="text-xs font-semibold hover:text-[var(--accent)]">Rules</Link>
           )}
-          <Link href="/printscope/pilot" className="text-xs font-semibold hover:text-[#0B6E63]">Pilot</Link>
+          <Link href="/printscope/pilot" className="text-xs font-semibold hover:text-[var(--accent)]">Pilot</Link>
         </div>
         <span className="legend">
           <span className="key"><i style={{ background: "var(--fail)" }}></i>send it back</span>
@@ -63,4 +63,6 @@ export default function PrintScopeApp() {
       </Switch>
     </div>
   );
+
+  return <AppShell>{content}</AppShell>;
 }

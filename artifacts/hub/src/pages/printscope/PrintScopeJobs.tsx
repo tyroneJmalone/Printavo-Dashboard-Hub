@@ -19,6 +19,7 @@ import {
   runUploadAttempt,
   type UploadItem
 } from "./uploadOrchestration";
+import { sortPlateLayers } from "./plateLayerOrder";
 
 const LOCAL_UPLOAD_LIMIT = 50 * 1024 * 1024;
 const MAX_QUEUED_UPLOADS = 20;
@@ -247,7 +248,7 @@ export function PrintScopeJobs({ caps }: { caps: PrintscopeCapabilities }) {
 
         <div
           className={`m-3 rounded-md border-2 border-dashed p-3 text-center text-xs transition-colors ${
-            isDragging ? "border-[#0B6E63] bg-emerald-50 text-[#0B6E63]" : "border-line text-ink-3"
+            isDragging ? "border-[var(--accent)] bg-[var(--surface-2)] text-[var(--accent)]" : "border-line text-ink-3"
           }`}
           onDragEnter={(event) => { event.preventDefault(); setIsDragging(true); }}
           onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setIsDragging(true); }}
@@ -463,24 +464,27 @@ export function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onR
 
   return (
     <>
-      <div className="banner" data-v={res.verdict}>
-        <div>
-          <div className="verdict">{words[res.verdict] || res.verdict}</div>
-          <div className="fn" style={{ marginTop: "4px", fontSize: "14px" }}>{job.filename}</div>
-          <div className="tally">
+      <div className="banner" data-v={res.verdict} data-testid="banner-report">
+        <div className="bline">
+          <span className="verdict" data-testid="text-verdict">{words[res.verdict] || res.verdict}</span>
+          <span className="fn" title={job.filename}>{job.filename}</span>
+          <span className="tally">
             <span><b>{c.fail || 0}</b> failed</span>
             <span><b>{c.flag || 0}</b> flagged</span>
             <span><b>{c.pass || 0}</b> passed</span>
             <span><b>{c.info || 0}</b> noted</span>
+          </span>
+        </div>
+        <details className="bmeta-fold" data-testid="details-report-meta">
+          <summary>Details</summary>
+          <div>
+            {new Date(job.createdAt).toLocaleString().replace(',', '')}<br/>
+            sha {job.sha256 ? job.sha256.substring(0,16) : ''}<br/>
+            {Math.round(job.byteSize / 1024)} KB<br/>
+            {job.ruleVersionId && `rules v${job.ruleVersionId}`}
           </div>
-        </div>
-        <div className="bmeta">
-          {new Date(job.createdAt).toLocaleString().replace(',', '')}<br/>
-          sha {job.sha256 ? job.sha256.substring(0,16) : ''}<br/>
-          {Math.round(job.byteSize / 1024)} KB<br/>
-          {job.ruleVersionId && `rules v${job.ruleVersionId}`}
-        </div>
-        
+        </details>
+        <div className="gaps">
         {comp.complete === false && (
           <div className="gap">
             <b>Not fully checked.</b>
@@ -508,6 +512,7 @@ export function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onR
             <span>The choke mask could not be built for this file, so the plates below are drawn at full un-choked size. Do not judge trap from these previews — the numeric checks above are unaffected.</span>
           </div>
         )}
+        </div>
       </div>
 
       {(job as any).assetsExpiredAt ? (
@@ -610,11 +615,12 @@ export function PlateViewer({ previews, jobId }: { previews: any[], jobId: strin
   
   const shown = ab === -1 ? stackOrder : [previews.find(p => p.index === ab) || previews[0]];
   const maxW = Math.max(...shown.map(b => b.w || 0), 1);
+  const maxH = Math.max(...shown.map(b => b.h || 0), 1);
   
-  const layerRows: any[] = [];
-  shown.forEach(b => b.plates.forEach((p: any) => 
-    layerRows.push({ ...p, abIndex: b.index, abBase: b.is_underbase, wpct: 100 * (b.w || maxW) / maxW })
-  ));
+  // Flatten before sorting so board grouping cannot override the ink numbers.
+  const layerRows = sortPlateLayers(shown.flatMap(b => b.plates.map((p: any) =>
+    ({ ...p, abIndex: b.index, abBase: b.is_underbase, wpct: 100 * (b.w || maxW) / maxW })
+  )));
   
   const fallbacks = shown.reduce((n, b) => n + (b.raster_fallbacks || 0), 0);
   
@@ -717,7 +723,11 @@ export function PlateViewer({ previews, jobId }: { previews: any[], jobId: strin
           }) : <span className="lbl">no separations rendered</span>}
         </div>
         <div className="stage" id="stage" ref={stageRef}>
-          <div className="canvas" id="canvas" ref={canvasRef} style={{ width: zoomPct === 100 ? '100%' : `${zoomPct}%` }}>
+          <div className="canvas" id="canvas" ref={canvasRef} style={{
+            width: zoomPct === 100 ? '100%' : `${zoomPct}%`,
+            // Reserve the board envelope independently of which plates are visible.
+            aspectRatio: `${maxW} / ${maxH}`
+          }}>
             {layerRows.map((p, i) => {
               const key = p.abIndex + '|' + p.ink;
               const isHidden = hiddenKeys.has(key);
@@ -733,6 +743,9 @@ export function PlateViewer({ previews, jobId }: { previews: any[], jobId: strin
                     }
                   }}
                   style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
                     width: `${p.wpct}%`,
                     opacity: (p.abBase ? basePct : colourPct) / 100,
                     display: isHidden ? 'none' : 'block'
@@ -743,8 +756,9 @@ export function PlateViewer({ previews, jobId }: { previews: any[], jobId: strin
           </div>
         </div>
         <div className="vecnote">
+          {'Swatches and layers run bottom to top by leading ink number (1, 2, 10); underbase stays beneath colour. Unnumbered inks follow in name order. '}
           {ab === -1 
-            ? 'All artboards stacked in print order — underbase underneath. Fade the colour to read the trap: base pulled inside the colour edge is a choke, colour sitting proud of the base is a spread. '
+            ? 'All artboards share this order. Fade the colour to read the trap: base pulled inside the colour edge is a choke, colour sitting proud of the base is a spread. '
             : 'Vector plates, in each ink\'s true colour. '
           }
           {shown.some(b => b.choked) ? 'Zero-ink knockout strokes are carved out, so the plates match what the RIP burns. ' : ''}

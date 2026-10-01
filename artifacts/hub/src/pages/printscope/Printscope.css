@@ -1,26 +1,16 @@
-.printscope-app {
-  --paper: #F1F3F2; --surface: #FFFFFF; --surface-2: #E8ECEA;
-  --ink: #14201D; --ink-2: #4A5A55; --ink-3: #7B8C87;
-  --line: #D3DAD7; --line-2: #BDC7C3;
-  --accent: #0B6E63;
-  --pass: #2F7D4F; --pass-bg: #E2F0E7;
-  --flag: #A35A08; --flag-bg: #FBEDDC;
-  --fail: #A82520; --fail-bg: #FAE3E1;
-  --info: #4A5A55; --info-bg: #E8ECEA;
-  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --body: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --disp: "Archivo", "IBM Plex Sans", system-ui, sans-serif;
-}
-
-.dark .printscope-app {
-  --paper: #0E1614; --surface: #16211E; --surface-2: #1E2C28;
-  --ink: #E4EBE8; --ink-2: #A6B5B0; --ink-3: #7A8983;
-  --line: #2A3A35; --line-2: #3A4C46;
-  --accent: #3FB3A3;
-  --pass: #68C18C; --pass-bg: #13291D;
-  --flag: #E0A253; --flag-bg: #2E2213;
-  --fail: #F08279; --fail-bg: #331816;
-  --info: #A6B5B0; --info-bg: #1E2C28;
+/* Tokens harmonized with Hub slate/mint (index.css). Verdict colours stay semantic. */
+.printscope-app, .dark .printscope-app {
+  --paper: hsl(222 47% 11%); --surface: hsl(222 40% 14%); --surface-2: hsl(217 33% 17%);
+  --ink: hsl(210 40% 98%); --ink-2: hsl(215 25% 78%); --ink-3: hsl(215 20% 62%);
+  --line: hsl(217 33% 20%); --line-2: hsl(217 25% 30%);
+  --accent: hsl(160 84% 39%); --accent-ink: hsl(160 100% 10%);
+  --pass: #5FD39A; --pass-bg: hsl(152 45% 13%);
+  --flag: #F2B45A; --flag-bg: hsl(35 50% 13%);
+  --fail: #F58A80; --fail-bg: hsl(4 45% 15%);
+  --info: hsl(215 25% 78%); --info-bg: hsl(217 33% 17%);
+  --mono: var(--app-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  --body: var(--app-font-sans, system-ui, sans-serif);
+  --disp: var(--app-font-sans, system-ui, sans-serif);
 }
 
 .printscope-app {
@@ -261,10 +251,10 @@
 
 .printscope-app .banner {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  gap: 6px 14px;
   flex-wrap: wrap;
-  padding: 16px 18px;
+  padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--surface);
@@ -288,9 +278,9 @@
 
 .printscope-app .verdict {
   font-family: var(--disp);
-  font-size: 26px;
+  font-size: 17px;
   font-weight: 700;
-  letter-spacing: -.02em;
+  letter-spacing: -.01em;
   line-height: 1.1;
 }
 
@@ -316,8 +306,8 @@
 
 .printscope-app .tally {
   display: flex;
-  gap: 14px;
-  margin-top: 6px;
+  gap: 10px;
+  margin-top: 0;
   font-size: 12px;
   color: var(--ink-2);
 }
@@ -370,7 +360,7 @@
 .printscope-app .tab[aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-ink);
 }
 
 .printscope-app .zoom {
@@ -451,7 +441,9 @@
 .printscope-app .stage {
   position: relative;
   overflow: auto;
-  background: repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px;
+  /* Neutral artwork backdrop, independent of the surrounding Hub theme:
+     preserve contrast for both black and white ink without tinting previews. */
+  background: repeating-conic-gradient(#a6a6a6 0% 25%, #c7c7c7 0% 50%) 50% / 16px 16px;
   height: min(60dvh, 540px);
   touch-action: pan-x pan-y;
 }
@@ -539,10 +531,10 @@
 .printscope-app .st.error { background: var(--fail-bg); color: var(--fail); }
 
 .printscope-app .gap {
-  margin-top: 10px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 12.5px;
+  margin-top: 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
   background: var(--flag-bg);
   color: var(--flag);
   border: 1px solid var(--flag);
@@ -666,3 +658,11 @@
     transition: none !important;
   }
 }
+
+.printscope-app .bline { display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; min-width: 0; flex: 1; }
+.printscope-app .bline .fn { font-size: 13px; max-width: 40ch; }
+.printscope-app details.bmeta-fold { font-size: 11.5px; color: var(--ink-2); font-family: var(--mono); margin-left: auto; }
+.printscope-app details.bmeta-fold > summary { cursor: pointer; color: var(--ink-3); list-style: none; }
+.printscope-app details.bmeta-fold > summary::-webkit-details-marker { display: none; }
+.printscope-app details.bmeta-fold[open] > div { margin-top: 4px; line-height: 1.5; }
+.printscope-app .gaps { display: flex; flex-direction: column; gap: 4px; flex-basis: 100%; }
