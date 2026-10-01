@@ -7,6 +7,7 @@ condition is violated.
 """
 import json
 import re
+from ink_names import swatch_parts, ink_key
 
 # Judgements — the rule ran and reached a conclusion.
 PASS, FLAG, FAIL, INFO = "pass", "flag", "fail", "info"
@@ -510,6 +511,187 @@ def under_coverage(f, ctx, p):
     return v(PASS, "every colour is either fully based or deliberately unbased", rows)
 
 
+@rule("UNDERBASE_ROLE_AGREES")
+def underbase_role(f, ctx, p):
+    records = [r for ab in f["artboards"] for r in ab.get("colorant_details", [])]
+    names = set(f.get("all_inks", [])) | {r["name"] for r in records}
+    names.update(n for ab in f["artboards"] for n in ab.get("declared_inks", []))
+    unders = sorted(n for n in names if "under" in (ink_key(n) or ""))
+    if not unders:
+        return v(NOT_APPLICABLE, "no swatch named Under; colour never assigns the role")
+    if len(unders) > 1:
+        return v(FLAG, "more than one swatch named Under", unders, {"underbases": unders})
+    selected = [r for r in records if r["name"] == unders[0]]
+    if not selected or any(r.get("rgb") is None for r in selected):
+        return v(CANNOT_EVALUATE, "named underbase display colour could not be measured",
+                 [r.get("error", "alternate colour unavailable") for r in selected])
+    target, tolerance = p.get("corroborating_rgb", [229, 6, 149]), p.num("rgb_abs", 4)
+    bad = [r for r in selected if any(abs(a - b) > tolerance
+                                     for a, b in zip(r["rgb"], target))]
+    return v(FLAG if bad else PASS,
+             "named underbase does not display Rhodamine" if bad else "name and underbase display colour agree",
+             [f"{r['name']}: RGB {r['rgb']}" for r in selected],
+             {"underbase": unders[0], "colors": selected})
+
+
+@rule("FILL_STROKE_SAME_COLORANT")
+def fill_stroke_same(f, ctx, p):
+    pairs = []
+    for ab in f["artboards"]:
+        if "fill_stroke_pairs" not in ab:
+            return v(CANNOT_EVALUATE, "paired fill/stroke facts unavailable")
+        for pair in ab["fill_stroke_pairs"]:
+            if pair.get("is_choke") or "All" in (pair.get("fill"), pair.get("stroke")):
+                continue
+            pairs.append(dict(pair, artboard=ab["index"]))
+    if not pairs:
+        return v(NOT_APPLICABLE, "no paired fill/stroke paths outside choke and registration")
+    unknown = [r for r in pairs if not r.get("fill") or not r.get("stroke")]
+    bad = [r for r in pairs if r.get("fill") and r.get("stroke") and r["fill"] != r["stroke"]]
+    if bad:
+        return v(FLAG, f"{len(bad)} path(s) filled and stroked in different inks",
+                 [f"ab{r['artboard']}: {r['fill']} / {r['stroke']} at {r['w']}pt" for r in bad],
+                 {"mismatches": bad, "unknown_pairs": len(unknown)})
+    if unknown:
+        return v(CANNOT_EVALUATE, "some paired paths have unresolved colour spaces")
+    return v(PASS, f"{len(pairs)} paired paths use the same ink")
+
+
+@rule("INK_OVERLAP_NOT_TRAP")
+def ink_overlap(f, ctx, p):
+    if any(ab.get("shadings") for ab in f["artboards"]):
+        return v(CANNOT_EVALUATE, "gradient blending overlaps by design; overlap check suppressed")
+    candidates = [ab for ab in f["artboards"] if not ab.get("is_underbase") and
+                  len([n for n in ab.get("inks", []) if n != "All"
+                       and "under" not in (ink_key(n) or "")]) > 1]
+    if not candidates:
+        return v(NOT_APPLICABLE, "no artboard with two colour inks to compare")
+    if "ink_overlaps" not in ctx or ctx.get("ink_overlap_error"):
+        return v(CANNOT_EVALUATE, "ink overlap raster measurement unavailable",
+                 [ctx.get("ink_overlap_error", "no raster measurement supplied")])
+    threshold = p.num("max", 2.0)
+    rows = ctx["ink_overlaps"]
+    wide = [r for r in rows if r["max_width_pt"] > threshold]
+    return v(INFO, f"{len(wide)} ink overlap(s) wider than {threshold:g}pt — calibration only",
+             [f"ab{r['artboard']}: {r['inks'][0]} / {r['inks'][1]}: {r['max_width_pt']:.3f}pt"
+              for r in rows],
+             {"overlaps": rows, "wide_count": len(wide), "threshold_pt": threshold})
+
+
+@rule("SWATCH_LABEL_MANIFEST")
+def swatch_manifest(f, ctx, p):
+    if any(ab.get("shadings") for ab in f["artboards"]):
+        return v(CANNOT_EVALUATE, "gradient shading prevents a reliable painted-ink manifest")
+    labelled, declared, painted = set(), set(), set()
+    for ab in f["artboards"]:
+        runs = ab.get("label_text_runs")
+        if runs is None:
+            return v(CANNOT_EVALUATE, "label text extraction unavailable")
+        marks = [r for r in runs if r.get("layer") == "Reg Marks & Info"]
+        if any(r.get("decode_error") for r in marks):
+            return v(CANNOT_EVALUATE, "some label-block text could not be decoded",
+                     sorted({r["decode_error"] for r in marks if r.get("decode_error")}))
+        labels = {ink_key(r.get("text") or "") for r in marks}
+        labels.discard(None)
+        if not labels:
+            return v(CANNOT_EVALUATE, f"ab{ab['index']}: no readable swatch label block")
+        labelled.update(labels)
+        declared.update(ink_key(n) or n.casefold() for n in ab.get("declared_inks", []) if n != "All")
+        painted.update(ink_key(n) or n.casefold() for n in ab.get("inks", []) if n != "All")
+    if not labelled:
+        return v(CANNOT_EVALUATE, "no readable swatch label block")
+    lists = {"labelled": labelled, "declared": declared, "painted": painted}
+    union = labelled | declared | painted
+    missing = {key: sorted(union - names) for key, names in lists.items() if union - names}
+    return v(FLAG if missing else PASS,
+             "swatch label, declared and painted lists disagree" if missing else "swatch manifest agrees with artwork",
+             [f"missing from {key}: {', '.join(names)}" for key, names in missing.items()],
+             dict({key: sorted(names) for key, names in lists.items()}, missing=missing))
+
+
+@rule("INK_CHANGE_DECLARED")
+def ink_change(f, ctx, p):
+    changes = []
+    for name in f.get("all_inks", []):
+        heads, ink = swatch_parts(name)
+        if heads and "&" not in heads and ink and ink.count("&") == 1:
+            inks = [s.strip() for s in ink.split("&")]
+            if all(inks):
+                changes.append({"swatch": name, "head": heads.split("-")[0], "inks": inks})
+    if not changes:
+        return v(NOT_APPLICABLE, "no single-head ink changes")
+    return v(INFO, f"{len(changes)} mid-run ink change(s) — allow time to clean and reload",
+             [f"head {r['head']}: {' → '.join(r['inks'])}" for r in changes],
+             {"changes": changes})
+
+
+def _images(f):
+    images, errors = [], []
+    for ab in f["artboards"]:
+        if ab.get("images", 0) and "image_placements" not in ab:
+            errors.append(f"ab{ab['index']}: image placement facts unavailable")
+        for image in ab.get("image_placements", []):
+            if not image.get("is_mask"):
+                images.append(dict(image, artboard=ab["index"]))
+    return images, errors
+
+
+def _image_dpi(f, ctx, p, hard):
+    images, errors = _images(f)
+    if errors:
+        return v(CANNOT_EVALUATE, "image placement facts unavailable", errors)
+    if not images:
+        return v(NOT_APPLICABLE, "no placed raster artwork")
+    floor = p.num("min", 200 if hard else 300)
+    hard_floor = ctx.get("image_hard_min_dpi", 200)
+    bad, unknown, suppressed = [], [], []
+    for image in images:
+        dpi = image.get("effective_dpi")
+        if dpi is None:
+            unknown.append(image)
+        elif not hard and dpi < hard_floor:
+            suppressed.append(image)
+        elif dpi < floor:
+            bad.append(image)
+    if bad:
+        return v(FAIL if hard else FLAG, f"{len(bad)} placed image(s) below {floor:g} dpi",
+                 [f"ab{r['artboard']} {r['name']}: {r['effective_dpi']:.2f} dpi" for r in bad],
+                 {"images": bad, "unmeasurable_count": len(unknown), "hard_floor_suppressed": len(suppressed)})
+    if unknown:
+        return v(CANNOT_EVALUATE, "placed image DPI could not be measured", data={"images": unknown})
+    if suppressed:
+        return v(NOT_APPLICABLE, "low-resolution images reported by the hard-floor rule",
+                 data={"hard_floor_suppressed": len(suppressed)})
+    return v(PASS, f"all {len(images)} placed image(s) meet {floor:g} dpi")
+
+
+@rule("IMAGE_MIN_DPI")
+def image_min(f, ctx, p):
+    return _image_dpi(f, ctx, p, False)
+
+
+@rule("IMAGE_HARD_MIN_DPI")
+def image_hard_min(f, ctx, p):
+    return _image_dpi(f, ctx, p, True)
+
+
+@rule("IMAGE_NOT_RGB")
+def image_not_rgb(f, ctx, p):
+    images, errors = _images(f)
+    if errors:
+        return v(CANNOT_EVALUATE, "image colour-space facts unavailable", errors)
+    if not images:
+        return v(NOT_APPLICABLE, "no placed raster artwork")
+    bad = [r for r in images if r.get("colorspace") in ("DeviceRGB", "CalRGB")]
+    if bad:
+        return v(FAIL, f"{len(bad)} RGB raster image(s) are not separated", data={"images": bad})
+    unknown = [r for r in images if r.get("colorspace") not in
+               ("DeviceGray", "DeviceCMYK", "Separation", "DeviceN", "Lab")]
+    if unknown:
+        return v(CANNOT_EVALUATE, "image colour space could not be resolved", data={"images": unknown})
+    return v(PASS, f"no RGB in {len(images)} placed raster image(s)")
+
+
 def evaluate(facts, ctx, table):
     """Run every enabled rule and report what happened to each one.
 
@@ -517,6 +699,11 @@ def evaluate(facts, ctx, table):
     silently omitted: a rule the shop can see in the table but that never runs
     is exactly the kind of gap a verdict should not be able to hide.
     """
+    table = list(table)
+    ctx = dict(ctx)
+    hard_row = next((row for row in table if row["code"] == "IMAGE_HARD_MIN_DPI"
+                     and (row.get("enabled") or "true").lower() == "true"), None)
+    ctx["image_hard_min_dpi"] = Params(hard_row).num("min", 200) if hard_row else 0
     results = []
     for row in table:
         code = row["code"]
@@ -524,6 +711,10 @@ def evaluate(facts, ctx, table):
             continue
 
         sev = row.get("severity", "flag")
+        # This metric is not calibrated for a defect verdict. Historical rule
+        # snapshots still say flag; they must not bypass the informational cap.
+        if code in ("INK_OVERLAP_NOT_TRAP", "INK_CHANGE_DECLARED"):
+            sev = "info"
         base = {
             "code": code, "name": row.get("name", code), "severity": sev,
             "remediation": row.get("remediation_text", ""),

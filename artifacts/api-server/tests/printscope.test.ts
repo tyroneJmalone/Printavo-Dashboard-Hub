@@ -4,7 +4,7 @@ import { readFile, mkdtemp, writeFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { parseCsv, toCsv, validateRules, ruleDefinitions, pythonRoot, versionMatches } from "../src/lib/printscope/rules";
+import { parseCsv, toCsv, validateRules, ruleDefinitions, pythonRoot, versionMatches, consultantGuidance, ruleMetadata, ruleDto } from "../src/lib/printscope/rules";
 import { safeFilename, childEnvironment, scopedPath, validateProtocol, parseProcStat, verifyRuleSnapshot, classifyEngineFailure } from "../src/lib/printscope/worker";
 import { MODULE_DEFS } from "../src/lib/auth/moduleAccess";
 import printscopeRouter, { rerunValues, jobDto, revisionToken, sourceBindingMatches, sourceEligibilityReasons, sourceMetadataReasons } from "../src/routes/printscope";
@@ -66,6 +66,76 @@ test("rules roundtrip and supported edits; unsupported, disabled and invalid set
   choke.find(r => r.code === "CHOKE_SAFE_FOR_DETAIL")!.enabled = "true";
   assert.throws(() => validateRules(choke, rows, implemented));
   assert.throws(() => validateRules(rows.map(r => ({ ...r, enabled: "false" })), rows, implemented));
+});
+test("consultant guidance preserves all 13 filled worksheet rows verbatim, with explicit decision counts", async () => {
+  const worksheet = parseCsv(await readFile(resolve(pythonRoot(), "../../..", consultantGuidance.source), "utf8"));
+  const filled = worksheet.filter(row => row.consultant_definition);
+  assert.equal(filled.length, 13);
+  assert.equal(consultantGuidance.rules.length, 13);
+  assert.equal(new Set(consultantGuidance.rules.map(row => row.code)).size, 13);
+  for (const row of filled) {
+    const guidance = consultantGuidance.rules.find(g => g.code === row.code)!;
+    assert.ok(guidance, row.code);
+    assert.equal(guidance.definition, row.consultant_definition);
+    assert.equal(guidance.exceptions, row.consultant_exceptions);
+    assert.equal(guidance.validationSamples, row.consultant_validation_samples);
+  }
+  const counts = consultantGuidance.rules.reduce<Record<string, number>>((all, g) => {
+    all[g.decision] = (all[g.decision] ?? 0) + 1;
+    return all;
+  }, {});
+  assert.deepEqual(counts, { build_now: 5, disabled_recalibration: 1, held: 4, validation_pending: 3 });
+  assert.deepEqual(consultantGuidance.rules.filter(g => g.decision === "validation_pending").map(g => g.code),
+    ["IMAGE_MIN_DPI", "IMAGE_HARD_MIN_DPI", "IMAGE_NOT_RGB"]);
+});
+test("current guidance is additive metadata, never a rewrite of historical snapshot rows or hash", async () => {
+  const csv = await readFile(resolve(pythonRoot(), "printscope-engine/printscope-rules-v2.csv"), "utf8");
+  const snapshot = { id: 1, csv, rows: parseCsv(csv), hash: createHash("sha256").update(csv).digest("hex"), created_by: "original", created_at: "2026-09-01" };
+  const before = structuredClone(snapshot);
+  const dto = await ruleDto(snapshot);
+  assert.deepEqual(snapshot, before);
+  assert.deepEqual(dto.rows, before.rows);
+  assert.equal(dto.hash, before.hash);
+  assert.equal(dto.createdAt, before.created_at);
+  assert.equal(Object.values(dto.editable).filter(meta => meta.guidance).length, 13);
+  const overlap = dto.editable.INK_OVERLAP_NOT_TRAP;
+  assert.equal(overlap.guidance?.scope, "current_guidance");
+  assert.equal(overlap.guidance?.asOf, "2026-10-01");
+  assert.equal(overlap.severityPolicy, "info");
+  verifyRuleSnapshot(snapshot);
+});
+test("held rules and disabled CHOKE cannot become editable merely by registering a detector", () => {
+  for (const g of consultantGuidance.rules.filter(g => ["held", "disabled_recalibration"].includes(g.decision))) {
+    const meta = ruleMetadata(g.code, new Set([g.code]));
+    assert.equal(meta.implemented, false);
+    assert.deepEqual(meta.fields, []);
+    assert.deepEqual(meta.thresholds, []);
+  }
+});
+test("info-only policy permits unchanged legacy settings but rejects new promotions and excludes them from judged-check minimum", async () => {
+  const rows = parseCsv(await readFile(resolve(pythonRoot(), "printscope-engine/printscope-rules-v2.csv"), "utf8"));
+  const implemented = await ruleDefinitions();
+  implemented.add("INK_OVERLAP_NOT_TRAP");
+  implemented.add("INK_CHANGE_DECLARED");
+  // Simulate an immutable pre-guidance snapshot, even if new seed defaults change.
+  rows.find(r => r.code === "INK_OVERLAP_NOT_TRAP")!.severity = "flag";
+  const before = structuredClone(rows);
+  validateRules(rows, rows, implemented);
+  assert.deepEqual(rows, before);
+  const edits = structuredClone(rows);
+  edits.find(r => r.code === "INK_OVERLAP_NOT_TRAP")!.severity = "fail";
+  assert.throws(() => validateRules(edits, rows, implemented), /informational only/);
+  edits.find(r => r.code === "INK_OVERLAP_NOT_TRAP")!.severity = "info";
+  validateRules(edits, rows, implemented);
+  const promoted = structuredClone(edits);
+  promoted.find(r => r.code === "INK_OVERLAP_NOT_TRAP")!.severity = "flag";
+  assert.throws(() => validateRules(promoted, edits, implemented), /informational only/);
+  const inkChange = structuredClone(rows);
+  inkChange.find(r => r.code === "INK_CHANGE_DECLARED")!.severity = "flag";
+  assert.throws(() => validateRules(inkChange, rows, implemented), /informational only/);
+  const onlyInfo = rows.map(r => ruleMetadata(r.code, implemented).implemented && r.code !== "INK_OVERLAP_NOT_TRAP"
+    ? { ...r, enabled: "false" } : { ...r });
+  assert.throws(() => validateRules(onlyInfo, rows, implemented), /At least one judged check/);
 });
 test("PrintScope API family is claimed by the readiness registry", () => {
   assert.deepEqual(MODULE_DEFS.find(m => m.key === "printscope")?.apiPrefixes, ["/printscope"]);

@@ -1,0 +1,97 @@
+{
+  "source": "attached_assets/sepscope-rules-consultant-worksheet-2026-10-01-FILLED_1790831744872.csv",
+  "asOf": "2026-10-01",
+  "rules": [
+    {
+      "code": "UNDERBASE_ROLE_AGREES",
+      "decision": "build_now",
+      "definition": "BUILD NOW. The underbase is the colorant whose ink segment matches /under/i. Read each /Separation's alternate space and its tint-transform /C1 at full tint; convert to RGB and compare against Rhodamine (229,6,149) with abs tolerance 4 per channel. Name decides the role; colour only corroborates. Pass when a named-Under swatch is within tolerance. Flag when a named-Under swatch is NOT Rhodamine, or when more than one swatch is named Under. Needs one extract.py addition: expose each colorant's alternate C1 alongside its name (today is_underbase is name-only and no colour is carried).",
+      "exceptions": "Never assign the underbase role from colour. A non-Under swatch that IS Rhodamine is a legitimate ink and must not be flagged or re-roled. A file with no Under swatch is not_applicable, not a failure - that is UNDERBASE_REQUIRED_DARK's job. Double-hit names (1-160&10-230-White) carry no Under segment and are out of scope.",
+      "validationSamples": "MEASURED 2026-10-01 across all 55 corpus files: 36 swatches named Under, 36/36 at exactly (229,6,149), delta 0 - tolerance 4 is generous, no near-misses. Exactly 1 counterexample for the name-wins rule: #91825 F carries 6-230-Rhodamine Red C with C1 identical to its own 1-160-Under. Colour alone would mis-assign on that file."
+    },
+    {
+      "code": "CHOKE_SAFE_FOR_DETAIL",
+      "decision": "disabled_recalibration",
+      "definition": "KEEP DISABLED, BUT A REPLACEMENT METRIC NOW EXISTS. The shipped erosion-topology version contradicts #22499, a file Tyler confirmed good, so it stays off. The work on -22968 LC on 2026-09-23 produced a better measurement: for each colour object, compare the base coverage actually present against the coverage a correct 0.375pt choke predicts from that object's median feature width - expected = (w - 0.75) / w. The residual is the defect signal, and unlike raw coverage it is not confounded by how thin the shape is. Recommend replacing this rule's detector with the residual rather than recalibrating the erosion metric.",
+      "exceptions": "Raw per-object base coverage must NOT be used on its own - it measures thinness more than defect. Measured: -22968 LC at 34.7% total unbased ink versus -22906 LC at 32.5%, where the first is a reported defect and the second is confirmed good. Aggregate coverage per ink is worse still: base_coverage dilates the base 9x9 (+/-1.44pt) to suppress register false positives, which fills the exact gap this rule looks for and reported the bad file's grey as 97.5% based. Black inks are unbased by design and must be excluded.",
+      "validationSamples": "MEASURED 2026-09-23, residual = observed - predicted coverage, worst object per file: -22968 LC Cool Gray -31.2 (reported defect); -22968 B Pink -14.9 (same job, milder); -22771 LC Cream -5.7; -22906 B Green -4.5 (confirmed good); -22906 LC Green -4.3 (confirmed good); #22880 LC Drake Red -3.8; #22541 LC Tan +9.4. Normal files cluster -3 to -6. Threshold sits somewhere in the -6 to -15 gap; Tyler's read on -22968 B and #22599 B is what places it. Pending that, this stays off."
+    },
+    {
+      "code": "FILL_STROKE_SAME_COLORANT",
+      "decision": "build_now",
+      "definition": "BUILD NOW. For each path carrying both a fill and a stroke, compare the colorant of each. Flag when they differ. Matters because the underbase is built from the fill, so a stroke in another ink extends past the base with no trap. Report the two ink names and the stroke weight - a hairline stroke in a second ink is the common shape of this defect. Needs an extract.py addition: today strokes are tallied by width|ink with no link back to the fill on the same path, so fill/stroke pairing has to be recorded during the content-stream walk.",
+      "exceptions": "Zero-ink knockout strokes are the choke mechanism and are painted in DeviceCMYK by design - exclude any stroke already classified as a choke, or the rule fires on every trapped file. Registration furniture on the Reg Marks & Info layer is drawn in the All colorant and is out of scope. Paths with a fill and no stroke, or a stroke and no fill, are not_applicable.",
+      "validationSamples": "Phase 0: caught the planted defect in #22563 F - 2 paths filled 5-230-Blue 286 C and stroked 6-230-Gray 432 at 0.1pt. NOT yet re-run against the full 55-file corpus with the choke exclusion in place; do that before promoting above flag, since every trapped file carries zero-ink strokes."
+    },
+    {
+      "code": "INK_OVERLAP_NOT_TRAP",
+      "decision": "build_now",
+      "definition": "BUILD NOW BUT SHIP AS INFO, not flag. Rasterise each ink plate at MEASURE_DPI, take every pairwise intersection, and report the maximum inscribed width of each overlap region via a distance transform (2 x max EDT). A trap band is thin; a wide solid overlap means one ink is sitting under another, usually misregistration inside a single artboard, which ARTWORK_IN_REGISTER cannot see because it compares artboards. No extract.py change needed - raster.plates already returns what this needs.",
+      "exceptions": "The trap band itself is the expected overlap and must not fire - that is what the width threshold is for. Gradient blends overlap by design and run one colour deliberately further under another (#22617): suppress where shadings are present, as NO_EMPTY_PLATES and ARTWORK_IN_REGISTER already do. Registration marks are painted in All and overlap every plate - exclude the All colorant before pairing.",
+      "validationSamples": "9 files measured in phase 0. Good: #22834 max 1.07pt, #91825 max 1.36pt at 0.0% area. Planted defect: #22875 Brown at 2.40pt against the blues. The 2.0pt threshold sits in a 1.36-2.40pt gap on 9 files - that is one measurement either side and NOT enough to carry a flag. Run it as info across the full 55-file corpus first; promote to flag once the two populations are known to stay apart."
+    },
+    {
+      "code": "SWATCH_LABEL_MANIFEST",
+      "decision": "build_now",
+      "definition": "BUILD NOW. Pre-Press Pro writes the swatch list as live text on Reg Marks & Info, which makes it a machine-readable statement of intended inks. Extract that text, parse the swatch names out of it, and compare three lists: labelled, declared in /ColorSpace, and actually painted. Report any name present in one list and missing from another, naming which list disagrees. Needs an extract.py addition: text content is not currently returned (only a run count and origin positions), so the ToUnicode decode from phase 0 has to come back into the extractor.",
+      "exceptions": "The label block is built by the script and is expected to be live text - ART_TEXT_OUTLINED already handles the live-text question by position and must not be duplicated here. A file that was never run through Pre-Press Pro has no label block: report cannot_evaluate, not a failure. Label text uses ' -- ' as its separator in the script's own rename path while corpus swatches use single hyphens, so parse tolerantly and match on the ink segment rather than the whole string.",
+      "validationSamples": "Phase 0: #22554 F - label lists 5 inks including 5-230-Gold 110 C, /ColorSpace declares all 5, only 4 are painted. Confirmed independently today: declared_inks carries 5 and inks carries 4 on that file, so two of the three views already agree with the phase 0 finding. The third view (label text) is the part still to rebuild."
+    },
+    {
+      "code": "INK_CHANGE_DECLARED",
+      "decision": "build_now",
+      "definition": "BUILD NOW, info only. One head group followed by two ink names separated by & means the press stops mid-run, one ink is cleaned out and the other loaded. Match ^\\d+(?:-\\d+)?-[^&]+&[^&]+$ against each colorant name after excluding All. Report the head and both inks so scheduling and the press see it. No extract.py change needed - all_inks already carries the names.",
+      "exceptions": "Must NOT fire on two head groups with one ink (1-160&10-230-White = same art on two screens, a double hit) or on two head groups with two inks (1-160&10-160-White&Navy 289 = one film, two garment colourways). Test the head-group side of the & first; only a single head group makes it an ink change.",
+      "validationSamples": "MEASURED 2026-10-01 across all 55 files: exactly 1 match - #22699 F1 '5-200-Grey 429 & Yellow 121', the case Tyler confirmed. The 8 two-head names in the corpus (#18496, #19038, #22591, #22829, -22717 x2, -22882 x2) were all correctly excluded. Zero false positives."
+    },
+    {
+      "code": "UNDERBASE_REQUIRED_DARK",
+      "decision": "held",
+      "definition": "HOLD - NOT BUILDABLE FROM THE FILE. Needs the garment colour, which does not exist anywhere in the separation. Unblocks the moment job context arrives from Printavo. Definition once it does: on a dark garment, every non-black ink requires an underbase; black prints direct. Fail when a dark-garment job has no Under colorant and carries at least one non-black ink.",
+      "exceptions": "Black and near-black inks print direct and must be excluded from the requirement - measured across the corpus, black inks run ~99% unbased by design, so a version of this rule that counts them will fire on nearly every file. The white-on-dark double hit (1-160&10-230-White) is its own base and must not be read as a missing underbase - those files correctly report has_underbase false.",
+      "validationSamples": "Cannot be validated without garment colour. Tyler has confirmed the black-prints-direct convention. Needs: garment colour per job, and a light/dark cutoff Mint agrees on."
+    },
+    {
+      "code": "UNDERBASE_ABSENT_LIGHT",
+      "decision": "held",
+      "definition": "HOLD - NOT BUILDABLE FROM THE FILE. Same blocker as UNDERBASE_REQUIRED_DARK. Definition once garment colour exists: flag when a light-garment job carries an Under colorant, since that is a screen, a flash and a station spent for nothing.",
+      "exceptions": "Keep this a flag, never a fail. A base on a light garment is sometimes deliberate - for opacity under a bright ink on a heathered or mid-tone garment - so it is a question for the artist, not a rejection. Mid-tone garments will be the hard cases and need their own call once the light/dark cutoff is set.",
+      "validationSamples": "Cannot be validated. No light-garment sample exists in the 55-file corpus; every file with a base is a dark-garment job. Needs both the garment colour feed and at least one light-garment separation to test against."
+    },
+    {
+      "code": "IMAGE_MIN_DPI",
+      "decision": "validation_pending",
+      "definition": "BUILD, BUT IT CANNOT BE VALIDATED YET. Walk /XObject entries with /Subtype /Image, take /Width and /Height, and divide by the placed size derived from the CTM at the Do operator to get effective dpi. Flag below 300. Mechanically simple and no new dependency. Needs an extract.py addition: images is currently only a count, with no per-image dimensions, CTM or colour space.",
+      "exceptions": "A file with no placed raster returns not_applicable, which is every file in the corpus today - so enabling this costs nothing on current work. Do not measure dpi against the image's own pixel dimensions alone; the CTM is what sets placed size. Images inside Form XObjects need the accumulated matrix, not the page CTM.",
+      "validationSamples": "ZERO COVERAGE. Confirmed 2026-10-01: 0 image XObjects across all 55 corpus files. This rule has never executed against real data. Needs one job with a placed raster before it can be trusted - request a separation that contains one."
+    },
+    {
+      "code": "IMAGE_HARD_MIN_DPI",
+      "decision": "validation_pending",
+      "definition": "BUILD, BUT IT CANNOT BE VALIDATED YET. Same measurement as IMAGE_MIN_DPI with a lower bound; below 200 dpi at placed size is not printable at any size Mint runs, so this is the fail tier under that rule's flag tier. Implement both off one measurement pass rather than walking the images twice.",
+      "exceptions": "Same exceptions as IMAGE_MIN_DPI. Only one of the two should surface per image - when the hard floor fails, suppress the 300 dpi flag rather than reporting the same image twice.",
+      "validationSamples": "ZERO COVERAGE. 0 image XObjects across all 55 corpus files as of 2026-10-01. Never executed."
+    },
+    {
+      "code": "IMAGE_NOT_RGB",
+      "decision": "validation_pending",
+      "definition": "BUILD, BUT IT CANNOT BE VALIDATED YET. Read each image XObject's /ColorSpace and fail on /DeviceRGB or /CalRGB. An RGB raster has not been separated and will not produce a plate. Same extract.py pass as the two dpi rules.",
+      "exceptions": "An /Indexed palette whose base is RGB is still RGB and should fail - resolve one level down before deciding. /ICCBased with N=3 is RGB in practice and should fail too. An image already in a /Separation or /DeviceN is correct and passes. A /DeviceGray mask or soft mask is not artwork - skip it.",
+      "validationSamples": "ZERO COVERAGE. 0 image XObjects across all 55 corpus files as of 2026-10-01. Never executed. Note the related vector-side check SEPARATION_ONLY_ART is built and did catch an ICCBased N=4 fill in #22829, so the colour-space machinery is proven - only the raster path is untested."
+    },
+    {
+      "code": "PLATE_COUNT_MATCHES_ORDER",
+      "decision": "held",
+      "definition": "HOLD - NOT BUILDABLE FROM THE FILE. The file knows how many separations it has; it cannot know how many were ordered. Unblocks with Printavo job context. Definition once it exists: count unique colorants across all artboards excluding All, and compare against the ordered ink count. This is a costing check as much as a production one, so it belongs before screens are burned.",
+      "exceptions": "Decide first whether the underbase counts as an ordered colour - it is a screen and a station but is often quoted separately. Ink-change swatches are one screen carrying two inks and must count as one plate, not two. Double-hit names are one film on two heads: one plate, two stations. Each of these shifts the number by one and the comparison is exact, so the counting convention has to be settled before the rule can fail anything.",
+      "validationSamples": "4/4 matched stated colour counts in phase 0, by hand. No automated validation possible without the order feed. The counting conventions above are the real blocker, not the code."
+    },
+    {
+      "code": "PRINT_SIZE_VS_LOCATION",
+      "decision": "held",
+      "definition": "HOLD - NOT BUILDABLE YET, and the blocker is a table Mint has not written. Needs the location preset list with a maximum width and height per location code. Definition once it exists: take the artwork bounding box on the art layer, parse the location code from the filename, and fail when the art exceeds that location's maximum by more than the tolerance. Note this is the same preset table the separation generator needs - building it once serves both projects.",
+      "exceptions": "The art bounding box must exclude registration marks, the filename and the swatch label block, or every file measures as the full artboard. The canonical location code list is still unsettled - the corpus carries F, B, LC, RS and F1 while the stated standard is F, B, LC, RSLV, LSLV, RLeg, LLEG - so filename parsing will mis-key until that is fixed. If print size varies by garment size at Mint, one file can be correct for one size break and oversized for another, and the rule needs to know which size it is judging.",
+      "validationSamples": "Untested - no presets loaded. Artboard width measures a constant 16.0in across every file checked, which suggests a fixed platen template rather than a per-location board size, so the constraint is on the artwork bounds and not the artboard."
+    }
+  ]
+}

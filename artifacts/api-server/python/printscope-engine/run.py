@@ -261,6 +261,16 @@ def build_ctx(src, facts):
                 src, colours[0]["index"], only=set(ctx["based_inks"]))
         except Exception:
             pass
+    if not any(ab.get("shadings") for ab in facts["artboards"]):
+        overlaps = []
+        try:
+            for ab in colours:
+                names = [name for name in ab["inks"] if name != "All"]
+                if len(names) > 1:
+                    overlaps.extend(RS.ink_overlaps(src, ab["index"], names, CFG.MEASURE_DPI))
+            ctx["ink_overlaps"] = overlaps
+        except Exception as exc:
+            ctx["ink_overlap_error"] = f"{type(exc).__name__}: {exc}"
     return ctx
 
 

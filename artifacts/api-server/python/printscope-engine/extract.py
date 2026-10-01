@@ -6,6 +6,7 @@ rules, severity or presentation. Every downstream consumer reads this dict.
 import math, os, re, hashlib
 import pikepdf
 from pikepdf import Dictionary, Name, Array, parse_content_stream
+from consultant_extract import colorant_details, decode_text, image_placement
 
 PAINT_FILL = ("f", "F", "f*")
 PAINT_STROKE = ("S", "s")
@@ -30,10 +31,16 @@ def _scale(m):
 
 def _colorspace_name(res, nm):
     """Resolve a named colourspace to an ink name, or a device/ICC marker."""
+    if nm in ("/DeviceCMYK", "/DeviceRGB", "/DeviceGray"):
+        return {"/DeviceCMYK": "@devicek", "/DeviceRGB": "@devicerg",
+                "/DeviceGray": "@deviceg"}[nm]
     try:
         o = res.get("/ColorSpace")[nm]
     except Exception:
         return None
+    if str(o) in ("/DeviceCMYK", "/DeviceRGB", "/DeviceGray"):
+        return {"/DeviceCMYK": "@devicek", "/DeviceRGB": "@devicerg",
+                "/DeviceGray": "@deviceg"}[str(o)]
     try:
         kind = str(o[0])
     except Exception:
@@ -174,14 +181,17 @@ def scan_page(pg):
         "nonsep_fills": {},
         "shadings": 0,
         "images": 0,
+        "image_placements": [],
+        "fill_stroke_pairs": [],
     }
 
-    def walk(obj, res, ctm, fill, strk, lw, layer, depth=0):
+    def walk(obj, res, ctm, fill, strk, lw, layer, depth=0, stroke_values=None, font=None):
         if res is None or depth > 12:
             return
         xo = res.get("/XObject")
         stack, lstack, pts = [], [], []
         M, F, S, W, L = ctm, fill, strk, lw, layer
+        SV, FT = stroke_values, font
         tm = tlm = None
         leading = 0.0
         try:
@@ -193,20 +203,24 @@ def scan_page(pg):
             a = op_obj.operands
             try:
                 if op == "q":
-                    stack.append((M, F, S, W))
+                    stack.append((M, F, S, W, SV, FT))
                 elif op == "Q":
                     if stack:
-                        M, F, S, W = stack.pop()
+                        M, F, S, W, SV, FT = stack.pop()
                 elif op == "cm":
                     M = mul(tuple(float(x) for x in a), M)
                 elif op == "cs":
                     F = _colorspace_name(res, str(a[0]))
                 elif op == "CS":
                     S = _colorspace_name(res, str(a[0]))
+                    SV = [0, 0, 0, 1] if S == "@devicek" else None
                 elif op in ("k", "rg", "g"):
                     F = "@device" + op
                 elif op in ("K", "RG", "G"):
                     S = "@device" + op.lower()
+                    SV = [float(x) for x in a]
+                elif op in ("SC", "SCN"):
+                    SV = [float(x) for x in a]
                 elif op == "w":
                     W = float(a[0])
                 elif op == "sh":
@@ -236,6 +250,8 @@ def scan_page(pg):
                         pts.append(apply(M, px, py))
                 elif op == "BT":
                     tm = tlm = (1, 0, 0, 1, 0, 0)
+                elif op == "Tf":
+                    FT = res.get("/Font", {}).get(str(a[0]))
                 elif op == "ET":
                     tm = tlm = None
                 elif op == "Tm":
@@ -255,7 +271,9 @@ def scan_page(pg):
                     if tm is not None:
                         full = mul(tm, M)
                         pos = [round(full[4], 2), round(full[5], 2)]
-                    out["text_runs"].append({"layer": str(L), "ink": F, "pos": pos})
+                    text, error = decode_text(a, op, FT)
+                    out["text_runs"].append({"layer": str(L), "ink": F, "pos": pos,
+                                             "text": text, "decode_error": error})
                 elif op in PAINT_ALL or op == "n":
                     if op != "n":
                         out["layer_paint"][str(L)] = out["layer_paint"].get(str(L), 0) + 1
@@ -277,6 +295,12 @@ def scan_page(pg):
                             "w": round(W * _scale(M), 4), "ink": S,
                             "layer": str(L), "bbox": bb,
                         })
+                    if op in PAINT_BOTH:
+                        out["fill_stroke_pairs"].append({
+                            "fill": F, "stroke": S, "w": round(W * _scale(M), 4),
+                            "layer": str(L), "bbox": bb,
+                            "is_choke": S == "@devicek" and SV == [0, 0, 0, 0],
+                        })
                     pts = []
                 elif op in ("W", "W*"):
                     pass
@@ -288,9 +312,16 @@ def scan_page(pg):
                     if x.get("/Subtype") == Name("/Form"):
                         mtx = x.get("/Matrix")
                         M2 = mul(tuple(float(v) for v in mtx), M) if mtx is not None else M
-                        walk(x, x.get("/Resources", res), M2, F, S, W, L, depth + 1)
+                        walk(x, x.get("/Resources", res), M2, F, S, W, L, depth + 1, SV, FT)
                     elif x.get("/Subtype") == Name("/Image"):
                         out["images"] += 1
+                        try:
+                            placement = image_placement(x, M, res, L, str(a[0]))
+                        except Exception as exc:
+                            placement = {"name": str(a[0]), "layer": str(L),
+                                         "effective_dpi": None, "colorspace": "unknown",
+                                         "extraction_error": f"{type(exc).__name__}: {exc}"}
+                        out["image_placements"].append(placement)
             except Exception:
                 pass
 
@@ -340,6 +371,10 @@ def extract(path):
             "nonsep_fills": s["nonsep_fills"],
             "shadings": s["shadings"],
             "images": s["images"],
+            "image_placements": s["image_placements"],
+            "fill_stroke_pairs": s["fill_stroke_pairs"],
+            "colorant_details": colorant_details(pg),
+            "label_text_runs": s["text_runs"],
             "text_runs": len(s["text_runs"]),
             "text_by_layer": _tally(s["text_runs"]),
             "text_by_ink": _tally_ink(s["text_runs"]),

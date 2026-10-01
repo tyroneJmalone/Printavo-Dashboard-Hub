@@ -2,8 +2,26 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pool } from "@workspace/db";
+import consultantGuidance from "./consultant-guidance.json";
 
 export type Rule = Record<string, string>;
+export { consultantGuidance };
+const guidanceByCode = new Map(consultantGuidance.rules.map(r => [r.code, r]));
+const infoOnly = new Set(["INK_OVERLAP_NOT_TRAP", "INK_CHANGE_DECLARED"]);
+function isHeld(code: string) {
+  return ["held", "disabled_recalibration"].includes(guidanceByCode.get(code)?.decision ?? "");
+}
+export function ruleMetadata(code: string, implemented: Set<string>) {
+  const guidance = guidanceByCode.get(code);
+  const available = implemented.has(code) && !isHeld(code);
+  return {
+    implemented: available,
+    fields: available ? ["enabled", "severity", "remediation_text"] : [],
+    thresholds: available ? thresholds[code] ?? [] : [],
+    ...(infoOnly.has(code) ? { severityPolicy: "info" } : {}),
+    ...(guidance ? { guidance: { ...guidance, asOf: consultantGuidance.asOf, source: consultantGuidance.source, scope: "current_guidance" } } : {}),
+  };
+}
 export function versionMatches(expected: number, active: number) { return expected === active; }
 export const thresholds: Record<string, string[]> = {
   STROKE_MIN_WIDTH: ["min_pt"], TRIM_ARTIFACT_RESIDUE: ["min_pt", "min_count"],
@@ -42,10 +60,15 @@ export function validateRules(rows: Rule[], base: Rule[], implemented: Set<strin
   for (const old of base) {
     const r = rows.find(r => r.code === old.code);
     if (!r || Object.keys(r).length !== Object.keys(old).length) throw new Error("Rule columns cannot change");
-    const fields = implemented.has(r.code) ? ["enabled", "severity", "remediation_text", ...(thresholds[r.code] ? ["expected", "tolerance"] : [])] : [];
+    const metadata = ruleMetadata(r.code, implemented);
+    const fields = [...metadata.fields, ...(metadata.thresholds.length ? ["expected", "tolerance"] : [])];
     for (const k of Object.keys(old)) if (typeof r[k] !== "string" || (!fields.includes(k) && r[k] !== old[k])) throw new Error(`${old.code}: ${k} is read-only`);
     if (!["true", "false"].includes(r.enabled) || !["fail", "flag", "info"].includes(r.severity)) throw new Error("Invalid enabled or severity");
     if (r.code === "CHOKE_SAFE_FOR_DETAIL" && r.enabled !== "false") throw new Error("CHOKE_SAFE_FOR_DETAIL must remain disabled");
+    // Preserve immutable legacy settings on unrelated saves; only an explicit
+    // admin edit moves a legacy severity to info. Runtime policy also caps these
+    // detectors at info, including when executing an older snapshot.
+    if (infoOnly.has(r.code) && r.severity !== old.severity && r.severity !== "info") throw new Error(`${r.code}: informational only pending validation`);
     for (const field of ["expected", "tolerance"]) {
       const val = JSON.parse(r[field]), prev = JSON.parse(old[field]);
       if (!val || Array.isArray(val) || typeof val !== "object") throw new Error("Threshold must be a JSON object");
@@ -58,7 +81,7 @@ export function validateRules(rows: Rule[], base: Rule[], implemented: Set<strin
       if (p.min_count !== undefined && !Number.isInteger(p.min_count)) throw new Error("Count must be integer");
     }
   }
-  if (!rows.some(r => implemented.has(r.code) && r.enabled === "true" && r.severity !== "info")) throw new Error("At least one judged check must remain enabled");
+  if (!rows.some(r => implemented.has(r.code) && !isHeld(r.code) && !infoOnly.has(r.code) && r.enabled === "true" && r.severity !== "info")) throw new Error("At least one judged check must remain enabled");
 }
 export async function activeRules() {
   const c = await pool.connect();
@@ -75,5 +98,5 @@ export async function activeRules() {
 export async function ruleDto(row: any) {
   const implemented = await ruleDefinitions();
   return { id: row.id, rows: row.rows, hash: row.hash, createdBy: row.created_by, createdAt: row.created_at,
-    editable: Object.fromEntries(row.rows.map((r: Rule) => [r.code, { implemented: implemented.has(r.code), fields: implemented.has(r.code) ? ["enabled", "severity", "remediation_text"] : [], thresholds: thresholds[r.code] ?? [] }])) };
+    editable: Object.fromEntries(row.rows.map((r: Rule) => [r.code, ruleMetadata(r.code, implemented)])) };
 }

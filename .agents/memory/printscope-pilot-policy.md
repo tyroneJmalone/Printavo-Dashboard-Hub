@@ -20,3 +20,17 @@ The user explicitly chose deletion of pilot-owned artwork copies and plate previ
 **Why:** Retention was an unresolved prerequisite to importing real files; this was explicit consent for a limited cleanup policy, not permission to delete the upstream mirror or unrelated manual inspections.
 
 **How to apply:** Bind expiry to a deliberately started pilot and preserve its deadlines through reruns. Do not start the real pilot clock as a side effect of development validation.
+
+The consultant's October 1, 2026 recommendations authorize eight new checks,
+not activation of the four context/preset-dependent holds or choke safety.
+Ink overlap stays informational until calibrated; raster checks need real
+production examples beyond synthetic PDFs.
+
+**Why:** The user approved implementing the recommended checks with those
+explicit validation limits. A consultant's reported corpus measurements are
+not independently reproduced evidence merely because they appear in the UI.
+
+**How to apply:** Keep current guidance distinct from immutable saved settings
+and historical inspection results. Enforce informational-only policy even
+when an older snapshot contains a stronger severity. Do not silently promote
+choke safety or use absent garment/order data as a passing result.

@@ -1,11 +1,13 @@
 """Raster metrics: per-separation plates via Ghostscript tiffsep, plus the
 perimeter-adjacency measurement that drives the trap rule."""
 import glob, os, shutil, subprocess, tempfile
+from itertools import combinations
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 
 import config as CFG
+from ink_names import ink_key
 
 DPI = CFG.MEASURE_DPI
 WHITE_RE = ("white",)
@@ -46,6 +48,29 @@ def plates(src, page, dpi=DPI):
 def is_white_ink(name):
     n = name.lower()
     return any(w in n for w in WHITE_RE)
+
+
+def ink_overlaps(src, page, names, dpi=DPI):
+    """Pairwise overlap width in points at the calibrated measurement DPI.
+
+    Limit to named painted inks: tiffsep also produces process/registration
+    furniture channels. Never compare a base against its intended top colour.
+    Padding provides a real zero boundary even when a mask fills the raster.
+    """
+    ps = plates(src, page, dpi)
+    names = sorted(n for n in set(names) - {"All"} if "under" not in (ink_key(n) or ""))
+    missing = [name for name in names if name not in ps]
+    if missing:
+        raise ValueError("raster plates unavailable: " + ", ".join(missing))
+    out = []
+    for a, b in combinations(names, 2):
+        overlap = ps[a] & ps[b]
+        count = int(overlap.sum())
+        width = (2 * float(ndimage.distance_transform_edt(
+            np.pad(overlap, 1)).max()) * 72 / dpi) if count else 0.0
+        out.append({"artboard": page, "inks": [a, b],
+                    "max_width_pt": round(width, 4), "overlap_px": count, "dpi": dpi})
+    return out
 
 
 def perimeter_adjacency(src, page, dpi=DPI):
