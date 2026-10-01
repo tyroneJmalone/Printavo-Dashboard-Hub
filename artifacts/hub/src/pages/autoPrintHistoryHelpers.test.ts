@@ -1,8 +1,18 @@
 import test from "node:test";
+import { retryHistory } from "./autoPrintHistoryHelpers.ts";
 import assert from "node:assert/strict";
 import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset } from "./autoPrintHistoryHelpers.ts";
 
 const invoice = { status: "skipped", docType: "workorder", isReprint: false };
+
+test("retry history handles legacy and malformed metadata and preserves attempt details", () => {
+  for (const metadata of [null, {}, { autoRetry: null }, { autoRetry: { attempts: [] } }]) {
+    assert.equal(retryHistory(metadata), null);
+  }
+  const attempts = [{ attempt: 1, phase: "render", outcome: "retrying", error: "timeout", delayMs: 1000 },
+    { attempt: 2, phase: "persistence", outcome: "printed", error: null, delayMs: 0 }];
+  assert.deepEqual(retryHistory({ autoRetry: { attemptCount: 2, maxAttempts: 3, attempts } }), { count: 2, max: 3, attempts });
+});
 
 test("skipped invoice filter excludes separate PO copies", () => {
   assert.equal(matchesHistoryFilter(invoice, "skipped"), true);

@@ -17,3 +17,16 @@ Browser-startup recovery may retry before any PrintNode submission, but that doe
 **Why:** A startup failure cannot have printed a document; a lost response from PrintNode may already represent an accepted physical print. Treating these failures alike risks duplicate paperwork.
 
 **How to apply:** Keep startup retries isolated from delivery retries. Failed-before-print history can support a new eligibility-checked run; do not describe that as a durable frozen-batch queue.
+
+Automatic recovery must happen within the original batch, with at most three
+total logical workorder attempts, not three additional retries. Manual requeue
+is deliberately deferred.
+
+**Why:** The user needs workorders together with their production batch rather
+than recovered in a later batch; printing and subsequent status changes are
+operationally coupled.
+
+**How to apply:** Share the attempt budget across preparation and delivery.
+Do not introduce an independent retry budget for each phase or automatically
+resend uncertain printer submissions. Exhaust safe retries before deciding the
+terminal outcome used for status routing.

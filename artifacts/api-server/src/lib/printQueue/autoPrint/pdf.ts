@@ -58,10 +58,11 @@ export interface PdfRenderer {
   close(): Promise<void>;
 }
 
-export async function openPdfRenderer(): Promise<PdfRenderer> {
+export async function openPdfRenderer(options?: { maxStartupAttempts?: number }): Promise<PdfRenderer> {
   const executablePath = chromiumPath();
   const browser: Browser = await launchBrowserWithRecovery({
     logger,
+    maxAttempts: options?.maxStartupAttempts,
     launch: async ({ signal, timeoutMs }) => {
       let launched: Browser | undefined;
       try {

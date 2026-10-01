@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, type HistoryFilter } from "./autoPrintHistoryHelpers";
+import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
 import {
   useGetAutoPrintConfig,
   getGetAutoPrintConfigQueryKey,
@@ -1001,6 +1001,25 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
 
 /* ── Run panel + history ─────────────────────────────────────────────── */
 
+function RetryDetails({ metadata }: { metadata: unknown }) {
+  const audit = retryHistory(metadata);
+  if (!audit) return null;
+  return (
+    <details className="text-slate-400">
+      <summary className="cursor-pointer">Same-batch attempts: {audit.count} of {audit.max}</summary>
+      <ol className="mt-1 space-y-1">
+        {audit.attempts.map((attempt) => (
+          <li key={attempt.attempt}>
+            Attempt {attempt.attempt} · {attempt.phase.replaceAll("_", " ")} · {attempt.outcome.replaceAll("_", " ")}
+            {attempt.delayMs > 0 && ` · retry after ${attempt.delayMs / 1000}s`}
+            {attempt.error && <p className="text-amber-300 break-words">{attempt.error}</p>}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
 function countsLine(run: AutoPrintRun): string {
   const c = run.counts;
   const bits = [
@@ -1069,9 +1088,10 @@ function RunPanel() {
             Test run simulates without printing. Print now uses your live settings.
           </p>
           <p className="text-[12px] text-slate-400 mt-1">
-            If PDF startup fails, affected documents appear as failed in history.
-            After recovery, Print now checks current eligibility again and skips
-            ineligible orders; it does not replay a frozen batch.
+            Temporary workorder preparation failures get up to three total attempts
+            in this same batch, with 1s and 2s waits before retries. Uncertain
+            printer submissions are never automatically resent. Print now checks
+            current eligibility; it does not replay an earlier batch.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1219,6 +1239,7 @@ function RunJobs({ run }: { run: AutoPrintRun }) {
             {needsReconciliation(job) && <p role="note" className="text-amber-300">Do not automatically resend. Check PrintNode and the physical printer and reconcile this attempt first; paper output is not confirmed.</p>}
             {job.targetStatusName && <p className="text-slate-400">Routing destination: {job.targetStatusName}</p>}
             {job.errorMessage && <p className="text-red-300">{job.errorMessage}</p>}
+            <RetryDetails metadata={job.snapshotMetadata} />
             <details className="text-slate-500">
               <summary className="cursor-pointer">Audit details</summary>
               <dl className="mt-1 break-all">

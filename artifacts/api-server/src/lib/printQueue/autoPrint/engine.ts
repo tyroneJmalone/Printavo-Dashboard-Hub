@@ -15,7 +15,7 @@ import { applyOrderDetail, newDetailAgg } from "../../sync/detail";
 import { singleOrderDetailQuery, type SingleOrderDetail, type PvOrderDetailNode } from "@workspace/printavo";
 import { getPrintavoClient } from "../../printavoGateway";
 import { getAutoPrintConfig, type AutoPrintConfig } from "./config";
-import { openPdfRenderer } from "./pdf";
+import { openPdfRenderer, type PdfRenderer } from "./pdf";
 import {
   printNodeConfigured,
   submitPdfPrintJob,
@@ -38,7 +38,7 @@ import {
   conditionalAutoPrintDestination,
   successfulPostPrintCandidates,
 } from "./routing";
-import { withRendererStartupGuard } from "./rendererStartupGuard";
+import { runWorkorderAttempts, WorkorderSkip, type WorkorderRetryAudit } from "./workorderRetry";
 import { runHubPoBatch } from "./hubPoBatch";
 
 export { PDF_RENDERER_STARTUP_ERROR_PREFIX } from "./rendererStartupGuard";
@@ -354,6 +354,8 @@ interface Candidate {
   targetStatusName: string | null;
 }
 
+type OutcomeCandidate = Pick<Candidate, "orderId" | "orderKind" | "visualId" | "statusId" | "targetStatusId">;
+
 async function runAutoPrint(
   runId: string,
   config: AutoPrintConfig,
@@ -400,13 +402,24 @@ async function runAutoPrint(
       : [];
     const priorFor = (id: string, visual: number) => printedRows.find((r) =>
       r.status === "printed" && (r.printavoOrderId === id || r.visualId === String(visual))) ?? null;
+    // Preparation and delivery share one budget. Successful read phases do not
+    // begin a new attempt; their preceding failures carry into delivery.
+    const preparationAudits = new Map<string, WorkorderRetryAudit>();
     const skip = async (order: { id: string; visualId: number; nickname?: string | null; status?: { id: string; name: string | null } | null }, reason: string) => {
       const prior = priorFor(order.id, order.visualId);
+      const preparation = preparationAudits.get(order.id);
+      const autoRetry = preparation ? {
+        ...preparation,
+        outcome: "skipped",
+        attempts: preparation.attempts.map((item, index) => index === preparation.attempts.length - 1
+          ? { ...item, outcome: "skipped", error: reason, delayMs: 0 } : item),
+      } : undefined;
       await db.insert(pqPrintJobsTable).values({
         runId, printavoOrderId: order.id, visualId: String(order.visualId), nickname: order.nickname,
         sourceStatusId: order.status?.id, sourceStatusName: order.status?.name,
         docType: "workorder", status: "skipped", reason, priorJobId: prior?.id,
         priorPrintedAt: prior?.printedAt, copies: config.copies,
+        ...(autoRetry ? { snapshotMetadata: { autoRetry } } : {}),
       });
       counts.skipped++;
       if (prior) counts.alreadyPrinted++;
@@ -445,8 +458,49 @@ async function runAutoPrint(
     }
     const detailAgg = newDetailAgg();
     const freshDetails = new Map<string, PvOrderDetailNode>();
+    const printOutcomes: {
+      candidate: OutcomeCandidate;
+      outcome: "printed" | "failed" | "dry_run";
+      definitivePreSubmitFailure?: boolean;
+    }[] = [];
+    const recordPreparationFailure = async (
+      liveOrder: (typeof selectedLiveOrders)[number],
+      result: Awaited<ReturnType<typeof runWorkorderAttempts>>,
+    ) => {
+      preparationAudits.set(liveOrder.node.id, result.audit);
+      if (result.outcome === "skipped") {
+        await skip(liveOrder.node, (result.error as Error).message);
+        return;
+      }
+      counts.failed++;
+      const prior = priorFor(liveOrder.node.id, liveOrder.node.visualId);
+      await db.insert(pqPrintJobsTable).values({
+        runId, printavoOrderId: liveOrder.node.id, visualId: String(liveOrder.node.visualId),
+        nickname: liveOrder.node.nickname, docType: "workorder", status: "failed",
+        sourceStatusId: liveOrder.node.status?.id, sourceStatusName: liveOrder.node.status?.name,
+        printerId: config.printerId, printerName: config.printerName, copies: config.copies,
+        priorJobId: prior?.id, priorPrintedAt: prior?.printedAt,
+        errorMessage: result.error instanceof Error ? result.error.message : String(result.error),
+        snapshotMetadata: { autoRetry: result.audit },
+      });
+      printOutcomes.push({
+        candidate: {
+          orderId: liveOrder.node.id, visualId: liveOrder.node.visualId,
+          orderKind: liveOrder.kind === "invoices" ? "invoice" : "quote",
+          statusId: liveOrder.node.status?.id ?? null, targetStatusId: null,
+        },
+        outcome: "failed",
+        // Discovery is not proof that a previous print is safely resolved.
+        // Do not move uncertain/prior deliveries to the error status because a
+        // preparatory read happened to fail before eligibility was evaluated.
+        definitivePreSubmitFailure: result.definitivePreSubmitFailure && !printedRows.some((job) =>
+          (job.printavoOrderId === liveOrder.node.id || job.visualId === String(liveOrder.node.visualId)) &&
+          ["printed", "pending", "submission_unknown"].includes(job.status)),
+      });
+    };
     for (const liveOrder of selectedLiveOrders) {
-      try {
+      const result = await runWorkorderAttempts(async (attempt) => {
+        attempt.stage("live_detail");
         const fetchedAt = new Date();
         const data = await getPrintavoClient().query<SingleOrderDetail>(singleOrderDetailQuery(
           liveOrder.kind === "invoices" ? "invoice" : "quote", liveOrder.node.id,
@@ -456,18 +510,21 @@ async function runAutoPrint(
           node.lineItemGroups.pageInfo.hasNextPage ||
           node.lineItemGroups.nodes.some((g) => g.lineItems.pageInfo.hasNextPage)) {
           counts.detailPending++;
-          await skip(liveOrder.node, "live_detail_missing_or_incomplete");
-          continue;
+          throw new WorkorderSkip("live_detail_missing_or_incomplete");
         }
+        attempt.stage("persistence");
         const outcome = await applyOrderDetail(node, liveOrder.kind, detailAgg, log, { force: true, syncRunId: null, fetchedAt });
         if (outcome !== "written" && outcome !== "unchanged") {
-          await skip(liveOrder.node, `live_detail_${outcome}`);
-          continue;
+          throw new WorkorderSkip(`live_detail_${outcome}`);
         }
         freshDetails.set(node.id, node);
-      } catch (error) {
-        counts.detailPending++;
-        await skip(liveOrder.node, `live_detail_unavailable: ${error instanceof Error ? error.message : String(error)}`);
+        return "prepared";
+      });
+      if (result.outcome === "prepared") {
+        preparationAudits.set(liveOrder.node.id, result.audit);
+      } else {
+        if (result.outcome !== "skipped") counts.detailPending++;
+        await recordPreparationFailure(liveOrder, result);
       }
     }
 
@@ -533,17 +590,20 @@ async function runAutoPrint(
     for (const row of orderRows) {
       const detail = freshDetails.get(row.printavoId)!;
       const liveOrder = selectedLiveOrders.find((o) => o.node.id === row.printavoId)!;
-      try {
+      const statusPreparation = await runWorkorderAttempts(async (attempt) => {
+        attempt.stage("verification");
         const current = await fetchLiveOrderStatus(row.orderType === "invoice" ? "invoice" : "quote", row.printavoId);
         if (!current?.statusId || !sourceStatusIds.has(current.statusId) ||
           current.orderId !== row.printavoId || current.visualId !== row.visualId) {
-          await skip(liveOrder.node, "no_longer_in_source_status");
-          continue;
+          throw new WorkorderSkip("no_longer_in_source_status");
         }
         row.statusId = current.statusId;
         row.statusName = current.statusName;
-      } catch {
-        await skip(liveOrder.node, "live_status_unavailable");
+        return "prepared";
+      }, { previousAttempts: preparationAudits.get(row.printavoId)?.attempts.slice(0, -1) });
+      preparationAudits.set(row.printavoId, statusPreparation.audit);
+      if (statusPreparation.outcome !== "prepared") {
+        await recordPreparationFailure(liveOrder, statusPreparation);
         continue;
       }
       const prior = priorFor(row.printavoId, row.visualId);
@@ -622,43 +682,11 @@ async function runAutoPrint(
     await persistSummary(runId, { summary: { ...summary, counts } });
 
     /* 7 — render + print, one order at a time, persist after each */
-    const printOutcomes: {
-      candidate: Candidate;
-      outcome: "printed" | "failed" | "dry_run";
-      definitivePreSubmitFailure?: boolean;
-    }[] = [];
     if (todo.length > 0) {
-      await withRendererStartupGuard(
-        todo,
-        openPdfRenderer,
-        async (pending, errorMessage) => {
-          await db.insert(pqPrintJobsTable).values(
-            pending.map((c) => ({
-              runId,
-              printavoOrderId: c.orderId,
-              visualId: String(c.visualId),
-              nickname: c.nickname,
-              docType: "workorder",
-              sourceStatusId: c.statusId,
-              sourceStatusName: c.statusName,
-              targetStatusId: c.targetStatusId,
-              targetStatusName: c.targetStatusName,
-              printerId: config.printerId,
-              printerName: config.printerName,
-              copies: config.copies,
-              isReprint: c.isReprint,
-              status: "failed",
-              errorMessage,
-            })),
-          );
-          counts.failed += pending.length;
-          await persistSummary(runId, {
-            summary: { ...summary, counts, error: errorMessage },
-          });
-        },
-        async (renderer, pending) => {
+      let renderer: PdfRenderer | null = null;
+      try {
           let first = true;
-          for (const c of pending) {
+          for (const c of todo) {
             if (!first) await sleep(INTER_ORDER_DELAY_MS);
             first = false;
             const base = {
@@ -680,29 +708,36 @@ async function runAutoPrint(
               eligibilityCycle: c.eligibilityCycle,
             };
             let reservedId: string | null = null;
-            let submitted = false;
-            let definitivePreSubmitFailure = true;
-            try {
+            let acceptedJobId: number | null = null;
+            const result = await runWorkorderAttempts(async (attempt) => {
               if (!c.workorderUrl) {
                 throw new Error("No workorder URL on this order");
               }
+              if (isInternalReplacementInvoice(c.visualId)) {
+                throw new WorkorderSkip(INTERNAL_REPLACEMENT_WORKORDER_SKIP_REASON);
+              }
+              if (!dryRun && (!config.printerId || !Number.isSafeInteger(Number(config.printerId)) ||
+                Number(config.printerId) <= 0 || !printNodeConfigured())) {
+                throw new Error("Valid printer and PrintNode API key must be configured");
+              }
+              attempt.stage("renderer_startup");
+              // The outer workorder budget owns recovery: do not nest three
+              // browser launches inside each of the three workorder attempts.
+              renderer ??= await openPdfRenderer({ maxStartupAttempts: 1 });
+              attempt.stage("render");
               const pdf = await renderer.renderUrl(c.workorderUrl, {
                 excludeAttachments: config.excludeAttachments,
                 isReprint: c.isReprint,
               });
               if (dryRun) {
-                counts.dryRun += 1;
-                printOutcomes.push({ candidate: c, outcome: "dry_run" });
-                await db.insert(pqPrintJobsTable).values({
-                  ...base,
-                  status: "dry_run",
-                });
+                return "dry_run";
               } else {
                 if (!c.statusId) {
                   throw new Error(
                     "Source status is missing; PrintNode submission refused",
                   );
                 }
+                attempt.stage("verification");
                 const observedStatus = await fetchLiveOrderStatus(
                   c.orderKind,
                   c.orderId,
@@ -717,7 +752,7 @@ async function runAutoPrint(
                   },
                 });
                 if (!safety.allowed) {
-                  throw new Error(
+                  throw new WorkorderSkip(
                     safety.reason ?? "Live print safety check failed",
                   );
                 }
@@ -729,8 +764,7 @@ async function runAutoPrint(
                   verified.lineItemGroups.pageInfo.hasNextPage ||
                   verified.lineItemGroups.nodes.some((g) => g.lineItems.pageInfo.hasNextPage) ||
                   lineItemFingerprint(verified.lineItemGroups.nodes.flatMap((g) => g.lineItems.nodes.map((l) => ({ ...l })))) !== c.contentFingerprint) {
-                  await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname }, "line_items_changed_during_render_or_detail_unavailable");
-                  continue;
+                  throw new WorkorderSkip("line_items_changed_during_render_or_detail_unavailable");
                 }
                 const finalSafetyStatus = await fetchLiveOrderStatus(c.orderKind, c.orderId);
                 const finalSafety = checkPrintSafety({
@@ -739,16 +773,19 @@ async function runAutoPrint(
                   expected: { orderId: c.orderId, visualId: c.visualId, sourceStatusId: c.statusId },
                 });
                 if (!finalSafety.allowed) {
-                  await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname },
+                  throw new WorkorderSkip(
                     isInternalReplacementInvoice(c.visualId) || isInternalReplacementInvoice(finalSafetyStatus?.visualId)
                       ? INTERNAL_REPLACEMENT_WORKORDER_SKIP_REASON
                       : "live_source_status_changed_after_render");
-                  continue;
                 }
                 // Serialize logical-order claims across processes. The durable claim is
                 // committed BEFORE the irreversible network call; ambiguity never retries.
-                definitivePreSubmitFailure = false;
-                const claim = await db.transaction(async (tx) => {
+                attempt.stage("reservation");
+                // A known pre-send failure retains its durable pending claim.
+                // Only this in-memory operation may reuse it; other runs still
+                // see pending and cannot reserve, including after a restart.
+                if (!reservedId) {
+                  const claim = await db.transaction(async (tx) => {
                   const logical = `visual:${c.visualId}`;
                   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${logical}, 0))`);
                   const history = await tx.select().from(pqPrintJobsTable).where(and(
@@ -762,21 +799,22 @@ async function runAutoPrint(
                     attemptKey: printAttemptKey(logical, c.eligibilityCycle, c.contentFingerprint),
                   }).onConflictDoNothing().returning();
                   return reserved ?? null;
-                });
-                if (!claim) {
-                  await skip({ id: c.orderId, visualId: c.visualId, nickname: c.nickname }, "concurrent_or_previously_reserved_attempt");
-                  continue;
+                  });
+                  if (!claim) {
+                    throw new WorkorderSkip("concurrent_or_previously_reserved_attempt");
+                  }
+                  reservedId = claim.id;
                 }
-                reservedId = claim.id;
                 // Last gate at the irreversible delivery boundary, including manual
                 // runs and any future retry using this engine.
+                attempt.stage("verification");
                 const submissionSafety = checkPrintSafety({
                   dryRun,
                   observedStatus: await fetchLiveOrderStatus(c.orderKind, c.orderId),
                   expected: { orderId: c.orderId, visualId: c.visualId, sourceStatusId: c.statusId },
                 });
-                if (!submissionSafety.allowed) throw new Error(submissionSafety.reason ?? "AutoPrint submission refused");
-                submitted = true;
+                if (!submissionSafety.allowed) throw new WorkorderSkip(submissionSafety.reason ?? "AutoPrint submission refused");
+                attempt.markSubmission();
                 const jobId = await submitPdfPrintJob({
                   printerId: Number(config.printerId),
                   title: `${c.isReprint ? "UPDATED / REPRINT — " : ""}Workorder #${c.visualId}${c.nickname ? ` — ${c.nickname}` : ""}`,
@@ -787,30 +825,57 @@ async function runAutoPrint(
                 if (!Number.isSafeInteger(jobId) || jobId <= 0) {
                   throw new Error("PrintNode returned no valid job id; submission requires manual reconciliation");
                 }
+                acceptedJobId = jobId;
+                attempt.stage("persistence");
                 await db.update(pqPrintJobsTable).set({
                   status: "printed",
                   printnodeJobId: String(jobId),
                   printedAt: new Date(),
                   contentFingerprint: c.contentFingerprint,
                 }).where(eq(pqPrintJobsTable.id, reservedId));
-                counts.printed += 1;
-                if (c.isReprint) counts.reprinted += 1;
-                printOutcomes.push({ candidate: c, outcome: "printed" });
+                return "printed";
               }
-            } catch (err) {
-              counts.failed += 1;
-              printOutcomes.push({ candidate: c, outcome: "failed", definitivePreSubmitFailure });
-              const failure = {
-                status: submitted ? "submission_unknown" : "failed",
-                errorMessage: err instanceof Error ? err.message : String(err),
-                reason: submitted ? "submission_outcome_unknown_manual_reconciliation_required" : null,
-              };
-              if (reservedId) await db.update(pqPrintJobsTable).set(failure).where(eq(pqPrintJobsTable.id, reservedId));
-              else await db.insert(pqPrintJobsTable).values({ ...base, ...failure });
-              log.warn(
-                { err, orderId: c.orderId, visualId: c.visualId },
-                "Auto-print: order failed",
-              );
+            }, {
+              previousAttempts: preparationAudits.get(c.orderId)?.attempts.slice(0, -1),
+              onRetry: async (audit) => {
+                if (reservedId) {
+                  await db.update(pqPrintJobsTable).set({
+                    snapshotMetadata: { autoRetry: audit },
+                  }).where(eq(pqPrintJobsTable.id, reservedId));
+                }
+                // A crashed renderer must not poison the next attempt.
+                if (renderer) await renderer.close().catch(() => undefined);
+                renderer = null;
+                log.warn({ runId, orderId: c.orderId, attempt: audit.attemptCount }, "Auto-print: retrying safe pre-submission failure");
+              },
+            });
+            const terminal = {
+              status: result.outcome,
+              snapshotMetadata: { autoRetry: result.audit },
+              errorMessage: result.error instanceof Error ? result.error.message : result.error == null ? null : String(result.error),
+              reason: result.outcome === "submission_unknown" ? "submission_outcome_unknown_manual_reconciliation_required"
+                : result.outcome === "skipped" ? String((result.error as Error).message) : null,
+              // A failed/skipped *known pre-send* reservation may be released
+              // only after the operation is terminal. Unknown sends retain it.
+              ...(result.outcome === "failed" || result.outcome === "skipped" ? { attemptKey: null } : {}),
+              ...(acceptedJobId ? { printnodeJobId: String(acceptedJobId) } : {}),
+            };
+            if (reservedId) await db.update(pqPrintJobsTable).set(terminal).where(eq(pqPrintJobsTable.id, reservedId));
+            else await db.insert(pqPrintJobsTable).values({ ...base, ...terminal });
+            if (result.outcome === "printed") {
+              counts.printed++;
+              if (c.isReprint) counts.reprinted++;
+              printOutcomes.push({ candidate: c, outcome: "printed" });
+            } else if (result.outcome === "dry_run") {
+              counts.dryRun++;
+              printOutcomes.push({ candidate: c, outcome: "dry_run" });
+            } else if (result.outcome === "skipped") {
+              counts.skipped++;
+              if (c.priorJobId) counts.alreadyPrinted++;
+            } else {
+              counts.failed++;
+              printOutcomes.push({ candidate: c, outcome: "failed", definitivePreSubmitFailure: result.definitivePreSubmitFailure });
+              log.warn({ err: result.error, runId, orderId: c.orderId, attempts: result.audit.attemptCount }, "Auto-print: order failed");
             }
             await persistSummary(runId, { summary: { ...summary, counts } });
           }
@@ -824,7 +889,10 @@ async function runAutoPrint(
                 printerId: config.printerId,
                 printerName: config.printerName,
                 dryRun,
-                renderPdf: (html) => renderer.renderHtml(html),
+                renderPdf: async (html) => {
+                  renderer ??= await openPdfRenderer({ maxStartupAttempts: 1 });
+                  return renderer.renderHtml(html);
+                },
               });
               counts.poPrinted += po.printed;
               counts.poFailed += po.failed + po.unknown;
@@ -834,8 +902,11 @@ async function runAutoPrint(
               summary.error = `Workorders completed; Hub PO batch failed: ${error instanceof Error ? error.message : String(error)}`;
             }
           }
-        },
-      );
+      } finally {
+        // Assigned inside attempt callbacks; TS cannot narrow that assignment.
+        const remainingRenderer = renderer as PdfRenderer | null;
+        if (remainingRenderer) await remainingRenderer.close().catch(() => undefined);
+      }
     }
 
     /* 8 — post-print status advance via the ONE Printavo write path */
@@ -843,7 +914,7 @@ async function runAutoPrint(
       const lines: PqJobLineInput[] = [];
       const advanceGuardFailures: string[] = [];
       const appendGuardedLine = async (
-        c: Candidate,
+        c: OutcomeCandidate,
         targetStatusId: string,
       ): Promise<void> => {
         if (!c.statusId || targetStatusId === c.statusId) return;

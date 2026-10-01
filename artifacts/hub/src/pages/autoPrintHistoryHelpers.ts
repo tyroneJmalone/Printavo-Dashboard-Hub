@@ -7,6 +7,23 @@ export type HistoryJob = {
   isReprint: boolean;
 };
 
+export function retryHistory(metadata: unknown): { count: number; max: number; attempts: { attempt: number; phase: string; outcome: string; error: string | null; delayMs: number }[] } | null {
+  if (!metadata || typeof metadata !== "object" || !("autoRetry" in metadata)) return null;
+  const audit = metadata.autoRetry;
+  if (!audit || typeof audit !== "object" || !("attemptCount" in audit) || !("maxAttempts" in audit) || !("attempts" in audit)) return null;
+  if (typeof audit.attemptCount !== "number" || typeof audit.maxAttempts !== "number" || !Array.isArray(audit.attempts)) return null;
+  const attempts = audit.attempts.flatMap((item: unknown) => {
+    if (!item || typeof item !== "object" || !("attempt" in item) || !("phase" in item) || !("outcome" in item)) return [];
+    if (typeof item.attempt !== "number" || typeof item.phase !== "string" || typeof item.outcome !== "string") return [];
+    return [{
+      attempt: item.attempt, phase: item.phase, outcome: item.outcome,
+      error: "error" in item && typeof item.error === "string" ? item.error : null,
+      delayMs: "delayMs" in item && typeof item.delayMs === "number" ? item.delayMs : 0,
+    }];
+  });
+  return { count: audit.attemptCount, max: audit.maxAttempts, attempts };
+}
+
 export const HISTORY_FILTERS = ["all", "skipped", "reprints", "purchase_orders", "needs_review"] as const;
 export type HistoryFilter = typeof HISTORY_FILTERS[number];
 
