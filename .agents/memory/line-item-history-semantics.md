@@ -13,3 +13,14 @@ Owner activity reports intentionally attribute changes to the current owner, not
 **Why:** The user wants visibility into activity on assigned quotes/invoices, but upstream editor attribution is unavailable and multiple field events may come from a single edit.
 
 **How to apply:** Keep that distinction visible in reporting and summaries; do not present event counts as employee productivity scores.
+
+Unified order timelines must retain each source's timestamp meaning, rather than
+presenting every record as an actual upstream edit.
+
+**Why:** Payment business dates can be backdated, file mirroring is not artwork
+upload time, and a recorded print submission does not prove physical printing.
+Combining sources otherwise makes the history appear more complete than it is.
+
+**How to apply:** Label these distinctions in Order Activity Log. Preserve source
+access restrictions when adding new sources; private correspondence requires its
+own mailbox permissions and must not become accessible through Reports alone.

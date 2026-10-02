@@ -196,6 +196,7 @@ import type {
   GetFinderOrderParams,
   GetImprintsByTierParams,
   GetNicheReportParams,
+  GetOrderActivityLogParams,
   GetOrderActivityParams,
   GetOrderQuantityBreakdownParams,
   GetOrdersReportParams,
@@ -324,6 +325,8 @@ import type {
   NicheReportResponse,
   NotificationLogItem,
   OrderActivityDetail,
+  OrderActivityLogResponse,
+  OrderActivityLogSearchResponse,
   OrdersReport,
   PaletteCollectionPreviewRequest,
   PaletteCollectionPreviewResponse,
@@ -413,6 +416,7 @@ import type {
   SearchAiQuoteCustomersParams,
   SearchCustomerArtworkParams,
   SearchHubInvoicesParams,
+  SearchOrderActivityLogParams,
   SearchReorderPortalOrdersParams,
   SeedStartResult,
   SendTestRewardEmail200,
@@ -505,6 +509,180 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getSearchOrderActivityLogUrl = (params?: SearchOrderActivityLogParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/order-activity-log/orders?${stringifiedParams}` : `/api/order-activity-log/orders`
+}
+
+/**
+ * @summary Search the local read-only order mirror by invoice number or customer
+ */
+export const searchOrderActivityLog = async (params?: SearchOrderActivityLogParams, options?: RequestInit): Promise<OrderActivityLogSearchResponse> => {
+
+  return customFetch<OrderActivityLogSearchResponse>(getSearchOrderActivityLogUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchOrderActivityLogQueryKey = (params?: SearchOrderActivityLogParams,) => {
+    return [
+    `/api/order-activity-log/orders`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchOrderActivityLogQueryOptions = <TData = Awaited<ReturnType<typeof searchOrderActivityLog>>, TError = ErrorType<void>>(params?: SearchOrderActivityLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchOrderActivityLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchOrderActivityLogQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchOrderActivityLog>>> = ({ signal }) => searchOrderActivityLog(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchOrderActivityLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchOrderActivityLogQueryResult = NonNullable<Awaited<ReturnType<typeof searchOrderActivityLog>>>
+export type SearchOrderActivityLogQueryError = ErrorType<void>
+
+
+/**
+ * @summary Search the local read-only order mirror by invoice number or customer
+ */
+
+export function useSearchOrderActivityLog<TData = Awaited<ReturnType<typeof searchOrderActivityLog>>, TError = ErrorType<void>>(
+ params?: SearchOrderActivityLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchOrderActivityLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchOrderActivityLogQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOrderActivityLogUrl = (orderId: string,
+    params?: GetOrderActivityLogParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/order-activity-log/orders/${orderId}?${stringifiedParams}` : `/api/order-activity-log/orders/${orderId}`
+}
+
+/**
+ * Order identity uses Printavo IDs and verified conversion evidence, never invoice number alone. No editor attribution or synthetic historical edits. Printing requires admin or Production access. Date bounds are inclusive UTC instants; date-only bounds represent midnight UTC.
+ * @summary Read a bounded unified observation timeline, never writing upstream
+ */
+export const getOrderActivityLog = async (orderId: string,
+    params?: GetOrderActivityLogParams, options?: RequestInit): Promise<OrderActivityLogResponse> => {
+
+  return customFetch<OrderActivityLogResponse>(getGetOrderActivityLogUrl(orderId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrderActivityLogQueryKey = (orderId: string,
+    params?: GetOrderActivityLogParams,) => {
+    return [
+    `/api/order-activity-log/orders/${orderId}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOrderActivityLogQueryOptions = <TData = Awaited<ReturnType<typeof getOrderActivityLog>>, TError = ErrorType<void>>(orderId: string,
+    params?: GetOrderActivityLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderActivityLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrderActivityLogQueryKey(orderId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrderActivityLog>>> = ({ signal }) => getOrderActivityLog(orderId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orderId !== null && orderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrderActivityLog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrderActivityLogQueryResult = NonNullable<Awaited<ReturnType<typeof getOrderActivityLog>>>
+export type GetOrderActivityLogQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read a bounded unified observation timeline, never writing upstream
+ */
+
+export function useGetOrderActivityLog<TData = Awaited<ReturnType<typeof getOrderActivityLog>>, TError = ErrorType<void>>(
+ orderId: string,
+    params?: GetOrderActivityLogParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrderActivityLog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrderActivityLogQueryOptions(orderId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getPreviewChipplyDataUrl = () => {
 

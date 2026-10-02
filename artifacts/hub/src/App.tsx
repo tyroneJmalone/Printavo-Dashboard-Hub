@@ -17,6 +17,7 @@ import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
+import OrderActivityLog from "./pages/OrderActivityLog";
 import Pipeline from "./pages/Pipeline";
 import StatusActivity from "./pages/StatusActivity";
 import Payments from "./pages/Payments";
@@ -204,6 +205,7 @@ function HubRoutes() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/orders" component={Orders} />
+      <Route path="/order-activity-log" component={OrderActivityLog} />
       <Route path="/pipeline" component={Pipeline} />
       <Route path="/status-activity" component={StatusActivity} />
       <Route path="/payments" component={Payments} />

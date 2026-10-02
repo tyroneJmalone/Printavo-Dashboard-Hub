@@ -8618,6 +8618,77 @@ export interface DraftBacktestItemRecord {
   reviewedAt: string | null;
 }
 
+export type OrderActivityLogCategory = typeof OrderActivityLogCategory[keyof typeof OrderActivityLogCategory];
+
+
+export const OrderActivityLogCategory = {
+  all: 'all',
+  status: 'status',
+  'line-items': 'line-items',
+  order: 'order',
+  payments: 'payments',
+  files: 'files',
+  printing: 'printing',
+} as const;
+
+export interface OrderActivityLogOrder {
+  id: string;
+  visualId: number;
+  customerName: string;
+  nickname: string | null;
+  statusName: string | null;
+  orderType: string;
+}
+
+export interface OrderActivityLogSearchResponse {
+  orders: OrderActivityLogOrder[];
+  total: number;
+}
+
+export type OrderActivityLogEventSource = typeof OrderActivityLogEventSource[keyof typeof OrderActivityLogEventSource];
+
+
+export const OrderActivityLogEventSource = {
+  change_events: 'change_events',
+  pv_payments: 'pv_payments',
+  pv_files: 'pv_files',
+  pq_print_jobs: 'pq_print_jobs',
+} as const;
+
+export type OrderActivityLogEventTimestampKind = typeof OrderActivityLogEventTimestampKind[keyof typeof OrderActivityLogEventTimestampKind];
+
+
+export const OrderActivityLogEventTimestampKind = {
+  observation: 'observation',
+  'business-date': 'business-date',
+  milestone: 'milestone',
+  'job-outcome': 'job-outcome',
+} as const;
+
+export interface OrderActivityLogEvent {
+  id: string;
+  source: OrderActivityLogEventSource;
+  category: OrderActivityLogCategory;
+  title: string;
+  description: string;
+  occurredAt: string;
+  timestampKind: OrderActivityLogEventTimestampKind;
+  oldValue?: string | null;
+  newValue?: string | null;
+}
+
+export interface OrderActivityLogCoverage {
+  baselineObservedAt: string | null;
+  notes: string[];
+}
+
+export interface OrderActivityLogResponse {
+  order: OrderActivityLogOrder;
+  events: OrderActivityLogEvent[];
+  nextCursor: string | null;
+  coverage: OrderActivityLogCoverage;
+}
+
 export type ReviewDraftBacktestItemRequestFactAccuracy = typeof ReviewDraftBacktestItemRequestFactAccuracy[keyof typeof ReviewDraftBacktestItemRequestFactAccuracy] | null;
 
 
@@ -8744,6 +8815,45 @@ export type ActivityEndParamParameter = string;
  * Current invoice/quote owner email
  */
 export type ActivityOwnerParamParameter = string;
+
+export type SearchOrderActivityLogParams = {
+/**
+ * @maxLength 200
+ */
+search?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ * @maximum 100000
+ */
+offset?: number;
+};
+
+export type GetOrderActivityLogParams = {
+category?: OrderActivityLogCategory;
+/**
+ * ISO date or UTC timestamp, inclusive
+ */
+start?: string;
+/**
+ * ISO date or UTC timestamp, inclusive
+ */
+end?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * Opaque timestamp/source/id cursor bound to order, filters and printing access
+ * @maxLength 4096
+ */
+cursor?: string;
+};
 
 export type PreviewChipplyDataBody = {
   /** CSV/XLSX, maximum 5 MB, 10000 lines, one Sales Order */

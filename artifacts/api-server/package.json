@@ -10,6 +10,7 @@
     "test:quote-matrices": "node ./test-quote-matrices.mjs",
     "test:hub-calc": "node ./test-hub-calc.mjs",
     "test:line-item-history": "node ./test-line-item-history.mjs",
+    "test:order-activity-log": "node ./test-order-activity-log.mjs",
     "test:auto-print-live-discovery": "node ./test-auto-print-live-discovery.mjs",
     "test:auto-print-retry": "node ./test-auto-print-retry.mjs",
     "test:auto-print-schedule": "node ./test-auto-print-schedule.mjs",

@@ -9,6 +9,97 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Search the local read-only order mirror by invoice number or customer
+ */
+export const searchOrderActivityLogQuerySearchMax = 200;
+
+export const searchOrderActivityLogQueryLimitDefault = 25;
+export const searchOrderActivityLogQueryLimitMax = 100;
+
+export const searchOrderActivityLogQueryOffsetDefault = 0;
+export const searchOrderActivityLogQueryOffsetMin = 0;
+export const searchOrderActivityLogQueryOffsetMax = 100000;
+
+
+
+export const SearchOrderActivityLogQueryParams = zod.object({
+  "search": zod.coerce.string().max(searchOrderActivityLogQuerySearchMax).optional(),
+  "limit": zod.coerce.number().min(1).max(searchOrderActivityLogQueryLimitMax).default(searchOrderActivityLogQueryLimitDefault),
+  "offset": zod.coerce.number().min(searchOrderActivityLogQueryOffsetMin).max(searchOrderActivityLogQueryOffsetMax).default(searchOrderActivityLogQueryOffsetDefault)
+})
+
+export const SearchOrderActivityLogResponse = zod.object({
+  "orders": zod.array(zod.object({
+  "id": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "orderType": zod.string()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * Order identity uses Printavo IDs and verified conversion evidence, never invoice number alone. No editor attribution or synthetic historical edits. Printing requires admin or Production access. Date bounds are inclusive UTC instants; date-only bounds represent midnight UTC.
+ * @summary Read a bounded unified observation timeline, never writing upstream
+ */
+export const getOrderActivityLogPathOrderIdMax = 200;
+
+
+
+export const GetOrderActivityLogParams = zod.object({
+  "orderId": zod.coerce.string().max(getOrderActivityLogPathOrderIdMax)
+})
+
+export const getOrderActivityLogQueryCategoryDefault = `all`;
+export const getOrderActivityLogQueryLimitDefault = 50;
+export const getOrderActivityLogQueryLimitMax = 100;
+
+export const getOrderActivityLogQueryCursorMax = 4096;
+
+
+
+export const GetOrderActivityLogQueryParams = zod.object({
+  "category": zod.enum(['all', 'status', 'line-items', 'order', 'payments', 'files', 'printing']).default(getOrderActivityLogQueryCategoryDefault),
+  "start": zod.coerce.string().optional().describe('ISO date or UTC timestamp, inclusive'),
+  "end": zod.coerce.string().optional().describe('ISO date or UTC timestamp, inclusive'),
+  "limit": zod.coerce.number().min(1).max(getOrderActivityLogQueryLimitMax).default(getOrderActivityLogQueryLimitDefault),
+  "cursor": zod.coerce.string().max(getOrderActivityLogQueryCursorMax).optional().describe('Opaque timestamp\/source\/id cursor bound to order, filters and printing access')
+})
+
+export const getOrderActivityLogResponseEventsItemCategoryDefault = `all`;
+
+export const GetOrderActivityLogResponse = zod.object({
+  "order": zod.object({
+  "id": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "orderType": zod.string()
+}),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "source": zod.enum(['change_events', 'pv_payments', 'pv_files', 'pq_print_jobs']),
+  "category": zod.enum(['all', 'status', 'line-items', 'order', 'payments', 'files', 'printing']).default(getOrderActivityLogResponseEventsItemCategoryDefault),
+  "title": zod.string(),
+  "description": zod.string(),
+  "occurredAt": zod.coerce.date(),
+  "timestampKind": zod.enum(['observation', 'business-date', 'milestone', 'job-outcome']),
+  "oldValue": zod.string().nullish(),
+  "newValue": zod.string().nullish()
+})),
+  "nextCursor": zod.string().nullable(),
+  "coverage": zod.object({
+  "baselineObservedAt": zod.coerce.date().nullable(),
+  "notes": zod.array(zod.string())
+})
+})
+
+
+/**
  * @summary Review one bounded CSV/XLSX detailed Data Export without importing
  */
 export const PreviewChipplyDataBody = zod.object({

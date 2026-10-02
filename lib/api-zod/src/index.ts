@@ -7,6 +7,7 @@ export {
   ReviewChipplyDataMatchBody,
   ListMerchThreadsParams,
   ListStoreThreadsParams,
+  GetOrderActivityLogParams,
 } from "./generated/api";
 export type {
   ConfirmChipplyDataBody as ConfirmChipplyDataBodyType,
@@ -14,6 +15,7 @@ export type {
   ReviewChipplyDataMatchBody as ReviewChipplyDataMatchBodyType,
   ListMerchThreadsParams as ListMerchThreadsQueryParamsType,
   ListStoreThreadsParams as ListStoreThreadsQueryParamsType,
+  GetOrderActivityLogParams as GetOrderActivityLogQueryParamsType,
 } from "./generated/types";
 export { GetChipplyCategoryInvoiceParams } from "./generated/api";
 export type { GetChipplyCategoryInvoiceParams as GetChipplyCategoryInvoiceQueryParamsType } from "./generated/types";
