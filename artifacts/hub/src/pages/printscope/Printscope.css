@@ -444,13 +444,13 @@
   /* Neutral artwork backdrop, independent of the surrounding Hub theme:
      preserve contrast for both black and white ink without tinting previews. */
   background: repeating-conic-gradient(#a6a6a6 0% 25%, #c7c7c7 0% 50%) 50% / 16px 16px;
-  height: min(60dvh, 540px);
+  height: 80dvh;
   touch-action: pan-x pan-y;
 }
 
 @media (max-width: 860px) {
   .printscope-app .stage {
-    height: min(52dvh, 400px);
+    height: 70dvh;
   }
 }
 
