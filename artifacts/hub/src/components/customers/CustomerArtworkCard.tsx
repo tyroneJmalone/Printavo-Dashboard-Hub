@@ -29,6 +29,14 @@ import { Folder, Link as LinkIcon, Unlink, Search, Star, Archive, Edit2, Loader2
 import { Input } from "@/components/ui/input";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 
+// Keep the neutral transparency grid independent of the Hub theme so white
+// and dark inks both remain visible without altering the original artwork.
+const artworkTransparencyStyle = {
+  backgroundColor: "#a6a6a6",
+  backgroundImage: "repeating-conic-gradient(#a6a6a6 0% 25%, #c7c7c7 0% 50%)",
+  backgroundSize: "16px 16px",
+};
+
 function alphabetizeDropboxEntries(entries: DropboxEntry[]): DropboxEntry[] {
   return [...entries].sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }) ||
@@ -64,7 +72,8 @@ function ArtworkThumbnail({ customerId, entry }: { customerId: string; entry: Dr
         alt=""
         loading="lazy"
         onError={() => setFailed(true)}
-        className="h-12 w-12 rounded border border-slate-700/80 bg-white object-contain"
+        className="h-12 w-12 rounded border border-slate-700/80 object-contain"
+        style={artworkTransparencyStyle}
         data-testid={`dropbox-thumbnail-${entry.id}`}
       />
     );
@@ -89,6 +98,9 @@ function ArtworkPreviewDialog({ customerId, entryName, locator, open, onOpenChan
 }) {
   const previewUrl = artworkPreviewUrl(customerId, locator);
   const originalUrl = artworkOpenUrl(customerId, locator);
+  const isImage = canThumbnailArtwork(entryName);
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => { setImageFailed(false); }, [open, previewUrl]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[88vh] bg-slate-950 border-slate-800 flex flex-col p-0 overflow-hidden">
@@ -96,14 +108,31 @@ function ArtworkPreviewDialog({ customerId, entryName, locator, open, onOpenChan
           <DialogTitle className="text-sm text-slate-200 break-all pr-8">{entryName}</DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
             Previewing the original file from the linked Dropbox folder.
+            {isImage && " Checkerboard areas indicate transparency."}
           </DialogDescription>
         </DialogHeader>
-        <iframe
+        {isImage ? (
+          <div className="w-full flex-1 min-h-0 overflow-auto flex items-center justify-center" style={artworkTransparencyStyle}>
+            {imageFailed ? (
+              <p role="alert" className="m-4 rounded bg-slate-950 p-4 text-sm text-slate-200">
+                Image preview could not be loaded. Use Open original below to view the file.
+              </p>
+            ) : (
+              <img
+                src={previewUrl}
+                alt={`Preview of ${entryName}`}
+                className="w-full h-full object-contain"
+                onError={() => setImageFailed(true)}
+                data-testid="dropbox-file-preview-image"
+              />
+            )}
+          </div>
+        ) : <iframe
           src={previewUrl}
           title={`Preview ${entryName}`}
           className="w-full flex-1 min-h-0 bg-white"
           data-testid="dropbox-file-preview-frame"
-        />
+        />}
         <div className="px-4 py-3 border-t border-slate-800 flex justify-end">
           <Button asChild variant="outline" size="sm" className="border-slate-700">
             <a href={originalUrl} target="_blank" rel="noreferrer">
@@ -511,7 +540,8 @@ function BookmarkRow({ bookmark, customerId, isAdmin, onEdit }: { bookmark: Artw
                 src={artworkPreviewUrl(customerId, locator)}
                 alt={`Preview of ${bookmark.name}`}
                 loading="lazy"
-                className="h-full w-full object-contain bg-white"
+                className="h-full w-full object-contain"
+                style={artworkTransparencyStyle}
               />
             ) : isPdf ? (
               <iframe
