@@ -1,4 +1,12 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import {
+  EMPTY_STORE_FILTERS,
+  filterStores,
+  isDateFilterActive,
+  isFilterActive,
+  matchesText,
+  type StoreFilters,
+} from "@/lib/chipply-store-filters";
 import { Link } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import { InvoiceCategories } from "@/components/chipply/InvoiceCategories";
@@ -45,6 +53,9 @@ import {
   Upload,
   FileSpreadsheet,
   RefreshCcw,
+  Search,
+  X,
+  SearchX,
 } from "lucide-react";
 
 const inputCls =
@@ -782,6 +793,30 @@ export default function ChipplyStores() {
 
   const stores = storesQuery.data?.stores ?? [];
   const detected = detectedQuery.data?.detected ?? [];
+  const [filters, setFilters] = useState<StoreFilters>(EMPTY_STORE_FILTERS);
+  const filterOn = isFilterActive(filters);
+  const filteredStores = useMemo(
+    () =>
+      filterStores(storesQuery.data?.stores ?? [], filters, (r) => ({
+        storeName: r.store.storeName,
+        eventId: r.store.eventId,
+        closedAt: r.store.closedAt,
+        pvCustomerCompany: r.store.pvCustomerCompany,
+        organizationName: r.store.organizationName,
+      })),
+    [storesQuery.data, filters],
+  );
+  // Detected rows have no closed date — only the text search applies there.
+  const filteredDetected = useMemo(
+    () =>
+      (detectedQuery.data?.detected ?? []).filter((d) =>
+        matchesText(filters.query, [d.nameGuess, d.customerCompany, d.eventId]),
+      ),
+    [detectedQuery.data, filters.query],
+  );
+  function setFilter(k: keyof StoreFilters, v: string) {
+    setFilters((f) => ({ ...f, [k]: v }));
+  }
 
   function openImport(pre?: ChipplyStoreCandidate) {
     setPrefill(pre ?? null);
@@ -814,32 +849,38 @@ export default function ChipplyStores() {
         <DetailedDataImport />
 
         {stores.length > 0 && (
+          <div className="space-y-1.5">
+          <p className="text-[11px] text-slate-500" data-testid="text-summary-scope">
+            {filterOn
+              ? `Imported stores — filtered (${filteredStores.length} of ${stores.length})`
+              : "Imported stores — all"}
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {(
               [
-                ["Stores", String(stores.length)],
+                [filterOn ? "Stores (filtered)" : "Stores", String(filteredStores.length)],
                 [
-                  "Total dollars",
+                  filterOn ? "Total dollars (filtered)" : "Total dollars",
                   fmtMoney(
-                    stores.reduce(
+                    filteredStores.reduce(
                       (sum, s) => sum + (Number(s.store.totalDollars) || 0),
                       0,
                     ),
                   ),
                 ],
                 [
-                  "Fundraising",
+                  filterOn ? "Fundraising (filtered)" : "Fundraising",
                   fmtMoney(
-                    stores.reduce(
+                    filteredStores.reduce(
                       (sum, s) => sum + (Number(s.store.fundraising) || 0),
                       0,
                     ),
                   ),
                 ],
                 [
-                  "Linked invoices",
+                  filterOn ? "Linked invoices (filtered)" : "Linked invoices",
                   String(
-                    stores.reduce((sum, s) => sum + s.linkedInvoiceCount, 0),
+                    filteredStores.reduce((sum, s) => sum + s.linkedInvoiceCount, 0),
                   ),
                 ],
               ] as const
@@ -854,6 +895,7 @@ export default function ChipplyStores() {
                 <p className="text-lg font-bold text-white mt-0.5">{value}</p>
               </div>
             ))}
+          </div>
           </div>
         )}
 
@@ -891,6 +933,44 @@ export default function ChipplyStores() {
           </button>
         </div>
 
+        {(tab === "stores" || tab === "detected") && stores.length + detected.length > 0 && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 space-y-2" data-testid="panel-store-filters">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-3 items-end">
+              <div>
+                <label className={labelCls} htmlFor="store-search">Customer or store name</label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input id="store-search" data-testid="input-store-search" className={`${inputCls} pl-8`} value={filters.query} onChange={(e) => setFilter("query", e.target.value)} placeholder="Store, customer, organization, or event #" />
+                </div>
+              </div>
+              {tab === "stores" && (
+                <>
+                  <div>
+                    <label className={labelCls} htmlFor="closed-from">Closed date from</label>
+                    <input id="closed-from" type="date" data-testid="input-closed-from" className={inputCls} value={filters.closedFrom} onChange={(e) => setFilter("closedFrom", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls} htmlFor="closed-to">Closed date to</label>
+                    <input id="closed-to" type="date" data-testid="input-closed-to" className={inputCls} value={filters.closedTo} onChange={(e) => setFilter("closedTo", e.target.value)} />
+                  </div>
+                </>
+              )}
+              <Button variant="outline" data-testid="button-clear-filters" disabled={!filterOn} onClick={() => setFilters(EMPTY_STORE_FILTERS)} className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
+                <X size={14} className="mr-1" /> Clear filters
+              </Button>
+            </div>
+            <p className="text-xs text-slate-400" data-testid="text-filter-count">
+              {tab === "stores"
+                ? filterOn
+                  ? `${filteredStores.length} of ${stores.length} imported stores match${isDateFilterActive(filters) ? " (closed dates inclusive; stores without a closed date are excluded)" : ""}.`
+                  : `Showing all ${stores.length} imported stores.`
+                : filters.query.trim()
+                  ? `${filteredDetected.length} of ${detected.length} detected batches match. Detected batches have no closed date, so only the name search applies here.`
+                  : "Detected batches have no closed date — only the name search applies here."}
+            </p>
+          </div>
+        )}
+
         {tab === "categories" && <InvoiceCategories />}
         {tab === "stores" && (
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -907,13 +987,20 @@ export default function ChipplyStores() {
                   Detected tab for stores found in Printavo invoice names.
                 </p>
               </div>
+            ) : filteredStores.length === 0 ? (
+              <div className="text-center py-16 px-4" data-testid="state-no-matching-stores">
+                <SearchX size={32} className="mx-auto text-slate-600 mb-3" />
+                <p className="text-slate-300 font-semibold">No imported stores match these filters</p>
+                <p className="text-sm text-slate-500 mt-1">Try a broader name or widen the closed date range.</p>
+                <Button variant="outline" onClick={() => setFilters(EMPTY_STORE_FILTERS)} className="mt-4 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">Clear filters</Button>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-800 text-left text-xs text-slate-400">
                       <th className="px-4 py-2.5 font-semibold">Store</th>
-                      <th className="px-4 py-2.5 font-semibold">Closed</th>
+                      <th className="px-4 py-2.5 font-semibold">Closed date</th>
                       <th className="px-4 py-2.5 font-semibold text-right">Orders</th>
                       <th className="px-4 py-2.5 font-semibold text-right">Total</th>
                       <th className="px-4 py-2.5 font-semibold text-right">Fundraising</th>
@@ -922,7 +1009,7 @@ export default function ChipplyStores() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stores.map(({ store, linkedInvoiceCount }) => (
+                    {filteredStores.map(({ store, linkedInvoiceCount }) => (
                       <tr
                         key={store.id}
                         className="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/40"
@@ -990,6 +1077,10 @@ export default function ChipplyStores() {
               <p className="text-center py-12 text-sm text-slate-500">
                 Every detected store has been imported. Nice and tidy.
               </p>
+            ) : filteredDetected.length === 0 ? (
+              <p className="text-center py-12 text-sm text-slate-500" data-testid="state-no-matching-detected">
+                No detected batches match that search.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -1003,7 +1094,7 @@ export default function ChipplyStores() {
                     </tr>
                   </thead>
                   <tbody>
-                    {detected.map((d) => (
+                    {filteredDetected.map((d) => (
                       <tr
                         key={d.eventId}
                         className="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/40"

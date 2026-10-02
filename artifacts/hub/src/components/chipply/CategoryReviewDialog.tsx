@@ -12,14 +12,15 @@ export function categoryError(error: unknown) {
   return error instanceof Error ? error.message : "Request failed. Refresh and try again.";
 }
 
-export function CategoryReviewDialog({ selections, categories, onClose, onWritten }: {
+export function CategoryReviewDialog({ selections, categories, onClose, onWritten, initialOverwrite = false }: {
+  initialOverwrite?: boolean;
   selections: CategorySelection[];
   categories: ChipplyOfficialCategory[];
   onClose: () => void;
   onWritten: () => void;
 }) {
   const client = useQueryClient();
-  const [overwrite, setOverwrite] = useState(false);
+  const [overwrite, setOverwrite] = useState(initialOverwrite);
   const [targetCategoryId, setTargetCategoryId] = useState("");
   const [attempted, setAttempted] = useState(false);
   const writeLock = useRef(false);
@@ -41,6 +42,7 @@ export function CategoryReviewDialog({ selections, categories, onClose, onWritte
         <DialogTitle>Review category changes</DialogTitle>
         <DialogDescription className="text-slate-400">Only your {counts.lines} selected product lines across {counts.invoices} invoices are included. Preview makes no external changes.</DialogDescription>
       </DialogHeader>
+      {overwrite && <p role="alert" data-testid="text-category-overwrite-warning" className="rounded border border-amber-800 bg-amber-950/40 p-2 text-sm text-amber-200">Overwrite mode: existing nonempty categories on the {counts.lines} selected lines across {counts.invoices} invoices may be replaced. Nothing changes until you preview and confirm.</p>}
       {!attempted && <div className="space-y-3">
         <label className="block text-sm">Target category
           <select data-testid="select-category-target" className={`${categoryInputClass} mt-1 w-full`} value={targetCategoryId} disabled={preview.isPending} onChange={(event) => { setTargetCategoryId(event.target.value); resetPreview(); }}>

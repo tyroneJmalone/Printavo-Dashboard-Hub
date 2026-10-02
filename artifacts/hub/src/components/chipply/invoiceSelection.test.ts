@@ -68,3 +68,32 @@ test("rejects changing snapshots instead of silently selecting a partial invoice
     return response;
   }), /changed while loading/);
 });
+import { invoiceCheckState, loadInvoiceLines, loadInvoicesSelection, removeInvoice } from "./invoiceSelection.ts";
+
+test("all scope selects lines with existing categories", async () => {
+  const result = await loadInvoiceLines("invoice", async (n) => {
+    const r = page(n); if (n === 1) r.lineItems[0].currentCategoryId = "existing"; return r;
+  }, "all");
+  assert.equal(result.length, 30);
+});
+
+test("bulk invoice load rejects whole selection above cap", async () => {
+  const load = async (id: string) => Array.from({ length: 60 }, (_, i) => ({ orderId: id, lineItemId: String(i) }));
+  await assert.rejects(loadInvoicesSelection([], ["a", "b"], load, 100), /Nothing was added/);
+  const ok = await loadInvoicesSelection([{ orderId: "x", lineItemId: "1" }], ["a"], load, 100);
+  assert.equal(ok.selected.length, 61);
+});
+
+test("bulk invoice load fails atomically when one invoice fails", async () => {
+  await assert.rejects(loadInvoicesSelection([], ["a", "b"], async (id) => { if (id === "b") throw new Error("boom"); return [{ orderId: id, lineItemId: "1" }]; }, 100), /boom/);
+});
+
+test("check state and remove only touch the invoice", () => {
+  const loaded = [{ orderId: "a", lineItemId: "1" }, { orderId: "a", lineItemId: "2" }];
+  const other = { orderId: "b", lineItemId: "1" };
+  assert.equal(invoiceCheckState([other], "a", loaded), "none");
+  assert.equal(invoiceCheckState([loaded[0], other], "a", loaded), "indeterminate");
+  assert.equal(invoiceCheckState([...loaded, other], "a", loaded), "checked");
+  assert.equal(invoiceCheckState([loaded[0]], "a"), "indeterminate");
+  assert.deepEqual(removeInvoice([...loaded, other], "a"), [other]);
+});

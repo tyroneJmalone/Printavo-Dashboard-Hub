@@ -12,9 +12,20 @@ export function mergeInvoiceSelection(existing: CategorySelection[], incoming: C
 }
 
 /** Read every mirrored detail page before allowing an invoice-wide selection. */
-export async function loadInvoiceMissingLines(
+export type InvoiceScope = "missing" | "all";
+
+export function loadInvoiceMissingLines(
   orderId: string,
   fetchPage: (page: number) => Promise<ChipplyCategoryInvoiceResponse>,
+) {
+  return loadInvoiceLines(orderId, fetchPage, "missing");
+}
+
+/** Atomically read every detail page; returns lines in scope (missing-only or all). */
+export async function loadInvoiceLines(
+  orderId: string,
+  fetchPage: (page: number) => Promise<ChipplyCategoryInvoiceResponse>,
+  scope: InvoiceScope,
 ) {
   const first = await fetchPage(1);
   const lines = new Map<string, CategorySelection>();
@@ -31,7 +42,7 @@ export async function loadInvoiceMissingLines(
         throw new Error("Invoice detail pages were inconsistent. Nothing was added. Refresh and try again.");
       }
       seen.add(line.lineItemId);
-      if (!line.currentCategoryId) lines.set(line.lineItemId, { orderId, lineItemId: line.lineItemId });
+      if (scope === "all" || !line.currentCategoryId) lines.set(line.lineItemId, { orderId, lineItemId: line.lineItemId });
     }
   }
   collect(first, 1);
@@ -42,4 +53,33 @@ export async function loadInvoiceMissingLines(
     throw new Error("Some mirrored product lines are missing. Nothing was added. Refresh after detail sync completes.");
   }
   return [...lines.values()];
+}
+/** Load several invoices fully, then merge all at once; any failure or cap overflow rejects everything. */
+export async function loadInvoicesSelection(
+  existing: CategorySelection[],
+  orderIds: string[],
+  load: (orderId: string) => Promise<CategorySelection[]>,
+  cap: number,
+) {
+  const perInvoice = new Map<string, CategorySelection[]>();
+  for (const orderId of orderIds) perInvoice.set(orderId, await load(orderId));
+  const incoming = [...perInvoice.values()].flat();
+  const merged = new Map(existing.map((line) => [selectionKey(line), line]));
+  for (const line of incoming) merged.set(selectionKey(line), line);
+  if (merged.size > cap) {
+    throw new Error(`These ${orderIds.length} invoices would bring the selection to ${merged.size} lines, above the ${cap}-line limit. Nothing was added. Clear selections or choose fewer invoices.`);
+  }
+  return { selected: [...merged.values()], perInvoice };
+}
+
+export function removeInvoice(selected: CategorySelection[], orderId: string) {
+  return selected.filter((line) => line.orderId !== orderId);
+}
+
+/** checked only when every line of the invoice's last full load is selected. */
+export function invoiceCheckState(selected: CategorySelection[], orderId: string, loaded?: CategorySelection[]) {
+  const mine = new Set(selected.filter((line) => line.orderId === orderId).map(selectionKey));
+  if (!mine.size) return "none" as const;
+  if (loaded && loaded.length && loaded.every((line) => mine.has(selectionKey(line)))) return "checked" as const;
+  return "indeterminate" as const;
 }
