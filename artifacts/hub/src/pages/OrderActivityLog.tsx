@@ -8,6 +8,8 @@ import {
 } from "@workspace/api-client-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
+import { OrderActivityChange } from "@/components/OrderActivityChange";
+import { activityFieldLabel } from "@/components/orderActivityChanges";
 import {
   Search, History, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, Info, ArrowRight,
   FileSpreadsheet, ListTree, Eye, CalendarDays, FileCheck, Printer,
@@ -159,15 +161,18 @@ function EventRow({ e }: { e: LogEvent }) {
   const meta = timestampMeta(e.timestampKind);
   const dateOnly = meta.dateOnly;
   const hasDiff = e.oldValue != null || e.newValue != null;
+  const isLineFieldChange = e.source === "change_events" && e.title === "Line item field_change";
+  const field = e.description ?? "";
   return (
     <li data-testid={`row-event-${e.id}`} className="relative pl-6 pb-5">
       <span className="absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full bg-slate-900 border-2 border-emerald-500" />
       <div className="flex flex-wrap items-center gap-2">
         <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${CATEGORY_TONE[e.category] ?? "bg-slate-800 text-slate-300 border-slate-700"}`}>{e.category}</span>
-        <span className="text-sm font-medium text-slate-100">{e.title}</span>
+        <span className="text-sm font-medium text-slate-100">{isLineFieldChange ? `Line item · ${activityFieldLabel(field)} changed` : e.title}</span>
       </div>
-      {e.description && <p className="text-xs text-slate-400 mt-1">{e.description}</p>}
-      {hasDiff && (
+      {e.description && !isLineFieldChange && <p className="text-xs text-slate-400 mt-1">{e.description}</p>}
+      {hasDiff && isLineFieldChange && <OrderActivityChange field={field} before={e.oldValue} after={e.newValue} />}
+      {hasDiff && !isLineFieldChange && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-mono">
           <span className="px-2 py-1 rounded bg-rose-500/5 border border-rose-500/15 text-rose-200/80 line-through decoration-rose-400/40">{e.oldValue ?? "(empty)"}</span>
           <ArrowRight size={12} className="text-slate-600" />
