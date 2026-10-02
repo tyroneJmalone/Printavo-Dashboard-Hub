@@ -363,6 +363,10 @@ export interface ChipplyCategoryInvoice {
   statusId: string | null;
   /** @nullable */
   invoiceAt: string | null;
+  /** @nullable */
+  productionDueAt?: string | null;
+  /** @nullable */
+  customerName?: string | null;
   detailSyncState: string;
   /** @nullable */
   detailSyncedAt: string | null;

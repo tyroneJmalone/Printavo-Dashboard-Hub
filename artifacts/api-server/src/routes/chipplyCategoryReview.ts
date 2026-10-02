@@ -19,6 +19,8 @@ const filters = paging.extend({
 });
 const invoiceSelect = `o.printavo_id AS "orderId", o.visual_id AS "visualId",
   o.nickname, o.status_name AS "statusName", o.status_id AS "statusId",
+  o.production_due_at AS "productionDueAt",
+  coalesce(nullif(trim(o.customer_company), ''), nullif(trim(o.contact_name), '')) AS "customerName",
   o.invoice_at::text AS "invoiceAt", o.detail_sync_state AS "detailSyncState",
   o.detail_synced_at AS "detailSyncedAt",
   (SELECT count(*)::int FROM pv_line_items li WHERE li.order_id=o.printavo_id) AS "lineItemCount",

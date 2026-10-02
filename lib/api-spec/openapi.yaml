@@ -8318,6 +8318,8 @@ components:
         statusName: { type: ["string", "null"] }
         statusId: { type: ["string", "null"] }
         invoiceAt: { type: ["string", "null"] }
+        productionDueAt: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
         detailSyncState: { type: string }
         detailSyncedAt: { type: ["string", "null"] }
         lineItemCount: { type: integer }

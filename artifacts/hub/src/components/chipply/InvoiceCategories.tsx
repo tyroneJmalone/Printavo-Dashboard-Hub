@@ -172,6 +172,10 @@ export function InvoiceCategories() {
             {selectingInvoice === invoice.orderId ? "Loading all lines…" : state === "none" ? (scope === "all" ? "Select all lines" : "Select missing lines") : state === "checked" ? "Selected" : "Partly selected"}
           </label>; })()}
           <Button data-testid={`button-expand-invoice-${invoice.orderId}`} variant="outline" aria-expanded={expanded === invoice.orderId} onClick={() => setExpanded(expanded === invoice.orderId ? null : invoice.orderId)}>{expanded === invoice.orderId ? "Hide lines" : "Select lines"}</Button>
+          <p className="w-full flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
+            <span data-testid={`customer-category-invoice-${invoice.orderId}`}>Customer Name: <span className="text-slate-200">{invoice.customerName || "—"}</span></span>
+            <span data-testid={`production-date-category-invoice-${invoice.orderId}`}>Production Date: <span className="text-slate-200">{invoice.productionDueAt && !Number.isNaN(Date.parse(invoice.productionDueAt)) ? new Date(invoice.productionDueAt).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }) : "—"}</span></span>
+          </p>
           <p className="w-full text-xs text-slate-400">{invoice.lineItemCount} product lines · Qty {invoice.quantity} · {invoice.missingCategoryCount} missing categories · Recommended: <span className="text-slate-200">{invoice.recommendation.category?.name ?? "No automatic match — choose manually in review"}</span></p>
           <p className="w-full text-xs text-slate-500">{invoice.recommendation.message} · Detail sync: {invoice.detailSyncState}{invoice.detailSyncedAt ? ` · ${new Date(invoice.detailSyncedAt).toLocaleString()}` : ""}</p>
           {invoice.detailSyncState !== "complete" && <p className="w-full text-xs text-amber-300">Incomplete mirror: invoice-wide selection is blocked until detail sync completes. Counts may not include every product line.</p>}
