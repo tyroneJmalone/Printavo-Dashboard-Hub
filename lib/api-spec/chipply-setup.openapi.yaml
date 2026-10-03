@@ -1,0 +1,77 @@
+paths:
+  /chipply/stores/{id}/setup:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getChipplySetup
+      tags: [Chipply]
+      responses:
+        "200":
+          description: Shared progress and current read-only checks
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplySetupResponse" }
+        "404": { description: Store not found }
+    put:
+      operationId: saveChipplySetup
+      tags: [Chipply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChipplySetupRequest" }
+      responses:
+        "200":
+          description: Saved progress with refreshed checks
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplySetupResponse" }
+        "409": { description: Progress or source evidence changed; refresh before saving }
+components:
+  schemas:
+    ChipplySetupRequest:
+      type: object
+      required: [version, currentStep, confirmedSteps, marginSkipped, notes, evidenceKey]
+      properties:
+        version: { type: integer, minimum: 0 }
+        currentStep: { type: integer, minimum: 1, maximum: 9 }
+        confirmedSteps:
+          type: array
+          maxItems: 9
+          uniqueItems: true
+          items: { type: integer, minimum: 1, maximum: 9 }
+        marginSkipped: { type: boolean }
+        notes: { type: string, maxLength: 4000 }
+        evidenceKey: { type: string }
+    ChipplySetupChecks:
+      type: object
+      required: [storeName, eventId, customerLinked, closedAt, invoiceCount, incompleteInvoiceCount, missingCategoryCount, marginRowCount, snapshotId, orderCount, quantity, itemTotalCents, outcomes]
+      properties:
+        storeName: { type: string }
+        eventId: { type: [string, "null"] }
+        customerLinked: { type: boolean }
+        closedAt: { type: [string, "null"] }
+        invoiceCount: { type: integer }
+        incompleteInvoiceCount: { type: integer }
+        missingCategoryCount: { type: integer }
+        marginRowCount: { type: integer }
+        snapshotId: { type: [string, "null"] }
+        orderCount: { type: integer }
+        quantity: { type: integer }
+        itemTotalCents: { type: integer }
+        outcomes:
+          type: object
+          additionalProperties: { type: integer }
+    ChipplySetupResponse:
+      allOf:
+        - $ref: "#/components/schemas/ChipplySetupRequest"
+        - type: object
+          required: [storeId, updatedAt, evidenceKey, staleConfirmations, checks]
+          properties:
+            storeId: { type: string }
+            updatedAt: { type: [string, "null"] }
+            staleConfirmations: { type: boolean }
+            checks: { $ref: "#/components/schemas/ChipplySetupChecks" }

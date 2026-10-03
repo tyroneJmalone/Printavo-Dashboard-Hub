@@ -823,6 +823,118 @@ export const GetChipplyReportResponse = zod.object({
 })
 
 
+export const GetChipplySetupParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const getChipplySetupResponseOneVersionMin = 0;
+
+export const getChipplySetupResponseOneCurrentStepMax = 9;
+
+export const getChipplySetupResponseOneConfirmedStepsItemMax = 9;
+
+export const getChipplySetupResponseOneConfirmedStepsMax = 9;
+
+export const getChipplySetupResponseOneNotesMax = 4000;
+
+
+
+export const GetChipplySetupResponse = zod.object({
+  "version": zod.number().min(getChipplySetupResponseOneVersionMin),
+  "currentStep": zod.number().min(1).max(getChipplySetupResponseOneCurrentStepMax),
+  "confirmedSteps": zod.array(zod.number().min(1).max(getChipplySetupResponseOneConfirmedStepsItemMax)).max(getChipplySetupResponseOneConfirmedStepsMax),
+  "marginSkipped": zod.boolean(),
+  "notes": zod.string().max(getChipplySetupResponseOneNotesMax),
+  "evidenceKey": zod.string()
+}).and(zod.object({
+  "storeId": zod.string(),
+  "updatedAt": zod.string().nullable(),
+  "staleConfirmations": zod.boolean(),
+  "checks": zod.object({
+  "storeName": zod.string(),
+  "eventId": zod.string().nullable(),
+  "customerLinked": zod.boolean(),
+  "closedAt": zod.string().nullable(),
+  "invoiceCount": zod.number(),
+  "incompleteInvoiceCount": zod.number(),
+  "missingCategoryCount": zod.number(),
+  "marginRowCount": zod.number(),
+  "snapshotId": zod.string().nullable(),
+  "orderCount": zod.number(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number(),
+  "outcomes": zod.record(zod.string(), zod.number())
+})
+}))
+
+
+export const SaveChipplySetupParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const saveChipplySetupBodyVersionMin = 0;
+
+export const saveChipplySetupBodyCurrentStepMax = 9;
+
+export const saveChipplySetupBodyConfirmedStepsItemMax = 9;
+
+export const saveChipplySetupBodyConfirmedStepsMax = 9;
+
+export const saveChipplySetupBodyNotesMax = 4000;
+
+
+
+export const SaveChipplySetupBody = zod.object({
+  "version": zod.number().min(saveChipplySetupBodyVersionMin),
+  "currentStep": zod.number().min(1).max(saveChipplySetupBodyCurrentStepMax),
+  "confirmedSteps": zod.array(zod.number().min(1).max(saveChipplySetupBodyConfirmedStepsItemMax)).max(saveChipplySetupBodyConfirmedStepsMax),
+  "marginSkipped": zod.boolean(),
+  "notes": zod.string().max(saveChipplySetupBodyNotesMax),
+  "evidenceKey": zod.string()
+})
+
+export const saveChipplySetupResponseOneVersionMin = 0;
+
+export const saveChipplySetupResponseOneCurrentStepMax = 9;
+
+export const saveChipplySetupResponseOneConfirmedStepsItemMax = 9;
+
+export const saveChipplySetupResponseOneConfirmedStepsMax = 9;
+
+export const saveChipplySetupResponseOneNotesMax = 4000;
+
+
+
+export const SaveChipplySetupResponse = zod.object({
+  "version": zod.number().min(saveChipplySetupResponseOneVersionMin),
+  "currentStep": zod.number().min(1).max(saveChipplySetupResponseOneCurrentStepMax),
+  "confirmedSteps": zod.array(zod.number().min(1).max(saveChipplySetupResponseOneConfirmedStepsItemMax)).max(saveChipplySetupResponseOneConfirmedStepsMax),
+  "marginSkipped": zod.boolean(),
+  "notes": zod.string().max(saveChipplySetupResponseOneNotesMax),
+  "evidenceKey": zod.string()
+}).and(zod.object({
+  "storeId": zod.string(),
+  "updatedAt": zod.string().nullable(),
+  "staleConfirmations": zod.boolean(),
+  "checks": zod.object({
+  "storeName": zod.string(),
+  "eventId": zod.string().nullable(),
+  "customerLinked": zod.boolean(),
+  "closedAt": zod.string().nullable(),
+  "invoiceCount": zod.number(),
+  "incompleteInvoiceCount": zod.number(),
+  "missingCategoryCount": zod.number(),
+  "marginRowCount": zod.number(),
+  "snapshotId": zod.string().nullable(),
+  "orderCount": zod.number(),
+  "quantity": zod.number(),
+  "itemTotalCents": zod.number(),
+  "outcomes": zod.record(zod.string(), zod.number())
+})
+}))
+
+
+export const listChipplyCategoryInvoicesQueryEventIdRegExp = new RegExp('^\\d{5,7}$');
 export const listChipplyCategoryInvoicesQueryPageDefault = 1;
 
 export const listChipplyCategoryInvoicesQueryPageSizeDefault = 25;
@@ -831,6 +943,7 @@ export const listChipplyCategoryInvoicesQueryPageSizeMax = 100;
 export const listChipplyCategoryInvoicesQueryMissingOnlyDefault = true;
 
 export const ListChipplyCategoryInvoicesQueryParams = zod.object({
+  "eventId": zod.coerce.string().regex(listChipplyCategoryInvoicesQueryEventIdRegExp).optional().describe('Exact Chipply sales-order prefix for store-scoped review'),
   "page": zod.coerce.number().min(1).default(listChipplyCategoryInvoicesQueryPageDefault),
   "pageSize": zod.coerce.number().min(1).max(listChipplyCategoryInvoicesQueryPageSizeMax).default(listChipplyCategoryInvoicesQueryPageSizeDefault),
   "search": zod.coerce.string().optional().describe('Nickname or visual invoice number search'),

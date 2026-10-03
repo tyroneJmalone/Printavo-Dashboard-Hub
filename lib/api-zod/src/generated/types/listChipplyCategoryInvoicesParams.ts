@@ -8,6 +8,11 @@
 
 export type ListChipplyCategoryInvoicesParams = {
 /**
+ * Exact Chipply sales-order prefix for store-scoped review
+ * @pattern ^\d{5,7}$
+ */
+eventId?: string;
+/**
  * @minimum 1
  */
 page?: number;

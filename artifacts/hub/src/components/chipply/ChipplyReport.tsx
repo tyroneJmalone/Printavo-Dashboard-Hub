@@ -31,7 +31,12 @@ export function ReportSourceSelector({ source, onChange }: { source: string; onC
   </label>;
 }
 export function ChipplyReport() {
-  const [draft, setDraft] = useState<Record<string, string>>({ dateBasis: "closed" });
+  const [draft, setDraft] = useState<Record<string, string>>(() => {
+    const q = new URLSearchParams(window.location.search);
+    const init: Record<string, string> = { dateBasis: q.get("dateBasis") === "transaction" ? "transaction" : "closed" };
+    for (const key of ["store", "start", "end"]) { const v = q.get(key); if (v) init[key] = v; }
+    return init;
+  });
   const [filters, setFilters] = useState(draft);
   const [page, setPage] = useState(0);
   const [exportError, setExportError] = useState("");

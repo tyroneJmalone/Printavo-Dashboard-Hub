@@ -8730,6 +8730,55 @@ export interface ReviewDraftBacktestItemRequest {
   reviewNote?: string;
 }
 
+export interface ChipplySetupRequest {
+  /** @minimum 0 */
+  version: number;
+  /**
+     * @minimum 1
+     * @maximum 9
+     */
+  currentStep: number;
+  /**
+     * @maxItems 9
+     * @items.minimum 1
+     * @items.maximum 9
+     */
+  confirmedSteps: number[];
+  marginSkipped: boolean;
+  /** @maxLength 4000 */
+  notes: string;
+  evidenceKey: string;
+}
+
+export type ChipplySetupChecksOutcomes = {[key: string]: number};
+
+export interface ChipplySetupChecks {
+  storeName: string;
+  /** @nullable */
+  eventId: string | null;
+  customerLinked: boolean;
+  /** @nullable */
+  closedAt: string | null;
+  invoiceCount: number;
+  incompleteInvoiceCount: number;
+  missingCategoryCount: number;
+  marginRowCount: number;
+  /** @nullable */
+  snapshotId: string | null;
+  orderCount: number;
+  quantity: number;
+  itemTotalCents: number;
+  outcomes: ChipplySetupChecksOutcomes;
+}
+
+export type ChipplySetupResponse = ChipplySetupRequest & ({
+  storeId: string;
+  /** @nullable */
+  updatedAt: string | null;
+  staleConfirmations: boolean;
+  checks: ChipplySetupChecks;
+});
+
 /**
  * A contained Dropbox path, the linked root id, or an id already bookmarked for this customer
  */
@@ -9003,6 +9052,11 @@ export const GetChipplyReportFormat = {
 } as const;
 
 export type ListChipplyCategoryInvoicesParams = {
+/**
+ * Exact Chipply sales-order prefix for store-scoped review
+ * @pattern ^\d{5,7}$
+ */
+eventId?: string;
 /**
  * @minimum 1
  */

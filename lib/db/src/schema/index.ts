@@ -1,4 +1,5 @@
 export * from "./chipplyData";
+export * from "./chipplySetup";
 export * from "./printscope";
 // Export your models here. Add one export per file
 // export * from "./posts";

@@ -7,7 +7,8 @@ import {
   matchesText,
   type StoreFilters,
 } from "@/lib/chipply-store-filters";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { GuidedSetupStart } from "@/components/chipply/GuidedSetupStart";
 import { AppShell } from "@/components/layout/AppShell";
 import { InvoiceCategories } from "@/components/chipply/InvoiceCategories";
 import { DetailedDataImport } from "@/components/chipply/DetailedData";
@@ -56,6 +57,7 @@ import {
   Search,
   X,
   SearchX,
+  Compass,
 } from "lucide-react";
 
 const inputCls =
@@ -199,7 +201,9 @@ export function ImportEmailDialog({
   open,
   onOpenChange,
   prefill,
+  onSaved,
 }: {
+  onSaved?: (storeId: string) => void;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   /** When importing straight from a Detected row, skip the paste step. */
@@ -362,6 +366,7 @@ export function ImportEmailDialog({
           description: `${data.store.storeName} saved${data.store.eventId ? ` and linked to event ${data.store.eventId}` : ""}.`,
         });
         handleOpenChange(false);
+        onSaved?.(data.store.id);
       },
       onError: (err) =>
         toast({
@@ -389,6 +394,7 @@ export function ImportEmailDialog({
           description: `${data.store.storeName} refreshed from the SalesReport.`,
         });
         handleOpenChange(false);
+        onSaved?.(data.store.id);
       },
       onError: (err) =>
         toast({
@@ -781,6 +787,10 @@ export function ImportEmailDialog({
 export default function ChipplyStores() {
   const [tab, setTab] = useState<"stores" | "detected" | "categories">(() => new URLSearchParams(window.location.search).get("tab") === "categories" ? "categories" : "stores");
   const [importOpen, setImportOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideImport, setGuideImport] = useState(false);
+  const [guideDetailed, setGuideDetailed] = useState(false);
+  const [, navigate] = useLocation();
   const [prefill, setPrefill] = useState<ChipplyStoreCandidate | null>(null);
 
   const storesQuery = useListChipplyStores();
@@ -837,6 +847,16 @@ export default function ChipplyStores() {
               separate from Printavo invoice revenue.
             </p>
           </div>
+          <div className="flex gap-2 flex-wrap">
+          <Button
+            data-testid="button-guided-setup"
+            variant="outline"
+            onClick={() => setGuideOpen(true)}
+            className="border-[#059669] text-[#34d399] hover:bg-emerald-950/50 hover:text-white"
+          >
+            <Compass size={16} className="mr-1.5" />
+            Guided Chipply Setup
+          </Button>
           <Button
             onClick={() => openImport()}
             className="bg-[#059669] hover:bg-[#047857] text-white"
@@ -844,6 +864,7 @@ export default function ChipplyStores() {
             <ClipboardPaste size={16} className="mr-1.5" />
             Import store
           </Button>
+          </div>
         </div>
 
         <DetailedDataImport />
@@ -1134,10 +1155,19 @@ export default function ChipplyStores() {
         open={importOpen}
         onOpenChange={(o) => {
           setImportOpen(o);
-          if (!o) setPrefill(null);
+          if (!o) { setPrefill(null); setGuideImport(false); }
         }}
         prefill={prefill}
+        onSaved={guideImport ? (storeId) => { setGuideImport(false); navigate(`/chipply/${storeId}/setup`); } : undefined}
       />
+      <GuidedSetupStart
+        open={guideOpen}
+        onOpenChange={setGuideOpen}
+        stores={stores.map((x) => x.store)}
+        onNewFromEmail={() => { setGuideOpen(false); setGuideImport(true); openImport(); }}
+        onNewFromDetailed={() => { setGuideOpen(false); setGuideDetailed(true); }}
+      />
+      <DetailedDataImport hideTrigger open={guideDetailed} onOpenChange={setGuideDetailed} onSaved={(storeId) => { setGuideDetailed(false); navigate(`/chipply/${storeId}/setup`); }} />
     </AppShell>
   );
 }

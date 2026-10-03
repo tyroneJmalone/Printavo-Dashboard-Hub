@@ -37,6 +37,7 @@ import {
   UserCog,
   Search,
   CheckCircle2,
+  Compass,
 } from "lucide-react";
 
 const inputCls =
@@ -131,6 +132,10 @@ export default function ChipplyStoreDetail() {
     query: { enabled: !!id, queryKey: getGetChipplyStoreQueryKey(id) },
   });
   const store = detailQuery.data?.store;
+  const setupParams = new URLSearchParams(window.location.search);
+  const fromSetup = setupParams.get("setup") === "1";
+  const setupSection = setupParams.get("section");
+  const sectionDone = useRef(false);
   const invoices = detailQuery.data?.invoices ?? [];
   const styles = detailQuery.data?.styles ?? [];
   const marginStyles = detailQuery.data?.marginStyles ?? [];
@@ -257,6 +262,14 @@ export default function ChipplyStoreDetail() {
     setCustomerSearch("");
   }
 
+  useEffect(() => {
+    if (!store || sectionDone.current || !fromSetup || !setupSection) return;
+    sectionDone.current = true;
+    if (setupSection === "identity") { setFields(editFromStore(store)); setEditing(true); }
+    if (setupSection === "customer") setReassignOpen(true);
+    setTimeout(() => document.getElementById(`section-${setupSection}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  }, [store, fromSetup, setupSection]);
+
   function startEdit() {
     if (!store) return;
     setFields(editFromStore(store));
@@ -337,7 +350,14 @@ export default function ChipplyStoreDetail() {
     <AppShell>
       <div className="px-6 pt-4"><ThreadLinks storeId={id} suggestedSearch={detailQuery.data?.store?.storeName ?? ""} /></div>
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
-        <div>
+        {fromSetup && (
+          <div data-testid="banner-return-setup" className="sticky top-2 z-20 flex flex-wrap items-center gap-3 rounded-lg border border-[#059669] bg-emerald-950/90 px-3 py-2 text-sm text-emerald-100">
+            <Compass size={15} />
+            <span className="flex-1">Opened from Guided Setup. Save your change here, then return; your place in the guide is kept.</span>
+            <Link href={`/chipply/${id}/setup`} data-testid="link-return-setup" className="font-semibold underline">Return to setup</Link>
+          </div>
+        )}
+        <div id="section-identity">
           <Link
             href="/chipply"
             className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 mb-2"
@@ -375,6 +395,13 @@ export default function ChipplyStoreDetail() {
               </p>
             </div>
             <div className="flex gap-2">
+              <Link
+                href={`/chipply/${id}/setup`}
+                data-testid="link-continue-setup"
+                className="inline-flex items-center rounded-md border border-[#059669] px-3 h-9 text-sm text-[#34d399] hover:bg-emerald-950/50"
+              >
+                <Compass size={14} className="mr-1.5" /> Continue setup
+              </Link>
               {!editing && (
                 <Button
                   variant="outline"
@@ -601,7 +628,7 @@ export default function ChipplyStoreDetail() {
           )
         )}
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
+        <div id="section-customer" className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 text-sm">
               <UserCog size={15} className="text-[#059669]" />
@@ -825,7 +852,7 @@ export default function ChipplyStoreDetail() {
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div id="section-margins" className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               <FileSpreadsheet size={15} className="text-[#059669]" />

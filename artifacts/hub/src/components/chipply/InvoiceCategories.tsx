@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getChipplyCategoryInvoice, useGetChipplyCategoryInvoice, useListChipplyCategoryInvoices, getGetChipplyCategoryInvoiceQueryKey, getListChipplyCategoryInvoicesQueryKey, type ChipplyCategoryInvoice } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { CategoryReviewDialog, categoryError, categoryInputClass } from "./CategoryReviewDialog";
@@ -42,7 +42,7 @@ function InvoiceLines({ orderId, selected, onToggle }: {
   </div>;
 }
 
-export function InvoiceCategories() {
+export function InvoiceCategories({ eventId, onBusyChange }: { eventId?: string | null; onBusyChange?: (busy: boolean) => void } = {}) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -57,7 +57,7 @@ export function InvoiceCategories() {
   const [overwriteConsent, setOverwriteConsent] = useState(false);
   const [loadedLines, setLoadedLines] = useState<Map<string, CategorySelection[]>>(new Map());
   const selectionLock = useRef(false);
-  const params = { page, pageSize: 25, search, status, missingOnly, ...(categoryId ? { categoryId } : {}) };
+  const params = { page, pageSize: 25, search, status, missingOnly, ...(categoryId ? { categoryId } : {}), ...(eventId ? { eventId } : {}) };
   const query = useListChipplyCategoryInvoices(params, {
     query: { queryKey: getListChipplyCategoryInvoicesQueryKey(params), staleTime: 30_000 },
   });
@@ -69,6 +69,11 @@ export function InvoiceCategories() {
     setSelected((previous) => toggleSelection(previous, selection, checked, selectionCap));
   }
   const busy = !!selectingInvoice;
+  const busyRef = useRef(onBusyChange); busyRef.current = onBusyChange;
+  // Review dialog open covers preview + commit; the dialog itself refuses to close mid-commit.
+  const outerBusy = busy || !!reviewSelection;
+  useEffect(() => { busyRef.current?.(outerBusy); }, [outerBusy]);
+  useEffect(() => () => busyRef.current?.(false), []);
   function clearAll(reason: string) {
     setSelected([]); setLoadedLines(new Map()); setSelectionNotice(reason);
   }
@@ -119,6 +124,7 @@ export function InvoiceCategories() {
   return <section className="space-y-4">
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-2">
       <h2 className="text-lg font-semibold text-white">Invoice categories</h2>
+      {eventId && <p data-testid="text-category-event-scope" className="text-sm text-emerald-300">Scoped to invoices whose nickname starts with event {eventId}.</p>}
       <p className="text-sm text-slate-400">All nickname-recognized Chipply invoices in the Printavo mirror, including stores not imported here and every status. This is not a live completeness guarantee; newly synced invoices appear after refresh.</p>
       <p className="text-xs text-slate-400">MERCH PRINT → Screen Printing · MERCH EMB → Embroidery · MERCH HEAT → HEAT APPLIED GRAPHICS · MERCH MIXED → Mixed Decoration. Recommendations cover waiting, ready, and complete stages. Unrecognized statuses require a manual category choice.</p>
     </div>

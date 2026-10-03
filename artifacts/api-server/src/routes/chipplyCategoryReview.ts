@@ -16,6 +16,7 @@ const filters = paging.extend({
   status: z.string().max(300).default(""),
   categoryId: z.string().max(200).default(""),
   missingOnly: z.enum(["true", "false"]).default("true"),
+  eventId: z.string().regex(/^\d{5,7}$/).optional(),
 });
 const invoiceSelect = `o.printavo_id AS "orderId", o.visual_id AS "visualId",
   o.nickname, o.status_name AS "statusName", o.status_id AS "statusId",
@@ -38,10 +39,11 @@ router.get(`${base}/invoices`, async (req, res) => {
       AND ($2='' OR o.nickname ILIKE '%' || $2 || '%' OR o.visual_id::text ILIKE '%' || $2 || '%')
       AND ($3='' OR o.status_name=$3)
       AND ($4='' OR EXISTS(SELECT 1 FROM pv_line_items li WHERE li.order_id=o.printavo_id AND li.category_id=$4))
-      AND (NOT $5::boolean OR EXISTS(SELECT 1 FROM pv_line_items li WHERE li.order_id=o.printavo_id AND li.category_id IS NULL))`;
+      AND (NOT $5::boolean OR EXISTS(SELECT 1 FROM pv_line_items li WHERE li.order_id=o.printavo_id AND li.category_id IS NULL))
+      AND ($6::text IS NULL OR substring(o.nickname from '^(\\d{5,7})\\s')=$6)`;
     const [rows, count, statuses, categories] = await Promise.all([
-      pool.query(`SELECT ${invoiceSelect} FROM pv_orders o WHERE ${where} ORDER BY o.visual_id DESC,o.printavo_id LIMIT $6 OFFSET $7`, [...values, f.pageSize, (f.page - 1) * f.pageSize]),
-      pool.query(`SELECT count(*)::int AS total FROM pv_orders o WHERE ${where}`, values),
+      pool.query(`SELECT ${invoiceSelect} FROM pv_orders o WHERE ${where} ORDER BY o.visual_id DESC,o.printavo_id LIMIT $7 OFFSET $8`, [...values, f.eventId ?? null, f.pageSize, (f.page - 1) * f.pageSize]),
+      pool.query(`SELECT count(*)::int AS total FROM pv_orders o WHERE ${where}`, [...values, f.eventId ?? null]),
       pool.query(`SELECT DISTINCT status_name FROM pv_orders WHERE order_type='invoice' AND nickname ~ $1 AND status_name IS NOT NULL ORDER BY status_name`, [PREFIX_SQL_PATTERN]),
       liveCategories(),
     ]);

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import ChipplySetup from "@/pages/ChipplySetup";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import {
   QueryClient,
@@ -224,6 +225,7 @@ function HubRoutes() {
       <Route path="/garment-pantones" component={GarmentPantones} />
       <Route path="/collections/:id" component={CollectionDetail} />
       <Route path="/collections" component={Collections} />
+      <Route path="/chipply/:id/setup" component={ChipplySetup} />
       <Route path="/chipply/:id" component={ChipplyStoreDetail} />
       <Route path="/chipply" component={ChipplyStores} />
       <Route path="/reorder-requests" component={ReorderRequests} />

@@ -32,13 +32,19 @@ export async function getChipplyDataDetail(storeId: string) {
 }
 export type ChipplyDataDetail = NonNullable<Awaited<ReturnType<typeof getChipplyDataDetail>>>;
 
-export async function previewChipplyData(parsed: ParsedData, actor: string, sourceName: string) {
+export async function previewChipplyData(parsed: ParsedData, actor: string, sourceName: string, expectedStoreId?: string) {
+  if (expectedStoreId) {
+    const scope = await pool.query("SELECT event_id FROM chipply_stores WHERE id=$1", [expectedStoreId]);
+    if (!scope.rowCount || scope.rows[0].event_id !== parsed.salesOrder) {
+      throw new Error("This export belongs to a different sales order than this setup guide. Check the store event number and upload its complete export.");
+    }
+  }
   const existing = await pool.query(`SELECT s.id,s.store_name,c.snapshot_id FROM chipply_stores s
     LEFT JOIN chipply_data_current c ON c.store_id=s.id WHERE s.event_id=$1`, [parsed.salesOrder]);
   const store = existing.rows[0];
   const invoices = await loadDataMirror(parsed.salesOrder);
   const result = await pool.query(`INSERT INTO chipply_data_previews(actor,source_name,payload,expected_snapshot_id,expires_at)
-    VALUES($1,$2,$3,$4,now()+interval '30 minutes') RETURNING id,expires_at`, [actor, sourceName, JSON.stringify(parsed), store?.snapshot_id ?? null]);
+    VALUES($1,$2,$3,$4,now()+interval '30 minutes') RETURNING id,expires_at`, [actor, sourceName, JSON.stringify({ ...parsed, ...(expectedStoreId ? { expectedStoreId } : {}) }), store?.snapshot_id ?? null]);
   // Preview content contains only the same bounded normalized data as snapshots.
   await pool.query("DELETE FROM chipply_data_previews WHERE expires_at < now() - interval '1 day'");
   return { previewId: result.rows[0].id as string, expiresAt: result.rows[0].expires_at,
@@ -58,6 +64,11 @@ export async function confirmChipplyData(previewId: string, actor: string, repla
     const preview = p.rows[0], parsed = preview.payload as ParsedData;
     if (new Date(preview.expires_at).getTime() < Date.now()) throw new Error("Preview expired; upload again");
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`chipply-data:${parsed.salesOrder}`]);
+    const expectedStoreId = (preview.payload as ParsedData & { expectedStoreId?: string }).expectedStoreId;
+    if (expectedStoreId) {
+      const scope = await client.query("SELECT event_id FROM chipply_stores WHERE id=$1 FOR UPDATE", [expectedStoreId]);
+      if (!scope.rowCount || scope.rows[0].event_id !== parsed.salesOrder) throw new Error("The guided store changed after preview. Reopen the guide and upload again.");
+    }
     const s = await client.query(`INSERT INTO chipply_stores(event_id,store_name) VALUES($1,$2)
       ON CONFLICT(event_id) WHERE event_id IS NOT NULL DO UPDATE SET event_id=EXCLUDED.event_id RETURNING id`, [parsed.salesOrder, parsed.storeName]);
     const storeId = s.rows[0].id as string;

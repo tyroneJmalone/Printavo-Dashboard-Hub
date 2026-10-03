@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getListChipplyStoresQueryKey, getListDetectedChipplyStoresQueryKey, getGetChipplyStoreQueryKey } from "@workspace/api-client-react";
+import { getListChipplyStoresQueryKey, getListDetectedChipplyStoresQueryKey, getGetChipplyStoreQueryKey, getGetChipplySetupQueryKey } from "@workspace/api-client-react";
 
 interface Summary {
   lineCount: number; orderCount: number; quantity: number; itemTotalCents: number;
@@ -70,11 +70,19 @@ function Lines({ lines, onReview }: { lines: Line[]; onReview?: (line: Line) => 
     <div className="flex items-center gap-3 text-xs"><Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</Button><span>{selected.length ? page * 30 + 1 : 0}–{Math.min((page + 1) * 30, selected.length)} of {selected.length}</span><Button size="sm" variant="outline" disabled={(page + 1) * 30 >= selected.length} onClick={() => setPage(page + 1)}>Next</Button></div>
   </div>;
 }
-export function DetailedDataImport() {
-  const [open, setOpen] = useState(false);
-  return <><Button variant="outline" onClick={() => setOpen(true)}>Import detailed data · CSV / XLSX</Button><Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700 text-slate-200 sm:max-w-6xl"><DialogHeader><DialogTitle>Import detailed Chipply data</DialogTitle><DialogDescription>Upload the detailed data export, review its store and totals, then confirm. Saves only in Hub; no Printavo writeback.</DialogDescription></DialogHeader>{open && <ImportReview />}</DialogContent></Dialog></>;
+export function DetailedDataImport({ expectedStoreId, onSaved, open: controlledOpen, onOpenChange, hideTrigger }: { expectedStoreId?: string; onSaved?: (storeId: string) => void; open?: boolean; onOpenChange?: (open: boolean) => void; hideTrigger?: boolean } = {}) {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = (next: boolean) => { if (onOpenChange) onOpenChange(next); else setInnerOpen(next); };
+  return <>{!hideTrigger && <Button data-testid="button-import-detailed" variant="outline" onClick={() => setOpen(true)}>Import detailed data · CSV / XLSX</Button>}<Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700 text-slate-200 sm:max-w-6xl"><DialogHeader><DialogTitle>Import detailed Chipply data</DialogTitle><DialogDescription>Upload the detailed data export, review its store and totals, then confirm. Saves only in Hub; no Printavo writeback.</DialogDescription></DialogHeader>{open && <ImportReview expectedStoreId={expectedStoreId} onSaved={onSaved} />}</DialogContent></Dialog></>;
 }
-function ImportReview() {
+/** Reports pending writes so an embedding page can block navigation until they settle. */
+function useBusyReport(busy: boolean, onBusyChange?: (busy: boolean) => void) {
+  const ref = useRef(onBusyChange); ref.current = onBusyChange;
+  useEffect(() => { ref.current?.(busy); }, [busy]);
+  useEffect(() => () => ref.current?.(false), []);
+}
+export function ImportReview({ expectedStoreId, onSaved, onBusyChange }: { expectedStoreId?: string; onSaved?: (storeId: string) => void; onBusyChange?: (busy: boolean) => void } = {}) {
   const client = useQueryClient();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [replace, setReplace] = useState(false);
@@ -82,7 +90,7 @@ function ImportReview() {
     mutationFn: async (file: File) => {
       if (!/\.(csv|xlsx)$/i.test(file.name)) throw new Error("Choose a CSV or XLSX detailed data export.");
       if (file.size > 5 * 1024 * 1024) throw new Error("File exceeds 5 MB.");
-      const body = new FormData(); body.append("file", file);
+      const body = new FormData(); body.append("file", file); if (expectedStoreId) body.append("expectedStoreId", expectedStoreId);
       return apiFetch<Preview>("/chipply/data/preview", { method: "POST", body });
     },
     onSuccess: data => { setPreview(data); setReplace(false); },
@@ -94,11 +102,15 @@ function ImportReview() {
       client.invalidateQueries({ queryKey: getListDetectedChipplyStoresQueryKey() });
       client.invalidateQueries({ queryKey: getGetChipplyStoreQueryKey(data.storeId) });
       client.invalidateQueries({ queryKey: ["chipply-detailed-data", data.storeId] });
+      client.invalidateQueries({ queryKey: getGetChipplySetupQueryKey(data.storeId) });
+      onSaved?.(data.storeId);
     },
   });
-  if (confirm.data) return <div role="status" className="space-y-3 p-4"><h3 className="font-semibold text-emerald-400">{confirm.data.idempotent ? "Identical import already saved — no duplicate created" : "Detailed snapshot saved in Hub"}</h3><Link href={`/chipply/${confirm.data.storeId}`} className="text-emerald-400 underline">Open store financials and reconciliation</Link></div>;
+  useBusyReport(upload.isPending || confirm.isPending, onBusyChange);
+  if (confirm.data) return <div role="status" className="space-y-3 p-4"><h3 className="font-semibold text-emerald-400">{confirm.data.idempotent ? "Identical import already saved — no duplicate created" : "Detailed snapshot saved in Hub"}</h3>{!expectedStoreId && <Link href={`/chipply/${confirm.data.storeId}`} className="text-emerald-400 underline">Open store financials and reconciliation</Link>}</div>;
   return <div className="space-y-4">
     <label className="block text-sm">Detailed data export (.csv or .xlsx, up to 5 MB)<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className={`${field} mt-2`} disabled={upload.isPending || confirm.isPending} onChange={e => { const file = e.target.files?.[0]; e.target.value = ""; if (file) { setPreview(null); confirm.reset(); upload.mutate(file); } }} /></label>
+    {expectedStoreId && <p className="rounded border border-emerald-900 bg-emerald-950/30 p-2 text-xs text-emerald-200">Scoped to this store: Hub rejects an export whose sales order belongs to a different store.</p>}
     <p className="text-xs text-slate-400">Closing email and SalesReport imports remain under “Import store”. Margin Reports still attach on the store page. This option is for row-level detailed exports only; buyer contact information is not shown.</p>
     {upload.isPending && <p role="status">Reading and matching the export…</p>}<ErrorNotice error={upload.error} /><ErrorNotice error={confirm.error} />
     {preview && <>
@@ -112,7 +124,7 @@ function ImportReview() {
     </>}
   </div>;
 }
-export function DetailedStoreData({ storeId }: { storeId: string }) {
+export function DetailedStoreData({ storeId, onBusyChange }: { storeId: string; onBusyChange?: (busy: boolean) => void }) {
   const client = useQueryClient();
   const query = useQuery({ queryKey: ["chipply-detailed-data", storeId], queryFn: async () => {
     try { return await apiFetch<Detail>(`/chipply/data/stores/${encodeURIComponent(storeId)}`); }
@@ -127,8 +139,9 @@ export function DetailedStoreData({ storeId }: { storeId: string }) {
   const [reason, setReason] = useState("");
   const save = useMutation({
     mutationFn: () => apiFetch(`/chipply/data/stores/${encodeURIComponent(storeId)}/overrides`, { method: "POST", body: JSON.stringify({ snapshotId: reviewSnapshot, rowOrdinal: review!.rowOrdinal, invoiceId, reason: reason.trim() }) }),
-    onSuccess: () => { setReview(null); client.invalidateQueries({ queryKey: ["chipply-detailed-data", storeId] }); },
+    onSuccess: () => { setReview(null); client.invalidateQueries({ queryKey: ["chipply-detailed-data", storeId] }); client.invalidateQueries({ queryKey: getGetChipplySetupQueryKey(storeId) }); },
   });
+  useBusyReport(save.isPending, onBusyChange);
   const data = query.data;
   return <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-4 text-slate-200">
     <div className="flex flex-wrap justify-between gap-3"><h2 className="font-bold text-white">Detailed financials & process reconciliation</h2><Button size="sm" variant="outline" onClick={() => query.refetch()} disabled={query.isFetching}>Refresh mirror comparison</Button></div>

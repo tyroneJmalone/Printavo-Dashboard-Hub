@@ -6,7 +6,7 @@ import { parseDataUpload } from "../lib/chipply/dataUpload";
 import { previewChipplyData, confirmChipplyData, getChipplyDataDetail, overrideChipplyData } from "../lib/chipply/dataService";
 
 const router: IRouter = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_DATA_BYTES, files: 1, fields: 0 } }).single("file");
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_DATA_BYTES, files: 1, fields: 1, fieldSize: 100 } }).single("file");
 const base = "/chipply/data";
 router.use(base, (req, res, next) => {
   if (!req.staff) { res.status(401).json({ error: "Staff session required" }); return; }
@@ -17,10 +17,11 @@ router.post(`${base}/preview`, (req, res) => {
     if (err) { res.status(400).json({ error: "Upload one file, up to 5 MB, in multipart field file" }); return; }
     if (!req.file) { res.status(400).json({ error: "Data Export file required" }); return; }
     try {
+      const scope = z.object({ expectedStoreId: z.string().uuid().optional() }).strict().parse(req.body ?? {});
       const parsed = await parseDataUpload(req.file.buffer, req.file.originalname);
       // Retain only a basename; no original file bytes or buyer contact data.
       const sourceName = req.file.originalname.split(/[/\\]/).pop()!.replace(/[\u0000-\u001f]/g, "").slice(0, 200);
-      res.json(await previewChipplyData(parsed, req.staff!.email, sourceName));
+      res.json(await previewChipplyData(parsed, req.staff!.email, sourceName, scope.expectedStoreId));
     } catch (error) {
       req.log.warn({ errorName: (error as Error).name }, "Chipply Data Export preview rejected");
       res.status(400).json({ error: (error as Error).message });

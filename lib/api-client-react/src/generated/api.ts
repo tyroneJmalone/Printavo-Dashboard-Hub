@@ -88,6 +88,8 @@ import type {
   ChipplyDataDetail,
   ChipplyDataPreview,
   ChipplyReport,
+  ChipplySetupRequest,
+  ChipplySetupResponse,
   ChipplyStoreDetailResponse,
   ChipplyStoreEnvelope,
   ChipplyStoreStylesResponse,
@@ -1902,6 +1904,142 @@ export function useGetChipplyReport<TData = Awaited<ReturnType<typeof getChipply
 
 
 
+
+export const getGetChipplySetupUrl = (id: string,) => {
+
+
+
+
+  return `/api/chipply/stores/${id}/setup`
+}
+
+export const getChipplySetup = async (id: string, options?: RequestInit): Promise<ChipplySetupResponse> => {
+
+  return customFetch<ChipplySetupResponse>(getGetChipplySetupUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChipplySetupQueryKey = (id: string,) => {
+    return [
+    `/api/chipply/stores/${id}/setup`
+    ] as const;
+    }
+
+
+export const getGetChipplySetupQueryOptions = <TData = Awaited<ReturnType<typeof getChipplySetup>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplySetup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChipplySetupQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChipplySetup>>> = ({ signal }) => getChipplySetup(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChipplySetup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChipplySetupQueryResult = NonNullable<Awaited<ReturnType<typeof getChipplySetup>>>
+export type GetChipplySetupQueryError = ErrorType<void>
+
+
+
+export function useGetChipplySetup<TData = Awaited<ReturnType<typeof getChipplySetup>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplySetup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChipplySetupQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveChipplySetupUrl = (id: string,) => {
+
+
+
+
+  return `/api/chipply/stores/${id}/setup`
+}
+
+export const saveChipplySetup = async (id: string,
+    chipplySetupRequest: ChipplySetupRequest, options?: RequestInit): Promise<ChipplySetupResponse> => {
+
+  return customFetch<ChipplySetupResponse>(getSaveChipplySetupUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chipplySetupRequest)
+  }
+);}
+
+
+
+
+export const getSaveChipplySetupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveChipplySetup>>, TError,{id: string;data: BodyType<ChipplySetupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveChipplySetup>>, TError,{id: string;data: BodyType<ChipplySetupRequest>}, TContext> => {
+
+const mutationKey = ['saveChipplySetup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveChipplySetup>>, {id: string;data: BodyType<ChipplySetupRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  saveChipplySetup(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveChipplySetupMutationResult = NonNullable<Awaited<ReturnType<typeof saveChipplySetup>>>
+    export type SaveChipplySetupMutationBody = BodyType<ChipplySetupRequest>
+    export type SaveChipplySetupMutationError = ErrorType<void>
+
+    export const useSaveChipplySetup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveChipplySetup>>, TError,{id: string;data: BodyType<ChipplySetupRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveChipplySetup>>,
+        TError,
+        {id: string;data: BodyType<ChipplySetupRequest>},
+        TContext
+      > => {
+      return useMutation(getSaveChipplySetupMutationOptions(options));
+    }
 
 export const getListChipplyCategoryInvoicesUrl = (params?: ListChipplyCategoryInvoicesParams,) => {
   const normalizedParams = new URLSearchParams();

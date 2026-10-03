@@ -110,11 +110,14 @@ paths:
     $ref: './merch-pipeline.openapi.yaml#/paths/~1chipply~1stores~1{id}~1threads~1{linkId}'
   /reports/chipply:
     $ref: './chipply-reports.fragment.yaml#/paths/~1reports~1chipply'
+  /chipply/stores/{id}/setup:
+    $ref: './chipply-setup.openapi.yaml#/paths/~1chipply~1stores~1{id}~1setup'
   /chipply/category-review/invoices:
     get:
       operationId: listChipplyCategoryInvoices
       tags: [Chipply]
       parameters:
+        - { name: eventId, in: query, description: Exact Chipply sales-order prefix for store-scoped review, schema: { type: string, pattern: '^\d{5,7}$' } }
         - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
         - { name: pageSize, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
         - { name: search, in: query, description: Nickname or visual invoice number search, schema: { type: string } }
