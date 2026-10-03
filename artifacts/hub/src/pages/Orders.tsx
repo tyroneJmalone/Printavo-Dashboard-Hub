@@ -14,6 +14,8 @@ import {
   useGetStyleNumberBreakdown,
   useGetBrandBreakdown,
   useGetColorBreakdown,
+  useGetCategoryBreakdown,
+  getGetCategoryBreakdownQueryKey,
   getGetOrdersReportQueryKey,
   getGetStatusBreakdownQueryKey,
   getGetPricingMatrixBreakdownQueryKey,
@@ -28,7 +30,7 @@ import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays } from "lucide-react";
 
-type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees';
+type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category';
 type ReportMode = "normal" | "activity";
 type ActivityPreset = "today" | "yesterday" | "lastWeek" | "custom";
 
@@ -182,7 +184,9 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
   const { data: brandBreakdown, isLoading: isLoadingBrand } = useGetBrandBreakdown(params, { query: { queryKey: getGetBrandBreakdownQueryKey(params), enabled: activeTab === 'brand' } });
   const { data: colorBreakdown, isLoading: isLoadingColor } = useGetColorBreakdown(params, { query: { queryKey: getGetColorBreakdownQueryKey(params), enabled: activeTab === 'color' } });
 
+  const categoryQuery = useGetCategoryBreakdown(params, { query: { queryKey: getGetCategoryBreakdownQueryKey(params), enabled: activeTab === 'category' } });
   const activeBreakdownData = 
+    activeTab === 'category' ? categoryQuery.data :
     activeTab === 'status' ? statusBreakdown :
     activeTab === 'pricing' ? pricingBreakdown :
     activeTab === 'tier' ? tierBreakdown :
@@ -559,7 +563,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
               { id: 'style', label: 'By Style' },
               { id: 'brand', label: 'By Brand' },
               { id: 'color', label: 'By Color' },
-              { id: 'fees', label: 'By Fees' }
+              { id: 'fees', label: 'By Fees' },
+              { id: 'category', label: 'By Category' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -702,7 +707,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             </div>
           ) : (
             <div className="h-full">
-              {activeTab === 'fees' ? <FeeReport params={params} /> : isLoadingBreakdown ? (
+              {activeTab === 'category' && <p className="mb-3 text-sm text-slate-400">Line-item categories: revenue is price × quantity, excluding invoice fees and taxes. Orders count once per category and may appear in more than one. Missing categories appear as Uncategorized.</p>}
+              {activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
                 </div>

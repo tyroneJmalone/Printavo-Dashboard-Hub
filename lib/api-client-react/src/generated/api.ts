@@ -175,6 +175,7 @@ import type {
   EvaluateStatusRulesResponse,
   FinderOrder,
   GetBrandBreakdownParams,
+  GetCategoryBreakdownParams,
   GetChipplyCategoryInvoiceParams,
   GetChipplyReportParams,
   GetColorBreakdownParams,
@@ -12058,6 +12059,90 @@ export function useGetBrandBreakdown<TData = Awaited<ReturnType<typeof getBrandB
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetBrandBreakdownQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCategoryBreakdownUrl = (params?: GetCategoryBreakdownParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/category-breakdown?${stringifiedParams}` : `/api/reports/category-breakdown`
+}
+
+/**
+ * @summary Line-item revenue by category
+ */
+export const getCategoryBreakdown = async (params?: GetCategoryBreakdownParams, options?: RequestInit): Promise<BreakdownReport> => {
+
+  return customFetch<BreakdownReport>(getGetCategoryBreakdownUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCategoryBreakdownQueryKey = (params?: GetCategoryBreakdownParams,) => {
+    return [
+    `/api/reports/category-breakdown`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCategoryBreakdownQueryOptions = <TData = Awaited<ReturnType<typeof getCategoryBreakdown>>, TError = ErrorType<unknown>>(params?: GetCategoryBreakdownParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCategoryBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCategoryBreakdownQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCategoryBreakdown>>> = ({ signal }) => getCategoryBreakdown(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCategoryBreakdown>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCategoryBreakdownQueryResult = NonNullable<Awaited<ReturnType<typeof getCategoryBreakdown>>>
+export type GetCategoryBreakdownQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Line-item revenue by category
+ */
+
+export function useGetCategoryBreakdown<TData = Awaited<ReturnType<typeof getCategoryBreakdown>>, TError = ErrorType<unknown>>(
+ params?: GetCategoryBreakdownParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCategoryBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCategoryBreakdownQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

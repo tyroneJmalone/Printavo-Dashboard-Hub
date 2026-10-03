@@ -390,6 +390,14 @@ router.get(
 );
 
 router.get(
+  "/reports/category-breakdown",
+  handler((orders) => ({
+    stats: computeStats(orders),
+    rows: lineItemBreakdown(orders, (li) => li.categoryName?.trim() || null, "Uncategorized"),
+  })),
+);
+
+router.get(
   "/reports/color-breakdown",
   handler((orders) => ({
     stats: computeStats(orders),

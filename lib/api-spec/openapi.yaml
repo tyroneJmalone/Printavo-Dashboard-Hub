@@ -3198,6 +3198,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BreakdownReport"
+  /reports/category-breakdown:
+    get:
+      operationId: getCategoryBreakdown
+      tags: [reports]
+      summary: Line-item revenue by category
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
+      responses:
+        "200":
+          description: Category breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BreakdownReport"
   /reports/color-breakdown:
     get:
       operationId: getColorBreakdown

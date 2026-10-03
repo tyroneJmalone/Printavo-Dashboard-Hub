@@ -7065,6 +7065,70 @@ export const GetBrandBreakdownResponse = zod.object({
 
 
 /**
+ * @summary Line-item revenue by category
+ */
+export const GetCategoryBreakdownQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email')
+})
+
+export const GetCategoryBreakdownResponse = zod.object({
+  "filters": zod.record(zod.string(), zod.unknown()),
+  "stats": zod.object({
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number(),
+  "activity": zod.object({
+  "affectedOrders": zod.number(),
+  "changes": zod.number(),
+  "byOrderType": zod.object({
+  "invoice": zod.number(),
+  "quote": zod.number()
+}),
+  "byCategory": zod.object({
+  "quantity": zod.number(),
+  "lineItem": zod.number(),
+  "price": zod.number(),
+  "balance": zod.number(),
+  "status": zod.number(),
+  "order": zod.number()
+})
+})
+}),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "orders": zod.number(),
+  "quantity": zod.number(),
+  "revenue": zod.number(),
+  "pctOfRevenue": zod.number()
+}))
+})
+
+
+/**
  * @summary Line-item revenue by color
  */
 export const GetColorBreakdownQueryParams = zod.object({

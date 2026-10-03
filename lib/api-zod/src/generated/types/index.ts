@@ -345,6 +345,7 @@ export * from './finderOrderLineItem';
 export * from './finderOrderLineItemSizesItem';
 export * from './gatewayStats';
 export * from './getBrandBreakdownParams';
+export * from './getCategoryBreakdownParams';
 export * from './getChipplyCategoryInvoiceParams';
 export * from './getChipplyReportDateBasis';
 export * from './getChipplyReportFormat';

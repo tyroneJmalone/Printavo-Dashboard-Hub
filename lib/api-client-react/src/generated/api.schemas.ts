@@ -9991,6 +9991,63 @@ activityEnd?: ActivityEndParamParameter;
 activityOwner?: ActivityOwnerParamParameter;
 };
 
+export type GetCategoryBreakdownParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
+};
+
 export type GetColorBreakdownParams = {
 orderType?: OrderTypeParamParameter;
 /**
