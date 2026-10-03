@@ -151,3 +151,17 @@ mtime_ms = 1790830504884
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/9810db99-b37d-4814-a5c6-67b437aa0f5d/704bcc72-7872-462b-8621-9264f2646219"
 storage_version_token = "1790830573006771"
 content_type = "text/csv"
+
+[[outputs]]
+id = "8_TR-ekVZcWAW02E-bNFG"
+uri = "file://exports/chipply-margin-report-FICTIONAL-SAMPLE.csv"
+type = "table"
+title = "Chipply Margin Report — Sample CSV"
+description = "Expected importer columns with two fictional example rows. Not an original Chipply export; replace all sample data before importing."
+logical_id = "a00298ee-6275-46d7-9dd3-a7686284321b"
+content_hash = "sha256:2dfaa683904c0461517c594618fdf99f64b72588a317e919dd2c2950bf41a504"
+size = 232
+mtime_ms = 1790993790061
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/a00298ee-6275-46d7-9dd3-a7686284321b/6de23a55-ecbe-4992-b13d-33e6a5993880"
+storage_version_token = "1790993794289861"
+content_type = "text/csv"
