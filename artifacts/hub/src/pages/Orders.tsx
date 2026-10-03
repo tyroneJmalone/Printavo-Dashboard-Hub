@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { FeeReport } from "@/components/FeeReport";
 import { ChipplyReport, ReportSourceSelector } from "@/components/chipply/ChipplyReport";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
@@ -27,7 +28,7 @@ import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays } from "lucide-react";
 
-type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color';
+type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees';
 type ReportMode = "normal" | "activity";
 type ActivityPreset = "today" | "yesterday" | "lastWeek" | "custom";
 
@@ -557,7 +558,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
               { id: 'quantity', label: 'By Order Size' },
               { id: 'style', label: 'By Style' },
               { id: 'brand', label: 'By Brand' },
-              { id: 'color', label: 'By Color' }
+              { id: 'color', label: 'By Color' },
+              { id: 'fees', label: 'By Fees' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -700,7 +702,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             </div>
           ) : (
             <div className="h-full">
-              {isLoadingBreakdown ? (
+              {activeTab === 'fees' ? <FeeReport params={params} /> : isLoadingBreakdown ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
                 </div>

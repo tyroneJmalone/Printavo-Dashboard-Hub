@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { sql, type SQL } from "drizzle-orm";
 import { parseReportFilters, filtersEcho } from "../lib/reports/filters";
 import { loadReportOrders, type ReportOrder } from "../lib/reports/dataset";
+import { feeRows } from "../lib/reports/fees";
 import { parseChipplyReportFilters, chipplyReportCsv } from "../lib/reports/chipplyData";
 import { loadChipplyReport } from "../lib/reports/chipplyLoader";
 import {
@@ -34,6 +35,19 @@ import {
  */
 
 const router: IRouter = Router();
+
+router.get("/reports/fees", (req, res) => {
+  (async () => {
+    const { filters, errors } = parseReportFilters(req.query as Record<string, unknown>);
+    if (errors.length) { res.status(400).json({ errors }); return; }
+    const orders = (await loadReportOrders(filters)).filter(o => o.orderType === "invoice");
+    const sources = orders.length ? await db.execute(sql`
+      SELECT printavo_id, extras, extras_synced_at, extras_stale FROM pv_orders
+      WHERE printavo_id IN (${sql.join(orders.map(o => sql`${o.id}`), sql`, `)})
+    `) : { rows: [] };
+    res.json(feeRows(orders, sources.rows));
+  })().catch(err => { req.log.error({ err }, "Fee report failed"); res.status(500).json({ error: "Unable to load fee report" }); });
+});
 
 router.get("/reports/chipply", (req, res) => {
   (async () => {
