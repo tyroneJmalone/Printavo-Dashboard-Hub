@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { FeeReport } from "@/components/FeeReport";
+import { QuantityOrders } from "@/components/QuantityOrders";
 import { ChipplyReport, ReportSourceSelector } from "@/components/chipply/ChipplyReport";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
@@ -101,6 +102,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
   const [activityOwner, setActivityOwner] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(0);
+  const [quantityRange, setQuantityRange] = useState<string | null>(null);
   const limit = 100;
   
   // Filter state
@@ -559,7 +561,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
               { id: 'status', label: 'By Status' },
               { id: 'pricing', label: 'By Pricing Matrix' },
               { id: 'tier', label: 'By Imprint Tier' },
-              { id: 'quantity', label: 'By Order Size' },
+              { id: 'quantity', label: 'By QTY' },
               { id: 'style', label: 'By Style' },
               { id: 'brand', label: 'By Brand' },
               { id: 'color', label: 'By Color' },
@@ -707,6 +709,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             </div>
           ) : (
             <div className="h-full">
+              {activeTab === 'quantity' && <p className="mb-3 text-sm text-slate-400">Click a range or order count to see matching orders. Ranges use total order quantity and include both endpoints. Orders with zero quantity are excluded.</p>}
               {activeTab === 'category' && <p className="mb-3 text-sm text-slate-400">Line-item categories: revenue is price × quantity, excluding invoice fees and taxes. Orders count once per category and may appear in more than one. Missing categories appear as Uncategorized.</p>}
               {activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
                 <div className="flex items-center justify-center h-64">
@@ -727,8 +730,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                     <tbody className="divide-y divide-slate-800">
                       {activeBreakdownData.rows.map((row) => (
                         <tr key={row.label} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="px-6 py-4 font-medium text-white">{row.label}</td>
-                          <td className="px-6 py-4 text-right text-slate-300">{formatNumber(row.orders)}</td>
+                          <td className="px-6 py-4 font-medium text-white">{activeTab === 'quantity' ? <button className="text-emerald-400 underline underline-offset-4" onClick={() => setQuantityRange(row.label)}>QTY {row.label}</button> : row.label}</td>
+                          <td className="px-6 py-4 text-right text-slate-300">{activeTab === 'quantity' ? <button aria-label={`View ${row.orders} orders with quantity ${row.label}`} className="text-emerald-400 underline underline-offset-4" onClick={() => setQuantityRange(row.label)}>{formatNumber(row.orders)}</button> : formatNumber(row.orders)}</td>
                           <td className="px-6 py-4 text-right text-slate-300">{formatNumber(row.quantity)}</td>
                           <td className="px-6 py-4 text-right font-mono font-medium text-[#10b981]">
                             {formatMoney(row.revenue)}
@@ -760,6 +763,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
           )}
         </div>
       </div>
+      {quantityRange && <QuantityOrders key={`${quantityRange}:${JSON.stringify(params)}`} range={quantityRange} params={params} onClose={() => setQuantityRange(null)} />}
       <OrderLineItemHistory
         orderId={historyOrder?.id ?? null}
         visualId={historyOrder?.visualId ?? null}

@@ -204,13 +204,25 @@ function imprintBreakdown(
 }
 
 const QTY_BUCKETS: Array<{ label: string; min: number; max: number }> = [
-  { label: "0", min: 0, max: 0 },
-  { label: "1-24", min: 1, max: 24 },
-  { label: "25-49", min: 25, max: 49 },
-  { label: "50-99", min: 50, max: 99 },
-  { label: "100-249", min: 100, max: 249 },
-  { label: "250-499", min: 250, max: 499 },
-  { label: "500+", min: 500, max: Infinity },
+  { label: "1-5", min: 1, max: 5 },
+  { label: "6-11", min: 6, max: 11 },
+  { label: "12-23", min: 12, max: 23 },
+  { label: "24-35", min: 24, max: 35 },
+  { label: "36-47", min: 36, max: 47 },
+  { label: "48-59", min: 48, max: 59 },
+  { label: "60-71", min: 60, max: 71 },
+  { label: "72-83", min: 72, max: 83 },
+  { label: "84-95", min: 84, max: 95 },
+  { label: "96-107", min: 96, max: 107 },
+  { label: "108-119", min: 108, max: 119 },
+  { label: "120-143", min: 120, max: 143 },
+  { label: "144-167", min: 144, max: 167 },
+  { label: "168-191", min: 168, max: 191 },
+  { label: "192-215", min: 192, max: 215 },
+  { label: "216-239", min: 216, max: 239 },
+  { label: "240-263", min: 240, max: 263 },
+  { label: "264-287", min: 264, max: 287 },
+  { label: "288+", min: 288, max: Infinity },
 ];
 
 export function orderQuantityBreakdown(orders: ReportOrder[]): BreakdownRow[] {
@@ -229,7 +241,7 @@ export function orderQuantityBreakdown(orders: ReportOrder[]): BreakdownRow[] {
   const rows: BreakdownRow[] = [];
   for (const bucket of QTY_BUCKETS) {
     const acc = map.get(bucket.label);
-    if (!acc || acc.orders.size === 0) continue;
+    if (!acc) continue;
     rows.push({
       label: bucket.label,
       orders: acc.orders.size,
