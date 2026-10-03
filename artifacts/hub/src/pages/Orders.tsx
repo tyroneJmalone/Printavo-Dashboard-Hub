@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { FeeReport } from "@/components/FeeReport";
 import { QuantityOrders } from "@/components/QuantityOrders";
+import { REPORT_DATE_PRESETS, reportDateRange, type ReportDatePreset } from "@/lib/report-date-presets";
 import { ChipplyReport, ReportSourceSelector } from "@/components/chipply/ChipplyReport";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
@@ -120,6 +121,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
   const [dateBasis, setDateBasis] = useState<"created" | "invoice" | "productionDue" | "due">("created");
   const [dateStart, setDateStart] = useState("");
   const [dateEnd, setDateEnd] = useState("");
+  const [datePreset, setDatePreset] = useState<ReportDatePreset | null>(null);
   
   const [minQty, setMinQty] = useState("");
   const [maxQty, setMaxQty] = useState("");
@@ -222,6 +224,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
     setExclude([]);
     setDateStart("");
     setDateEnd("");
+    setDatePreset(null);
     setMinQty("");
     setMaxQty("");
     setMinTotal("");
@@ -386,10 +389,17 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                     </select>
                   </label>
                   <div className="flex items-center gap-2">
-                    <input type="date" value={dateStart} onChange={e => { setDateStart(e.target.value); setPage(0); }} className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5" />
+                    <input aria-label="Report start date" type="date" value={dateStart} onChange={e => { setDatePreset(null); setDateStart(e.target.value); setPage(0); }} className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5" />
                     <span className="text-slate-500 text-xs">to</span>
-                    <input type="date" value={dateEnd} onChange={e => { setDateEnd(e.target.value); setPage(0); }} className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5" />
+                    <input aria-label="Report end date" type="date" value={dateEnd} onChange={e => { setDatePreset(null); setDateEnd(e.target.value); setPage(0); }} className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5" />
                   </div>
+                  <div className="flex flex-wrap gap-1 pt-1" role="group" aria-label="Date range presets">
+                    {REPORT_DATE_PRESETS.map(([id, label, title]) => <button key={id} type="button" title={title} aria-label={title} aria-pressed={datePreset === id}
+                      data-testid={`report-date-preset-${id}`}
+                      onClick={() => { const range = reportDateRange(id); setDatePreset(id); setDateStart(range.start); setDateEnd(range.end); setPage(0); }}
+                      className={`rounded border px-2 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 ${datePreset === id ? "border-emerald-500 bg-emerald-950 text-emerald-300" : "border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500"}`}>{label}</button>)}
+                  </div>
+                  <p className="text-[10px] text-slate-500">Eastern time · Monday–Sunday weeks · Calendar quarters</p>
                 </div>}
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Exclude Filters</label>
