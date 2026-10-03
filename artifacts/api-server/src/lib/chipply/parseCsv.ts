@@ -120,6 +120,12 @@ export type ChipplyCsvKind = "sales_report" | "margin_report" | "unknown";
 const SALES_MARKERS = ["store name", "sale order", "chipply fee"];
 const MARGIN_MARKERS = ["vendor name", "style", "total profit"];
 
+/** Detailed exports have their own reviewed importer, not margin-row semantics. */
+export function isDetailedDataExport(headers: string[]): boolean {
+  const set = new Set(headers.map((h) => h.trim().toLowerCase()));
+  return ["sales order", "order number", "process name", "item qty", "item total"].every((h) => set.has(h));
+}
+
 export function detectCsvKind(headers: string[]): ChipplyCsvKind {
   const set = new Set(headers.map((h) => h.trim().toLowerCase()));
   if (SALES_MARKERS.every((m) => set.has(m))) return "sales_report";

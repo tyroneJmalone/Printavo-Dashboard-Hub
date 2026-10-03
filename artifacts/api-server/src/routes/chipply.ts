@@ -11,6 +11,7 @@ import { parseChipplyEmail, isEmptyParse } from "../lib/chipply/parseEmail";
 import {
   parseCsvRows,
   detectCsvKind,
+  isDetailedDataExport,
   parseSalesReportCsv,
   parseMarginReportCsv,
 } from "../lib/chipply/parseCsv";
@@ -304,6 +305,12 @@ router.post("/chipply/parse-file", async (req, res) => {
   }
   try {
     const headerRow = parseCsvRows(fileText)[0] ?? [];
+    if (isDetailedDataExport(headerRow)) {
+      res.status(400).json({
+        error: "This is a valid Chipply detailed Data Export, not a per-style Margin Report or SalesReport. Go to Chipply Stores → Import detailed data · CSV / XLSX to upload this file and review its store and totals.",
+      });
+      return;
+    }
     const kind = detectCsvKind(headerRow);
     if (kind === "unknown") {
       res.status(400).json({

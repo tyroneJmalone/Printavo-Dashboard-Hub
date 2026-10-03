@@ -892,6 +892,11 @@ export default function ChipplyStoreDetail() {
               </Button>
             )}
           </div>
+          <p className="text-xs text-slate-400">
+            For a “Data-Export-All-Results” file, use{" "}
+            <Link href="/chipply" className="text-emerald-400 underline">Chipply Stores → Import detailed data · CSV / XLSX</Link>
+            {" "}instead. This uploader expects the separate Margin Report with per-style total sales, costs, and profit.
+          </p>
           {marginPreview && marginStyles.length > 0 && (
             <p className="px-4 py-2 text-xs text-amber-200 bg-amber-950/40 border-b border-amber-800/50">
               Saving replaces the {marginStyles.length} style
