@@ -9,8 +9,8 @@ The Chipply setup guide is optional and reuses the existing import, reconciliati
 
 **How to apply:** Keep user confirmations distinct from machine-verified facts. Navigation never verifies data. Relevant source changes invalidate prior confirmations; incomplete evidence must remain visible even when staff continue. Preserve explicit approval for replacing detailed snapshots and writing Printavo categories. Scope guided uploads and invoice category selection to the selected store; do not silently route a mismatched file to another store.
 
-The user found that getting the full Chipply picture requires roughly three or four exports, not one comprehensive report. They also found a useful multi-store summary grid that they cannot export.
+The user found that getting the full Chipply picture requires roughly three or four exports, not one comprehensive report. The multi-store summary grid has no usable export for them, but they confirmed that copying and pasting it into a CSV works.
 
 **Why:** Their attempt to work through the guide exposed fragmented source information.
 
-**How to apply:** Do not assume a single export supplies all setup evidence. Screenshot ingestion is being discussed, not approved for implementation.
+**How to apply:** Do not assume a single export supplies all setup evidence. Prefer the confirmed copy/paste CSV path over screenshot OCR for the summary grid. Summary ingestion is being discussed, not approved for implementation.
