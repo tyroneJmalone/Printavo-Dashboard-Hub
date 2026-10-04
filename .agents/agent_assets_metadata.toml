@@ -165,3 +165,31 @@ mtime_ms = 1790993790061
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/a00298ee-6275-46d7-9dd3-a7686284321b/6de23a55-ecbe-4992-b13d-33e6a5993880"
 storage_version_token = "1790993794289861"
 content_type = "text/csv"
+
+[[outputs]]
+id = "fz-lkeRcmbYDmF87AdiNk"
+uri = "file://exports/printavo-bulk-operations-handoff.pdf"
+type = "pdf"
+title = "Printavo Bulk Operations — Handoff Document"
+description = "Four-page PDF covering the complete operation inventory, existing foundations, API questions, safeguards, and recommended first version."
+logical_id = "16d62434-11f8-4aed-adfb-e0fd8cc558f4"
+content_hash = "sha256:e275d5928047582cf82a55a8a2aafc70e08d55bb8eeb904ec1e419ae092e929a"
+size = 148191
+mtime_ms = 1791124530181
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/16d62434-11f8-4aed-adfb-e0fd8cc558f4/29969c28-8420-4910-928e-162f6d4df712"
+storage_version_token = "1791124546319824"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "xkYV2GQYQShQWE-TpEzXE"
+uri = "file://exports/printavo-bulk-operations-handoff.html"
+type = "html"
+title = "Printavo Bulk Operations — HTML Copy"
+description = "Self-contained browser-readable source copy of the handoff document."
+logical_id = "22c2abe8-0e3c-4cb6-8d43-f0a91b0f5b69"
+content_hash = "sha256:556b121a36b0de20baafbc2d27d5d8f196965eb7a032e13036254a2b0086327e"
+size = 14285
+mtime_ms = 1791124524594
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/22c2abe8-0e3c-4cb6-8d43-f0a91b0f5b69/5eb95d1e-c71a-41ee-a8d1-e89ee5ec27aa"
+storage_version_token = "1791124546800358"
+content_type = "text/html"

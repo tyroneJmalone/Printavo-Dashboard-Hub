@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Printavo Bulk Operations — Product Handoff</title>
+<style>
+@page { size: Letter; margin: .45in .5in; }
+* { box-sizing: border-box; }
+body { margin: 0; color: #243247; background: white; font: 9.5pt/1.32 Arial, sans-serif; }
+.page { break-after: page; } .page:last-child { break-after: auto; }
+.page:last-child { font-size: 9pt; line-height: 1.25; }
+.page:last-child h2 { margin-top: 11px; }
+.eyebrow { color: #087b63; font-size: 9pt; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; }
+h1 { color: #14273b; font-size: 28pt; line-height: 1.1; margin: 12px 0; }
+h2 { color: #14273b; font-size: 16pt; margin: 14px 0 8px; }
+h3 { color: #087b63; font-size: 12pt; margin: 15px 0 6px; }
+p { margin: 7px 0; } ul, ol { padding-left: 19px; margin: 7px 0; } li { margin: 5px 0; }
+.meta, .small { color: #5a6979; font-size: 9pt; }
+.callout { border-left: 4px solid #087b63; padding: 9px 13px; background: #eef7f4; margin: 13px 0; }
+.warning { border-left-color: #ad6a19; background: #fff6e9; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 8.5pt; line-height: 1.2; }
+th { text-align: left; color: white; background: #20394d; padding: 8px; }
+td { vertical-align: top; padding: 5px 8px; border-bottom: 1px solid #dce3e8; }
+tr:nth-child(even) td { background: #f5f8fa; } tr { break-inside: avoid; }
+th:first-child { width: 26%; } th:last-child { width: 27%; }
+.foot { border-top: 1px solid #dce3e8; padding-top: 6px; margin-top: 10px; color: #5a6979; font-size: 8pt; }
+@media screen { body { max-width: 850px; margin: auto; padding: 36px; } .page { margin-bottom: 48px; } }
+</style>
+</head>
+<body>
+<section class="page">
+<div class="eyebrow">Product concept • Handoff document</div>
+<h1>Printavo Bulk Operations</h1>
+<p class="meta">Prepared October 4, 2026 • Standalone app concept • Scope and recommendations, not an approved implementation plan</p>
+<h2>Purpose</h2>
+<p>A standalone, Printavo-centric application for reviewing and applying bulk changes across orders, line items, and tasks. It would reuse relevant integration and safety logic from the existing Printavo Hub without bringing along the rest of the Hub.</p>
+<p>The user specifically identified <strong>category changes, line-item product/goods statuses, order-status changes, and task completion</strong>. The additional operations below are candidates for the same product.</p>
+<div class="callout"><strong>Capability labels:</strong> “Existing foundation” means related Printavo integration code exists in the current project—not that a finished standalone bulk tool exists. “Verify” means API support or behavior still needs confirmation. No new live API verification was performed for this document.</div>
+<h2>1. Line-item operations</h2>
+<table>
+<thead><tr><th>Operation</th><th>Example use</th><th>Starting point</th></tr></thead>
+<tbody>
+<tr><td><strong>Change categories</strong></td><td>Assign Screen Printing, Embroidery, Transfers, or another category across selected lines or orders.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Change product/goods status</strong></td><td>Mark garment lines as needing ordering, ordered, arrived, partially received, or received.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Change product/style numbers</strong></td><td>Replace an obsolete style number across selected open orders.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Change garment colors</strong></td><td>Correct inconsistent names or apply an explicitly approved substitution.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Change size quantities</strong></td><td>Apply reviewed spreadsheet corrections, with different quantities for each line.</td><td>Existing foundation; higher risk</td></tr>
+<tr><td><strong>Find/replace descriptions</strong></td><td>Standardize decoration instructions or correct repeated wording.</td><td>Verify API support</td></tr>
+<tr><td><strong>Change pricing or costs</strong></td><td>Apply percentage adjustments, fixed amounts, or spreadsheet-supplied values.</td><td>Verify API support; higher risk</td></tr>
+<tr><td><strong>Reorder line items</strong></td><td>Apply a consistent display order to products and decoration groups.</td><td>Investigate behavior and API constraints</td></tr>
+</tbody>
+</table>
+<p><strong>Goods-status boundary:</strong> Target individual line items. Do not assume that an order-level goods summary is independently editable.</p>
+<div class="foot">Printavo Bulk Operations • Product handoff • 1 / 4</div>
+</section>
+
+<section class="page">
+<div class="eyebrow">Candidate operation inventory</div>
+<h2>2. Order and quote operations</h2>
+<table>
+<thead><tr><th>Operation</th><th>Example use</th><th>Starting point</th></tr></thead>
+<tbody>
+<tr><td><strong>Change order status</strong></td><td>Move selected orders between workflow statuses.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Append production notes</strong></td><td>Add a shared instruction while preserving existing notes.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Find/replace note text</strong></td><td>Correct outdated production instructions with a before-and-after preview.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Attach production files</strong></td><td>Add a common instruction sheet or production reference to selected orders.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Change production due dates</strong></td><td>Shift jobs two business days or assign individual dates from a CSV.</td><td>Verify API support</td></tr>
+<tr><td><strong>Change customer due dates</strong></td><td>Reschedule orders affected by a delay.</td><td>Verify API support</td></tr>
+<tr><td><strong>Change order nicknames</strong></td><td>Add event numbers, standardize names, or correct matching prefixes.</td><td>Verify API support</td></tr>
+<tr><td><strong>Reassign order ownership</strong></td><td>Move work to another salesperson or production owner.</td><td>Verify available fields/API support</td></tr>
+<tr><td><strong>Correct customer/contact links</strong></td><td>Fix orders associated with the wrong customer or contact.</td><td>Verify API support; higher risk</td></tr>
+</tbody>
+</table>
+<div class="callout warning"><strong>Customer-visible consequences:</strong> Order-status changes can trigger customer emails or other Printavo automations. Warn explicitly before committing; do not represent status changes as internal-only edits. Confirm quote-versus-invoice support separately for each operation.</div>
+<h2>3. Task operations</h2>
+<table>
+<thead><tr><th>Operation</th><th>Example use</th><th>Starting point</th></tr></thead>
+<tbody>
+<tr><td><strong>Complete tasks</strong></td><td>Complete matching “Order garments” tasks across selected orders.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Reopen tasks</strong></td><td>Mark work incomplete when it needs to be repeated.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Create tasks in bulk</strong></td><td>Add “Confirm delivery address” to selected orders.</td><td>Existing foundation</td></tr>
+<tr><td><strong>Apply task checklists</strong></td><td>Add standard tasks to orders missing that checklist.</td><td>Build on task creation</td></tr>
+<tr><td><strong>Reassign tasks</strong></td><td>Transfer work between staff members.</td><td>Verify supported task fields</td></tr>
+<tr><td><strong>Reschedule task due dates</strong></td><td>Shift related tasks when production dates change.</td><td>Verify supported task fields</td></tr>
+<tr><td><strong>Rename/standardize tasks</strong></td><td>Replace inconsistent names with standard wording.</td><td>Build on task updates</td></tr>
+<tr><td><strong>Remove duplicate/obsolete tasks</strong></td><td>Preview and remove repeated checklist entries.</td><td>Existing deletion foundation; higher risk</td></tr>
+</tbody>
+</table>
+<p><strong>Task-selection boundary:</strong> Support task name plus order filters. Completing selected tasks must not silently complete every task on each order.</p>
+<div class="foot">Printavo Bulk Operations • Product handoff • 2 / 4</div>
+</section>
+
+<section class="page">
+<div class="eyebrow">Production actions and shared controls</div>
+<h2>4. Bulk production actions</h2>
+<p>These are useful additions even when they do not change Printavo records. Their standalone packaging and any additional API requirements still need scoping.</p>
+<ul>
+<li><strong>Print workorders</strong> for selected orders.</li>
+<li><strong>Download order PDFs</strong> as a batch.</li>
+<li><strong>Export selected orders and line items</strong> to CSV.</li>
+<li><strong>Generate purchasing lists</strong> grouped by vendor, style, color, and size.</li>
+<li><strong>Identify missing categories, goods statuses, or tasks</strong> and open the relevant bulk-fix screen.</li>
+<li><strong>Compare a spreadsheet against Printavo</strong> and propose only the differences.</li>
+<li><strong>Run combined actions:</strong> for example, mark selected garments ordered, complete their purchasing tasks, and optionally change order status.</li>
+</ul>
+<div class="callout warning"><strong>Combined actions are not an atomic transaction.</strong> Each step must report its own result. Do not imply that Printavo can automatically roll the entire sequence back if a later step fails.</div>
+<h2>5. Features shared by every operation</h2>
+<h3>Selection and review</h3>
+<ul>
+<li><strong>Flexible selection:</strong> paste order numbers, upload a CSV, or filter by status, customer, dates, category, product, and task.</li>
+<li><strong>Bulk selection:</strong> select all matching records or only individually selected rows.</li>
+<li><strong>Before-and-after preview:</strong> show every proposed change before applying it.</li>
+<li><strong>Explicit write mode:</strong> distinguish “fill blanks only” from replacing populated values.</li>
+<li><strong>Exclusions:</strong> skip completed orders or other excluded records.</li>
+<li><strong>Reusable workflows:</strong> saved filters and operation presets.</li>
+</ul>
+<h3>Execution and recovery</h3>
+<ul>
+<li><strong>Recheck current values before writing:</strong> an outdated preview must not overwrite another person’s intervening changes.</li>
+<li><strong>Batch progress and per-record results:</strong> clearly identify successes, skips, failures, and partial completion.</li>
+<li><strong>Change history:</strong> record who changed what, when, and the previous value.</li>
+<li><strong>Safe retries:</strong> avoid duplicate tasks, appended notes, and attachments. An uncertain write result needs verification rather than a blind repeat.</li>
+<li><strong>Controlled reversal where possible:</strong> provide operation-specific recovery, not a blanket promise of “undo.”</li>
+</ul>
+<div class="foot">Printavo Bulk Operations • Product handoff • 3 / 4</div>
+</section>
+
+<section class="page">
+<div class="eyebrow">Recommended starting scope</div>
+<h2>6. Recommended first version</h2>
+<p>This is a recommendation for prioritization, not an approved build commitment.</p>
+<table>
+<thead><tr><th>Priority</th><th>Initial capability</th><th>Why include it</th></tr></thead>
+<tbody>
+<tr><td><strong>1</strong></td><td>Bulk category changes</td><td>Core user request with an existing foundation.</td></tr>
+<tr><td><strong>2</strong></td><td>Bulk product/goods-status changes</td><td>Core purchasing and receiving workflow.</td></tr>
+<tr><td><strong>3</strong></td><td>Bulk order-status changes</td><td>High-value workflow action, with explicit automation warnings.</td></tr>
+<tr><td><strong>4</strong></td><td>Bulk task completion and reopening</td><td>Core user request with task integration already present.</td></tr>
+<tr><td><strong>5</strong></td><td>Bulk production-note appending</td><td>Useful shared instructions without replacing existing notes.</td></tr>
+<tr><td><strong>6</strong></td><td>CSV-driven corrections with preview</td><td>Reusable input and review workflow for supported fields—not permission to edit every Printavo field.</td></tr>
+</tbody>
+</table>
+<p><strong>Defer initially:</strong> pricing/cost edits, customer reassignment, and deletion tools. Mistakes in these areas have greater financial or operational consequences.</p>
+<h2>7. Suggested common workflow</h2>
+<div class="callout"><strong>Select records → Choose operation → Configure changes → Review differences and warnings → Confirm → Track results → Inspect failures or recover.</strong></div>
+<p>Each operation should use this same interaction pattern. The exact write rules, warnings, and recovery options must remain specific to the operation.</p>
+<h2>8. Engineering handoff notes</h2>
+<ul>
+<li><strong>Reuse selectively:</strong> the existing project contains foundations for line-item updates, categories, statuses, task changes, production notes, production-file attachment, and related production workflows. Extract the relevant pieces rather than copying the whole Hub.</li>
+<li><strong>Verify before promising support:</strong> confirm each proposed field and operation against Printavo’s API, including behavior differences between quotes and invoices.</li>
+<li><strong>Preserve safety:</strong> retain explicit approvals, fresh-value checks, per-record outcomes, and duplicate-write protections when moving logic into the standalone product.</li>
+<li><strong>Scope the standalone connection model:</strong> authentication, Printavo account connection, permissions, and single-account versus multi-account use remain design questions. They were not decided in this discussion.</li>
+<li><strong>Start with one reusable batch engine:</strong> the recommended selection, preview, execution, and audit controls should support the initial operations and later additions.</li>
+</ul>
+<h2>Decision status</h2>
+<p>The user is considering a standalone app and requested an operation inventory and handoff document. This document records that concept and the recommendations made so far. It does not authorize implementation, live Printavo writes, a deployment, or every item in the candidate inventory.</p>
+<div class="foot">Printavo Bulk Operations • Product handoff • 4 / 4</div>
+</section>
+</body>
+</html>
