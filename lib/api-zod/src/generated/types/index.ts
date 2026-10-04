@@ -156,6 +156,7 @@ export * from './chipplyCategoryResultOutcome';
 export * from './chipplyCategorySelection';
 export * from './chipplyDataCentsMap';
 export * from './chipplyDataDetail';
+export * from './chipplyDataInvoiceReference';
 export * from './chipplyDataLine';
 export * from './chipplyDataOverride';
 export * from './chipplyDataPreview';

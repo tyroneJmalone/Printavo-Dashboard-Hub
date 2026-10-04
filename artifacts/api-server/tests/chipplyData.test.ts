@@ -53,6 +53,20 @@ test("actual current status outranks planned PRINT and nickname", () => {
   assert.equal(r.reconciliation.outcome, "matched");
   assert.equal(r.itemTotalCents, line.itemTotalCents);
 });
+test("invoice display uses visual numbers while matching and overrides retain internal IDs", () => {
+  const invoice = { ...mirror, invoiceId: "internal-record-987", visualId: 22251 };
+  const matched = reconcileData(one, "553498", [invoice])[0].reconciliation;
+  assert.equal(matched.invoiceId, "internal-record-987");
+  assert.equal(matched.invoiceVisualId, 22251);
+  assert.deepEqual(matched.candidateInvoices, [{ invoiceId: "internal-record-987", visualId: 22251 }]);
+  const incomplete = reconcileData(one, "553498", [{ ...invoice, detailSyncState: "pending" }])[0].reconciliation;
+  assert.equal(incomplete.outcome, "incomplete");
+  assert.equal(incomplete.invoiceId, null);
+  assert.equal(incomplete.invoiceVisualId, null);
+  assert.equal(incomplete.candidateInvoices[0].visualId, 22251);
+  const absent = reconcileData(one, "553498", [mirror])[0].reconciliation;
+  assert.equal(absent.invoiceVisualId, null, "Never display the internal ID as an invoice number");
+});
 test("Printavo size enum prefixes normalize without inventing generic other sizes", () => {
   const items = [{ ...mirror.items[0], sizes: [{ size: `size_${line.size.toLowerCase()}`, count: 1 }, { size: "size_xs", count: null as unknown as number }] }];
   assert.equal(reconcileData(one, "553498", [{ ...mirror, items }])[0].reconciliation.outcome, "matched");

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ChipplyDataInvoiceReference } from './chipplyDataInvoiceReference';
 import type { ChipplyDataReconciliationOutcome } from './chipplyDataReconciliationOutcome';
 
 export interface ChipplyDataReconciliation {
@@ -16,6 +17,9 @@ export interface ChipplyDataReconciliation {
   actualMethod: string | null;
   /** @nullable */
   invoiceId: string | null;
+  /** @nullable */
+  invoiceVisualId: number | null;
+  candidateInvoices: ChipplyDataInvoiceReference[];
   candidateInvoiceIds: string[];
   reason: string;
 }

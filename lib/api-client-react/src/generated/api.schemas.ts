@@ -41,6 +41,12 @@ export const ChipplyDataReconciliationOutcome = {
   unverified: 'unverified',
 } as const;
 
+export interface ChipplyDataInvoiceReference {
+  invoiceId: string;
+  /** @nullable */
+  visualId: number | null;
+}
+
 export interface ChipplyDataReconciliation {
   outcome: ChipplyDataReconciliationOutcome;
   /**
@@ -50,6 +56,9 @@ export interface ChipplyDataReconciliation {
   actualMethod: string | null;
   /** @nullable */
   invoiceId: string | null;
+  /** @nullable */
+  invoiceVisualId: number | null;
+  candidateInvoices: ChipplyDataInvoiceReference[];
   candidateInvoiceIds: string[];
   reason: string;
 }

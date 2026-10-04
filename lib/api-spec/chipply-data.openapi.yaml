@@ -110,13 +110,23 @@ components:
         unitComponentsExtendedCents: { $ref: "#/components/schemas/ChipplyDataCentsMap" }
     ChipplyDataReconciliation:
       type: object
-      required: [outcome, actualMethod, invoiceId, candidateInvoiceIds, reason]
+      required: [outcome, actualMethod, invoiceId, invoiceVisualId, candidateInvoices, candidateInvoiceIds, reason]
       properties:
         outcome: { type: string, enum: [matched, reviewed, ambiguous, quantity-mismatch, incomplete, unmatched, unverified] }
         actualMethod: { type: [string, "null"], description: "screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)" }
         invoiceId: { type: [string, "null"] }
+        invoiceVisualId: { type: [integer, "null"] }
+        candidateInvoices:
+          type: array
+          items: { $ref: "#/components/schemas/ChipplyDataInvoiceReference" }
         candidateInvoiceIds: { type: array, items: { type: string } }
         reason: { type: string }
+    ChipplyDataInvoiceReference:
+      type: object
+      required: [invoiceId, visualId]
+      properties:
+        invoiceId: { type: string }
+        visualId: { type: [integer, "null"] }
     ChipplyDataLine:
       type: object
       required: [rowOrdinal, orderNumber, orderDate, processName, plannedMethod, style, color, size, productName, vendor, quantity, itemTotalCents, unitCents, reconciliation]

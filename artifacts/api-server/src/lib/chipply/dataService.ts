@@ -3,7 +3,7 @@ import type { ParsedData } from "./dataImport";
 import { reconcileData, type MirrorInvoice, type DataOverride } from "./dataReconciliation";
 
 export async function loadDataMirror(event: string): Promise<MirrorInvoice[]> {
-  const result = await pool.query(`SELECT o.printavo_id AS "invoiceId",o.nickname,o.status_name AS "statusName",
+  const result = await pool.query(`SELECT o.printavo_id AS "invoiceId",o.visual_id AS "visualId",o.nickname,o.status_name AS "statusName",
     o.detail_sync_state AS "detailSyncState",o.detail_synced_at AS "detailSyncedAt",o.printavo_updated_at AS "syncedAt",
     COALESCE((SELECT jsonb_agg(jsonb_build_object('style',COALESCE(l.item_number,''),'color',COALESCE(l.color,''),
     'quantity',l.items,'sizes',COALESCE(l.sizes,'[]'::jsonb))) FROM pv_line_items l WHERE l.order_id=o.printavo_id),'[]'::jsonb) AS items

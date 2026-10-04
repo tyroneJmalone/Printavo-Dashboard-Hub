@@ -309,6 +309,11 @@ export const PreviewChipplyDataResponse = zod.object({
   "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
   "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
   "invoiceId": zod.string().nullable(),
+  "invoiceVisualId": zod.number().nullable(),
+  "candidateInvoices": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable()
+})),
   "candidateInvoiceIds": zod.array(zod.string()),
   "reason": zod.string()
 })
@@ -394,6 +399,11 @@ export const GetChipplyDataDetailResponse = zod.object({
   "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
   "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
   "invoiceId": zod.string().nullable(),
+  "invoiceVisualId": zod.number().nullable(),
+  "candidateInvoices": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable()
+})),
   "candidateInvoiceIds": zod.array(zod.string()),
   "reason": zod.string()
 })
@@ -493,6 +503,11 @@ export const ReviewChipplyDataMatchResponse = zod.object({
   "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
   "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
   "invoiceId": zod.string().nullable(),
+  "invoiceVisualId": zod.number().nullable(),
+  "candidateInvoices": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable()
+})),
   "candidateInvoiceIds": zod.array(zod.string()),
   "reason": zod.string()
 })

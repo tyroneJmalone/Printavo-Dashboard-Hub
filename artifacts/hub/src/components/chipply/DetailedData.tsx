@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getListChipplyStoresQueryKey, getListDetectedChipplyStoresQueryKey, getGetChipplyStoreQueryKey, getGetChipplySetupQueryKey } from "@workspace/api-client-react";
+import { getListChipplyStoresQueryKey, getListDetectedChipplyStoresQueryKey, getGetChipplyStoreQueryKey, getGetChipplySetupQueryKey, type ChipplyDataReconciliation } from "@workspace/api-client-react";
 
 interface Summary {
   lineCount: number; orderCount: number; quantity: number; itemTotalCents: number;
@@ -15,7 +15,7 @@ interface Line {
   rowOrdinal: number; orderNumber: string; orderDate: string; productName: string; vendor: string;
   style: string; color: string; size: string; processName: string; plannedMethod: string | null;
   quantity: number; itemTotalCents: number; unitCents: Record<string, number>;
-  reconciliation: { outcome: string; actualMethod: string | null; invoiceId: string | null; candidateInvoiceIds: string[]; reason: string };
+  reconciliation: ChipplyDataReconciliation;
 }
 interface Preview {
   previewId: string; expiresAt: string; salesOrder: string; storeName: string; sourceHash: string;
@@ -31,6 +31,11 @@ interface Detail {
 const field = "w-full rounded border border-slate-700 bg-slate-800 p-2 text-sm text-slate-200";
 const money = (value: number | null | undefined) => value == null || !Number.isFinite(value) ? "Not provided" : (value / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 const method = (value: string | null) => value ?? "Unresolved";
+function InvoiceLink({ visualId }: { visualId: number | null | undefined }) {
+  return visualId != null
+    ? <a href={`https://www.printavo.com/invoices/${visualId}`} target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline" aria-label={`Open Printavo invoice ${visualId} in a new tab`}>#{visualId} ↗</a>
+    : <span className="text-slate-400">Invoice number unavailable</span>;
+}
 function ErrorNotice({ error }: { error: Error | null }) {
   return error ? <p role="alert" className="rounded border border-red-800 bg-red-950/30 p-3 text-sm text-red-200">{error.message}</p> : null;
 }
@@ -60,7 +65,9 @@ function Lines({ lines, onReview }: { lines: Line[]; onReview?: (line: Line) => 
       <td className="p-2 min-w-40">{line.productName}<p className="text-slate-400">{line.vendor} · {line.style} · {line.color} · {line.size}</p></td>
       <td className="p-2 min-w-40">{line.processName}<p className="text-slate-400">{method(line.plannedMethod)}</p></td>
       <td className="p-2">{line.quantity}<br />{money(line.itemTotalCents)}</td>
-      <td className="p-2">{method(line.reconciliation.actualMethod)}<p className="text-slate-400">{line.reconciliation.invoiceId ? `Invoice ${line.reconciliation.invoiceId}` : "No verified invoice"}</p></td>
+      <td className="p-2">{method(line.reconciliation.actualMethod)}<p className="text-slate-400">{line.reconciliation.invoiceId ? <InvoiceLink visualId={line.reconciliation.invoiceVisualId} /> : "No verified invoice"}</p>
+        {!line.reconciliation.invoiceId && (line.reconciliation.candidateInvoices ?? []).map(candidate => <p key={candidate.invoiceId} className="mt-1 text-slate-400">Candidate (not verified): <InvoiceLink visualId={candidate.visualId} /></p>)}
+      </td>
       <td className="p-2 min-w-64"><strong className={["matched", "reviewed"].includes(line.reconciliation.outcome) ? "text-emerald-400" : "text-amber-300"}>{line.reconciliation.outcome}</strong><p className="mt-1 text-slate-400">{line.reconciliation.reason}</p>
         {onReview && line.reconciliation.candidateInvoiceIds.length > 0 && <button className="mt-2 text-emerald-400 underline" onClick={() => onReview(line)}>Review invoice choice</button>}
         {onReview && !line.reconciliation.candidateInvoiceIds.length && <p className="mt-1 text-slate-500">No supported invoice choice; cannot resolve here.</p>}
@@ -163,7 +170,8 @@ export function DetailedStoreData({ storeId, onBusyChange }: { storeId: string; 
     </>}
     <Dialog open={!!review} onOpenChange={open => { if (!open && !save.isPending) setReview(null); }}><DialogContent className="bg-slate-900 border-slate-700 text-slate-200"><DialogHeader><DialogTitle>Review invoice choice · row {review?.rowOrdinal}</DialogTitle><DialogDescription>This is a local audited selection, not a production-method override. The server validates the complete process group and quantity coverage. Unsupported or incomplete evidence cannot be forced.</DialogDescription></DialogHeader>
       <p className="text-sm">{review?.processName} · {review?.style} / {review?.color} / {review?.size}</p>
-      <label className="text-xs">Candidate invoice<select className={`${field} mt-1`} value={invoiceId} onChange={e => setInvoiceId(e.target.value)}><option value="">Choose an invoice</option>{review?.reconciliation.candidateInvoiceIds.map(id => <option key={id} value={id}>Invoice {id}</option>)}</select></label>
+      <label className="text-xs">Candidate invoice<select className={`${field} mt-1`} value={invoiceId} onChange={e => setInvoiceId(e.target.value)}><option value="">Choose an invoice</option>{review?.reconciliation.candidateInvoices.map(candidate => <option key={candidate.invoiceId} value={candidate.invoiceId}>{candidate.visualId != null ? `Invoice #${candidate.visualId}` : "Invoice number unavailable"}</option>)}</select></label>
+      {invoiceId && <p className="text-xs">Open selected invoice: <InvoiceLink visualId={review?.reconciliation.candidateInvoices.find(candidate => candidate.invoiceId === invoiceId)?.visualId} /></p>}
       <label className="text-xs">Reason (5–1,000 characters required)<textarea className={`${field} mt-1`} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder="Explain the evidence for this invoice choice" /></label><ErrorNotice error={save.error} />
       <Button disabled={!invoiceId || reason.trim().length < 5 || save.isPending} onClick={() => save.mutate()}>{save.isPending ? "Validating…" : "Validate and record local choice"}</Button>
     </DialogContent></Dialog>

@@ -1,13 +1,14 @@
 import { method, type DataLine } from "./dataImport";
 
 export interface MirrorInvoice {
-  invoiceId: string; nickname: string; statusName: string | null;
+  invoiceId: string; visualId?: number | null; nickname: string; statusName: string | null;
   detailSyncState: string; detailSyncedAt: string | null; syncedAt: string | null;
   items: { style: string; color: string; quantity: number; sizes: { size: string; count: number }[] }[];
 }
 export interface Reconciliation {
   outcome: "matched" | "reviewed" | "ambiguous" | "quantity-mismatch" | "incomplete" | "unmatched" | "unverified";
   actualMethod: string | null; invoiceId: string | null; candidateInvoiceIds: string[]; reason: string;
+  invoiceVisualId: number | null; candidateInvoices: { invoiceId: string; visualId: number | null }[];
 }
 export interface DataOverride { rowOrdinal: number; invoiceId: string; reason: string; actor: string; createdAt: string }
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -43,7 +44,9 @@ function quantities(lines: DataLine[]): Map<string, number> {
 export function reconcileData(lines: DataLine[], event: string, invoices: MirrorInvoice[], overrides: DataOverride[] = []): (DataLine & { reconciliation: Reconciliation })[] {
   return lines.map(line => {
     const candidates = invoices.filter(i => sameProcess(line, i, event));
-    const base: Reconciliation = { outcome: "unmatched", actualMethod: null, invoiceId: null, candidateInvoiceIds: candidates.map(i => i.invoiceId), reason: "No same-event process suffix match" };
+    const base: Reconciliation = { outcome: "unmatched", actualMethod: null, invoiceId: null, invoiceVisualId: null,
+      candidateInvoices: candidates.map(i => ({ invoiceId: i.invoiceId, visualId: i.visualId ?? null })),
+      candidateInvoiceIds: candidates.map(i => i.invoiceId), reason: "No same-event process suffix match" };
     const override = overrides.find(o => o.rowOrdinal === line.rowOrdinal);
     const chosen = override ? candidates.find(i => i.invoiceId === override.invoiceId) : candidates.length === 1 ? candidates[0] : undefined;
     if (!chosen) {
@@ -75,6 +78,6 @@ export function reconcileData(lines: DataLine[], event: string, invoices: Mirror
     const explicitMixed = /\bMERCH\s*-?\s*MIXED(?:\s+DECO(?:RATION)?)?\b/i.test(chosen.statusName ?? "");
     const ambiguous = statusTokens.size > 1 || /\b(mixed|multiple)\b/i.test(chosen.statusName ?? "");
     const actualMethod = explicitMixed ? "mixed-decoration" : ambiguous ? null : statusMethod ?? nicknameMethod;
-    return { ...line, reconciliation: { ...base, outcome: actualMethod ? override ? "reviewed" : "matched" : "unverified", actualMethod, invoiceId: chosen.invoiceId, reason: actualMethod ? `${statusMethod || explicitMixed ? "Current mirrored status" : "Nickname fallback"}; full quantities verified${override ? "; reviewed invoice selection" : ""}` : "No unambiguous production method evidence" } };
+    return { ...line, reconciliation: { ...base, outcome: actualMethod ? override ? "reviewed" : "matched" : "unverified", actualMethod, invoiceId: chosen.invoiceId, invoiceVisualId: chosen.visualId ?? null, reason: actualMethod ? `${statusMethod || explicitMixed ? "Current mirrored status" : "Nickname fallback"}; full quantities verified${override ? "; reviewed invoice selection" : ""}` : "No unambiguous production method evidence" } };
   });
 }
