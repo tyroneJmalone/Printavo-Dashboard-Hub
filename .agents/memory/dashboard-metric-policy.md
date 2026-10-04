@@ -19,6 +19,17 @@ Report mirror-history and conversion-date limitations rather than inventing
 original quote dates.
 
 Use Eastern calendar periods with Monday-start weeks. The requested
+Orders Report presets follow the same rule: Today/Yesterday are civil dates,
+LW is the previous Monday–Sunday, LM is the previous calendar month, LQ is
+the previous Jan–Mar / Apr–Jun / Jul–Sep / Oct–Dec quarter, and LY is the
+previous January–December year. To-date periods start at the corresponding
+calendar boundary. Never replace these with rolling 7/30/90/365-day windows.
+
+**Why:** The user explicitly reaffirmed calendar-based Orders Report presets.
+
+**How to apply:** Preserve these semantics in future report preset changes.
+
+The requested dashboard
 periods are Today, WTD, LW, MTD, QTD, and YTD across performance, averages,
 activity, and Close Rate. LW is the previous full Monday–Sunday, not rolling
 seven days. Average Order Volume means pieces per order.
