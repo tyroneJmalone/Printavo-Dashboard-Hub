@@ -67,6 +67,24 @@ test("invoice display uses visual numbers while matching and overrides retain in
   const absent = reconcileData(one, "553498", [mirror])[0].reconciliation;
   assert.equal(absent.invoiceVisualId, null, "Never display the internal ID as an invoice number");
 });
+test("one-size Other evidence clears group flags without weakening apparel or quantity checks", () => {
+  const cap = { ...line, style: "X210P", color: "Lavender", size: "Adjustable", quantity: 1 };
+  const item = { style: cap.style, color: cap.color, quantity: 1, sizes: [{ size: "size_other", count: 1 }] };
+  const reconcile = (lines: typeof one, items: MirrorInvoice["items"]) => reconcileData(lines, "553498", [{ ...mirror, items }]);
+  assert.equal(reconcile([cap], [item])[0].reconciliation.outcome, "matched");
+  assert.match(reconcile([cap], [item])[0].reconciliation.reason, /one-size labels reconciled/);
+  const bag = { ...cap, style: "411095", color: "Gear Grey/ Black", size: "OSFA" };
+  const apparel = { ...cap, rowOrdinal: 2, style: "EXP15WPQ", color: "Black", size: "M" };
+  const bagItem = { ...item, style: bag.style, color: bag.color };
+  const apparelItem = { style: apparel.style, color: apparel.color, quantity: 1, sizes: [{ size: "size_m", count: 1 }] };
+  assert.ok(reconcile([bag, apparel], [bagItem, apparelItem]).every(l => l.reconciliation.outcome === "matched"));
+  assert.equal(reconcile([{ ...cap, size: "M" }], [item])[0].reconciliation.outcome, "quantity-mismatch");
+  assert.equal(reconcile([cap], [{ ...item, quantity: 2, sizes: [{ size: "size_other", count: 2 }] }])[0].reconciliation.outcome, "quantity-mismatch");
+  assert.equal(reconcile([cap], [{ ...item, color: "White" }])[0].reconciliation.outcome, "quantity-mismatch");
+  assert.equal(reconcile([cap, { ...cap, rowOrdinal: 2, size: "M" }], [{ ...item, quantity: 2, sizes: [{ size: "size_other", count: 2 }] }])[0].reconciliation.outcome, "quantity-mismatch");
+  assert.equal(reconcile([cap, { ...cap, rowOrdinal: 2, size: "OSFA" }], [{ ...item, quantity: 2, sizes: [{ size: "size_other", count: 2 }] }])[0].reconciliation.outcome, "quantity-mismatch");
+  assert.equal(reconcile([cap], [{ ...item, sizes: [{ size: "size_m", count: 1 }] }])[0].reconciliation.outcome, "quantity-mismatch");
+});
 test("Printavo size enum prefixes normalize without inventing generic other sizes", () => {
   const items = [{ ...mirror.items[0], sizes: [{ size: `size_${line.size.toLowerCase()}`, count: 1 }, { size: "size_xs", count: null as unknown as number }] }];
   assert.equal(reconcileData(one, "553498", [{ ...mirror, items }])[0].reconciliation.outcome, "matched");

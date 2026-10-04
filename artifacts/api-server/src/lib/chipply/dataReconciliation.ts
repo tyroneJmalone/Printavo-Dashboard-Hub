@@ -41,6 +41,26 @@ function quantities(lines: DataLine[]): Map<string, number> {
   for (const l of lines) { const k = `${norm(l.style)}|${norm(l.color)}|${size(l.size)}`; m.set(k, (m.get(k) ?? 0) + l.quantity); }
   return m;
 }
+// Printavo has no dedicated OSFA/Adjustable size enum. Only interpret Other
+// from unambiguous same-style/color one-size source evidence, never as apparel.
+const oneSizeLabels = new Set(["osfa", "osfm", "os", "onesize", "onesizefitsall", "onesizefitsmost", "adjustable"]);
+function oneSizeEvidence(lines: DataLine[], items: MirrorInvoice["items"]): Map<string, string> {
+  const labels = new Map<string, Set<string>>();
+  for (const line of lines) {
+    const key = `${norm(line.style)}|${norm(line.color)}`;
+    const values = labels.get(key) ?? new Set<string>();
+    values.add(size(line.size)); labels.set(key, values);
+  }
+  const result = new Map<string, string>();
+  for (const [key, values] of labels) {
+    const [label] = [...values];
+    if (values.size !== 1 || !oneSizeLabels.has(label) || key.startsWith("|") || key.endsWith("|")) continue;
+    const matching = items.filter(item => `${norm(item.style)}|${norm(item.color)}` === key);
+    if (matching.length && matching.every(item => Array.isArray(item.sizes) &&
+      item.sizes.every(s => !Number(s.count) || size(s.size) === "other"))) result.set(key, label);
+  }
+  return result;
+}
 export function reconcileData(lines: DataLine[], event: string, invoices: MirrorInvoice[], overrides: DataOverride[] = []): (DataLine & { reconciliation: Reconciliation })[] {
   return lines.map(line => {
     const candidates = invoices.filter(i => sameProcess(line, i, event));
@@ -56,7 +76,9 @@ export function reconcileData(lines: DataLine[], event: string, invoices: Mirror
     if (chosen.detailSyncState !== "complete" || !chosen.detailSyncedAt || (chosen.syncedAt && new Date(chosen.detailSyncedAt) < new Date(chosen.syncedAt))) {
       return { ...line, reconciliation: { ...base, outcome: "incomplete", reason: "Complete current mirrored quantity details required" } };
     }
-    const expected = quantities(lines.filter(l => processSuffix(l.processName) === processSuffix(line.processName)));
+    const processLines = lines.filter(l => processSuffix(l.processName) === processSuffix(line.processName));
+    const expected = quantities(processLines);
+    const oneSize = oneSizeEvidence(processLines, chosen.items);
     const actual = new Map<string, number>();
     let complete = true;
     for (const item of chosen.items) {
@@ -64,7 +86,9 @@ export function reconcileData(lines: DataLine[], event: string, invoices: Mirror
       for (const s of item.sizes) {
         if (!Number.isSafeInteger(Number(s.count)) || Number(s.count) < 0) { complete = false; break; }
         if (!Number(s.count)) continue;
-        const k = `${norm(item.style)}|${norm(item.color)}|${size(s.size)}`;
+        const productKey = `${norm(item.style)}|${norm(item.color)}`;
+        const normalizedSize = size(s.size);
+        const k = `${productKey}|${normalizedSize === "other" ? oneSize.get(productKey) ?? normalizedSize : normalizedSize}`;
         actual.set(k, (actual.get(k) ?? 0) + Number(s.count));
       }
     }
@@ -78,6 +102,6 @@ export function reconcileData(lines: DataLine[], event: string, invoices: Mirror
     const explicitMixed = /\bMERCH\s*-?\s*MIXED(?:\s+DECO(?:RATION)?)?\b/i.test(chosen.statusName ?? "");
     const ambiguous = statusTokens.size > 1 || /\b(mixed|multiple)\b/i.test(chosen.statusName ?? "");
     const actualMethod = explicitMixed ? "mixed-decoration" : ambiguous ? null : statusMethod ?? nicknameMethod;
-    return { ...line, reconciliation: { ...base, outcome: actualMethod ? override ? "reviewed" : "matched" : "unverified", actualMethod, invoiceId: chosen.invoiceId, invoiceVisualId: chosen.visualId ?? null, reason: actualMethod ? `${statusMethod || explicitMixed ? "Current mirrored status" : "Nickname fallback"}; full quantities verified${override ? "; reviewed invoice selection" : ""}` : "No unambiguous production method evidence" } };
+    return { ...line, reconciliation: { ...base, outcome: actualMethod ? override ? "reviewed" : "matched" : "unverified", actualMethod, invoiceId: chosen.invoiceId, invoiceVisualId: chosen.visualId ?? null, reason: actualMethod ? `${statusMethod || explicitMixed ? "Current mirrored status" : "Nickname fallback"}; full quantities verified${oneSize.size ? "; one-size labels reconciled with Printavo Other for matching products/colors" : ""}${override ? "; reviewed invoice selection" : ""}` : "No unambiguous production method evidence" } };
   });
 }

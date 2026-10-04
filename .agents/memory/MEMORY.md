@@ -32,6 +32,7 @@
 - [Shipping rate estimator](printavo-shipping-estimator.md) — ported into Hub with intentional deviations (not drift): 2 backend micro-fixes + smart paste parser (Tyler-requested).
 - [Chipply revenue separation & live linking](chipply-separation.md) — Chipply dollars NEVER sum into Printavo revenue; invoice links derived live from nickname prefix, deliberately no link table.
 - [Guided Chipply setup](chipply-guided-setup.md) — optional shared per-store guide; user confirmations are not verified facts, and source changes invalidate old approvals.
+- [Chipply one-size evidence](chipply-one-size-evidence.md) — Other versus OSFA/Adjustable can falsely block whole process groups; require product-specific evidence, not blanket equivalence.
 - [e2e heavy-table steps crash the test notebook](e2e-heavy-steps.md) — never verify large rendered tables in test plans; assert a few rows or skip, verify the query via psql instead.
 - [Gmail metadata scope](gmail-metadata-scope.md) — DWD scope must be gmail.readonly (gmail.metadata forbids q= backfill searches); privacy via format=metadata.
 - [Express body limit vs text caps](express-body-limit-vs-text-caps.md) — express.json defaults 100KB; any pasted/upload text endpoint 413s before the route unless the limit stays ahead of the app cap.
