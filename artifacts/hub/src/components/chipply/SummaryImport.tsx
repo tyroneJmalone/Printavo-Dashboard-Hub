@@ -119,7 +119,18 @@ export function SummaryImportReview({ expectedStoreId, onSaved, onBusyChange }: 
       {hiddenCount > 0 && <p className="text-xs text-slate-500">{hiddenCount} other store row{hiddenCount === 1 ? "" : "s"} in this file hidden — import them from Chipply Stores.</p>}
       <p className="text-[11px] text-slate-500">{SOURCE_NOTE}</p>
       {rows.length === 0 && <p className="rounded border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200">{expectedStoreId ? "This file has no row for this store's event. Nothing can be confirmed here." : "No rows found."}</p>}
-      {!expectedStoreId && <div className="flex gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => setSelected(new Set(rows.filter(r => r.supported && r.storeId).map(r => r.eventId)))}>Select existing Group stores</Button><Button size="sm" variant="outline" disabled={busy} onClick={() => setSelected(new Set())}>Clear selection</Button></div>}
+      {!expectedStoreId && <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-900 p-3">
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" data-testid="button-select-all-summary" disabled={busy || !rows.some(r => r.supported)} onClick={() => setSelected(new Set(rows.filter(r => r.supported).map(r => r.eventId)))}>Select all supported stores</Button>
+          <Button size="sm" variant="outline" data-testid="button-select-new-summary" disabled={busy || !rows.some(r => r.supported && !r.storeId)} onClick={() => setSelected(new Set(rows.filter(r => r.supported && !r.storeId).map(r => r.eventId)))}>Select new stores only</Button>
+          <Button size="sm" variant="outline" data-testid="button-select-existing-summary" disabled={busy || !rows.some(r => r.supported && r.storeId)} onClick={() => setSelected(new Set(rows.filter(r => r.supported && r.storeId).map(r => r.eventId)))}>Select existing stores only</Button>
+          <Button size="sm" variant="outline" data-testid="button-clear-summary" disabled={busy || selected.size === 0} onClick={() => setSelected(new Set())}>Clear selection</Button>
+        </div>
+        <p role="status" data-testid="text-summary-selection" className="text-xs text-slate-300">
+          {selected.size} selected: {rows.filter(r => selected.has(r.eventId) && !r.storeId).length} new stores to create, {rows.filter(r => selected.has(r.eventId) && r.storeId).length} existing stores to check for blank fields. Unsupported rows are excluded.
+        </p>
+        <Button data-testid="button-confirm-summary-top" disabled={busy || selected.size === 0} onClick={() => confirm.mutate()} className="bg-[#059669] hover:bg-[#047857] text-white">{confirm.isPending ? <><Loader2 size={14} className="mr-1.5 animate-spin" />Importing…</> : `Import ${selected.size} selected stores`}</Button>
+      </div>}
       <div className="space-y-2">{rows.map((r) => {
         const on = selected.has(r.eventId);
         return <div key={r.eventId} data-testid={`card-summary-row-${r.eventId}`} className={`rounded-lg border p-3 space-y-2 ${!r.supported ? "border-slate-800 opacity-60" : on ? "border-[#059669] bg-emerald-950/10" : "border-slate-700"}`}>
@@ -136,7 +147,7 @@ export function SummaryImportReview({ expectedStoreId, onSaved, onBusyChange }: 
         </div>;
       })}</div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button data-testid="button-confirm-summary" disabled={busy || selected.size === 0} onClick={() => confirm.mutate()} className="bg-[#059669] hover:bg-[#047857] text-white">{confirm.isPending ? <><Loader2 size={14} className="mr-1.5 animate-spin" />Saving…</> : `Confirm ${selected.size} selected`}</Button>
+        <Button data-testid="button-confirm-summary" disabled={busy || selected.size === 0} onClick={() => confirm.mutate()} className="bg-[#059669] hover:bg-[#047857] text-white">{confirm.isPending ? <><Loader2 size={14} className="mr-1.5 animate-spin" />Importing…</> : `Import ${selected.size} selected stores`}</Button>
         <span className="text-xs text-slate-500">Rows are unselected by default. Only checked rows are written.</span>
       </div>
     </>}
