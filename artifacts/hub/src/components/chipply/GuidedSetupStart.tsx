@@ -2,14 +2,15 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import type { ChipplyStore } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardPaste, FileSpreadsheet, Search, ArrowRight, Compass } from "lucide-react";
+import { FileText, ClipboardPaste, FileSpreadsheet, Search, ArrowRight, Compass } from "lucide-react";
 
-export function GuidedSetupStart({ open, onOpenChange, stores, onNewFromEmail, onNewFromDetailed }: {
+export function GuidedSetupStart({ open, onOpenChange, stores, onNewFromEmail, onNewFromDetailed, onNewFromSummary }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   stores: ChipplyStore[];
   onNewFromEmail: () => void;
   onNewFromDetailed: () => void;
+  onNewFromSummary: () => void;
 }) {
   const [q, setQ] = useState("");
   const matches = useMemo(() => {
@@ -38,6 +39,10 @@ export function GuidedSetupStart({ open, onOpenChange, stores, onNewFromEmail, o
             <button data-testid="button-guide-new-detailed" onClick={onNewFromDetailed} className="w-full text-left rounded-lg border border-slate-700 bg-slate-800 hover:border-[#059669] px-3 py-3 transition-colors">
               <span className="flex items-center gap-2 font-semibold text-slate-100"><FileSpreadsheet size={15} className="text-[#059669]" />Detailed data export</span>
               <span className="text-xs text-slate-400">CSV / XLSX row-level export.</span>
+            </button>
+            <button data-testid="button-guide-new-summary" onClick={onNewFromSummary} className="w-full text-left rounded-lg border border-slate-700 bg-slate-800 hover:border-[#059669] px-3 py-3 transition-colors">
+              <span className="flex items-center gap-2 font-semibold text-slate-100"><FileText size={15} className="text-[#059669]" />Store Summary CSV</span>
+              <span className="text-xs text-slate-400">Pick Group stores to create; blank fills only.</span>
             </button>
             <p className="text-[11px] text-slate-500">After saving, the guide opens for that store.</p>
           </div>

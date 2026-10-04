@@ -25,6 +25,8 @@ function result(rows: any[]) { return { rows, rowCount: rows.length }; }
     detail_synced_at: syncedAt, printavo_updated_at: "2026-01-01", missing: 0, line_hash: "hash",
   }] : []);
   if (sql.includes("FROM chipply_setup")) return result(saved ? [saved] : []);
+  if (sql.includes("FROM chipply_stores WHERE id")) return result(exists ? [{ id, event_id: "123456" }] : []);
+  if (sql.includes("FROM chipply_summary_observations")) return result([]);
   if (sql.includes("INSERT INTO chipply_setup")) {
     if (saved && saved.version !== args[6]) return result([]);
     saved = { currentStep: args[1], version: (saved?.version ?? 0) + 1,

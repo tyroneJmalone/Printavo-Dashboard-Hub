@@ -1,0 +1,169 @@
+paths:
+  /chipply/summary/preview:
+    post:
+      operationId: previewChipplySummary
+      tags: [Chipply]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/ChipplySummaryUploadRequest" }
+      responses:
+        "200":
+          description: Blank fills, discrepancies, and source-only values for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplySummaryPreview" }
+  /chipply/summary/confirm:
+    post:
+      operationId: confirmChipplySummary
+      tags: [Chipply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChipplySummaryConfirmRequest" }
+      responses:
+        "200":
+          description: Selected rows saved without overwriting populated fields
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplySummaryResult" }
+        "409": { description: "Preview expired, invalid, or current data changed; upload again" }
+  /chipply/summary/stores/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getChipplyStoreSummary
+      tags: [Chipply]
+      responses:
+        "200":
+          description: Latest source summary and live discrepancy decisions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplyStoreSummaryResponse" }
+  /chipply/summary/stores/{id}/retain:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: retainChipplySummaryValue
+      tags: [Chipply]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChipplySummaryRetainRequest" }
+      responses:
+        "200":
+          description: Existing Hub value retained for this exact comparison
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplyStoreSummaryResponse" }
+        "409": { description: Evidence changed; refresh before deciding }
+components:
+  schemas:
+    ChipplySummaryUploadRequest:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary }
+        expectedStoreId: { type: string, format: uuid }
+    ChipplySummaryConfirmRequest:
+      type: object
+      required: [previewId, selectedSalesOrders]
+      properties:
+        previewId: { type: string, format: uuid }
+        selectedSalesOrders: { type: array, minItems: 1, maxItems: 2000, uniqueItems: true, items: { type: string } }
+    ChipplySummaryRetainRequest:
+      type: object
+      required: [field, evidenceKey]
+      properties:
+        field: { type: string }
+        evidenceKey: { type: string }
+    ChipplySummarySource:
+      type: object
+      required: [eventId, storeName, storeType, status, openedAt, closedAt, productionDueAt, shipAt, contact, salesperson, orders, sales, processes, processesWithOrders]
+      properties:
+        eventId: { type: string }
+        storeName: { type: string }
+        storeType: { type: string }
+        status: { type: [string, "null"] }
+        openedAt: { type: [string, "null"] }
+        closedAt: { type: [string, "null"] }
+        productionDueAt: { type: [string, "null"] }
+        shipAt: { type: [string, "null"] }
+        contact: { type: [string, "null"] }
+        salesperson: { type: [string, "null"] }
+        orders: { type: [integer, "null"] }
+        sales: { type: [string, "null"] }
+        processes: { type: [integer, "null"] }
+        processesWithOrders: { type: [integer, "null"] }
+    ChipplySummaryComparison:
+      type: object
+      required: [field, label, current, incoming, action, evidenceKey]
+      properties:
+        field: { type: string }
+        label: { type: string }
+        current: { type: [string, number, "null"] }
+        incoming: { type: [string, number, "null"] }
+        action: { type: string, enum: [fill, conflict, same, source, retained] }
+        evidenceKey: { type: string }
+    ChipplySummaryReviewRow:
+      type: object
+      required: [eventId, storeName, storeType, supported, storeId, source, comparisons]
+      properties:
+        eventId: { type: string }
+        storeName: { type: string }
+        storeType: { type: string }
+        supported: { type: boolean }
+        storeId: { type: [string, "null"] }
+        source: { $ref: "#/components/schemas/ChipplySummarySource" }
+        comparisons:
+          type: array
+          items: { $ref: "#/components/schemas/ChipplySummaryComparison" }
+    ChipplySummaryPreview:
+      type: object
+      required: [previewId, expiresAt, sourceName, rows, warnings]
+      properties:
+        previewId: { type: string }
+        expiresAt: { type: string }
+        sourceName: { type: string }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/ChipplySummaryReviewRow" }
+        warnings: { type: array, items: { type: string } }
+    ChipplySummarySavedStore:
+      type: object
+      required: [eventId, storeId, created, filledFields]
+      properties:
+        eventId: { type: string }
+        storeId: { type: string }
+        created: { type: boolean }
+        filledFields: { type: array, items: { type: string } }
+    ChipplySummaryResult:
+      type: object
+      required: [stores, idempotent]
+      properties:
+        idempotent: { type: boolean }
+        stores:
+          type: array
+          items: { $ref: "#/components/schemas/ChipplySummarySavedStore" }
+    ChipplyStoreSummaryResponse:
+      type: object
+      required: [summary]
+      properties:
+        summary:
+          oneOf:
+            - { type: "null" }
+            - { $ref: "#/components/schemas/ChipplyStoreSummary" }
+    ChipplyStoreSummary:
+      type: object
+      required: [sourceName, importedAt, source, comparisons, unresolvedCount]
+      properties:
+        sourceName: { type: string }
+        importedAt: { type: string }
+        source: { $ref: "#/components/schemas/ChipplySummarySource" }
+        comparisons:
+          type: array
+          items: { $ref: "#/components/schemas/ChipplySummaryComparison" }
+        unresolvedCount: { type: integer }

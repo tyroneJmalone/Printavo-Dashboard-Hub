@@ -48,9 +48,10 @@ components:
         evidenceKey: { type: string }
     ChipplySetupChecks:
       type: object
-      required: [storeName, eventId, customerLinked, closedAt, invoiceCount, incompleteInvoiceCount, missingCategoryCount, marginRowCount, snapshotId, orderCount, quantity, itemTotalCents, outcomes]
+      required: [storeName, eventId, customerLinked, closedAt, invoiceCount, incompleteInvoiceCount, missingCategoryCount, marginRowCount, snapshotId, orderCount, quantity, itemTotalCents, outcomes, summaryConflictCount]
       properties:
         storeName: { type: string }
+        summaryConflictCount: { type: integer }
         eventId: { type: [string, "null"] }
         customerLinked: { type: boolean }
         closedAt: { type: [string, "null"] }

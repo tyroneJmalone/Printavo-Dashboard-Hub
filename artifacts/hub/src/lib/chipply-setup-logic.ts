@@ -3,6 +3,8 @@ export interface SetupChecks {
   storeName: string; eventId: string | null; customerLinked: boolean; closedAt: string | null;
   invoiceCount: number; incompleteInvoiceCount: number; missingCategoryCount: number; marginRowCount: number;
   snapshotId: string | null; orderCount: number; quantity: number; itemTotalCents: number; outcomes: Record<string, number>;
+  /** Outstanding Store Summary differences; 0 when no summary uploaded (summary is optional). */
+  summaryConflictCount?: number;
 }
 export interface SetupState { confirmedSteps: number[]; marginSkipped: boolean; checks: SetupChecks }
 export interface Fact { label: string; ok: boolean; detail?: string }
@@ -39,7 +41,7 @@ export function factsFor(n: number, s: SetupState): Fact[] {
     case 6: return [{ label: "No unresolved rows", ok: !!c.snapshotId && unresolvedCount(c.outcomes) === 0, detail: c.snapshotId ? `${unresolvedCount(c.outcomes)} unresolved` : "Needs snapshot" }];
     case 7: return [{ label: "No lines missing a category (not a correctness check)", ok: c.invoiceCount > 0 && c.missingCategoryCount === 0, detail: `${c.missingCategoryCount} missing` }];
     case 8: return [{ label: "Margin report resolved (imported or skipped)", ok: c.marginRowCount > 0 || s.marginSkipped, detail: c.marginRowCount ? `${c.marginRowCount} rows` : s.marginSkipped ? "Skipped" : "Not imported" }];
-    default: return [1, 2, 3, 4, 5, 6, 7, 8].flatMap((k) => factsFor(k, s));
+    default: return [...[1, 2, 3, 4, 5, 6, 7, 8].flatMap((k) => factsFor(k, s)), { label: "No outstanding Store Summary differences (summary optional)", ok: (c.summaryConflictCount ?? 0) === 0, detail: `${c.summaryConflictCount ?? 0} unresolved` }];
   }
 }
 export const factsOk = (n: number, s: SetupState) => factsFor(n, s).every((f) => f.ok);

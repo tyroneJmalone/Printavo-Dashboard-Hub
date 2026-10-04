@@ -5,6 +5,7 @@ import { useGetChipplyStore, getGetChipplyStoreQueryKey, triggerPoll, type Chipp
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { ImportReview, DetailedStoreData } from "@/components/chipply/DetailedData";
+import { SummaryPanel } from "@/components/chipply/SummaryImport";
 import { InvoiceCategories } from "@/components/chipply/InvoiceCategories";
 import { useChipplySetup, useSaveChipplySetup, isConflict, setupErrorMessage, chipplySetupKey, type ChipplySetup as Setup, type ChipplySetupUpdate } from "@/hooks/use-chipply-setup";
 import { STEPS, RESOLVED_OUTCOMES, REQUIRED_CONFIRMS, factsFor, factsOk, allFactsOk, priorConfirmed, canConfirm, stepSatisfied, isComplete, nextAttention, toggleConfirmed, syncNotes, unresolvedCount } from "@/lib/chipply-setup-logic";
@@ -214,8 +215,8 @@ function StepBody({ n, s, id, invoices, invoicesLoading, eventId, sync, runSync,
   const link = (to: string, testId: string, label: string) => <DeepLink to={to} testId={testId} disabled={disabled} onLeave={onLeave}>{label}</DeepLink>;
   const unresolved = Object.entries(c.outcomes).filter(([k, v]) => !RESOLVED_OUTCOMES.has(k) && v > 0);
   switch (n) {
-    case 1: return <div className="space-y-3"><p className={p}>The event number ties this store to Printavo invoices whose nickname starts with it. Edit on the store page; your step is saved and the banner there brings you back.</p>{link(edit("identity"), "link-edit-identity", "Edit store identity")}</div>;
-    case 2: return <div className="space-y-3"><p className={p}>Hub can only tell that some customer is linked. You confirm it is the right organization. Reports filter by the closed date.</p><div className="flex flex-wrap gap-2">{link(edit("customer"), "link-edit-customer", "Link or change customer")}{link(edit("identity"), "link-edit-dates", "Edit closed date")}</div></div>;
+    case 1: return <div className="space-y-3"><p className={p}>The event number ties this store to Printavo invoices whose nickname starts with it. Edit on the store page; your step is saved and the banner there brings you back.</p>{link(edit("identity"), "link-edit-identity", "Edit store identity")}<SummaryPanel storeId={id} disabled={disabled} onLeave={onLeave} onBusyChange={onBusyChange} /></div>;
+    case 2: return <div className="space-y-3"><p className={p}>Hub can only tell that some customer is linked. You confirm it is the right organization. Reports filter by the closed date.</p><div className="flex flex-wrap gap-2">{link(edit("customer"), "link-edit-customer", "Link or change customer")}{link(edit("identity"), "link-edit-dates", "Edit closed date")}</div><SummaryPanel storeId={id} disabled={disabled} onLeave={onLeave} onBusyChange={onBusyChange} compact /></div>;
     case 3: return <div className="space-y-3">
       <p className={p}>Open each invoice in Printavo and check:</p>
       <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-300 list-disc pl-5">
@@ -263,10 +264,11 @@ function StepBody({ n, s, id, invoices, invoicesLoading, eventId, sync, runSync,
       const complete = isComplete(s);
       return <div className="space-y-3">
         <p className={p}>{complete ? "Every Hub fact is verified and each required step is confirmed by staff." : allFactsOk(s) ? (priorConfirmed(s) ? "Hub facts are verified. Confirm below to finish." : "Hub facts are verified, but some steps still need your confirmation.") : "Some items are still unresolved. You can stop here; they stay listed until fixed."}</p>
-        <div className="grid sm:grid-cols-4 gap-2 text-sm">
-          {([["Unresolved rows", unresolvedCount(c.outcomes)], ["Lines missing category", c.missingCategoryCount], ["Incomplete invoices", c.incompleteInvoiceCount], ["Steps unconfirmed", REQUIRED_CONFIRMS.filter((k) => !s.confirmedSteps.includes(k)).length]] as const).map(([l, v]) => <div key={l} className="rounded-lg bg-slate-800 p-3"><p className="text-xs text-slate-400">{l}</p><p data-testid={`text-final-${l.replace(/\s/g, "-").toLowerCase()}`} className={`text-lg font-bold ${v ? "text-amber-300" : "text-white"}`}>{v}</p></div>)}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
+          {([["Unresolved rows", unresolvedCount(c.outcomes)], ["Lines missing category", c.missingCategoryCount], ["Incomplete invoices", c.incompleteInvoiceCount], ["Summary differences", c.summaryConflictCount ?? 0], ["Steps unconfirmed", REQUIRED_CONFIRMS.filter((k) => !s.confirmedSteps.includes(k)).length]] as const).map(([l, v]) => <div key={l} className="rounded-lg bg-slate-800 p-3"><p className="text-xs text-slate-400">{l}</p><p data-testid={`text-final-${l.replace(/\s/g, "-").toLowerCase()}`} className={`text-lg font-bold ${v ? "text-amber-300" : "text-white"}`}>{v}</p></div>)}
         </div>
         {!factsOk(8, s) && <p className="text-xs text-amber-300">Margins: import a Margin Report or skip it in step 8.</p>}
+        {(c.summaryConflictCount ?? 0) > 0 && <SummaryPanel storeId={id} disabled={disabled} onLeave={onLeave} onBusyChange={onBusyChange} />}
         {eventId && link(`/orders?source=chipply&store=${encodeURIComponent(eventId)}`, "link-report", `Open Chipply report for event ${eventId}`)}
       </div>;
     }

@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import { DetailedStoreData } from "@/components/chipply/DetailedData";
+import { SummaryPanel, summaryStoreKey } from "@/components/chipply/SummaryImport";
 import { ThreadLinks } from "@/components/merchPipeline/ThreadLinks";
 import {
   useGetChipplyStore,
   getGetChipplyStoreQueryKey,
+  getGetChipplySetupQueryKey,
   getListChipplyStoresQueryKey,
   getListDetectedChipplyStoresQueryKey,
   useUpdateChipplyStore,
@@ -167,6 +169,8 @@ export default function ChipplyStoreDetail() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetChipplyStoreQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: summaryStoreKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetChipplySetupQueryKey(id) });
         queryClient.invalidateQueries({ queryKey: getListChipplyStoresQueryKey() });
         queryClient.invalidateQueries({
           queryKey: getListDetectedChipplyStoresQueryKey(),
@@ -433,6 +437,7 @@ export default function ChipplyStoreDetail() {
           </div>
         </div>
 
+        <SummaryPanel storeId={id} readOnly compact />
         <DetailedStoreData storeId={id} />
 
         {!editing ? (

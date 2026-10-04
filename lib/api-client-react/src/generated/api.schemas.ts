@@ -8730,6 +8730,118 @@ export interface ReviewDraftBacktestItemRequest {
   reviewNote?: string;
 }
 
+export interface ChipplySummaryUploadRequest {
+  file: Blob;
+  expectedStoreId?: string;
+}
+
+export interface ChipplySummaryConfirmRequest {
+  previewId: string;
+  /**
+     * @minItems 1
+     * @maxItems 2000
+     */
+  selectedSalesOrders: string[];
+}
+
+export interface ChipplySummaryRetainRequest {
+  field: string;
+  evidenceKey: string;
+}
+
+export interface ChipplySummarySource {
+  eventId: string;
+  storeName: string;
+  storeType: string;
+  /** @nullable */
+  status: string | null;
+  /** @nullable */
+  openedAt: string | null;
+  /** @nullable */
+  closedAt: string | null;
+  /** @nullable */
+  productionDueAt: string | null;
+  /** @nullable */
+  shipAt: string | null;
+  /** @nullable */
+  contact: string | null;
+  /** @nullable */
+  salesperson: string | null;
+  /** @nullable */
+  orders: number | null;
+  /** @nullable */
+  sales: string | null;
+  /** @nullable */
+  processes: number | null;
+  /** @nullable */
+  processesWithOrders: number | null;
+}
+
+export type ChipplySummaryComparisonAction = typeof ChipplySummaryComparisonAction[keyof typeof ChipplySummaryComparisonAction];
+
+
+export const ChipplySummaryComparisonAction = {
+  fill: 'fill',
+  conflict: 'conflict',
+  same: 'same',
+  source: 'source',
+  retained: 'retained',
+} as const;
+
+export interface ChipplySummaryComparison {
+  field: string;
+  label: string;
+  /** @nullable */
+  current: string | number | null;
+  /** @nullable */
+  incoming: string | number | null;
+  action: ChipplySummaryComparisonAction;
+  evidenceKey: string;
+}
+
+export interface ChipplySummaryReviewRow {
+  eventId: string;
+  storeName: string;
+  storeType: string;
+  supported: boolean;
+  /** @nullable */
+  storeId: string | null;
+  source: ChipplySummarySource;
+  comparisons: ChipplySummaryComparison[];
+}
+
+export interface ChipplySummaryPreview {
+  previewId: string;
+  expiresAt: string;
+  sourceName: string;
+  rows: ChipplySummaryReviewRow[];
+  warnings: string[];
+}
+
+export interface ChipplySummarySavedStore {
+  eventId: string;
+  storeId: string;
+  created: boolean;
+  filledFields: string[];
+}
+
+export interface ChipplySummaryResult {
+  idempotent: boolean;
+  stores: ChipplySummarySavedStore[];
+}
+
+export interface ChipplyStoreSummary {
+  sourceName: string;
+  importedAt: string;
+  source: ChipplySummarySource;
+  comparisons: ChipplySummaryComparison[];
+  unresolvedCount: number;
+}
+
+export interface ChipplyStoreSummaryResponse {
+  summary: null | ChipplyStoreSummary;
+}
+
 export interface ChipplySetupRequest {
   /** @minimum 0 */
   version: number;
@@ -8754,6 +8866,7 @@ export type ChipplySetupChecksOutcomes = {[key: string]: number};
 
 export interface ChipplySetupChecks {
   storeName: string;
+  summaryConflictCount: number;
   /** @nullable */
   eventId: string | null;
   customerLinked: boolean;

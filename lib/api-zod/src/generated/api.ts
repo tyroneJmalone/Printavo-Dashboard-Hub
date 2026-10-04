@@ -8,6 +8,149 @@
 import * as zod from 'zod';
 
 
+export const PreviewChipplySummaryBody = zod.object({
+  "file": zod.instanceof(File),
+  "expectedStoreId": zod.string().uuid().optional()
+})
+
+export const PreviewChipplySummaryResponse = zod.object({
+  "previewId": zod.string(),
+  "expiresAt": zod.string(),
+  "sourceName": zod.string(),
+  "rows": zod.array(zod.object({
+  "eventId": zod.string(),
+  "storeName": zod.string(),
+  "storeType": zod.string(),
+  "supported": zod.boolean(),
+  "storeId": zod.string().nullable(),
+  "source": zod.object({
+  "eventId": zod.string(),
+  "storeName": zod.string(),
+  "storeType": zod.string(),
+  "status": zod.string().nullable(),
+  "openedAt": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "productionDueAt": zod.string().nullable(),
+  "shipAt": zod.string().nullable(),
+  "contact": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "orders": zod.number().nullable(),
+  "sales": zod.string().nullable(),
+  "processes": zod.number().nullable(),
+  "processesWithOrders": zod.number().nullable()
+}),
+  "comparisons": zod.array(zod.object({
+  "field": zod.string(),
+  "label": zod.string(),
+  "current": zod.union([zod.string(),zod.number()]).nullable(),
+  "incoming": zod.union([zod.string(),zod.number()]).nullable(),
+  "action": zod.enum(['fill', 'conflict', 'same', 'source', 'retained']),
+  "evidenceKey": zod.string()
+}))
+})),
+  "warnings": zod.array(zod.string())
+})
+
+
+export const confirmChipplySummaryBodySelectedSalesOrdersMax = 2000;
+
+
+
+export const ConfirmChipplySummaryBody = zod.object({
+  "previewId": zod.string().uuid(),
+  "selectedSalesOrders": zod.array(zod.string()).min(1).max(confirmChipplySummaryBodySelectedSalesOrdersMax)
+})
+
+export const ConfirmChipplySummaryResponse = zod.object({
+  "idempotent": zod.boolean(),
+  "stores": zod.array(zod.object({
+  "eventId": zod.string(),
+  "storeId": zod.string(),
+  "created": zod.boolean(),
+  "filledFields": zod.array(zod.string())
+}))
+})
+
+
+export const GetChipplyStoreSummaryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetChipplyStoreSummaryResponse = zod.object({
+  "summary": zod.union([zod.null(),zod.object({
+  "sourceName": zod.string(),
+  "importedAt": zod.string(),
+  "source": zod.object({
+  "eventId": zod.string(),
+  "storeName": zod.string(),
+  "storeType": zod.string(),
+  "status": zod.string().nullable(),
+  "openedAt": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "productionDueAt": zod.string().nullable(),
+  "shipAt": zod.string().nullable(),
+  "contact": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "orders": zod.number().nullable(),
+  "sales": zod.string().nullable(),
+  "processes": zod.number().nullable(),
+  "processesWithOrders": zod.number().nullable()
+}),
+  "comparisons": zod.array(zod.object({
+  "field": zod.string(),
+  "label": zod.string(),
+  "current": zod.union([zod.string(),zod.number()]).nullable(),
+  "incoming": zod.union([zod.string(),zod.number()]).nullable(),
+  "action": zod.enum(['fill', 'conflict', 'same', 'source', 'retained']),
+  "evidenceKey": zod.string()
+})),
+  "unresolvedCount": zod.number()
+})])
+})
+
+
+export const RetainChipplySummaryValueParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RetainChipplySummaryValueBody = zod.object({
+  "field": zod.string(),
+  "evidenceKey": zod.string()
+})
+
+export const RetainChipplySummaryValueResponse = zod.object({
+  "summary": zod.union([zod.null(),zod.object({
+  "sourceName": zod.string(),
+  "importedAt": zod.string(),
+  "source": zod.object({
+  "eventId": zod.string(),
+  "storeName": zod.string(),
+  "storeType": zod.string(),
+  "status": zod.string().nullable(),
+  "openedAt": zod.string().nullable(),
+  "closedAt": zod.string().nullable(),
+  "productionDueAt": zod.string().nullable(),
+  "shipAt": zod.string().nullable(),
+  "contact": zod.string().nullable(),
+  "salesperson": zod.string().nullable(),
+  "orders": zod.number().nullable(),
+  "sales": zod.string().nullable(),
+  "processes": zod.number().nullable(),
+  "processesWithOrders": zod.number().nullable()
+}),
+  "comparisons": zod.array(zod.object({
+  "field": zod.string(),
+  "label": zod.string(),
+  "current": zod.union([zod.string(),zod.number()]).nullable(),
+  "incoming": zod.union([zod.string(),zod.number()]).nullable(),
+  "action": zod.enum(['fill', 'conflict', 'same', 'source', 'retained']),
+  "evidenceKey": zod.string()
+})),
+  "unresolvedCount": zod.number()
+})])
+})
+
+
 /**
  * @summary Search the local read-only order mirror by invoice number or customer
  */
@@ -852,6 +995,7 @@ export const GetChipplySetupResponse = zod.object({
   "staleConfirmations": zod.boolean(),
   "checks": zod.object({
   "storeName": zod.string(),
+  "summaryConflictCount": zod.number(),
   "eventId": zod.string().nullable(),
   "customerLinked": zod.boolean(),
   "closedAt": zod.string().nullable(),
@@ -918,6 +1062,7 @@ export const SaveChipplySetupResponse = zod.object({
   "staleConfirmations": zod.boolean(),
   "checks": zod.object({
   "storeName": zod.string(),
+  "summaryConflictCount": zod.number(),
   "eventId": zod.string().nullable(),
   "customerLinked": zod.boolean(),
   "closedAt": zod.string().nullable(),

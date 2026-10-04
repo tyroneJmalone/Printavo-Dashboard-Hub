@@ -9,6 +9,7 @@ import type { ChipplySetupChecksOutcomes } from './chipplySetupChecksOutcomes';
 
 export interface ChipplySetupChecks {
   storeName: string;
+  summaryConflictCount: number;
   /** @nullable */
   eventId: string | null;
   customerLinked: boolean;

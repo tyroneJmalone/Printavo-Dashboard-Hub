@@ -27,6 +27,14 @@ const bad = { ...s, checks: { ...s.checks, outcomes: { matched: 80, ambiguous: 2
 assert.equal(isComplete(bad), false);
 assert.equal(nextAttention(1, bad)?.n, 6);
 
+// Outstanding Store Summary differences block final; retaining (count 0) unlocks it again.
+const conflicted = { ...s, checks: { ...s.checks, summaryConflictCount: 2 } };
+assert.equal(isComplete(conflicted), false);
+assert.equal(canConfirm(9, conflicted), false);
+const retained = { ...conflicted, checks: { ...conflicted.checks, summaryConflictCount: 0 } };
+assert.equal(canConfirm(9, retained), true);
+assert.equal(isComplete(retained), true);
+
 // Notes: keep local edits, adopt teammate edits otherwise.
 assert.equal(syncNotes("a", "a", "b"), "b");
 assert.equal(syncNotes("mine", "a", "b"), "mine");

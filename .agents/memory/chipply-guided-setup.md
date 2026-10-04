@@ -13,4 +13,10 @@ The user found that getting the full Chipply picture requires roughly three or f
 
 **Why:** Their attempt to work through the guide exposed fragmented source information.
 
-**How to apply:** Do not assume a single export supplies all setup evidence. Prefer the confirmed copy/paste CSV path over screenshot OCR for the summary grid. Summary ingestion is being discussed, not approved for implementation.
+**How to apply:** Do not assume a single export supplies all setup evidence. Prefer the confirmed copy/paste CSV path over screenshot OCR for the summary grid.
+
+Store Summary ingestion is approved strictly for filling blanks: “we do not want this report to overwrite anything, however it can flag discrepancies for decision.” The user will upload the supplied file in the live app after republishing; do not pre-import it while building.
+
+**Why:** Existing store data must not be replaced by a less detailed summary source.
+
+**How to apply:** Preserve populated values, including zero; show differences for explicit decisions. Keep the summary's Sales separate until its definition is confirmed against other Chipply financial measures. Do not coerce Catalog Batch identifiers into numeric Group-store identities.

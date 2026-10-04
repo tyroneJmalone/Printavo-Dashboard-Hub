@@ -12,6 +12,7 @@ import { GuidedSetupStart } from "@/components/chipply/GuidedSetupStart";
 import { AppShell } from "@/components/layout/AppShell";
 import { InvoiceCategories } from "@/components/chipply/InvoiceCategories";
 import { DetailedDataImport } from "@/components/chipply/DetailedData";
+import { SummaryImportDialog } from "@/components/chipply/SummaryImport";
 import {
   useListChipplyStores,
   getListChipplyStoresQueryKey,
@@ -790,6 +791,8 @@ export default function ChipplyStores() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideImport, setGuideImport] = useState(false);
   const [guideDetailed, setGuideDetailed] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [guideSummary, setGuideSummary] = useState(false);
   const [, navigate] = useLocation();
   const [prefill, setPrefill] = useState<ChipplyStoreCandidate | null>(null);
 
@@ -867,7 +870,7 @@ export default function ChipplyStores() {
           </div>
         </div>
 
-        <DetailedDataImport />
+        <div className="flex flex-wrap gap-2"><DetailedDataImport /><Button data-testid="button-import-summary" variant="outline" onClick={() => { setGuideSummary(false); setSummaryOpen(true); }}>Import store summary CSV</Button></div>
 
         {stores.length > 0 && (
           <div className="space-y-1.5">
@@ -1166,8 +1169,10 @@ export default function ChipplyStores() {
         stores={stores.map((x) => x.store)}
         onNewFromEmail={() => { setGuideOpen(false); setGuideImport(true); openImport(); }}
         onNewFromDetailed={() => { setGuideOpen(false); setGuideDetailed(true); }}
+        onNewFromSummary={() => { setGuideOpen(false); setGuideSummary(true); setSummaryOpen(true); }}
       />
       <DetailedDataImport hideTrigger open={guideDetailed} onOpenChange={setGuideDetailed} onSaved={(storeId) => { setGuideDetailed(false); navigate(`/chipply/${storeId}/setup`); }} />
+      <SummaryImportDialog open={summaryOpen} onOpenChange={(o) => { setSummaryOpen(o); if (!o) setGuideSummary(false); }} onSaved={(r) => { if (guideSummary && r.stores.length === 1) { setSummaryOpen(false); setGuideSummary(false); navigate(`/chipply/${r.stores[0].storeId}/setup`); } }} />
     </AppShell>
   );
 }

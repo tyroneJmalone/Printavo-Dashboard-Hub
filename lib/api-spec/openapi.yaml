@@ -43,6 +43,14 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /chipply/summary/preview:
+    $ref: './chipply-summary.openapi.yaml#/paths/~1chipply~1summary~1preview'
+  /chipply/summary/confirm:
+    $ref: './chipply-summary.openapi.yaml#/paths/~1chipply~1summary~1confirm'
+  /chipply/summary/stores/{id}:
+    $ref: './chipply-summary.openapi.yaml#/paths/~1chipply~1summary~1stores~1{id}'
+  /chipply/summary/stores/{id}/retain:
+    $ref: './chipply-summary.openapi.yaml#/paths/~1chipply~1summary~1stores~1{id}~1retain'
   /order-activity-log/orders:
     get:
       operationId: searchOrderActivityLog

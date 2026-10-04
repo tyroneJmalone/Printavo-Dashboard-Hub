@@ -19,7 +19,7 @@ export async function apiFetch<T = any>(endpoint: string, options: RequestInit =
     } catch {
       errorData = { error: await res.text() };
     }
-    throw new Error(errorData.error || errorData.message || "API request failed");
+    throw Object.assign(new Error(errorData.error || errorData.message || "API request failed"), { status: res.status });
   }
   
   if (res.status === 204) {

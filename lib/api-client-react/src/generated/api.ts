@@ -93,7 +93,13 @@ import type {
   ChipplyStoreDetailResponse,
   ChipplyStoreEnvelope,
   ChipplyStoreStylesResponse,
+  ChipplyStoreSummaryResponse,
   ChipplyStoresResponse,
+  ChipplySummaryConfirmRequest,
+  ChipplySummaryPreview,
+  ChipplySummaryResult,
+  ChipplySummaryRetainRequest,
+  ChipplySummaryUploadRequest,
   CollectionDetail,
   Comment,
   CommentInput,
@@ -512,6 +518,275 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getPreviewChipplySummaryUrl = () => {
+
+
+
+
+  return `/api/chipply/summary/preview`
+}
+
+export const previewChipplySummary = async (chipplySummaryUploadRequest: ChipplySummaryUploadRequest, options?: RequestInit): Promise<ChipplySummaryPreview> => {
+    const formData = new FormData();
+formData.append(`file`, chipplySummaryUploadRequest.file);
+if(chipplySummaryUploadRequest.expectedStoreId !== undefined) {
+ formData.append(`expectedStoreId`, chipplySummaryUploadRequest.expectedStoreId);
+ }
+
+  return customFetch<ChipplySummaryPreview>(getPreviewChipplySummaryUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+export const getPreviewChipplySummaryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewChipplySummary>>, TError,{data: BodyType<ChipplySummaryUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewChipplySummary>>, TError,{data: BodyType<ChipplySummaryUploadRequest>}, TContext> => {
+
+const mutationKey = ['previewChipplySummary'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewChipplySummary>>, {data: BodyType<ChipplySummaryUploadRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewChipplySummary(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewChipplySummaryMutationResult = NonNullable<Awaited<ReturnType<typeof previewChipplySummary>>>
+    export type PreviewChipplySummaryMutationBody = BodyType<ChipplySummaryUploadRequest>
+    export type PreviewChipplySummaryMutationError = ErrorType<unknown>
+
+    export const usePreviewChipplySummary = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewChipplySummary>>, TError,{data: BodyType<ChipplySummaryUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewChipplySummary>>,
+        TError,
+        {data: BodyType<ChipplySummaryUploadRequest>},
+        TContext
+      > => {
+      return useMutation(getPreviewChipplySummaryMutationOptions(options));
+    }
+
+export const getConfirmChipplySummaryUrl = () => {
+
+
+
+
+  return `/api/chipply/summary/confirm`
+}
+
+export const confirmChipplySummary = async (chipplySummaryConfirmRequest: ChipplySummaryConfirmRequest, options?: RequestInit): Promise<ChipplySummaryResult> => {
+
+  return customFetch<ChipplySummaryResult>(getConfirmChipplySummaryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chipplySummaryConfirmRequest)
+  }
+);}
+
+
+
+
+export const getConfirmChipplySummaryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmChipplySummary>>, TError,{data: BodyType<ChipplySummaryConfirmRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmChipplySummary>>, TError,{data: BodyType<ChipplySummaryConfirmRequest>}, TContext> => {
+
+const mutationKey = ['confirmChipplySummary'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmChipplySummary>>, {data: BodyType<ChipplySummaryConfirmRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmChipplySummary(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmChipplySummaryMutationResult = NonNullable<Awaited<ReturnType<typeof confirmChipplySummary>>>
+    export type ConfirmChipplySummaryMutationBody = BodyType<ChipplySummaryConfirmRequest>
+    export type ConfirmChipplySummaryMutationError = ErrorType<void>
+
+    export const useConfirmChipplySummary = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmChipplySummary>>, TError,{data: BodyType<ChipplySummaryConfirmRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmChipplySummary>>,
+        TError,
+        {data: BodyType<ChipplySummaryConfirmRequest>},
+        TContext
+      > => {
+      return useMutation(getConfirmChipplySummaryMutationOptions(options));
+    }
+
+export const getGetChipplyStoreSummaryUrl = (id: string,) => {
+
+
+
+
+  return `/api/chipply/summary/stores/${id}`
+}
+
+export const getChipplyStoreSummary = async (id: string, options?: RequestInit): Promise<ChipplyStoreSummaryResponse> => {
+
+  return customFetch<ChipplyStoreSummaryResponse>(getGetChipplyStoreSummaryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChipplyStoreSummaryQueryKey = (id: string,) => {
+    return [
+    `/api/chipply/summary/stores/${id}`
+    ] as const;
+    }
+
+
+export const getGetChipplyStoreSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getChipplyStoreSummary>>, TError = ErrorType<unknown>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyStoreSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChipplyStoreSummaryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChipplyStoreSummary>>> = ({ signal }) => getChipplyStoreSummary(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChipplyStoreSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChipplyStoreSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getChipplyStoreSummary>>>
+export type GetChipplyStoreSummaryQueryError = ErrorType<unknown>
+
+
+
+export function useGetChipplyStoreSummary<TData = Awaited<ReturnType<typeof getChipplyStoreSummary>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChipplyStoreSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChipplyStoreSummaryQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRetainChipplySummaryValueUrl = (id: string,) => {
+
+
+
+
+  return `/api/chipply/summary/stores/${id}/retain`
+}
+
+export const retainChipplySummaryValue = async (id: string,
+    chipplySummaryRetainRequest: ChipplySummaryRetainRequest, options?: RequestInit): Promise<ChipplyStoreSummaryResponse> => {
+
+  return customFetch<ChipplyStoreSummaryResponse>(getRetainChipplySummaryValueUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chipplySummaryRetainRequest)
+  }
+);}
+
+
+
+
+export const getRetainChipplySummaryValueMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retainChipplySummaryValue>>, TError,{id: string;data: BodyType<ChipplySummaryRetainRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retainChipplySummaryValue>>, TError,{id: string;data: BodyType<ChipplySummaryRetainRequest>}, TContext> => {
+
+const mutationKey = ['retainChipplySummaryValue'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retainChipplySummaryValue>>, {id: string;data: BodyType<ChipplySummaryRetainRequest>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  retainChipplySummaryValue(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetainChipplySummaryValueMutationResult = NonNullable<Awaited<ReturnType<typeof retainChipplySummaryValue>>>
+    export type RetainChipplySummaryValueMutationBody = BodyType<ChipplySummaryRetainRequest>
+    export type RetainChipplySummaryValueMutationError = ErrorType<void>
+
+    export const useRetainChipplySummaryValue = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retainChipplySummaryValue>>, TError,{id: string;data: BodyType<ChipplySummaryRetainRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retainChipplySummaryValue>>,
+        TError,
+        {id: string;data: BodyType<ChipplySummaryRetainRequest>},
+        TContext
+      > => {
+      return useMutation(getRetainChipplySummaryValueMutationOptions(options));
+    }
 
 export const getSearchOrderActivityLogUrl = (params?: SearchOrderActivityLogParams,) => {
   const normalizedParams = new URLSearchParams();

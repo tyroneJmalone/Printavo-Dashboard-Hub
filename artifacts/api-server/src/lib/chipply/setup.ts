@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { pool } from "@workspace/db";
 import { getChipplyDataDetail } from "./dataService";
+import { getStoreSummary } from "./summaryService";
 
 export interface SetupProgress {
   currentStep: number; version: number; confirmedSteps: number[];
@@ -43,7 +44,9 @@ export async function getSetup(storeId: string) {
   for (const line of detail?.lines ?? []) outcomes[line.reconciliation.outcome] = (outcomes[line.reconciliation.outcome] ?? 0) + 1;
   const incomplete = invoices.rows.filter(i => i.detail_sync_state !== "complete" || !i.detail_synced_at ||
     (i.printavo_updated_at && new Date(i.detail_synced_at) < new Date(i.printavo_updated_at))).length;
+  const summary = await getStoreSummary(storeId);
   const checks = {
+    summaryConflictCount: summary?.summary?.unresolvedCount ?? 0,
     storeName: store.store_name as string, eventId: store.event_id as string | null,
     customerLinked: !!store.pv_customer_id, closedAt: store.closed_at as string | null,
     invoiceCount: invoices.rowCount ?? 0, incompleteInvoiceCount: incomplete,
@@ -56,6 +59,7 @@ export async function getSetup(storeId: string) {
   const stableInvoices = invoices.rows.map(({ detail_synced_at, printavo_updated_at, ...rest }) => rest);
   const evidenceKey = createHash("sha256").update(JSON.stringify({
     checks, customerId: store.pv_customer_id, invoices: stableInvoices,
+    summary: summary?.summary ? [summary.summary.source, summary.summary.comparisons] : null,
     allocations: detail?.lines.map(l => [l.rowOrdinal, l.reconciliation.invoiceId, l.reconciliation.actualMethod, l.reconciliation.outcome]),
   })).digest("hex");
   return { storeId, ...effectiveProgress(progress.rows[0], evidenceKey), evidenceKey, checks };
