@@ -221,3 +221,31 @@ mtime_ms = 1791171378875
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/8281fc7c-42a7-48c9-9031-2dcd5093d230/f5d0dc2f-3b6d-44d2-a53d-aca49d5a99c2"
 storage_version_token = "1791171387669232"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "rM2tCGj0PcML5irK3lcCm"
+uri = "file://exports/workorder-22837-goods-status-detail.png"
+type = "image"
+title = "Actual workorder — proposed Goods Status note"
+description = "Uses your supplied Printavo workorder layout. Blue annotation shows fictional date/vendor/warehouse placement, not actual purchasing data."
+logical_id = "1e7efbfb-fc9b-45a5-a181-f23f198af281"
+content_hash = "sha256:07b4b1860dad218a99cb309380b67de764e4c0ba99d3a85bf6137df5cf936efa"
+size = 64967
+mtime_ms = 1791174291827
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/1e7efbfb-fc9b-45a5-a181-f23f198af281/7923d502-28d9-4799-bd86-ad41550983e0"
+storage_version_token = "1791174296834948"
+content_type = "image/png"
+
+[[outputs]]
+id = "-xl75VAvQoKUTAdodlGq8"
+uri = "file://exports/workorder-22837-purchasing-placement.pdf"
+type = "pdf"
+title = "Workorder #22837 — annotated placement example"
+description = "Your supplied workorder with sample purchasing notes beside Goods Status. No live printing or order changes."
+logical_id = "506b0f1a-34b8-46ea-8d15-c59fe81504a5"
+content_hash = "sha256:9708b2f269951e9c5605b4d8c75b7c6a21a37eed7000ddf2354668e3a3a51f08"
+size = 300028
+mtime_ms = 1791174291775
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/506b0f1a-34b8-46ea-8d15-c59fe81504a5/261b3ea1-da63-4733-8007-df4bd29cb31d"
+storage_version_token = "1791174297284052"
+content_type = "application/pdf"
