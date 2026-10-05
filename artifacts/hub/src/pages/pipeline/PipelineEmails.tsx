@@ -14,8 +14,8 @@ export function parsePipelineEmails(value: string): string[] {
 }
 
 export function missiveEmailSearchUrl(email: string): string {
-  // Missive's search mailbox routes encode the search text in the hash.
-  return `https://mail.missiveapp.com/#search/${encodeURIComponent(email)}`;
+  // Missive's documented desktop scheme preserves the web route and search hash.
+  return `missive://mail.missiveapp.com/#search/${encodeURIComponent(email)}`;
 }
 
 export function PipelineEmails({ value }: { value?: string | null }) {
@@ -57,15 +57,13 @@ export function PipelineEmails({ value }: { value?: string | null }) {
             </button>
           )}
         </div>
-        <p className="mb-3 text-xs text-slate-400">Click an address to search existing conversations in Missive.</p>
+        <p className="mb-3 text-xs text-slate-400">Click an address to search in the Missive desktop app. Missive must be installed; your browser may ask permission to open it.</p>
         <div className="max-h-64 space-y-2 overflow-y-auto">
           {emails.length ? emails.map((email) => (
             <div key={email} className="flex items-start gap-2 rounded bg-slate-950/60 p-2">
               <a
                 href={missiveEmailSearchUrl(email)}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={`Search Missive for ${email} (opens a new tab)`}
+                title={`Search Missive for ${email} in the desktop app`}
                 className="flex min-w-0 flex-1 items-start gap-2 rounded text-sm text-emerald-400 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <Search size={14} className="mt-1 shrink-0" aria-hidden="true" />
