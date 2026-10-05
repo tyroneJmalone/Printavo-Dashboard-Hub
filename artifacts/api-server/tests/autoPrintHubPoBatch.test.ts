@@ -165,3 +165,37 @@ test("dry run does not reserve, render, or submit", async () => {
   assert.equal(h.html.length, 0);
   assert.equal(h.submissions.length, 0);
 });
+
+test("reprint prints only new associated POs, not originals edited or submitted later", async () => {
+  const old = po("original", ["a"]);
+  old.updatedAt = old.submittedToVendorAt = "2026-02-03T00:00:00Z";
+  const fresh = po("new", ["a"]);
+  fresh.createdAt = "2026-02-02T00:00:00Z";
+  const unrelated = { ...po("unrelated", ["other"]), createdAt: fresh.createdAt };
+  const h = harness([old, fresh, unrelated, fresh]);
+  h.input.successfullyPrintedOrders = [{
+    orderId: "a", visualId: 100, isReprint: true, priorPrintedAt: new Date("2026-02-01T00:00:00Z"),
+  }];
+  assert.equal((await runHubPoBatch(h.input, h.deps)).printed, 1);
+  assert.equal(h.submissions[0].title, "Hub PO PO-new");
+});
+
+test("reprints without a new PO or reliable timestamp do not print a PO", async () => {
+  for (const cutoff of [null, "invalid", "2026-01-01T00:00:00.000Z", "2026-02-01T00:00:00Z"]) {
+    const h = harness([po("original", ["a"])]);
+    h.input.successfullyPrintedOrders = [{ orderId: "a", visualId: 100, isReprint: true, priorPrintedAt: cutoff }];
+    assert.equal((await runHubPoBatch(h.input, h.deps)).printed, 0);
+    assert.equal(h.jobs.size, 0);
+    assert.equal(h.html.length, 0);
+  }
+});
+
+test("shared original PO can still accompany another order's first print, once", async () => {
+  const h = harness([po("shared", ["a", "b"])]);
+  h.input.successfullyPrintedOrders = [
+    { orderId: "a", visualId: 100, isReprint: true, priorPrintedAt: "2026-02-01T00:00:00Z" },
+    { orderId: "b", visualId: 101, isReprint: false },
+  ];
+  assert.equal((await runHubPoBatch(h.input, h.deps)).printed, 1);
+  assert.deepEqual(h.jobs.get("run/shared")!.snapshotMetadata.matchedOrders.map(o => o.orderId), ["b"]);
+});

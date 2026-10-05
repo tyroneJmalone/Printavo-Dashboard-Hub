@@ -86,11 +86,15 @@ export function verifiedConversionOrderIds(order: AutoPrintIdentity, events: rea
 }
 
 export function hubPoOrdersFromOutcomes(
-  outcomes: readonly { candidate: AutoPrintIdentity; outcome: string }[],
+  outcomes: readonly { candidate: AutoPrintIdentity & { isReprint?: boolean; priorPrintedAt?: Date | null }; outcome: string }[],
   conversions: readonly ConversionEvidence[],
-): (AutoPrintIdentity & { verifiedSnapshotOrderIds: string[] })[] {
+) {
   return outcomes.filter((o) => o.outcome === "printed").map(({ candidate }) => ({
     orderId: candidate.orderId, visualId: candidate.visualId,
+    ...(candidate.isReprint !== undefined ? {
+      isReprint: candidate.isReprint,
+      priorPrintedAt: candidate.priorPrintedAt ?? null,
+    } : {}),
     verifiedSnapshotOrderIds: verifiedConversionOrderIds(candidate, conversions),
   }));
 }

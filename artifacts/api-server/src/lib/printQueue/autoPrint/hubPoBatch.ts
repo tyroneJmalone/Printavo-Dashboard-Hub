@@ -6,6 +6,8 @@ import type { submitPdfPrintJob } from "./printNode";
 export interface SuccessfullyPrintedOrder {
   orderId: string;
   visualId: string | number | null;
+  isReprint?: boolean;
+  priorPrintedAt?: Date | string | null;
   /**
    * Original snapshot ids independently verified to belong to this converted
    * order. A shared visual id alone is NEVER sufficient evidence.
@@ -68,6 +70,13 @@ export interface HubPoBatchResult {
 }
 
 function matches(po: PoFileDto, order: SuccessfullyPrintedOrder): boolean {
+  // Reprints must not bring back the original PO. Editing or submitting an
+  // existing PO does not make it new; compare immutable creation time only.
+  if (order.isReprint) {
+    const prior = order.priorPrintedAt == null ? NaN : new Date(order.priorPrintedAt).getTime();
+    const created = new Date(po.createdAt).getTime();
+    if (!Number.isFinite(prior) || !Number.isFinite(created) || created <= prior) return false;
+  }
   return po.lineItems.some((line) => {
     if (!line.printavoOrderId) return false;
     if (line.printavoOrderId === order.orderId) return true;

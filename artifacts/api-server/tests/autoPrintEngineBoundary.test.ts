@@ -9,6 +9,14 @@ import {
 import { runHubPoBatch } from "../src/lib/printQueue/autoPrint/hubPoBatch";
 import type { PoFileDto } from "../src/lib/purchasing/poFiles";
 
+test("engine preserves prior workorder print time for new-PO-only reprints", () => {
+  const priorPrintedAt = new Date("2026-02-01T00:00:00Z");
+  const candidate = { orderId: "invoice", visualId: 100, isReprint: true, priorPrintedAt };
+  const [result] = hubPoOrdersFromOutcomes([{ candidate, outcome: "printed" }], []);
+  assert.equal(result.isReprint, true);
+  assert.equal(result.priorPrintedAt, priorPrintedAt);
+});
+
 test("engine PO boundary excludes failed/unknown/pending and prints a converted quote snapshot only with provenance", async () => {
   const candidate = { orderId: "invoice", visualId: 100 };
   const conversions = [{ entityType: "order", eventType: "converted", entityId: "invoice", visualId: 100,

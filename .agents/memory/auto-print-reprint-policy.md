@@ -28,9 +28,13 @@ Preserve changed-lines-plus-reentry eligibility when adjusting the UPDATED label
 
 Each auto-print run prints one copy of each relevant saved Hub PO represented
 by workorders successfully submitted in that run, not one PO per invoice.
+For changed-line workorder reprints, include only associated POs created after
+the previous successful workorder print. Do not repeat the original PO merely
+because the workorder reprints, and do not treat editing an old PO as a new PO.
 
 **Why:** The user requested a PO copy alongside its batch, while a single PO
-can cover several workorders.
+can cover several workorders. They clarified that reprints need only the new
+associated PO, if one exists.
 
 **How to apply:** Preserve original PO snapshots and invoice links, deduplicate
 POs within the run, and require verified conversion provenance before matching
@@ -47,3 +51,16 @@ and production damage, not customer production work.
 **How to apply:** Enforce the exception at workorder and attachment side-effect
 boundaries, including retries. Do not remove PO lines, skip their purchasing
 updates, delete existing attachments, or suppress a shared PO's customer work.
+
+The user requested a draft of a replacement slip for 22787 containing only
+invoice number, nickname, and the line details belonging to the PO being
+processed. Full line descriptions carry pertinent replacement/fix instructions.
+The draft is not approval to activate slip printing; the full-workorder skip
+remains in force.
+
+**Why:** This is an in-house replacement/fix record, not a normal customer
+workorder; the entire invoice contains unrelated replacement lines.
+
+**How to apply:** If implemented after approval, scope by exact PO snapshot line
+IDs and quantities, not all invoice lines. Keep draft proposals distinct from
+enabled print behavior.

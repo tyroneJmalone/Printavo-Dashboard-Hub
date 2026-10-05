@@ -305,3 +305,31 @@ mtime_ms = 1791176201151
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/f3432c21-58f1-4cc3-bd2b-6f0f87294396/2c0f9d08-d04a-45eb-888e-774297d9760c"
 storage_version_token = "1791176220916671"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "IGRJoS-sWMsIv5LPYvPN9"
+uri = "file://exports/invoice-22787-po-slip-draft.png"
+type = "image"
+title = "Draft: PO-specific replacement slip"
+description = "Invoice 22787, nickname, and one illustrative selected line with its complete replacement instructions. No logo, addresses, pricing, or unrelated lines."
+logical_id = "a448958d-c7fb-48c7-972d-ed108f95aafb"
+content_hash = "sha256:d8b501652621458cc97c0234aab10d1149a0e59facffbc9311eac20229add10d"
+size = 41072
+mtime_ms = 1791223692815
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/a448958d-c7fb-48c7-972d-ed108f95aafb/46a04877-63a4-4e7e-adff-233f355e05f4"
+storage_version_token = "1791223781513579"
+content_type = "image/png"
+
+[[outputs]]
+id = "Jpt6XoKtdAWkqEPz89lvb"
+uri = "file://exports/invoice-22787-po-slip-draft.pdf"
+type = "pdf"
+title = "Replacement slip — printable draft"
+description = "Letter-size PDF layout proof. This has not been sent to a printer or enabled in AutoPrint."
+logical_id = "71c2e2b0-6e7a-47cf-8e33-ba87a3e1bd3c"
+content_hash = "sha256:ba4884aa3ff72ed673b6377f09c249e7a53dc344c2c63aacd49ed91ae550e510"
+size = 3291
+mtime_ms = 1791223692727
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/71c2e2b0-6e7a-47cf-8e33-ba87a3e1bd3c/e3eb5c39-0f85-4741-a6cf-bd131fbc2924"
+storage_version_token = "1791223782043198"
+content_type = "application/pdf"
