@@ -21,6 +21,7 @@ const mocks = new Map([
   ["../statusJobs", ["startPqStatusJob"]],
   ["./liveDiscovery", ["discoverLiveAutoPrintOrders", "fetchLiveOrderStatus", "LiveDiscoveryError", "liveOrderStatusMatches"]],
   ["./hubPoBatch", ["runHubPoBatch"]],
+  ["./purchaseNotes", ["loadPurchaseNotes"]],
 ]);
 try {
   await build({

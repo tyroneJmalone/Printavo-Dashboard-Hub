@@ -1,8 +1,9 @@
-import { db, vendorOrdersTable, poFilesTable, type VendorOrder } from "@workspace/db";
+import { db, vendorOrdersTable, type VendorOrder } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { SanMarApiError } from "@workspace/sanmar";
 import { SSApiError } from "@workspace/ss-activewear";
 import { mergeVendorTracking, trackingSnapshotCas } from "./trackingLogic";
+import { submitPoToVendor } from "./poFiles";
 import {
   VendorNotConfigured,
   sanMarClient,
@@ -196,15 +197,7 @@ async function updateRowIfStatus(
 
 /** Lock the PO file as vendor-submitted, but never clobber an existing lock. */
 async function lockPoIfUnlocked(poFileId: string, vendorOrderNumber: string): Promise<void> {
-  const [po] = await db
-    .select({ submittedToVendorAt: poFilesTable.submittedToVendorAt })
-    .from(poFilesTable)
-    .where(eq(poFilesTable.id, poFileId));
-  if (!po || po.submittedToVendorAt) return;
-  await db
-    .update(poFilesTable)
-    .set({ submittedToVendorAt: new Date(), vendorOrderNumber, updatedAt: new Date() })
-    .where(eq(poFilesTable.id, poFileId));
+  await submitPoToVendor(poFileId, vendorOrderNumber);
 }
 
 function refreshable(row: VendorOrder): string | null {

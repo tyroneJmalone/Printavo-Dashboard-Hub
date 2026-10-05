@@ -41,6 +41,8 @@ import {
 } from "./routing";
 import { runWorkorderAttempts, WorkorderSkip, type WorkorderRetryAudit } from "./workorderRetry";
 import { runHubPoBatch } from "./hubPoBatch";
+import { claimReplacementSlips } from "./replacementSlipQueue";
+import { runReplacementSlipBatch } from "./replacementSlipBatch";
 
 export { PDF_RENDERER_STARTUP_ERROR_PREFIX } from "./rendererStartupGuard";
 
@@ -366,6 +368,37 @@ async function runAutoPrint(
 ): Promise<void> {
   const counts = summary.counts;
   try {
+    // Replacement-only POs never produce workorder candidates. Process the
+    // prospective submission queue independently, without Printavo mutations.
+    if (config.enabled && !dryRun && process.env.NODE_ENV === "production") {
+      let slipRenderer: PdfRenderer | null = null;
+      try {
+        const slips = await runReplacementSlipBatch({
+          runId, printerId: config.printerId, printerName: config.printerName,
+          dryRun, production: true,
+        }, {
+          claim: claimReplacementSlips,
+          update: async (id, patch) => {
+            const rows = await db.update(pqPrintJobsTable).set(patch)
+              .where(eq(pqPrintJobsTable.id, id)).returning({ id: pqPrintJobsTable.id });
+            if (rows.length !== 1) throw new Error("Replacement slip reservation disappeared");
+          },
+          render: async html => {
+            slipRenderer ??= await openPdfRenderer({ maxStartupAttempts: 1 });
+            return slipRenderer.renderHtml(html);
+          },
+          submit: submitPdfPrintJob,
+        });
+        counts.printed += slips.printed;
+        counts.failed += slips.failed;
+        counts.candidates += slips.printed + slips.failed;
+        if (slips.warnings.length) summary.error = slips.warnings.join("; ");
+        await persistSummary(runId, { summary: { ...summary, counts } });
+      } finally {
+        const renderer = slipRenderer as PdfRenderer | null;
+        await renderer?.close();
+      }
+    }
     /*
      * 1 — discover candidates from live Printavo before consulting the
      * mirror. The status-scoped query is paginated without an age or visual
@@ -425,7 +458,7 @@ async function runAutoPrint(
       counts.skipped++;
       if (prior) counts.alreadyPrinted++;
     };
-    counts.candidates = live.orders.length;
+    counts.candidates += live.orders.length;
     // Rotate bounded detail work by last observation so unchanged older orders
     // cannot permanently starve new/reentered invoices beyond the cap.
     const lastAttempt = (id: string, visual: number) => Math.max(0, ...printedRows

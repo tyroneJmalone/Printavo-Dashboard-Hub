@@ -159,6 +159,7 @@ export const runHubPoBatch = async (input: any) => {
   h.poBatches.push(input);
   return { printed: input.successfullyPrintedOrders.length ? 1 : 0, failed: 0, unknown: 0, warnings: [] };
 };
+export const loadPurchaseNotes = async () => [];
 export const sleep = async (ms: number) => {
   h.delays.push(ms);
   assert.equal(h.sendCalls, 0, "never back off after sending");

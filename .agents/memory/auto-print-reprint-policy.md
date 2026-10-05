@@ -59,12 +59,15 @@ They approved the general draft appearance and additionally require PO number,
 order date, vendor, and ordered-from warehouse. Use verified PO submission data;
 do not infer an actual fulfillment warehouse from free-text ordering instructions.
 If a PO uses multiple warehouses, retain the warehouse association per line.
-The draft is not approval to activate slip printing; the full-workorder skip
-remains in force.
+The user subsequently approved enabling the slip on the next republish.
+The full-workorder skip remains in force.
 
 **Why:** This is an in-house replacement/fix record, not a normal customer
 workorder; the entire invoice contains unrelated replacement lines.
 
-**How to apply:** If implemented after approval, scope by exact PO snapshot line
-IDs and quantities, not all invoice lines. Keep draft proposals distinct from
-enabled print behavior.
+**How to apply:** Scope by exact PO snapshot line IDs and quantities, not all
+invoice lines. Queue prospectively on confirmed vendor ordering (including
+manual confirmation), then use the next live AutoPrint run and its printer.
+Do not backfill existing POs, print vendor previews/test orders, or resend
+uncertain submissions. This trigger lets replacement-only POs print without
+weakening the full-workorder exclusion.
