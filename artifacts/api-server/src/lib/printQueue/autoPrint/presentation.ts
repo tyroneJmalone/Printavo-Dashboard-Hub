@@ -23,6 +23,11 @@ export const AUTO_PRINT_COMPACT_CSS = `
   .hub-customer-header .addresses { display: flex !important; margin-top: 0 !important; }
   .hub-customer-header .addresses > div { width: 50% !important; overflow-wrap: anywhere; }
   .hub-customer-header .well { padding-top: 0 !important; }
+  .hub-production-header { display: flex !important; align-items: flex-start; gap: 16px; }
+  .hub-production-header > .hub-production-notes { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .hub-production-code { flex: 0 0 auto; text-align: center; break-inside: avoid; }
+  .hub-production-code > .pull-right { float: none !important; }
+  .hub-production-code > .alert { display: block !important; margin: 6px 0 0 !important; padding: 6px !important; }
 `;
 
 export interface PurchaseNote {
@@ -35,6 +40,23 @@ export interface PurchaseNote {
 export function presentationScript(notes: PurchaseNote[]): string {
   return `(() => {
     const notes = ${JSON.stringify(notes)};
+    const publicInvoice = document.querySelector('.public-invoice');
+    const title = publicInvoice?.querySelector(':scope > div > .alert');
+    const oldTitleRow = title?.parentElement;
+    const qr = oldTitleRow?.querySelector(':scope > .pull-right');
+    const productionNotes = oldTitleRow?.nextElementSibling;
+    if (title?.textContent.trim() === 'Work Order' && qr?.querySelector('svg')
+        && productionNotes?.querySelector(':scope > b')?.textContent.trim() === 'Production Notes') {
+      const compact = document.createElement('div');
+      compact.className = 'hub-production-header';
+      const code = document.createElement('div');
+      code.className = 'hub-production-code';
+      oldTitleRow.before(compact);
+      productionNotes.classList.add('hub-production-notes');
+      code.append(qr, title);
+      compact.append(productionNotes, code);
+      oldTitleRow.remove();
+    }
     // Move the original address nodes (including contact details), never recreate
     // or guess them. Only replace the known company column beside invoice meta.
     const layout = document.querySelector('.workorder-layout .page-content');

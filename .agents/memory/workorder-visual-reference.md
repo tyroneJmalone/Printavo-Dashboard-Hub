@@ -13,6 +13,8 @@ AutoPrint omits production-file names/thumbnails (not production notes or produc
 images) and the Mint logo/company-address section. Move Customer Billing and
 Customer Shipping into that section, to the left of PO number and dates, and
 collapse the vacated space.
+Put the QR code beside production notes, with the Work Order title below the
+code, instead of retaining a separate top row.
 
 **Why:** The user approved the compact real-workorder proof, then requested these
 specific exceptions to reduce page count and toner usage.

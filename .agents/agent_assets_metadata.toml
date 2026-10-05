@@ -291,3 +291,17 @@ mtime_ms = 1791175346823
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/11474542-9115-4151-9723-585a7b8515de/6f8d77bf-8507-403c-a0f9-f7a22856a2e3"
 storage_version_token = "1791175369817666"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "DHEA5gAZmOcSQ93q0MSHP"
+uri = "file://exports/workorder-22837-compact-qr-proof.pdf"
+type = "pdf"
+title = "AutoPrint proof — QR beside production notes"
+description = "QR code preserved, Work Order title directly below it, and the former top row removed. Layout proof only; no print job sent."
+logical_id = "f3432c21-58f1-4cc3-bd2b-6f0f87294396"
+content_hash = "sha256:c543466c3fe721e1e88e40aab786a8be99ccef2508f5e739d7df75774a52017a"
+size = 156835
+mtime_ms = 1791176201151
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/f3432c21-58f1-4cc3-bd2b-6f0f87294396/2c0f9d08-d04a-45eb-888e-774297d9760c"
+storage_version_token = "1791176220916671"
+content_type = "application/pdf"
