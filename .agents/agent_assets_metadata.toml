@@ -193,3 +193,31 @@ mtime_ms = 1791124524594
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/22c2abe8-0e3c-4cb6-8d43-f0a91b0f5b69/5eb95d1e-c71a-41ee-a8d1-e89ee5ec27aa"
 storage_version_token = "1791124546800358"
 content_type = "text/html"
+
+[[outputs]]
+id = "RfktH6D3Dz1Qg2cRkSO7T"
+uri = "file://exports/workorder-format-concept.png"
+type = "image"
+title = "Workorder formatting concept"
+description = "Fictional visual example: compact layout with date, vendor, and warehouse notes alongside Goods Status beneath each product."
+logical_id = "d387d24c-b2d0-42bd-87d0-5db5f17e9745"
+content_hash = "sha256:697ec6fb0d760d6faa6ae49750e57223b594f275d380ea1f0e22e0c142a1c52a"
+size = 221734
+mtime_ms = 1791171378831
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/d387d24c-b2d0-42bd-87d0-5db5f17e9745/e6a9cbf7-d721-4090-bd6e-a9eb22565998"
+storage_version_token = "1791171387020360"
+content_type = "image/png"
+
+[[outputs]]
+id = "HVkeZl8sKFjUXFseTc0XA"
+uri = "file://exports/workorder-format-concept.pdf"
+type = "pdf"
+title = "Workorder concept — printable Letter PDF"
+description = "Print-size sample for reviewing readability. Not a live workorder; no Auto-Print changes applied."
+logical_id = "8281fc7c-42a7-48c9-9031-2dcd5093d230"
+content_hash = "sha256:61b5f7f1dcfead3cff127ea2a5926da316c714110484b52d30e2bf54d4444ae7"
+size = 77290
+mtime_ms = 1791171378875
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/8281fc7c-42a7-48c9-9031-2dcd5093d230/f5d0dc2f-3b6d-44d2-a53d-aca49d5a99c2"
+storage_version_token = "1791171387669232"
+content_type = "application/pdf"
