@@ -1,4 +1,5 @@
 import { ReplitConnectors } from "@replit/connectors-sdk";
+import { trackingRefreshFinished } from "../../../../../lib/shared/trackingRefreshPolicy";
 import { appSettingsTable, db, vendorOrdersTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { toVendorOrderDto, type VendorTrackingEntry } from "./vendorSubmit";
@@ -77,6 +78,8 @@ async function persistTracking(id: string, incoming: VendorTrackingEntry): Promi
 export async function refreshCarrierTracking(id: string): Promise<RefreshResult> {
   const [row] = await db.select().from(vendorOrdersTable).where(eq(vendorOrdersTable.id, id));
   if (!row) return { outcome: "not_found", vendorOrder: null, message: "Order not found." };
+  if (trackingRefreshFinished(row))
+    return { outcome: "not_refreshable", vendorOrder: toVendorOrderDto(row), message: "No check needed: vendor complete or all known shipments delivered." };
   if (row.mode !== "live" || row.status !== "submitted" || row.archived)
     return { outcome: "not_refreshable", vendorOrder: toVendorOrderDto(row), message: "Only active submitted live orders can use carrier tracking." };
   if (!(await getCarrierTrackingSettings()).enabled)
@@ -137,17 +140,16 @@ export async function refreshDueShipments(): Promise<void> {
   if (process.env.NODE_ENV !== "production") return;
   const rows = await db.select().from(vendorOrdersTable)
     .where(and(eq(vendorOrdersTable.mode, "live"), eq(vendorOrdersTable.status, "submitted"), eq(vendorOrdersTable.archived, false),
-      // Even after every known package is delivered, the vendor may report a
-      // later split shipment. Discover for a bounded post-submission window;
-      // terminal carrier packages remain ineligible for paid polling.
+      // Completed/delivered orders are excluded below per the refresh policy.
       sql`COALESCE(${vendorOrdersTable.submittedAt}, ${vendorOrdersTable.createdAt}) >= NOW() - INTERVAL '45 days'`))
-    .orderBy(vendorOrdersTable.updatedAt).limit(10);
-  for (const row of rows) {
+    .orderBy(vendorOrdersTable.updatedAt);
+  for (const row of rows.filter(row => !trackingRefreshFinished(row)).slice(0, 10)) {
     let tracking = (row.tracking as VendorTrackingEntry[] | null) ?? [];
     if (!row.lastStatusCheckAt || Date.now() - row.lastStatusCheckAt.getTime() > CACHE_MS) {
       const { refreshVendorOrderStatus } = await import("./vendorTracking");
       const result = await refreshVendorOrderStatus(row.id);
       tracking = result.vendorOrder?.tracking ?? tracking;
+      if (result.vendorOrder && trackingRefreshFinished(result.vendorOrder)) continue;
     }
     if ((await getCarrierTrackingSettings()).enabled && tracking.some((t) => mayRequestCarrier(true, t, Date.now()))) {
       await refreshCarrierTracking(row.id);

@@ -13,7 +13,13 @@ Delivery evidence belongs to known packages, not the entire PO.
 
 **Why:** Vendors can report split shipments later. All current tracking numbers being delivered does not prove every ordered line has shipped.
 
-**How to apply:** Preserve “known shipments” wording unless package/quantity coverage is positively reconciled; keep bounded vendor discovery after known packages are delivered.
+**How to apply:** Preserve “known shipments” wording unless package/quantity coverage is positively reconciled.
+
+The user explicitly changed the refresh policy: stop checks when Vendor Status is Complete OR all known shipments are delivered, including the Refresh batch and background checks.
+
+**Why:** Refresh checked all 19 POs when only one still needed attention. This supersedes the previous bounded discovery after delivery.
+
+**How to apply:** Exclude terminal POs before counting/processing the batch. Empty shipment lists and mixed Complete/open vendor statuses are not terminal. Stopping discovery does not certify full ordered-quantity delivery.
 
 ## Shippo billing errors
 

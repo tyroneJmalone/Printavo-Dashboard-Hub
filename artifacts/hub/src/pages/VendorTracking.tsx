@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { trackingRefreshFinished } from "../../../../lib/shared/trackingRefreshPolicy";
 import { AppShell } from "@/components/layout/AppShell";
 import {
   useListVendorOrders,
@@ -245,13 +246,13 @@ export default function VendorTracking() {
     return true;
   });
   const activeCount = orders.filter(
-    (o) => o.mode === "live" && (o.status === "submitted" || o.status === "unknown") && !o.archived,
+    (o) => o.mode === "live" && (o.status === "submitted" || o.status === "unknown") && !o.archived && !trackingRefreshFinished(o),
   ).length;
 
   // Individual requests avoid one long batch exceeding the proxy deadline.
   // Vendor failures must not prevent checking previously known shipments.
   const refreshActive = async () => {
-    const active = orders.filter((o) => o.mode === "live" && (o.status === "submitted" || o.status === "unknown") && !o.archived);
+    const active = orders.filter((o) => o.mode === "live" && (o.status === "submitted" || o.status === "unknown") && !o.archived && !trackingRefreshFinished(o));
     if (!active.length || refreshProgress) return;
     const outcomes: string[] = [];
     let carrierPaused = false;
@@ -273,7 +274,7 @@ export default function VendorTracking() {
           carrierText = carrierPaused ? "Carrier: paused (Shippo account blocked)" : latest.status !== "submitted" || !latest.tracking.length
             ? "Carrier: no submitted shipments known"
             : "Carrier: not checked";
-          if (!carrierPaused && latest.status === "submitted" && latest.tracking.length) {
+          if (!carrierPaused && latest.status === "submitted" && latest.tracking.length && !trackingRefreshFinished(latest)) {
             try {
               const result = await refreshVendorOrderCarrier(order.id);
               carrierText = `Carrier: ${result.outcome}${result.message ? ` — ${result.message}` : ""}`;

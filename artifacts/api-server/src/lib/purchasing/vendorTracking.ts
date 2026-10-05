@@ -4,6 +4,7 @@ import { SanMarApiError } from "@workspace/sanmar";
 import { SSApiError } from "@workspace/ss-activewear";
 import { mergeVendorTracking, trackingSnapshotCas } from "./trackingLogic";
 import { submitPoToVendor } from "./poFiles";
+import { trackingRefreshFinished } from "../../../../../lib/shared/trackingRefreshPolicy";
 import {
   VendorNotConfigured,
   sanMarClient,
@@ -210,6 +211,7 @@ function refreshable(row: VendorOrder): string | null {
   if (row.archived) {
     return "This order is archived — unarchive it before checking the vendor.";
   }
+  if (trackingRefreshFinished(row)) return "No check needed: vendor complete or all known shipments delivered.";
   return null;
 }
 
@@ -334,7 +336,8 @@ export async function refreshActiveVendorOrders(): Promise<RefreshAllResult> {
     .orderBy(vendorOrdersTable.createdAt);
 
   const results: RefreshResult[] = [];
-  for (const row of rows) {
+  const active = rows.filter(row => !trackingRefreshFinished(row));
+  for (const row of active) {
     try {
       results.push(await refreshVendorOrderStatus(row.id));
     } catch (err) {
@@ -346,7 +349,7 @@ export async function refreshActiveVendorOrders(): Promise<RefreshAllResult> {
     }
   }
   return {
-    checked: rows.length,
+    checked: active.length,
     refreshed: results.filter((r) => r.outcome === "refreshed").length,
     reconciled: results.filter((r) => r.outcome === "reconciled").length,
     noRecord: results.filter((r) => r.outcome === "no_vendor_record").length,
