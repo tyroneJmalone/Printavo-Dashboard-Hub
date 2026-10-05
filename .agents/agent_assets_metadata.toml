@@ -277,3 +277,17 @@ mtime_ms = 1791174818267
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/a939931d-f443-43ed-9028-d08931de76dc/1c91d4dd-6468-4f7f-be0e-1ab6fb3dc6b8"
 storage_version_token = "1791174899969562"
 content_type = "image/png"
+
+[[outputs]]
+id = "qBCFliTkdmTsxBgVxCpHK"
+uri = "file://exports/workorder-22837-space-saving-proof.pdf"
+type = "pdf"
+title = "Updated AutoPrint proof — compact customer header"
+description = "Production-file previews and Mint company block removed. Customer billing and shipping sit beside PO and dates. Generated from captured Printavo HTML without sending a print job."
+logical_id = "11474542-9115-4151-9723-585a7b8515de"
+content_hash = "sha256:f11a1294addf98b25f5e684f24d083787433deb7513cb962addc94853062041e"
+size = 156697
+mtime_ms = 1791175346823
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/11474542-9115-4151-9723-585a7b8515de/6f8d77bf-8507-403c-a0f9-f7a22856a2e3"
+storage_version_token = "1791175369817666"
+content_type = "application/pdf"

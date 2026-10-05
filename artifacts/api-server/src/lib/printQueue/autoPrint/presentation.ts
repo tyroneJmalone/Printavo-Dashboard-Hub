@@ -14,6 +14,15 @@ export const AUTO_PRINT_COMPACT_CSS = `
   }
   .hub-purchase-note { font-size: 7pt !important; margin-left: 6px; }
   .hub-purchase-note + .hub-purchase-note { display: block; margin-left: 0; }
+  .production-preview__wrapper, .production-file-preview__wrapper, .production-file-name {
+    display: none !important;
+  }
+  .hub-customer-header { display: flex !important; align-items: flex-start; margin-top: 12px !important; }
+  .hub-customer-header > .pdf-col-7 { width: 58.333333% !important; }
+  .hub-customer-header > .pdf-col-5 { width: 41.666667% !important; }
+  .hub-customer-header .addresses { display: flex !important; margin-top: 0 !important; }
+  .hub-customer-header .addresses > div { width: 50% !important; overflow-wrap: anywhere; }
+  .hub-customer-header .well { padding-top: 0 !important; }
 `;
 
 export interface PurchaseNote {
@@ -26,6 +35,24 @@ export interface PurchaseNote {
 export function presentationScript(notes: PurchaseNote[]): string {
   return `(() => {
     const notes = ${JSON.stringify(notes)};
+    // Move the original address nodes (including contact details), never recreate
+    // or guess them. Only replace the known company column beside invoice meta.
+    const layout = document.querySelector('.workorder-layout .page-content');
+    const addresses = layout?.querySelector('.row.addresses');
+    const company = layout?.querySelector('.invoice-logo-wrapper')?.closest('.pdf-col-7');
+    const header = company?.parentElement;
+    if (addresses && company && header?.querySelector('.invoice__top-meta')) {
+      const oldColumn = addresses.parentElement;
+      const oldRow = oldColumn?.parentElement;
+      company.replaceChildren(addresses);
+      header.classList.add('hub-customer-header');
+      // Keep any invoice notes in the old row; remove only vacated space.
+      oldColumn?.remove();
+      if (oldRow && !oldRow.textContent.trim() && !oldRow.querySelector('img,svg,table')) {
+        if (oldRow.previousElementSibling?.matches('hr')) oldRow.previousElementSibling.remove();
+        oldRow.remove();
+      }
+    }
     document.querySelectorAll('table.table__invoice-line-items > tbody').forEach(body => {
       let index = -1;
       let lineId = null;
