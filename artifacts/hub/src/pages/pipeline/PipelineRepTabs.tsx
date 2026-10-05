@@ -1,5 +1,6 @@
 import { formatNumber } from "@/lib/format";
 import type { PipelineOwner } from "@workspace/api-client-react";
+import { PIPELINE_OWNERS } from "./owners";
 
 interface Props {
   owners: PipelineOwner[];
@@ -7,12 +8,12 @@ interface Props {
   onSelect: (email: string | undefined) => void;
 }
 
-function repName(email: string): string {
-  const prefix = email.split("@")[0] ?? email;
-  return prefix.charAt(0).toUpperCase() + prefix.slice(1);
-}
-
 export function PipelineRepTabs({ owners, activeOwner, onSelect }: Props) {
+  const counts = new Map<string, number>();
+  for (const owner of owners) {
+    const email = owner.email.trim().toLowerCase();
+    counts.set(email, (counts.get(email) ?? 0) + owner.count);
+  }
   return (
     <div className="flex items-center gap-1.5 mt-3 flex-wrap">
       <button
@@ -23,9 +24,9 @@ export function PipelineRepTabs({ owners, activeOwner, onSelect }: Props) {
             : "bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500"
         }`}
       >
-        All Team
+        All
       </button>
-      {owners.map(o => (
+      {PIPELINE_OWNERS.map(o => (
         <button
           key={o.email}
           onClick={() => onSelect(o.email.toLowerCase())}
@@ -36,8 +37,8 @@ export function PipelineRepTabs({ owners, activeOwner, onSelect }: Props) {
           }`}
           title={o.email}
         >
-          {repName(o.email)}
-          <span className="ml-1.5 opacity-70">{formatNumber(o.count)}</span>
+          {o.name}
+          <span className="ml-1.5 opacity-70">{formatNumber(counts.get(o.email) ?? 0)}</span>
         </button>
       ))}
     </div>

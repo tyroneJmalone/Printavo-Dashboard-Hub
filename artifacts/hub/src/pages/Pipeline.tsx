@@ -22,6 +22,7 @@ import { PipelineViewMenu } from "./pipeline/PipelineViewMenu";
 import { PipelineDateRangePop } from "./pipeline/PipelineDateRangePop";
 import { PipelineStageCards } from "./pipeline/PipelineStageCards";
 import { PipelineRepTabs } from "./pipeline/PipelineRepTabs";
+import { normalizePipelineOwner } from "./pipeline/owners";
 import { PipelineTable } from "./pipeline/PipelineTable";
 
 const WON_WINDOW_OPTIONS = [30, 60, 90, 180, 365];
@@ -67,7 +68,7 @@ function normalizeConfig(c: Partial<PipelineViewConfig>): PipelineViewConfig {
     customerDueFrom: c.customerDueFrom ?? "",
     customerDueTo: c.customerDueTo ?? "",
     stage: c.stage ?? "active",
-    owner: c.owner === null ? undefined : c.owner,
+    owner: normalizePipelineOwner(c.owner),
     wonDays: c.wonDays ?? 90,
     sort: c.sort,
     direction: c.direction,
@@ -283,7 +284,7 @@ function PipelineContent({ tabs }: { tabs: React.ReactNode }) {
     if ((initMode === "no-default" || initMode === "error") && data && !appliedDefaultRep.current) {
       appliedDefaultRep.current = true;
       const mine = data.owners?.find(o => o.email.toLowerCase() === myEmail.toLowerCase());
-      if (mine) {
+      if (mine && normalizePipelineOwner(mine.email)) {
         setConfig(c => ({ ...c, owner: mine.email.toLowerCase() }));
       }
     }
