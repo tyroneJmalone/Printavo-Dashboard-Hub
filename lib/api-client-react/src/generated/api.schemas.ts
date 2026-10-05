@@ -5297,6 +5297,19 @@ export interface AutoPrintRunCounts {
   dryRun: number;
 }
 
+/**
+ * Null for historical runs; only complete proves the matching candidate count.
+ * @nullable
+ */
+export type AutoPrintRunDiscoveryState = typeof AutoPrintRunDiscoveryState[keyof typeof AutoPrintRunDiscoveryState] | null;
+
+
+export const AutoPrintRunDiscoveryState = {
+  checking: 'checking',
+  complete: 'complete',
+  failed: 'failed',
+} as const;
+
 export type AutoPrintRunTrigger = typeof AutoPrintRunTrigger[keyof typeof AutoPrintRunTrigger];
 
 
@@ -5319,6 +5332,16 @@ export const AutoPrintRunStatus = {
  * status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run).
  */
 export interface AutoPrintRun {
+  /**
+     * Null for historical runs; only complete proves the matching candidate count.
+     * @nullable
+     */
+  discoveryState?: AutoPrintRunDiscoveryState;
+  /**
+     * Live source-status discovery progress and completion timestamp; null for historical runs.
+     * @nullable
+     */
+  discoveryMessage?: string | null;
   id: string;
   trigger: AutoPrintRunTrigger;
   dryRun: boolean;

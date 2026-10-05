@@ -10212,6 +10212,8 @@ export const StartAutoPrintRunBody = zod.object({
 })
 
 export const StartAutoPrintRunResponse = zod.object({
+  "discoveryState": zod.union([zod.literal('checking'),zod.literal('complete'),zod.literal('failed'),zod.literal(null)]).nullish().describe('Null for historical runs; only complete proves the matching candidate count.'),
+  "discoveryMessage": zod.string().nullish().describe('Live source-status discovery progress and completion timestamp; null for historical runs.'),
   "id": zod.string(),
   "trigger": zod.enum(['scheduled', 'manual']),
   "dryRun": zod.boolean(),
@@ -10251,6 +10253,8 @@ export const ListAutoPrintRunsQueryParams = zod.object({
 
 export const ListAutoPrintRunsResponse = zod.object({
   "runs": zod.array(zod.object({
+  "discoveryState": zod.union([zod.literal('checking'),zod.literal('complete'),zod.literal('failed'),zod.literal(null)]).nullish().describe('Null for historical runs; only complete proves the matching candidate count.'),
+  "discoveryMessage": zod.string().nullish().describe('Live source-status discovery progress and completion timestamp; null for historical runs.'),
   "id": zod.string(),
   "trigger": zod.enum(['scheduled', 'manual']),
   "dryRun": zod.boolean(),
@@ -10286,6 +10290,8 @@ export const GetAutoPrintRunParams = zod.object({
 })
 
 export const GetAutoPrintRunResponse = zod.object({
+  "discoveryState": zod.union([zod.literal('checking'),zod.literal('complete'),zod.literal('failed'),zod.literal(null)]).nullish().describe('Null for historical runs; only complete proves the matching candidate count.'),
+  "discoveryMessage": zod.string().nullish().describe('Live source-status discovery progress and completion timestamp; null for historical runs.'),
   "id": zod.string(),
   "trigger": zod.enum(['scheduled', 'manual']),
   "dryRun": zod.boolean(),

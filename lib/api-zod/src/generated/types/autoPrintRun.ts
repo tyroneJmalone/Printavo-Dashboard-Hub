@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AutoPrintRunCounts } from './autoPrintRunCounts';
+import type { AutoPrintRunDiscoveryState } from './autoPrintRunDiscoveryState';
 import type { AutoPrintRunStatus } from './autoPrintRunStatus';
 import type { AutoPrintRunTrigger } from './autoPrintRunTrigger';
 
@@ -13,6 +14,16 @@ import type { AutoPrintRunTrigger } from './autoPrintRunTrigger';
  * status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run).
  */
 export interface AutoPrintRun {
+  /**
+     * Null for historical runs; only complete proves the matching candidate count.
+     * @nullable
+     */
+  discoveryState?: AutoPrintRunDiscoveryState;
+  /**
+     * Live source-status discovery progress and completion timestamp; null for historical runs.
+     * @nullable
+     */
+  discoveryMessage?: string | null;
   id: string;
   trigger: AutoPrintRunTrigger;
   dryRun: boolean;

@@ -11,6 +11,11 @@ import {
 } from "@workspace/printavo";
 import { getPrintavoClient } from "../../printavoGateway";
 
+// At 25 records/page this allows 1,250 matches per kind, without turning
+// auto-print into a historical sync. Exceeding the budget fails closed.
+export const MAX_DISCOVERY_PAGES_PER_KIND = 50;
+export const MAX_DISCOVERY_DURATION_MS = 120_000;
+
 /**
  * A deliberately small client surface keeps live discovery unit-testable while
  * still requiring the production caller to use the shared Printavo gateway.
@@ -34,6 +39,7 @@ export interface LiveDiscoveryResult {
 
 export type LiveDiscoveryErrorKind =
   | "request"
+  | "budget_exceeded"
   | "unsupported_filter"
   | "incomplete_pagination"
   | "invalid_response";
@@ -199,6 +205,7 @@ export async function discoverLiveAutoPrintOrders(
   }
 
   const byVisual = new Map<number, LiveAutoPrintOrder>();
+  const deadline = Date.now() + MAX_DISCOVERY_DURATION_MS;
   const pages: Record<"invoices" | "quotes", number> = {
     invoices: 0,
     quotes: 0,
@@ -209,6 +216,12 @@ export async function discoverLiveAutoPrintOrders(
     const seenCursors = new Set<string>();
     for (;;) {
       const pageNumber = pages[kind] + 1;
+      if (pageNumber > MAX_DISCOVERY_PAGES_PER_KIND || Date.now() >= deadline) {
+        throw new LiveDiscoveryError(
+          `Live auto-print discovery incomplete: exceeded the ${MAX_DISCOVERY_PAGES_PER_KIND}-page per-kind / ${MAX_DISCOVERY_DURATION_MS / 1000}-second budget. No documents were printed; narrow the configured source statuses and retry.`,
+          "budget_exceeded",
+        );
+      }
       let data: InvoicesPage | QuotesPage;
       try {
         const query =
@@ -223,8 +236,25 @@ export async function discoverLiveAutoPrintOrders(
                 statusIds: [...wantedStatuses],
                 sortDescending: false,
               });
-        data = await client.query<InvoicesPage | QuotesPage>(query);
+        // Timeout bounds the discovery phase even while the shared gateway
+        // is queued/retrying. The remaining request is read-only; never start
+        // another page or any side effects after the deadline.
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          data = await Promise.race([
+            client.query<InvoicesPage | QuotesPage>(query),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(() => reject(new LiveDiscoveryError(
+                "Live auto-print discovery incomplete: time budget exceeded. No documents were printed; retry when Printavo is available.",
+                "budget_exceeded",
+              )), Math.max(0, deadline - Date.now()));
+            }),
+          ]);
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
       } catch (err) {
+        if (err instanceof LiveDiscoveryError) throw err;
         if (isUnsupportedStatusFilter(err)) {
           throw unsupportedFilterError(err);
         }
@@ -235,6 +265,15 @@ export async function discoverLiveAutoPrintOrders(
       }
 
       const page = readConnection(kind, data, pageNumber);
+      // Printavo can report hasNextPage:false at its 10k window boundary.
+      // Never label that response complete, even if upstream page sizes change.
+      if (page.pageInfo.endCursor &&
+          Number(Buffer.from(page.pageInfo.endCursor, "base64").toString("utf8")) >= 10_000) {
+        throw new LiveDiscoveryError(
+          "Live auto-print discovery incomplete: Printavo pagination window reached. No documents were printed.",
+          "incomplete_pagination",
+        );
+      }
       pages[kind] = pageNumber;
       for (const rawNode of page.nodes) {
         if (!rawNode || typeof rawNode !== "object") {

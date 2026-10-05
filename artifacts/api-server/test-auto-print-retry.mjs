@@ -9,6 +9,7 @@ const outfile = path.join(outputDir, "test.mjs");
 const harness = path.resolve(import.meta.dirname, "tests/autoPrintRetryHarness.ts");
 const helper = path.resolve(import.meta.dirname, "src/lib/printQueue/autoPrint/workorderRetry.ts");
 const mocks = new Map([
+  ["./purchaseNotes", ["loadPurchaseNotes"]],
   ["@workspace/db", ["db", "pqPrintRunsTable", "pqPrintJobsTable", "pvOrdersTable", "changeEventsTable", "pvStatusesTable"]],
   ["drizzle-orm", ["eq", "desc", "inArray", "and", "or", "sql"]],
   ["../../sync/upserts", ["upsertOrder"]],

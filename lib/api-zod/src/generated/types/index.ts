@@ -86,6 +86,7 @@ export * from './autoPrintRoutingRuleDecoration';
 export * from './autoPrintRoutingRuleDueComparator';
 export * from './autoPrintRun';
 export * from './autoPrintRunCounts';
+export * from './autoPrintRunDiscoveryState';
 export * from './autoPrintRunsResponse';
 export * from './autoPrintRunStatus';
 export * from './autoPrintRunTrigger';

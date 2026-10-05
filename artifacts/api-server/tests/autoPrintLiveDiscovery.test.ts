@@ -6,6 +6,8 @@ import {
   LiveDiscoveryError,
   liveOrderStatusMatches,
   type LiveOrderQueryClient,
+  MAX_DISCOVERY_PAGES_PER_KIND,
+  MAX_DISCOVERY_DURATION_MS,
 } from "../src/lib/printQueue/autoPrint/liveDiscovery.ts";
 import { scheduledAutoPrintAllowed } from "../src/lib/printQueue/autoPrint/schedulerSafety.ts";
 import { checkPrintSafety } from "../src/lib/printQueue/autoPrint/printSafety.ts";
@@ -316,4 +318,60 @@ test("printed dedup and MAX cap select detail work before detail requests", () =
   assert.deepEqual(detailRequests, ["old-2", "old-3"]);
   assert.equal(plan.alreadyPrinted, 2);
   assert.equal(plan.deferred, 1);
+});
+
+test("discovery is bounded even when every page returns a new cursor", async () => {
+  let calls = 0;
+  const client: LiveOrderQueryClient = {
+    async query<T>() {
+      calls++;
+      return { invoices: {
+        nodes: [node(`old-${calls}`, calls)],
+        pageInfo: { hasNextPage: true, endCursor: `page-${calls}` },
+      } } as T;
+    },
+  };
+  await assert.rejects(discoverLiveAutoPrintOrders([SOURCE_STATUS], client),
+    (err: unknown) => err instanceof LiveDiscoveryError && err.kind === "budget_exceeded");
+  assert.equal(calls, MAX_DISCOVERY_PAGES_PER_KIND);
+});
+
+test("deadline expires without starting another page or returning partial candidates", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"] });
+  const client: LiveOrderQueryClient = { query: () => new Promise(() => {}) };
+  const pending = assert.rejects(discoverLiveAutoPrintOrders([SOURCE_STATUS], client),
+    (err: unknown) => err instanceof LiveDiscoveryError && err.kind === "budget_exceeded");
+  t.mock.timers.tick(MAX_DISCOVERY_DURATION_MS + 1);
+  await pending;
+});
+
+test("a false last page at Printavo's 10k boundary is not reported as complete", async () => {
+  const client = new FakeClient({
+    "invoices:first": {
+      nodes: [node("old", 1)],
+      pageInfo: { hasNextPage: false, endCursor: Buffer.from("10000").toString("base64") },
+    },
+  });
+  await assert.rejects(discoverLiveAutoPrintOrders([SOURCE_STATUS], client),
+    (err: unknown) => err instanceof LiveDiscoveryError && err.kind === "incomplete_pagination");
+});
+
+test("old invoice outside 400 newest orders enters dry-run planning without write permission", async () => {
+  const recentWindow = Array.from({ length: 400 }, (_, i) => node(`recent-${i}`, 30000 - i));
+  const old = node("old-outside-window", 18371);
+  assert.equal(recentWindow.some((n) => n.id === old.id), false);
+  const client = new FakeClient({
+    "invoices:first": { nodes: [old], pageInfo: { hasNextPage: false, endCursor: null } },
+  });
+  const live = await discoverLiveAutoPrintOrders([SOURCE_STATUS], client);
+  const plan = planAutoPrintDetails(live.orders,
+    (order) => ({ orderId: order.node.id, visualId: order.node.visualId }),
+    new Set(), new Set(), 30);
+  assert.equal(plan.selected[0]?.node.id, old.id);
+  const status = { orderId: old.id, visualId: old.visualId, statusId: SOURCE_STATUS, statusName: "Print" };
+  assert.equal(checkPrintSafety({
+    dryRun: true, observedStatus: status,
+    expected: { orderId: old.id, visualId: old.visualId, sourceStatusId: SOURCE_STATUS },
+  }).allowed, false);
+  assert.ok(client.queries.every((q) => q.startsWith("query")));
 });

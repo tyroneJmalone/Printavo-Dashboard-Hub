@@ -126,6 +126,36 @@ test("actual engine: dry-run retries render without any print or status side eff
   assert.equal(h.poBatches.length, 0);
 });
 
+test("actual engine: old cached moved-out invoice is discovered and simulated without printing or status writes", async () => {
+  const job = await run({ orders: [{
+    printavoId: "order", visualId: 100, nickname: "Old outside newest 400",
+    statusId: "stale-other-status", statusName: "Stale",
+    data: { workorderUrl: "https://shop.printavo.com/work_orders/test" },
+    detailSyncedAt: new Date("2020-01-01"), orderType: "invoice", customerDueAt: null,
+  }] }, true);
+  assert.equal(job.status, "dry_run");
+  assert.equal(h.runs[0].summary.discoveryState, "complete");
+  assert.equal(h.runs[0].summary.counts.candidates, 1);
+  assert.match(h.runs[0].summary.discoveryMessage, /No invoice-age cutoff/);
+  assert.equal(h.sendCalls, 0);
+  assert.equal(h.statusJobs.length, 0);
+});
+
+test("actual engine: discovery failure persists unknown freshness and never renders or writes status", async () => {
+  reset({ discoveryError: new Error("Printavo unavailable") });
+  const started = await startAutoPrintRun("manual", { dryRun: true },
+    { info() {}, warn() {}, error() {} } as any);
+  assert.equal(started.status, "started");
+  for (let i = 0; i < 200 && anyRunActive(); i++) await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(anyRunActive(), false);
+  assert.equal(h.runs[0].status, "failed");
+  assert.equal(h.runs[0].summary.discoveryState, "failed");
+  assert.match(h.runs[0].summary.discoveryMessage, /count is unknown/);
+  assert.equal(h.renderCalls, 0);
+  assert.equal(h.sendCalls, 0);
+  assert.equal(h.statusJobs.length, 0);
+});
+
 test("actual engine: initial detail failures recover on third attempt with no extra delivery budget", async () => {
   const job = await run({ detailFailures: 2 });
   assert.equal(job.status, "printed");

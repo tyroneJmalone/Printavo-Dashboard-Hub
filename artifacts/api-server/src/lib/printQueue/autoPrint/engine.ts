@@ -97,6 +97,8 @@ export interface RunCounts {
 }
 
 interface RunSummary {
+  discoveryState?: "checking" | "complete" | "failed" | null;
+  discoveryMessage?: string | null;
   counts: RunCounts;
   dryRun: boolean;
   interrupted?: boolean;
@@ -108,6 +110,8 @@ interface RunSummary {
 }
 
 export interface PqPrintRunDto {
+  discoveryState: "checking" | "complete" | "failed" | null;
+  discoveryMessage: string | null;
   id: string;
   trigger: string;
   dryRun: boolean;
@@ -171,6 +175,8 @@ function readSummary(row: PqPrintRun): RunSummary {
     counts: { ...EMPTY_COUNTS, ...(s.counts ?? {}) },
     dryRun: row.dryRun,
     interrupted: s.interrupted,
+    discoveryMessage: s.discoveryMessage ?? null,
+    discoveryState: s.discoveryState ?? null,
     error: s.error ?? null,
     advanceJobId: s.advanceJobId ?? null,
     advanceSkipped: s.advanceSkipped ?? null,
@@ -192,6 +198,8 @@ function toRunDto(row: PqPrintRun): PqPrintRunDto {
     startedAt: row.startedAt.toISOString(),
     finishedAt: row.finishedAt?.toISOString() ?? null,
     counts: summary.counts,
+    discoveryMessage: summary.discoveryMessage ?? null,
+    discoveryState: summary.discoveryState ?? null,
     error: summary.error ?? null,
     advanceJobId: summary.advanceJobId ?? null,
     advanceSkipped: summary.advanceSkipped ?? null,
@@ -406,7 +414,14 @@ async function runAutoPrint(
      * visible even when the normal sync window has aged it out. Discovery
      * failures abort before rendering, PrintNode, or status advance.
      */
+    summary.discoveryMessage = "Checking live Printavo source statuses; candidate freshness is not yet verified.";
+    summary.discoveryState = "checking";
+    await persistSummary(runId, { summary });
     const live = await discoverLiveAutoPrintOrders(config.sourceStatusIds);
+    summary.discoveryState = "complete";
+    counts.candidates = live.orders.length;
+    summary.discoveryMessage = `Live status discovery completed at ${new Date().toISOString()}: ${live.orders.length} matching orders across ${live.pages.invoices} invoice and ${live.pages.quotes} quote pages. No invoice-age cutoff. Status is checked again before printing.`;
+    await persistSummary(runId, { summary });
     log.info(
       { runId, pages: live.pages, discovered: live.orders.length },
       "Auto-print live candidate discovery completed",
@@ -1016,6 +1031,10 @@ async function runAutoPrint(
       summary: { ...summary, counts },
     });
   } catch (err) {
+    if (summary.discoveryState === "checking") {
+      summary.discoveryState = "failed";
+      summary.discoveryMessage = "Live status discovery did not complete. Matching order count is unknown; no documents were printed.";
+    }
     await persistSummary(runId, {
       status: "failed",
       finishedAt: new Date(),

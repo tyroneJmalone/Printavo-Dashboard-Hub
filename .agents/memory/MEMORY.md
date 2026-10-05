@@ -65,6 +65,7 @@
 - [Reorder Portal public surface](reorder-portal.md) — accepted no-auth lookup model (private links = later phase); public writes re-validate with read filters; REORDER_EMAIL_MODE=live needed in prod.
 - [Line-item history semantics](line-item-history-semantics.md) — complete baselines only; polling records net changes, never editor identity or reconstructed past edits.
 - [Auto-print schedule policy](auto-print-schedule-policy.md) — Eastern civil time, no missed-slot catch-up, and no repeated fall-back printing.
+- [Auto-print live freshness](auto-print-live-freshness.md) — source-status discovery bypasses recent sync depth; incomplete reads mean unknown matches, never cached fallback.
 - [Workorder visual references](workorder-visual-reference.md) — preserve actual Printavo layout; user rejected fictional redesigns; purchasing notes belong beside each line’s Goods Status.
 - [Auto-print decoration policy](auto-print-decoration-policy.md) — use Purchasing decoration groups, separate destinations, and no retroactive printing/status changes.
 - [Auto-print reprint policy](auto-print-reprint-policy.md) — re-entry plus changed lines; legacy baselines fail closed; one relevant Hub PO copy per successful workorder batch.

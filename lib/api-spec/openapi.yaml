@@ -12436,6 +12436,13 @@ components:
       type: object
       description: "status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run)."
       properties:
+        discoveryState:
+          type: ["string", "null"]
+          enum: [checking, complete, failed, null]
+          description: Null for historical runs; only complete proves the matching candidate count.
+        discoveryMessage:
+          type: ["string", "null"]
+          description: Live source-status discovery progress and completion timestamp; null for historical runs.
         id: { type: string }
         trigger: { type: string, enum: [scheduled, manual] }
         dryRun: { type: boolean }

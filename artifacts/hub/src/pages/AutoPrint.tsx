@@ -1023,7 +1023,9 @@ function RetryDetails({ metadata }: { metadata: unknown }) {
 function countsLine(run: AutoPrintRun): string {
   const c = run.counts;
   const bits = [
-    `${c.candidates} candidate${c.candidates === 1 ? "" : "s"}`,
+    run.discoveryState === "checking" || run.discoveryState === "failed"
+      ? "Candidate count not verified"
+      : `${c.candidates} candidate${c.candidates === 1 ? "" : "s"}`,
     c.printed > 0 ? `${c.printed} workorders sent to printer` : null,
     (c.reprinted ?? 0) > 0 ? `${c.reprinted} reprints (included)` : null,
     (c.poPrinted ?? 0) > 0 ? `${c.poPrinted} PO copies sent to printer` : null,
@@ -1178,6 +1180,7 @@ function RunPanel() {
             {running && <Loader2 size={13} className="animate-spin text-slate-400" />}
           </div>
           <div className="text-slate-300 mt-1.5">{countsLine(activeRun)}</div>
+          {activeRun.discoveryMessage && <div className="text-slate-400 mt-1">{activeRun.discoveryMessage}</div>}
           {activeRun.error && (
             <div className="text-red-300 mt-1">{activeRun.error}</div>
           )}
@@ -1307,6 +1310,7 @@ function HistoryTables() {
                   </span>
                 </div>
                 <div className="text-slate-400 mt-1">{countsLine(r)}</div>
+                {r.discoveryMessage && <div className="text-slate-400 mt-1">{r.discoveryMessage}</div>}
                 {r.error && <div className="text-red-300 mt-0.5">{r.error}</div>}
                 {r.advanceSkipped && <div className="text-amber-300 mt-0.5">{r.advanceSkipped}</div>}
                 <button type="button" aria-expanded={expandedRunId === r.id} aria-controls={`run-jobs-${r.id}`} onClick={() => setExpandedRunId(expandedRunId === r.id ? null : r.id)} className="mt-2 flex items-center gap-1 text-sky-300 underline underline-offset-2">

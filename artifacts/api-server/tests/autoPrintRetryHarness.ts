@@ -19,6 +19,7 @@ export const desc = (value: unknown) => value;
 export const sql = () => null;
 
 export const h: any = {};
+export const loadPurchaseNotes = async () => [];
 export function reset(options: Record<string, unknown> = {}) {
   Object.assign(h, {
     runs: [], jobs: [], events: [], statuses: [{ printavoId: "source", name: "Ordered" }],
@@ -30,7 +31,8 @@ export function reset(options: Record<string, unknown> = {}) {
     renderFailures: 0, startupFailures: 0, submissionError: null, submissionId: 123,
     afterClaimFailures: 0, permanentRenderError: null, moved: false, conflict: false,
     uncertainPersistence: false, detailFailures: 0, statusFailures: 0,
-    missingDetail: false, permanentDetailError: null, permanentStartupError: null, ...options,
+    missingDetail: false, permanentDetailError: null, permanentStartupError: null,
+    discoveryError: null, ...options,
   });
 }
 function query(rows: () => any[]) {
@@ -87,7 +89,10 @@ export const getAutoPrintConfig = async () => ({
   categoryMappings: [{ category: "Screen Printing", statusId: "success", statusName: "Printed" }],
   errorStatusId: "error",
 });
-export const upsertOrder = async () => {};
+export const upsertOrder = async (node: any) => {
+  const row = h.orders.find((row: any) => row.printavoId === node.id);
+  if (row) Object.assign(row, { statusId: node.status.id, statusName: node.status.name });
+};
 export const newDetailAgg = () => ({});
 export const applyOrderDetail = async () => "written";
 const detail = () => ({ id: "order", visualId: 100,
@@ -104,13 +109,16 @@ export const getPrintavoClient = () => ({ query: async () => {
   if (h.missingDetail) return { invoice: null };
   return { invoice: detail() };
 } });
-export const discoverLiveAutoPrintOrders = async () => ({
+export const discoverLiveAutoPrintOrders = async () => {
+  if (h.discoveryError) throw h.discoveryError;
+  return ({
   orders: h.orders.map((row: any) => ({ kind: "invoices", node: {
     id: row.printavoId, visualId: row.visualId, nickname: row.nickname,
     status: { id: "source", name: "Ordered" },
   } })),
   pages: { invoices: 1, quotes: 0 },
-});
+  });
+};
 export class LiveDiscoveryError extends Error {}
 export const liveOrderStatusMatches = (observed: any, expected: any) => !!observed &&
   observed.orderId === expected.orderId && observed.visualId === expected.visualId &&
