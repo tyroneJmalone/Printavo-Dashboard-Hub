@@ -55,6 +55,10 @@ updates, delete existing attachments, or suppress a shared PO's customer work.
 The user requested a draft of a replacement slip for 22787 containing only
 invoice number, nickname, and the line details belonging to the PO being
 processed. Full line descriptions carry pertinent replacement/fix instructions.
+They approved the general draft appearance and additionally require PO number,
+order date, vendor, and ordered-from warehouse. Use verified PO submission data;
+do not infer an actual fulfillment warehouse from free-text ordering instructions.
+If a PO uses multiple warehouses, retain the warehouse association per line.
 The draft is not approval to activate slip printing; the full-workorder skip
 remains in force.
 
