@@ -1,3 +1,4 @@
+import { loadPurchaseNotes } from "./purchaseNotes";
 import type { Logger } from "pino";
 import {
   db,
@@ -726,6 +727,7 @@ async function runAutoPrint(
               renderer ??= await openPdfRenderer({ maxStartupAttempts: 1 });
               attempt.stage("render");
               const pdf = await renderer.renderUrl(c.workorderUrl, {
+                purchaseNotes: await loadPurchaseNotes(c.orderId),
                 excludeAttachments: config.excludeAttachments,
                 isReprint: c.isReprint,
               });

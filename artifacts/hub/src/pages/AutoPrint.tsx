@@ -370,7 +370,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
 
   const [enabled, setEnabled] = useState(initial.enabled);
   const [dryRun, setDryRun] = useState(initial.dryRun);
-  const [excludeAttachments, setExcludeAttachments] = useState(initial.excludeAttachments ?? false);
+  const excludeAttachments = true;
   const [scheduleHours, setScheduleHours] = useState(String(initial.scheduleHours));
   const [scheduleMode, setScheduleMode] = useState<AutoPrintConfigScheduleMode>(
     initial.scheduleMode === "daily" ? "daily" : "interval",
@@ -578,14 +578,14 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
           <input
             type="checkbox"
             checked={excludeAttachments}
-            onChange={(e) => setExcludeAttachments(e.target.checked)}
+            disabled
             className="mt-0.5 accent-[#059669]"
             data-testid="checkbox-autoprint-exclude-attachments"
           />
           <span>
             <span className="block text-[13px] text-slate-200">Exclude Attachments</span>
             <span className="block text-[11px] text-slate-500">
-              Omit attachment and mockup pages from auto-printed PDFs. Workorder details still print.
+              Always omit attachment and mockup pages from auto-printed PDFs. Workorder details and product thumbnails still print.
             </span>
           </span>
         </label>

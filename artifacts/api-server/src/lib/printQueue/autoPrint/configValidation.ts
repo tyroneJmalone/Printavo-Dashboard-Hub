@@ -74,7 +74,7 @@ export const DEFAULT_AUTO_PRINT_CONFIG: AutoPrintConfig = {
   printerName: null,
   copies: 1,
   dryRun: true,
-  excludeAttachments: false,
+  excludeAttachments: true,
   categoryMappings: [],
   routingMode: "simple",
   routingRules: [],
@@ -179,10 +179,7 @@ export function normalizeAutoPrintConfig(raw: unknown): AutoPrintConfig {
         ? v.copies
         : d.copies,
     dryRun: typeof v.dryRun === "boolean" ? v.dryRun : d.dryRun,
-    excludeAttachments:
-      typeof v.excludeAttachments === "boolean"
-        ? v.excludeAttachments
-        : d.excludeAttachments,
+    excludeAttachments: true,
     categoryMappings: Array.isArray(v.categoryMappings)
       ? v.categoryMappings.filter(
           (m): m is CategoryMapping =>

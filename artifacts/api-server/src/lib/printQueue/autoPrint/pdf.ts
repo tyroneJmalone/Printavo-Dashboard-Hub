@@ -3,6 +3,7 @@ import puppeteer, { type Browser } from "puppeteer-core";
 import { logger } from "../../logger";
 import { isAllowedWorkorderUrl } from "../workorderHtml";
 import { WORKORDER_PRESENTATION_CSS } from "../workorderPresentation";
+import { AUTO_PRINT_COMPACT_CSS, presentationScript, type PurchaseNote } from "./presentation";
 import {
   closeBrowserBounded,
   launchBrowserWithRecovery,
@@ -20,16 +21,14 @@ import {
 
 const PAGE_TIMEOUT_MS = 30_000;
 
-/** Match the manual workorder's attachment selector without hiding order details. */
+/** Auto-print always excludes attachment pages; keep the option for older callers. */
 export async function applyAutoPrintAttachmentOption(
   page: { addStyleTag(options: { content: string }): Promise<unknown> },
-  options?: { excludeAttachments?: boolean },
+  _options?: { excludeAttachments?: boolean },
 ): Promise<void> {
-  if (options?.excludeAttachments) {
-    await page.addStyleTag({
-      content: ".printing__keep-together { display: none !important; }",
-    });
-  }
+  await page.addStyleTag({
+    content: ".printing__keep-together { display: none !important; }",
+  });
 }
 
 function chromiumPath(): string {
@@ -47,6 +46,7 @@ function chromiumPath(): string {
 }
 
 export interface WorkorderPdfOptions {
+  purchaseNotes?: PurchaseNote[];
   excludeAttachments?: boolean;
   isReprint?: boolean;
 }
@@ -123,11 +123,13 @@ export async function openPdfRenderer(options?: { maxStartupAttempts?: number })
         // Inject after navigation so Printavo's own styles cannot override it.
         await applyAutoPrintAttachmentOption(page, options);
         await page.addStyleTag({ content: WORKORDER_PRESENTATION_CSS });
+        await page.addStyleTag({ content: AUTO_PRINT_COMPACT_CSS });
+        await page.evaluate(presentationScript(options?.purchaseNotes ?? []));
         if (options?.isReprint) {
           await page.evaluate(`(() => {
             const banner = document.createElement("div");
             banner.className = "pq-reprint-banner";
-            banner.textContent = "UPDATED / REPRINT";
+            banner.textContent = "UPDATED";
             document.body.prepend(banner);
           })()`);
         }

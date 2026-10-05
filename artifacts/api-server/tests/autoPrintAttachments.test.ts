@@ -7,19 +7,19 @@ import {
 import { applyAutoPrintAttachmentOption } from "../src/lib/printQueue/autoPrint/pdf.ts";
 import { UpdateAutoPrintConfigBody } from "../../../lib/api-zod/src/generated/api.ts";
 
-test("existing settings and malformed values keep attachments by default", () => {
-  assert.equal(DEFAULT_AUTO_PRINT_CONFIG.excludeAttachments, false);
-  assert.equal(normalizeAutoPrintConfig({ enabled: true, dryRun: false }).excludeAttachments, false);
+test("existing settings and malformed values always exclude attachments", () => {
+  assert.equal(DEFAULT_AUTO_PRINT_CONFIG.excludeAttachments, true);
+  assert.equal(normalizeAutoPrintConfig({ enabled: true, dryRun: false }).excludeAttachments, true);
   for (const invalid of ["true", 1, null, {}]) {
-    assert.equal(normalizeAutoPrintConfig({ excludeAttachments: invalid }).excludeAttachments, false);
+    assert.equal(normalizeAutoPrintConfig({ excludeAttachments: invalid }).excludeAttachments, true);
   }
 });
 
-test("explicit boolean survives config normalization and persisted JSON roundtrip", () => {
+test("legacy false settings normalize to mandatory exclusion after a JSON roundtrip", () => {
   for (const enabled of [true, false]) {
     const saved = normalizeAutoPrintConfig({ excludeAttachments: enabled });
-    assert.equal(saved.excludeAttachments, enabled);
-    assert.equal(normalizeAutoPrintConfig(JSON.parse(JSON.stringify(saved))).excludeAttachments, enabled);
+    assert.equal(saved.excludeAttachments, true);
+    assert.equal(normalizeAutoPrintConfig(JSON.parse(JSON.stringify(saved))).excludeAttachments, true);
   }
 });
 
@@ -36,7 +36,7 @@ test("config request accepts booleans and rejects non-boolean attachment values"
   );
 });
 
-test("renderer hides only attachment blocks when requested", async () => {
+test("renderer always hides attachment blocks even for legacy false callers", async () => {
   const styles: string[] = [];
   const page = {
     async addStyleTag({ content }: { content: string }) {
@@ -45,7 +45,7 @@ test("renderer hides only attachment blocks when requested", async () => {
   };
   await applyAutoPrintAttachmentOption(page);
   await applyAutoPrintAttachmentOption(page, { excludeAttachments: false });
-  assert.deepEqual(styles, []);
+  assert.equal(styles.length, 2);
   await applyAutoPrintAttachmentOption(page, { excludeAttachments: true });
-  assert.deepEqual(styles, [".printing__keep-together { display: none !important; }"]);
+  assert.deepEqual(styles, Array(3).fill(".printing__keep-together { display: none !important; }"));
 });

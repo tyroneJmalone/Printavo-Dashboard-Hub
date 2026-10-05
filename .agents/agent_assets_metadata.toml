@@ -249,3 +249,31 @@ mtime_ms = 1791174291775
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/506b0f1a-34b8-46ea-8d15-c59fe81504a5/261b3ea1-da63-4733-8007-df4bd29cb31d"
 storage_version_token = "1791174297284052"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "9MWWKA7i3fifdilWeXfqK"
+uri = "file://exports/workorder-22837-updated-format-proof.pdf"
+type = "pdf"
+title = "Auto-Print formatting proof — #22837"
+description = "Actual captured workorder HTML with the new compact styling, alternating shading, attachments excluded, and UPDATED demonstrated. This is a layout proof, not a submitted print job or a statement that this invoice qualifies for reprint."
+logical_id = "b9cf4db9-39ec-42ec-baef-f74d24b93265"
+content_hash = "sha256:690fef05666b965a342453655220eb6cede55a18d8d8adb31cea4127496121c0"
+size = 243972
+mtime_ms = 1791174802459
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/b9cf4db9-39ec-42ec-baef-f74d24b93265/fb192516-0bd2-4cef-97e4-ba9021bf8c50"
+storage_version_token = "1791174899535557"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "8KbW9aV8ZOs0-KCvQXhHY"
+uri = "file://exports/workorder-22837-updated-format-detail.png"
+type = "image"
+title = "Line-item shading and purchasing-note placement"
+description = "Shows the full-product alternating shading and explicit unavailable purchasing information rather than invented vendor details."
+logical_id = "a939931d-f443-43ed-9028-d08931de76dc"
+content_hash = "sha256:7939e39d0e234110f64f3f421c76b2b69b45e05353326b7b0ce54d8d2f78a014"
+size = 121054
+mtime_ms = 1791174818267
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/a939931d-f443-43ed-9028-d08931de76dc/1c91d4dd-6468-4f7f-be0e-1ab6fb3dc6b8"
+storage_version_token = "1791174899969562"
+content_type = "image/png"

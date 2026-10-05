@@ -5,7 +5,7 @@ description: User-approved reprint eligibility, legacy safety, skipped audit, an
 
 An automatic reprint requires BOTH a new return to an eligible Ordered/source
 status after the prior print and changed line items. Re-entry alone or an edit
-alone does not authorize another print. Reprints say UPDATED / REPRINT.
+alone does not authorize another print. Reprints say UPDATED at the top.
 
 **Why:** The user chose this policy to handle customer additions without
 reprinting unchanged orders on each purchasing/status cycle.
@@ -16,6 +16,15 @@ No baseline means the comparison is unknown, not permission to reprint.
 Missing historical skip identities cannot be reconstructed from run counts.
 Printer acceptance is not proof of physical output; uncertain submissions
 must not automatically resend.
+
+Always exclude attachment pages from Auto-Print, while retaining the workorder's
+product thumbnails and alternating whole-line shading.
+
+**Why:** The user explicitly reiterated these requirements when approving the
+compact workorder format on October 5, 2026.
+
+**How to apply:** Do not let old saved settings re-enable attachment pages.
+Preserve changed-lines-plus-reentry eligibility when adjusting the UPDATED label.
 
 Each auto-print run prints one copy of each relevant saved Hub PO represented
 by workorders successfully submitted in that run, not one PO per invoice.
