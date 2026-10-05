@@ -4,6 +4,29 @@ A curated, dated log of explanations, insights, and decisions from our build cha
 
 ---
 
+## October 2026
+
+### Oct 4 — Track vendor orders placed outside Hub Purchasing
+
+**Deferred; discussion logged only. No implementation approved.** Tyler said the team has not fully committed to Purchasing through the Hub and is still ordering through another process. The question was whether Order Tracking could pull tracking details for those purchases from vendor order history. Tracking should not require adopting Hub Purchasing.
+
+**Feasibility and current limitation:** Yes, this is a feasible direction, subject to vendor API visibility. Inspection of the current implementation showed that SanMar order status/shipment lookups and S&S order lookups use the customer's PO number. Those lookups do not inherently require the Hub to have placed the order. However, the Tracking list currently starts from orders recorded through Hub purchasing submission; it does not automatically discover the vendor account's full order history.
+
+An order placed elsewhere could therefore be tracked if the connected vendor account's API exposes it under the relevant PO number. Visibility on the vendor website is not proof of API visibility. No live vendor or carrier requests were made for this discussion, and outside-order visibility has not yet been verified.
+
+**Options discussed:**
+
+1. **Track a specific outside order.** Staff enter the vendor and PO number, retrieve its details, and optionally link it to a Printavo invoice. For example, an order placed directly with SanMar could be looked up in Hub without recreating or submitting the purchase. This is the simplest proposed starting point.
+2. **Automatically discover recent vendor orders.** Periodically read account order history and bring new orders into Tracking. This would require confirming each vendor's available history/search endpoints, date limits, and account/channel visibility. The current integration implements individual PO lookups, not a general account-history import. Automatic discovery is a future option, not a confirmed capability of the current adapters.
+
+**Recommendation, not an approved decision:** Represent these as “Placed outside Hub” tracking records, separate from Hub purchasing submissions. Keep the existing ordering process unchanged; do not create fake Hub submissions or resubmit purchases. An optional Printavo link should provide context without implying that the Hub placed the order. Importing account history would also need duplicate prevention so repeated discovery does not create multiple records for the same vendor order.
+
+**Tracking boundaries:** Vendor-provided shipment information and tracking numbers are distinct from carrier-level delivery updates. Paid carrier-tracking activation must remain an explicit choice, not a side effect of importing orders. Split shipments also mean delivery of all currently known packages does not, by itself, establish that the entire purchase has arrived.
+
+**When revisiting:** Start with a read-only visibility check of an actual externally placed order for each relevant vendor. Confirm the vendor account and exact PO/reference used by the current purchasing process. Then choose between a targeted add-by-PO workflow and broader history discovery based on verified API support. Coverage for vendors beyond SanMar and S&S would need separate investigation.
+
+**User direction:** “ok lets log this, we'll come back to it.” No app behavior, purchasing process, tracking activation, or vendor orders were changed.
+
 ## September 2026
 
 ### Sep 29 — Marketing module, including Jotform: full brainstorm retained

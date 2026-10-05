@@ -22,3 +22,11 @@ Shippo can return HTTP 401 for a missing payment method, not just invalid creden
 **Why:** A connected account's live tracking request returned an explicit billing-required response. Reconnecting would not fix that cause.
 
 **How to apply:** Inspect and safely classify the response body before recommending reconnection. Surface billing guidance and pause account-blocked batches rather than repeating the same failed request for every package.
+
+## Tracking without Hub purchasing adoption
+
+The user said the team has not fully committed to Hub Purchasing and still purchases through another process. External-order tracking is a deferred idea, not authorization to implement it or change their purchasing process.
+
+**Why:** They want to consider using Order Tracking independently of where orders are placed and explicitly asked to log the discussion for later.
+
+**How to apply:** Revisit the full October 4, 2026 discussion in `docs/insights-log.md` before scoping work. It preserves targeted PO lookup versus account-history discovery, unverified vendor API visibility, and the recommendation—not an approved decision—to distinguish outside orders from Hub submissions.
