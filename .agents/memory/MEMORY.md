@@ -82,3 +82,4 @@
 - [PostgreSQL fixture sequences](postgres-fixture-sequences.md) — temp tables copying defaults can advance public sequences despite rollback; give fixtures their own sequences.
 - [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — explicit generic JSX tags can break metadata injection; specialize component aliases outside JSX.
 - [Correspondence spacing recovery](correspondence-spacing-recovery.md) — old imports lost whitespace; recover from provider on demand, never guess paragraphs or truncate full messages.
+- [Job profitability direction](job-profitability-direction.md) — exploratory invoice revenue/vendor-cost module; garment/imprint split first, labor and supplies later.
