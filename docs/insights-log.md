@@ -6,6 +6,16 @@ A curated, dated log of explanations, insights, and decisions from our build cha
 
 ## October 2026
 
+### Oct 6 — Invoice profitability page: full discussion retained
+
+**Deferred; no implementation approved.** The user wants to revisit a job-profitability module showing invoice line revenue against corresponding vendor costs, with garment markup and imprint charges separated. Labor and supplies would come later.
+
+The full discussion is preserved in [Invoice profitability page — discussion and future plan](invoice-profitability-discussion.md), including available data, the proposed page and columns, source/confidence labels, calculations, the $1,200 revenue example, original pricing versus purchasing variance, tax/fee/discount reconciliation, historical-data limitations, alternative cost sources, a phased approach, future labor/supplies and replacement-cost attribution, and all unanswered questions.
+
+Key recommendation: initially describe the result as **margin before labor and supplies**, not net profit. Missing costs must not count as zero, and imprint matrix attribution must not be double-counted as revenue. Saved Hub PO costs are not necessarily final vendor-billed costs; current catalog costs would be estimates only.
+
+No initial cost source, pricing-workflow assumption, or sample invoice was selected. Resume with those questions and validate representative records before scoping a build. The user explicitly requested a thorough log and to return to the idea later.
+
 ### Oct 4 — Track vendor orders placed outside Hub Purchasing
 
 **Deferred; discussion logged only. No implementation approved.** Tyler said the team has not fully committed to Purchasing through the Hub and is still ordering through another process. The question was whether Order Tracking could pull tracking details for those purchases from vendor order history. Tracking should not require adopting Hub Purchasing.
