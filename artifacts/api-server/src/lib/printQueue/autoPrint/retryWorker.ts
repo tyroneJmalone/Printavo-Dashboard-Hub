@@ -19,6 +19,7 @@ import { conditionalAutoPrintDestination } from "./routing";
 import { businessDaysUntilDue } from "../../purchasing/businessDays";
 import { prepareRetry } from "./retryPreparation";
 import { failureStatusEligible } from "./retryEligibility";
+import { isWorkorder403, nextForbiddenRetry, forbiddenRetryMessage } from "./forbiddenRetry";
 
 // Explicit dependencies allow failure injection without loading a renderer,
 // sending a PrintNode job, or changing a real Printavo status.
@@ -42,6 +43,23 @@ export const liveRetryDependencies = {
 export type RetryDependencies = typeof liveRetryDependencies;
 
 export async function executePrintAttempt(id: string, actor: string, deps: RetryDependencies = liveRetryDependencies) {
+  let result = await executeSinglePrintAttempt(id, actor, deps);
+  // Only short intra-round retries are driven here. The 15-minute cooldown is
+  // persisted and picked up by the production scheduler, never an in-memory timer.
+  for (let i = 0; i < 2 && result?.status === "retry_pending"; i++) {
+    const snapshot = retrySnapshot(result);
+    const wait = snapshot.forbiddenRetry?.delayMs;
+    if (snapshot.manualOneShot || wait == null || wait > 2000) break;
+    const sleepMs = Math.max(0, (result.nextRetryAt?.getTime() ?? Date.now()) - Date.now());
+    await new Promise(resolve => setTimeout(resolve, sleepMs));
+    const next = await executeSinglePrintAttempt(id, actor, deps);
+    if (!next) break; // Another worker claimed it; never steal its lease.
+    result = next;
+  }
+  return result;
+}
+
+async function executeSinglePrintAttempt(id: string, actor: string, deps: RetryDependencies) {
   let job = await deps.claim(id, actor);
   if (!job) return null;
   let phase: AttemptStage = "verification";
@@ -99,12 +117,22 @@ export async function executePrintAttempt(id: string, actor: string, deps: Retry
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     // Even a persistence failure after acceptance cannot become retryable.
-    const delay = snapshot.delaysMinutes[job.retryCount - 1];
-    const retry = !submitted && retryablePreSubmission(error, phase) && delay !== undefined;
+    const currentSnapshot = retrySnapshot(job); // preparation may have refreshed fingerprint/routing
+    const temporary = retryablePreSubmission(error, phase);
+    const forbidden = !submitted && !currentSnapshot.manualOneShot && temporary &&
+      (currentSnapshot.forbiddenRetry || isWorkorder403(error, phase))
+      ? nextForbiddenRetry(currentSnapshot.forbiddenRetry) : undefined;
+    const delayMs = forbidden ? forbidden.delayMs :
+      currentSnapshot.delaysMinutes[job.retryCount - 1] === undefined ? null :
+        currentSnapshot.delaysMinutes[job.retryCount - 1] * 60_000;
+    const retry = !submitted && !currentSnapshot.manualOneShot && temporary && delayMs !== null;
     const status = accepted ? "printed" : submitted ? "submission_unknown"
       : error instanceof WorkorderSkip ? "held" : retry ? "retry_pending" : failureStatusEligible(job) ? "exhausted" : "held";
     return deps.finish(job, { status, retryPhase: accepted ? "accepted" : submitted ? "submitting" : phase,
-      errorMessage: message, nextRetryAt: retry ? new Date(Date.now() + delay * 60_000) : null,
+      errorMessage: forbidden ? `${forbiddenRetryMessage(forbidden)} ${message}` : message,
+      nextRetryAt: retry ? new Date(Date.now() + delayMs!) : null,
+      ...(forbidden ? { snapshotMetadata: { ...(job.snapshotMetadata as object),
+        durableRetry: { ...currentSnapshot, forbiddenRetry: forbidden } } } : {}),
       ...(accepted ? { printnodeJobId: String(accepted), printedAt: new Date() } : {}) });
   }
 }

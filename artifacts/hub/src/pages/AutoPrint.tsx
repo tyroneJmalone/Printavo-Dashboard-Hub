@@ -802,9 +802,10 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
 
         <div>
           <label className="mb-3 block text-xs text-slate-400">
-            Retry delays in minutes (comma-separated; blank disables automatic retries)
+            Other temporary failures: retry delays in minutes (comma-separated; blank disables these retries)
             <input className="mt-1 block w-full rounded border border-slate-700 bg-slate-800 p-2 text-slate-200"
               value={retryDelays} onChange={e => setRetryDelays(e.target.value)} data-testid="input-retry-delays" />
+            <p className="text-xs text-slate-400">Workorder-page 403s use a separate bounded policy: 3 attempts, a 15-minute cooldown, then 3 final attempts. These delays apply to other temporary failures.</p>
           </label>
           <span className="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">
             Print orders from these statuses

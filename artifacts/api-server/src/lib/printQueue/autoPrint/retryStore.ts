@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db, pqPrintJobsTable as jobs, pqPrintAttemptsTable as attempts, type PqPrintJob, type InsertPqPrintJob } from "@workspace/db";
 import { and, or, eq, ne, inArray, desc, sql, lte } from "drizzle-orm";
 import { failureStatusEligible } from "./retryEligibility";
+import { nextForbiddenRetry, type ForbiddenRetryState } from "./forbiddenRetry";
 
 export const RETRY_BLOCKING_STATES = ["pending", "retry_pending", "held", "exhausted", "cancelled", "submission_unknown"];
 export const LEASE_MS = 10 * 60_000;
@@ -12,6 +13,8 @@ export type RetrySnapshot = {
   routingPrepared?: boolean;
   delaysMinutes: number[];
   errorStatusId: string | null;
+  forbiddenRetry?: ForbiddenRetryState;
+  manualOneShot?: boolean;
 };
 export function retrySnapshot(job: PqPrintJob): RetrySnapshot {
   const value = (job.snapshotMetadata as { durableRetry?: RetrySnapshot } | null)?.durableRetry;
@@ -50,10 +53,14 @@ export async function recoverPrintLeases() {
       eq(jobs.status, "pending"), lte(jobs.leaseUntil, new Date()))).for("update", { skipLocked: true });
     for (const job of expired) {
       const unknown = job.retryPhase === "submitting";
-      const exhausted = job.retryCount > retrySnapshot(job).delaysMinutes.length;
+      const snapshot = retrySnapshot(job);
+      const forbidden = !unknown && !snapshot.manualOneShot && snapshot.forbiddenRetry
+        ? nextForbiddenRetry(snapshot.forbiddenRetry) : undefined;
+      const exhausted = snapshot.manualOneShot || (forbidden ? forbidden.delayMs === null : job.retryCount > snapshot.delaysMinutes.length);
       const status = unknown ? "submission_unknown" : exhausted ? (failureStatusEligible(job) ? "exhausted" : "held") : "retry_pending";
       await tx.update(jobs).set({ status, leaseToken: null, leaseUntil: null,
-        nextRetryAt: status === "retry_pending" ? new Date() : null,
+        nextRetryAt: status === "retry_pending" ? new Date(Date.now() + (forbidden?.delayMs ?? 0)) : null,
+        ...(forbidden ? { snapshotMetadata: { ...(job.snapshotMetadata as object), durableRetry: { ...snapshot, forbiddenRetry: forbidden } } } : {}),
         errorMessage: unknown ? "Worker interrupted after submission fence; reconcile in PrintNode before any resend."
           : "Worker lease expired before submission; safe to retry." }).where(eq(jobs.id, job.id));
       await tx.update(attempts).set({ outcome: status, error: "Worker lease expired", finishedAt: new Date() })
@@ -116,6 +123,9 @@ export async function changeRetryState(id: string, action: "retry" | "cancel", a
     }
     const [row] = await tx.update(jobs).set({ status: action === "cancel" ? "cancelled" : "retry_pending",
       nextRetryAt: action === "retry" ? new Date() : null,
+      ...(action === "retry" ? { snapshotMetadata: {
+        ...(job.snapshotMetadata as object), durableRetry: { ...retrySnapshot(job), manualOneShot: true },
+      } } : {}),
       // A manual retry is one explicit attempt, never a reset of the automatic budget.
       errorMessage: action === "cancel" ? "Cancelled by operator; discovery will not requeue this order." : job.errorMessage,
     }).where(and(eq(jobs.id, id), ne(jobs.status, "pending"))).returning();

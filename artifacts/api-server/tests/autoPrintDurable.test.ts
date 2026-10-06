@@ -8,6 +8,19 @@ import { executePrintAttempt, finalizePrintAttempt, liveRetryDependencies, type 
 import { prepareRetry } from "../src/lib/printQueue/autoPrint/retryPreparation";
 import { applyRetryAction } from "../src/lib/printQueue/autoPrint/retryAdmin";
 import { failureStatusEligible } from "../src/lib/printQueue/autoPrint/retryEligibility";
+import { isWorkorder403, nextForbiddenRetry } from "../src/lib/printQueue/autoPrint/forbiddenRetry";
+
+test("403 policy is render-only and caps both rounds, with a cooldown after attempt three", () => {
+  assert.equal(isWorkorder403(new Error("Printavo returned 403"), "render"), true);
+  for (const phase of ["live_detail", "verification", "submission", "persistence"]) {
+    assert.equal(isWorkorder403(new Error("Printavo returned 403"), phase), false);
+  }
+  assert.equal(isWorkorder403(new Error("PrintNode returned 403"), "render"), false);
+  let state: ReturnType<typeof nextForbiddenRetry> | undefined;
+  const delays = [];
+  for (let n = 0; n < 7; n++) { state = nextForbiddenRetry(state); delays.push(state.delayMs); }
+  assert.deepEqual(delays, [1000, 2000, 900000, 1000, 2000, null, null]);
+});
 
 test("durable queue: isolated DB claims, leases, dedup and injected delivery failures", async () => {
   const schema = `retry_test_${randomUUID().replaceAll("-", "")}`;
@@ -84,15 +97,28 @@ test("durable queue: isolated DB claims, leases, dedup and injected delivery fai
     renderDeps.render = async () => { throw new Error("Printavo returned 403"); };
     let outcome = await executePrintAttempt(renderJob.id, "fixture", renderDeps);
     assert.equal(outcome?.status, "retry_pending"); assert.equal(sends, 0);
-    assert.ok(outcome!.nextRetryAt!.getTime() > Date.now() + 115000);
+    assert.equal(outcome?.retryCount, 3, "first round performs exactly three attempts");
+    assert.match(outcome!.errorMessage!, /round 1 exhausted; waiting 15 minutes/);
+    assert.ok(outcome!.nextRetryAt!.getTime() > Date.now() + 895000);
+    assert.ok(outcome!.nextRetryAt!.getTime() <= Date.now() + 900000);
     assert.equal(await executePrintAttempt(renderJob.id, "fixture", renderDeps), null, "not yet due");
-    for (let i = 0; i < 3; i++) {
-      await changeRetryState(renderJob.id, "retry", "fixture");
-      outcome = await executePrintAttempt(renderJob.id, "fixture", renderDeps);
-    }
+    const advances: unknown[] = [];
+    const finalizationDeps = { status: renderDeps.status,
+      po: async () => ({ printed: 0, failed: 0, unknown: 0, warnings: [] }),
+      advance: (async (...args: unknown[]) => { advances.push(args); return { status: "started", job: {} }; }) as any };
+    const quiet: any = { warn() {}, error() {}, info() {} };
+    await finalizePrintAttempt(outcome!, quiet, finalizationDeps);
+    assert.equal(advances.length, 0, "Print Error is withheld during cooldown");
+    // Simulate passage of the persisted cooldown, not an operator override.
+    await db.update(jobs).set({ nextRetryAt: new Date(0) }).where(eq(jobs.id, renderJob.id));
+    outcome = await executePrintAttempt(renderJob.id, "fixture", renderDeps);
     assert.equal(outcome?.status, "exhausted");
+    assert.equal(outcome?.retryCount, 6);
+    await finalizePrintAttempt(outcome!, quiet, finalizationDeps);
+    assert.equal(advances.length, 1, "failure status is requested only after final round");
+    assert.equal(await executePrintAttempt(renderJob.id, "fixture", renderDeps), null);
     const history = await db.select().from(attempts).where(eq(attempts.jobId, renderJob.id));
-    assert.equal(history.filter(a => a.phase === "render").length, 4);
+    assert.equal(history.filter(a => a.phase === "render").length, 6);
     const moved = await make();
     const movedDeps = dependencies(moved);
     movedDeps.status = async () => ({ orderId: moved.printavoOrderId, visualId: Number(moved.visualId), statusId: "other", statusName: "Other" });
@@ -174,6 +200,53 @@ test("durable queue: isolated DB claims, leases, dedup and injected delivery fai
     } finally {
       liveRetryDependencies.status = originalStatus;
       liveRetryDependencies.detail = originalDetail;
+    }
+    const recoverable = await make();
+    const recoverDeps = dependencies(recoverable);
+    const beforeRecovery = sends;
+    recoverDeps.render = async () => { throw new Error("Printavo returned 403"); };
+    const waiting = await executePrintAttempt(recoverable.id, "fixture", recoverDeps);
+    assert.equal(waiting?.retryCount, 3);
+    // Recovery after the cooldown succeeds exactly once without a new run/job.
+    recoverDeps.render = async () => Buffer.from("recovered");
+    await db.update(jobs).set({ nextRetryAt: new Date(0) }).where(eq(jobs.id, recoverable.id));
+    assert.equal((await executePrintAttempt(recoverable.id, "fixture", recoverDeps))?.status, "printed");
+    assert.equal(sends, beforeRecovery + 1);
+    assert.equal(await executePrintAttempt(recoverable.id, "fixture", recoverDeps), null);
+
+    const manual = await make();
+    await changeRetryState(manual.id, "retry", "fixture");
+    const manualDeps = dependencies(manual);
+    manualDeps.render = async () => { throw new Error("Printavo returned 403"); };
+    const manualResult = await executePrintAttempt(manual.id, "fixture", manualDeps);
+    assert.equal(manualResult?.retryCount, 1, "manual override remains one attempt");
+    assert.equal(manualResult?.status, "exhausted");
+
+    const interrupted = await make();
+    await db.update(jobs).set({ snapshotMetadata: { durableRetry: { ...snapshot,
+      forbiddenRetry: { failures: 2, delayMs: 2000 } } } }).where(eq(jobs.id, interrupted.id));
+    const interruptedClaim = await claimPrint(interrupted.id, "fixture");
+    await fencePrint(interruptedClaim!, "render");
+    await db.update(jobs).set({ leaseUntil: new Date(0) }).where(eq(jobs.id, interrupted.id));
+    await recoverPrintLeases();
+    const [afterCrash] = await db.select().from(jobs).where(eq(jobs.id, interrupted.id));
+    assert.equal(afterCrash.status, "retry_pending");
+    assert.ok(afterCrash.nextRetryAt!.getTime() > Date.now() + 895000, "lease recovery preserves round cooldown");
+    for (const scenario of ["moved", "uncertain"] as const) {
+      const staged = await make();
+      await db.update(jobs).set({ snapshotMetadata: { durableRetry: { ...snapshot,
+        forbiddenRetry: { failures: 3, delayMs: 900000 } } } }).where(eq(jobs.id, staged.id));
+      const deps = dependencies(staged);
+      const before = sends;
+      if (scenario === "moved") {
+        deps.status = async () => ({ orderId: staged.printavoOrderId, visualId: Number(staged.visualId), statusId: "other", statusName: "Other" });
+      } else {
+        deps.submit = async () => { sends++; throw new Error("timeout after POST"); };
+      }
+      const result = await executePrintAttempt(staged.id, "fixture", deps);
+      assert.equal(result?.status, scenario === "moved" ? "held" : "submission_unknown");
+      assert.equal(sends, before + (scenario === "uncertain" ? 1 : 0));
+      assert.equal(await executePrintAttempt(staged.id, "fixture", deps), null, "second-round safety outcome is never resent");
     }
   } finally {
     pool.off("connect", onConnect);

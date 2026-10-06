@@ -45,3 +45,19 @@ include notification when failure occurs.
 
 **How to apply:** Include an initial failure alert even if automatic retry is
 still scheduled, and a distinct escalation when administrator review is needed.
+
+Workorder-page Printavo 403s use two bounded rounds: up to three attempts,
+15 minutes after the first round is exhausted, then up to three final attempts.
+Do not move to Print Error during the wait. Other temporary failures retain
+their configured delays unless already inside this bounded recovery sequence.
+
+**Why:** The user approved a delayed second round after observing three failed
+403 attempts followed by successful prints of other workorders. This is not
+proof that Printavo sleeps or that every 403 will resolve with time.
+
+**How to apply:** Keep the cooldown and consumed budget durable across restarts
+and normal discovery. Recheck live eligibility before each attempt. Only known
+pre-submission failures qualify; uncertain acceptance must never resend.
+Existing terminal failures need explicit review, not automatic historical replay.
+The separately planned admin alerts should distinguish waiting for round two
+from final exhaustion; this change does not itself enable notifications.

@@ -47,6 +47,7 @@ export function AutoPrintRetryQueue() {
   return <section className="space-y-3 rounded-xl border border-slate-700 bg-[#0f172a] p-4" data-testid="autoprint-retry-queue">
     <h2 className="font-semibold text-slate-100">Pending retries & operator review</h2>
     <p className="text-xs text-slate-400">Temporary failures stay here without moving the order to its failure status. Automatic retries run only in production while live Auto-Print is enabled. Accepted jobs never retry; uncertain sends require PrintNode and printer verification.</p>
+    <p className="text-xs text-slate-400">Printavo workorder-page 403s get up to three attempts, then a 15-minute cooldown and one final three-attempt round. Print Error is withheld during the cooldown. “Retry now” is a single manual attempt and overrides the wait.</p>
     <input aria-label="Find invoice in retry queue" placeholder="Find invoice number or order ID" className={field} value={search} onChange={e => setSearch(e.target.value)} />
     {queue.isLoading && <p className="text-sm text-slate-400">Loading retry queue…</p>}
     {queue.isError && <p role="alert" className="text-red-300">Could not load retries. <button className={button} onClick={() => queue.refetch()}>Refresh</button></p>}
