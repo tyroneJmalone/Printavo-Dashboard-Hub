@@ -35,3 +35,13 @@ the old one.
 
 **How to apply:** Exercise recovery through actual preparation and post-acceptance
 finalization, checking both missing destinations and changed decoration groups.
+
+The requested admin-notification proposal must include alerts when AutoPrint
+fails, not only when retries require manual review. This is proposed scope,
+not a statement that notifications are enabled.
+
+**Why:** The user explicitly expanded the manual-review notification idea to
+include notification when failure occurs.
+
+**How to apply:** Include an initial failure alert even if automatic retry is
+still scheduled, and a distinct escalation when administrator review is needed.
