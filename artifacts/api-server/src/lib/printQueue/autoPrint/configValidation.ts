@@ -35,6 +35,7 @@ export interface AutoPrintRoutingRule {
 }
 
 export interface AutoPrintConfig {
+  retryDelaysMinutes: number[];
   enabled: boolean;
   /** Which one schedule is active: interval or daily. */
   scheduleMode: AutoPrintScheduleMode;
@@ -63,6 +64,7 @@ export interface AutoPrintConfig {
 }
 
 export const DEFAULT_AUTO_PRINT_CONFIG: AutoPrintConfig = {
+  retryDelaysMinutes: [2, 10, 30],
   enabled: false,
   scheduleMode: "interval",
   scheduleHours: 6,
@@ -151,6 +153,9 @@ export function normalizeAutoPrintConfig(raw: unknown): AutoPrintConfig {
   const v = (raw ?? {}) as Partial<AutoPrintConfig>;
   const d = DEFAULT_AUTO_PRINT_CONFIG;
   return {
+    retryDelaysMinutes: Array.isArray(v.retryDelaysMinutes) && v.retryDelaysMinutes.length <= 6 &&
+      v.retryDelaysMinutes.every(n => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 1440)
+      ? v.retryDelaysMinutes as number[] : [...d.retryDelaysMinutes],
     enabled: typeof v.enabled === "boolean" ? v.enabled : d.enabled,
     scheduleMode: isAutoPrintScheduleMode(v.scheduleMode)
       ? v.scheduleMode

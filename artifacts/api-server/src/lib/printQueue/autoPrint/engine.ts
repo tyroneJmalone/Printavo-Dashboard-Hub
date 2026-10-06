@@ -43,6 +43,9 @@ import { runWorkorderAttempts, WorkorderSkip, type WorkorderRetryAudit } from ".
 import { runHubPoBatch } from "./hubPoBatch";
 import { claimReplacementSlips } from "./replacementSlipQueue";
 import { runReplacementSlipBatch } from "./replacementSlipBatch";
+import { enqueuePrint, RETRY_BLOCKING_STATES } from "./retryStore";
+import { executePrintAttempt, finalizePrintAttempt, refreshRetryRun } from "./retryWorker";
+import { retryablePreSubmission } from "./workorderRetry";
 
 export { PDF_RENDERER_STARTUP_ERROR_PREFIX } from "./rendererStartupGuard";
 
@@ -83,6 +86,7 @@ export function anyRunActive(): boolean {
 /* ── Summary / DTO shapes ────────────────────────────────────────────── */
 
 export interface RunCounts {
+  pending: number;
   skipped: number;
   reprinted: number;
   poPrinted: number;
@@ -156,6 +160,7 @@ export interface PqPrintJobDto {
 }
 
 const EMPTY_COUNTS: RunCounts = {
+  pending: 0,
   skipped: 0,
   reprinted: 0,
   poPrinted: 0,
@@ -473,7 +478,6 @@ async function runAutoPrint(
       counts.skipped++;
       if (prior) counts.alreadyPrinted++;
     };
-    counts.candidates += live.orders.length;
     // Rotate bounded detail work by last observation so unchanged older orders
     // cannot permanently starve new/reentered invoices beyond the cap.
     const lastAttempt = (id: string, visual: number) => Math.max(0, ...printedRows
@@ -519,6 +523,24 @@ async function runAutoPrint(
       preparationAudits.set(liveOrder.node.id, result.audit);
       if (result.outcome === "skipped") {
         await skip(liveOrder.node, (result.error as Error).message);
+        return;
+      }
+      const last = result.audit.attempts.at(-1);
+      if (!dryRun && last && retryablePreSubmission(result.error, last.phase)) {
+        const prior = priorFor(liveOrder.node.id, liveOrder.node.visualId);
+        const queued = await enqueuePrint({
+          runId, printavoOrderId: liveOrder.node.id, visualId: String(liveOrder.node.visualId),
+          nickname: liveOrder.node.nickname, docType: "workorder",
+          sourceStatusId: liveOrder.node.status?.id, sourceStatusName: liveOrder.node.status?.name,
+          printerId: config.printerId, printerName: config.printerName, copies: config.copies,
+          priorJobId: prior?.id, priorPrintedAt: prior?.printedAt, status: "retry_pending",
+          errorMessage: String(result.error), retryCount: 1, retryPhase: last.phase,
+        }, { orderKind: liveOrder.kind === "invoices" ? "invoice" : "quote",
+          delaysMinutes: config.retryDelaysMinutes, errorStatusId: config.errorStatusId });
+        if (queued?.status === "exhausted") {
+          counts.failed++;
+          await finalizePrintAttempt(queued, log);
+        } else if (queued) counts.pending++; else counts.skipped++;
         return;
       }
       counts.failed++;
@@ -568,7 +590,7 @@ async function runAutoPrint(
         }
         freshDetails.set(node.id, node);
         return "prepared";
-      });
+      }, { maxAttempts: dryRun ? undefined : 1 });
       if (result.outcome === "prepared") {
         preparationAudits.set(liveOrder.node.id, result.audit);
       } else {
@@ -649,7 +671,7 @@ async function runAutoPrint(
         row.statusId = current.statusId;
         row.statusName = current.statusName;
         return "prepared";
-      }, { previousAttempts: preparationAudits.get(row.printavoId)?.attempts.slice(0, -1) });
+      }, { previousAttempts: preparationAudits.get(row.printavoId)?.attempts.slice(0, -1), maxAttempts: dryRun ? undefined : 1 });
       preparationAudits.set(row.printavoId, statusPreparation.audit);
       if (statusPreparation.outcome !== "prepared") {
         await recordPreparationFailure(liveOrder, statusPreparation);
@@ -666,7 +688,7 @@ async function runAutoPrint(
         continue;
       }
       if (printedRows.some((r) => (r.printavoOrderId === row.printavoId || r.visualId === String(row.visualId)) &&
-        (r.status === "pending" || r.status === "submission_unknown"))) {
+        RETRY_BLOCKING_STATES.includes(r.status))) {
         await skip(liveOrder.node, "prior_submission_unresolved");
         continue;
       }
@@ -756,6 +778,21 @@ async function runAutoPrint(
               priorPrintedAt: c.priorPrintedAt,
               eligibilityCycle: c.eligibilityCycle,
             };
+            if (!dryRun) {
+              const queued = await enqueuePrint({ ...base, status: "retry_pending",
+                contentFingerprint: c.contentFingerprint,
+                attemptKey: printAttemptKey(`visual:${c.visualId}`, c.eligibilityCycle, c.contentFingerprint),
+              }, { orderKind: c.orderKind, workorderUrl: c.workorderUrl, fingerprint: c.contentFingerprint,
+                delaysMinutes: config.retryDelaysMinutes, errorStatusId: config.errorStatusId });
+              if (!queued) { counts.skipped++; continue; }
+              const result = await executePrintAttempt(queued.id, "run");
+              if (result) await finalizePrintAttempt(result, log);
+              if (result?.status === "printed") { counts.printed++; if (c.isReprint) counts.reprinted++; }
+              else if (result?.status === "exhausted") counts.failed++;
+              else counts.pending++;
+              await persistSummary(runId, { summary: { ...summary, counts } });
+              continue;
+            }
             let reservedId: string | null = null;
             let acceptedJobId: number | null = null;
             const result = await runWorkorderAttempts(async (attempt) => {
@@ -1026,10 +1063,11 @@ async function runAutoPrint(
     }
 
     await persistSummary(runId, {
-      status: "success",
+      status: counts.pending ? "pending" : counts.failed || counts.poFailed ? "failed" : "success",
       finishedAt: new Date(),
       summary: { ...summary, counts },
     });
+    if (!dryRun) await refreshRetryRun(runId);
   } catch (err) {
     if (summary.discoveryState === "checking") {
       summary.discoveryState = "failed";

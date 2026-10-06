@@ -7,6 +7,8 @@ import {
   lastScheduledRunStartedAt,
 } from "./engine";
 import { scheduledAutoPrintAllowed } from "./schedulerSafety";
+import { processDuePrintRetries } from "./retryWorker";
+import { independentTicks } from "./independentTicks";
 import {
   AUTO_PRINT_CHECK_INTERVAL_MS,
   isDailyScheduleDue,
@@ -33,17 +35,22 @@ export {
 
 let timer: NodeJS.Timeout | null = null;
 let devLiveScheduleWarningLogged = false;
+let checking = false;
 
 export function startAutoPrintScheduler(logger: Logger): void {
   if (timer) return;
-  timer = setInterval(() => {
-    void checkDue(logger);
-  }, AUTO_PRINT_CHECK_INTERVAL_MS);
+  timer = setInterval(independentTicks(
+    () => checkDue(logger),
+    () => processDuePrintRetries(logger),
+    err => logger.error({ err }, "Auto-print scheduler tick failed"),
+  ), AUTO_PRINT_CHECK_INTERVAL_MS);
   timer.unref();
   logger.info("Auto-print scheduler started");
 }
 
 async function checkDue(logger: Logger): Promise<void> {
+  if (checking) return;
+  checking = true;
   try {
     const config = await getAutoPrintConfig();
     if (!config.enabled) return;
@@ -85,5 +92,7 @@ async function checkDue(logger: Logger): Promise<void> {
     }
   } catch (err) {
     logger.error({ err }, "Auto-print due check crashed");
+  } finally {
+    checking = false;
   }
 }

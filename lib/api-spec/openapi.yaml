@@ -4593,6 +4593,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/autoprint/retries:
+    get:
+      operationId: listAutoPrintRetries
+      tags: [printQueue]
+      summary: Admin durable retry queue, including legacy failures eligible for review
+      responses:
+        "200":
+          description: Retry jobs and persisted attempt history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [jobs]
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AutoPrintRetryJob"
+  /print-queue/autoprint/jobs/{id}/retry-action:
+    post:
+      operationId: actOnAutoPrintRetry
+      tags: [printQueue]
+      summary: Admin retry, cancel, recover or reconcile without bypassing submission safety
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoPrintRetryActionRequest"
+      responses:
+        "200":
+          description: Action completed; refresh jobs and run history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "409":
+          description: Unsafe action or live status conflict; nothing submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /print-queue/autoprint/jobs:
     get:
       operationId: listAutoPrintJobs
@@ -12325,6 +12375,11 @@ components:
       type: object
       description: "Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored."
       properties:
+        retryDelaysMinutes:
+          type: array
+          maxItems: 6
+          default: [2, 10, 30]
+          items: { type: integer, minimum: 1, maximum: 1440 }
         enabled: { type: boolean }
         scheduleMode:
           type: string
@@ -12419,6 +12474,7 @@ components:
     AutoPrintRunCounts:
       type: object
       properties:
+        pending: { type: integer }
         skipped: { type: integer }
         reprinted: { type: integer }
         poPrinted: { type: integer }
@@ -12446,7 +12502,7 @@ components:
         id: { type: string }
         trigger: { type: string, enum: [scheduled, manual] }
         dryRun: { type: boolean }
-        status: { type: string, enum: [running, success, failed, interrupted] }
+        status: { type: string, enum: [running, success, failed, interrupted, pending] }
         startedAt: { type: string }
         finishedAt: { type: ["string", "null"] }
         counts:
@@ -12479,6 +12535,48 @@ components:
           items:
             $ref: "#/components/schemas/AutoPrintRun"
       required: [runs]
+    AutoPrintRetryActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [retry, cancel, recover, confirm_accepted, confirm_not_sent, fail]
+        expectedStatusId: { type: string, minLength: 1 }
+        confirmedNotSubmitted: { type: boolean }
+        printnodeJobId: { type: string, pattern: "^[1-9][0-9]*$" }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+    AutoPrintRetryJob:
+      type: object
+      required: [id, runId, printavoOrderId, visualId, status, retryManaged, retryPhase, retryCount, nextRetryAt, errorMessage, sourceStatusId, sourceStatusName, printnodeJobId, attempts]
+      properties:
+        id: { type: string }
+        runId: { type: string }
+        printavoOrderId: { type: string }
+        visualId: { type: ["string", "null"] }
+        status: { type: string }
+        retryManaged: { type: boolean }
+        retryPhase: { type: ["string", "null"] }
+        retryCount: { type: integer }
+        nextRetryAt: { type: ["string", "null"] }
+        errorMessage: { type: ["string", "null"] }
+        sourceStatusId: { type: ["string", "null"] }
+        sourceStatusName: { type: ["string", "null"] }
+        printnodeJobId: { type: ["string", "null"] }
+        attempts:
+          type: array
+          items:
+            type: object
+            required: [id, attempt, phase, outcome, error, actor, startedAt, finishedAt]
+            properties:
+              id: { type: string }
+              attempt: { type: integer }
+              phase: { type: string }
+              outcome: { type: string }
+              error: { type: ["string", "null"] }
+              actor: { type: string }
+              startedAt: { type: string }
+              finishedAt: { type: ["string", "null"] }
     AutoPrintJob:
       type: object
       description: "Persisted print and skip audit. Reprints require observed source reentry and changed line items after the last successful print. Pending/unknown submissions require reconciliation, never automatic retry."

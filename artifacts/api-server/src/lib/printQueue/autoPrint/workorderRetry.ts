@@ -56,14 +56,16 @@ export async function runWorkorderAttempts<T extends "printed" | "dry_run" | "pr
     onRetry?: (audit: WorkorderRetryAudit) => Promise<void>;
     /** Failed attempts from earlier read phases of this same workorder/run. */
     previousAttempts?: WorkorderRetryAudit["attempts"];
+    maxAttempts?: number;
   } = {},
 ): Promise<{ outcome: T | "failed" | "skipped" | "submission_unknown"; error: unknown; definitivePreSubmitFailure: boolean; audit: WorkorderRetryAudit }> {
   const previous = options.previousAttempts ?? [];
-  if (previous.length >= WORKORDER_MAX_ATTEMPTS || previous.some((item, index) => item.attempt !== index + 1 || item.outcome !== "retrying")) {
+  const maxAttempts = options.maxAttempts ?? WORKORDER_MAX_ATTEMPTS;
+  if (previous.length >= maxAttempts || previous.some((item, index) => item.attempt !== index + 1 || item.outcome !== "retrying")) {
     throw new Error("Invalid same-run workorder retry budget");
   }
-  const audit: WorkorderRetryAudit = { maxAttempts: WORKORDER_MAX_ATTEMPTS, attemptCount: previous.length, outcome: "failed", attempts: [...previous] };
-  for (let attempt = previous.length + 1; attempt <= WORKORDER_MAX_ATTEMPTS; attempt++) {
+  const audit: WorkorderRetryAudit = { maxAttempts, attemptCount: previous.length, outcome: "failed", attempts: [...previous] };
+  for (let attempt = previous.length + 1; attempt <= maxAttempts; attempt++) {
     let stage: AttemptStage = "configuration";
     let submitted = false;
     audit.attemptCount = attempt;
@@ -76,7 +78,7 @@ export async function runWorkorderAttempts<T extends "printed" | "dry_run" | "pr
       audit.attempts.push({ attempt, phase: stage, outcome, error: null, delayMs: 0 });
       return { outcome, error: null, definitivePreSubmitFailure: false, audit };
     } catch (error) {
-      const retry = !submitted && attempt < WORKORDER_MAX_ATTEMPTS && retryablePreSubmission(error, stage);
+      const retry = !submitted && attempt < maxAttempts && retryablePreSubmission(error, stage);
       const outcome = submitted ? "submission_unknown" : error instanceof WorkorderSkip ? "skipped" : retry ? "retrying" : "failed";
       const backoffMs = retry ? WORKORDER_RETRY_BACKOFF_MS[attempt - 1]! : 0;
       audit.outcome = outcome;

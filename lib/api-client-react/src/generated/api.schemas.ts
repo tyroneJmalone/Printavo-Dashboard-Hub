@@ -5217,6 +5217,12 @@ export const AutoPrintConfigRoutingMode = {
  * Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.
  */
 export interface AutoPrintConfig {
+  /**
+     * @maxItems 6
+     * @items.minimum 1
+     * @items.maximum 1440
+     */
+  retryDelaysMinutes?: number[];
   enabled: boolean;
   /** The one active schedule: interval (scheduleHours) or daily (dailyTimes in America/New_York). */
   scheduleMode: AutoPrintConfigScheduleMode;
@@ -5284,6 +5290,7 @@ export interface StartAutoPrintRunRequest {
 }
 
 export interface AutoPrintRunCounts {
+  pending?: number;
   skipped?: number;
   reprinted?: number;
   poPrinted?: number;
@@ -5326,6 +5333,7 @@ export const AutoPrintRunStatus = {
   success: 'success',
   failed: 'failed',
   interrupted: 'interrupted',
+  pending: 'pending',
 } as const;
 
 /**
@@ -5364,6 +5372,69 @@ export interface AutoPrintRun {
 
 export interface AutoPrintRunsResponse {
   runs: AutoPrintRun[];
+}
+
+export type AutoPrintRetryActionRequestAction = typeof AutoPrintRetryActionRequestAction[keyof typeof AutoPrintRetryActionRequestAction];
+
+
+export const AutoPrintRetryActionRequestAction = {
+  retry: 'retry',
+  cancel: 'cancel',
+  recover: 'recover',
+  confirm_accepted: 'confirm_accepted',
+  confirm_not_sent: 'confirm_not_sent',
+  fail: 'fail',
+} as const;
+
+export interface AutoPrintRetryActionRequest {
+  action: AutoPrintRetryActionRequestAction;
+  /** @minLength 1 */
+  expectedStatusId?: string;
+  confirmedNotSubmitted?: boolean;
+  /** @pattern ^[1-9][0-9]*$ */
+  printnodeJobId?: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  note?: string;
+}
+
+export type AutoPrintRetryJobAttemptsItem = {
+  id: string;
+  attempt: number;
+  phase: string;
+  outcome: string;
+  /** @nullable */
+  error: string | null;
+  actor: string;
+  startedAt: string;
+  /** @nullable */
+  finishedAt: string | null;
+};
+
+export interface AutoPrintRetryJob {
+  id: string;
+  runId: string;
+  printavoOrderId: string;
+  /** @nullable */
+  visualId: string | null;
+  status: string;
+  retryManaged: boolean;
+  /** @nullable */
+  retryPhase: string | null;
+  retryCount: number;
+  /** @nullable */
+  nextRetryAt: string | null;
+  /** @nullable */
+  errorMessage: string | null;
+  /** @nullable */
+  sourceStatusId: string | null;
+  /** @nullable */
+  sourceStatusName: string | null;
+  /** @nullable */
+  printnodeJobId: string | null;
+  attempts: AutoPrintRetryJobAttemptsItem[];
 }
 
 export type AutoPrintJobStatus = typeof AutoPrintJobStatus[keyof typeof AutoPrintJobStatus];
@@ -10347,6 +10418,14 @@ export type ListAutoPrintRunsParams = {
  * @maximum 50
  */
 limit?: number;
+};
+
+export type ListAutoPrintRetries200 = {
+  jobs: AutoPrintRetryJob[];
+};
+
+export type ActOnAutoPrintRetry200 = {
+  ok: boolean;
 };
 
 export type ListAutoPrintJobsParams = {

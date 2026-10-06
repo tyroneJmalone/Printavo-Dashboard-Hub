@@ -9,6 +9,7 @@ import {
   StartPqStatusJobBody,
   UpdateAutoPrintConfigBody,
   StartAutoPrintRunBody,
+  ActOnAutoPrintRetryBody,
 } from "@workspace/api-zod";
 import { listPrintQueueOrders } from "../lib/printQueue/orders";
 import {
@@ -58,8 +59,27 @@ import {
 } from "../lib/printQueue/autoPrint/engine";
 import { DECORATION_CATEGORY_LABELS } from "../lib/purchasing/decorationClassifier";
 import { validateAutoPrintRoutingRules } from "../lib/printQueue/autoPrint/configValidation";
+import { requireAdmin } from "../middlewares/requireStaff";
+import { listRetryJobs } from "../lib/printQueue/autoPrint/retryStore";
+import { applyRetryAction } from "../lib/printQueue/autoPrint/retryAdmin";
 
 const router: IRouter = Router();
+
+router.get("/print-queue/autoprint/retries", requireAdmin, async (req, res) => {
+  try { res.json({ jobs: await listRetryJobs() }); }
+  catch (error) { req.log.error({ err: error }, "Retry queue read failed"); res.status(500).json({ error: "Failed to read retry queue" }); }
+});
+router.post("/print-queue/autoprint/jobs/:id/retry-action", requireAdmin, async (req, res) => {
+  const parsed = ActOnAutoPrintRetryBody.safeParse(req.body);
+  const id = String(req.params.id);
+  if (!parsed.success || !/^[0-9a-f-]{36}$/i.test(id)) { res.status(400).json({ error: "Invalid retry action" }); return; }
+  try {
+    await applyRetryAction(id, parsed.data, String(req.staff?.id ?? "admin"), req.log);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(409).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
 
 /* ── Print Queue — manual mode, read-only (PQ1) ──────────────────────── */
 

@@ -7,6 +7,7 @@
  */
 
 export interface AutoPrintRunCounts {
+  pending?: number;
   skipped?: number;
   reprinted?: number;
   poPrinted?: number;

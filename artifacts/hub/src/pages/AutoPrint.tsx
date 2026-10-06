@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { AutoPrintRetryQueue } from "./AutoPrintRetryQueue";
 import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
 import {
   useGetAutoPrintConfig,
@@ -58,6 +59,7 @@ function fmtTime(iso: string | null): string {
 }
 
 const RUN_STATUS_STYLES: Record<string, string> = {
+  pending: "bg-amber-500/15 text-amber-300",
   running: "bg-sky-500/15 text-sky-300",
   success: "bg-emerald-500/15 text-emerald-300",
   failed: "bg-red-500/15 text-red-300",
@@ -384,6 +386,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
   );
   const [printerId, setPrinterId] = useState(initial.printerId ?? "");
   const [errorStatusId, setErrorStatusId] = useState(initial.errorStatusId ?? "");
+  const [retryDelays, setRetryDelays] = useState((initial.retryDelaysMinutes ?? [2, 10, 30]).join(", "));
   const [mappings, setMappings] = useState<AutoPrintCategoryMapping[]>(
     initial.categoryMappings,
   );
@@ -428,6 +431,11 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
   });
 
   const doSave = () => {
+    const parsedDelays = retryDelays.trim() ? retryDelays.split(",").map(n => Number(n.trim())) : [];
+    if (parsedDelays.length > 6 || parsedDelays.some(n => !Number.isInteger(n) || n < 1 || n > 1440)) {
+      toast({ title: "Use up to six retry delays from 1–1440 minutes, separated by commas", variant: "destructive" });
+      return;
+    }
     const invalidTimeIndex = dailyTimes.findIndex((time) => !isDailyTime(time));
     if (invalidTimeIndex !== -1) {
       toast({
@@ -439,6 +447,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
     }
 
     const payload = {
+      retryDelaysMinutes: parsedDelays,
       enabled,
       dryRun,
       excludeAttachments,
@@ -773,7 +782,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
           </label>
           <label className="block">
             <span className="text-[11px] uppercase tracking-wide text-slate-500">
-              On print failure, move to
+              After retries are exhausted, move to
             </span>
             <select
               value={errorStatusId}
@@ -792,6 +801,11 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
         </div>
 
         <div>
+          <label className="mb-3 block text-xs text-slate-400">
+            Retry delays in minutes (comma-separated; blank disables automatic retries)
+            <input className="mt-1 block w-full rounded border border-slate-700 bg-slate-800 p-2 text-slate-200"
+              value={retryDelays} onChange={e => setRetryDelays(e.target.value)} data-testid="input-retry-delays" />
+          </label>
           <span className="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">
             Print orders from these statuses
           </span>
@@ -1032,6 +1046,7 @@ function countsLine(run: AutoPrintRun): string {
     (c.poFailed ?? 0) > 0 ? `${c.poFailed} PO copies failed` : null,
     c.dryRun > 0 ? `${c.dryRun} simulated` : null,
     c.failed > 0 ? `${c.failed} failed` : null,
+    (c.pending ?? 0) > 0 ? `${c.pending} pending / review required` : null,
     (c.skipped ?? 0) > 0 ? `${c.skipped} skipped` : c.alreadyPrinted > 0 ? `${c.alreadyPrinted} previously sent` : null,
     c.detailPending > 0 ? `${c.detailPending} awaiting detail sync` : null,
     c.deferred > 0 ? `${c.deferred} deferred to next run` : null,
@@ -1348,10 +1363,11 @@ export default function AutoPrint() {
         </div>
 
         <RunPanel />
+        <AutoPrintRetryQueue />
         <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 text-[12px] text-slate-400 space-y-1">
           <h2 className="font-semibold text-slate-200">Duplicate protection & eligible reprints</h2>
           <p>A previously sent invoice is eligible for a reprint only after an observed return to Ordered (a configured source status) and changed line items compared with its last successful submission. Simply running again does not qualify it.</p>
-          <p>Legacy prints without a comparable baseline are skipped for review. Pending or unknown submissions are never automatically resent; reconcile them with PrintNode and the printer first.</p>
+          <p>Legacy prints without a comparable baseline are skipped for review. Only verified pre-submission failures retry automatically. Unknown submissions stay blocked until an administrator reconciles them with PrintNode and the printer.</p>
         </div>
 
         {isLoading || !config ? (

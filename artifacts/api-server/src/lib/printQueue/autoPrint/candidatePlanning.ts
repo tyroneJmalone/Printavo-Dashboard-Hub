@@ -34,7 +34,7 @@ export function printAttemptKey(logicalOrder: string, cycle: string, fingerprint
 
 /** Called under the database logical-order lock, with latest successful print first. */
 export function canReservePrint(history: readonly { id: string; status: string }[], expectedPriorId: string | null): boolean {
-  if (history.some((row) => row.status === "pending" || row.status === "submission_unknown")) return false;
+  if (history.some((row) => ["pending", "retry_pending", "held", "exhausted", "cancelled", "submission_unknown"].includes(row.status))) return false;
   return (history.find((row) => row.status === "printed")?.id ?? null) === expectedPriorId;
 }
 

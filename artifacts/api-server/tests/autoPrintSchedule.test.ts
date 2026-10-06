@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { independentTicks } from "../src/lib/printQueue/autoPrint/independentTicks";
 import {
   DEFAULT_AUTO_PRINT_CONFIG,
   normalizeAutoPrintConfig,
@@ -11,6 +12,30 @@ import {
   easternLocalMinute,
   isDailyScheduleDue,
 } from "../src/lib/printQueue/autoPrint/scheduleUtils.ts";
+
+test("slow retry crossing a daily slot does not suppress the scheduled tick", async () => {
+  let now = new Date("2026-10-05T09:59:00Z");
+  let starts = 0, retryStarts = 0;
+  let last: Date | null = null;
+  let finishRetry!: () => void;
+  const slowRetry = new Promise<void>(resolve => { finishRetry = resolve; });
+  const tick = independentTicks(async () => {
+    if (isDailyScheduleDue(now, ["06:00"], last)) { starts++; last = now; }
+  }, async () => { retryStarts++; await slowRetry; }, err => { throw err; });
+  tick();
+  await new Promise(resolve => setImmediate(resolve));
+  now = new Date("2026-10-05T10:00:01Z");
+  tick(); // Retry from the previous minute is still running.
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(starts, 1);
+  assert.equal(retryStarts, 1);
+  now = new Date("2026-10-05T10:01:02Z");
+  finishRetry();
+  await new Promise(resolve => setImmediate(resolve));
+  tick();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(starts, 1, "no catch-up or duplicate daily starts");
+});
 
 test("old interval-only configs retain interval behavior and safe daily defaults", () => {
   const normalized = normalizeAutoPrintConfig({

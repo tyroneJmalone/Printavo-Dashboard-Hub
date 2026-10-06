@@ -10020,6 +10020,11 @@ export const GetPqStatusJobResponse = zod.object({
 /**
  * @summary Auto-print configuration (defaults enabled=false, dryRun=true)
  */
+export const getAutoPrintConfigResponseRetryDelaysMinutesItemMax = 1440;
+
+export const getAutoPrintConfigResponseRetryDelaysMinutesDefault = [2, 10, 30];
+export const getAutoPrintConfigResponseRetryDelaysMinutesMax = 6;
+
 export const getAutoPrintConfigResponseScheduleModeDefault = `interval`;
 export const getAutoPrintConfigResponseScheduleHoursMax = 24;
 
@@ -10042,6 +10047,7 @@ export const getAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsMax = 20;
 
 
 export const GetAutoPrintConfigResponse = zod.object({
+  "retryDelaysMinutes": zod.array(zod.number().min(1).max(getAutoPrintConfigResponseRetryDelaysMinutesItemMax)).max(getAutoPrintConfigResponseRetryDelaysMinutesMax).default(getAutoPrintConfigResponseRetryDelaysMinutesDefault),
   "enabled": zod.boolean(),
   "scheduleMode": zod.enum(['interval', 'daily']).default(getAutoPrintConfigResponseScheduleModeDefault).describe('The one active schedule: interval (scheduleHours) or daily (dailyTimes in America\/New_York).'),
   "scheduleHours": zod.number().min(1).max(getAutoPrintConfigResponseScheduleHoursMax),
@@ -10076,6 +10082,11 @@ export const GetAutoPrintConfigResponse = zod.object({
 /**
  * @summary Replace the auto-print configuration (server normalizes invalid fields to safe defaults)
  */
+export const updateAutoPrintConfigBodyRetryDelaysMinutesItemMax = 1440;
+
+export const updateAutoPrintConfigBodyRetryDelaysMinutesDefault = [2, 10, 30];
+export const updateAutoPrintConfigBodyRetryDelaysMinutesMax = 6;
+
 export const updateAutoPrintConfigBodyScheduleModeDefault = `interval`;
 export const updateAutoPrintConfigBodyScheduleHoursMax = 24;
 
@@ -10098,6 +10109,7 @@ export const updateAutoPrintConfigBodyRoutingRulesItemNicknameKeywordsMax = 20;
 
 
 export const UpdateAutoPrintConfigBody = zod.object({
+  "retryDelaysMinutes": zod.array(zod.number().min(1).max(updateAutoPrintConfigBodyRetryDelaysMinutesItemMax)).max(updateAutoPrintConfigBodyRetryDelaysMinutesMax).default(updateAutoPrintConfigBodyRetryDelaysMinutesDefault),
   "enabled": zod.boolean(),
   "scheduleMode": zod.enum(['interval', 'daily']).default(updateAutoPrintConfigBodyScheduleModeDefault).describe('The one active schedule: interval (scheduleHours) or daily (dailyTimes in America\/New_York).'),
   "scheduleHours": zod.number().min(1).max(updateAutoPrintConfigBodyScheduleHoursMax),
@@ -10128,6 +10140,11 @@ export const UpdateAutoPrintConfigBody = zod.object({
 }))
 }).describe('Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.')
 
+export const updateAutoPrintConfigResponseRetryDelaysMinutesItemMax = 1440;
+
+export const updateAutoPrintConfigResponseRetryDelaysMinutesDefault = [2, 10, 30];
+export const updateAutoPrintConfigResponseRetryDelaysMinutesMax = 6;
+
 export const updateAutoPrintConfigResponseScheduleModeDefault = `interval`;
 export const updateAutoPrintConfigResponseScheduleHoursMax = 24;
 
@@ -10150,6 +10167,7 @@ export const updateAutoPrintConfigResponseRoutingRulesItemNicknameKeywordsMax = 
 
 
 export const UpdateAutoPrintConfigResponse = zod.object({
+  "retryDelaysMinutes": zod.array(zod.number().min(1).max(updateAutoPrintConfigResponseRetryDelaysMinutesItemMax)).max(updateAutoPrintConfigResponseRetryDelaysMinutesMax).default(updateAutoPrintConfigResponseRetryDelaysMinutesDefault),
   "enabled": zod.boolean(),
   "scheduleMode": zod.enum(['interval', 'daily']).default(updateAutoPrintConfigResponseScheduleModeDefault).describe('The one active schedule: interval (scheduleHours) or daily (dailyTimes in America\/New_York).'),
   "scheduleHours": zod.number().min(1).max(updateAutoPrintConfigResponseScheduleHoursMax),
@@ -10217,10 +10235,11 @@ export const StartAutoPrintRunResponse = zod.object({
   "id": zod.string(),
   "trigger": zod.enum(['scheduled', 'manual']),
   "dryRun": zod.boolean(),
-  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted', 'pending']),
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
   "counts": zod.object({
+  "pending": zod.number().optional(),
   "skipped": zod.number().optional(),
   "reprinted": zod.number().optional(),
   "poPrinted": zod.number().optional(),
@@ -10258,10 +10277,11 @@ export const ListAutoPrintRunsResponse = zod.object({
   "id": zod.string(),
   "trigger": zod.enum(['scheduled', 'manual']),
   "dryRun": zod.boolean(),
-  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted', 'pending']),
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
   "counts": zod.object({
+  "pending": zod.number().optional(),
   "skipped": zod.number().optional(),
   "reprinted": zod.number().optional(),
   "poPrinted": zod.number().optional(),
@@ -10295,10 +10315,11 @@ export const GetAutoPrintRunResponse = zod.object({
   "id": zod.string(),
   "trigger": zod.enum(['scheduled', 'manual']),
   "dryRun": zod.boolean(),
-  "status": zod.enum(['running', 'success', 'failed', 'interrupted']),
+  "status": zod.enum(['running', 'success', 'failed', 'interrupted', 'pending']),
   "startedAt": zod.string(),
   "finishedAt": zod.string().nullable(),
   "counts": zod.object({
+  "pending": zod.number().optional(),
   "skipped": zod.number().optional(),
   "reprinted": zod.number().optional(),
   "poPrinted": zod.number().optional(),
@@ -10316,6 +10337,64 @@ export const GetAutoPrintRunResponse = zod.object({
   "advanceSkipped": zod.string().nullable(),
   "createdAt": zod.string()
 }).describe('status: running | success | failed | interrupted (server restarted mid-run — printed orders are already persisted, the rest retry next run).')
+
+
+/**
+ * @summary Admin durable retry queue, including legacy failures eligible for review
+ */
+export const ListAutoPrintRetriesResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "id": zod.string(),
+  "runId": zod.string(),
+  "printavoOrderId": zod.string(),
+  "visualId": zod.string().nullable(),
+  "status": zod.string(),
+  "retryManaged": zod.boolean(),
+  "retryPhase": zod.string().nullable(),
+  "retryCount": zod.number(),
+  "nextRetryAt": zod.string().nullable(),
+  "errorMessage": zod.string().nullable(),
+  "sourceStatusId": zod.string().nullable(),
+  "sourceStatusName": zod.string().nullable(),
+  "printnodeJobId": zod.string().nullable(),
+  "attempts": zod.array(zod.object({
+  "id": zod.string(),
+  "attempt": zod.number(),
+  "phase": zod.string(),
+  "outcome": zod.string(),
+  "error": zod.string().nullable(),
+  "actor": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullable()
+}))
+}))
+})
+
+
+/**
+ * @summary Admin retry, cancel, recover or reconcile without bypassing submission safety
+ */
+export const ActOnAutoPrintRetryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+
+export const actOnAutoPrintRetryBodyPrintnodeJobIdRegExp = new RegExp('^[1-9][0-9]*$');
+export const actOnAutoPrintRetryBodyNoteMax = 2000;
+
+
+
+export const ActOnAutoPrintRetryBody = zod.object({
+  "action": zod.enum(['retry', 'cancel', 'recover', 'confirm_accepted', 'confirm_not_sent', 'fail']),
+  "expectedStatusId": zod.string().min(1).optional(),
+  "confirmedNotSubmitted": zod.boolean().optional(),
+  "printnodeJobId": zod.string().regex(actOnAutoPrintRetryBodyPrintnodeJobIdRegExp).optional(),
+  "note": zod.string().min(1).max(actOnAutoPrintRetryBodyNoteMax).optional()
+})
+
+export const ActOnAutoPrintRetryResponse = zod.object({
+  "ok": zod.boolean()
+})
 
 
 /**

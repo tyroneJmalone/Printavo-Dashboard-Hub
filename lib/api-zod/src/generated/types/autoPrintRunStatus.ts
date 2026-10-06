@@ -14,4 +14,5 @@ export const AutoPrintRunStatus = {
   success: 'success',
   failed: 'failed',
   interrupted: 'interrupted',
+  pending: 'pending',
 } as const;

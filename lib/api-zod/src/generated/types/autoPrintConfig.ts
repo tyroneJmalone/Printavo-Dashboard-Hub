@@ -14,6 +14,12 @@ import type { AutoPrintRoutingRule } from './autoPrintRoutingRule';
  * Safety defaults are enabled=false AND dryRun=true — both must be flipped deliberately before anything physically prints. scheduleMode selects exactly one schedule; the other schedule is ignored.
  */
 export interface AutoPrintConfig {
+  /**
+     * @maxItems 6
+     * @items.minimum 1
+     * @items.maximum 1440
+     */
+  retryDelaysMinutes?: number[];
   enabled: boolean;
   /** The one active schedule: interval (scheduleHours) or daily (dailyTimes in America/New_York). */
   scheduleMode: AutoPrintConfigScheduleMode;
