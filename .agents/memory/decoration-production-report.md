@@ -10,7 +10,7 @@ respective location counts to calculate total decoration applications per job.
 Their example target includes average job quantity, average item sale price,
 and location counts. The user subsequently requested each location's estimated
 stitches instead of averaging stitches across locations.
-This is a discussion of the approach, not yet approval to implement.
+The user approved implementing the initial Print and Embroidery report.
 
 **Why:** Garment counts alone do not describe production workload; front-only,
 front/back, and front/back/sleeve jobs require different numbers of applications.

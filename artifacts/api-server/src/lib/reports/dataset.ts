@@ -16,6 +16,8 @@ import { activityCategorySql, qualifyingActivitySql } from "./activitySql";
  */
 
 export interface ReportLineItem {
+  description?: string | null;
+  priceKnown?: boolean;
   itemNumber: string | null;
   color: string | null;
   categoryName: string | null;
@@ -25,6 +27,8 @@ export interface ReportLineItem {
 }
 
 export interface ReportImprint {
+  id?: string;
+  details?: string | null;
   matrixName: string | null;
   columnName: string | null;
   typeOfWork: string | null;
@@ -37,6 +41,7 @@ export interface ReportGroup {
 }
 
 export interface ReportOrder {
+  detailSyncState?: string | null;
   id: string;
   visualId: number;
   orderType: string;
@@ -241,6 +246,7 @@ function activityFragments(f: ReportFilters): {
 }
 
 interface OrderRow {
+  detail_sync_state: string | null;
   printavo_id: string;
   visual_id: number;
   order_type: string;
@@ -266,6 +272,7 @@ interface GroupRow {
 }
 
 interface LineItemRow {
+  description: string | null;
   group_id: string;
   item_number: string | null;
   color: string | null;
@@ -276,6 +283,8 @@ interface LineItemRow {
 }
 
 interface ImprintRow {
+  printavo_id: string;
+  details: string | null;
   group_id: string;
   matrix_name: string | null;
   column_name: string | null;
@@ -324,7 +333,7 @@ export async function loadReportOrders(
   const orderRes = await db.execute(sql`
     ${activity.cte}
     SELECT printavo_id, visual_id, order_type, status_name, nickname,
-           customer_company, contact_name, total,
+           customer_company, contact_name, total, detail_sync_state,
            owner_email, printavo_created_at, invoice_at, production_due_at,
            customer_due_at,
            ${activity.select}
@@ -345,12 +354,13 @@ export async function loadReportOrders(
       ORDER BY position ASC NULLS LAST
     `),
     db.execute(sql`
-      SELECT group_id, item_number, color, category_name, brand, items, price
+      SELECT group_id, item_number, color, category_name, brand, items, price, description
       FROM pv_line_items WHERE order_id = ANY(${sql.param(ids)})
     `),
     db.execute(sql`
-      SELECT group_id, matrix_name, column_name, type_of_work
+      SELECT printavo_id, group_id, matrix_name, column_name, type_of_work, details
       FROM pv_imprints WHERE order_id = ANY(${sql.param(ids)})
+      ORDER BY printavo_id
     `),
   ]);
 
@@ -365,6 +375,8 @@ export async function loadReportOrders(
   }
   for (const li of liRes.rows as unknown as LineItemRow[]) {
     groupById.get(li.group_id)?.lineItems.push({
+      description: li.description,
+      priceKnown: li.price !== null,
       itemNumber: li.item_number,
       color: li.color,
       categoryName: li.category_name,
@@ -375,6 +387,8 @@ export async function loadReportOrders(
   }
   for (const imp of impRes.rows as unknown as ImprintRow[]) {
     groupById.get(imp.group_id)?.imprints.push({
+      id: imp.printavo_id,
+      details: imp.details,
       matrixName: imp.matrix_name,
       columnName: imp.column_name,
       typeOfWork: imp.type_of_work,
@@ -389,6 +403,7 @@ export async function loadReportOrders(
       0,
     );
     const order: ReportOrder = {
+      detailSyncState: r.detail_sync_state,
       id: r.printavo_id,
       visualId: r.visual_id,
       orderType: r.order_type,

@@ -145,6 +145,7 @@ import type {
   DashboardSummary,
   DecorationMatricesResponse,
   DecorationMatrix,
+  DecorationProductionReport,
   DeleteCollection200,
   DetectedChipplyStoresResponse,
   DirectoryCustomersResponse,
@@ -197,6 +198,7 @@ import type {
   GetCustomerProfileParams,
   GetDashboardDetailsParams,
   GetDashboardSummaryParams,
+  GetDecorationProductionParams,
   GetDraftPatternSummaryParams,
   GetEmailActivityStatsParams,
   GetEmailDealsReportParams,
@@ -12081,6 +12083,90 @@ export function useGetPricingMatrixBreakdown<TData = Awaited<ReturnType<typeof g
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPricingMatrixBreakdownQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDecorationProductionUrl = (params?: GetDecorationProductionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/decoration-production?${stringifiedParams}` : `/api/reports/decoration-production`
+}
+
+/**
+ * @summary Invoice decoration workload with per-location colors or estimated stitches
+ */
+export const getDecorationProduction = async (params?: GetDecorationProductionParams, options?: RequestInit): Promise<DecorationProductionReport> => {
+
+  return customFetch<DecorationProductionReport>(getGetDecorationProductionUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDecorationProductionQueryKey = (params?: GetDecorationProductionParams,) => {
+    return [
+    `/api/reports/decoration-production`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDecorationProductionQueryOptions = <TData = Awaited<ReturnType<typeof getDecorationProduction>>, TError = ErrorType<void>>(params?: GetDecorationProductionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDecorationProduction>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDecorationProductionQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDecorationProduction>>> = ({ signal }) => getDecorationProduction(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDecorationProduction>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDecorationProductionQueryResult = NonNullable<Awaited<ReturnType<typeof getDecorationProduction>>>
+export type GetDecorationProductionQueryError = ErrorType<void>
+
+
+/**
+ * @summary Invoice decoration workload with per-location colors or estimated stitches
+ */
+
+export function useGetDecorationProduction<TData = Awaited<ReturnType<typeof getDecorationProduction>>, TError = ErrorType<void>>(
+ params?: GetDecorationProductionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDecorationProduction>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDecorationProductionQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

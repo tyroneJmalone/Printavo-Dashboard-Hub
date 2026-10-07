@@ -3074,6 +3074,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BreakdownReport"
+  /reports/decoration-production:
+    get:
+      operationId: getDecorationProduction
+      tags: [reports]
+      summary: Invoice decoration workload with per-location colors or estimated stitches
+      parameters:
+        - { name: method, in: query, schema: { type: string, enum: [print, embroidery], default: print } }
+        - { name: locationCount, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
+      responses:
+        "200":
+          description: Invoice-only workload; summary and buckets cover method, jobs optionally narrowed by location count
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DecorationProductionReport" }
+        "400": { description: Invalid filters }
   /reports/imprints-by-tier:
     get:
       operationId: getImprintsByTier
@@ -9712,6 +9753,81 @@ components:
             order: { type: integer }
           required: [quantity, lineItem, price, balance, status, order]
       required: [affectedOrders, changes, byOrderType, byCategory]
+    DecorationProductionTotals:
+      type: object
+      required: [invoices, quantity, imprints, knownWorkUnits, workUnits, unknownLocations, estimatedScreens, averageJobQuantity, averageItemPrice, averageLocationsPerItem]
+      properties:
+        invoices: { type: integer }
+        quantity: { type: number }
+        imprints: { type: number }
+        knownWorkUnits: { type: number }
+        workUnits: { type: [number, "null"] }
+        unknownLocations: { type: integer }
+        estimatedScreens: { type: [number, "null"] }
+        averageJobQuantity: { type: [number, "null"] }
+        averageItemPrice: { type: [number, "null"] }
+        averageLocationsPerItem: { type: [number, "null"] }
+    DecorationProductionLocation:
+      type: object
+      required: [id, label, details, matrix, tier, complexity, workUnits]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        details: { type: [string, "null"] }
+        matrix: { type: [string, "null"] }
+        tier: { type: [string, "null"] }
+        complexity: { type: [number, "null"] }
+        workUnits: { type: [number, "null"] }
+    DecorationProductionGroup:
+      type: object
+      required: [id, items, quantity, averageItemPrice, locations]
+      properties:
+        id: { type: string }
+        items: { type: array, items: { type: string } }
+        quantity: { type: number }
+        averageItemPrice: { type: [number, "null"] }
+        locations:
+          type: array
+          items: { $ref: "#/components/schemas/DecorationProductionLocation" }
+    DecorationProductionJob:
+      type: object
+      required: [id, visualId, customer, nickname, groups, totals]
+      properties:
+        id: { type: string }
+        visualId: { type: [number, "null"] }
+        customer: { type: [string, "null"] }
+        nickname: { type: [string, "null"] }
+        groups: { type: array, items: { $ref: "#/components/schemas/DecorationProductionGroup" } }
+        totals: { $ref: "#/components/schemas/DecorationProductionTotals" }
+    DecorationProductionBucket:
+      type: object
+      required: [locations, totals]
+      properties:
+        locations: { type: integer }
+        totals: { $ref: "#/components/schemas/DecorationProductionTotals" }
+    DecorationProductionReport:
+      type: object
+      required: [method, summary, buckets, complexityBreakdown, jobs, totalJobs, offset, limit, excludedIncompleteInvoices, unclassifiedGroups, unassignedGroups, excludedQuantityGroups]
+      properties:
+        method: { type: string, enum: [print, embroidery] }
+        summary: { $ref: "#/components/schemas/DecorationProductionTotals" }
+        buckets: { type: array, items: { $ref: "#/components/schemas/DecorationProductionBucket" } }
+        complexityBreakdown: { type: array, items: { $ref: "#/components/schemas/DecorationProductionComplexity" } }
+        jobs: { type: array, items: { $ref: "#/components/schemas/DecorationProductionJob" } }
+        totalJobs: { type: integer }
+        offset: { type: integer }
+        limit: { type: integer }
+        excludedIncompleteInvoices: { type: integer }
+        unclassifiedGroups: { type: integer }
+        unassignedGroups: { type: integer }
+        excludedQuantityGroups: { type: integer }
+    DecorationProductionComplexity:
+      type: object
+      required: [complexity, tiers, totals]
+      properties:
+        complexity: { type: [number, "null"] }
+        tiers: { type: array, items: { type: string } }
+        totals: { $ref: "#/components/schemas/DecorationProductionTotals" }
     ReportFiltersEcho:
       type: object
       additionalProperties: true

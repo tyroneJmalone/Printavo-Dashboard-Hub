@@ -1972,6 +1972,95 @@ export interface ReportStats {
   activity: ReportActivityStats;
 }
 
+export interface DecorationProductionTotals {
+  invoices: number;
+  quantity: number;
+  imprints: number;
+  knownWorkUnits: number;
+  /** @nullable */
+  workUnits: number | null;
+  unknownLocations: number;
+  /** @nullable */
+  estimatedScreens: number | null;
+  /** @nullable */
+  averageJobQuantity: number | null;
+  /** @nullable */
+  averageItemPrice: number | null;
+  /** @nullable */
+  averageLocationsPerItem: number | null;
+}
+
+export interface DecorationProductionLocation {
+  id: string;
+  label: string;
+  /** @nullable */
+  details: string | null;
+  /** @nullable */
+  matrix: string | null;
+  /** @nullable */
+  tier: string | null;
+  /** @nullable */
+  complexity: number | null;
+  /** @nullable */
+  workUnits: number | null;
+}
+
+export interface DecorationProductionGroup {
+  id: string;
+  items: string[];
+  quantity: number;
+  /** @nullable */
+  averageItemPrice: number | null;
+  locations: DecorationProductionLocation[];
+}
+
+export interface DecorationProductionJob {
+  id: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  customer: string | null;
+  /** @nullable */
+  nickname: string | null;
+  groups: DecorationProductionGroup[];
+  totals: DecorationProductionTotals;
+}
+
+export interface DecorationProductionBucket {
+  locations: number;
+  totals: DecorationProductionTotals;
+}
+
+export type DecorationProductionReportMethod = typeof DecorationProductionReportMethod[keyof typeof DecorationProductionReportMethod];
+
+
+export const DecorationProductionReportMethod = {
+  print: 'print',
+  embroidery: 'embroidery',
+} as const;
+
+export interface DecorationProductionComplexity {
+  /** @nullable */
+  complexity: number | null;
+  tiers: string[];
+  totals: DecorationProductionTotals;
+}
+
+export interface DecorationProductionReport {
+  method: DecorationProductionReportMethod;
+  summary: DecorationProductionTotals;
+  buckets: DecorationProductionBucket[];
+  complexityBreakdown: DecorationProductionComplexity[];
+  jobs: DecorationProductionJob[];
+  totalJobs: number;
+  offset: number;
+  limit: number;
+  excludedIncompleteInvoices: number;
+  unclassifiedGroups: number;
+  unassignedGroups: number;
+  excludedQuantityGroups: number;
+}
+
 export interface ReportFiltersEcho { [key: string]: unknown }
 
 export interface ReportActivityBreakdown {
@@ -10064,6 +10153,85 @@ activityEnd?: ActivityEndParamParameter;
  */
 activityOwner?: ActivityOwnerParamParameter;
 };
+
+export type GetDecorationProductionParams = {
+method?: GetDecorationProductionMethod;
+/**
+ * @minimum 1
+ */
+locationCount?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
+};
+
+export type GetDecorationProductionMethod = typeof GetDecorationProductionMethod[keyof typeof GetDecorationProductionMethod];
+
+
+export const GetDecorationProductionMethod = {
+  print: 'print',
+  embroidery: 'embroidery',
+} as const;
 
 export type GetImprintsByTierParams = {
 orderType?: OrderTypeParamParameter;

@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { decorationProduction } from "../lib/reports/decorationProduction";
 import { db } from "@workspace/db";
 import { sql, type SQL } from "drizzle-orm";
 import { parseReportFilters, filtersEcho } from "../lib/reports/filters";
@@ -97,6 +98,23 @@ function handler(
     });
   };
 }
+
+router.get("/reports/decoration-production", (req, res) => {
+  (async () => {
+    const { filters, errors } = parseReportFilters(req.query as Record<string, unknown>);
+    const method = String(req.query.method ?? "print");
+    const offset = Number(req.query.offset ?? 0), limit = Number(req.query.limit ?? 20);
+    const locationCount = req.query.locationCount === undefined ? undefined : Number(req.query.locationCount);
+    if (!["print", "embroidery"].includes(method)) errors.push("Invalid decoration method");
+    if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+      errors.push("Invalid pagination");
+    if (locationCount !== undefined && (!Number.isSafeInteger(locationCount) || locationCount < 1))
+      errors.push("Invalid location count");
+    if (errors.length) { res.status(400).json({ errors }); return; }
+    const orders = await loadReportOrders(filters);
+    res.json(decorationProduction(orders, method as "print" | "embroidery", { offset, limit, locationCount }));
+  })().catch(err => { req.log.error({ err }, "Decoration production report failed"); res.status(500).json({ error: "Unable to load decoration production report" }); });
+});
 
 router.get("/reports/orders", (req, res) => {
   (async () => {

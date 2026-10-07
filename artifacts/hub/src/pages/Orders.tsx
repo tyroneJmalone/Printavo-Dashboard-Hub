@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { FeeReport } from "@/components/FeeReport";
+import { DecorationProductionReport } from "@/components/DecorationProductionReport";
 import { QuantityOrders } from "@/components/QuantityOrders";
 import { REPORT_DATE_PRESETS, reportDateRange, type ReportDatePreset } from "@/lib/report-date-presets";
 import { ChipplyReport, ReportSourceSelector } from "@/components/chipply/ChipplyReport";
@@ -32,7 +33,7 @@ import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { useEffect, useState } from "react";
 import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays } from "lucide-react";
 
-type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category';
+type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category' | 'decoration';
 type ReportMode = "normal" | "activity";
 type ActivityPreset = ReportDatePreset | "custom";
 
@@ -542,7 +543,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
               { id: 'brand', label: 'By Brand' },
               { id: 'color', label: 'By Color' },
               { id: 'fees', label: 'By Fees' },
-              { id: 'category', label: 'By Category' }
+              { id: 'category', label: 'By Category' },
+              { id: 'decoration', label: 'Decoration Production' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -687,7 +689,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             <div className="h-full">
               {activeTab === 'quantity' && <p className="mb-3 text-sm text-slate-400">Click a range or order count to see matching orders. Ranges use total order quantity and include both endpoints. Orders with zero quantity are excluded.</p>}
               {activeTab === 'category' && <p className="mb-3 text-sm text-slate-400">Line-item categories: revenue is price × quantity, excluding invoice fees and taxes. Orders count once per category and may appear in more than one. Missing categories appear as Uncategorized.</p>}
-              {activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
+              {activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : activeTab === 'decoration' ? <DecorationProductionReport params={params} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
                 </div>
