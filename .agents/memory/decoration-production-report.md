@@ -45,3 +45,13 @@ Exclude Heat for now: the user needs to revamp that pricing matrix first.
 per-location Print colors. Separate screen/setup counts from quantity-weighted
 production applications. Do not implement Heat analysis or silently include it
 in the Print or Embroidery summaries.
+
+Use the user's printing terminology: **impressions = number of colors ×
+quantity**, calculated per location/group and summed for job totals.
+Imprints (decoration applications) remain a separate metric.
+
+**Why:** The user explicitly supplied the shop term and formula.
+
+**How to apply:** Label quantity-weighted color applications as "Impressions,"
+not "color applications" or screens. For 100 shirts with a three-color front
+and one-color back, show 200 imprints and 400 impressions.
