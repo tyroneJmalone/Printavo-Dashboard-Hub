@@ -7,8 +7,9 @@ The user wants to explore a decoration-locations statistic within Analyze →
 Orders Report, functioning as a production log: invoice counts, decoration
 methods, quantities, 1/2/3/etc. locations, and quantities multiplied by their
 respective location counts to calculate total decoration applications per job.
-Their example target is an embroidery summary showing average job quantity,
-average item sale price, average locations, and average stitches per location.
+Their example target includes average job quantity, average item sale price,
+and location counts. The user subsequently requested each location's estimated
+stitches instead of averaging stitches across locations.
 This is a discussion of the approach, not yet approval to implement.
 
 **Why:** Garment counts alone do not describe production workload; front-only,
@@ -32,3 +33,15 @@ and preferred interim estimation method.
 **How to apply:** Label tier-midpoint counts as estimated, not actual recorded
 stitches. Keep missing or nonnumeric/unbounded tiers unknown rather than zero.
 Keep future actual stitch-count capture distinct from interim invoice reporting.
+
+Include a Print analysis alongside Embroidery. For Print, use colors per design
+instead of stitch counts; the user states colors directly correlate to screens
+needed for a job. Preserve per-location counts rather than averaging them away.
+Exclude Heat for now: the user needs to revamp that pricing matrix first.
+
+**Why:** The user explicitly refined the display and first-version scope.
+
+**How to apply:** Show per-location embroidery tier midpoint estimates and
+per-location Print colors. Separate screen/setup counts from quantity-weighted
+production applications. Do not implement Heat analysis or silently include it
+in the Print or Embroidery summaries.
