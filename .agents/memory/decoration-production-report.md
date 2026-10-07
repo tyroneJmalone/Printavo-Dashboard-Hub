@@ -55,3 +55,17 @@ Imprints (decoration applications) remain a separate metric.
 **How to apply:** Label quantity-weighted color applications as "Impressions,"
 not "color applications" or screens. For 100 shirts with a three-color front
 and one-color back, show 200 imprints and 400 impressions.
+
+The user wants to look one or two weeks ahead at scheduled Print impressions
+and imprints, and Embroidery stitches and decoration locations, using historical
+daily/weekly production as a reference for intelligent scheduling and capacity.
+The scheduling date and evidence of method-specific completion still need
+confirmation; this extension has not yet been implemented.
+
+**Why:** The user's goal is to understand shop capacity, not just invoice volume.
+
+**How to apply:** Keep Print and Embroidery workloads separate. Distinguish
+historically scheduled volume from verified completed output, and observed
+throughput from a proven capacity limit. Do not silently treat customer
+deadlines as scheduled work dates or whole-invoice completion as evidence of
+when each decoration method finished.
