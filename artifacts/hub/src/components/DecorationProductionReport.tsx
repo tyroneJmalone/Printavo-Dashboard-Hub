@@ -60,7 +60,12 @@ function LocationRow({ loc, method, qty }: { loc: DecorationProductionLocation; 
       <td className="py-1.5 pr-3 text-right tabular-nums text-slate-200" title={`${num(qty)} qty x ${loc.complexity ?? "?"}`}>
         {loc.workUnits === null ? <span className="text-amber-300">Unknown</span> : num(loc.workUnits)}
       </td>
-      <td className="py-1.5 text-slate-400 whitespace-pre-wrap break-words max-w-xs">{loc.details || "—"}</td>
+      <td className="py-1.5 text-slate-400 whitespace-pre-wrap break-words max-w-xs">{loc.details || "—"}
+        {loc.complexity === null && <p className="mt-1 text-amber-300">
+          {!loc.tier?.trim() ? "No pricing tier recorded." : method === "print" ? "Tier does not specify a supported color count (for example, 3 colors)." : "Tier does not specify a supported bounded stitch range (for example, 6K–8K)."}
+          {" "}Review this imprint’s assigned pricing matrix and tier in Printavo. If the tier is correct, its format may need mapping support in Hub; do not change pricing just to clear this warning.
+        </p>}
+      </td>
     </tr>
   );
 }
@@ -165,25 +170,31 @@ export function MethodToggle({ method, onChange }: { method: Method; onChange: (
 
 function DecorationStats({ params, method, setMethod, merch, setMerch }: { params: GetOrdersReportParams; method: Method; setMethod: (m: Method) => void; merch: Merch; setMerch: (m: Merch) => void }) {
   const [bucket, setBucket] = useState<number | null>(null);
+  const [unknownOnly, setUnknownOnly] = useState(false);
   const [page, setPage] = useState(0);
   const filterKey = JSON.stringify(params);
 
-  useEffect(() => { setPage(0); setBucket(null); }, [filterKey, method, merch]);
+  useEffect(() => { setPage(0); setBucket(null); setUnknownOnly(false); }, [filterKey, method, merch]);
 
   const query: GetDecorationProductionParams = useMemo(() => ({
     ...(JSON.parse(filterKey) as GetOrdersReportParams),
     method,
     merch,
     locationCount: bucket ?? undefined,
+    unknownOnly,
     limit: LIMIT,
     offset: page * LIMIT,
-  }), [filterKey, method, merch, bucket, page]);
+  }), [filterKey, method, merch, bucket, page, unknownOnly]);
 
   const { data, isLoading, isFetching, isError, refetch } = useGetDecorationProduction(query, {
     query: { queryKey: getGetDecorationProductionQueryKey(query) },
   });
 
   const isQuote = params.orderType === "quote";
+  const inspectUnknown = (count: number | null = null) => {
+    setUnknownOnly(true); setBucket(count); setPage(0);
+    document.getElementById("decoration-invoice-details")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const s = data?.summary;
   const totalPages = data ? Math.max(1, Math.ceil(data.totalJobs / LIMIT)) : 1;
   const caveats = data ? [
@@ -226,6 +237,7 @@ function DecorationStats({ params, method, setMethod, merch, setMerch }: { param
             <Stat label="Imprints" hint="Quantity x locations">{num(s.imprints)}</Stat>
             <Stat label={method === "print" ? "Impressions" : "Estimated stitches"} hint={method === "print" ? "Quantity x colors at each location" : "Tier midpoint estimate, not actual stitch counts"}>
               <WorkUnits t={s} method={method} />
+              {s.unknownLocations > 0 && <button type="button" onClick={() => inspectUnknown()} className="block mt-2 text-xs text-amber-300 underline" data-testid="inspect-unknown-locations">Review {num(s.unknownLocations)} unknown locations</button>}
             </Stat>
             {method === "print" && <Stat label="Est. screens" hint="Sum of colors, no screen reuse adjustment">{num(s.estimatedScreens)}</Stat>}
             <Stat label="Avg job qty">{num(s.averageJobQuantity, 1)}</Stat>
@@ -242,7 +254,7 @@ function DecorationStats({ params, method, setMethod, merch, setMerch }: { param
                   <th className="p-2">Item qty</th><th className="p-2">Imprints</th><th className="p-2">{workLabel(method)}</th>
                 </tr></thead>
                 <tbody>{data.complexityBreakdown?.map(row => <tr key={row.complexity ?? "unknown"} className="border-t border-slate-800 text-slate-200">
-                  <td className="p-2">{row.complexity === null ? "Unknown" : num(row.complexity)}</td>
+                  <td className="p-2">{row.complexity === null ? <button type="button" className="text-amber-300 underline" onClick={() => inspectUnknown()}>Review unknown locations</button> : num(row.complexity)}</td>
                   <td className="p-2 whitespace-normal min-w-40 max-w-sm">{row.tiers.join(", ")}</td>
                   <td className="p-2">{num(row.totals.invoices)}</td><td className="p-2">{num(row.totals.quantity)}</td>
                   <td className="p-2">{num(row.totals.imprints)}</td><td className="p-2"><WorkUnits t={row.totals} method={method} /></td>
@@ -291,7 +303,9 @@ function DecorationStats({ params, method, setMethod, merch, setMerch }: { param
                           <td className="px-3 py-2 text-right tabular-nums">{num(b.totals.invoices)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{num(b.totals.quantity)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{num(b.totals.imprints)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums"><WorkUnits t={b.totals} method={method} /></td>
+                          <td className="px-3 py-2 text-right tabular-nums"><WorkUnits t={b.totals} method={method} />
+                            {b.totals.unknownLocations > 0 && <button type="button" className="block ml-auto text-amber-300 underline" onClick={e => { e.stopPropagation(); inspectUnknown(b.locations); }}>Review unknowns</button>}
+                          </td>
                           {method === "print" && <td className="px-3 py-2 text-right tabular-nums">{num(b.totals.estimatedScreens)}</td>}
                           <td className="px-3 py-2 text-right tabular-nums">{num(b.totals.averageJobQuantity, 1)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{money(b.totals.averageItemPrice)}</td>
@@ -304,12 +318,16 @@ function DecorationStats({ params, method, setMethod, merch, setMerch }: { param
             )}
           </section>
 
-          <section>
+          <section id="decoration-invoice-details" className="scroll-mt-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-white">
                 Invoices <span className="font-normal text-slate-400">({formatNumber(data.totalJobs)})</span>
                 {isFetching && <span className="ml-2 text-[10px] text-slate-500">updating…</span>}
               </h3>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setUnknownOnly(!unknownOnly); setPage(0); }} aria-pressed={unknownOnly} className="text-xs text-amber-300 underline">{unknownOnly ? "Show all locations" : "Only unknown locations"}</button>
+                <button type="button" onClick={() => refetch()} disabled={isFetching} className="text-xs text-emerald-300 underline disabled:opacity-50">Refresh report</button>
+              </div>
               {bucket !== null && (
                 <button type="button" onClick={() => { setBucket(null); setPage(0); }} data-testid="button-clear-bucket"
                   className="flex items-center gap-1 rounded border border-emerald-700 bg-emerald-950/40 px-2 py-0.5 text-[11px] text-emerald-300">
@@ -317,6 +335,7 @@ function DecorationStats({ params, method, setMethod, merch, setMerch }: { param
                 </button>
               )}
             </div>
+            {unknownOnly && <p role="status" className="mb-3 text-xs text-amber-200">Showing only affected groups and unknown locations, across all matching invoices—not just the current page. Summary totals above remain unchanged. Open the invoice number to review the source in Printavo; corrections appear after Hub sync and a report refresh. Other excluded-data caveats are separate from this list.</p>}
             {data.jobs.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-700 p-10 text-center text-sm text-slate-400">
                 {isQuote ? "Quotes are not included. Switch Order Type to Invoice." : `No ${method} invoices match these filters.`}

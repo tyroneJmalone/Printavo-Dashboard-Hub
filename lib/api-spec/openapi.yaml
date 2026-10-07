@@ -3100,6 +3100,7 @@ paths:
         - { name: merch, in: query, schema: { type: string, enum: [all, only, exclude], default: all } }
         - { name: method, in: query, schema: { type: string, enum: [print, embroidery], default: print } }
         - { name: locationCount, in: query, schema: { type: integer, minimum: 1 } }
+        - { name: unknownOnly, in: query, schema: { type: boolean, default: false }, description: Restrict invoice detail to locations with unknown complexity; summary stays unchanged. }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
         - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
         - $ref: "#/components/parameters/OrderTypeParam"

@@ -27,6 +27,24 @@ test("100 shirts, 3-color front and 1-color back: 200 imprints, 400 impressions,
   assert.deepEqual(r.complexityBreakdown.map(b => [b.complexity, b.totals.quantity, b.totals.workUnits]), [[1, 100, 100], [3, 100, 300]]);
 });
 
+test("unknown drilldown filters before pagination, preserves labels and reconciles summary", () => {
+  const orders = [order("1", [group("a", 100, ["3 color"])]),
+    order("2", [group("b", 20, ["1 color", "custom"])]),
+    order("3", [group("c", 10, ["unknown"])])];
+  const r = decorationProduction(orders, "print", { unknownOnly: true, limit: 1 });
+  assert.equal(r.summary.unknownLocations, 2);
+  assert.equal(r.summary.knownWorkUnits, 320);
+  assert.equal(r.totalJobs, 2);
+  assert.equal(r.jobs[0].id, "2");
+  assert.equal(r.jobs[0].groups[0].locations[0].label, "Location 2");
+  assert.equal(r.jobs[0].groups[0].locations.length, 1);
+  const next = decorationProduction(orders, "print", { unknownOnly: true, offset: 1, limit: 1 });
+  assert.equal(next.jobs[0].id, "3");
+  const bucket = decorationProduction(orders, "print", { unknownOnly: true, locationCount: 2 });
+  assert.equal(bucket.totalJobs, 1);
+  assert.equal(bucket.jobs[0].id, "2");
+});
+
 test("embroidery preserves each tier midpoint, never averages locations", () => {
   const r = decorationProduction([order("1", [group("a", 45, ["6k-8k", "2K–4K"], "Embroidery")])], "embroidery");
   assert.deepEqual(r.jobs[0].groups[0].locations.map(l => l.complexity), [7000, 3000]);

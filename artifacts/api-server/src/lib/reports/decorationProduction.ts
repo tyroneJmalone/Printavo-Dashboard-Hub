@@ -63,7 +63,7 @@ export function totals(jobs: DecorationProductionJob[], method: Method): Decorat
 
 export function decorationProduction(
   orders: ReportOrder[], method: Method,
-  options: { locationCount?: number; offset?: number; limit?: number } = {},
+  options: { locationCount?: number; unknownOnly?: boolean; offset?: number; limit?: number } = {},
 ): DecorationProductionReport {
   let excludedIncompleteInvoices = 0, unclassifiedGroups = 0, unassignedGroups = 0, excludedQuantityGroups = 0;
   const jobs: DecorationProductionJob[] = [];
@@ -124,7 +124,17 @@ export function decorationProduction(
     return { complexity, tiers: [...new Set(narrowed.flatMap(j => j.groups.flatMap(g =>
       g.locations.map(l => l.tier ?? "Unassigned tier"))))].sort(), totals: totals(narrowed, method) };
   });
-  const selected = options.locationCount ? narrow(options.locationCount) : jobs;
+  const scoped = options.locationCount ? narrow(options.locationCount) : jobs;
+  const selected = options.unknownOnly ? scoped.flatMap(job => {
+    const groups = job.groups.flatMap(g => {
+      const locations = g.locations.filter(l => l.complexity === null);
+      return locations.length ? [{ ...g, locations }] : [];
+    });
+    if (!groups.length) return [];
+    const selectedJob = { ...job, groups };
+    selectedJob.totals = totals([selectedJob], method);
+    return [selectedJob];
+  }) : scoped;
   const offset = options.offset ?? 0, limit = options.limit ?? 20;
   return {
     method, summary: totals(jobs, method), complexityBreakdown,

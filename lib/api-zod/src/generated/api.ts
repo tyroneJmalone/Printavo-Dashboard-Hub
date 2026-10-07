@@ -7530,6 +7530,7 @@ export const GetProductionWorkloadResponse = zod.object({
  */
 export const getDecorationProductionQueryMerchDefault = `all`;
 export const getDecorationProductionQueryMethodDefault = `print`;
+export const getDecorationProductionQueryUnknownOnlyDefault = false;
 export const getDecorationProductionQueryLimitDefault = 20;
 export const getDecorationProductionQueryLimitMax = 100;
 
@@ -7542,6 +7543,7 @@ export const GetDecorationProductionQueryParams = zod.object({
   "merch": zod.enum(['all', 'only', 'exclude']).default(getDecorationProductionQueryMerchDefault),
   "method": zod.enum(['print', 'embroidery']).default(getDecorationProductionQueryMethodDefault),
   "locationCount": zod.coerce.number().min(1).optional(),
+  "unknownOnly": zod.coerce.boolean().default(getDecorationProductionQueryUnknownOnlyDefault).describe('Restrict invoice detail to locations with unknown complexity; summary stays unchanged.'),
   "limit": zod.coerce.number().min(1).max(getDecorationProductionQueryLimitMax).default(getDecorationProductionQueryLimitDefault),
   "offset": zod.coerce.number().min(getDecorationProductionQueryOffsetMin).default(getDecorationProductionQueryOffsetDefault),
   "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),

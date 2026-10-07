@@ -133,7 +133,11 @@ router.get("/reports/decoration-production", (req, res) => {
     const merch = req.query.merch ?? "all";
     if (typeof merch !== "string" || !["all", "only", "exclude"].includes(merch)) { res.status(400).json({ error: "Invalid Merch scope" }); return; }
     const orders = (await loadReportOrders(filters, { includeMerch: true })).filter(o => merchMatches(o.productionMerch, merch as MerchScope));
-    res.json(decorationProduction(orders, method as "print" | "embroidery", { offset, limit, locationCount }));
+    if (req.query.unknownOnly !== undefined && !["true", "false"].includes(String(req.query.unknownOnly))) {
+      res.status(400).json({ error: "unknownOnly must be true or false" });
+      return;
+    }
+    res.json(decorationProduction(orders, method as "print" | "embroidery", { offset, limit, locationCount, unknownOnly: req.query.unknownOnly === "true" }));
   })().catch(err => { req.log.error({ err }, "Decoration production report failed"); res.status(500).json({ error: "Unable to load decoration production report" }); });
 });
 

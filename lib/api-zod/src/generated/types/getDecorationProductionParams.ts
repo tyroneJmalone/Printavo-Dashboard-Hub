@@ -40,6 +40,10 @@ method?: GetDecorationProductionMethod;
  */
 locationCount?: number;
 /**
+ * Restrict invoice detail to locations with unknown complexity; summary stays unchanged.
+ */
+unknownOnly?: boolean;
+/**
  * @minimum 1
  * @maximum 100
  */
