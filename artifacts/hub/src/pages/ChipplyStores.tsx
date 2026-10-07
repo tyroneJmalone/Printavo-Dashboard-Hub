@@ -1,3 +1,4 @@
+import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { useMemo, useRef, useState } from "react";
 import {
   EMPTY_STORE_FILTERS,
@@ -977,6 +978,7 @@ export default function ChipplyStores() {
                     <label className={labelCls} htmlFor="closed-to">Closed date to</label>
                     <input id="closed-to" type="date" data-testid="input-closed-to" className={inputCls} value={filters.closedTo} onChange={(e) => setFilter("closedTo", e.target.value)} />
                   </div>
+                  <ReportDatePresets onChange={r => setFilters(prev => ({ ...prev, closedFrom: r.start, closedTo: r.end }))} />
                 </>
               )}
               <Button variant="outline" data-testid="button-clear-filters" disabled={!filterOn} onClick={() => setFilters(EMPTY_STORE_FILTERS)} className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">

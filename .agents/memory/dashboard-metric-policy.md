@@ -29,8 +29,9 @@ calendar boundary. Never replace these with rolling 7/30/90/365-day windows.
 
 **How to apply:** Preserve these semantics in future report preset changes.
 
-The requested dashboard
-periods are Today, WTD, LW, MTD, QTD, and YTD across performance, averages,
+All reporting/date-filter surfaces in Hub should include Today, Yesterday,
+WTD, LW, MTD, LM, QTD, LQ, YTD, and LY, while preserving custom ranges and
+existing useful choices. This includes dashboard performance, averages,
 activity, and Close Rate. LW is the previous full Monday–Sunday, not rolling
 seven days. Average Order Volume means pieces per order.
 Decoration-method selections may overlap for mixed-method orders; whole-order
@@ -38,12 +39,24 @@ revenue is not allocated decoration revenue.
 
 **Why:** These definitions separate order creation, cash collection, production
 quantities, and observed sales-status changes, which have different clocks.
+The user requested the full preset set consistently across reporting modules.
 
 **How to apply:** Invoice-created totals and signed payment transaction-date
 totals remain distinct. Items Decorated is recorded decorated-group quantity,
 not proof of completed production. Recent wins require observed entry into the
 pipeline won/done stages, not creation date or current status alone. Preserve
 known-history caveats. Chipply revenue and shell-order behavior remain separate.
+
+Performance-by-period values must let users inspect included invoices and/or
+customers. Details must use the same metric populations as the displayed totals;
+net payments show signed transactions, and Repeat Customer shows qualifying
+orders rather than distinct customers.
+
+**Why:** The user requested visibility into the records behind each statistic.
+
+**How to apply:** Preserve date basis, exclusions, conversion deduplication,
+missing-quantity caveats, and pagination; do not substitute a broader report
+whose population differs from the selected dashboard metric.
 
 Close Rate uses quote-creation cohorts: eventually converted quotes divided by
 all qualifying quotes created in the selected period. Exclude current statuses

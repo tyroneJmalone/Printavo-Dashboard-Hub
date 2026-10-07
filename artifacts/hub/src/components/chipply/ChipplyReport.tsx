@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "../../../../../lib/api-client-react/src/custom-fetch";
 
@@ -66,6 +67,7 @@ export function ChipplyReport() {
       <label className="text-xs text-slate-400">Date basis<select className={inputClass} value={draft.dateBasis} onChange={e => change("dateBasis", e.target.value)}><option value="closed">Store closed date</option><option value="transaction">Order transaction date (export calendar)</option></select></label>
       {["start", "end"].map(key => <label key={key} className="text-xs text-slate-400">{key === "start" ? "From (inclusive)" : "Through (inclusive)"}<input type="date" className={inputClass} value={draft[key] ?? ""} onChange={e => change(key, e.target.value)} /></label>)}
       <button className="self-end rounded bg-emerald-600 p-2 text-sm" type="submit">Apply filters</button>
+      <div className="sm:col-span-3 lg:col-span-5"><ReportDatePresets onChange={r => setDraft(prev => ({ ...prev, start: r.start, end: r.end }))} /></div>
       <button className="self-end rounded border border-slate-700 p-2 text-sm" type="button" onClick={() => { const reset = { dateBasis: "closed" }; setDraft(reset); setFilters(reset); setPage(0); }}>Reset</button>
     </form>
     {query.isFetching && <p role="status">Loading Chipply report…</p>}

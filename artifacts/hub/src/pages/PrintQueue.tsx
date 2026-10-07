@@ -1,3 +1,4 @@
+import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import {
@@ -606,6 +607,7 @@ export default function PrintQueue() {
   const { toast } = useToast();
   const [statusIds, setStatusIds] = useState<string[]>(loadSavedStatusIds);
   const [dateFilter, setDateFilter] = useState("");
+  const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [docDialog, setDocDialog] = useState<"packing_slip" | "box_labels" | null>(null);
   const [excludeAttachments, setExcludeAttachments] = useState<boolean>(loadExcludeAttachments);
@@ -648,10 +650,15 @@ export default function PrintQueue() {
   );
 
   const filtered = useMemo(() => {
+    if (dateRange) return orders.filter(o => {
+      // Printavo due dates are calendar dates stored at UTC midnight.
+      const day = o.productionDueAt?.slice(0, 10);
+      return day && day >= dateRange.start && day <= dateRange.end;
+    });
     const f = dateFilter.trim().toLowerCase();
     if (!f) return orders;
     return orders.filter((o) => fmtDate(o.productionDueAt).toLowerCase().includes(f));
-  }, [orders, dateFilter]);
+  }, [orders, dateFilter, dateRange]);
 
   // Drop selections that fell out of the current result set.
   useEffect(() => {
@@ -897,11 +904,13 @@ export default function PrintQueue() {
           ))}
           <input
             value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
+            onChange={(e) => { setDateFilter(e.target.value); setDateRange(null); }}
             placeholder="Filter by production date…"
             className="px-3 py-2 rounded-md bg-[#0f172a] border border-slate-700 text-[13px] text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-[#059669] w-56"
             data-testid="input-date-filter"
           />
+          <ReportDatePresets onChange={r => { setDateRange(r); setDateFilter(""); }} />
+          {dateRange && <span className="text-xs text-slate-300">{dateRange.start} through {dateRange.end} <button type="button" className="text-emerald-300 underline" onClick={() => setDateRange(null)}>Clear dates</button></span>}
           <button
             onClick={() => refetch()}
             disabled={statusIds.length === 0}
@@ -1008,7 +1017,7 @@ export default function PrintQueue() {
           ) : filtered.length === 0 ? (
             <div className="py-16 text-center text-[13px] text-slate-500">
               No orders in the selected statuses
-              {dateFilter.trim() ? " matching that date filter" : ""}.
+              {dateFilter.trim() || dateRange ? " matching that date filter" : ""}.
             </div>
           ) : (
             <table className="w-full text-[13px]">
@@ -1101,7 +1110,7 @@ export default function PrintQueue() {
         {statusIds.length > 0 && filtered.length > 0 && (
           <div className="mt-2 text-[12px] text-slate-500">
             {filtered.length} order{filtered.length === 1 ? "" : "s"}
-            {dateFilter.trim() ? ` (filtered from ${orders.length})` : ""} · {selected.size}{" "}
+            {dateFilter.trim() || dateRange ? ` (filtered from ${orders.length})` : ""} · {selected.size}{" "}
             selected
           </div>
         )}

@@ -2,7 +2,7 @@ import { pool } from "@workspace/db";
 import { notChipplySql } from "../chipply/matching";
 import { pipelineStageSql } from "../../routes/pipeline";
 
-export const PERIOD_KEYS = ["today", "wtd", "lw", "mtd", "qtd", "ytd"] as const;
+export const PERIOD_KEYS = ["today", "yesterday", "wtd", "lw", "mtd", "lm", "qtd", "lq", "ytd", "ly"] as const;
 export type DashboardPeriod = typeof PERIOD_KEYS[number];
 export const METHOD_KEYS = ["all", "print", "embroidery", "heat"] as const;
 export type DashboardMethod = typeof METHOD_KEYS[number];
@@ -21,27 +21,34 @@ export function periodBounds(today: string): Record<DashboardPeriod, string> {
   const month = day.getUTCMonth();
   return {
     today,
+    yesterday: iso(new Date(Date.UTC(year, month, day.getUTCDate() - 1))),
     wtd: iso(week),
     lw: iso(new Date(week.valueOf() - 7 * 86400000)),
     mtd: iso(new Date(Date.UTC(year, month, 1))),
+    lm: iso(new Date(Date.UTC(year, month - 1, 1))),
     qtd: iso(new Date(Date.UTC(year, Math.floor(month / 3) * 3, 1))),
+    lq: iso(new Date(Date.UTC(year, Math.floor(month / 3) * 3 - 3, 1))),
     ytd: iso(new Date(Date.UTC(year, 0, 1))),
+    ly: iso(new Date(Date.UTC(year - 1, 0, 1))),
   };
 }
 
 export function periodRanges(today: string) {
   const starts = periodBounds(today);
-  const lastSunday = new Date(`${starts.wtd}T00:00:00Z`);
-  lastSunday.setUTCDate(lastSunday.getUTCDate() - 1);
+  const preceding = (date: string) => new Date(new Date(`${date}T00:00:00Z`).valueOf() - 86400000).toISOString().slice(0, 10);
+  const ends: Partial<Record<DashboardPeriod, string>> = {
+    yesterday: starts.yesterday, lw: preceding(starts.wtd), lm: preceding(starts.mtd),
+    lq: preceding(starts.qtd), ly: preceding(starts.ytd),
+  };
   return Object.fromEntries(PERIOD_KEYS.map(key => [key, {
-    start: starts[key], end: key === "lw" ? lastSunday.toISOString().slice(0, 10) : today,
+    start: starts[key], end: ends[key] ?? today,
   }])) as Record<DashboardPeriod, { start: string; end: string }>;
 }
 
 // Canonical Purchasing normalization: normalize hyphens and collapse whitespace.
 const CATEGORY_SQL = "lower(trim(regexp_replace(regexp_replace(coalesce(li.category_name, ''), '[‐‑‒–—―]', '-', 'g'), '\\s+', ' ', 'g')))";
 
-export const DASHBOARD_SQL = `
+export const DASHBOARD_CTES = `
 WITH calendar AS (
   SELECT (now() AT TIME ZONE 'America/New_York')::date AS today
 ), bounds AS (
@@ -50,6 +57,7 @@ WITH calendar AS (
     date_trunc('month', today::timestamp)::date AS mtd,
     date_trunc('quarter', today::timestamp)::date AS qtd,
     date_trunc('year', today::timestamp)::date AS ytd,
+    (date_trunc('year', today::timestamp) - interval '1 year')::date AS ly,
     today - 6 AS recent_start
   FROM calendar
 ), eligible AS (
@@ -70,7 +78,7 @@ WITH calendar AS (
     AND ${notChipplySql("o.nickname")}
     -- The Monday week may begin before Jan 1; YTD alone is not enough.
     AND (o.printavo_created_at AT TIME ZONE 'America/New_York')::date
-      BETWEEN least(b.lw, b.ytd) AND b.today
+      BETWEEN least(b.lw, b.ly) AND b.today
 ), line_groups AS (
   SELECT li.order_id, li.group_id, sum(greatest(li.items, 0))::bigint AS qty,
     bool_or(${CATEGORY_SQL} = 'screen printing') AS print,
@@ -101,11 +109,15 @@ WITH calendar AS (
   FROM logical_orders l
 ), ranges AS (
   SELECT 'today' AS key, today AS start_day, today AS end_day FROM bounds
+  UNION ALL SELECT 'yesterday', today - 1, today - 1 FROM bounds
   UNION ALL SELECT 'wtd', wtd, today FROM bounds
   UNION ALL SELECT 'lw', lw, wtd - 1 FROM bounds
   UNION ALL SELECT 'mtd', mtd, today FROM bounds
+  UNION ALL SELECT 'lm', (mtd - interval '1 month')::date, mtd - 1 FROM bounds
   UNION ALL SELECT 'qtd', qtd, today FROM bounds
+  UNION ALL SELECT 'lq', (qtd - interval '3 months')::date, qtd - 1 FROM bounds
   UNION ALL SELECT 'ytd', ytd, today FROM bounds
+  UNION ALL SELECT 'ly', ly, ytd - 1 FROM bounds
 ), invoice_stats AS (
   SELECT r.key, count(i.printavo_id)::int AS total_orders,
     coalesce(sum(i.total), 0)::float8 AS total_revenue,
@@ -216,7 +228,7 @@ WITH calendar AS (
   WHERE e.entity_type = 'order' AND e.event_type = 'status_change'
     AND o.order_type IN ('quote', 'invoice')
     AND ${notChipplySql("o.nickname")}
-    AND (e.occurred_at AT TIME ZONE 'America/New_York')::date BETWEEN least(b.lw, b.ytd) AND b.today
+    AND (e.occurred_at AT TIME ZONE 'America/New_York')::date BETWEEN least(b.lw, b.ly) AND b.today
     AND ${pipelineStageSql("lower(regexp_replace(coalesce(e.new_value #>> '{}', ''), '\\s+', ' ', 'g'))")} IN ('won', 'done')
     AND coalesce(${pipelineStageSql("lower(regexp_replace(coalesce(e.old_value #>> '{}', ''), '\\s+', ' ', 'g'))")}, 'other') NOT IN ('won', 'done')
   ORDER BY o.customer_id, o.visual_id, e.occurred_at, e.id
@@ -245,6 +257,9 @@ WITH calendar AS (
   LEFT JOIN activity_ranked a ON a.key = r.key AND a.kind = k.kind
   GROUP BY r.key, k.kind
 )
+`;
+
+export const DASHBOARD_SQL = `${DASHBOARD_CTES}
 SELECT (SELECT today::text FROM bounds) AS as_of,
   (SELECT jsonb_object_agg(key, lists) FROM (
     SELECT key, jsonb_object_agg(kind, list) AS lists FROM activity_lists GROUP BY key

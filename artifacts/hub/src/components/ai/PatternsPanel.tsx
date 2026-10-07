@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetDraftPatternSummary,
@@ -54,7 +55,8 @@ export function PatternsPanel() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showSecret, setShowSecret] = useState(false);
 
-  const summaryParams = { sinceDays: 30 };
+  const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
+  const summaryParams = dateRange ?? { sinceDays: 30 };
   const { data: summary } = useGetDraftPatternSummary(summaryParams, {
     query: { refetchInterval: 30000, queryKey: getGetDraftPatternSummaryQueryKey(summaryParams) },
   });
@@ -157,9 +159,10 @@ export function PatternsPanel() {
       </Card>
 
       <Card>
+        <ReportDatePresets onChange={setDateRange} />
         <div className="flex items-center gap-2 mb-2.5">
           <Timer size={14} className="text-[#10b981]" />
-          <div className="text-sm font-semibold text-white">Drafting patterns — last 30 days</div>
+          <div className="text-sm font-semibold text-white">Drafting patterns — {dateRange ? `${dateRange.start} through ${dateRange.end}` : "last 30 days"}</div>
           <div className="flex-1" />
           <span
             className={`text-[11px] px-2 py-0.5 rounded-full border ${

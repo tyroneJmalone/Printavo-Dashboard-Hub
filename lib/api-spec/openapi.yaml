@@ -182,6 +182,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChipplyCategoryCommitResponse" }
+  /dashboard/details:
+    get:
+      operationId: getDashboardDetails
+      tags: [Dashboard]
+      parameters:
+        - { name: metric, in: query, required: true, schema: { type: string, enum: [totalOrders, totalRevenue, itemsDecorated, netPayments, newCustomers, repeatCustomers] } }
+        - { name: period, in: query, required: true, schema: { type: string, enum: [today, yesterday, wtd, lw, mtd, lm, qtd, lq, ytd, ly] } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        "200":
+          description: Paginated records contributing to a performance metric.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HubDashboardDetails" }
+        "400":
+          description: Invalid metric, period or offset.
   /dashboard/metrics:
     get:
       operationId: getDashboardMetrics
@@ -7984,6 +8000,8 @@ paths:
       tags: [aiContext]
       summary: Pattern A/B/C comparison stats (admin)
       parameters:
+        - { name: start, in: query, schema: { type: string, format: date }, description: Inclusive Eastern calendar start. Must be supplied with end. }
+        - { name: end, in: query, schema: { type: string, format: date }, description: Inclusive Eastern calendar end. Must be supplied with start. }
         - name: sinceDays
           in: query
           schema: { type: integer, minimum: 1, maximum: 365, default: 30 }
@@ -8575,11 +8593,43 @@ components:
         netPayments: { type: number }
         newCustomers: { type: integer }
         repeatCustomers: { type: integer }
+    HubDashboardDetails:
+      type: object
+      required: [metric, period, start, end, value, total, offset, limit, items]
+      properties:
+        metric: { type: string }
+        period: { type: string }
+        start: { type: string }
+        end: { type: string }
+        value: { type: [number, "null"] }
+        total: { type: integer }
+        offset: { type: integer }
+        limit: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, orderId, visualId, customerId, customerName, nickname, kind, date, value, note]
+            properties:
+              id: { type: string }
+              orderId: { type: [string, "null"] }
+              visualId: { type: [integer, "null"] }
+              customerId: { type: [string, "null"] }
+              customerName: { type: [string, "null"] }
+              nickname: { type: [string, "null"] }
+              kind: { type: string }
+              date: { type: string }
+              value: { type: [number, "null"] }
+              note: { type: [string, "null"] }
     HubDashboardPeriods:
       type: object
-      required: [today, wtd, lw, mtd, qtd, ytd]
+      required: [today, yesterday, wtd, lw, mtd, lm, qtd, lq, ytd, ly]
       properties:
         today: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        yesterday: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        lm: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        lq: { $ref: "#/components/schemas/HubDashboardPeriod" }
+        ly: { $ref: "#/components/schemas/HubDashboardPeriod" }
         wtd: { $ref: "#/components/schemas/HubDashboardPeriod" }
         lw: { $ref: "#/components/schemas/HubDashboardPeriod" }
         mtd: { $ref: "#/components/schemas/HubDashboardPeriod" }
@@ -8603,9 +8653,13 @@ components:
         heat: { $ref: "#/components/schemas/HubDashboardAverage" }
     HubDashboardAverages:
       type: object
-      required: [today, wtd, lw, mtd, qtd, ytd]
+      required: [today, yesterday, wtd, lw, mtd, lm, qtd, lq, ytd, ly]
       properties:
         today: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        yesterday: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        lm: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        lq: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
+        ly: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
         wtd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
         lw: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
         mtd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
@@ -8613,9 +8667,13 @@ components:
         ytd: { $ref: "#/components/schemas/HubDashboardAverageMethods" }
     HubDashboardActivity:
       type: object
-      required: [today, wtd, lw, mtd, qtd, ytd]
+      required: [today, yesterday, wtd, lw, mtd, lm, qtd, lq, ytd, ly]
       properties:
         today: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        yesterday: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        lm: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        lq: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
+        ly: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
         wtd: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
         lw: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
         mtd: { $ref: "#/components/schemas/HubDashboardActivityPeriod" }
@@ -8629,9 +8687,13 @@ components:
         dealsWon: { $ref: "#/components/schemas/HubDashboardRecentList" }
     HubDashboardCloseRates:
       type: object
-      required: [today, wtd, lw, mtd, qtd, ytd]
+      required: [today, yesterday, wtd, lw, mtd, lm, qtd, lq, ytd, ly]
       properties:
         today: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        yesterday: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        lm: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        lq: { $ref: "#/components/schemas/HubDashboardCloseRate" }
+        ly: { $ref: "#/components/schemas/HubDashboardCloseRate" }
         wtd: { $ref: "#/components/schemas/HubDashboardCloseRate" }
         lw: { $ref: "#/components/schemas/HubDashboardCloseRate" }
         mtd: { $ref: "#/components/schemas/HubDashboardCloseRate" }

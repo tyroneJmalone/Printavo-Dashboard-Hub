@@ -1,3 +1,4 @@
+import { easternCalendarRange } from "../lib/hub/reportCalendar";
 import { Router, type IRouter } from "express";
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import {
@@ -130,7 +131,14 @@ router.patch("/ai-context/patterns/events/:id", async (req, res): Promise<void> 
 /** Audit-log aggregates per pattern surface + Pattern B ordering stats. */
 router.get("/ai-context/patterns/summary", async (req, res): Promise<void> => {
   const sinceDays = Number(req.query.sinceDays ?? 30);
-  const since = new Date(Date.now() - (Number.isFinite(sinceDays) ? sinceDays : 30) * 86_400_000);
+  let since = new Date(Date.now() - (Number.isFinite(sinceDays) ? sinceDays : 30) * 86_400_000);
+  let until: Date | undefined;
+  if (req.query.start !== undefined || req.query.end !== undefined) {
+    try {
+      const range = easternCalendarRange(String(req.query.start), String(req.query.end));
+      since = range.start; until = range.end;
+    } catch { res.status(400).json({ error: "Invalid calendar date range" }); return; }
+  }
 
   const auditRows = await db
     .select({
@@ -147,6 +155,7 @@ router.get("/ai-context/patterns/summary", async (req, res): Promise<void> => {
     .where(
       and(
         gte(aiAuditEventsTable.createdAt, since),
+        until ? sql`${aiAuditEventsTable.createdAt} < ${until}` : undefined,
         inArray(aiAuditEventsTable.surface, ["context_mcp", "context_rest", "pattern_b", "pattern_c"]),
       ),
     )
@@ -184,6 +193,7 @@ router.get("/ai-context/patterns/summary", async (req, res): Promise<void> => {
       and(
         eq(draftPatternEventsTable.pattern, "B"),
         gte(draftPatternEventsTable.receivedAt, since),
+        until ? sql`${draftPatternEventsTable.receivedAt} < ${until}` : undefined,
       ),
     );
 
@@ -198,12 +208,14 @@ router.get("/ai-context/patterns/summary", async (req, res): Promise<void> => {
       and(
         eq(draftPatternEventsTable.pattern, "C"),
         gte(draftPatternEventsTable.receivedAt, since),
+        until ? sql`${draftPatternEventsTable.receivedAt} < ${until}` : undefined,
       ),
     );
 
   res.json(
     GetDraftPatternSummaryResponse.parse({
-      sinceDays: Number.isFinite(sinceDays) ? sinceDays : 30,
+      sinceDays: until ? Math.round((until.valueOf() - since.valueOf()) / 86_400_000)
+        : Number.isFinite(sinceDays) ? sinceDays : 30,
       patternA: surfaceStats("context_mcp"),
       patternB: {
         ...surfaceStats("pattern_b"),

@@ -195,6 +195,7 @@ import type {
   GetCustomerArtworkTemporaryLink200One,
   GetCustomerArtworkTemporaryLinkParams,
   GetCustomerProfileParams,
+  GetDashboardDetailsParams,
   GetDashboardSummaryParams,
   GetDraftPatternSummaryParams,
   GetEmailActivityStatsParams,
@@ -227,6 +228,7 @@ import type {
   HealthStatus,
   HubCalculatorPushRequest,
   HubCalculatorPushResult,
+  HubDashboardDetails,
   HubDashboardMetrics,
   HubInvoiceSearchResponse,
   HubPngUploadRequest,
@@ -2608,6 +2610,84 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCommitChipplyCategoriesMutationOptions(options));
     }
+
+export const getGetDashboardDetailsUrl = (params: GetDashboardDetailsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/dashboard/details?${stringifiedParams}` : `/api/dashboard/details`
+}
+
+export const getDashboardDetails = async (params: GetDashboardDetailsParams, options?: RequestInit): Promise<HubDashboardDetails> => {
+
+  return customFetch<HubDashboardDetails>(getGetDashboardDetailsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDashboardDetailsQueryKey = (params?: GetDashboardDetailsParams,) => {
+    return [
+    `/api/dashboard/details`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDashboardDetailsQueryOptions = <TData = Awaited<ReturnType<typeof getDashboardDetails>>, TError = ErrorType<void>>(params: GetDashboardDetailsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardDetails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDashboardDetailsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDashboardDetails>>> = ({ signal }) => getDashboardDetails(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDashboardDetails>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDashboardDetailsQueryResult = NonNullable<Awaited<ReturnType<typeof getDashboardDetails>>>
+export type GetDashboardDetailsQueryError = ErrorType<void>
+
+
+
+export function useGetDashboardDetails<TData = Awaited<ReturnType<typeof getDashboardDetails>>, TError = ErrorType<void>>(
+ params: GetDashboardDetailsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDashboardDetails>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDashboardDetailsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetDashboardMetricsUrl = () => {
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { Link } from "wouter";
 import {
   useSearchOrderActivityLog,
@@ -281,6 +282,7 @@ function Feed({ order }: { order: LogOrder }) {
             {(start || end) && <button data-testid="button-clear-dates" onClick={() => { setStart(""); setEnd(""); }} className="text-emerald-400 hover:text-emerald-300">Clear</button>}
           </div>
         </div>
+        <ReportDatePresets onChange={r => { setStart(r.start); setEnd(r.end); }} />
       </header>
 
       {coverage && (coverage.baselineObservedAt || coverage.notes.length > 0) && (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { AppShell } from "@/components/layout/AppShell";
 import {
   useGetNicheReport,
@@ -59,6 +60,7 @@ export default function NicheReport() {
       </div>
 
       <div className="px-8 py-4 flex flex-wrap items-center gap-3">
+        <ReportDatePresets onChange={r => { setRange("custom"); setStart(r.start); setEnd(r.end); }} />
         <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
           <SelectTrigger className="w-48">
             <SelectValue />

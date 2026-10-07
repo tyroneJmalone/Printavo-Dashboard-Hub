@@ -1,15 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { periodBounds, periodRanges, DASHBOARD_SQL, getDashboardMetrics } from "../src/lib/hub/dashboardMetrics";
+import { dashboardDetailsSql, PERFORMANCE_METRICS } from "../src/lib/hub/dashboardDetails";
+import { REPORT_DATE_PRESETS, reportDateRange } from "../../hub/src/lib/report-date-presets";
+import { easternCalendarRange } from "../src/lib/hub/reportCalendar";
 
 test("Eastern calendar starts are Monday, quarter and year; DST does not shift dates", () => {
   assert.deepEqual(periodBounds("2026-01-01"), {
     today: "2026-01-01", wtd: "2025-12-29", lw: "2025-12-22", mtd: "2026-01-01",
     qtd: "2026-01-01", ytd: "2026-01-01",
+    yesterday: "2025-12-31", lm: "2025-12-01", lq: "2025-10-01", ly: "2025-01-01",
   });
   assert.deepEqual(periodBounds("2026-04-01"), {
     today: "2026-04-01", wtd: "2026-03-30", lw: "2026-03-23", mtd: "2026-04-01",
     qtd: "2026-04-01", ytd: "2026-01-01",
+    yesterday: "2026-03-31", lm: "2026-03-01", lq: "2026-01-01", ly: "2025-01-01",
   });
   assert.equal(periodBounds("2026-03-08").wtd, "2026-03-02");
   assert.equal(periodBounds("2026-11-01").wtd, "2026-10-26");
@@ -17,6 +22,12 @@ test("Eastern calendar starts are Monday, quarter and year; DST does not shift d
   assert.deepEqual(periodRanges("2026-01-01").lw, { start: "2025-12-22", end: "2025-12-28" });
   assert.deepEqual(periodRanges("2026-03-09").lw, { start: "2026-03-02", end: "2026-03-08" });
   assert.deepEqual(periodRanges("2026-11-02").lw, { start: "2026-10-26", end: "2026-11-01" });
+  for (const day of ["2026-01-01", "2026-03-09", "2026-11-02", "2024-03-01", "2026-10-07"]) {
+    for (const [preset] of REPORT_DATE_PRESETS) {
+      assert.deepEqual(periodRanges(day)[preset], reportDateRange(preset, new Date(`${day}T12:00:00Z`)));
+    }
+  }
+  assert.deepEqual(reportDateRange("lm", new Date("2024-03-01T12:00:00Z")), { start: "2024-02-01", end: "2024-02-29" });
 });
 
 test("SQL retains separate populations, complete-detail quantity, status history and shell filters", () => {
@@ -30,6 +41,16 @@ test("SQL retains separate populations, complete-detail quantity, status history
   assert.match(DASHBOARD_SQL, /transaction_date BETWEEN/);
   assert.match(DASHBOARD_SQL, /FILTER \(WHERE o\.order_type = 'invoice'\)/);
   assert.match(DASHBOARD_SQL, /WHEN quotes = 0 THEN NULL/);
+});
+
+test("Eastern timestamp report boundaries include DST days correctly", () => {
+  const spring = easternCalendarRange("2026-03-08", "2026-03-08");
+  assert.equal(spring.start.toISOString(), "2026-03-08T05:00:00.000Z");
+  assert.equal(spring.end.toISOString(), "2026-03-09T04:00:00.000Z");
+  const fall = easternCalendarRange("2026-11-01", "2026-11-01");
+  assert.equal(fall.end.valueOf() - fall.start.valueOf(), 25 * 3600000);
+  assert.throws(() => easternCalendarRange("2026-02-30", "2026-03-01"));
+  assert.throws(() => easternCalendarRange("2026-03-02", "2026-03-01"));
 });
 
 test("read-only dev smoke: helper aggregate shape, counts and elapsed time", {
@@ -87,6 +108,14 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     await insertOrder("x3", 106, "returning", "quote", "REFERENCE");
     await insertOrder("shell", 107, "returning", "invoice", "Quote", 999, "123456 Store HEAT:");
     await insertOrder("first", 201, "fresh", "invoice");
+    await client.query(`INSERT INTO pv_customers (printavo_id, company_name, printavo_created_at, data, content_hash)
+      VALUES ('fresh', 'Fixture Customer', $1::timestamptz, '{}', 'fixture')`, [instant]);
+    await client.query(`INSERT INTO pv_payments
+      (printavo_id, typename, amount, order_id, order_visual_id, transaction_date, data, content_hash) VALUES
+      ('pay1','Payment',120,'i2',103,$1::date,'{}','fixture'),
+      ('refund1','Refund',-20,'i2',103,$1::date,'{}','fixture'),
+      ('orphan1','Payment',30,'missing-order',999,$1::date,'{}','fixture'),
+      ('shell-pay','Payment',999,'shell',107,$1::date,'{}','fixture')`, [today]);
     await client.query(`INSERT INTO pv_line_items
       (printavo_id, order_id, group_id, items, category_name) VALUES
       ('li1','i2','g1',10,' Screen   Printing '),
@@ -111,6 +140,8 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     const row = (await client.query(DASHBOARD_SQL)).rows[0];
     assert.equal(row.periods.today.totalOrders, 4); // excluded repeat statuses still count in base invoice totals
     assert.equal(row.periods.today.totalRevenue, 500);
+    assert.equal(row.periods.today.netPayments, 130);
+    assert.equal(row.periods.today.newCustomers, 1);
     assert.equal(row.periods.today.repeatCustomers, 2); // q2 and i2, not conversion i1
     assert.equal(row.periods.today.itemsDecorated, 20); // 15+2+3 decorated, no blank goods, no imprint fanout
     assert.equal(row.averages.today.all.quantityKnownOrders, 2); // zero-line order is known; absent detail is not
@@ -121,9 +152,23 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     assert.equal(row.averages.today.print.averageOrderValue, 200);
     assert.equal(row.recent.dealsWon.total, 2); // done followup not another win; converted quote resolved
     assert.equal(row.recent.quotesCreated.total, 5); // eligible logical quotes including converted invoices
+    for (const metric of PERFORMANCE_METRICS) {
+      const detail = (await client.query(dashboardDetailsSql(metric), ["today", 50, 0])).rows[0];
+      assert.equal(detail.value, row.periods.today[metric], `${metric} uses exactly the aggregate definition`);
+      assert.equal(detail.items.length, detail.total);
+      assert.equal(detail.items.reduce((sum: number, item: { value: number | null }) => sum + (item.value ?? 0), 0), detail.value);
+      if (detail.total > 1) {
+        const page = (await client.query(dashboardDetailsSql(metric), ["today", 1, 1])).rows[0];
+        assert.equal(page.total, detail.total);
+        assert.deepEqual(page.items, detail.items.slice(1, 2));
+      }
+    }
     await client.query("UPDATE pv_orders SET detail_sync_state = 'incomplete' WHERE printavo_id = 'x2'");
     const incomplete = (await client.query(DASHBOARD_SQL)).rows[0];
     assert.equal(incomplete.periods.today.itemsDecorated, null);
+    const incompleteDetail = (await client.query(dashboardDetailsSql("itemsDecorated"), ["today", 50, 0])).rows[0];
+    assert.equal(incompleteDetail.value, null);
+    assert.ok(incompleteDetail.items.some((item: { note: string; value: number | null }) => item.value === null && item.note.includes("Incomplete")));
     assert.equal(row.close_rate.today.percentage, 80); // four invoices / five eligible logical quotes
     assert.equal(row.close_rate.lw.percentage, null); // zero denominator
     assert.equal(row.activity.lw.quotesCreated.total, 0);

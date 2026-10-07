@@ -42,6 +42,7 @@ import {
   dealsReport,
 } from "../lib/emailActivity/matching";
 import { pool } from "@workspace/db";
+import { easternCalendarRange } from "../lib/hub/reportCalendar";
 
 /**
  * Email activity tracker — Gmail metadata sync config + mailbox-scoped stats.
@@ -91,6 +92,14 @@ async function mailboxLookup(): Promise<Map<string, { email: string; displayName
 }
 
 function parseRange(req: Request, res: Response): { start: Date; end: Date; mailboxId?: string } | null {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(req.query.start)) && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.end))) {
+    try {
+      return { ...easternCalendarRange(String(req.query.start), String(req.query.end)),
+        mailboxId: typeof req.query.mailboxId === "string" && req.query.mailboxId ? req.query.mailboxId : undefined };
+    } catch {
+      res.status(400).json({ error: "Invalid calendar date range" }); return null;
+    }
+  }
   const start = new Date(String(req.query.start ?? ""));
   const end = new Date(String(req.query.end ?? ""));
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {

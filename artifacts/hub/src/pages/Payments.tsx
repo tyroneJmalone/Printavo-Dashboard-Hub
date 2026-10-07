@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { 
   useGetPaymentsReport, 
   useGetPaymentsStats,
@@ -50,11 +51,12 @@ export default function Payments() {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-4 bg-slate-900/50 p-3 rounded-lg border border-slate-800">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Calendar size={16} className="text-slate-400" />
               <input type="date" value={start} onChange={e => setStart(e.target.value)} className="bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1" />
               <span className="text-slate-500 text-xs">to</span>
               <input type="date" value={end} onChange={e => setEnd(e.target.value)} className="bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1" />
+              <ReportDatePresets onChange={r => { setStart(r.start); setEnd(r.end); }} />
             </div>
 
             <div className="h-6 w-px bg-slate-800"></div>

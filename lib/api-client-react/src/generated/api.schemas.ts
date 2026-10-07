@@ -594,6 +594,10 @@ export interface HubDashboardPeriod {
 
 export interface HubDashboardPeriods {
   today: HubDashboardPeriod;
+  yesterday: HubDashboardPeriod;
+  lm: HubDashboardPeriod;
+  lq: HubDashboardPeriod;
+  ly: HubDashboardPeriod;
   wtd: HubDashboardPeriod;
   lw: HubDashboardPeriod;
   mtd: HubDashboardPeriod;
@@ -617,6 +621,10 @@ export interface HubDashboardAverageMethods {
 
 export interface HubDashboardAverages {
   today: HubDashboardAverageMethods;
+  yesterday: HubDashboardAverageMethods;
+  lm: HubDashboardAverageMethods;
+  lq: HubDashboardAverageMethods;
+  ly: HubDashboardAverageMethods;
   wtd: HubDashboardAverageMethods;
   lw: HubDashboardAverageMethods;
   mtd: HubDashboardAverageMethods;
@@ -631,6 +639,10 @@ export interface HubDashboardActivityPeriod {
 
 export interface HubDashboardActivity {
   today: HubDashboardActivityPeriod;
+  yesterday: HubDashboardActivityPeriod;
+  lm: HubDashboardActivityPeriod;
+  lq: HubDashboardActivityPeriod;
+  ly: HubDashboardActivityPeriod;
   wtd: HubDashboardActivityPeriod;
   lw: HubDashboardActivityPeriod;
   mtd: HubDashboardActivityPeriod;
@@ -657,6 +669,10 @@ export interface HubDashboardCloseRate {
 
 export interface HubDashboardCloseRates {
   today: HubDashboardCloseRate;
+  yesterday: HubDashboardCloseRate;
+  lm: HubDashboardCloseRate;
+  lq: HubDashboardCloseRate;
+  ly: HubDashboardCloseRate;
   wtd: HubDashboardCloseRate;
   lw: HubDashboardCloseRate;
   mtd: HubDashboardCloseRate;
@@ -675,6 +691,39 @@ export interface HubDashboardMetrics {
   recent: HubDashboardMetricsRecent;
   definitions: HubDashboardMetricsDefinitions;
   coverage: HubDashboardMetricsCoverage;
+}
+
+export type HubDashboardDetailsItemsItem = {
+  id: string;
+  /** @nullable */
+  orderId: string | null;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  customerId: string | null;
+  /** @nullable */
+  customerName: string | null;
+  /** @nullable */
+  nickname: string | null;
+  kind: string;
+  date: string;
+  /** @nullable */
+  value: number | null;
+  /** @nullable */
+  note: string | null;
+};
+
+export interface HubDashboardDetails {
+  metric: string;
+  period: string;
+  start: string;
+  end: string;
+  /** @nullable */
+  value: number | null;
+  total: number;
+  offset: number;
+  limit: number;
+  items: HubDashboardDetailsItemsItem[];
 }
 
 export interface PrintscopeCapabilities {
@@ -9309,6 +9358,43 @@ page?: number;
 pageSize?: number;
 };
 
+export type GetDashboardDetailsParams = {
+metric: GetDashboardDetailsMetric;
+period: GetDashboardDetailsPeriod;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type GetDashboardDetailsMetric = typeof GetDashboardDetailsMetric[keyof typeof GetDashboardDetailsMetric];
+
+
+export const GetDashboardDetailsMetric = {
+  totalOrders: 'totalOrders',
+  totalRevenue: 'totalRevenue',
+  itemsDecorated: 'itemsDecorated',
+  netPayments: 'netPayments',
+  newCustomers: 'newCustomers',
+  repeatCustomers: 'repeatCustomers',
+} as const;
+
+export type GetDashboardDetailsPeriod = typeof GetDashboardDetailsPeriod[keyof typeof GetDashboardDetailsPeriod];
+
+
+export const GetDashboardDetailsPeriod = {
+  today: 'today',
+  yesterday: 'yesterday',
+  wtd: 'wtd',
+  lw: 'lw',
+  mtd: 'mtd',
+  lm: 'lm',
+  qtd: 'qtd',
+  lq: 'lq',
+  ytd: 'ytd',
+  ly: 'ly',
+} as const;
+
 export type ListPrintscopePilotSourcesParams = {
 /**
  * @maxLength 200
@@ -10678,6 +10764,14 @@ limit?: number;
 };
 
 export type GetDraftPatternSummaryParams = {
+/**
+ * Inclusive Eastern calendar start. Must be supplied with end.
+ */
+start?: string;
+/**
+ * Inclusive Eastern calendar end. Must be supplied with start.
+ */
+end?: string;
 /**
  * @minimum 1
  * @maximum 365

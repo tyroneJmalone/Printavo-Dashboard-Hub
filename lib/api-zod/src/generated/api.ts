@@ -1269,6 +1269,41 @@ export const CommitChipplyCategoriesResponse = zod.object({
 })
 
 
+export const getDashboardDetailsQueryOffsetDefault = 0;
+export const getDashboardDetailsQueryOffsetMin = 0;
+
+
+
+export const GetDashboardDetailsQueryParams = zod.object({
+  "metric": zod.enum(['totalOrders', 'totalRevenue', 'itemsDecorated', 'netPayments', 'newCustomers', 'repeatCustomers']),
+  "period": zod.enum(['today', 'yesterday', 'wtd', 'lw', 'mtd', 'lm', 'qtd', 'lq', 'ytd', 'ly']),
+  "offset": zod.coerce.number().min(getDashboardDetailsQueryOffsetMin).default(getDashboardDetailsQueryOffsetDefault)
+})
+
+export const GetDashboardDetailsResponse = zod.object({
+  "metric": zod.string(),
+  "period": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "value": zod.number().nullable(),
+  "total": zod.number(),
+  "offset": zod.number(),
+  "limit": zod.number(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "orderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "customerId": zod.string().nullable(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "kind": zod.string(),
+  "date": zod.string(),
+  "value": zod.number().nullable(),
+  "note": zod.string().nullable()
+}))
+})
+
+
 /**
  * @summary Dashboard metrics from the local Printavo mirror
  */
@@ -1277,6 +1312,46 @@ export const GetDashboardMetricsResponse = zod.object({
   "timeZone": zod.enum(['America/New_York']),
   "periods": zod.object({
   "today": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
+  "yesterday": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
+  "lm": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
+  "lq": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "totalOrders": zod.number(),
+  "totalRevenue": zod.number(),
+  "itemsDecorated": zod.number().nullable(),
+  "netPayments": zod.number(),
+  "newCustomers": zod.number(),
+  "repeatCustomers": zod.number()
+}),
+  "ly": zod.object({
   "start": zod.coerce.date(),
   "end": zod.coerce.date(),
   "totalOrders": zod.number(),
@@ -1339,6 +1414,110 @@ export const GetDashboardMetricsResponse = zod.object({
 }),
   "averages": zod.object({
   "today": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
+  "yesterday": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
+  "lm": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
+  "lq": zod.object({
+  "all": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "print": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "embroidery": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+}),
+  "heat": zod.object({
+  "orders": zod.number(),
+  "averageOrderValue": zod.number().nullable(),
+  "averageOrderVolume": zod.number().nullable(),
+  "quantityKnownOrders": zod.number()
+})
+}),
+  "ly": zod.object({
   "all": zod.object({
   "orders": zod.number(),
   "averageOrderValue": zod.number().nullable(),
@@ -1522,6 +1701,110 @@ export const GetDashboardMetricsResponse = zod.object({
 }))
 })
 }),
+  "yesterday": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "lm": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "lq": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
+  "ly": zod.object({
+  "quotesCreated": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "dealsWon": zod.object({
+  "total": zod.number(),
+  "truncated": zod.boolean(),
+  "items": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number(),
+  "customerName": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "statusName": zod.string().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+})
+}),
   "wtd": zod.object({
   "quotesCreated": zod.object({
   "total": zod.number(),
@@ -1655,6 +1938,38 @@ export const GetDashboardMetricsResponse = zod.object({
 }),
   "closeRate": zod.object({
   "today": zod.object({
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
+  "note": zod.string()
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
+  "yesterday": zod.object({
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
+  "note": zod.string()
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
+  "lm": zod.object({
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
+  "note": zod.string()
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
+  "lq": zod.object({
+  "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
+  "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
+  "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
+  "coverageComplete": zod.boolean().describe('Current-mirror computation is available; does not assert complete historical quote or date coverage.'),
+  "estimatedDateOrders": zod.number().describe('Invoices allocated to this period using stored Printavo createdAt because no retained original quote date exists.'),
+  "note": zod.string()
+}).describe('Converted invoices divided by total eligible quotes including converted quotes. Every invoice starts as a quote; original quote dates preferred with explicitly estimated invoice-date fallback.'),
+  "ly": zod.object({
   "quotes": zod.number().describe('Total eligible quotes including converted invoices; customer + visual ID deduplicated with invoice priority; null customers remain separate.'),
   "converted": zod.number().describe('Eligible invoices, all known to originate as quotes regardless of current pipeline stage or recorded events.'),
   "percentage": zod.number().nullable().describe('100 times converted \/ total quotes; estimated when fallback invoice dates are used; null for zero denominator.'),
@@ -14755,6 +15070,8 @@ export const getDraftPatternSummaryQuerySinceDaysMax = 365;
 
 
 export const GetDraftPatternSummaryQueryParams = zod.object({
+  "start": zod.date().optional().describe('Inclusive Eastern calendar start. Must be supplied with end.'),
+  "end": zod.date().optional().describe('Inclusive Eastern calendar end. Must be supplied with start.'),
   "sinceDays": zod.coerce.number().min(1).max(getDraftPatternSummaryQuerySinceDaysMax).default(getDraftPatternSummaryQuerySinceDaysDefault)
 })
 

@@ -8,6 +8,14 @@
 
 export type GetDraftPatternSummaryParams = {
 /**
+ * Inclusive Eastern calendar start. Must be supplied with end.
+ */
+start?: Date;
+/**
+ * Inclusive Eastern calendar end. Must be supplied with start.
+ */
+end?: Date;
+/**
  * @minimum 1
  * @maximum 365
  */

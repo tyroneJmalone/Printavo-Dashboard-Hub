@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { REPORT_DATE_PRESETS, type ReportDatePreset } from "@/lib/report-date-presets";
+import { PerformanceDetails } from "@/components/dashboard/PerformanceDetails";
 import { AppShell } from "@/components/layout/AppShell";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { useStaff } from "@/components/auth/StaffGate";
@@ -16,17 +18,10 @@ import { formatMoney, formatNumber } from "@/lib/format";
 import { formatDashboardDate } from "@/components/dashboard/dashboardDate";
 import { AlertCircle, Info, RefreshCw, FileText, Trophy, Scale, BarChart3, Target } from "lucide-react";
 
-type PeriodKey = "today" | "wtd" | "lw" | "mtd" | "qtd" | "ytd";
+type PeriodKey = ReportDatePreset;
 type MethodKey = "all" | "print" | "embroidery" | "heat";
 
-const PERIODS: { key: PeriodKey; label: string; long: string }[] = [
-  { key: "today", label: "Today", long: "Today" },
-  { key: "wtd", label: "WTD", long: "Week to date" },
-  { key: "lw", label: "LW", long: "Last week (previous Mon-Sun)" },
-  { key: "mtd", label: "MTD", long: "Month to date" },
-  { key: "qtd", label: "QTD", long: "Quarter to date" },
-  { key: "ytd", label: "YTD", long: "Year to date" },
-];
+const PERIODS = REPORT_DATE_PRESETS.map(([key, label, long]) => ({ key, label, long }));
 const METHODS: { key: MethodKey; label: string }[] = [
   { key: "all", label: "All" },
   { key: "print", label: "Print" },
@@ -57,8 +52,8 @@ const fmtNum = (v: number | null | undefined, d = 0) =>
 const etFmt = formatDashboardDate;
 const SHORT: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
 function periodShort(start: string, end: string, key: PeriodKey) {
-  if (key === "today") return etFmt(start, SHORT);
-  if (key === "lw") return `${etFmt(start, SHORT)}-${etFmt(end, SHORT)}`;
+  if (key === "today" || key === "yesterday") return etFmt(start, SHORT);
+  if (["lw", "lm", "lq", "ly"].includes(key)) return `${etFmt(start, SHORT)}-${etFmt(end, SHORT)}`;
   return `from ${etFmt(start, SHORT)}`;
 }
 function periodRange(start: string, end: string, key: PeriodKey) {
@@ -73,7 +68,7 @@ function Segmented<T extends string>({ value, onChange, options, testPrefix }: {
   value: T; onChange: (v: T) => void; options: { key: T; label: string }[]; testPrefix: string;
 }) {
   return (
-    <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950/60 p-0.5">
+    <div className="inline-flex flex-wrap rounded-lg border border-slate-800 bg-slate-950/60 p-0.5">
       {options.map((o) => (
         <button
           key={o.key}
@@ -96,6 +91,7 @@ const PeriodControls = Segmented<PeriodKey>;
 const MethodControls = Segmented<MethodKey>;
 
 function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
+  const [selection, setSelection] = useState<{ metric: MetricRow; period: PeriodKey } | null>(null);
   const p = data.periods;
   const cell = (m: MetricRow, v: number | null) => (m.money ? fmtMoney(v) : fmtNum(v));
   return (
@@ -104,7 +100,7 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
         <h2 className="text-base font-bold text-white flex items-center gap-2">
           <BarChart3 size={17} className="text-[#10b981]" /> Performance by period
         </h2>
-        <span className="text-[11px] text-slate-500">Eastern time; weeks start Monday. LW is the previous full Monday-Sunday. Quarter/year to date by calendar.</span>
+        <span className="text-[11px] text-slate-500">Click a value to view included records. Eastern time; Monday-start weeks and calendar periods.</span>
       </div>
 
       {/* Desktop matrix */}
@@ -136,7 +132,10 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
                     <td key={pd.key} data-testid={`text-${m.key}-${pd.key}`}
                       className={`px-3 lg:px-4 py-3 text-right font-mono whitespace-nowrap tabular-nums ${pd.key === "ytd" ? "text-white font-semibold" : "text-slate-300"}`}
                       title={v == null ? "Quantity unavailable for this period" : undefined}>
-                      {cell(m, v)}
+                      <button type="button" className="rounded underline decoration-dotted underline-offset-4 hover:text-emerald-300 focus-visible:outline focus-visible:outline-emerald-400"
+                        title={`View records included in ${m.label} · ${pd.long}`}
+                        aria-label={`View ${m.label} records for ${pd.long}`}
+                        onClick={() => setSelection({ metric: m, period: pd.key })}>{cell(m, v)}</button>
                     </td>
                   );
                 })}
@@ -157,7 +156,9 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
                 <div key={pd.key} className="rounded bg-slate-950/50 px-2 py-1.5 flex items-baseline justify-between gap-2 min-w-0">
                   <div className="text-[10px] uppercase text-slate-500 shrink-0">{pd.label}</div>
                   <div className="text-[12px] font-mono text-slate-200 tabular-nums break-all text-right" data-testid={`text-${m.key}-${pd.key}-m`}>
-                    {cell(m, p[pd.key][m.key] as number | null)}
+                    <button type="button" className="rounded underline decoration-dotted underline-offset-4 hover:text-emerald-300 focus-visible:outline focus-visible:outline-emerald-400"
+                      aria-label={`View ${m.label} records for ${pd.long}`}
+                      onClick={() => setSelection({ metric: m, period: pd.key })}>{cell(m, p[pd.key][m.key] as number | null)}</button>
                   </div>
                 </div>
               ))}
@@ -168,6 +169,10 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
       <div className="px-5 py-3 border-t border-slate-800 text-[11px] text-slate-500">
         A dash means the value is unavailable (not zero). {data.coverage.quantity}
       </div>
+      {selection && <PerformanceDetails key={`${selection.metric.key}-${selection.period}`}
+        metric={selection.metric.key} period={selection.period} label={selection.metric.label}
+        money={selection.metric.money} note={data.definitions[selection.metric.key] ?? selection.metric.note}
+        onClose={() => setSelection(null)} />}
     </section>
   );
 }

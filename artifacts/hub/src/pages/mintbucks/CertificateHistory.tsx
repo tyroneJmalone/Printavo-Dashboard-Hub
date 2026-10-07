@@ -1,3 +1,4 @@
+import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { Download, Search, X, FileText, ArrowLeft } from "lucide-react";
@@ -173,6 +174,7 @@ export function CertificateHistory() {
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted-foreground whitespace-nowrap">To</label>
             <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            <ReportDatePresets onChange={r => { setDateFrom(r.start); setDateTo(r.end); }} />
           </div>
         </div>
         {hasFilters && (

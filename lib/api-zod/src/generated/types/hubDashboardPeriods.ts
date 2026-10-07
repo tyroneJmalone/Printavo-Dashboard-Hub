@@ -9,6 +9,10 @@ import type { HubDashboardPeriod } from './hubDashboardPeriod';
 
 export interface HubDashboardPeriods {
   today: HubDashboardPeriod;
+  yesterday: HubDashboardPeriod;
+  lm: HubDashboardPeriod;
+  lq: HubDashboardPeriod;
+  ly: HubDashboardPeriod;
   wtd: HubDashboardPeriod;
   lw: HubDashboardPeriod;
   mtd: HubDashboardPeriod;

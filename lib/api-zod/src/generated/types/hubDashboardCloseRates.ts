@@ -9,6 +9,10 @@ import type { HubDashboardCloseRate } from './hubDashboardCloseRate';
 
 export interface HubDashboardCloseRates {
   today: HubDashboardCloseRate;
+  yesterday: HubDashboardCloseRate;
+  lm: HubDashboardCloseRate;
+  lq: HubDashboardCloseRate;
+  ly: HubDashboardCloseRate;
   wtd: HubDashboardCloseRate;
   lw: HubDashboardCloseRate;
   mtd: HubDashboardCloseRate;

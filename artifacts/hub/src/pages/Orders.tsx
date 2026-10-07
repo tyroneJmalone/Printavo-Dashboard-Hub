@@ -34,43 +34,10 @@ import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, Histor
 
 type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category';
 type ReportMode = "normal" | "activity";
-type ActivityPreset = "today" | "yesterday" | "lastWeek" | "custom";
-
-function localDateKey(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const values = new Map(parts.map((part) => [part.type, part.value]));
-  return `${values.get("year")}-${values.get("month")}-${values.get("day")}`;
-}
-
-function shiftLocalDate(dateKey: string, days: number): string {
-  const shifted = new Date(`${dateKey}T12:00:00Z`);
-  shifted.setUTCDate(shifted.getUTCDate() + days);
-  return localDateKey(shifted);
-}
+type ActivityPreset = ReportDatePreset | "custom";
 
 function activityPresetRange(preset: ActivityPreset): { start: string; end: string } {
-  const today = new Date();
-  const todayKey = localDateKey(today);
-  if (preset === "today") return { start: todayKey, end: todayKey };
-  if (preset === "yesterday") {
-    const day = shiftLocalDate(todayKey, -1);
-    return { start: day, end: day };
-  }
-  if (preset === "lastWeek") {
-    const dayOfWeek = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      weekday: "short",
-    }).format(today);
-    const daysSinceMonday = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(dayOfWeek);
-    const monday = shiftLocalDate(todayKey, -(daysSinceMonday < 0 ? 0 : daysSinceMonday) - 7);
-    return { start: monday, end: shiftLocalDate(monday, 6) };
-  }
-  return { start: "", end: "" };
+  return preset === "custom" ? { start: "", end: "" } : reportDateRange(preset);
 }
 
 function formatObservedAt(value: string | null | undefined): string {
@@ -324,8 +291,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                        className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5"
                      >
                        <option value="today">Today</option>
-                       <option value="yesterday">Yesterday</option>
-                       <option value="lastWeek">Last week (previous calendar week)</option>
+                       {REPORT_DATE_PRESETS.filter(([id]) => id !== "today").map(([id, label]) => <option key={id} value={id}>{label}</option>)}
                        <option value="custom">Custom dates</option>
                      </select>
                    </div>

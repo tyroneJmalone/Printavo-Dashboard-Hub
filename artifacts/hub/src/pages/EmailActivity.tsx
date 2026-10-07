@@ -1,3 +1,4 @@
+import { REPORT_DATE_PRESETS, reportDateRange, type ReportDatePreset } from "@/lib/report-date-presets";
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EmailBody } from "@/components/email/EmailBody";
@@ -75,10 +76,9 @@ function personLabel(p: { displayName?: string | null; email?: string | null }):
 
 const CHART_COLORS = ["#10b981", "#38bdf8", "#f59e0b", "#a78bfa", "#f472b6", "#facc15"];
 
-type RangePreset = "today" | "yesterday" | "7d" | "30d" | "60d" | "90d" | "12m" | "custom";
+type RangePreset = ReportDatePreset | "7d" | "30d" | "60d" | "90d" | "12m" | "custom";
 const PRESETS: { id: Exclude<RangePreset, "custom">; label: string; days: number }[] = [
-  { id: "today", label: "Today", days: 0 },
-  { id: "yesterday", label: "Yesterday", days: 1 },
+  ...REPORT_DATE_PRESETS.map(([id, label]) => ({ id, label, days: 0 })),
   { id: "7d", label: "7 days", days: 7 },
   { id: "30d", label: "30 days", days: 30 },
   { id: "60d", label: "60 days", days: 60 },
@@ -319,12 +319,7 @@ export default function EmailActivity() {
 
   const { start, end } = useMemo(() => {
     if (preset === "custom") return { start: customStart, end: customEnd };
-    if (preset === "yesterday") {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const day = isoDay(yesterday);
-      return { start: day, end: day };
-    }
+    if (REPORT_DATE_PRESETS.some(([id]) => id === preset)) return reportDateRange(preset as ReportDatePreset);
     const days = PRESETS.find((p) => p.id === preset)!.days;
     const endD = new Date();
     const startD = new Date(Date.now() - days * 86400_000);
