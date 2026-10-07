@@ -15,9 +15,20 @@ This is a discussion of the approach, not yet approval to implement.
 front/back, and front/back/sleeve jobs require different numbers of applications.
 
 **How to apply:** Calculate at line-item-group grain before rolling up invoices.
-Do not multiply an entire invoice's quantity by all its imprints, or assume
-multiple imprint entries necessarily mean distinct physical locations. Confirm
-how staff enter imprints and where exact stitch counts live before committing
-to those definitions. Distinguish recorded invoice workload from evidence of
+Do not multiply an entire invoice's quantity by all its imprints.
+Distinguish recorded invoice workload from evidence of
 actual completed production. Keep proposed calculations distinct from
 user-approved decisions.
+
+The user confirmed that each assigned Printavo imprint represents one physical
+decoration location. For now, use the midpoint of the embroidery pricing tier
+assigned to each imprint as its estimated stitch count: 6K–8K means 7K.
+The user said they need a better system for documenting actual stitch counts
+after production; that future capture system is not yet specified.
+
+**Why:** These are the user's explicit answers about their recording practices
+and preferred interim estimation method.
+
+**How to apply:** Label tier-midpoint counts as estimated, not actual recorded
+stitches. Keep missing or nonnumeric/unbounded tiers unknown rather than zero.
+Keep future actual stitch-count capture distinct from interim invoice reporting.
