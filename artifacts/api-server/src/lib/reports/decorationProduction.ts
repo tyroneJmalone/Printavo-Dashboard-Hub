@@ -41,7 +41,7 @@ export function stitchMidpoint(tier: string | null): number | null {
   return (low + high) / 2;
 }
 
-function totals(jobs: DecorationProductionJob[], method: Method): DecorationProductionTotals {
+export function totals(jobs: DecorationProductionJob[], method: Method): DecorationProductionTotals {
   const groups = jobs.flatMap(j => j.groups);
   const quantity = groups.reduce((n, g) => n + g.quantity, 0);
   const imprints = groups.reduce((n, g) => n + g.quantity * g.locations.length, 0);

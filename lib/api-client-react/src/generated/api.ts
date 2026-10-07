@@ -219,6 +219,7 @@ import type {
   GetPipelineParams,
   GetPricingMatrixBreakdownParams,
   GetPrintavoOrderHistoryParams,
+  GetProductionWorkloadParams,
   GetPurchasingApprovedMappingParams,
   GetRecentActivityParams,
   GetStatusActivityOrdersParams,
@@ -396,6 +397,7 @@ import type {
   ProbeResult,
   ProductSearchRequest,
   ProductSearchResult,
+  ProductionWorkloadReport,
   PurchasingApprovedMapping,
   PurchasingMappingApproval,
   PushStartResponse,
@@ -12083,6 +12085,84 @@ export function useGetPricingMatrixBreakdown<TData = Awaited<ReturnType<typeof g
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPricingMatrixBreakdownQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetProductionWorkloadUrl = (params: GetProductionWorkloadParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/production-workload?${stringifiedParams}` : `/api/reports/production-workload`
+}
+
+export const getProductionWorkload = async (params: GetProductionWorkloadParams, options?: RequestInit): Promise<ProductionWorkloadReport> => {
+
+  return customFetch<ProductionWorkloadReport>(getGetProductionWorkloadUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProductionWorkloadQueryKey = (params?: GetProductionWorkloadParams,) => {
+    return [
+    `/api/reports/production-workload`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetProductionWorkloadQueryOptions = <TData = Awaited<ReturnType<typeof getProductionWorkload>>, TError = ErrorType<void>>(params: GetProductionWorkloadParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductionWorkload>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProductionWorkloadQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProductionWorkload>>> = ({ signal }) => getProductionWorkload(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProductionWorkload>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProductionWorkloadQueryResult = NonNullable<Awaited<ReturnType<typeof getProductionWorkload>>>
+export type GetProductionWorkloadQueryError = ErrorType<void>
+
+
+
+export function useGetProductionWorkload<TData = Awaited<ReturnType<typeof getProductionWorkload>>, TError = ErrorType<void>>(
+ params: GetProductionWorkloadParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductionWorkload>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProductionWorkloadQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -1,6 +1,6 @@
 ---
 name: Decoration production reporting direction
-description: Proposed Orders Report view of quantities, location counts, applications, and method-specific job averages.
+description: Approved production reporting, workload scheduling dates, completion evidence, and Merch scope.
 ---
 
 The user wants to explore a decoration-locations statistic within Analyze →
@@ -59,8 +59,11 @@ and one-color back, show 200 imprints and 400 impressions.
 The user wants to look one or two weeks ahead at scheduled Print impressions
 and imprints, and Embroidery stitches and decoration locations, using historical
 daily/weekly production as a reference for intelligent scheduling and capacity.
-The scheduling date and evidence of method-specific completion still need
-confirmation; this extension has not yet been implemented.
+The user confirmed Printavo Production Due is the scheduled work date.
+Finished jobs move to decoration-specific Complete, Picked Up, Shipped, or
+Delivered statuses. MERCH PRINT Pick/Pack Complete is also finished production.
+Merch must be included in production statistics, with the ability to isolate
+it or roll it into totals.
 
 **Why:** The user's goal is to understand shop capacity, not just invoice volume.
 
@@ -69,3 +72,29 @@ historically scheduled volume from verified completed output, and observed
 throughput from a proven capacity limit. Do not silently treat customer
 deadlines as scheduled work dates or whole-invoice completion as evidence of
 when each decoration method finished.
+
+Historical comparisons attribute a job/method once to its first observed
+completion transition, not again when it is picked up, shipped, or delivered.
+If the oldest evidence already says it was finished, the finish date is unknown.
+Do not substitute Production Due for an unknown completion date. A reopened
+method can be pending again without inventing an additional historical run.
+
+**Why:** Hub's change feed timestamps are observation times, not actual machine
+finish times; its history starts later than many invoices. Current line-item
+snapshots also do not prove what quantities existed at the time of completion.
+
+**How to apply:** Label historical output as observed completion with current
+invoice quantities; distinguish date-only Production Due (UTC calendar day)
+from actual status-observation timestamps (Eastern civil time). Never describe
+baseline output as a measured maximum capacity or guaranteed production hours.
+
+Merch inclusion is a production-workload exception to the general exclusion of
+Chipply shell invoices from financial/customer-behavior reports.
+
+**Why:** These invoices describe real shop work even though their invoice prices
+may be zero and their sales revenue lives in Chipply.
+
+**How to apply:** Include physical quantities and decoration workload without
+globally removing the shell exclusion or adding Chipply dollars to Printavo
+revenue. Use invoice-level All / Non-Merch / Merch-only scope; do not present
+zero-dollar shell prices as the actual store item sale prices.

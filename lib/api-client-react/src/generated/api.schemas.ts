@@ -1990,6 +1990,26 @@ export interface DecorationProductionTotals {
   averageLocationsPerItem: number | null;
 }
 
+export interface ProductionWorkloadPeriod {
+  key: string;
+  start: string;
+  end: string;
+  totals: DecorationProductionTotals;
+  locations: number;
+  jobIds: string[];
+}
+
+export type ProductionWorkloadJobDisposition = typeof ProductionWorkloadJobDisposition[keyof typeof ProductionWorkloadJobDisposition];
+
+
+export const ProductionWorkloadJobDisposition = {
+  scheduled: 'scheduled',
+  overdue: 'overdue',
+  unscheduled: 'unscheduled',
+  completed: 'completed',
+  unclear: 'unclear',
+} as const;
+
 export interface DecorationProductionLocation {
   id: string;
   label: string;
@@ -2024,6 +2044,65 @@ export interface DecorationProductionJob {
   nickname: string | null;
   groups: DecorationProductionGroup[];
   totals: DecorationProductionTotals;
+}
+
+export interface ProductionWorkloadJob {
+  job: DecorationProductionJob;
+  /** @nullable */
+  status: string | null;
+  merch: boolean;
+  /** @nullable */
+  dueDate: string | null;
+  /** @nullable */
+  completedDate: string | null;
+  /** @nullable */
+  completionStatus: string | null;
+  disposition: ProductionWorkloadJobDisposition;
+}
+
+export type ProductionWorkloadReportMethod = typeof ProductionWorkloadReportMethod[keyof typeof ProductionWorkloadReportMethod];
+
+
+export const ProductionWorkloadReportMethod = {
+  print: 'print',
+  embroidery: 'embroidery',
+} as const;
+
+export type ProductionWorkloadReportMerch = typeof ProductionWorkloadReportMerch[keyof typeof ProductionWorkloadReportMerch];
+
+
+export const ProductionWorkloadReportMerch = {
+  all: 'all',
+  only: 'only',
+  exclude: 'exclude',
+} as const;
+
+export interface ProductionWorkloadReport {
+  method: ProductionWorkloadReportMethod;
+  merch: ProductionWorkloadReportMerch;
+  start: string;
+  end: string;
+  baselineStart: string;
+  baselineEnd: string;
+  baselineWeeks: number;
+  /** @nullable */
+  historyAvailableFrom: string | null;
+  historyCoversBaseline: boolean;
+  scheduled: ProductionWorkloadPeriod;
+  overdue: ProductionWorkloadPeriod;
+  unscheduled: ProductionWorkloadPeriod;
+  unclear: ProductionWorkloadPeriod;
+  history: ProductionWorkloadPeriod;
+  days: ProductionWorkloadPeriod[];
+  weeks: ProductionWorkloadPeriod[];
+  historyDays: ProductionWorkloadPeriod[];
+  historyWeeks: ProductionWorkloadPeriod[];
+  jobs: ProductionWorkloadJob[];
+  undatedCompletedInvoices: number;
+  excludedIncompleteInvoices: number;
+  unclassifiedGroups: number;
+  excludedQuantityGroups: number;
+  recognizedCompletionStatuses: string[];
 }
 
 export interface DecorationProductionBucket {
@@ -10154,7 +10233,42 @@ activityEnd?: ActivityEndParamParameter;
 activityOwner?: ActivityOwnerParamParameter;
 };
 
+export type GetProductionWorkloadParams = {
+start: string;
+end: string;
+method?: GetProductionWorkloadMethod;
+merch?: GetProductionWorkloadMerch;
+baselineWeeks?: GetProductionWorkloadBaselineWeeks;
+};
+
+export type GetProductionWorkloadMethod = typeof GetProductionWorkloadMethod[keyof typeof GetProductionWorkloadMethod];
+
+
+export const GetProductionWorkloadMethod = {
+  print: 'print',
+  embroidery: 'embroidery',
+} as const;
+
+export type GetProductionWorkloadMerch = typeof GetProductionWorkloadMerch[keyof typeof GetProductionWorkloadMerch];
+
+
+export const GetProductionWorkloadMerch = {
+  all: 'all',
+  only: 'only',
+  exclude: 'exclude',
+} as const;
+
+export type GetProductionWorkloadBaselineWeeks = typeof GetProductionWorkloadBaselineWeeks[keyof typeof GetProductionWorkloadBaselineWeeks];
+
+
+export const GetProductionWorkloadBaselineWeeks = {
+  NUMBER_4: 4,
+  NUMBER_8: 8,
+  NUMBER_12: 12,
+} as const;
+
 export type GetDecorationProductionParams = {
+merch?: GetDecorationProductionMerch;
 method?: GetDecorationProductionMethod;
 /**
  * @minimum 1
@@ -10224,6 +10338,15 @@ activityEnd?: ActivityEndParamParameter;
  */
 activityOwner?: ActivityOwnerParamParameter;
 };
+
+export type GetDecorationProductionMerch = typeof GetDecorationProductionMerch[keyof typeof GetDecorationProductionMerch];
+
+
+export const GetDecorationProductionMerch = {
+  all: 'all',
+  only: 'only',
+  exclude: 'exclude',
+} as const;
 
 export type GetDecorationProductionMethod = typeof GetDecorationProductionMethod[keyof typeof GetDecorationProductionMethod];
 

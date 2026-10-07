@@ -3074,12 +3074,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BreakdownReport"
+  /reports/production-workload:
+    get:
+      operationId: getProductionWorkload
+      tags: [Reports]
+      parameters:
+        - { name: start, in: query, required: true, schema: { type: string, format: date } }
+        - { name: end, in: query, required: true, schema: { type: string, format: date } }
+        - { name: method, in: query, schema: { type: string, enum: [print, embroidery], default: print } }
+        - { name: merch, in: query, schema: { type: string, enum: [all, only, exclude], default: all } }
+        - { name: baselineWeeks, in: query, schema: { type: integer, enum: [4, 8, 12], default: 8 } }
+      responses:
+        "200":
+          description: Scheduled workload and observed historical completion, using current invoice quantities.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductionWorkloadReport" }
+        "400": { description: Invalid report range or options }
   /reports/decoration-production:
     get:
       operationId: getDecorationProduction
       tags: [reports]
       summary: Invoice decoration workload with per-location colors or estimated stitches
       parameters:
+        - { name: merch, in: query, schema: { type: string, enum: [all, only, exclude], default: all } }
         - { name: method, in: query, schema: { type: string, enum: [print, embroidery], default: print } }
         - { name: locationCount, in: query, schema: { type: integer, minimum: 1 } }
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
@@ -9753,6 +9771,55 @@ components:
             order: { type: integer }
           required: [quantity, lineItem, price, balance, status, order]
       required: [affectedOrders, changes, byOrderType, byCategory]
+    ProductionWorkloadPeriod:
+      type: object
+      required: [key, start, end, totals, locations, jobIds]
+      properties:
+        key: { type: string }
+        start: { type: string }
+        end: { type: string }
+        totals: { $ref: "#/components/schemas/DecorationProductionTotals" }
+        locations: { type: integer }
+        jobIds: { type: array, items: { type: string } }
+    ProductionWorkloadJob:
+      type: object
+      required: [job, status, merch, dueDate, completedDate, completionStatus, disposition]
+      properties:
+        job: { $ref: "#/components/schemas/DecorationProductionJob" }
+        status: { type: [string, "null"] }
+        merch: { type: boolean }
+        dueDate: { type: [string, "null"] }
+        completedDate: { type: [string, "null"] }
+        completionStatus: { type: [string, "null"] }
+        disposition: { type: string, enum: [scheduled, overdue, unscheduled, completed, unclear] }
+    ProductionWorkloadReport:
+      type: object
+      required: [method, merch, start, end, baselineStart, baselineEnd, baselineWeeks, historyAvailableFrom, historyCoversBaseline, scheduled, overdue, unscheduled, unclear, history, days, weeks, historyDays, historyWeeks, jobs, undatedCompletedInvoices, excludedIncompleteInvoices, unclassifiedGroups, excludedQuantityGroups, recognizedCompletionStatuses]
+      properties:
+        method: { type: string, enum: [print, embroidery] }
+        merch: { type: string, enum: [all, only, exclude] }
+        start: { type: string }
+        end: { type: string }
+        baselineStart: { type: string }
+        baselineEnd: { type: string }
+        baselineWeeks: { type: integer }
+        historyAvailableFrom: { type: [string, "null"] }
+        historyCoversBaseline: { type: boolean }
+        scheduled: { $ref: "#/components/schemas/ProductionWorkloadPeriod" }
+        overdue: { $ref: "#/components/schemas/ProductionWorkloadPeriod" }
+        unscheduled: { $ref: "#/components/schemas/ProductionWorkloadPeriod" }
+        unclear: { $ref: "#/components/schemas/ProductionWorkloadPeriod" }
+        history: { $ref: "#/components/schemas/ProductionWorkloadPeriod" }
+        days: { type: array, items: { $ref: "#/components/schemas/ProductionWorkloadPeriod" } }
+        weeks: { type: array, items: { $ref: "#/components/schemas/ProductionWorkloadPeriod" } }
+        historyDays: { type: array, items: { $ref: "#/components/schemas/ProductionWorkloadPeriod" } }
+        historyWeeks: { type: array, items: { $ref: "#/components/schemas/ProductionWorkloadPeriod" } }
+        jobs: { type: array, items: { $ref: "#/components/schemas/ProductionWorkloadJob" } }
+        undatedCompletedInvoices: { type: integer }
+        excludedIncompleteInvoices: { type: integer }
+        unclassifiedGroups: { type: integer }
+        excludedQuantityGroups: { type: integer }
+        recognizedCompletionStatuses: { type: array, items: { type: string } }
     DecorationProductionTotals:
       type: object
       required: [invoices, quantity, imprints, knownWorkUnits, workUnits, unknownLocations, estimatedScreens, averageJobQuantity, averageItemPrice, averageLocationsPerItem]

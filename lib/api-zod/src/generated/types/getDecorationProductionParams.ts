@@ -17,6 +17,7 @@ import type { CreatedStartParamParameter } from './createdStartParamParameter';
 import type { DueEndParamParameter } from './dueEndParamParameter';
 import type { DueStartParamParameter } from './dueStartParamParameter';
 import type { ExcludeParamParameter } from './excludeParamParameter';
+import type { GetDecorationProductionMerch } from './getDecorationProductionMerch';
 import type { GetDecorationProductionMethod } from './getDecorationProductionMethod';
 import type { InvoiceEndParamParameter } from './invoiceEndParamParameter';
 import type { InvoiceStartParamParameter } from './invoiceStartParamParameter';
@@ -32,6 +33,7 @@ import type { StatusesParamParameter } from './statusesParamParameter';
 import type { StyleNumbersParamParameter } from './styleNumbersParamParameter';
 
 export type GetDecorationProductionParams = {
+merch?: GetDecorationProductionMerch;
 method?: GetDecorationProductionMethod;
 /**
  * @minimum 1

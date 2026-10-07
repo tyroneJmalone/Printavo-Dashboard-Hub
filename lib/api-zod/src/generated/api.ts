@@ -7283,9 +7283,252 @@ export const GetPricingMatrixBreakdownResponse = zod.object({
 })
 
 
+export const getProductionWorkloadQueryMethodDefault = `print`;
+export const getProductionWorkloadQueryMerchDefault = `all`;
+export const getProductionWorkloadQueryBaselineWeeksDefault = 8;
+
+export const GetProductionWorkloadQueryParams = zod.object({
+  "start": zod.date(),
+  "end": zod.date(),
+  "method": zod.enum(['print', 'embroidery']).default(getProductionWorkloadQueryMethodDefault),
+  "merch": zod.enum(['all', 'only', 'exclude']).default(getProductionWorkloadQueryMerchDefault),
+  "baselineWeeks": zod.union([zod.literal(4),zod.literal(8),zod.literal(12)]).default(getProductionWorkloadQueryBaselineWeeksDefault)
+})
+
+export const GetProductionWorkloadResponse = zod.object({
+  "method": zod.enum(['print', 'embroidery']),
+  "merch": zod.enum(['all', 'only', 'exclude']),
+  "start": zod.string(),
+  "end": zod.string(),
+  "baselineStart": zod.string(),
+  "baselineEnd": zod.string(),
+  "baselineWeeks": zod.number(),
+  "historyAvailableFrom": zod.string().nullable(),
+  "historyCoversBaseline": zod.boolean(),
+  "scheduled": zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+}),
+  "overdue": zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+}),
+  "unscheduled": zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+}),
+  "unclear": zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+}),
+  "history": zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+}),
+  "days": zod.array(zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+})),
+  "weeks": zod.array(zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+})),
+  "historyDays": zod.array(zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+})),
+  "historyWeeks": zod.array(zod.object({
+  "key": zod.string(),
+  "start": zod.string(),
+  "end": zod.string(),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+}),
+  "locations": zod.number(),
+  "jobIds": zod.array(zod.string())
+})),
+  "jobs": zod.array(zod.object({
+  "job": zod.object({
+  "id": zod.string(),
+  "visualId": zod.number().nullable(),
+  "customer": zod.string().nullable(),
+  "nickname": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string(),
+  "items": zod.array(zod.string()),
+  "quantity": zod.number(),
+  "averageItemPrice": zod.number().nullable(),
+  "locations": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "details": zod.string().nullable(),
+  "matrix": zod.string().nullable(),
+  "tier": zod.string().nullable(),
+  "complexity": zod.number().nullable(),
+  "workUnits": zod.number().nullable()
+}))
+})),
+  "totals": zod.object({
+  "invoices": zod.number(),
+  "quantity": zod.number(),
+  "imprints": zod.number(),
+  "knownWorkUnits": zod.number(),
+  "workUnits": zod.number().nullable(),
+  "unknownLocations": zod.number(),
+  "estimatedScreens": zod.number().nullable(),
+  "averageJobQuantity": zod.number().nullable(),
+  "averageItemPrice": zod.number().nullable(),
+  "averageLocationsPerItem": zod.number().nullable()
+})
+}),
+  "status": zod.string().nullable(),
+  "merch": zod.boolean(),
+  "dueDate": zod.string().nullable(),
+  "completedDate": zod.string().nullable(),
+  "completionStatus": zod.string().nullable(),
+  "disposition": zod.enum(['scheduled', 'overdue', 'unscheduled', 'completed', 'unclear'])
+})),
+  "undatedCompletedInvoices": zod.number(),
+  "excludedIncompleteInvoices": zod.number(),
+  "unclassifiedGroups": zod.number(),
+  "excludedQuantityGroups": zod.number(),
+  "recognizedCompletionStatuses": zod.array(zod.string())
+})
+
+
 /**
  * @summary Invoice decoration workload with per-location colors or estimated stitches
  */
+export const getDecorationProductionQueryMerchDefault = `all`;
 export const getDecorationProductionQueryMethodDefault = `print`;
 export const getDecorationProductionQueryLimitDefault = 20;
 export const getDecorationProductionQueryLimitMax = 100;
@@ -7296,6 +7539,7 @@ export const getDecorationProductionQueryOffsetMin = 0;
 
 
 export const GetDecorationProductionQueryParams = zod.object({
+  "merch": zod.enum(['all', 'only', 'exclude']).default(getDecorationProductionQueryMerchDefault),
   "method": zod.enum(['print', 'embroidery']).default(getDecorationProductionQueryMethodDefault),
   "locationCount": zod.coerce.number().min(1).optional(),
   "limit": zod.coerce.number().min(1).max(getDecorationProductionQueryLimitMax).default(getDecorationProductionQueryLimitDefault),

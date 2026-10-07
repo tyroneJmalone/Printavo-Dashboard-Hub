@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decorationProduction, colorCount, stitchMidpoint, imprintMethod } from "../src/lib/reports/decorationProduction";
 import type { ReportOrder, ReportGroup } from "../src/lib/reports/dataset";
+import { productionWorkload, completionEvidence, finishedStatus, observedDay, validDate, addDays, type CompletionEvent, type WorkloadOptions } from "../src/lib/reports/productionWorkload";
 
 const group = (id: string, qty: number, tiers: string[], method = "Screen Printing", price = 38): ReportGroup => ({
   id, lineItems: [{ itemNumber: "shirt", color: "Red", brand: null, categoryName: method, items: qty, price, priceKnown: true }],
@@ -134,5 +135,107 @@ test("read-only development sample loads groups, prices, tier evidence and valid
         unknownLocations: report.summary.unknownLocations, unclassifiedGroups: report.unclassifiedGroups,
         excludedIncompleteInvoices: report.excludedIncompleteInvoices }));
     }
+    const { loadProductionWorkload } = await import("../src/lib/reports/productionWorkloadLoader");
+    const { GetProductionWorkloadResponse } = await import("@workspace/api-zod");
+    const start = observedDay(new Date().toISOString());
+    for (const method of ["print", "embroidery"] as const) {
+      const r = await loadProductionWorkload({ start, end: addDays(start, 13), method, merch: "all", baselineWeeks: 8 });
+      GetProductionWorkloadResponse.parse(r);
+      assert.equal(r.days.length, 14);
+      assert.equal(r.scheduled.totals.imprints, r.days.reduce((n, d) => n + d.totals.imprints, 0));
+      assert.equal(r.history.totals.imprints, r.historyWeeks.reduce((n, d) => n + d.totals.imprints, 0));
+      assert.ok(r.jobs.every(j => j.disposition !== "scheduled" || j.completedDate === null || !finishedStatus(j.status, method)));
+      console.log(JSON.stringify({ workload: method, scheduled: r.scheduled.totals.invoices, overdue: r.overdue.totals.invoices,
+        completed: r.history.totals.invoices, merchJobs: r.jobs.filter(j => j.merch).length, undatedCompleted: r.undatedCompletedInvoices }));
+    }
+    const includeMerch = await loadReportOrders(filters, { includeMerch: true });
+    assert.ok(includeMerch.length >= orders.length);
+    assert.ok(includeMerch.some(o => o.productionMerch));
   } finally { await pool.end(); }
+});
+
+const options: WorkloadOptions = { start: "2026-10-07", end: "2026-10-20", method: "print", merch: "all", baselineWeeks: 4 };
+const event = (orderId: string, at: string, oldStatus: string, newStatus: string): CompletionEvent => ({ orderId, at, oldStatus, newStatus });
+const scheduled = (id: string, due: string | null, extra: Partial<ReportOrder> = {}) =>
+  order(id, [group(id, 100, ["3 color", "1 color"])], { statusName: "PRINT - Ready 2 Go", productionDueAt: due, ...extra });
+
+test("workload separates future, overdue, undated, finished, and cancelled; calendar dates stay UTC", () => {
+  const r = productionWorkload([
+    scheduled("1", "2026-10-07T00:00:00Z"), scheduled("2", "2026-10-06T00:00:00Z"),
+    scheduled("3", null), scheduled("4", "2026-10-09", { statusName: "🏁 PRINT - Complete" }),
+    scheduled("5", "2026-10-09", { statusName: "QUOTE - Dead" }),
+    scheduled("6", "2026-10-21"), scheduled("7", "2026-10-09", { statusName: "PICKED UP" }),
+  ], [], options, "2026-07-08", "2026-10-07");
+  assert.equal(r.scheduled.totals.workUnits, 400);
+  assert.equal(r.days[0].totals.imprints, 200);
+  assert.equal(r.overdue.totals.invoices, 1);
+  assert.equal(r.unscheduled.totals.invoices, 1);
+  assert.equal(r.unclear.totals.invoices, 1);
+  assert.equal(r.undatedCompletedInvoices, 1);
+  assert.equal(r.days.length, 14);
+  assert.equal(r.historyWeeks.length, 4);
+  assert.equal(r.weeks[0].start, "2026-10-07");
+  assert.equal(r.weeks[0].end, "2026-10-11");
+});
+
+test("Complete then Picked Up then Shipped is one historical completion, in Eastern observation time", () => {
+  const e = [
+    event("1", "2026-09-29T00:30:00Z", "PRINT - Ready", "🏁 PRINT - Complete"),
+    event("1", "2026-09-30T16:00:00Z", "PRINT - Complete", "PRINT - PICKED UP"),
+    event("1", "2026-10-01T16:00:00Z", "PRINT - PICKED UP", "PRINT - SHIPPED📦 "),
+  ];
+  const r = productionWorkload([scheduled("1", "2026-10-08", { statusName: "PRINT - SHIPPED" })], e, options, "2026-07-08", "2026-10-07");
+  assert.equal(r.history.totals.invoices, 1);
+  assert.equal(r.history.totals.workUnits, 400);
+  assert.equal(r.jobs[0].completedDate, "2026-09-28");
+  assert.equal(r.scheduled.totals.invoices, 0);
+  assert.equal(r.historyDays.find(d => d.start === "2026-09-28")?.totals.invoices, 1);
+});
+
+test("already complete old-value does not invent a completion date when later shipped", () => {
+  const e = [event("1", "2026-10-01T15:00:00Z", "PRINT - Complete", "PRINT - SHIPPED")];
+  const evidence = completionEvidence("PRINT - DELIVERED", e, "print");
+  assert.equal(evidence.done, true); assert.equal(evidence.day, null);
+});
+
+test("completion is decoration-specific; reopening a finished method returns to pending without re-counting its history", () => {
+  assert.equal(finishedStatus(" 🏁 MERCH - PRINT Pick/Pack COMPLETE ", "print"), true);
+  assert.equal(finishedStatus(" 🏁 MERCH - EMB Pick/Pack COMPLETE ", "embroidery"), true);
+  assert.equal(finishedStatus("EMB - DELIVERED🚚", "print"), false);
+  assert.equal(finishedStatus("MERCH - PRINT Ready 2 Pick/Pack", "print"), false);
+  assert.equal(finishedStatus("PRINT - Incomplete", "print"), false);
+  const e = [event("1", "2026-09-28T15:00:00Z", "PRINT - Ready", "PRINT - Complete")];
+  assert.equal(completionEvidence("EMB - Ready", e, "print").done, true);
+  const r = productionWorkload([scheduled("1", "2026-10-08")], e, options, "2026-07-08", "2026-10-07");
+  assert.equal(r.scheduled.totals.invoices, 1); assert.equal(r.history.totals.invoices, 1);
+  assert.equal(r.jobs.length, 1);
+});
+
+test("Merch can roll into totals or be isolated/excluded without changing workload formulas", () => {
+  const list = [scheduled("1", "2026-10-08", { productionMerch: true }), scheduled("2", "2026-10-08")];
+  const run = (merch: WorkloadOptions["merch"]) => productionWorkload(list, [], { ...options, merch }, "2026-07-08", "2026-10-07");
+  assert.equal(run("all").scheduled.totals.workUnits, 800);
+  assert.equal(run("only").scheduled.totals.workUnits, 400);
+  assert.equal(run("exclude").scheduled.totals.workUnits, 400);
+  assert.equal(run("only").jobs[0].job.id, "1");
+});
+
+test("embroidery applications, assigned locations, estimated stitches and unknown estimates remain distinct", () => {
+  const o = order("1", [group("a", 45, ["6K-8K", "2K-4K"], "Embroidery")],
+    { statusName: "EMB - Ready", productionDueAt: "2026-10-08" });
+  const r = productionWorkload([o], [], { ...options, method: "embroidery" }, null, "2026-10-07");
+  assert.equal(r.scheduled.locations, 2); assert.equal(r.scheduled.totals.imprints, 90);
+  assert.equal(r.scheduled.totals.workUnits, 450000); assert.equal(r.historyCoversBaseline, false);
+  o.groups[0].imprints[0].columnName = "unknown";
+  const incomplete = productionWorkload([o], [], { ...options, method: "embroidery" }, null, "2026-10-07");
+  assert.equal(incomplete.scheduled.totals.workUnits, null);
+  assert.equal(incomplete.scheduled.totals.knownWorkUnits, 135000);
+});
+
+test("dates reject rollover and zero days are retained in observed baseline", () => {
+  assert.equal(validDate("2026-02-30"), false); assert.equal(validDate("2026-02-28"), true);
+  assert.equal(observedDay("2026-11-01T05:30:00Z"), "2026-11-01");
+  const r = productionWorkload([], [], options, "2026-09-20", "2026-10-07");
+  assert.equal(r.historyDays.length, 28); assert.equal(r.historyCoversBaseline, false);
+  assert.equal(r.baselineStart, "2026-09-07"); assert.equal(r.baselineEnd, "2026-10-04");
 });

@@ -12,18 +12,20 @@ import {
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { formatMoney, formatNumber } from "@/lib/format";
 
-type Method = "print" | "embroidery";
+export type Method = "print" | "embroidery";
+export type Merch = "all" | "only" | "exclude";
+import { ProductionWorkloadView } from "@/components/ProductionWorkloadView";
 const LIMIT = 20;
 
-const num = (v: number | null | undefined, digits = 0) =>
+export const num = (v: number | null | undefined, digits = 0) =>
   v === null || v === undefined ? "—" : digits ? v.toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits }) : formatNumber(v);
-const money = (v: number | null | undefined) => (v === null || v === undefined ? "—" : formatMoney(v));
+export const money = (v: number | null | undefined) => (v === null || v === undefined ? "—" : formatMoney(v));
 
-function workLabel(method: Method) {
+export function workLabel(method: Method) {
   return method === "print" ? "Impressions" : "Estimated stitches";
 }
 
-function WorkUnits({ t, method }: { t: DecorationProductionTotals; method: Method }) {
+export function WorkUnits({ t, method }: { t: DecorationProductionTotals; method: Method }) {
   if (t.workUnits !== null) return <span>{num(t.workUnits)}</span>;
   return (
     <span className="inline-flex flex-col">
@@ -36,7 +38,7 @@ function WorkUnits({ t, method }: { t: DecorationProductionTotals; method: Metho
   );
 }
 
-function Stat({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+export function Stat({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3" title={hint}>
       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</div>
@@ -63,7 +65,7 @@ function LocationRow({ loc, method, qty }: { loc: DecorationProductionLocation; 
   );
 }
 
-function JobCard({ job, method }: { job: DecorationProductionJob; method: Method }) {
+export function JobCard({ job, method }: { job: DecorationProductionJob; method: Method }) {
   const t = job.totals;
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-900/40" data-testid={`card-decoration-job-${job.id}`}>
@@ -116,21 +118,66 @@ function JobCard({ job, method }: { job: DecorationProductionJob; method: Method
   );
 }
 
+export function MerchToggle({ merch, onChange }: { merch: Merch; onChange: (m: Merch) => void }) {
+  const opts: [Merch, string][] = [["all", "All"], ["exclude", "Non-Merch"], ["only", "Merch only"]];
+  return (
+    <div className="flex rounded-md border border-slate-700 bg-slate-900 p-0.5" role="radiogroup" aria-label="Merch filter">
+      {opts.map(([v, l]) => (
+        <button key={v} type="button" role="radio" aria-checked={merch === v} data-testid={`button-merch-${v}`} onClick={() => onChange(v)}
+          className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${merch === v ? "bg-sky-900/40 text-sky-300" : "text-slate-400 hover:text-white"}`}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
 export function DecorationProductionReport({ params }: { params: GetOrdersReportParams }) {
+  const [view, setView] = useState<"stats" | "schedule">("stats");
   const [method, setMethod] = useState<Method>("print");
+  const [merch, setMerch] = useState<Merch>("all");
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3" role="tablist" aria-label="Production view">
+        {([["stats", "Production statistics"], ["schedule", "Schedule & Capacity"]] as const).map(([v, l]) => (
+          <button key={v} type="button" role="tab" aria-selected={view === v} data-testid={`tab-production-${v}`} onClick={() => setView(v)}
+            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${view === v ? "bg-slate-800 text-white ring-1 ring-emerald-700" : "text-slate-400 hover:text-white"}`}>{l}</button>
+        ))}
+      </div>
+      {view === "stats"
+        ? <DecorationStats params={params} method={method} setMethod={setMethod} merch={merch} setMerch={setMerch} />
+        : <ProductionWorkloadView method={method} setMethod={setMethod} merch={merch} setMerch={setMerch} />}
+    </div>
+  );
+}
+
+export function MethodToggle({ method, onChange }: { method: Method; onChange: (m: Method) => void }) {
+  return (
+    <div className="flex rounded-md border border-slate-700 bg-slate-900 p-0.5" role="radiogroup" aria-label="Decoration method">
+      {(["print", "embroidery"] as Method[]).map((m) => (
+        <button key={m} type="button" role="radio" aria-checked={method === m} data-testid={`button-method-${m}`}
+          onClick={() => onChange(m)}
+          className={`px-4 py-1.5 text-xs font-medium rounded transition-colors ${method === m ? "bg-[#059669]/30 text-[#10b981]" : "text-slate-400 hover:text-white"}`}>
+          {m === "print" ? "Print" : "Embroidery"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DecorationStats({ params, method, setMethod, merch, setMerch }: { params: GetOrdersReportParams; method: Method; setMethod: (m: Method) => void; merch: Merch; setMerch: (m: Merch) => void }) {
   const [bucket, setBucket] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const filterKey = JSON.stringify(params);
 
-  useEffect(() => { setPage(0); setBucket(null); }, [filterKey, method]);
+  useEffect(() => { setPage(0); setBucket(null); }, [filterKey, method, merch]);
 
   const query: GetDecorationProductionParams = useMemo(() => ({
     ...(JSON.parse(filterKey) as GetOrdersReportParams),
     method,
+    merch,
     locationCount: bucket ?? undefined,
     limit: LIMIT,
     offset: page * LIMIT,
-  }), [filterKey, method, bucket, page]);
+  }), [filterKey, method, merch, bucket, page]);
 
   const { data, isLoading, isFetching, isError, refetch } = useGetDecorationProduction(query, {
     query: { queryKey: getGetDecorationProductionQueryKey(query) },
@@ -149,15 +196,7 @@ export function DecorationProductionReport({ params }: { params: GetOrdersReport
   return (
     <div className="space-y-4" data-testid="decoration-production-report">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex rounded-md border border-slate-700 bg-slate-900 p-0.5" role="tablist" aria-label="Decoration method">
-          {(["print", "embroidery"] as Method[]).map((m) => (
-            <button key={m} type="button" role="tab" aria-selected={method === m} data-testid={`button-method-${m}`}
-              onClick={() => setMethod(m)}
-              className={`px-4 py-1.5 text-xs font-medium rounded transition-colors ${method === m ? "bg-[#059669]/30 text-[#10b981]" : "text-slate-400 hover:text-white"}`}>
-              {m === "print" ? "Print" : "Embroidery"}
-            </button>
-          ))}
-        </div>
+        <div className="flex flex-wrap gap-2"><MethodToggle method={method} onChange={setMethod} /><MerchToggle merch={merch} onChange={setMerch} /></div>
         <p className="flex items-start gap-1.5 text-[11px] text-slate-500 max-w-2xl">
           <Info size={12} className="mt-0.5 shrink-0" />
           Invoices only; Heat excluded. Workload recorded on invoices, not a verified completion log. Activity filters use the current snapshot, not historical reconstruction.
@@ -190,7 +229,7 @@ export function DecorationProductionReport({ params }: { params: GetOrdersReport
             </Stat>
             {method === "print" && <Stat label="Est. screens" hint="Sum of colors, no screen reuse adjustment">{num(s.estimatedScreens)}</Stat>}
             <Stat label="Avg job qty">{num(s.averageJobQuantity, 1)}</Stat>
-            <Stat label="Avg decorated item price" hint="Full decorated-item sale price, not decoration-only">{money(s.averageItemPrice)}</Stat>
+            <Stat label="Avg invoice item price" hint="Invoice line price, not decoration-only; Merch shell prices may be zero and do not represent store sales">{money(s.averageItemPrice)}</Stat>
             <Stat label="Avg locations / item">{num(s.averageLocationsPerItem, 2)}</Stat>
           </section>
           <section className="rounded-lg border border-slate-800 p-3">
@@ -214,7 +253,7 @@ export function DecorationProductionReport({ params }: { params: GetOrdersReport
           </section>
           <p className="text-[11px] text-slate-500">
             {method === "print" ? "Screens are the sum of colors with no reuse adjustment." : "Stitches are estimated from tier midpoints, not actual stitch counts."}{" "}
-            Average item price is the full decorated garment sale price. Mixed-method invoices appear in both Print and Embroidery; quantities overlap and must not be summed as unique garments.
+            Average item price uses invoice line prices, not decoration-only charges. Merch shell prices may be $0 and do not represent actual store sales. Mixed-method invoices appear in both Print and Embroidery; quantities overlap and must not be summed as unique garments.
             {" "}As elsewhere in Orders Report, item filters select matching invoices; this view includes their groups for the selected method. Setup/digitizing line items are excluded from garment quantities.
           </p>
 

@@ -41,6 +41,7 @@ export interface ReportGroup {
 }
 
 export interface ReportOrder {
+  productionMerch?: boolean;
   detailSyncState?: string | null;
   id: string;
   visualId: number;
@@ -63,8 +64,18 @@ export interface ReportOrder {
 
 const ET = "America/New_York";
 
-function orderConditions(f: ReportFilters): SQL[] {
-  const conds: SQL[] = [sql.raw(notChipplySql("nickname"))];
+/** Only production reporting may opt in to Merch; financial reports keep their
+ * existing shell-invoice exclusion. Merch is classified at invoice grain. */
+export const productionMerchSql = sql`(
+  coalesce(nickname ~ '^\\d{5,7}\\s', false) OR coalesce(status_name ~* '\\mmerch\\M', false)
+  OR EXISTS (SELECT 1 FROM pv_line_item_groups pg JOIN pv_line_items li ON li.group_id = pg.printavo_id
+             WHERE pg.order_id = pv_orders.printavo_id AND li.merch = true)
+  OR EXISTS (SELECT 1 FROM change_events ce WHERE ce.entity_type = 'order' AND ce.entity_id = pv_orders.printavo_id
+             AND ce.event_type = 'status_change' AND ce.new_value #>> '{}' ~* '\\mmerch\\M')
+)`;
+
+function orderConditions(f: ReportFilters, includeMerch = false): SQL[] {
+  const conds: SQL[] = includeMerch ? [] : [sql.raw(notChipplySql("nickname"))];
   if (f.orderType !== "all") {
     conds.push(sql`order_type = ${f.orderType}`);
   }
@@ -322,9 +333,12 @@ function passesItemFilters(order: ReportOrder, f: ReportFilters): boolean {
 
 export async function loadReportOrders(
   f: ReportFilters,
+  options: { includeMerch?: boolean; orderIds?: string[] } = {},
 ): Promise<ReportOrder[]> {
+  if (options.orderIds?.length === 0) return [];
   const activity = activityFragments(f);
-  const conds = [...orderConditions(f), ...activity.conditions];
+  const conds = [...orderConditions(f, options.includeMerch), ...activity.conditions];
+  if (options.orderIds) conds.push(sql`printavo_id IN (${sql.join(options.orderIds.map(id => sql`${id}`), sql`, `)})`);
   const where =
     conds.length > 0
       ? sql` WHERE ${sql.join(conds, sql` AND `)}`
@@ -333,6 +347,7 @@ export async function loadReportOrders(
   const orderRes = await db.execute(sql`
     ${activity.cte}
     SELECT printavo_id, visual_id, order_type, status_name, nickname,
+           ${options.includeMerch ? productionMerchSql : sql`false`} AS production_merch,
            customer_company, contact_name, total, detail_sync_state,
            owner_email, printavo_created_at, invoice_at, production_due_at,
            customer_due_at,
@@ -403,6 +418,7 @@ export async function loadReportOrders(
       0,
     );
     const order: ReportOrder = {
+      productionMerch: Boolean((r as OrderRow & { production_merch: boolean }).production_merch),
       detailSyncState: r.detail_sync_state,
       id: r.printavo_id,
       visualId: r.visual_id,

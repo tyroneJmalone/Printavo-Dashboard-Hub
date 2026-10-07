@@ -1,5 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { decorationProduction } from "../lib/reports/decorationProduction";
+import { loadProductionWorkload } from "../lib/reports/productionWorkloadLoader";
+import { validDate, observedDay, merchMatches, type Method, type MerchScope } from "../lib/reports/productionWorkload";
 import { db } from "@workspace/db";
 import { sql, type SQL } from "drizzle-orm";
 import { parseReportFilters, filtersEcho } from "../lib/reports/filters";
@@ -99,6 +101,23 @@ function handler(
   };
 }
 
+router.get("/reports/production-workload", (req, res) => {
+  (async () => {
+    const { start, end } = req.query;
+    const method = req.query.method ?? "print", merch = req.query.merch ?? "all";
+    const baselineWeeks = Number(req.query.baselineWeeks ?? 8);
+    if (!validDate(start) || !validDate(end) || start > end
+      || start < observedDay(new Date().toISOString())
+      || (Date.parse(end) - Date.parse(start)) / 86400000 > 91
+      || !["print", "embroidery"].includes(String(method)) || !["all", "only", "exclude"].includes(String(merch))
+      || ![4, 8, 12].includes(baselineWeeks) || Array.isArray(req.query.baselineWeeks)
+      || typeof method !== "string" || typeof merch !== "string") {
+      res.status(400).json({ error: "Choose a future range beginning today or later, at most 92 days, a valid method/Merch scope, and 4, 8, or 12 baseline weeks." }); return;
+    }
+    res.json(await loadProductionWorkload({ start, end, method: method as Method, merch: merch as MerchScope, baselineWeeks }));
+  })().catch(err => { req.log.error({ err }, "Production workload failed"); res.status(500).json({ error: "Unable to load production workload" }); });
+});
+
 router.get("/reports/decoration-production", (req, res) => {
   (async () => {
     const { filters, errors } = parseReportFilters(req.query as Record<string, unknown>);
@@ -111,7 +130,9 @@ router.get("/reports/decoration-production", (req, res) => {
     if (locationCount !== undefined && (!Number.isSafeInteger(locationCount) || locationCount < 1))
       errors.push("Invalid location count");
     if (errors.length) { res.status(400).json({ errors }); return; }
-    const orders = await loadReportOrders(filters);
+    const merch = req.query.merch ?? "all";
+    if (typeof merch !== "string" || !["all", "only", "exclude"].includes(merch)) { res.status(400).json({ error: "Invalid Merch scope" }); return; }
+    const orders = (await loadReportOrders(filters, { includeMerch: true })).filter(o => merchMatches(o.productionMerch, merch as MerchScope));
     res.json(decorationProduction(orders, method as "print" | "embroidery", { offset, limit, locationCount }));
   })().catch(err => { req.log.error({ err }, "Decoration production report failed"); res.status(500).json({ error: "Unable to load decoration production report" }); });
 });
