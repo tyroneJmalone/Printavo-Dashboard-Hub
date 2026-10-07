@@ -94,7 +94,11 @@ test("durable queue: isolated DB claims, leases, dedup and injected delivery fai
     await assert.rejects(changeRetryState(one.id, "retry", "fixture"));
     const renderJob = await make();
     const renderDeps = dependencies(renderJob);
-    renderDeps.render = async () => { throw new Error("Printavo returned 403"); };
+    renderDeps.detail = async () => ({ invoice: { ...node(renderJob), nickname: "RUSH Friday" } } as any);
+    renderDeps.render = async (_url, job) => {
+      assert.equal(job.nickname, "RUSH Friday", "each render uses live nickname rather than the queued nickname");
+      throw new Error("Printavo returned 403");
+    };
     let outcome = await executePrintAttempt(renderJob.id, "fixture", renderDeps);
     assert.equal(outcome?.status, "retry_pending"); assert.equal(sends, 0);
     assert.equal(outcome?.retryCount, 3, "first round performs exactly three attempts");

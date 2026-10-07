@@ -11,7 +11,9 @@ const outfile = join(import.meta.dirname, ".workorder-presentation.test.mjs");
 await build({
   stdin: {
     contents: `export * from "./src/lib/printQueue/workorderPresentation";
-      export * from "./src/lib/printQueue/autoPrint/pdf";`,
+      export * from "./src/lib/printQueue/autoPrint/pdf";
+      export * from "./src/lib/printQueue/autoPrint/workorderHeader";
+      export { AUTO_PRINT_COMPACT_CSS } from "./src/lib/printQueue/autoPrint/presentation";`,
     resolveDir: import.meta.dirname,
   },
   outfile, bundle: true, platform: "node", format: "esm", packages: "external",
@@ -28,7 +30,16 @@ await build({
 let browser;
 let renderer;
 try {
-  const { WORKORDER_PRESENTATION_CSS, REPRINT_BANNER_HTML, openPdfRenderer } = await import(outfile);
+  const { WORKORDER_PRESENTATION_CSS, REPRINT_BANNER_HTML, openPdfRenderer,
+    workorderHeaderText, workorderHeaderScript, AUTO_PRINT_COMPACT_CSS } = await import(outfile);
+  for (const nickname of ["FIRM date", "rush", "Deadline: Friday", "job (RuSh)", "firm/rush/deadline"]) {
+    assert.equal(workorderHeaderText(nickname), "Rush/Firm Deadline");
+  }
+  for (const nickname of [null, "", "regular order", "confirmed", "brush", "firmware", "deadlines"]) {
+    assert.equal(workorderHeaderText(nickname), "");
+  }
+  assert.equal(workorderHeaderText(null, true), "UPDATED");
+  assert.equal(workorderHeaderText("rush", true), "Rush/Firm Deadline — UPDATED");
   const rows = Array.from({ length: 110 }, (_, i) =>
     `<tr class="line-item-detail"><td>Fixture garment ${i + 1}</td><td>12</td></tr>${i === 0 ? '<tr class="line-item-assets"><td>Asset, not a garment</td></tr>' : ""}`).join("");
   const html = `<!doctype html><html><head><style>
@@ -60,7 +71,19 @@ try {
   assert.equal(result.other, "rgba(0, 0, 0, 0)");
   assert.equal(result.banner, "UPDATED / REPRINT");
   assert.equal(result.top, 0);
+  await page.addStyleTag({ content: AUTO_PRINT_COMPACT_CSS });
+  await page.evaluate(workorderHeaderScript("rush", true));
+  assert.equal(await page.$eval(".pq-reprint-banner", el => el.textContent), "Rush/Firm Deadline — UPDATED");
+  await page.evaluate(workorderHeaderScript("Deadline Friday"));
+  const urgent = await page.$eval(".pq-reprint-banner", el => ({
+    text: el.textContent, font: getComputedStyle(el).fontSize,
+    first: el === document.body.firstElementChild,
+  }));
+  assert.deepEqual(urgent, { text: "Rush/Firm Deadline", font: "22px", first: true });
+  assert.equal((await page.$$(".pq-reprint-banner")).length, 1);
   await page.screenshot({ path: "/tmp/workorder-presentation.png" });
+  await page.evaluate(workorderHeaderScript("standard"));
+  assert.equal((await page.$$(".pq-reprint-banner")).length, 0);
   renderer = await openPdfRenderer();
   for (let i = 0; i < 2; i++) {
     const pdf = await renderer.renderHtml(html);

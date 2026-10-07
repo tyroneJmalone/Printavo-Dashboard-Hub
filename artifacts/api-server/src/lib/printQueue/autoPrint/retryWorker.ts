@@ -34,6 +34,7 @@ export const liveRetryDependencies = {
     const renderer = await openPdfRenderer({ maxStartupAttempts: 1 });
     try { return await renderer.renderUrl(url, {
       purchaseNotes: await loadPurchaseNotes(job.printavoOrderId), excludeAttachments: true, isReprint: job.isReprint,
+      nickname: job.nickname,
     }); } finally { await renderer.close().catch(() => undefined); }
   },
   submit: submitPdfPrintJob,
@@ -91,7 +92,8 @@ async function executeSinglePrintAttempt(id: string, actor: string, deps: RetryD
     phase = "render";
     await deps.fence(job, phase);
     if (!node.workorderUrl) throw new Error("No workorder URL on this order");
-    const pdf = await deps.render(node.workorderUrl, job);
+    // Use the live nickname on every attempt, not the possibly older queued value.
+    const pdf = await deps.render(node.workorderUrl, { ...job, nickname: node.nickname ?? null });
     phase = "verification";
     await check(job);
     const verifyData = await deps.detail(snapshot.orderKind, job.printavoOrderId);

@@ -3,6 +3,7 @@ import puppeteer, { type Browser } from "puppeteer-core";
 import { logger } from "../../logger";
 import { isAllowedWorkorderUrl } from "../workorderHtml";
 import { WORKORDER_PRESENTATION_CSS } from "../workorderPresentation";
+import { workorderHeaderScript } from "./workorderHeader";
 import { AUTO_PRINT_COMPACT_CSS, presentationScript, type PurchaseNote } from "./presentation";
 import {
   closeBrowserBounded,
@@ -49,6 +50,7 @@ export interface WorkorderPdfOptions {
   purchaseNotes?: PurchaseNote[];
   excludeAttachments?: boolean;
   isReprint?: boolean;
+  nickname?: string | null;
 }
 
 export interface PdfRenderer {
@@ -125,14 +127,7 @@ export async function openPdfRenderer(options?: { maxStartupAttempts?: number })
         await page.addStyleTag({ content: WORKORDER_PRESENTATION_CSS });
         await page.addStyleTag({ content: AUTO_PRINT_COMPACT_CSS });
         await page.evaluate(presentationScript(options?.purchaseNotes ?? []));
-        if (options?.isReprint) {
-          await page.evaluate(`(() => {
-            const banner = document.createElement("div");
-            banner.className = "pq-reprint-banner";
-            banner.textContent = "UPDATED";
-            document.body.prepend(banner);
-          })()`);
-        }
+        await page.evaluate(workorderHeaderScript(options?.nickname, options?.isReprint));
         const pdf = await page.pdf({
           format: "letter",
           printBackground: true,

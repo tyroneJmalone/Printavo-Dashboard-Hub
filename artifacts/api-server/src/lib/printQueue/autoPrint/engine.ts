@@ -815,6 +815,7 @@ async function runAutoPrint(
                 purchaseNotes: await loadPurchaseNotes(c.orderId),
                 excludeAttachments: config.excludeAttachments,
                 isReprint: c.isReprint,
+                nickname: c.nickname,
               });
               if (dryRun) {
                 return "dry_run";

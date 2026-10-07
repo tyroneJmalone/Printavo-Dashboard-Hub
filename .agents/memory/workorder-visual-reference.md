@@ -19,5 +19,16 @@ code, instead of retaining a separate top row.
 **Why:** The user approved the compact real-workorder proof, then requested these
 specific exceptions to reduce page count and toner usage.
 
+AutoPrint workorders should use the existing UPDATED banner formatting with
+the text "Rush/Firm Deadline" when the nickname matches firm, rush, or deadline.
+Use the same case-insensitive keyword boundaries as status routing.
+
+**Why:** The user requested nickname-triggered urgency highlighting, not a new
+status rule or a changed workorder layout.
+
+**How to apply:** Apply on initial prints and retries from the current nickname.
+Preserve the UPDATED indicator on urgent reprints; do not trigger a new print
+merely because the nickname changes.
+
 **How to apply:** Scope these changes to AutoPrint, preserve customer contact
 details and invoice notes, and keep the approved shading and UPDATED behavior.
