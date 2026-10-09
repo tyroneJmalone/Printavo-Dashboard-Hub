@@ -70,30 +70,31 @@ it or roll it into totals.
 
 **Why:** The user's goal is to understand shop capacity, not just invoice volume.
 
-**How to apply:** Keep Print and Embroidery workloads separate. Distinguish
-historically scheduled volume from verified completed output, and observed
-throughput from a proven capacity limit. Do not silently treat customer
-deadlines as scheduled work dates or whole-invoice completion as evidence of
-when each decoration method finished.
+**How to apply:** Keep Print and Embroidery workloads separate. Historical
+output follows the Production Date policy below; averages are not a proven
+capacity limit. Customer deadlines are not Production Dates.
 For generic pickup, classify the actual groups rather than assigning the invoice
 to both methods from its status. Prefer location-level matrix/type evidence on
-mixed jobs; use unambiguous garment categories as fallback. Missing completion
-history remains undated, not a guessed completion on the production due date.
+mixed jobs; use unambiguous garment categories as fallback.
 
-Historical comparisons attribute a job/method once to its first observed
-completion transition, not again when it is picked up, shipped, or delivered.
-If the oldest evidence already says it was finished, the finish date is unknown.
-Do not substitute Production Due for an unknown completion date. A reopened
-method can be pending again without inventing an additional historical run.
+The user replaced the status-observation completion-date policy: “For any job
+that is an invoice and has a production date in the past, that is the date it
+was produced.” Use Printavo Production Due as that date, regardless of status.
+This supersedes the prior rule that required observed completion transitions.
 
-**Why:** Hub's change feed timestamps are observation times, not actual machine
-finish times; its history starts later than many invoices. Current line-item
-snapshots also do not prove what quantities existed at the time of completion.
+**Why:** The user explicitly confirmed that past invoice Production Dates
+represent actual production in their shop.
 
-**How to apply:** Label historical output as observed completion with current
-invoice quantities; distinguish date-only Production Due (UTC calendar day)
-from actual status-observation timestamps (Eastern civil time). Never describe
-baseline output as a measured maximum capacity or guaranteed production hours.
+**How to apply:** Count each job/method once on its past Production Date, even
+without completion history or with an otherwise pending/archived status. Keep
+Print/Embroidery classification, Merch scope and data-quality checks intact.
+Compare UTC calendar-date values to today's Eastern civil date; today/future
+dates do not prove production. Statuses may resolve pending/completed state
+without a past date, but do not supply historical production dates. Historical
+totals use current invoice quantities, not immutable run records. Re-dating
+an invoice moves its attributed production rather than creating a second run.
+Do not gate history by the status-change log's start date or describe baseline
+averages as maximum capacity or guaranteed production hours.
 
 Merch inclusion is a production-workload exception to the general exclusion of
 Chipply shell invoices from financial/customer-behavior reports.

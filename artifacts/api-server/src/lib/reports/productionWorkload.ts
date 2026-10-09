@@ -57,11 +57,25 @@ export function indexEvents(events: CompletionEvent[]) {
   return map;
 }
 
+/** Production Due is the shop's produced date once its calendar day is past.
+ * Status events still resolve undated/future job state, never historical dates. */
+export function pastProductionDate(value: string | null, today: string) {
+  const day = dateKey(value);
+  return validDate(day) && day! < today ? day : null;
+}
+export function workloadCompletion(status: string | null, events: CompletionEvent[], method: Method, due: string | null, today: string) {
+  const day = pastProductionDate(due, today);
+  if (day) return { day, done: true, unclear: false, completionStatus: null };
+  const evidence = completionEvidence(status, events, method);
+  return { ...evidence, day: null, completionStatus: null };
+}
+
 export function productionWorkload(orders: ReportOrder[], events: CompletionEvent[], options: WorkloadOptions,
   historyAvailableFrom: string | null, today = observedDay(new Date().toISOString()), extraUndated = 0): ProductionWorkloadReport {
   const { method, merch, start, end, baselineWeeks } = options;
   const baselineStart = addDays(monday(today), -7 * baselineWeeks), baselineEnd = addDays(monday(today), -1);
-  const scoped = orders.filter(o => merchMatches(o.productionMerch, merch) && !excludedStatus(o.statusName));
+  const scoped = orders.filter(o => merchMatches(o.productionMerch, merch)
+    && (pastProductionDate(o.productionDueAt, today) || !excludedStatus(o.statusName)));
   const report = decorationProduction(scoped, method, { limit: Number.MAX_SAFE_INTEGER });
   const source = new Map(scoped.map(o => [o.id, o]));
   const eventMap = indexEvents(events);
@@ -69,7 +83,7 @@ export function productionWorkload(orders: ReportOrder[], events: CompletionEven
   let undatedCompletedInvoices = extraUndated;
   for (const job of report.jobs) {
     const order = source.get(job.id)!;
-    const evidence = completionEvidence(order.statusName, eventMap.get(job.id) ?? [], method);
+    const evidence = workloadCompletion(order.statusName, eventMap.get(job.id) ?? [], method, order.productionDueAt, today);
     const dueDate = dateKey(order.productionDueAt);
     const historical = !!evidence.day && evidence.day >= baselineStart && evidence.day <= baselineEnd;
     if (evidence.done && !evidence.day) undatedCompletedInvoices++;

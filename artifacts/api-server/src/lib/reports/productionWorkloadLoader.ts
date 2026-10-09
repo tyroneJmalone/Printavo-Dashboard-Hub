@@ -2,7 +2,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { loadReportOrders, productionMerchSql } from "./dataset";
 import { parseReportFilters } from "./filters";
-import { addDays, monday, observedDay, completionEvidence, indexEvents, excludedStatus, merchMatches, genericPickedUp,
+import { addDays, monday, observedDay, workloadCompletion, pastProductionDate, indexEvents, excludedStatus, merchMatches, genericPickedUp,
   productionWorkload, type CompletionEvent, type WorkloadOptions } from "./productionWorkload";
 
 /** Small invoice headers + change feed first; load heavy groups only for
@@ -27,10 +27,14 @@ export async function loadProductionWorkload(options: WorkloadOptions) {
   const baselineEnd = addDays(monday(today), -1), byOrder = indexEvents(events);
   const ids: string[] = [];
   let extraUndated = 0;
+  let historyAvailableFrom: string | null = null;
   for (const h of headers.rows) {
-    if (excludedStatus(h.status_name as string | null) || !merchMatches(Boolean(h.merch), options.merch)) continue;
+    const due = h.due ? String(h.due) : null;
+    const produced = pastProductionDate(due, today);
+    if ((!produced && excludedStatus(h.status_name as string | null)) || !merchMatches(Boolean(h.merch), options.merch)) continue;
+    if (produced && (!historyAvailableFrom || produced < historyAvailableFrom)) historyAvailableFrom = produced;
     const orderEvents = byOrder.get(String(h.printavo_id)) ?? [];
-    const evidence = completionEvidence(h.status_name as string | null, orderEvents, options.method);
+    const evidence = workloadCompletion(h.status_name as string | null, orderEvents, options.method, due, today);
     const historical = !!evidence.day && evidence.day >= baselineStart && evidence.day <= baselineEnd;
     // Generic pickup cannot identify a method from the header. Classify its
     // groups before counting undated completion; never count it in both by default.
@@ -41,7 +45,7 @@ export async function loadProductionWorkload(options: WorkloadOptions) {
     if (historical || pending || classifyUndated) ids.push(String(h.printavo_id));
   }
   const orders = await loadReportOrders(parseReportFilters({ orderType: "invoice" }).filters, { includeMerch: true, orderIds: ids });
-  const report = productionWorkload(orders, events, options, events[0] ? observedDay(events[0].at) : null, today, extraUndated);
+  const report = productionWorkload(orders, events, options, historyAvailableFrom, today, extraUndated);
   const { finishedStatus } = await import("./productionWorkload");
   report.recognizedCompletionStatuses = [...new Set([...report.recognizedCompletionStatuses,
     ...statuses.rows.map(s => String(s.name)).filter(s => finishedStatus(s, options.method))])].sort();

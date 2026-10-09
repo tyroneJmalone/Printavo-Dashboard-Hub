@@ -178,7 +178,7 @@ const event = (orderId: string, at: string, oldStatus: string, newStatus: string
 const scheduled = (id: string, due: string | null, extra: Partial<ReportOrder> = {}) =>
   order(id, [group(id, 100, ["3 color", "1 color"])], { statusName: "PRINT - Ready 2 Go", productionDueAt: due, ...extra });
 
-test("workload separates future, overdue, undated, finished, and cancelled; calendar dates stay UTC", () => {
+test("workload separates future, past-produced, undated and finished; calendar dates stay UTC", () => {
   const r = productionWorkload([
     scheduled("1", "2026-10-07T00:00:00Z"), scheduled("2", "2026-10-06T00:00:00Z"),
     scheduled("3", null), scheduled("4", "2026-10-09", { statusName: "🏁 PRINT - Complete" }),
@@ -187,7 +187,7 @@ test("workload separates future, overdue, undated, finished, and cancelled; cale
   ], [], options, "2026-07-08", "2026-10-07");
   assert.equal(r.scheduled.totals.workUnits, 400);
   assert.equal(r.days[0].totals.imprints, 200);
-  assert.equal(r.overdue.totals.invoices, 1);
+  assert.equal(r.overdue.totals.invoices, 0);
   assert.equal(r.unscheduled.totals.invoices, 1);
   assert.equal(r.unclear.totals.invoices, 0);
   assert.equal(r.undatedCompletedInvoices, 2);
@@ -197,21 +197,23 @@ test("workload separates future, overdue, undated, finished, and cancelled; cale
   assert.equal(r.weeks[0].end, "2026-10-11");
 });
 
-test("generic pickup without history is completed but undated, classified by job rather than status", () => {
+test("invoice 22078 uses its past Production Date without status history and only counts Print", () => {
   const o = scheduled("22078", "2026-06-23", { statusName: "🏋️‍♀️ PICKED UP" });
-  const print = productionWorkload([o], [], options, null, "2026-10-07");
+  const juneOptions = { ...options, start: "2026-06-30", end: "2026-07-13" };
+  const print = productionWorkload([o], [], juneOptions, "2026-01-01", "2026-06-30");
   assert.equal(print.unclear.totals.invoices, 0);
   assert.equal(print.overdue.totals.invoices, 0);
-  assert.equal(print.history.totals.invoices, 0);
-  assert.equal(print.undatedCompletedInvoices, 1);
-  const emb = productionWorkload([o], [], { ...options, method: "embroidery" }, null, "2026-10-07");
+  assert.equal(print.history.totals.invoices, 1);
+  assert.equal(print.jobs[0].completedDate, "2026-06-23");
+  assert.equal(print.undatedCompletedInvoices, 0);
+  const emb = productionWorkload([o], [], { ...juneOptions, method: "embroidery" }, "2026-01-01", "2026-06-30");
   assert.equal(emb.undatedCompletedInvoices, 0);
   assert.equal(emb.history.totals.invoices, 0);
 });
 
-test("generic pickup history counts each actual method once and honors reopening", () => {
+test("mixed-method pickup counts each actual method once on Production Date, not status dates", () => {
   const o = order("1", [group("p", 10, ["2 color"]), group("e", 20, ["6k-8k"], "Embroidery")],
-    { statusName: "PICKED UP", productionDueAt: "2026-10-08" });
+    { statusName: "PICKED UP", productionDueAt: "2026-09-27" });
   const e = [
     event("1", "2026-09-28T15:00:00Z", "PRINT - Ready", "PRINT - Complete"),
     event("1", "2026-09-29T15:00:00Z", "PRINT - Complete", "PICKED UP"),
@@ -219,9 +221,9 @@ test("generic pickup history counts each actual method once and honors reopening
   const p = productionWorkload([o], e, options, "2026-07-08", "2026-10-07");
   const emb = productionWorkload([o], e, { ...options, method: "embroidery" }, "2026-07-08", "2026-10-07");
   assert.equal(p.history.totals.workUnits, 20);
-  assert.equal(p.jobs[0].completedDate, "2026-09-28");
+  assert.equal(p.jobs[0].completedDate, "2026-09-27");
   assert.equal(emb.history.totals.workUnits, 140000);
-  assert.equal(emb.jobs[0].completedDate, "2026-09-29");
+  assert.equal(emb.jobs[0].completedDate, "2026-09-27");
   assert.equal(completionEvidence("PRINT - Ready", e, "print").done, false);
   const oldPickup = [event("1", "2026-09-30T15:00:00Z", "PICKED UP", "PRINT - SHIPPED")];
   assert.equal(completionEvidence("PRINT - SHIPPED", oldPickup, "print").day, null);
@@ -254,18 +256,19 @@ test("classification uses matrices and unambiguous categories without overriding
   assert.equal(e.unclassifiedGroups, 2);
 });
 
-test("Complete then Picked Up then Shipped is one historical completion, in Eastern observation time", () => {
+test("Complete then Picked Up then Shipped does not replace or duplicate Production Date", () => {
   const e = [
     event("1", "2026-09-29T00:30:00Z", "PRINT - Ready", "🏁 PRINT - Complete"),
     event("1", "2026-09-30T16:00:00Z", "PRINT - Complete", "PRINT - PICKED UP"),
     event("1", "2026-10-01T16:00:00Z", "PRINT - PICKED UP", "PRINT - SHIPPED📦 "),
   ];
-  const r = productionWorkload([scheduled("1", "2026-10-08", { statusName: "PRINT - SHIPPED" })], e, options, "2026-07-08", "2026-10-07");
+  const r = productionWorkload([scheduled("1", "2026-09-29T00:00:00Z", { statusName: "PRINT - SHIPPED" })], e, options, "2026-07-08", "2026-10-07");
   assert.equal(r.history.totals.invoices, 1);
   assert.equal(r.history.totals.workUnits, 400);
-  assert.equal(r.jobs[0].completedDate, "2026-09-28");
+  assert.equal(r.jobs[0].completedDate, "2026-09-29");
   assert.equal(r.scheduled.totals.invoices, 0);
-  assert.equal(r.historyDays.find(d => d.start === "2026-09-28")?.totals.invoices, 1);
+  assert.equal(r.historyDays.find(d => d.start === "2026-09-29")?.totals.invoices, 1);
+  assert.equal(r.historyDays.find(d => d.start === "2026-09-28")?.totals.invoices, 0);
 });
 
 test("already complete old-value does not invent a completion date when later shipped", () => {
@@ -274,7 +277,7 @@ test("already complete old-value does not invent a completion date when later sh
   assert.equal(evidence.done, true); assert.equal(evidence.day, null);
 });
 
-test("completion is decoration-specific; reopening a finished method returns to pending without re-counting its history", () => {
+test("a rescheduled future job has no historical run inferred from status observations", () => {
   assert.equal(finishedStatus(" 🏁 MERCH - PRINT Pick/Pack COMPLETE ", "print"), true);
   assert.equal(finishedStatus(" 🏁 MERCH - EMB Pick/Pack COMPLETE ", "embroidery"), true);
   assert.equal(finishedStatus("EMB - DELIVERED🚚", "print"), false);
@@ -283,8 +286,29 @@ test("completion is decoration-specific; reopening a finished method returns to 
   const e = [event("1", "2026-09-28T15:00:00Z", "PRINT - Ready", "PRINT - Complete")];
   assert.equal(completionEvidence("EMB - Ready", e, "print").done, true);
   const r = productionWorkload([scheduled("1", "2026-10-08")], e, options, "2026-07-08", "2026-10-07");
-  assert.equal(r.scheduled.totals.invoices, 1); assert.equal(r.history.totals.invoices, 1);
+  assert.equal(r.scheduled.totals.invoices, 1); assert.equal(r.history.totals.invoices, 0);
   assert.equal(r.jobs.length, 1);
+});
+
+test("all past-dated invoices are produced regardless of status, but quotes and missing/today/future dates are not", () => {
+  const list = [
+    scheduled("1", "2026-09-28", { statusName: "PRINT - Ready" }),
+    scheduled("2", "2026-09-29", { statusName: "SHIPPED" }),
+    scheduled("3", "2026-09-30", { statusName: "Archived" }),
+    scheduled("4", "2026-09-30", { orderType: "quote" }),
+    scheduled("5", null), scheduled("6", "2026-10-07"), scheduled("7", "2026-10-08"),
+    scheduled("8", null, { statusName: "PICKED UP" }),
+  ];
+  const r = productionWorkload(list, [], options, "2020-01-01", "2026-10-07");
+  assert.equal(r.history.totals.invoices, 3);
+  assert.equal(r.history.totals.workUnits, 1200);
+  assert.equal(r.scheduled.totals.invoices, 2);
+  assert.equal(r.unscheduled.totals.invoices, 1);
+  assert.equal(r.unclear.totals.invoices, 0);
+  assert.equal(r.overdue.totals.invoices, 0);
+  assert.equal(r.undatedCompletedInvoices, 1);
+  assert.equal(r.historyCoversBaseline, true);
+  assert.deepEqual(r.history.jobIds, ["1", "2", "3"]);
 });
 
 test("Merch can roll into totals or be isolated/excluded without changing workload formulas", () => {

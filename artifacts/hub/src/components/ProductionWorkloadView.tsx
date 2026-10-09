@@ -168,8 +168,8 @@ export function ProductionWorkloadView({ method, setMethod, merch, setMerch }: {
         </div>
       ) : (
         <>
-          <section className="grid grid-cols-2 gap-3 md:grid-cols-5" data-testid="workload-summary">
-            {([["Scheduled in range", data.scheduled], ["Overdue", data.overdue], ["Unscheduled (no due date)", data.unscheduled], ["Unclear status", data.unclear]] as [string, ProductionWorkloadPeriod][]).map(([l, p]) => (
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="workload-summary">
+            {([["Scheduled in range", data.scheduled], ["Unscheduled (no due date)", data.unscheduled], ["Unclear status", data.unclear]] as [string, ProductionWorkloadPeriod][]).map(([l, p]) => (
               <button key={l} type="button" disabled={!p.jobIds.length} onClick={() => open({ label: l, jobIds: p.jobIds })} data-testid={`button-bucket-${p.key}`}
                 className="rounded-lg border border-slate-800 bg-slate-900/50 p-3 text-left transition-colors hover:border-emerald-700 disabled:cursor-default disabled:hover:border-slate-800">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{l}</div>
@@ -177,7 +177,7 @@ export function ProductionWorkloadView({ method, setMethod, merch, setMerch }: {
                 <div className="text-[11px] text-slate-400">{unit} · {num(p.totals.invoices)} invoices · {num(p.totals.imprints)} {method === "print" ? "imprints" : "applications"}{method === "embroidery" ? ` · ${num(p.locations)} locations` : ""}</div>
               </button>
             ))}
-            <Stat label={`Typical weekly output (${data.baselineWeeks} wk)`} hint="Observed completions average, not capacity">
+            <Stat label={`Typical weekly output (${data.baselineWeeks} wk)`} hint="Production-date average, not maximum capacity">
               {weeklyAvg !== null ? num(Math.round(weeklyAvg)) : <span className="text-sm text-amber-300">Not available</span>}
               <div className="text-[11px] font-normal text-slate-400">{fmtDate(data.baselineStart)} to {fmtDate(data.baselineEnd)}</div>
             </Stat>
@@ -185,16 +185,16 @@ export function ProductionWorkloadView({ method, setMethod, merch, setMerch }: {
 
           <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-3 text-[11px] text-slate-400 space-y-1">
             <p className="flex items-start gap-1.5"><Info size={12} className="mt-0.5 shrink-0" />
-              Typical observed output is a historic average, not capacity utilization. History uses the current invoice snapshot, attributed to the first observed transition into a recognized completion status (not an exact production timestamp); later shipping/delivery is not counted again.
-              {weeklyAvg === null && (data.historyCoversBaseline ? " Average withheld because some historic work units are unknown." : ` Average withheld: history is only available from ${fmtDate(data.historyAvailableFrom)}, which does not cover the full baseline.`)}
+              Historical output uses each invoice’s past Production Due date as its produced date, regardless of status. Today’s and future dates do not establish completed production. Totals use current invoice quantities; later pickup/shipping status changes do not add another production run. These averages are a reference, not maximum capacity.
+              {weeklyAvg === null && (data.historyCoversBaseline ? " Average withheld because some historic work units are unknown." : ` Average withheld: stored production dates begin ${fmtDate(data.historyAvailableFrom)}, which does not cover the full baseline.`)}
             </p>
-            <p>Recognized completion statuses: {data.recognizedCompletionStatuses.length ? data.recognizedCompletionStatuses.join(", ") : "none matched"}. Merch is classified per invoice (Chipply nickname, line flag, or current/history MERCH status).</p>
+            <p>For jobs without a past Production Due date, recognized completion statuses determine whether work is still pending, but do not supply a production date: {data.recognizedCompletionStatuses.length ? data.recognizedCompletionStatuses.join(", ") : "none matched"}. Merch is classified per invoice (Chipply nickname, line flag, or current/history MERCH status).</p>
             <p>Baseline history: <OpenBtn p={data.history} label={`${num(data.history.totals.invoices)} completed invoices`} onOpen={open} testId="button-open-history" /></p>
           </div>
 
           {(() => {
             const w: [number, string][] = ([
-              [data.undatedCompletedInvoices, "completed invoices — completion date unknown; excluded from dated output"],
+              [data.undatedCompletedInvoices, "completed-status invoices without a past Production Due date; excluded from historical output"],
               [data.excludedIncompleteInvoices, "invoices excluded because detail data is incomplete"],
               [data.unclassifiedGroups, "groups excluded for unknown or conflicting method"],
               [data.excludedQuantityGroups, "groups excluded for missing or invalid quantity"],
@@ -224,7 +224,7 @@ export function ProductionWorkloadView({ method, setMethod, merch, setMerch }: {
                     <th className="px-3 py-2 text-left">{grain === "day" ? "Due date" : "Week"}</th>
                     <th className="px-3 py-2 text-right">Invoices</th><th className="px-3 py-2 text-right">Qty</th>
                     <MetricHeads method={method} />
-                    <th className="px-3 py-2 text-right">Typical observed</th><th className="px-3 py-2 text-right">vs typical</th>
+                    <th className="px-3 py-2 text-right">Typical output</th><th className="px-3 py-2 text-right">vs typical</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -255,12 +255,12 @@ export function ProductionWorkloadView({ method, setMethod, merch, setMerch }: {
                 </tbody>
               </table>
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">Typical observed = average {unit} completed {grain === "day" ? "on the same weekday" : "per full Mon–Sun week"} over the baseline. Partial weeks are never compared with full-week output. Overdue and unscheduled work is shown separately above.</p>
+            <p className="mt-1 text-[11px] text-slate-500">Typical output = average {unit} produced {grain === "day" ? "on the same weekday" : "per full Mon–Sun week"} by Production Due date over the baseline. Partial weeks are never compared with full-week output. Past-dated invoices count as produced, not overdue; work without a date is shown separately above.</p>
           </section>
 
           {(data.historyWeeks.length > 0 || data.historyDays.length > 0) && (
             <details className="rounded-lg border border-slate-800 p-3">
-              <summary className="cursor-pointer text-sm font-semibold text-white" data-testid="toggle-history-weeks">Baseline history (observed completions)</summary>
+              <summary className="cursor-pointer text-sm font-semibold text-white" data-testid="toggle-history-weeks">Baseline history (Production Dates)</summary>
               <div className="mt-2 flex rounded-md border border-slate-700 bg-slate-900 p-0.5 w-fit" role="radiogroup" aria-label="History grouping">
                 {(["day", "week"] as const).map((g) => (
                   <button key={g} type="button" role="radio" aria-checked={histGrain === g} data-testid={`button-history-grain-${g}`} onClick={() => setHistGrain(g)}
@@ -303,7 +303,7 @@ export function ProductionWorkloadView({ method, setMethod, merch, setMerch }: {
                         <span className="rounded bg-slate-800 px-1.5 py-0.5 font-semibold uppercase tracking-wide text-slate-200">{j.disposition}</span>
                         <span>Status: <span className="text-slate-200">{j.status ?? "—"}</span></span>
                         <span>Due: <span className="text-slate-200">{fmtDate(j.dueDate)}</span></span>
-                        {j.completedDate && <span>Completed: <span className="text-slate-200">{fmtDate(j.completedDate)}</span>{j.completionStatus ? ` (${j.completionStatus})` : ""}</span>}
+                        {j.completedDate && <span>Produced (Production Due): <span className="text-slate-200">{fmtDate(j.completedDate)}</span></span>}
                         {j.merch && <span className="text-sky-300">Merch</span>}
                       </div>
                       <JobCard job={j.job} method={method} />
