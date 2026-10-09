@@ -103,6 +103,7 @@ test("incomplete invoices, quotes, unknown-method groups and invalid quantities 
   const unclassified = group("unknown", 10, ["1 color"]);
   unclassified.imprints[0].typeOfWork = null;
   unclassified.imprints[0].matrixName = null;
+  unclassified.lineItems[0].categoryName = null;
   const orders = [
     order("1", [group("a", 10, ["1 color"])], { detailSyncState: "incomplete" }),
     order("2", [group("b", 10, ["1 color"])], { orderType: "quote" }),
@@ -188,12 +189,69 @@ test("workload separates future, overdue, undated, finished, and cancelled; cale
   assert.equal(r.days[0].totals.imprints, 200);
   assert.equal(r.overdue.totals.invoices, 1);
   assert.equal(r.unscheduled.totals.invoices, 1);
-  assert.equal(r.unclear.totals.invoices, 1);
-  assert.equal(r.undatedCompletedInvoices, 1);
+  assert.equal(r.unclear.totals.invoices, 0);
+  assert.equal(r.undatedCompletedInvoices, 2);
   assert.equal(r.days.length, 14);
   assert.equal(r.historyWeeks.length, 4);
   assert.equal(r.weeks[0].start, "2026-10-07");
   assert.equal(r.weeks[0].end, "2026-10-11");
+});
+
+test("generic pickup without history is completed but undated, classified by job rather than status", () => {
+  const o = scheduled("22078", "2026-06-23", { statusName: "🏋️‍♀️ PICKED UP" });
+  const print = productionWorkload([o], [], options, null, "2026-10-07");
+  assert.equal(print.unclear.totals.invoices, 0);
+  assert.equal(print.overdue.totals.invoices, 0);
+  assert.equal(print.history.totals.invoices, 0);
+  assert.equal(print.undatedCompletedInvoices, 1);
+  const emb = productionWorkload([o], [], { ...options, method: "embroidery" }, null, "2026-10-07");
+  assert.equal(emb.undatedCompletedInvoices, 0);
+  assert.equal(emb.history.totals.invoices, 0);
+});
+
+test("generic pickup history counts each actual method once and honors reopening", () => {
+  const o = order("1", [group("p", 10, ["2 color"]), group("e", 20, ["6k-8k"], "Embroidery")],
+    { statusName: "PICKED UP", productionDueAt: "2026-10-08" });
+  const e = [
+    event("1", "2026-09-28T15:00:00Z", "PRINT - Ready", "PRINT - Complete"),
+    event("1", "2026-09-29T15:00:00Z", "PRINT - Complete", "PICKED UP"),
+  ];
+  const p = productionWorkload([o], e, options, "2026-07-08", "2026-10-07");
+  const emb = productionWorkload([o], e, { ...options, method: "embroidery" }, "2026-07-08", "2026-10-07");
+  assert.equal(p.history.totals.workUnits, 20);
+  assert.equal(p.jobs[0].completedDate, "2026-09-28");
+  assert.equal(emb.history.totals.workUnits, 140000);
+  assert.equal(emb.jobs[0].completedDate, "2026-09-29");
+  assert.equal(completionEvidence("PRINT - Ready", e, "print").done, false);
+  const oldPickup = [event("1", "2026-09-30T15:00:00Z", "PICKED UP", "PRINT - SHIPPED")];
+  assert.equal(completionEvidence("PRINT - SHIPPED", oldPickup, "print").day, null);
+  assert.equal(completionEvidence("PICKED UP", [], "embroidery").done, true);
+  assert.equal(completionEvidence("SHIPPED", [], "print").unclear, true);
+  assert.equal(finishedStatus("PRINT - PICKED UP", "embroidery"), false);
+});
+
+test("classification uses matrices and unambiguous categories without overriding mixed-method or Heat evidence", () => {
+  const fallback = group("category", 10, ["2 color"]);
+  fallback.imprints[0].typeOfWork = null;
+  fallback.imprints[0].matrixName = null;
+  const matrix = group("matrix", 20, ["6k-8k"], "Embroidery");
+  matrix.lineItems[0].categoryName = "Screen Printing";
+  matrix.imprints[0].typeOfWork = null;
+  const conflict = group("conflict", 30, ["2 color"]);
+  conflict.imprints[0].matrixName = "Embroidery";
+  const ambiguous = group("ambiguous", 40, ["2 color"]);
+  ambiguous.imprints[0].matrixName = null;
+  ambiguous.imprints[0].typeOfWork = null;
+  ambiguous.lineItems.push({ ...ambiguous.lineItems[0], categoryName: "Embroidery" });
+  const heat = group("heat", 5, ["2 color"], "Heat Transfer");
+  heat.lineItems[0].categoryName = "Screen Printing";
+  const o = order("1", [fallback, matrix, conflict, ambiguous, heat], { statusName: "PICKED UP" });
+  const p = decorationProduction([o], "print");
+  const e = decorationProduction([o], "embroidery");
+  assert.equal(p.summary.quantity, 10);
+  assert.equal(e.summary.quantity, 20);
+  assert.equal(p.unclassifiedGroups, 2);
+  assert.equal(e.unclassifiedGroups, 2);
 });
 
 test("Complete then Picked Up then Shipped is one historical completion, in Eastern observation time", () => {

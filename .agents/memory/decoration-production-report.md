@@ -62,6 +62,9 @@ daily/weekly production as a reference for intelligent scheduling and capacity.
 The user confirmed Printavo Production Due is the scheduled work date.
 Finished jobs move to decoration-specific Complete, Picked Up, Shipped, or
 Delivered statuses. MERCH PRINT Pick/Pack Complete is also finished production.
+Generic “Picked Up” also means completed; the user explicitly approved
+classifying its production methods by line-item categories and pricing matrices.
+This does not extend generic completion to Shipped, Delivered, or Complete.
 Merch must be included in production statistics, with the ability to isolate
 it or roll it into totals.
 
@@ -72,6 +75,10 @@ historically scheduled volume from verified completed output, and observed
 throughput from a proven capacity limit. Do not silently treat customer
 deadlines as scheduled work dates or whole-invoice completion as evidence of
 when each decoration method finished.
+For generic pickup, classify the actual groups rather than assigning the invoice
+to both methods from its status. Prefer location-level matrix/type evidence on
+mixed jobs; use unambiguous garment categories as fallback. Missing completion
+history remains undated, not a guessed completion on the production due date.
 
 Historical comparisons attribute a job/method once to its first observed
 completion transition, not again when it is picked up, shipped, or delivered.

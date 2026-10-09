@@ -16,8 +16,11 @@ export function matchesMethod(status: string | null, method: Method) {
   const s = normalize(status);
   return /\bmixed(?: deco)?\b/.test(s) || (method === "print" ? /\bprint\b/.test(s) : /\b(emb|embroidery)\b/.test(s));
 }
+export function genericPickedUp(status: string | null) {
+  return normalize(status) === "picked up";
+}
 export function finishedStatus(status: string | null, method: Method) {
-  return matchesMethod(status, method) && /\b(complete|picked up|shipped|delivered)\b/.test(normalize(status));
+  return genericPickedUp(status) || (matchesMethod(status, method) && /\b(complete|picked up|shipped|delivered)\b/.test(normalize(status)));
 }
 export function excludedStatus(status: string | null) {
   return /\b(dead|archive|archived|cancelled|canceled|void|outsourced)\b|\bstore (master|source)\b|\bmerch commitment\b/.test(normalize(status));
@@ -33,13 +36,13 @@ export function completionEvidence(status: string | null, events: CompletionEven
   let alreadyFinishedWithoutDate = false, lastMethodStatus: string | null = null;
   for (const e of events) {
     if (finishedStatus(e.oldStatus, method) && !day) alreadyFinishedWithoutDate = true;
-    if (!lastMethodStatus && matchesMethod(e.oldStatus, method)) lastMethodStatus = e.oldStatus;
-    if (matchesMethod(e.newStatus, method)) lastMethodStatus = e.newStatus;
+    if (!lastMethodStatus && (matchesMethod(e.oldStatus, method) || genericPickedUp(e.oldStatus))) lastMethodStatus = e.oldStatus;
+    if (matchesMethod(e.newStatus, method) || genericPickedUp(e.newStatus)) lastMethodStatus = e.newStatus;
     if (!day && !alreadyFinishedWithoutDate && finishedStatus(e.newStatus, method)) {
       day = observedDay(e.at); completionStatus = e.newStatus;
     }
   }
-  const current = matchesMethod(status, method) ? status : lastMethodStatus;
+  const current = matchesMethod(status, method) || genericPickedUp(status) ? status : lastMethodStatus;
   const done = finishedStatus(current, method);
   // A different method completing does not prove this method is still pending.
   const unclear = !done && !matchesMethod(status, method)

@@ -8,7 +8,7 @@ type Method = "print" | "embroidery";
 const normalized = (value: string | null | undefined) => (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
 
 /** Prefer explicit method evidence; never infer Print just from a color tier. */
-export function imprintMethod(imp: ReportImprint): Method | "heat" | null {
+export function imprintMethod(imp: ReportImprint, categories: (string | null)[] = []): Method | "heat" | null {
   const classify = (value: string): Method | "heat" | null => {
     if (/\b(heat|dtf|vinyl|transfer|sublimation)\b/.test(value)) return "heat";
     const embroidery = /\b(embroidery|embroidered|stitching)\b/.test(value);
@@ -19,7 +19,11 @@ export function imprintMethod(imp: ReportImprint): Method | "heat" | null {
   const matrix = classify(normalized(imp.matrixName));
   if (explicit && matrix && explicit !== matrix) return null;
   // Known Heat is deliberately excluded, not reassigned via garment category.
-  return explicit ?? matrix;
+  if (explicit || matrix) return explicit ?? matrix;
+  // Categories are fallback evidence only. A known location-level method
+  // takes precedence on mixed-method jobs; conflicting categories stay unknown.
+  const categoryMethods = [...new Set(categories.map(c => classify(normalized(c))).filter(c => c !== null))];
+  return categoryMethods.length === 1 ? categoryMethods[0] : null;
 }
 
 export function colorCount(tier: string | null): number | null {
@@ -73,7 +77,8 @@ export function decorationProduction(
     const groups: DecorationProductionGroup[] = [];
     for (const group of order.groups) {
       if (!group.imprints.length) { unassignedGroups++; continue; }
-      const classified = group.imprints.map(imprint => ({ imprint, method: imprintMethod(imprint) }));
+      const categories = group.lineItems.filter(li => li.items > 0 && !/\b(set[\s-]?up|digitizing|digitising)\b/i.test(li.categoryName ?? "")).map(li => li.categoryName);
+      const classified = group.imprints.map(imprint => ({ imprint, method: imprintMethod(imprint, categories) }));
       if (classified.some(i => i.method === null)) { unclassifiedGroups++; continue; }
       const imprints = classified.filter(i => i.method === method).map(i => i.imprint);
       if (!imprints.length) continue;

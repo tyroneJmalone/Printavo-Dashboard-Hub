@@ -194,7 +194,7 @@ export function ProductionWorkloadView({ method, setMethod, merch, setMerch }: {
 
           {(() => {
             const w: [number, string][] = ([
-              [data.undatedCompletedInvoices, "finished invoices excluded because no completion date was observed"],
+              [data.undatedCompletedInvoices, "completed invoices — completion date unknown; excluded from dated output"],
               [data.excludedIncompleteInvoices, "invoices excluded because detail data is incomplete"],
               [data.unclassifiedGroups, "groups excluded for unknown or conflicting method"],
               [data.excludedQuantityGroups, "groups excluded for missing or invalid quantity"],

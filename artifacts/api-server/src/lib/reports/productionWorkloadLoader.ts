@@ -2,7 +2,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { loadReportOrders, productionMerchSql } from "./dataset";
 import { parseReportFilters } from "./filters";
-import { addDays, monday, observedDay, completionEvidence, indexEvents, excludedStatus, merchMatches,
+import { addDays, monday, observedDay, completionEvidence, indexEvents, excludedStatus, merchMatches, genericPickedUp,
   productionWorkload, type CompletionEvent, type WorkloadOptions } from "./productionWorkload";
 
 /** Small invoice headers + change feed first; load heavy groups only for
@@ -29,11 +29,16 @@ export async function loadProductionWorkload(options: WorkloadOptions) {
   let extraUndated = 0;
   for (const h of headers.rows) {
     if (excludedStatus(h.status_name as string | null) || !merchMatches(Boolean(h.merch), options.merch)) continue;
-    const evidence = completionEvidence(h.status_name as string | null, byOrder.get(String(h.printavo_id)) ?? [], options.method);
+    const orderEvents = byOrder.get(String(h.printavo_id)) ?? [];
+    const evidence = completionEvidence(h.status_name as string | null, orderEvents, options.method);
     const historical = !!evidence.day && evidence.day >= baselineStart && evidence.day <= baselineEnd;
-    if (evidence.done && !evidence.day) extraUndated++;
+    // Generic pickup cannot identify a method from the header. Classify its
+    // groups before counting undated completion; never count it in both by default.
+    const classifyUndated = evidence.done && !evidence.day && (genericPickedUp(h.status_name as string | null)
+      || orderEvents.some(e => genericPickedUp(e.oldStatus) || genericPickedUp(e.newStatus)));
+    if (evidence.done && !evidence.day && !classifyUndated) extraUndated++;
     const pending = !evidence.done && (!h.due || String(h.due) <= options.end);
-    if (historical || pending) ids.push(String(h.printavo_id));
+    if (historical || pending || classifyUndated) ids.push(String(h.printavo_id));
   }
   const orders = await loadReportOrders(parseReportFilters({ orderType: "invoice" }).filters, { includeMerch: true, orderIds: ids });
   const report = productionWorkload(orders, events, options, events[0] ? observedDay(events[0].at) : null, today, extraUndated);
