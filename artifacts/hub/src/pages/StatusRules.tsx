@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { shadowedStatusRules } from "@/lib/statusRuleWarnings";
 import { AppShell } from "@/components/layout/AppShell";
 import { StatusSuggestionsCard } from "@/components/purchasing/StatusSuggestionsCard";
 import {
@@ -283,6 +284,7 @@ export default function StatusRules() {
   });
 
   const rules = data?.rules ?? [];
+  const shadowed = shadowedStatusRules(rules);
 
   const move = (index: number, dir: -1 | 1) => {
     if (reorder.isPending) return;
@@ -372,6 +374,13 @@ export default function StatusRules() {
                         <div className="text-[11px] text-slate-500">
                           {ruleConditions(r)}
                         </div>
+                        {shadowed.has(r.id) && (
+                          <p className="mt-1 text-xs text-amber-400" role="status">
+                            This rule cannot win: rule {rules.findIndex((rule) => rule.id === shadowed.get(r.id)!.id) + 1}
+                            {" "}({shadowed.get(r.id)!.targetStatusName}) matches first.
+                            Review the order and move the more specific rule above it if intended.
+                          </p>
+                        )}
                       </div>
                       <span className="text-xs text-slate-500">→</span>
                       <span className="px-2 py-1 rounded text-[11px] font-semibold bg-[#059669]/10 border border-[#059669]/25 text-[#10b981]">
