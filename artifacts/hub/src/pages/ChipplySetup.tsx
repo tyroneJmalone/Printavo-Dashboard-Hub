@@ -13,8 +13,8 @@ import { ArrowLeft, ArrowRight, Check, CircleDashed, Loader2, LogOut, RefreshCcw
 
 const OUTCOME_HELP: Record<string, string> = {
   ambiguous: "More than one Printavo invoice could fit these rows. Pick the right invoice, with a reason, in the reconciliation table below.",
-  "quantity-mismatch": "Chipply and Printavo quantities disagree for these rows. Compare sizes and quantities on the invoice; sync again if Printavo was edited recently.",
-  incomplete: "The matching invoice's line details have not fully synced. Run the sync in step 4, then Refresh facts.",
+  "quantity-mismatch": "The complete process group differs, not necessarily every source row. Expand Garment quantities by process below to see missing, extra, or changed style/color/size combinations.",
+  incomplete: "The matching invoice has stale, incomplete, or invalid quantity details. Inspect Garment quantities by process below; run the sync in step 4, then Refresh facts.",
   unmatched: "No invoice for this event carries the matching process suffix in its nickname (for example \"<event> <store> EMB: ...\"). Check the existing invoice nicknames in Printavo and sync before considering anything new.",
   unverified: "Hub has no verified production status for these rows yet. This usually clears after invoices sync and reach a recognized status.",
 };

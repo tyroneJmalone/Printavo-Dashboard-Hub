@@ -127,6 +127,37 @@ components:
       properties:
         invoiceId: { type: string }
         visualId: { type: [integer, "null"] }
+    ChipplyQuantityRow:
+      type: object
+      required: [style, color, size, expected, actual, delta, result]
+      properties:
+        style: { type: string }
+        color: { type: string }
+        size: { type: string }
+        expected: { type: integer }
+        actual: { type: integer }
+        delta: { type: integer, description: "Mirrored Printavo minus Chipply" }
+        result: { type: string, enum: [matched, missing, extra, different] }
+    ChipplyQuantityCandidate:
+      type: object
+      required: [invoiceId, visualId, detailSyncedAt, sourceUpdatedAt, state, rows, issues, oneSizeNotes]
+      properties:
+        invoiceId: { type: string }
+        visualId: { type: [integer, "null"] }
+        detailSyncedAt: { type: [string, "null"] }
+        sourceUpdatedAt: { type: [string, "null"] }
+        state: { type: string, enum: [matched, different, incomplete, stale] }
+        rows: { type: array, items: { $ref: "#/components/schemas/ChipplyQuantityRow" } }
+        issues: { type: array, items: { type: string } }
+        oneSizeNotes: { type: array, items: { type: string } }
+    ChipplyProcessComparison:
+      type: object
+      required: [processKey, processNames, state, candidates]
+      properties:
+        processKey: { type: string }
+        processNames: { type: array, items: { type: string } }
+        state: { type: string, enum: [single, ambiguous, unmatched] }
+        candidates: { type: array, items: { $ref: "#/components/schemas/ChipplyQuantityCandidate" } }
     ChipplyDataLine:
       type: object
       required: [rowOrdinal, orderNumber, orderDate, processName, plannedMethod, style, color, size, productName, vendor, quantity, itemTotalCents, unitCents, reconciliation]
@@ -147,7 +178,7 @@ components:
         reconciliation: { $ref: "#/components/schemas/ChipplyDataReconciliation" }
     ChipplyDataPreview:
       type: object
-      required: [previewId, expiresAt, salesOrder, storeName, sourceHash, existingStore, detectedInvoiceCount, currentSnapshotId, requiresReplacement, summary, lines, warnings]
+      required: [previewId, expiresAt, salesOrder, storeName, sourceHash, existingStore, detectedInvoiceCount, currentSnapshotId, requiresReplacement, summary, lines, processComparisons, warnings]
       properties:
         previewId: { type: string, format: uuid }
         expiresAt: { type: string, format: date-time }
@@ -163,6 +194,7 @@ components:
         detectedInvoiceCount: { type: integer }
         currentSnapshotId: { type: [string, "null"] }
         requiresReplacement: { type: boolean }
+        processComparisons: { type: array, items: { $ref: "#/components/schemas/ChipplyProcessComparison" } }
         summary: { $ref: "#/components/schemas/ChipplyDataSummary" }
         lines: { type: array, items: { $ref: "#/components/schemas/ChipplyDataLine" } }
         warnings: { type: array, items: { type: string } }
@@ -186,7 +218,7 @@ components:
         actor: { type: string }
     ChipplyDataDetail:
       type: object
-      required: [storeId, snapshotId, sourceHash, salesOrder, storeName, sourceName, importedAt, summary, lines, overrides, versions, warnings]
+      required: [storeId, snapshotId, sourceHash, salesOrder, storeName, sourceName, importedAt, summary, lines, processComparisons, overrides, versions, warnings]
       properties:
         storeId: { type: string, format: uuid }
         snapshotId: { type: string, format: uuid }
@@ -195,6 +227,7 @@ components:
         storeName: { type: string }
         sourceName: { type: string }
         importedAt: { type: string, format: date-time }
+        processComparisons: { type: array, items: { $ref: "#/components/schemas/ChipplyProcessComparison" } }
         summary: { $ref: "#/components/schemas/ChipplyDataSummary" }
         lines: { type: array, items: { $ref: "#/components/schemas/ChipplyDataLine" } }
         overrides: { type: array, items: { $ref: "#/components/schemas/ChipplyDataOverride" } }

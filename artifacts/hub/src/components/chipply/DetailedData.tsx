@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ProcessComparisons } from "./ProcessComparison";
+import type { ChipplyProcessComparison } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getListChipplyStoresQueryKey, getListDetectedChipplyStoresQueryKey, getGetChipplyStoreQueryKey, getGetChipplySetupQueryKey, type ChipplyDataReconciliation } from "@workspace/api-client-react";
 
@@ -18,11 +20,13 @@ interface Line {
   reconciliation: ChipplyDataReconciliation;
 }
 interface Preview {
+  processComparisons: ChipplyProcessComparison[];
   previewId: string; expiresAt: string; salesOrder: string; storeName: string; sourceHash: string;
   existingStore: { id: string; storeName: string } | null; detectedInvoiceCount: number;
   currentSnapshotId: string | null; requiresReplacement: boolean; summary: Summary; lines: Line[]; warnings: string[];
 }
 interface Detail {
+  processComparisons: ChipplyProcessComparison[];
   storeId: string; snapshotId: string; sourceHash: string; salesOrder: string; storeName: string;
   sourceName: string; importedAt: string; summary: Summary; lines: Line[]; warnings: string[];
   overrides: { rowOrdinal: number; invoiceId: string; reason: string; actor: string; createdAt: string }[];
@@ -125,6 +129,7 @@ export function ImportReview({ expectedStoreId, onSaved, onBusyChange }: { expec
       <Totals summary={preview.summary} />
       {preview.warnings.map((warning, i) => <p key={i} className="text-xs text-amber-300">{warning}</p>)}
       <Lines lines={preview.lines} />
+      <ProcessComparisons comparisons={preview.processComparisons ?? []} />
       {preview.requiresReplacement && <label className="flex gap-2 rounded border border-amber-800 p-3 text-sm text-amber-200"><input type="checkbox" checked={replace} onChange={e => setReplace(e.target.checked)} />I authorize replacing this store’s current detailed snapshot if the file differs. Prior versions remain in history; an identical import creates no duplicate.</label>}
       <p className="text-xs text-slate-400">Confirming saves this reviewed snapshot locally in Hub. It does not modify Printavo invoices or categories.</p>
       <Button disabled={confirm.isPending || (preview.requiresReplacement && !replace)} onClick={() => confirm.mutate()}>{confirm.isPending ? "Saving…" : "Confirm and save to Hub"}</Button>
@@ -165,6 +170,7 @@ export function DetailedStoreData({ storeId, onBusyChange }: { storeId: string; 
         return <div key={kind} className="rounded border border-slate-700 p-3"><h3 className="text-sm font-semibold">{kind === "plannedMethod" ? "Planned process" : "Verified actual process"} · Chipply line sales</h3>{[...groups].map(([name, value]) => <div key={name} className="flex justify-between gap-3 py-1 text-xs"><span>{name}</span><span>{value.quantity} units · {money(value.sales)}</span></div>)}</div>;
       })}</div>
       {data.warnings.map((warning, i) => <p key={i} className="text-xs text-amber-300">{warning}</p>)}
+      <ProcessComparisons comparisons={data.processComparisons ?? []} />
       <Lines lines={data.lines} onReview={line => { setReview(line); setReviewSnapshot(data.snapshotId); setInvoiceId(line.reconciliation.invoiceId ?? ""); setReason(""); save.reset(); }} />
       <details><summary className="cursor-pointer text-sm text-emerald-400">Source versions & manual review history</summary><div className="space-y-2 pt-2 text-xs">{data.versions.map(version => <p key={version.id} className="break-all">{version.sourceName} · {new Date(version.createdAt).toLocaleString()} · {version.sourceHash}{version.id === data.snapshotId ? " · Current" : ""}</p>)}{data.overrides.map((override, i) => <p key={i}>Row {override.rowOrdinal} → invoice {override.invoiceId} · {override.reason} · {override.actor} · {new Date(override.createdAt).toLocaleString()}</p>)}</div></details>
     </>}

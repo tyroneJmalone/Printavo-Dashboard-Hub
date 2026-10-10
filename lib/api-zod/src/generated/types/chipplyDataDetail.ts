@@ -9,6 +9,7 @@ import type { ChipplyDataLine } from './chipplyDataLine';
 import type { ChipplyDataOverride } from './chipplyDataOverride';
 import type { ChipplyDataSummary } from './chipplyDataSummary';
 import type { ChipplyDataVersion } from './chipplyDataVersion';
+import type { ChipplyProcessComparison } from './chipplyProcessComparison';
 
 export interface ChipplyDataDetail {
   storeId: string;
@@ -18,6 +19,7 @@ export interface ChipplyDataDetail {
   storeName: string;
   sourceName: string;
   importedAt: Date;
+  processComparisons: ChipplyProcessComparison[];
   summary: ChipplyDataSummary;
   lines: ChipplyDataLine[];
   overrides: ChipplyDataOverride[];

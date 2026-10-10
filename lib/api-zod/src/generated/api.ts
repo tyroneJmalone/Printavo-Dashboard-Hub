@@ -282,6 +282,29 @@ export const PreviewChipplyDataResponse = zod.object({
   "detectedInvoiceCount": zod.number(),
   "currentSnapshotId": zod.string().nullable(),
   "requiresReplacement": zod.boolean(),
+  "processComparisons": zod.array(zod.object({
+  "processKey": zod.string(),
+  "processNames": zod.array(zod.string()),
+  "state": zod.enum(['single', 'ambiguous', 'unmatched']),
+  "candidates": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "detailSyncedAt": zod.string().nullable(),
+  "sourceUpdatedAt": zod.string().nullable(),
+  "state": zod.enum(['matched', 'different', 'incomplete', 'stale']),
+  "rows": zod.array(zod.object({
+  "style": zod.string(),
+  "color": zod.string(),
+  "size": zod.string(),
+  "expected": zod.number(),
+  "actual": zod.number(),
+  "delta": zod.number().describe('Mirrored Printavo minus Chipply'),
+  "result": zod.enum(['matched', 'missing', 'extra', 'different'])
+})),
+  "issues": zod.array(zod.string()),
+  "oneSizeNotes": zod.array(zod.string())
+}))
+})),
   "summary": zod.object({
   "lineCount": zod.number(),
   "orderCount": zod.number(),
@@ -372,6 +395,29 @@ export const GetChipplyDataDetailResponse = zod.object({
   "storeName": zod.string(),
   "sourceName": zod.string(),
   "importedAt": zod.coerce.date(),
+  "processComparisons": zod.array(zod.object({
+  "processKey": zod.string(),
+  "processNames": zod.array(zod.string()),
+  "state": zod.enum(['single', 'ambiguous', 'unmatched']),
+  "candidates": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "detailSyncedAt": zod.string().nullable(),
+  "sourceUpdatedAt": zod.string().nullable(),
+  "state": zod.enum(['matched', 'different', 'incomplete', 'stale']),
+  "rows": zod.array(zod.object({
+  "style": zod.string(),
+  "color": zod.string(),
+  "size": zod.string(),
+  "expected": zod.number(),
+  "actual": zod.number(),
+  "delta": zod.number().describe('Mirrored Printavo minus Chipply'),
+  "result": zod.enum(['matched', 'missing', 'extra', 'different'])
+})),
+  "issues": zod.array(zod.string()),
+  "oneSizeNotes": zod.array(zod.string())
+}))
+})),
   "summary": zod.object({
   "lineCount": zod.number(),
   "orderCount": zod.number(),
@@ -476,6 +522,29 @@ export const ReviewChipplyDataMatchResponse = zod.object({
   "storeName": zod.string(),
   "sourceName": zod.string(),
   "importedAt": zod.coerce.date(),
+  "processComparisons": zod.array(zod.object({
+  "processKey": zod.string(),
+  "processNames": zod.array(zod.string()),
+  "state": zod.enum(['single', 'ambiguous', 'unmatched']),
+  "candidates": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable(),
+  "detailSyncedAt": zod.string().nullable(),
+  "sourceUpdatedAt": zod.string().nullable(),
+  "state": zod.enum(['matched', 'different', 'incomplete', 'stale']),
+  "rows": zod.array(zod.object({
+  "style": zod.string(),
+  "color": zod.string(),
+  "size": zod.string(),
+  "expected": zod.number(),
+  "actual": zod.number(),
+  "delta": zod.number().describe('Mirrored Printavo minus Chipply'),
+  "result": zod.enum(['matched', 'missing', 'extra', 'different'])
+})),
+  "issues": zod.array(zod.string()),
+  "oneSizeNotes": zod.array(zod.string())
+}))
+})),
   "summary": zod.object({
   "lineCount": zod.number(),
   "orderCount": zod.number(),

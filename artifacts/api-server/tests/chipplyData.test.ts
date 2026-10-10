@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import ExcelJS from "exceljs";
 import { cents, parseDataCsv, parseDataRows } from "../src/lib/chipply/dataImport";
 import { parseCsvRows } from "../src/lib/chipply/parseCsv";
-import { reconcileData, type MirrorInvoice } from "../src/lib/chipply/dataReconciliation";
+import { reconcileData, compareQuantities, compareProcesses, type MirrorInvoice } from "../src/lib/chipply/dataReconciliation";
 import { parseDataUpload } from "../src/lib/chipply/dataUpload";
 import { confirmChipplyData } from "../src/lib/chipply/dataService";
 const csv = readFileSync("../../attached_assets/0_Fuel_Summer_26_Data_Export_1790655144068.csv", "utf8");
@@ -128,6 +128,54 @@ test("manual review selects candidate but cannot bypass quantity coverage", () =
   const override = [{ rowOrdinal: line.rowOrdinal, invoiceId: "123", actor: "staff", reason: "Confirmed matching process", createdAt: "2026-07-02" }];
   assert.equal(reconcileData(one, "553498", [mirror, { ...mirror, invoiceId: "456" }], override)[0].reconciliation.outcome, "reviewed");
   assert.equal(reconcileData(one, "553498", [{ ...mirror, items: [] }], override)[0].reconciliation.actualMethod, null);
+});
+test("process diagnostics show exact size differences even with equal grand totals", () => {
+  const source = [{ ...line, style: "G-500", color: "Navy", size: "M", quantity: 2 }];
+  const invoice = { ...mirror, items: [{ style: "g500", color: "navy", quantity: 2, sizes: [{ size: "size_m", count: 1 }, { size: "size_l", count: 1 }] }] };
+  const comparison = compareQuantities(source, invoice);
+  assert.equal(comparison.state, "different");
+  assert.deepEqual(comparison.rows, [
+    { style: "g500", color: "navy", size: "l", expected: 0, actual: 1, delta: 1, result: "extra" },
+    { style: "g500", color: "navy", size: "m", expected: 2, actual: 1, delta: -1, result: "different" },
+  ]);
+  assert.equal(reconcileData(source, "553498", [invoice])[0].reconciliation.outcome, "quantity-mismatch");
+});
+test("diagnostics retain extra products, missing colors, and generic Other", () => {
+  const source = [{ ...line, style: "G500", color: "Navy", size: "M", quantity: 1 }];
+  for (const change of [{ style: "G501", color: "Navy", size: "size_m" }, { style: "G500", color: "Blue", size: "size_m" }, { style: "G500", color: "Navy", size: "size_other" }]) {
+    const comparison = compareQuantities(source, { ...mirror, items: [{ ...change, quantity: 1, sizes: [{ size: change.size, count: 1 }] }] });
+    assert.equal(comparison.state, "different");
+    assert.deepEqual(comparison.rows.map(row => row.result).sort(), ["extra", "missing"]);
+  }
+});
+test("one-size quantity differences retain the narrow evidence note", () => {
+  const source = [{ ...line, style: "CAP", color: "Black", size: "Adjustable", quantity: 2 }];
+  const comparison = compareQuantities(source, { ...mirror, items: [{ style: "CAP", color: "Black", quantity: 1, sizes: [{ size: "size_other", count: 1 }] }] });
+  assert.equal(comparison.state, "different");
+  assert.equal(comparison.rows[0].delta, -1);
+  assert.equal(comparison.rows[0].size, "adjustable");
+  assert.equal(comparison.oneSizeNotes.length, 1);
+});
+test("invalid breakdowns and stale mirror evidence are not confirmed discrepancies", () => {
+  for (const sizes of [[], [{ size: "size_m", count: -1 }], [{ size: "size_m", count: 0.5 }], [{ size: "", count: 1 }]]) {
+    const invoice = { ...mirror, items: [{ ...mirror.items[0], sizes }] };
+    assert.equal(compareQuantities(one, invoice).state, "incomplete");
+    assert.ok(compareQuantities(one, invoice).issues.length);
+    assert.equal(reconcileData(one, "553498", [invoice])[0].reconciliation.outcome, "incomplete");
+  }
+  assert.equal(compareQuantities(one, { ...mirror, detailSyncedAt: "2020-01-01", syncedAt: "2026-01-01" }).state, "stale");
+  assert.equal(compareQuantities(one, { ...mirror, detailSyncedAt: null }).state, "stale");
+});
+test("process comparisons expose candidate links but never combine split invoices", () => {
+  const source = [{ ...line, quantity: 2 }];
+  const invoices = [{ ...mirror, visualId: 22251 }, { ...mirror, invoiceId: "second", visualId: 22252 }];
+  const [group] = compareProcesses(source, "553498", invoices);
+  assert.equal(group.state, "ambiguous");
+  assert.equal(group.candidates.length, 2);
+  assert.deepEqual(group.candidates.map(c => c.visualId), [22251, 22252]);
+  assert.ok(group.candidates.every(c => c.state === "different" && c.rows[0].delta === -1));
+  assert.equal(reconcileData(source, "553498", invoices)[0].reconciliation.outcome, "ambiguous");
+  assert.equal(compareProcesses(source, "999999", invoices)[0].state, "unmatched");
 });
 test("XLSX import has CSV parity and rejects formula cells", async () => {
   const rows = parseCsvRows(csv);

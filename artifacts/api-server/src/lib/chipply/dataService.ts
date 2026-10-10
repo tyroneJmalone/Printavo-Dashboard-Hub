@@ -1,6 +1,6 @@
 import { pool } from "@workspace/db";
 import type { ParsedData } from "./dataImport";
-import { reconcileData, type MirrorInvoice, type DataOverride } from "./dataReconciliation";
+import { reconcileData, compareProcesses, type MirrorInvoice, type DataOverride } from "./dataReconciliation";
 
 export async function loadDataMirror(event: string): Promise<MirrorInvoice[]> {
   const result = await pool.query(`SELECT o.printavo_id AS "invoiceId",o.visual_id AS "visualId",o.nickname,o.status_name AS "statusName",
@@ -26,6 +26,7 @@ export async function getChipplyDataDetail(storeId: string) {
     storeId, snapshotId: row.id as string, sourceHash: parsed.sourceHash, salesOrder: parsed.salesOrder,
     storeName: parsed.storeName, sourceName: row.source_name as string, importedAt: row.created_at,
     summary: parsed.summary, lines: reconcileData(parsed.lines, parsed.salesOrder, invoices, review.rows as DataOverride[]),
+    processComparisons: compareProcesses(parsed.lines, parsed.salesOrder, invoices),
     overrides: review.rows as DataOverride[], versions: history.rows,
     warnings: ["Chipply dollars are separate from Printavo invoice revenue.", "Combined includes Product Price and Process Price; do not add them again.", "Fundraising is not net profit.", "Quantity verification uses current mirrored detail, not a live Printavo fetch."],
   };
@@ -53,6 +54,7 @@ export async function previewChipplyData(parsed: ParsedData, actor: string, sour
     detectedInvoiceCount: invoices.length, currentSnapshotId: store?.snapshot_id ?? null,
     requiresReplacement: !!store?.snapshot_id, summary: parsed.summary,
     lines: reconcileData(parsed.lines, parsed.salesOrder, invoices),
+    processComparisons: compareProcesses(parsed.lines, parsed.salesOrder, invoices),
     warnings: ["This is a complete snapshot, not a delta. Confirming replacement removes absent lines from current totals while retaining previous versions.", "Buyer names, contacts, addresses and free-text answers are not retained.", "Fundraising is not net profit; Combined is not additive with Product/Process Price."] };
 }
 export async function confirmChipplyData(previewId: string, actor: string, replaceCurrent: boolean) {

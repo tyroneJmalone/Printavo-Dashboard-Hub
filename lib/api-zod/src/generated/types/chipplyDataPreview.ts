@@ -8,6 +8,7 @@
 import type { ChipplyDataLine } from './chipplyDataLine';
 import type { ChipplyDataPreviewExistingStore } from './chipplyDataPreviewExistingStore';
 import type { ChipplyDataSummary } from './chipplyDataSummary';
+import type { ChipplyProcessComparison } from './chipplyProcessComparison';
 
 export interface ChipplyDataPreview {
   previewId: string;
@@ -21,6 +22,7 @@ export interface ChipplyDataPreview {
   /** @nullable */
   currentSnapshotId: string | null;
   requiresReplacement: boolean;
+  processComparisons: ChipplyProcessComparison[];
   summary: ChipplyDataSummary;
   lines: ChipplyDataLine[];
   warnings: string[];

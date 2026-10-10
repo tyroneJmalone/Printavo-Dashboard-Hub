@@ -95,6 +95,67 @@ export type ChipplyDataPreviewExistingStore = {
   storeName: string;
 } | null;
 
+export type ChipplyProcessComparisonState = typeof ChipplyProcessComparisonState[keyof typeof ChipplyProcessComparisonState];
+
+
+export const ChipplyProcessComparisonState = {
+  single: 'single',
+  ambiguous: 'ambiguous',
+  unmatched: 'unmatched',
+} as const;
+
+export type ChipplyQuantityCandidateState = typeof ChipplyQuantityCandidateState[keyof typeof ChipplyQuantityCandidateState];
+
+
+export const ChipplyQuantityCandidateState = {
+  matched: 'matched',
+  different: 'different',
+  incomplete: 'incomplete',
+  stale: 'stale',
+} as const;
+
+export type ChipplyQuantityRowResult = typeof ChipplyQuantityRowResult[keyof typeof ChipplyQuantityRowResult];
+
+
+export const ChipplyQuantityRowResult = {
+  matched: 'matched',
+  missing: 'missing',
+  extra: 'extra',
+  different: 'different',
+} as const;
+
+export interface ChipplyQuantityRow {
+  style: string;
+  color: string;
+  size: string;
+  expected: number;
+  actual: number;
+  /** Mirrored Printavo minus Chipply */
+  delta: number;
+  result: ChipplyQuantityRowResult;
+}
+
+export interface ChipplyQuantityCandidate {
+  invoiceId: string;
+  /** @nullable */
+  visualId: number | null;
+  /** @nullable */
+  detailSyncedAt: string | null;
+  /** @nullable */
+  sourceUpdatedAt: string | null;
+  state: ChipplyQuantityCandidateState;
+  rows: ChipplyQuantityRow[];
+  issues: string[];
+  oneSizeNotes: string[];
+}
+
+export interface ChipplyProcessComparison {
+  processKey: string;
+  processNames: string[];
+  state: ChipplyProcessComparisonState;
+  candidates: ChipplyQuantityCandidate[];
+}
+
 export interface ChipplyDataPreview {
   previewId: string;
   expiresAt: string;
@@ -107,6 +168,7 @@ export interface ChipplyDataPreview {
   /** @nullable */
   currentSnapshotId: string | null;
   requiresReplacement: boolean;
+  processComparisons: ChipplyProcessComparison[];
   summary: ChipplyDataSummary;
   lines: ChipplyDataLine[];
   warnings: string[];
@@ -136,6 +198,7 @@ export interface ChipplyDataDetail {
   storeName: string;
   sourceName: string;
   importedAt: string;
+  processComparisons: ChipplyProcessComparison[];
   summary: ChipplyDataSummary;
   lines: ChipplyDataLine[];
   overrides: ChipplyDataOverride[];
