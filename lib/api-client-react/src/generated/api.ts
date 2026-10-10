@@ -446,6 +446,7 @@ import type {
   SetAdminPinRequest,
   SetCatalogColorFamily200,
   SetCatalogTagOverride200,
+  SetVendorShippingTermsRequest,
   ShippingError,
   ShippingListCarriers200Item,
   SorterError,
@@ -499,6 +500,7 @@ import type {
   VendorOrdersListResponse,
   VendorShipTo,
   VendorShipToResponse,
+  VendorShippingTermsResponse,
   VendorSubmitRequest,
   VendorSubmitResult,
   VoiceProfileRecord,
@@ -10311,6 +10313,142 @@ export const useRefreshActiveVendorOrders = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getRefreshActiveVendorOrdersMutationOptions(options));
+    }
+
+export const getGetVendorShippingTermsUrl = (vendor: 'sanmar' | 'ss',) => {
+
+
+
+
+  return `/api/purchasing/shipping-terms/${vendor}`
+}
+
+export const getVendorShippingTerms = async (vendor: 'sanmar' | 'ss', options?: RequestInit): Promise<VendorShippingTermsResponse> => {
+
+  return customFetch<VendorShippingTermsResponse>(getGetVendorShippingTermsUrl(vendor),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVendorShippingTermsQueryKey = (vendor: 'sanmar' | 'ss',) => {
+    return [
+    `/api/purchasing/shipping-terms/${vendor}`
+    ] as const;
+    }
+
+
+export const getGetVendorShippingTermsQueryOptions = <TData = Awaited<ReturnType<typeof getVendorShippingTerms>>, TError = ErrorType<unknown>>(vendor: 'sanmar' | 'ss', options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVendorShippingTerms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVendorShippingTermsQueryKey(vendor);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVendorShippingTerms>>> = ({ signal }) => getVendorShippingTerms(vendor, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: vendor !== null && vendor !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVendorShippingTerms>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVendorShippingTermsQueryResult = NonNullable<Awaited<ReturnType<typeof getVendorShippingTerms>>>
+export type GetVendorShippingTermsQueryError = ErrorType<unknown>
+
+
+
+export function useGetVendorShippingTerms<TData = Awaited<ReturnType<typeof getVendorShippingTerms>>, TError = ErrorType<unknown>>(
+ vendor: 'sanmar' | 'ss', options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVendorShippingTerms>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVendorShippingTermsQueryOptions(vendor,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetVendorShippingTermsUrl = (vendor: 'sanmar' | 'ss',) => {
+
+
+
+
+  return `/api/purchasing/shipping-terms/${vendor}`
+}
+
+export const setVendorShippingTerms = async (vendor: 'sanmar' | 'ss',
+    setVendorShippingTermsRequest: SetVendorShippingTermsRequest, options?: RequestInit): Promise<VendorShippingTermsResponse> => {
+
+  return customFetch<VendorShippingTermsResponse>(getSetVendorShippingTermsUrl(vendor),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setVendorShippingTermsRequest)
+  }
+);}
+
+
+
+
+export const getSetVendorShippingTermsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setVendorShippingTerms>>, TError,{vendor: 'sanmar' | 'ss';data: BodyType<SetVendorShippingTermsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setVendorShippingTerms>>, TError,{vendor: 'sanmar' | 'ss';data: BodyType<SetVendorShippingTermsRequest>}, TContext> => {
+
+const mutationKey = ['setVendorShippingTerms'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setVendorShippingTerms>>, {vendor: 'sanmar' | 'ss';data: BodyType<SetVendorShippingTermsRequest>}> = (props) => {
+          const {vendor,data} = props ?? {};
+
+          return  setVendorShippingTerms(vendor,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetVendorShippingTermsMutationResult = NonNullable<Awaited<ReturnType<typeof setVendorShippingTerms>>>
+    export type SetVendorShippingTermsMutationBody = BodyType<SetVendorShippingTermsRequest>
+    export type SetVendorShippingTermsMutationError = ErrorType<void>
+
+    export const useSetVendorShippingTerms = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setVendorShippingTerms>>, TError,{vendor: 'sanmar' | 'ss';data: BodyType<SetVendorShippingTermsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setVendorShippingTerms>>,
+        TError,
+        {vendor: 'sanmar' | 'ss';data: BodyType<SetVendorShippingTermsRequest>},
+        TContext
+      > => {
+      return useMutation(getSetVendorShippingTermsMutationOptions(options));
     }
 
 export const getGetCarrierTrackingSettingsUrl = () => {

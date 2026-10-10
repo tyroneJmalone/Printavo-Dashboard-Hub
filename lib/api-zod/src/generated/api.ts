@@ -6352,6 +6352,135 @@ export const RefreshActiveVendorOrdersResponse = zod.object({
 })
 
 
+export const GetVendorShippingTermsParams = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss'])
+})
+
+export const getVendorShippingTermsResponseTermsOneAccountLabelMax = 120;
+
+export const getVendorShippingTermsResponseTermsOneThresholdMin = 0;
+export const getVendorShippingTermsResponseTermsOneThresholdMax = 1000000;
+
+export const getVendorShippingTermsResponseTermsOneShippingMethodMax = 200;
+
+export const getVendorShippingTermsResponseTermsOneExcludedBrandsItemMax = 120;
+
+export const getVendorShippingTermsResponseTermsOneExcludedBrandsMax = 100;
+
+export const getVendorShippingTermsResponseTermsOneExcludedStylesItemMax = 120;
+
+export const getVendorShippingTermsResponseTermsOneExcludedStylesMax = 100;
+
+export const getVendorShippingTermsResponseTermsOneOtherConditionsMax = 2000;
+
+export const getVendorShippingTermsResponseTermsOneEvidenceMax = 2000;
+
+export const getVendorShippingTermsResponseTermsOneVerifiedOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getVendorShippingTermsResponseTermsOneValidThroughRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetVendorShippingTermsResponse = zod.object({
+  "terms": zod.object({
+  "accountLabel": zod.string().min(1).max(getVendorShippingTermsResponseTermsOneAccountLabelMax),
+  "threshold": zod.number().min(getVendorShippingTermsResponseTermsOneThresholdMin).max(getVendorShippingTermsResponseTermsOneThresholdMax),
+  "scope": zod.enum(['order', 'warehouse']),
+  "shippingMethod": zod.string().max(getVendorShippingTermsResponseTermsOneShippingMethodMax).describe('Empty means the verified terms impose no method restriction'),
+  "excludedBrands": zod.array(zod.string().min(1).max(getVendorShippingTermsResponseTermsOneExcludedBrandsItemMax)).max(getVendorShippingTermsResponseTermsOneExcludedBrandsMax),
+  "excludedStyles": zod.array(zod.string().min(1).max(getVendorShippingTermsResponseTermsOneExcludedStylesItemMax)).max(getVendorShippingTermsResponseTermsOneExcludedStylesMax),
+  "otherConditions": zod.string().max(getVendorShippingTermsResponseTermsOneOtherConditionsMax),
+  "evidence": zod.string().min(1).max(getVendorShippingTermsResponseTermsOneEvidenceMax).describe('Source of account-specific confirmation, not credentials'),
+  "verifiedOn": zod.string().regex(getVendorShippingTermsResponseTermsOneVerifiedOnRegExp),
+  "validThrough": zod.string().regex(getVendorShippingTermsResponseTermsOneValidThroughRegExp)
+}).nullable(),
+  "recordedAt": zod.string().nullable()
+})
+
+
+export const SetVendorShippingTermsParams = zod.object({
+  "vendor": zod.enum(['sanmar', 'ss'])
+})
+
+export const setVendorShippingTermsBodyTermsOneAccountLabelMax = 120;
+
+export const setVendorShippingTermsBodyTermsOneThresholdMin = 0;
+export const setVendorShippingTermsBodyTermsOneThresholdMax = 1000000;
+
+export const setVendorShippingTermsBodyTermsOneShippingMethodMax = 200;
+
+export const setVendorShippingTermsBodyTermsOneExcludedBrandsItemMax = 120;
+
+export const setVendorShippingTermsBodyTermsOneExcludedBrandsMax = 100;
+
+export const setVendorShippingTermsBodyTermsOneExcludedStylesItemMax = 120;
+
+export const setVendorShippingTermsBodyTermsOneExcludedStylesMax = 100;
+
+export const setVendorShippingTermsBodyTermsOneOtherConditionsMax = 2000;
+
+export const setVendorShippingTermsBodyTermsOneEvidenceMax = 2000;
+
+export const setVendorShippingTermsBodyTermsOneVerifiedOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const setVendorShippingTermsBodyTermsOneValidThroughRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+
+export const SetVendorShippingTermsBody = zod.object({
+  "terms": zod.object({
+  "accountLabel": zod.string().min(1).max(setVendorShippingTermsBodyTermsOneAccountLabelMax),
+  "threshold": zod.number().min(setVendorShippingTermsBodyTermsOneThresholdMin).max(setVendorShippingTermsBodyTermsOneThresholdMax),
+  "scope": zod.enum(['order', 'warehouse']),
+  "shippingMethod": zod.string().max(setVendorShippingTermsBodyTermsOneShippingMethodMax).describe('Empty means the verified terms impose no method restriction'),
+  "excludedBrands": zod.array(zod.string().min(1).max(setVendorShippingTermsBodyTermsOneExcludedBrandsItemMax)).max(setVendorShippingTermsBodyTermsOneExcludedBrandsMax),
+  "excludedStyles": zod.array(zod.string().min(1).max(setVendorShippingTermsBodyTermsOneExcludedStylesItemMax)).max(setVendorShippingTermsBodyTermsOneExcludedStylesMax),
+  "otherConditions": zod.string().max(setVendorShippingTermsBodyTermsOneOtherConditionsMax),
+  "evidence": zod.string().min(1).max(setVendorShippingTermsBodyTermsOneEvidenceMax).describe('Source of account-specific confirmation, not credentials'),
+  "verifiedOn": zod.string().regex(setVendorShippingTermsBodyTermsOneVerifiedOnRegExp),
+  "validThrough": zod.string().regex(setVendorShippingTermsBodyTermsOneValidThroughRegExp)
+}).nullable(),
+  "adminPin": zod.string().min(1),
+  "confirmed": zod.boolean()
+})
+
+export const setVendorShippingTermsResponseTermsOneAccountLabelMax = 120;
+
+export const setVendorShippingTermsResponseTermsOneThresholdMin = 0;
+export const setVendorShippingTermsResponseTermsOneThresholdMax = 1000000;
+
+export const setVendorShippingTermsResponseTermsOneShippingMethodMax = 200;
+
+export const setVendorShippingTermsResponseTermsOneExcludedBrandsItemMax = 120;
+
+export const setVendorShippingTermsResponseTermsOneExcludedBrandsMax = 100;
+
+export const setVendorShippingTermsResponseTermsOneExcludedStylesItemMax = 120;
+
+export const setVendorShippingTermsResponseTermsOneExcludedStylesMax = 100;
+
+export const setVendorShippingTermsResponseTermsOneOtherConditionsMax = 2000;
+
+export const setVendorShippingTermsResponseTermsOneEvidenceMax = 2000;
+
+export const setVendorShippingTermsResponseTermsOneVerifiedOnRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const setVendorShippingTermsResponseTermsOneValidThroughRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const SetVendorShippingTermsResponse = zod.object({
+  "terms": zod.object({
+  "accountLabel": zod.string().min(1).max(setVendorShippingTermsResponseTermsOneAccountLabelMax),
+  "threshold": zod.number().min(setVendorShippingTermsResponseTermsOneThresholdMin).max(setVendorShippingTermsResponseTermsOneThresholdMax),
+  "scope": zod.enum(['order', 'warehouse']),
+  "shippingMethod": zod.string().max(setVendorShippingTermsResponseTermsOneShippingMethodMax).describe('Empty means the verified terms impose no method restriction'),
+  "excludedBrands": zod.array(zod.string().min(1).max(setVendorShippingTermsResponseTermsOneExcludedBrandsItemMax)).max(setVendorShippingTermsResponseTermsOneExcludedBrandsMax),
+  "excludedStyles": zod.array(zod.string().min(1).max(setVendorShippingTermsResponseTermsOneExcludedStylesItemMax)).max(setVendorShippingTermsResponseTermsOneExcludedStylesMax),
+  "otherConditions": zod.string().max(setVendorShippingTermsResponseTermsOneOtherConditionsMax),
+  "evidence": zod.string().min(1).max(setVendorShippingTermsResponseTermsOneEvidenceMax).describe('Source of account-specific confirmation, not credentials'),
+  "verifiedOn": zod.string().regex(setVendorShippingTermsResponseTermsOneVerifiedOnRegExp),
+  "validThrough": zod.string().regex(setVendorShippingTermsResponseTermsOneValidThroughRegExp)
+}).nullable(),
+  "recordedAt": zod.string().nullable()
+})
+
+
 export const GetCarrierTrackingSettingsResponse = zod.object({
   "enabled": zod.boolean()
 })

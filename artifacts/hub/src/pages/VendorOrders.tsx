@@ -6,6 +6,7 @@ import { formatNumber } from "@/lib/format";
 import { usePoCart, guessVendor, type CartVendor, type CartItem } from "@/stores/poCart";
 import { useQueuePricing } from "@/components/purchasing/useQueuePricing";
 import { QueueMatchReview } from "@/components/purchasing/QueueMatchReview";
+import { VendorShippingProgress } from "@/components/purchasing/VendorShippingProgress";
 import { applySelectedQueueVendor, queueSourceVendor } from "@/components/purchasing/queuePricing";
 import { pricingContext, purchaseTotal, savedSourceVendor, selectedPurchaseTotals } from "@/components/purchasing/queuePricing";
 import { CartDrawer } from "@/components/purchasing/CartDrawer";
@@ -321,6 +322,10 @@ export default function VendorOrders() {
               </div>
             </div>
           )}
+
+          <VendorShippingProgress items={queueItems.map(item => ({
+            ...pricing.read(item).item, shippingVendorBrand: pricing.result(item)?.brand,
+          }))} selected={selectedIds} />
 
           {/* Filters Bar */}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
@@ -685,7 +690,7 @@ export default function VendorOrders() {
                   {sourceLabel(vendor)} selected spend: {totals.pricedSizes ? purchaseMoney(totals.total) : "— no resolved prices"}
                   {totals.incomplete && <span className="text-amber-300"> · Incomplete — unpriced sizes excluded</span>}
                 </div>)}
-                <div className="text-slate-500">Shipping terms not configured. Estimates exclude shipping/tax; SanMar broken-case charges may be higher. Recent vendor responses may be reused for up to 15 minutes.</div>
+                <div className="text-slate-500">See account shipping estimates above. Estimates exclude shipping/tax; SanMar broken-case charges may be higher. Recent vendor responses may be reused for up to 15 minutes.</div>
               </div>
               <label className="text-xs text-slate-300">Apply vendor to selected lines / invoices
                 <select data-testid="bulk-source-vendor" aria-label="Apply vendor to selected lines and invoices"

@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
 import { requireValidAdminPin } from "../lib/auth/adminPin";
+import vendorShippingTermsRouter from "./vendorShippingTerms";
 import { getCarrierTrackingSettings, setCarrierTrackingSettings, refreshCarrierTracking } from "../lib/purchasing/carrierTracking";
 import {
   GetPurchasingApprovedMappingQueryParams,
@@ -89,6 +90,7 @@ import {
  */
 
 const router: IRouter = Router();
+router.use(vendorShippingTermsRouter);
 
 // Mounted behind requireStaff + moduleAccessGate, like all purchasing mutations.
 router.get("/purchasing/approved-mapping", async (req, res) => {

@@ -2444,6 +2444,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VendorOrderRefreshAllResult"
+  /purchasing/shipping-terms/{vendor}:
+    parameters:
+      - in: path
+        name: vendor
+        required: true
+        schema:
+          type: string
+          enum: [sanmar, ss]
+    get:
+      operationId: getVendorShippingTerms
+      tags: [purchasing]
+      responses:
+        "200":
+          description: Account terms, unset until explicitly confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorShippingTermsResponse"
+    put:
+      operationId: setVendorShippingTerms
+      tags: [purchasing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetVendorShippingTermsRequest"
+      responses:
+        "200":
+          description: Saved or cleared terms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorShippingTermsResponse"
+        "400":
+          description: Invalid terms
+        "403":
+          description: Admin PIN required
   /purchasing/carrier-tracking/settings:
     get:
       operationId: getCarrierTrackingSettings
@@ -11477,6 +11515,77 @@ components:
         details: { type: ["string", "null"] }
         location: { type: ["string", "null"] }
       required: [status, date, details, location]
+    VendorShippingTerms:
+      type: object
+      required: [accountLabel, threshold, scope, shippingMethod, excludedBrands, excludedStyles, otherConditions, evidence, verifiedOn, validThrough]
+      properties:
+        accountLabel:
+          type: string
+          minLength: 1
+          maxLength: 120
+        threshold:
+          type: number
+          minimum: 0
+          maximum: 1000000
+        scope:
+          type: string
+          enum: [order, warehouse]
+        shippingMethod:
+          type: string
+          maxLength: 200
+          description: Empty means the verified terms impose no method restriction
+        excludedBrands:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        excludedStyles:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        otherConditions:
+          type: string
+          maxLength: 2000
+        evidence:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: Source of account-specific confirmation, not credentials
+        verifiedOn:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+        validThrough:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2}$'
+    VendorShippingTermsResponse:
+      type: object
+      required: [terms, recordedAt]
+      properties:
+        terms:
+          allOf:
+            - $ref: "#/components/schemas/VendorShippingTerms"
+          nullable: true
+        recordedAt:
+          type: string
+          nullable: true
+    SetVendorShippingTermsRequest:
+      type: object
+      required: [terms, adminPin, confirmed]
+      properties:
+        terms:
+          allOf:
+            - $ref: "#/components/schemas/VendorShippingTerms"
+          nullable: true
+        adminPin:
+          type: string
+          minLength: 1
+        confirmed:
+          type: boolean
     CarrierTrackingSettings:
       type: object
       properties:

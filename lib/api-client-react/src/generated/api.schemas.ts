@@ -4104,6 +4104,69 @@ export interface VendorTrackingEntry {
   carrierHistory?: CarrierTrackingEvent[];
 }
 
+export type VendorShippingTermsScope = typeof VendorShippingTermsScope[keyof typeof VendorShippingTermsScope];
+
+
+export const VendorShippingTermsScope = {
+  order: 'order',
+  warehouse: 'warehouse',
+} as const;
+
+export interface VendorShippingTerms {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  accountLabel: string;
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     */
+  threshold: number;
+  scope: VendorShippingTermsScope;
+  /**
+     * Empty means the verified terms impose no method restriction
+     * @maxLength 200
+     */
+  shippingMethod: string;
+  /**
+     * @maxItems 100
+     * @items.minLength 1
+     * @items.maxLength 120
+     */
+  excludedBrands: string[];
+  /**
+     * @maxItems 100
+     * @items.minLength 1
+     * @items.maxLength 120
+     */
+  excludedStyles: string[];
+  /** @maxLength 2000 */
+  otherConditions: string;
+  /**
+     * Source of account-specific confirmation, not credentials
+     * @minLength 1
+     * @maxLength 2000
+     */
+  evidence: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  verifiedOn: string;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  validThrough: string;
+}
+
+export interface VendorShippingTermsResponse {
+  terms: VendorShippingTerms | null;
+  recordedAt: string | null;
+}
+
+export interface SetVendorShippingTermsRequest {
+  terms: VendorShippingTerms | null;
+  /** @minLength 1 */
+  adminPin: string;
+  confirmed: boolean;
+}
+
 export interface CarrierTrackingSettings {
   enabled: boolean;
 }
