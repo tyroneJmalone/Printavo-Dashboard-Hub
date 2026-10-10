@@ -275,6 +275,8 @@ import type {
   List,
   ListAiAuditEventsParams,
   ListAutoPrintJobsParams,
+  ListAutoPrintNotifications200,
+  ListAutoPrintNotificationsParams,
   ListAutoPrintRetries200,
   ListAutoPrintRunsParams,
   ListCatalogPantonesParams,
@@ -26569,6 +26571,160 @@ export function useGetStatusActivityOrders<TData = Awaited<ReturnType<typeof get
 
 
 
+
+export const getListAutoPrintNotificationsUrl = (params?: ListAutoPrintNotificationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/print-queue/auto-print/notifications?${stringifiedParams}` : `/api/print-queue/auto-print/notifications`
+}
+
+/**
+ * @summary Admin-only AutoPrint failure inbox
+ */
+export const listAutoPrintNotifications = async (params?: ListAutoPrintNotificationsParams, options?: RequestInit): Promise<ListAutoPrintNotifications200> => {
+
+  return customFetch<ListAutoPrintNotifications200>(getListAutoPrintNotificationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAutoPrintNotificationsQueryKey = (params?: ListAutoPrintNotificationsParams,) => {
+    return [
+    `/api/print-queue/auto-print/notifications`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAutoPrintNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof listAutoPrintNotifications>>, TError = ErrorType<unknown>>(params?: ListAutoPrintNotificationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAutoPrintNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAutoPrintNotificationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAutoPrintNotifications>>> = ({ signal }) => listAutoPrintNotifications(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAutoPrintNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAutoPrintNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof listAutoPrintNotifications>>>
+export type ListAutoPrintNotificationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Admin-only AutoPrint failure inbox
+ */
+
+export function useListAutoPrintNotifications<TData = Awaited<ReturnType<typeof listAutoPrintNotifications>>, TError = ErrorType<unknown>>(
+ params?: ListAutoPrintNotificationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAutoPrintNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAutoPrintNotificationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReadAutoPrintNotificationUrl = (id: string,) => {
+
+
+
+
+  return `/api/print-queue/auto-print/notifications/${id}/read`
+}
+
+/**
+ * @summary Acknowledge an alert for the signed-in administrator only (never retries a print)
+ */
+export const readAutoPrintNotification = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getReadAutoPrintNotificationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getReadAutoPrintNotificationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof readAutoPrintNotification>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof readAutoPrintNotification>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['readAutoPrintNotification'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof readAutoPrintNotification>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  readAutoPrintNotification(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReadAutoPrintNotificationMutationResult = NonNullable<Awaited<ReturnType<typeof readAutoPrintNotification>>>
+
+    export type ReadAutoPrintNotificationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Acknowledge an alert for the signed-in administrator only (never retries a print)
+ */
+export const useReadAutoPrintNotification = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof readAutoPrintNotification>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof readAutoPrintNotification>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getReadAutoPrintNotificationMutationOptions(options));
+    }
 
 export const getListKnowledgeLibraryUrl = (params?: ListKnowledgeLibraryParams,) => {
   const normalizedParams = new URLSearchParams();

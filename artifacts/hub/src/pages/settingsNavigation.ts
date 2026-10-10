@@ -48,9 +48,9 @@ export function settingsHref(sectionId: string, search = ""): string {
   return `/settings?${params.toString()}`;
 }
 
-export function legacySettingsHref(path: string, search = ""): string | undefined {
+export function legacySettingsHref(path: string, search = "", hash = ""): string | undefined {
   const sectionId = legacySections[path];
-  return sectionId ? settingsHref(sectionId, search) : undefined;
+  return sectionId ? settingsHref(sectionId, search) + (hash.startsWith("#") ? hash : "") : undefined;
 }
 
 export function canOpenSettingsSection(

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListAutoPrintRetries, useActOnAutoPrintRetry, getListAutoPrintRetriesQueryKey,
@@ -12,6 +13,7 @@ const field = "w-full rounded border border-slate-600 bg-slate-900 p-2 text-sm";
 const time = (value: string | null) => value ? new Date(value).toLocaleString() : "—";
 
 export function AutoPrintRetryQueue() {
+  const linkedJobId = new URLSearchParams(useSearch()).get("job");
   const staff = useStaff();
   const admin = staff.role === "admin";
   const queue = useListAutoPrintRetries({ query: { queryKey: getListAutoPrintRetriesQueryKey(), enabled: admin, refetchInterval: 10_000 } });
@@ -24,6 +26,15 @@ export function AutoPrintRetryQueue() {
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const focusedJob = useRef<string | null>(null);
+  useEffect(() => {
+    if (!linkedJobId || !queue.data || focusedJob.current === linkedJobId) return;
+    const target = queue.data.jobs.find(job => job.id === linkedJobId);
+    if (target) {
+      setSearch(target.visualId ?? target.printavoOrderId);
+      focusedJob.current = linkedJobId;
+    }
+  }, [linkedJobId, queue.data]);
   const mutation = useActOnAutoPrintRetry({ mutation: {
     onSuccess: async () => {
       await Promise.all([
@@ -53,7 +64,7 @@ export function AutoPrintRetryQueue() {
     {queue.isError && <p role="alert" className="text-red-300">Could not load retries. <button className={button} onClick={() => queue.refetch()}>Refresh</button></p>}
     {!queue.isLoading && !queue.isError && jobs.length === 0 && <p className="text-sm text-slate-400">No matching retry jobs.</p>}
     <div className="max-h-[600px] space-y-3 overflow-y-auto">
-      {jobs.map(job => <article key={job.id} className="space-y-2 rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-300">
+      {jobs.map(job => <article key={job.id} id={`autoprint-job-${job.id}`} className={`space-y-2 rounded-lg border bg-slate-950 p-3 text-xs text-slate-300 ${job.id === linkedJobId ? "border-sky-500" : "border-slate-800"}`}>
         <div className="flex flex-wrap justify-between gap-2">
           <strong>Invoice #{job.visualId ?? job.printavoOrderId}</strong>
           <span>{job.status} · {job.retryPhase ?? "legacy"} · {job.retryCount} durable attempt(s)</span>

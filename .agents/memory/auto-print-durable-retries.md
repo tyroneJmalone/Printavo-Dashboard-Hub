@@ -36,9 +36,8 @@ the old one.
 **How to apply:** Exercise recovery through actual preparation and post-acceptance
 finalization, checking both missing destinations and changed decoration groups.
 
-The requested admin-notification proposal must include alerts when AutoPrint
-fails, not only when retries require manual review. This is proposed scope,
-not a statement that notifications are enabled.
+Admin notifications must include alerts when AutoPrint fails, not only when
+retries require manual review.
 
 **Why:** The user explicitly expanded the manual-review notification idea to
 include notification when failure occurs.
@@ -59,5 +58,25 @@ proof that Printavo sleeps or that every 403 will resolve with time.
 and normal discovery. Recheck live eligibility before each attempt. Only known
 pre-submission failures qualify; uncertain acceptance must never resend.
 Existing terminal failures need explicit review, not automatic historical replay.
-The separately planned admin alerts should distinguish waiting for round two
-from final exhaustion; this change does not itself enable notifications.
+Admin alerts must distinguish waiting for round two from final exhaustion.
+
+Alert delivery is a separate, read-only observer of durable print audit records.
+It must never trigger recovery, resends, or upstream status changes.
+
+**Why:** Delivery failures must not roll back a printer-acceptance record or
+turn an uncertain print into a second submission. Imported history should not
+create a flood of alerts when the channel first starts.
+
+**How to apply:** Preserve the production activation boundary and durable
+per-job failure/review/uncertainty dedup keys. Acknowledgement is per admin,
+not resolution. The initial channel is in-app only; email or push delivery
+requires separate configuration and approval.
+
+Run age alone must not be treated as interruption: a live worker can spend a
+long time discovering or rendering orders. Use a persistent worker heartbeat
+to distinguish a silent worker from an active long-running job, including
+runs that have not created any document records yet.
+
+**Why:** Waiting for the next AutoPrint run to reconcile interruptions leaves
+administrators unaware of discovery-stage crashes. Heartbeat-loss alerts
+must ask for review, never declare a document unprinted or authorize a resend.

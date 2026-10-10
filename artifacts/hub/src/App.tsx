@@ -197,7 +197,7 @@ function ClerkQueryClientCacheInvalidator() {
 function LegacySettingsRoute({ path }: { path: string }) {
   const [, navigate] = useLocation();
   useEffect(() => {
-    const destination = legacySettingsHref(path, window.location.search);
+    const destination = legacySettingsHref(path, window.location.search, window.location.hash);
     if (destination) navigate(destination, { replace: true });
   }, [navigate, path]);
   return null;

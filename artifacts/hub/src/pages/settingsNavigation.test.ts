@@ -42,6 +42,17 @@ test("section links preserve unrelated query fields while selecting one group/to
   assert.equal(url.searchParams.get("tab"), "rules");
 });
 
+test("AutoPrint notification redirects retain run/job and all inbox/review anchors", () => {
+  for (const hash of ["#autoprint-notifications", "#autoprint-retry-review", "#autoprint-run-history"]) {
+    const href = legacySettingsHref("/auto-print", "?run=run-id&job=job-id", hash)!;
+    const url = new URL(href, "https://hub.example");
+    assert.equal(url.hash, hash);
+    assert.equal(url.searchParams.get("run"), "run-id");
+    assert.equal(url.searchParams.get("job"), "job-id");
+    assert.equal(url.searchParams.get("section"), "auto-print");
+  }
+});
+
 test("module readiness and original admin restrictions apply before mounting tools", () => {
   assert.equal(canOpenSettingsSection(section("knowledge-base"), "staff", []), false);
   assert.equal(canOpenSettingsSection(section("knowledge-base"), "manager", ["knowledge"]), true);

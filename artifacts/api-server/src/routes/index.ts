@@ -45,6 +45,7 @@ import printavoTasksRouter from "../printavoTasks/routes";
 import contextDoorsRouter from "./contextDoors";
 import knowledgeBaseRouter from "./knowledgeBase";
 import knowledgeLibraryRouter from "./knowledgeLibrary";
+import autoPrintNotificationsRouter from "./autoPrintNotifications";
 import aiConsumersRouter from "./aiConsumers";
 import missiveWebhooksRouter from "./missiveWebhooks";
 import voiceProfilesRouter from "./voiceProfiles";
@@ -119,6 +120,7 @@ router.use(correspondenceRouter);
 router.use(hubRouter);
 router.use(knowledgeBaseRouter);
 router.use(knowledgeLibraryRouter);
+router.use(autoPrintNotificationsRouter);
 router.use(knowledgeSourcesRouter);
 router.use(aiConsumersRouter); // admin-only inside (token + audit management)
 router.use(voiceProfilesRouter); // staff view/refresh — traits only, no mail content

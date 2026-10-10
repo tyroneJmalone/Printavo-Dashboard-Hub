@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearch } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
+import { AutoPrintNotificationList } from "@/components/autoprint/AutoPrintNotificationList";
+import { useStaff } from "@/components/auth/StaffGate";
 import { AutoPrintRetryQueue } from "./AutoPrintRetryQueue";
 import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
 import {
@@ -1277,8 +1280,44 @@ function RunJobs({ run }: { run: AutoPrintRun }) {
   );
 }
 
+function useHashScroll(ready: boolean) {
+  const search = useSearch();
+  useEffect(() => {
+    if (!ready) return;
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    const timer = window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    return () => window.clearTimeout(timer);
+  }, [ready, search]);
+}
+
+function LinkedRun({ runId }: { runId: string }) {
+  const { data: run, isLoading, isError, refetch } = useGetAutoPrintRun(runId, {
+    query: { queryKey: getGetAutoPrintRunQueryKey(runId), enabled: !!runId },
+  });
+  return (
+    <div className="mb-3 rounded-lg border border-sky-500/40 bg-sky-500/5 px-3 py-2 text-[12px]" data-testid="panel-linked-run">
+      <div className="text-[11px] uppercase tracking-wide text-sky-300">Linked run (older than the latest 10)</div>
+      {isLoading ? <p role="status" className="text-slate-400 mt-1">Loading linked run…</p>
+        : isError || !run ? <p role="alert" className="text-red-300 mt-1">Could not load the linked run. <button type="button" onClick={() => refetch()} className="underline">Retry</button></p>
+        : <>
+          <div className="mt-1 flex items-center gap-2">
+            <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${RUN_STATUS_STYLES[run.status] ?? "bg-slate-500/15 text-slate-300"}`}>{run.status}</span>
+            {run.dryRun && <span className="px-1.5 py-0.5 rounded text-[11px] bg-sky-500/15 text-sky-300">dry run</span>}
+            <span className="text-slate-400 ml-auto">{fmtTime(run.startedAt)}</span>
+          </div>
+          <div className="text-slate-400 mt-1">{countsLine(run)}</div>
+          {run.error && <div className="text-red-300 mt-0.5">{run.error}</div>}
+          <RunJobs key={run.id} run={run} />
+        </>}
+    </div>
+  );
+}
+
 function HistoryTables() {
-  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const linkedRunId = new URLSearchParams(useSearch()).get("run");
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(linkedRunId);
+  useEffect(() => { if (linkedRunId) setExpandedRunId(linkedRunId); }, [linkedRunId]);
   const { data: runData, isLoading, isError, refetch } = useListAutoPrintRuns(
     { limit: 10 },
     {
@@ -1289,11 +1328,14 @@ function HistoryTables() {
     },
   );
   const runs = runData?.runs ?? [];
+  const linkedOffPage = !!linkedRunId && !isLoading && !isError && !runs.some((r) => r.id === linkedRunId);
+  useHashScroll(!isLoading);
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4">
+      <div id="autoprint-run-history" className="scroll-mt-4 rounded-xl border border-slate-800 bg-[#0f172a] p-4">
         <h2 className="text-sm font-semibold text-slate-100 mb-3">Recent runs</h2>
+        {linkedOffPage && linkedRunId && <LinkedRun runId={linkedRunId} />}
         <p className="text-[12px] text-slate-400 mb-3">Showing the latest 10 runs. Expand a run to review its invoices, skipped reasons, reprints, and separate PO copies. “Sent to printer” means PrintNode accepted the job, not confirmed paper output.</p>
         {isLoading ? <p className="text-slate-400 text-xs">Loading runs…</p> : isError ? <p role="alert" className="text-red-300 text-xs">Could not load runs. <button type="button" onClick={() => refetch()} className="underline">Retry</button></p> : runs.length === 0 ? (
           <p className="text-[12px] text-slate-500">No runs yet.</p>
@@ -1302,7 +1344,8 @@ function HistoryTables() {
             {runs.map((r) => (
               <div
                 key={r.id}
-                className="rounded-lg bg-[#020617] border border-slate-800 px-3 py-2 text-[12px]"
+                id={`autoprint-run-${r.id}`}
+                className={`rounded-lg bg-[#020617] border px-3 py-2 text-[12px] ${r.id === linkedRunId ? "border-sky-500/60" : "border-slate-800"}`}
                 data-testid={`row-run-${r.id}`}
               >
                 <div className="flex items-center gap-2">
@@ -1346,6 +1389,18 @@ function HistoryTables() {
 
 /* ── Page ────────────────────────────────────────────────────────────── */
 
+function AdminNotificationInbox() {
+  const { role } = useStaff();
+  if (role !== "admin") return null;
+  return (
+    <section id="autoprint-notifications" className="scroll-mt-4 rounded-xl border border-slate-800 bg-[#0f172a] p-4" data-testid="autoprint-notification-inbox">
+      <h2 className="text-sm font-semibold text-slate-100 mb-1">Failure notifications</h2>
+      <p className="text-[12px] text-slate-400 mb-2">Read-only alerts. Use the linked run or retry review below for any action; nothing here retries, prints, or changes status.</p>
+      <AutoPrintNotificationList />
+    </section>
+  );
+}
+
 export default function AutoPrint() {
   const { data: config, isLoading } = useGetAutoPrintConfig();
 
@@ -1364,7 +1419,10 @@ export default function AutoPrint() {
         </div>
 
         <RunPanel />
-        <AutoPrintRetryQueue />
+        <AdminNotificationInbox />
+        <div id="autoprint-retry-review" className="scroll-mt-4">
+          <AutoPrintRetryQueue />
+        </div>
         <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 text-[12px] text-slate-400 space-y-1">
           <h2 className="font-semibold text-slate-200">Duplicate protection & eligible reprints</h2>
           <p>A previously sent invoice is eligible for a reprint only after an observed return to Ordered (a configured source status) and changed line items compared with its last successful submission. Simply running again does not qualify it.</p>

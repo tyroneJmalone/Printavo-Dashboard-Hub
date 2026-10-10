@@ -7267,6 +7267,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StatusActivityOrdersResponse"
+  /print-queue/auto-print/notifications:
+    get:
+      operationId: listAutoPrintNotifications
+      tags: [printQueue]
+      summary: Admin-only AutoPrint failure inbox
+      parameters:
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Durable admin notifications, 30 per page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, unread]
+                properties:
+                  total: { type: integer }
+                  unread: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AutoPrintNotification"
+  /print-queue/auto-print/notifications/{id}/read:
+    post:
+      operationId: readAutoPrintNotification
+      tags: [printQueue]
+      summary: Acknowledge an alert for the signed-in administrator only (never retries a print)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Acknowledged
   /knowledge/library:
     get:
       operationId: listKnowledgeLibrary
@@ -15476,6 +15513,26 @@ components:
         updatedAt:
           type: ["string", "null"]
           description: Expected settings version from GET; null for the initial default policy.
+    AutoPrintNotification:
+      type: object
+      required: [id, kind, title, reason, documentType, visualId, poNumber, runId, jobId, occurredAt, retryState, nextAttemptAt, currentState, currentNextAttemptAt, href, read]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [failure, manual_review, acceptance_unknown, run_failure] }
+        title: { type: string }
+        reason: { type: string }
+        documentType: { type: string }
+        visualId: { type: ["string", "null"] }
+        poNumber: { type: ["string", "null"] }
+        runId: { type: ["string", "null"] }
+        jobId: { type: ["string", "null"] }
+        occurredAt: { type: string }
+        retryState: { type: string }
+        nextAttemptAt: { type: ["string", "null"] }
+        currentState: { type: string }
+        currentNextAttemptAt: { type: ["string", "null"] }
+        href: { type: string }
+        read: { type: boolean }
     KnowledgeEntry:
       type: object
       required:

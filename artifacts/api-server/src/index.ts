@@ -1,4 +1,5 @@
 import app from "./app";
+import { startAutoPrintAlerts } from "./lib/printQueue/autoPrint/alerts";
 import { startPrintscopeWorker } from "./lib/printscope/worker";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/sync/scheduler";
@@ -50,6 +51,7 @@ app.listen(port, (err) => {
   startPrintscopeWorker().catch(() => logger.warn("PrintScope processing unavailable; other modules unaffected"));
   startFileMirror(logger);
   startAutoPrintScheduler(logger);
+  startAutoPrintAlerts(logger);
   startCatalogScheduler(logger);
   startColorEvidenceWorker(logger);
   // Email activity tracker — dormant until GOOGLE_SERVICE_ACCOUNT_JSON is set.

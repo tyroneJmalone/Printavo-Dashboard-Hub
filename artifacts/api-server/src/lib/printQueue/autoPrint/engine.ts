@@ -1,4 +1,5 @@
 import { loadPurchaseNotes } from "./purchaseNotes";
+import { startRunHeartbeat } from "./runHeartbeat";
 import type { Logger } from "pino";
 import {
   db,
@@ -331,6 +332,13 @@ export async function startAutoPrintRun(
     return { status: "conflict" };
   }
   activeRunId = row.id;
+  // Liveness persists even while discovery has not created any job records.
+  // The notification observer may report a lost heartbeat, but never changes
+  // run/print status or schedules another submission.
+  const stopHeartbeat = startRunHeartbeat(async () => {
+    await db.update(pqPrintRunsTable).set({ updatedAt: new Date() })
+      .where(and(eq(pqPrintRunsTable.id, row.id), eq(pqPrintRunsTable.status, "running")));
+  }, err => log.error({ err, runId: row.id }, "AutoPrint run heartbeat failed"));
 
   void runAutoPrint(row.id, config, dryRun, summary, log).catch(async (err) => {
     log.error({ err, runId: row.id }, "Auto-print run crashed");
@@ -346,6 +354,8 @@ export async function startAutoPrintRun(
     } finally {
       if (activeRunId === row.id) activeRunId = null;
     }
+  }).finally(stopHeartbeat).catch(err => {
+    log.error({ err, runId: row.id }, "Could not persist crashed AutoPrint run; liveness alerts will require review");
   });
 
   return { status: "started", run: toRunDto({ ...row }) };

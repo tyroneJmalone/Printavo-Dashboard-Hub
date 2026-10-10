@@ -2,6 +2,7 @@ import { ReactNode, createContext, useContext, useEffect, useRef, useState } fro
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useGetNeedsOrdering, getGetNeedsOrderingQueryKey } from "@workspace/api-client-react";
+import { AutoPrintNotificationBell } from "@/components/autoprint/AutoPrintNotificationBell";
 import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import { activeSidebarItem, toggleSidebarGroup } from "./navAccordion";
@@ -309,6 +310,9 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
               <div className="text-sm font-semibold text-white leading-none tracking-tight">Printavo Hub</div>
               <div className="text-[10px] text-slate-400 mt-0.5 font-medium">Mint Printworks</div>
             </div>
+            <div className="hidden lg:block">
+              <AutoPrintNotificationBell align="left" />
+            </div>
             <button
               type="button"
               onClick={closeMobileMenu}
@@ -449,6 +453,9 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
           </button>
           <img src={mintLogo} alt="Mint Printworks" className="h-7 w-auto" />
           <span className="text-sm font-semibold text-white tracking-tight">Printavo Hub</span>
+          <div className="ml-auto">
+            <AutoPrintNotificationBell />
+          </div>
         </div>
         <PrintavoSyncBar />
         <main className="flex-1 overflow-y-auto bg-[#020617] relative custom-scrollbar">

@@ -8116,6 +8116,41 @@ export interface KnowledgeClassificationSettingsInput {
   updatedAt: string | null;
 }
 
+export type AutoPrintNotificationKind = typeof AutoPrintNotificationKind[keyof typeof AutoPrintNotificationKind];
+
+
+export const AutoPrintNotificationKind = {
+  failure: 'failure',
+  manual_review: 'manual_review',
+  acceptance_unknown: 'acceptance_unknown',
+  run_failure: 'run_failure',
+} as const;
+
+export interface AutoPrintNotification {
+  id: string;
+  kind: AutoPrintNotificationKind;
+  title: string;
+  reason: string;
+  documentType: string;
+  /** @nullable */
+  visualId: string | null;
+  /** @nullable */
+  poNumber: string | null;
+  /** @nullable */
+  runId: string | null;
+  /** @nullable */
+  jobId: string | null;
+  occurredAt: string;
+  retryState: string;
+  /** @nullable */
+  nextAttemptAt: string | null;
+  currentState: string;
+  /** @nullable */
+  currentNextAttemptAt: string | null;
+  href: string;
+  read: boolean;
+}
+
 export type KnowledgeEntryReviewStatus = typeof KnowledgeEntryReviewStatus[keyof typeof KnowledgeEntryReviewStatus];
 
 
@@ -11023,6 +11058,19 @@ export const GetStatusActivityOrdersMode = {
   arrivals: 'arrivals',
   current: 'current',
 } as const;
+
+export type ListAutoPrintNotificationsParams = {
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListAutoPrintNotifications200 = {
+  total: number;
+  unread: number;
+  items: AutoPrintNotification[];
+};
 
 export type ListKnowledgeLibraryParams = {
 /**

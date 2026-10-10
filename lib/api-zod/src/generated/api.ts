@@ -13994,6 +13994,52 @@ export const GetStatusActivityOrdersResponse = zod.object({
 
 
 /**
+ * @summary Admin-only AutoPrint failure inbox
+ */
+export const listAutoPrintNotificationsQueryOffsetDefault = 0;
+export const listAutoPrintNotificationsQueryOffsetMin = 0;
+
+
+
+export const ListAutoPrintNotificationsQueryParams = zod.object({
+  "offset": zod.coerce.number().min(listAutoPrintNotificationsQueryOffsetMin).default(listAutoPrintNotificationsQueryOffsetDefault)
+})
+
+export const ListAutoPrintNotificationsResponse = zod.object({
+  "total": zod.number(),
+  "unread": zod.number(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['failure', 'manual_review', 'acceptance_unknown', 'run_failure']),
+  "title": zod.string(),
+  "reason": zod.string(),
+  "documentType": zod.string(),
+  "visualId": zod.string().nullable(),
+  "poNumber": zod.string().nullable(),
+  "runId": zod.string().nullable(),
+  "jobId": zod.string().nullable(),
+  "occurredAt": zod.string(),
+  "retryState": zod.string(),
+  "nextAttemptAt": zod.string().nullable(),
+  "currentState": zod.string(),
+  "currentNextAttemptAt": zod.string().nullable(),
+  "href": zod.string(),
+  "read": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Acknowledge an alert for the signed-in administrator only (never retries a print)
+ */
+export const ReadAutoPrintNotificationParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const ReadAutoPrintNotificationResponse = zod.void()
+
+
+/**
  * @summary Browse current approved resources (authenticated staff only)
  */
 export const listKnowledgeLibraryQueryQMax = 200;
