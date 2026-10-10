@@ -293,7 +293,7 @@ function StandaloneAppShell({ children }: { children: ReactNode }) {
       {/* Mobile drawer and independently collapsible desktop column. */}
       <aside
         id="hub-sidebar"
-        className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col bg-[#0f172a] border-r border-slate-800 flex-shrink-0 transform transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0 lg:transition-none lg:visible ${
+        className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col bg-[#0f172a] border-r border-slate-800 flex-shrink-0 transform transition-transform duration-200 ease-out lg:static lg:z-20 lg:translate-x-0 lg:transition-none lg:visible ${
           desktopSidebarHidden ? "lg:hidden" : "lg:flex"
         } ${
           sidebarOpen ? "translate-x-0 visible" : "-translate-x-full invisible"

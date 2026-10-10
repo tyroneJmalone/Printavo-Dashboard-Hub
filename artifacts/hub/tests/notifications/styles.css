@@ -1,0 +1,3 @@
+@import "../../src/index.css";
+/* The isolated Vite root is tests/notifications, not the production src root. */
+@source "../../src";
