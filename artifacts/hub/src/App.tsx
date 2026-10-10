@@ -50,6 +50,8 @@ import ChipplyStores from "./pages/ChipplyStores";
 import ChipplyStoreDetail from "./pages/ChipplyStoreDetail";
 import PrintScopeApp from "./pages/printscope/PrintScopeApp";
 import ReorderRequests from "./pages/ReorderRequests";
+import ResourceLibrary from "./pages/ResourceLibrary";
+import ResourceLibraryEntry from "./pages/ResourceLibraryEntry";
 import { Dashboard as MintBucksDashboard } from "./pages/mintbucks/Dashboard";
 import { Customers as MintBucksCustomers } from "./pages/mintbucks/Customers";
 import { CustomerDetail as MintBucksCustomerDetail } from "./pages/mintbucks/CustomerDetail";
@@ -213,6 +215,8 @@ function HubRoutes() {
       <Route path="/ask" component={AskAI} />
       <Route path="/ai-quotes/:id" component={AiQuoteDetail} />
       <Route path="/ai-quotes" component={AiQuotesList} />
+      <Route path="/library/:id" component={ResourceLibraryEntry} />
+      <Route path="/library" component={ResourceLibrary} />
       <Route path="/knowledge">{() => <LegacySettingsRoute path="/knowledge" />}</Route>
       <Route path="/ai-connections">{() => <LegacySettingsRoute path="/ai-connections" />}</Route>
       <Route path="/voice-profiles">{() => <LegacySettingsRoute path="/voice-profiles" />}</Route>

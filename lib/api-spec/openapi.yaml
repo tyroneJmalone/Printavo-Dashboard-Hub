@@ -7267,6 +7267,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StatusActivityOrdersResponse"
+  /knowledge/library:
+    get:
+      operationId: listKnowledgeLibrary
+      tags: [knowledge]
+      summary: Browse current approved resources (authenticated staff only)
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: category
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Approved resources, 30 per page; category counts across all eligible resources
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, categories]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/KnowledgeEntry"
+                  total: { type: integer }
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      required: [name, count]
+                      properties:
+                        name: { type: string }
+                        count: { type: integer }
+  /knowledge/library/{id}:
+    get:
+      operationId: getKnowledgeLibraryEntry
+      tags: [knowledge]
+      summary: Read a current approved resource (authenticated staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Approved resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeEntry"
+        "404":
+          description: Resource unavailable
   /knowledge/entries:
     get:
       operationId: listKnowledgeEntries

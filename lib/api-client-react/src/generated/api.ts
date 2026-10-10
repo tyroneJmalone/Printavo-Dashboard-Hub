@@ -300,6 +300,8 @@ import type {
   ListInput,
   ListInsightsPresetsParams,
   ListKnowledgeEntriesParams,
+  ListKnowledgeLibrary200,
+  ListKnowledgeLibraryParams,
   ListKnowledgePlaygroundFeedbackParams,
   ListListsParams,
   ListMentionsParams,
@@ -26556,6 +26558,167 @@ export function useGetStatusActivityOrders<TData = Awaited<ReturnType<typeof get
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetStatusActivityOrdersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListKnowledgeLibraryUrl = (params?: ListKnowledgeLibraryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/knowledge/library?${stringifiedParams}` : `/api/knowledge/library`
+}
+
+/**
+ * @summary Browse current approved resources (authenticated staff only)
+ */
+export const listKnowledgeLibrary = async (params?: ListKnowledgeLibraryParams, options?: RequestInit): Promise<ListKnowledgeLibrary200> => {
+
+  return customFetch<ListKnowledgeLibrary200>(getListKnowledgeLibraryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListKnowledgeLibraryQueryKey = (params?: ListKnowledgeLibraryParams,) => {
+    return [
+    `/api/knowledge/library`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListKnowledgeLibraryQueryOptions = <TData = Awaited<ReturnType<typeof listKnowledgeLibrary>>, TError = ErrorType<unknown>>(params?: ListKnowledgeLibraryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeLibrary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListKnowledgeLibraryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listKnowledgeLibrary>>> = ({ signal }) => listKnowledgeLibrary(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeLibrary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListKnowledgeLibraryQueryResult = NonNullable<Awaited<ReturnType<typeof listKnowledgeLibrary>>>
+export type ListKnowledgeLibraryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Browse current approved resources (authenticated staff only)
+ */
+
+export function useListKnowledgeLibrary<TData = Awaited<ReturnType<typeof listKnowledgeLibrary>>, TError = ErrorType<unknown>>(
+ params?: ListKnowledgeLibraryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listKnowledgeLibrary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListKnowledgeLibraryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetKnowledgeLibraryEntryUrl = (id: string,) => {
+
+
+
+
+  return `/api/knowledge/library/${id}`
+}
+
+/**
+ * @summary Read a current approved resource (authenticated staff only)
+ */
+export const getKnowledgeLibraryEntry = async (id: string, options?: RequestInit): Promise<KnowledgeEntry> => {
+
+  return customFetch<KnowledgeEntry>(getGetKnowledgeLibraryEntryUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetKnowledgeLibraryEntryQueryKey = (id: string,) => {
+    return [
+    `/api/knowledge/library/${id}`
+    ] as const;
+    }
+
+
+export const getGetKnowledgeLibraryEntryQueryOptions = <TData = Awaited<ReturnType<typeof getKnowledgeLibraryEntry>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeLibraryEntry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetKnowledgeLibraryEntryQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getKnowledgeLibraryEntry>>> = ({ signal }) => getKnowledgeLibraryEntry(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeLibraryEntry>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetKnowledgeLibraryEntryQueryResult = NonNullable<Awaited<ReturnType<typeof getKnowledgeLibraryEntry>>>
+export type GetKnowledgeLibraryEntryQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read a current approved resource (authenticated staff only)
+ */
+
+export function useGetKnowledgeLibraryEntry<TData = Awaited<ReturnType<typeof getKnowledgeLibraryEntry>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeLibraryEntry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetKnowledgeLibraryEntryQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -12,3 +12,9 @@ Treat Customer-Shareable, Internal Operational Knowledge, and Brand/Voice Guidan
 The staff knowledge playground may explicitly include drafts, with draft/approved attribution, without changing live approval requirements or usage-group boundaries.
 
 **Why:** The user wants to evaluate knowledge before approving it, rather than publishing untested content and removing it afterward.
+
+The staff Resource Library is a reading surface for approved, currently effective entries, not a distribution channel for original imported documents.
+
+**Why:** An approved excerpt does not approve the entire source document. Original files may contain unreviewed or restricted material; opening them from search would bypass their existing preview permissions.
+
+**How to apply:** Keep management in Settings, retain per-entry usage labels, and do not introduce original-file links/downloads without a separate document-level approval and access design.

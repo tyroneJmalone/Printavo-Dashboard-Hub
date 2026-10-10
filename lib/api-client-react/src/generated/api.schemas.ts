@@ -11024,6 +11024,32 @@ export const GetStatusActivityOrdersMode = {
   current: 'current',
 } as const;
 
+export type ListKnowledgeLibraryParams = {
+/**
+ * @maxLength 200
+ */
+q?: string;
+/**
+ * @maxLength 100
+ */
+category?: string;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type ListKnowledgeLibrary200CategoriesItem = {
+  name: string;
+  count: number;
+};
+
+export type ListKnowledgeLibrary200 = {
+  items: KnowledgeEntry[];
+  total: number;
+  categories: ListKnowledgeLibrary200CategoriesItem[];
+};
+
 export type ListKnowledgeEntriesParams = {
 status?: ListKnowledgeEntriesStatus;
 category?: string;

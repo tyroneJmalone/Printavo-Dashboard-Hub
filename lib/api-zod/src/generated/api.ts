@@ -13994,6 +13994,88 @@ export const GetStatusActivityOrdersResponse = zod.object({
 
 
 /**
+ * @summary Browse current approved resources (authenticated staff only)
+ */
+export const listKnowledgeLibraryQueryQMax = 200;
+
+export const listKnowledgeLibraryQueryCategoryMax = 100;
+
+export const listKnowledgeLibraryQueryOffsetDefault = 0;
+export const listKnowledgeLibraryQueryOffsetMin = 0;
+
+
+
+export const ListKnowledgeLibraryQueryParams = zod.object({
+  "q": zod.coerce.string().max(listKnowledgeLibraryQueryQMax).optional(),
+  "category": zod.coerce.string().max(listKnowledgeLibraryQueryCategoryMax).optional(),
+  "offset": zod.coerce.number().min(listKnowledgeLibraryQueryOffsetMin).default(listKnowledgeLibraryQueryOffsetDefault)
+})
+
+export const listKnowledgeLibraryResponseItemsItemSourceStaleDefault = false;
+
+export const ListKnowledgeLibraryResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
+  "tags": zod.array(zod.string()),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "effectiveDate": zod.string().nullish(),
+  "expiresDate": zod.string().nullish(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "sourceStale": zod.boolean().default(listKnowledgeLibraryResponseItemsItemSourceStaleDefault),
+  "approvedByEmail": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "lastReviewedAt": zod.coerce.date().nullish(),
+  "createdByEmail": zod.string().nullish(),
+  "updatedByEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "total": zod.number(),
+  "categories": zod.array(zod.object({
+  "name": zod.string(),
+  "count": zod.number()
+}))
+})
+
+
+/**
+ * @summary Read a current approved resource (authenticated staff only)
+ */
+export const GetKnowledgeLibraryEntryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const getKnowledgeLibraryEntryResponseSourceStaleDefault = false;
+
+export const GetKnowledgeLibraryEntryResponse = zod.object({
+  "id": zod.string().uuid(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "category": zod.string(),
+  "knowledgeGroup": zod.enum(['customer_shareable', 'internal_operational', 'brand_voice']),
+  "tags": zod.array(zod.string()),
+  "sourceName": zod.string(),
+  "sourceUrl": zod.string(),
+  "effectiveDate": zod.string().nullish(),
+  "expiresDate": zod.string().nullish(),
+  "reviewStatus": zod.enum(['draft', 'approved', 'archived']),
+  "sourceStale": zod.boolean().default(getKnowledgeLibraryEntryResponseSourceStaleDefault),
+  "approvedByEmail": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "lastReviewedAt": zod.coerce.date().nullish(),
+  "createdByEmail": zod.string().nullish(),
+  "updatedByEmail": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List knowledge base entries (staff)
  */
 export const ListKnowledgeEntriesQueryParams = zod.object({

@@ -6,7 +6,7 @@ import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import { activeSidebarItem, toggleSidebarGroup } from "./navAccordion";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity, History } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity, History, Library } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -34,7 +34,7 @@ const MODULE_PAGE_PREFIXES: Record<string, readonly string[]> = {
   reports: ["/orders", "/order-activity-log"],
   payments: ["/payments"],
   "ask-ai": ["/ask"],
-  knowledge: ["/knowledge"],
+  knowledge: ["/knowledge", "/library"],
   correspondence: ["/correspondence"],
   "product-finder": ["/product-finder"],
   "garment-pantones": ["/garment-pantones"],
@@ -134,7 +134,9 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     heading: "Team",
-    items: [{ id: "momintum", label: "Tasks (moMINTum)", href: "/momintum/", icon: ListChecks, external: true, module: "momintum" }],
+    items: [{ id: "momintum", label: "Tasks (moMINTum)", href: "/momintum/", icon: ListChecks, external: true, module: "momintum" },
+      { id: "library", label: "Resource Library", href: "/library", icon: Library, module: "knowledge" },
+    ],
   },
   {
     heading: "Shipping",
