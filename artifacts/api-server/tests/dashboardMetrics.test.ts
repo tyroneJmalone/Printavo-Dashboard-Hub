@@ -31,7 +31,7 @@ test("Eastern calendar starts are Monday, quarter and year; DST does not shift d
 });
 
 test("SQL retains separate populations, complete-detail quantity, status history and shell filters", () => {
-  assert.match(DASHBOARD_SQL, /PARTITION BY customer_id ORDER BY printavo_created_at, visual_id/);
+  assert.match(DASHBOARD_SQL, /PARTITION BY customer_id ORDER BY chronology_at, visual_id/);
   assert.match(DASHBOARD_SQL, /coalesce\(o\.status_name, ''\) !~\* '\(archive\|duplicat\|reference\)'/);
   assert.match(DASHBOARD_SQL, /DISTINCT ON \(customer_id, visual_id\)/);
   assert.match(DASHBOARD_SQL, /detail_sync_state = 'complete'/);
@@ -68,6 +68,7 @@ test("read-only dev smoke: helper aggregate shape, counts and elapsed time", {
     ytdOrders: result.periods.ytd.totalOrders,
     recentQuotes: result.recent.quotesCreated.total,
     recentWon: result.recent.dealsWon.total,
+    quoteCoverage: result.coverage.quotesCreated,
   }));
 });
 
@@ -234,6 +235,44 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     assert.equal(unknown.activity.lw.quotesCreated.total, 3);
     assert.equal(unknown.close_rate.today.estimatedDateOrders, 1);
     assert.equal(unknown.close_rate.today.percentage, 100);
+    // Conversion must not move the first customer order after its repeat order.
+    // All fixtures live in pg_temp, never mutate production or upstream records.
+    await client.query("TRUNCATE pg_temp.pv_orders, pg_temp.change_events");
+    await add("converted-first", 600, "invoice", "2026-01-01T12:00:00-05:00");
+    await add("repeat-quote", 601, "quote", "2025-12-26T12:00:00-05:00");
+    await client.query("UPDATE pg_temp.pv_orders SET customer_id = 'c600' WHERE printavo_id = 'repeat-quote'");
+    await event("converted-first", 600, "2025-12-23T12:00:00-05:00");
+    await event("converted-first", 600, "2025-12-23T12:00:00-05:00");
+    const chronology = (await client.query(fixedSql)).rows[0];
+    assert.equal(chronology.periods.today.repeatCustomers, 0);
+    assert.equal(chronology.periods.lw.repeatCustomers, 1);
+    assert.equal(chronology.activity.lw.quotesCreated.total, 2);
+    assert.equal(chronology.unknown_quote_dates, 0);
+    assert.equal(chronology.quote_history_from.toISOString(), "2026-01-01T17:00:00.000Z");
+    const repeatDetailSql = dashboardDetailsSql("repeatCustomers").replace(
+      "(now() AT TIME ZONE 'America/New_York')::date AS today", "'2026-01-01'::date AS today");
+    const repeatDetail = (await client.query(repeatDetailSql, ["lw", 50, 0])).rows[0];
+    assert.equal(repeatDetail.value, chronology.periods.lw.repeatCustomers);
+    assert.equal(repeatDetail.items[0].orderId, "repeat-quote");
+    assert.equal(repeatDetail.items[0].date, "2025-12-26");
+    // Recoverable evidence still works if the current invoice lacks createdAt.
+    await client.query("UPDATE pg_temp.pv_orders SET printavo_created_at = NULL WHERE printavo_id = 'converted-first'");
+    assert.equal((await client.query(fixedSql)).rows[0].periods.lw.repeatCustomers, 1);
+    // Mismatched customer/visual IDs and unversioned legacy events cannot supply dates.
+    for (const change of [
+      "old_value = jsonb_set(old_value, '{customerId}', '\"another-customer\"')",
+      "visual_id = 9999",
+      "old_value = old_value - 'quoteHistoryVersion'",
+    ]) {
+      await client.query("SAVEPOINT evidence_fixture");
+      await client.query(`UPDATE pg_temp.change_events SET ${change}`);
+      const rejected = (await client.query(fixedSql)).rows[0];
+      assert.equal(rejected.quote_history_from, null);
+      assert.equal(rejected.unknown_quote_dates, 1);
+      assert.equal(rejected.missing_quote_dates, 1);
+      assert.equal(rejected.periods.lw.repeatCustomers, 0);
+      await client.query("ROLLBACK TO SAVEPOINT evidence_fixture");
+    }
     // Close Rate is independently computable without any historical events.
     await client.query("TRUNCATE pg_temp.pv_orders, pg_temp.change_events");
     const empty = (await client.query(fixedSql)).rows[0];

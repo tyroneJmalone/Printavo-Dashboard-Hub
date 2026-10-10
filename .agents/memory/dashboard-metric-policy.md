@@ -83,3 +83,15 @@ consistently with the same eligible population and date caveat.
 Preserve original quote-date evidence atomically before removing
 converted quotes, even during quiet seed runs; suppressing notifications must
 not suppress historical evidence.
+
+Use the same retained original quote date for Repeat Customer ordering and
+period allocation as for quote cohorts, while keeping their different status
+exclusions. Changing only the reporting period still leaves the customer's
+first and repeat orders incorrectly ranked after conversion.
+
+**Why:** Invoice creation can occur after a customer's next quote, reversing
+the apparent chronology even when logical-order deduplication is correct.
+
+**How to apply:** Preserve explicit estimated fallback labeling for legacy
+invoices; the earliest retained conversion observation describes evidence
+coverage, never an original creation timestamp or continuous history guarantee.

@@ -32,7 +32,8 @@ export function dashboardDetailsSql(metric: PerformanceMetric) {
         AND NOT ${notChipplySql("shell.nickname")})`;
   } else if (metric === "repeatCustomers") {
     rows = `SELECT o.printavo_id AS id, ${names}, e.created_day::text AS date, 1::float8 AS value,
-      'Qualifying repeat order; quotes and invoices included'::text AS note
+      CASE WHEN e.date_estimated THEN 'Qualifying repeat order; original quote date unknown, invoice creation used as estimated chronology'
+        ELSE 'Qualifying repeat order; original quote creation date' END::text AS note
       FROM repeat_orders e JOIN selected_range r ON e.created_day BETWEEN r.start_day AND r.end_day
       JOIN pv_orders o ON o.printavo_id = e.printavo_id WHERE e.customer_order_number > 1`;
   } else {
