@@ -49,3 +49,20 @@ Verify the actual attachment source on an example invoice and clarify image
 overflow handling. Keep regular workorders unchanged and retain safe
 post-submission status timing; do not silently apply MERCH destinations to
 non-MERCH invoices.
+
+The user expanded the proposed cover-page scope to all other workorders as
+well, while planning to use a Chipply feature for MERCH cover content. The
+specific Chipply feature and input format are not yet identified.
+
+Before proceeding, they want current Status added to post-AutoPrint destination
+rule matching, mixed-decoration mapping according to line items, and MERCH
+line-item decoration category assignment according to destination rules.
+They pointed to the existing bulk select/assign category feature for reuse.
+
+**Why:** MERCH production routing and line categories need coordinated handling.
+
+**How to apply:** These are requested architecture changes, not implemented
+behavior. Clarify mixed-line versus multi-method-on-one-line semantics.
+Preserve individual line identity; a mixed invoice destination alone does
+not identify each line's decoration. Missing-only assignment and explicit
+per-rule cover selection are recommendations, not user-approved defaults.
