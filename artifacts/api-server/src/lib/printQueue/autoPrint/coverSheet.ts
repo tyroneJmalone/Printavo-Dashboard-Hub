@@ -12,10 +12,26 @@ export function coverDate(value?: string | null): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "Not recorded" : date.toLocaleDateString("en-US", { timeZone: "UTC" });
 }
+/** Cover-only descriptor; never changes the source status or routing. */
+export function coverStatusLabel(value?: string | null): string {
+  const status = (value ?? "").replace(/^[^a-z0-9]+/i, "").replace(/\s+/g, " ").trim();
+  if (!status) return "Not recorded";
+  const merch = /^merch\b/i.test(status);
+  const descriptor = merch ? status.replace(/^merch\b[\s:–—-]*/i, "") : status;
+  const method = descriptor.match(/^(mixed(?:[\s-]+deco(?:ration)?)?|screen[\s-]+print(?:ing)?|print(?:ing)?|emb(?:roidery)?|heat(?:[\s-]+applied)?|dtf|dtg|sublimation)\b/i)?.[0];
+  if (merch && !method) return "MERCH";
+  let label = method ?? descriptor.split(/[\s:–—-]+/)[0];
+  if (/^mixed/i.test(label)) label = "Mixed Deco";
+  else if (/^(screen|print)/i.test(label)) label = merch ? "Print" : "PRINT";
+  else if (/^emb/i.test(label)) label = "EMB";
+  else if (/^heat/i.test(label)) label = "HEAT";
+  else label = label.toUpperCase();
+  return merch ? `MERCH - ${label}` : label;
+}
 /** Uses only images already loaded by the authorized Printavo workorder.
  * Text is assigned via textContent, never interpreted as HTML. */
 export function coverSheetScript(details: CoverDetails, isReprint = false): string {
-  const data = { ...details, productionDate: coverDate(details.productionDueAt), customerDate: coverDate(details.customerDueAt),
+  const data = { ...details, statusName: coverStatusLabel(details.statusName), productionDate: coverDate(details.productionDueAt), customerDate: coverDate(details.customerDueAt),
     banner: workorderHeaderText(details.nickname, isReprint) };
   return `(async () => {
     const data = ${JSON.stringify(data)};

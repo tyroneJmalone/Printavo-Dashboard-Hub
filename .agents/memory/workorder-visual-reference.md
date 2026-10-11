@@ -71,6 +71,12 @@ Cover sheets must be limited to one 8.5×11 portrait page, scaling images to
 fit. Put the status next to the workorder number at the same size, without
 a status label, and make due dates larger.
 
+Show only the beginning status descriptor on covers: e.g. MERCH - Mixed Deco,
+MERCH - Print, or PRINT / EMB / HEAT for non-MERCH workorders, not the workflow stage.
+
+**Why:** The user revised the header to identify the production type rather
+than display the full status name.
+
 **Why:** After approving the real-invoice preview, the user explicitly required
 one page rather than image continuation pages.
 

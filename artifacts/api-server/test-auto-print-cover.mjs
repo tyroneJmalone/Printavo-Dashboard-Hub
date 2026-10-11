@@ -10,7 +10,20 @@ let browser;
 try {
   const output = path.join(dir, "cover.mjs");
   await build({ entryPoints: ["src/lib/printQueue/autoPrint/coverSheet.ts"], absWorkingDir: import.meta.dirname, outfile: output, bundle: true, platform: "node", format: "esm" });
-  const { coverSheetScript, COVER_SHEET_CSS } = await import(output);
+  const { coverSheetScript, COVER_SHEET_CSS, coverStatusLabel } = await import(output);
+  for (const [status, expected] of [
+    ["🟢 MERCH - MIXED DECO Ready 4 Production", "MERCH - Mixed Deco"],
+    ["MERcH – Print Ready 2 Pick/Pack", "MERCH - Print"],
+    ["🏁 MERCH - EMB Pick/Pack COMPLETE", "MERCH - EMB"],
+    ["MERCH — HEAT Ready 4 Production", "MERCH - HEAT"],
+    ["MERCH – Ordered", "MERCH"],
+    ["PRINT-Picked UP", "PRINT"],
+    ["🟢 EMB - Waiting 4 Blanks", "EMB"],
+    [" HEAT  - Complete", "HEAT"],
+    ["MIXED DECO - Complete", "Mixed Deco"],
+    ["DTG - Complete", "DTG"],
+    [null, "Not recorded"],
+  ]) assert.equal(coverStatusLabel(status), expected);
   browser = await puppeteer.launch({ executablePath: execSync("command -v chromium", { encoding: "utf8" }).trim(), headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   const page = await browser.newPage();
   await page.setViewport({ width: 816, height: 1056 });
@@ -23,6 +36,7 @@ try {
     await page.evaluate(coverSheetScript({ visualId: "EXAMPLE", nickname: "Illustrative Rush — Embroidered chest / Heat sleeve", productionDueAt: "2026-10-12T00:00:00Z", customerDueAt: "2026-10-14T00:00:00Z", statusName: "MERCH – Ordered" }, true));
     assert.equal(await page.$$eval(".pq-cover-sheet", els => els.length), 1);
     assert.equal(await page.$eval(".pq-cover-heading", el => getComputedStyle(el.children[0]).fontSize === getComputedStyle(el.children[1]).fontSize), true);
+    assert.equal(await page.$eval(".pq-cover-heading span:last-child", el => el.textContent), "MERCH");
     assert.equal(await page.$$eval(".pq-cover-grid img", els => els.length), count);
     assert.equal(await page.$eval("#original p", el => el.textContent), "Keep production notes and line details.");
     assert.ok((await page.$eval(".pq-cover-sheet", el => el.textContent)).includes("10/12/2026"));
