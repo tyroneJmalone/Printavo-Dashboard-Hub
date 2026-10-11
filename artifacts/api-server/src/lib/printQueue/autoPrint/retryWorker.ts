@@ -1,7 +1,8 @@
 import { db, pqPrintJobsTable as jobs, pqPrintRunsTable as runs, changeEventsTable, type PqPrintJob } from "@workspace/db";
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import type { Logger } from "pino";
-import { singleOrderDetailQuery, type SingleOrderDetail } from "@workspace/printavo";
+import { type SingleOrderDetail } from "@workspace/printavo";
+import { workorderDetailQuery } from "./workorderDetailQuery";
 import { getPrintavoClient } from "../../printavoGateway";
 import { fetchLiveOrderStatus } from "./liveDiscovery";
 import { checkPrintSafety } from "./printSafety";
@@ -30,7 +31,7 @@ export const liveRetryDependencies = {
   detail: (kind: "invoice" | "quote", id: string) => getPrintavoClient().query<SingleOrderDetail & {
     invoice?: NonNullable<SingleOrderDetail["invoice"]> & { workorderUrl?: string; nickname?: string; customerDueAt?: string; productionDueAt?: string };
     quote?: NonNullable<SingleOrderDetail["quote"]> & { workorderUrl?: string; nickname?: string; customerDueAt?: string; productionDueAt?: string };
-  }>(singleOrderDetailQuery(kind, id).replace(/visualId\b/, "visualId workorderUrl nickname customerDueAt productionDueAt")),
+  }>(workorderDetailQuery(kind, id)),
   render: async (url: string, job: PqPrintJob) => {
     const renderer = await openPdfRenderer({ maxStartupAttempts: 1 });
     try { return await renderer.renderUrl(url, {

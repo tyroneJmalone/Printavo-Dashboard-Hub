@@ -87,7 +87,7 @@ export function AutoPrintRetryQueue() {
         </div>
         <details>
           <summary className="cursor-pointer text-sky-300">Attempt history ({job.attempts.length})</summary>
-          {!job.attempts.length && <p className="mt-2">Legacy failure — no durable attempt records. Verify before recovery.</p>}
+          {!job.attempts.length && <p className="mt-2">No detailed attempt records. This alone does not indicate a failed print. Review the job status and any printer acceptance before recovery.</p>}
           {job.attempts.map(a => <div key={a.id} className="mt-2 border-t border-slate-800 pt-2">
             #{a.attempt} · {a.phase} · {a.outcome} · {time(a.startedAt)}
             {a.error && <p className="whitespace-pre-wrap text-amber-200">{a.error}</p>}

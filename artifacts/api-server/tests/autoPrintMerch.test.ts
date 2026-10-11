@@ -4,6 +4,17 @@ import { classifyAutoPrint, nicknameMethods, planMerchCategories } from "../src/
 import { conditionalAutoPrintDestination } from "../src/lib/printQueue/autoPrint/routing";
 import { normalizeAutoPrintConfig, isValidAutoPrintRoutingRule, type AutoPrintRoutingRule } from "../src/lib/printQueue/autoPrint/configValidation";
 import { coverDate, coverSheetScript } from "../src/lib/printQueue/autoPrint/coverSheet";
+import { workorderDetailQuery } from "../src/lib/printQueue/autoPrint/workorderDetailQuery";
+
+test("workorder live queries alias Printavo dueAt for cover dates on both order types", () => {
+  for (const kind of ["invoice", "quote"] as const) {
+    const query = workorderDetailQuery(kind, "test-order");
+    assert.match(query, /productionDueAt:\s*dueAt\b/);
+    assert.doesNotMatch(query, /\bproductionDueAt\b(?!\s*:)/);
+    assert.match(query, /\bcustomerDueAt\b/);
+    assert.match(query, /\bworkorderUrl\b/);
+  }
+});
 import type { PvOrderDetailNode } from "@workspace/printavo";
 const group = (id: string, methods: string[], category: string | null = null, qty = 6, item = "TEE") => ({
   id, position: 1, lineItems: { pageInfo: { hasNextPage: false }, nodes: [
