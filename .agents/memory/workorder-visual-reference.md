@@ -32,3 +32,20 @@ merely because the nickname changes.
 
 **How to apply:** Scope these changes to AutoPrint, preserve customer contact
 details and invoice notes, and keep the approved shading and UPDATED behavior.
+
+## Proposed MERCH cover sheet
+
+The user says MERCH/Chipply invoices follow production workflows differently.
+They want MERCH-Ordered workorders to print and advance to decoration-specific
+Waiting 4 Blanks statuses, with a custom cover sheet showing invoice number,
+nickname, Production Due Date, Customer Due Date, and Order Status Name.
+Below that heading they want the normally excluded product-image attachments
+as a visual identifier, ideally on a single cover page.
+
+**Why:** Staff need to quickly identify MERCH workorders visually.
+
+**How to apply:** This is an architecture discussion, not approved implementation.
+Verify the actual attachment source on an example invoice and clarify image
+overflow handling. Keep regular workorders unchanged and retain safe
+post-submission status timing; do not silently apply MERCH destinations to
+non-MERCH invoices.
