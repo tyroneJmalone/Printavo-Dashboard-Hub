@@ -361,3 +361,31 @@ mtime_ms = 1791695601994
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/92040532-8b48-40e1-8529-ab7c2b66d890/eeb6812e-d4af-4deb-93f2-34aab5840011"
 storage_version_token = "1791695619075094"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "vTPUkgjt0bjaUGS4RC6JC"
+uri = "file://generated-artifacts/invoice-23260-cover-one-page.png"
+type = "image"
+title = "Updated single-page cover — #23260"
+description = "All seven images on one portrait letter page, larger due dates, and status beside the workorder number."
+logical_id = "a1fb87c4-8d5e-4af3-a83d-ddbcd86cb1de"
+content_hash = "sha256:8944e642443d78133c09c37854a99ae81493fda65a329d6fbc2eafb60d44f141"
+size = 238078
+mtime_ms = 1791696585818
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/a1fb87c4-8d5e-4af3-a83d-ddbcd86cb1de/c17d3a8d-8052-4991-a599-c6af56bb1e0c"
+storage_version_token = "1791696615626477"
+content_type = "image/png"
+
+[[outputs]]
+id = "NPjdI6RDjh_AtEEAmgRem"
+uri = "file://generated-artifacts/invoice-23260-cover-one-page.pdf"
+type = "pdf"
+title = "Download updated cover PDF"
+description = "Verified one-page 8.5 × 11-inch portrait PDF using synced invoice details and actual images. No print submitted."
+logical_id = "e9c3c303-f98a-40fc-8ba7-ca96d45ea189"
+content_hash = "sha256:91b59c571d450c106c0c84488346f5b4f36d8cb104a24c8d9e0cebb6a16e5427"
+size = 267418
+mtime_ms = 1791696584714
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/e9c3c303-f98a-40fc-8ba7-ca96d45ea189/33da10c9-562a-4d21-933f-4481b19e6c30"
+storage_version_token = "1791696616088051"
+content_type = "application/pdf"

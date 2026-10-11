@@ -67,11 +67,12 @@ not identify each line's decoration. Preserve existing categories; require
 explicit all-lines scope before using invoice-level method labels to fill
 blank merchandise categories.
 
-Use readable cover-image continuation pages rather than dropping images
-or shrinking an overflowing collection to illegibility.
+Cover sheets must be limited to one 8.5×11 portrait page, scaling images to
+fit. Put the status next to the workorder number at the same size, without
+a status label, and make due dates larger.
 
-**Why:** The user requested a quick visual identifier, ideally one page;
-retaining usable images is more important than silently losing references.
+**Why:** After approving the real-invoice preview, the user explicitly required
+one page rather than image continuation pages.
 
 The user says most mixed jobs have one line using multiple methods.
 Occasionally a separate line is made for its own decoration: for example,

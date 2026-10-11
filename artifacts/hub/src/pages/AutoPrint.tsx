@@ -673,7 +673,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
           <span>
             <span className="block text-[13px] text-slate-200">Print cover sheet</span>
             <span className="block text-[11px] text-slate-500">
-              Adds a front page with order metadata and line images. Long content flows onto readable continuation pages. The original workorder pages print unchanged after it.
+              Adds one portrait letter-size cover with order details and images scaled to fit. The original workorder pages print unchanged after it.
             </span>
           </span>
         </label>
