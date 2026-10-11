@@ -51,8 +51,8 @@ post-submission status timing; do not silently apply MERCH destinations to
 non-MERCH invoices.
 
 The user expanded the proposed cover-page scope to all other workorders as
-well, while planning to use a Chipply feature for MERCH cover content. The
-specific Chipply feature and input format are not yet identified.
+well. They corrected the earlier Chipply idea: Printavo workorders will provide
+the necessary information for cover sheets, including MERCH covers.
 
 Before proceeding, they want current Status added to post-AutoPrint destination
 rule matching, mixed-decoration mapping according to line items, and MERCH
@@ -62,7 +62,20 @@ They pointed to the existing bulk select/assign category feature for reuse.
 **Why:** MERCH production routing and line categories need coordinated handling.
 
 **How to apply:** These are requested architecture changes, not implemented
-behavior. Clarify mixed-line versus multi-method-on-one-line semantics.
+behavior. Both mixed-line and multi-method-on-one-line cases are required.
 Preserve individual line identity; a mixed invoice destination alone does
 not identify each line's decoration. Missing-only assignment and explicit
 per-rule cover selection are recommendations, not user-approved defaults.
+
+The user says most mixed jobs have one line using multiple methods.
+Occasionally a separate line is made for its own decoration: for example,
+24 sweatshirts receive the same screen print, but only six receive embroidery
+personalization. The six must be split out because the additional decoration
+is charged only to that subset.
+
+**Why:** An invoice-wide category assignment would erase the distinction
+between decoration methods and the quantities actually receiving them.
+
+**How to apply:** Preserve recorded line/group relationships and subset
+quantities. Do not apply embroidery to all 24 or assume an additional
+decoration charge represents six additional physical garments.
