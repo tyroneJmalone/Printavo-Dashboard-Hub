@@ -38,6 +38,7 @@ testem.log
 /typings
 
 # System Files
+/generated-artifacts/
 .DS_Store
 Thumbs.db
 

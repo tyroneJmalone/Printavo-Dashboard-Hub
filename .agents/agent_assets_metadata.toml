@@ -333,3 +333,31 @@ mtime_ms = 1791223973447
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/71c2e2b0-6e7a-47cf-8e33-ba87a3e1bd3c/d85974b9-89f2-44ff-b15c-53006d1c8235"
 storage_version_token = "1791223985233902"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "hpdyoVmaqFB5QQ-bL_bnN"
+uri = "file://generated-artifacts/invoice-23260-cover.png"
+type = "image"
+title = "Invoice #23260 — cover preview"
+description = "First page using actual synced invoice details and product/design images."
+logical_id = "531201e3-1d93-4cb8-bf7a-dd9d7e686567"
+content_hash = "sha256:010b03a161c40f410f5ca551fa9e1c4b17d98e82c9f78a5b3168e63559e9bdaf"
+size = 175077
+mtime_ms = 1791695603054
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/531201e3-1d93-4cb8-bf7a-dd9d7e686567/59050ec5-c465-4871-98ce-22c1fef91038"
+storage_version_token = "1791695618563971"
+content_type = "image/png"
+
+[[outputs]]
+id = "aXCoamg6vN0MhVuZimiXK"
+uri = "file://generated-artifacts/invoice-23260-cover.pdf"
+type = "pdf"
+title = "Invoice #23260 — complete cover PDF"
+description = "Two cover pages containing all seven images. Preview only; no print submitted or invoice changed."
+logical_id = "92040532-8b48-40e1-8529-ab7c2b66d890"
+content_hash = "sha256:4294b709a702d29cb25f9cd414dd9cb2e7fe6ad1a82e29dfb5499976a1be6ae2"
+size = 277510
+mtime_ms = 1791695601994
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/92040532-8b48-40e1-8529-ab7c2b66d890/eeb6812e-d4af-4deb-93f2-34aab5840011"
+storage_version_token = "1791695619075094"
+content_type = "application/pdf"
