@@ -8,6 +8,7 @@ import { executePrintAttempt, finalizePrintAttempt, liveRetryDependencies, type 
 import { prepareRetry } from "../src/lib/printQueue/autoPrint/retryPreparation";
 import { applyRetryAction } from "../src/lib/printQueue/autoPrint/retryAdmin";
 import { failureStatusEligible } from "../src/lib/printQueue/autoPrint/retryEligibility";
+import { assignAcceptedMerchCategories } from "../src/lib/printQueue/autoPrint/merchCategoryFollowup";
 import { isWorkorder403, nextForbiddenRetry } from "../src/lib/printQueue/autoPrint/forbiddenRetry";
 
 test("403 policy is render-only and caps both rounds, with a cooldown after attempt three", () => {
@@ -252,6 +253,29 @@ test("durable queue: isolated DB claims, leases, dedup and injected delivery fai
       assert.equal(sends, before + (scenario === "uncertain" ? 1 : 0));
       assert.equal(await executePrintAttempt(staged.id, "fixture", deps), null, "second-round safety outcome is never resent");
     }
+    const categoryJob = await make();
+    const assignedJob = await executePrintAttempt(categoryJob.id, "fixture", dependencies(categoryJob));
+    assert.equal(assignedJob?.status, "printed");
+    const categorySnapshot = { durableRetry: { ...snapshot,
+      categoryAssignments: [{ lineItemId: "test-line", categoryName: "Mixed Decoration" }] } };
+    await db.update(jobs).set({ snapshotMetadata: categorySnapshot }).where(eq(jobs.id, categoryJob.id));
+    const ready = { ...assignedJob!, snapshotMetadata: categorySnapshot };
+    let commits = 0;
+    const categoryDeps: any = {
+      liveCategories: async () => [{ id: "mixed", name: "Mixed Decoration" }],
+      previewReview: async (_actor: string, selections: any[], overwrite: boolean) => {
+        assert.equal(overwrite, false);
+        assert.equal(selections[0].lineItemId, "test-line");
+        return { previewId: "offline", lines: [{ statusId: ready.sourceStatusId, currentCategoryId: null }] };
+      },
+      commitReview: async () => { commits++; return { results: [{ outcome: "unknown" }] }; },
+    };
+    const beforeCategory = sends;
+    await assert.rejects(assignAcceptedMerchCategories(ready, quiet, categoryDeps), /manual review/);
+    await assert.rejects(assignAcceptedMerchCategories(ready, quiet, categoryDeps), /already claimed/);
+    assert.equal(commits, 1, "uncertain category mutation is never replayed");
+    assert.equal(sends, beforeCategory, "category failure cannot resend accepted workorder");
+    assert.equal(await executePrintAttempt(ready.id, "fixture", dependencies(ready)), null);
   } finally {
     pool.off("connect", onConnect);
     await pool.query(`DROP SCHEMA "${schema}" CASCADE`);

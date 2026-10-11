@@ -3,6 +3,8 @@ import { db, pqPrintJobsTable as jobs, pqPrintAttemptsTable as attempts, type Pq
 import { and, or, eq, ne, inArray, desc, sql, lte } from "drizzle-orm";
 import { failureStatusEligible } from "./retryEligibility";
 import { nextForbiddenRetry, type ForbiddenRetryState } from "./forbiddenRetry";
+import type { AutoPrintRoutingRule } from "./configValidation";
+import type { CategoryAssignment } from "./decorationEvidence";
 
 export const RETRY_BLOCKING_STATES = ["pending", "retry_pending", "held", "exhausted", "cancelled", "submission_unknown"];
 export const LEASE_MS = 10 * 60_000;
@@ -11,6 +13,9 @@ export type RetrySnapshot = {
   workorderUrl?: string | null;
   fingerprint?: string | null;
   routingPrepared?: boolean;
+  routingRule?: AutoPrintRoutingRule | null;
+  categoryAssignments?: CategoryAssignment[];
+  categoryFollowupClaimed?: boolean;
   delaysMinutes: number[];
   errorStatusId: string | null;
   forbiddenRetry?: ForbiddenRetryState;

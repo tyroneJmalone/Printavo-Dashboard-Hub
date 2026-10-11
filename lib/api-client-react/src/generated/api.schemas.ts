@@ -5490,6 +5490,27 @@ export interface AutoPrintCategoryMapping {
   statusName: string;
 }
 
+export type AutoPrintRoutingRuleRequiredMethodsItem = typeof AutoPrintRoutingRuleRequiredMethodsItem[keyof typeof AutoPrintRoutingRuleRequiredMethodsItem];
+
+
+export const AutoPrintRoutingRuleRequiredMethodsItem = {
+  print: 'print',
+  embroidery: 'embroidery',
+  heat: 'heat',
+} as const;
+
+/**
+ * Missing-only MERCH assignment. Evidence requires line/group evidence; all_lines explicitly applies the required method combination to every blank merchandise line.
+ */
+export type AutoPrintRoutingRuleMerchCategoryAction = typeof AutoPrintRoutingRuleMerchCategoryAction[keyof typeof AutoPrintRoutingRuleMerchCategoryAction];
+
+
+export const AutoPrintRoutingRuleMerchCategoryAction = {
+  none: 'none',
+  evidence: 'evidence',
+  all_lines: 'all_lines',
+} as const;
+
 export type AutoPrintRoutingRuleDecoration = typeof AutoPrintRoutingRuleDecoration[keyof typeof AutoPrintRoutingRuleDecoration];
 
 
@@ -5514,6 +5535,10 @@ export const AutoPrintRoutingRuleDueComparator = {
 } as const;
 
 export interface AutoPrintRoutingRule {
+  sourceStatusIds?: string[];
+  requiredMethods?: AutoPrintRoutingRuleRequiredMethodsItem[];
+  /** Missing-only MERCH assignment. Evidence requires line/group evidence; all_lines explicitly applies the required method combination to every blank merchandise line. */
+  merchCategoryAction?: AutoPrintRoutingRuleMerchCategoryAction;
   /** @minLength 1 */
   id: string;
   enabled: boolean;
@@ -5597,6 +5622,7 @@ export interface AutoPrintConfig {
   dryRun: boolean;
   /** Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible. */
   excludeAttachments: boolean;
+  coverSheet?: boolean;
   categoryMappings: AutoPrintCategoryMapping[];
   routingMode: AutoPrintConfigRoutingMode;
   routingRules: AutoPrintRoutingRule[];

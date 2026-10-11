@@ -362,6 +362,8 @@ export async function startAutoPrintRun(
 }
 
 interface Candidate {
+  routingRule?: import("./configValidation").AutoPrintRoutingRule | null;
+  productionDueAt?: Date | null;
   contentFingerprint: string;
   eligibilityCycle: string;
   priorJobId: string | null;
@@ -627,6 +629,7 @@ async function runAutoPrint(
             detailSyncedAt: pvOrdersTable.detailSyncedAt,
             orderType: pvOrdersTable.orderType,
             customerDueAt: pvOrdersTable.customerDueAt,
+            productionDueAt: pvOrdersTable.productionDueAt,
           })
           .from(pvOrdersTable)
           .where(inArray(pvOrdersTable.printavoId, ids))
@@ -716,11 +719,8 @@ async function runAutoPrint(
       // Use the same authoritative response as the fingerprint, not mutable
       // mirror rows which another sync could replace during this run.
       const freshLines = detail.lineItemGroups.nodes.flatMap((g) => g.lineItems.nodes);
-      const classification = classifyDecorationLines(freshLines.map((line) => ({
-        categoryName: line.category?.name ?? null, items: line.items,
-      })), {
-        positiveQuantityOnly: true,
-      });
+      const classification = (await import("./decorationEvidence")).classifyAutoPrint(detail);
+      let routingRule: import("./configValidation").AutoPrintRoutingRule | null = null;
       let target: { statusId: string; statusName: string } | null = null;
       if (config.routingMode === "conditional") {
         const matched = conditionalAutoPrintDestination(config.routingRules, {
@@ -729,8 +729,10 @@ async function runAutoPrint(
             ? businessDaysUntilDue(new Date(), row.customerDueAt)
             : null,
           nickname: row.nickname,
+          sourceStatusId: row.statusId,
         });
         if (matched) {
+          routingRule = matched;
           target = { statusId: matched.statusId, statusName: matched.statusName };
         }
       } else {
@@ -740,7 +742,17 @@ async function runAutoPrint(
         }
       }
       const raw = row.data as { workorderUrl?: unknown } | null;
+      try {
+        if (row.orderType === "invoice") {
+          (await import("./decorationEvidence")).planMerchCategories(detail, routingRule, row.nickname, row.statusName);
+        }
+      } catch (error) {
+        await skip(liveOrder.node, `Category review required: ${String(error)}`);
+        continue;
+      }
       todo.push({
+        routingRule,
+        productionDueAt: row.productionDueAt,
         contentFingerprint: fingerprint,
         eligibilityCycle: decision.cycle,
         priorJobId: prior?.id ?? null,
@@ -793,6 +805,7 @@ async function runAutoPrint(
                 contentFingerprint: c.contentFingerprint,
                 attemptKey: printAttemptKey(`visual:${c.visualId}`, c.eligibilityCycle, c.contentFingerprint),
               }, { orderKind: c.orderKind, workorderUrl: c.workorderUrl, fingerprint: c.contentFingerprint,
+                routingRule: c.routingRule ?? null,
                 delaysMinutes: config.retryDelaysMinutes, errorStatusId: config.errorStatusId });
               if (!queued) { counts.skipped++; continue; }
               const result = await executePrintAttempt(queued.id, "run");
@@ -826,6 +839,9 @@ async function runAutoPrint(
                 excludeAttachments: config.excludeAttachments,
                 isReprint: c.isReprint,
                 nickname: c.nickname,
+                coverSheet: config.coverSheet,
+                coverDetails: { visualId: c.visualId, statusName: c.statusName,
+                  customerDueAt: c.customerDueAt?.toISOString(), productionDueAt: c.productionDueAt?.toISOString() },
               });
               if (dryRun) {
                 return "dry_run";

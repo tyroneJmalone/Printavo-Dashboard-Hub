@@ -33,7 +33,7 @@ merely because the nickname changes.
 **How to apply:** Scope these changes to AutoPrint, preserve customer contact
 details and invoice notes, and keep the approved shading and UPDATED behavior.
 
-## Proposed MERCH cover sheet
+## MERCH and general cover-sheet scope
 
 The user says MERCH/Chipply invoices follow production workflows differently.
 They want MERCH-Ordered workorders to print and advance to decoration-specific
@@ -44,9 +44,9 @@ as a visual identifier, ideally on a single cover page.
 
 **Why:** Staff need to quickly identify MERCH workorders visually.
 
-**How to apply:** This is an architecture discussion, not approved implementation.
-Verify the actual attachment source on an example invoice and clarify image
-overflow handling. Keep regular workorders unchanged and retain safe
+**How to apply:** The user subsequently authorized cover-sheet implementation,
+MERCH/mixed destination mapping, and MERCH category recognition/assignment.
+Preserve the existing detailed workorder behind the cover and safe
 post-submission status timing; do not silently apply MERCH destinations to
 non-MERCH invoices.
 
@@ -61,11 +61,17 @@ They pointed to the existing bulk select/assign category feature for reuse.
 
 **Why:** MERCH production routing and line categories need coordinated handling.
 
-**How to apply:** These are requested architecture changes, not implemented
-behavior. Both mixed-line and multi-method-on-one-line cases are required.
+**How to apply:** Both mixed-line and multi-method-on-one-line cases are required.
 Preserve individual line identity; a mixed invoice destination alone does
-not identify each line's decoration. Missing-only assignment and explicit
-per-rule cover selection are recommendations, not user-approved defaults.
+not identify each line's decoration. Preserve existing categories; require
+explicit all-lines scope before using invoice-level method labels to fill
+blank merchandise categories.
+
+Use readable cover-image continuation pages rather than dropping images
+or shrinking an overflowing collection to illegibility.
+
+**Why:** The user requested a quick visual identifier, ideally one page;
+retaining usable images is more important than silently losing references.
 
 The user says most mixed jobs have one line using multiple methods.
 Occasionally a separate line is made for its own decoration: for example,

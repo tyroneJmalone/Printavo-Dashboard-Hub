@@ -12803,6 +12803,16 @@ components:
     AutoPrintRoutingRule:
       type: object
       properties:
+        sourceStatusIds:
+          type: array
+          items: { type: string }
+        requiredMethods:
+          type: array
+          items: { type: string, enum: [print, embroidery, heat] }
+        merchCategoryAction:
+          type: string
+          enum: [none, evidence, all_lines]
+          description: "Missing-only MERCH assignment. Evidence requires line/group evidence; all_lines explicitly applies the required method combination to every blank merchandise line."
         id: { type: string, minLength: 1 }
         enabled: { type: boolean }
         decoration:
@@ -12856,6 +12866,9 @@ components:
           type: boolean
           default: false
           description: "Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible."
+        coverSheet:
+          type: boolean
+          default: true
         categoryMappings:
           type: array
           items:

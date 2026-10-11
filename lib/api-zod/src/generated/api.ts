@@ -10925,6 +10925,7 @@ export const getAutoPrintConfigResponseDailyTimesMax = 12;
 export const getAutoPrintConfigResponseCopiesMax = 10;
 
 export const getAutoPrintConfigResponseExcludeAttachmentsDefault = false;
+export const getAutoPrintConfigResponseCoverSheetDefault = true;
 
 export const getAutoPrintConfigResponseRoutingModeDefault = `simple`;
 export const getAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin = 0;
@@ -10950,6 +10951,7 @@ export const GetAutoPrintConfigResponse = zod.object({
   "copies": zod.number().min(1).max(getAutoPrintConfigResponseCopiesMax),
   "dryRun": zod.boolean(),
   "excludeAttachments": zod.boolean().default(getAutoPrintConfigResponseExcludeAttachmentsDefault).describe('Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible.'),
+  "coverSheet": zod.boolean().default(getAutoPrintConfigResponseCoverSheetDefault),
   "categoryMappings": zod.array(zod.object({
   "category": zod.string().min(1),
   "statusId": zod.string().min(1),
@@ -10957,6 +10959,9 @@ export const GetAutoPrintConfigResponse = zod.object({
 })),
   "routingMode": zod.enum(['simple', 'conditional']).default(getAutoPrintConfigResponseRoutingModeDefault),
   "routingRules": zod.array(zod.object({
+  "sourceStatusIds": zod.array(zod.string()).optional(),
+  "requiredMethods": zod.array(zod.enum(['print', 'embroidery', 'heat'])).optional(),
+  "merchCategoryAction": zod.enum(['none', 'evidence', 'all_lines']).optional().describe('Missing-only MERCH assignment. Evidence requires line\/group evidence; all_lines explicitly applies the required method combination to every blank merchandise line.'),
   "id": zod.string().min(1),
   "enabled": zod.boolean(),
   "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'samples', 'mixed']),
@@ -10987,6 +10992,7 @@ export const updateAutoPrintConfigBodyDailyTimesMax = 12;
 export const updateAutoPrintConfigBodyCopiesMax = 10;
 
 export const updateAutoPrintConfigBodyExcludeAttachmentsDefault = false;
+export const updateAutoPrintConfigBodyCoverSheetDefault = true;
 
 export const updateAutoPrintConfigBodyRoutingModeDefault = `simple`;
 export const updateAutoPrintConfigBodyRoutingRulesItemDueBusinessDaysMin = 0;
@@ -11012,6 +11018,7 @@ export const UpdateAutoPrintConfigBody = zod.object({
   "copies": zod.number().min(1).max(updateAutoPrintConfigBodyCopiesMax),
   "dryRun": zod.boolean(),
   "excludeAttachments": zod.boolean().default(updateAutoPrintConfigBodyExcludeAttachmentsDefault).describe('Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible.'),
+  "coverSheet": zod.boolean().default(updateAutoPrintConfigBodyCoverSheetDefault),
   "categoryMappings": zod.array(zod.object({
   "category": zod.string().min(1),
   "statusId": zod.string().min(1),
@@ -11019,6 +11026,9 @@ export const UpdateAutoPrintConfigBody = zod.object({
 })),
   "routingMode": zod.enum(['simple', 'conditional']).default(updateAutoPrintConfigBodyRoutingModeDefault),
   "routingRules": zod.array(zod.object({
+  "sourceStatusIds": zod.array(zod.string()).optional(),
+  "requiredMethods": zod.array(zod.enum(['print', 'embroidery', 'heat'])).optional(),
+  "merchCategoryAction": zod.enum(['none', 'evidence', 'all_lines']).optional().describe('Missing-only MERCH assignment. Evidence requires line\/group evidence; all_lines explicitly applies the required method combination to every blank merchandise line.'),
   "id": zod.string().min(1),
   "enabled": zod.boolean(),
   "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'samples', 'mixed']),
@@ -11045,6 +11055,7 @@ export const updateAutoPrintConfigResponseDailyTimesMax = 12;
 export const updateAutoPrintConfigResponseCopiesMax = 10;
 
 export const updateAutoPrintConfigResponseExcludeAttachmentsDefault = false;
+export const updateAutoPrintConfigResponseCoverSheetDefault = true;
 
 export const updateAutoPrintConfigResponseRoutingModeDefault = `simple`;
 export const updateAutoPrintConfigResponseRoutingRulesItemDueBusinessDaysMin = 0;
@@ -11070,6 +11081,7 @@ export const UpdateAutoPrintConfigResponse = zod.object({
   "copies": zod.number().min(1).max(updateAutoPrintConfigResponseCopiesMax),
   "dryRun": zod.boolean(),
   "excludeAttachments": zod.boolean().default(updateAutoPrintConfigResponseExcludeAttachmentsDefault).describe('Hide attachment and mockup blocks from auto-printed workorders; workorder details remain visible.'),
+  "coverSheet": zod.boolean().default(updateAutoPrintConfigResponseCoverSheetDefault),
   "categoryMappings": zod.array(zod.object({
   "category": zod.string().min(1),
   "statusId": zod.string().min(1),
@@ -11077,6 +11089,9 @@ export const UpdateAutoPrintConfigResponse = zod.object({
 })),
   "routingMode": zod.enum(['simple', 'conditional']).default(updateAutoPrintConfigResponseRoutingModeDefault),
   "routingRules": zod.array(zod.object({
+  "sourceStatusIds": zod.array(zod.string()).optional(),
+  "requiredMethods": zod.array(zod.enum(['print', 'embroidery', 'heat'])).optional(),
+  "merchCategoryAction": zod.enum(['none', 'evidence', 'all_lines']).optional().describe('Missing-only MERCH assignment. Evidence requires line\/group evidence; all_lines explicitly applies the required method combination to every blank merchandise line.'),
   "id": zod.string().min(1),
   "enabled": zod.boolean(),
   "decoration": zod.enum(['any', 'print', 'heat', 'embroidery', 'samples', 'mixed']),

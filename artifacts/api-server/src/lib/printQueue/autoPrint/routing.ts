@@ -1,11 +1,13 @@
 import { ruleMatches, type RuleOrderComposition } from "../../purchasing/ruleMatching";
 import type { DecorationClassification } from "../../purchasing/decorationClassifier";
 import type { AutoPrintRoutingRule } from "./configValidation";
+import { nicknameMethods } from "./decorationEvidence";
 
 export interface AutoPrintRoutingCandidate {
   classification: DecorationClassification;
   businessDaysOut: number | null;
   nickname: string | null;
+  sourceStatusId?: string | null;
 }
 
 export function successfulPostPrintCandidates<T>(
@@ -28,6 +30,12 @@ export function conditionalAutoPrintDestination(
   return (
     rules.find((rule) => {
       if (!rule.enabled) return false;
+      if (rule.sourceStatusIds?.length && !rule.sourceStatusIds.includes(candidate.sourceStatusId ?? "")) return false;
+      const methods = new Set([...candidate.classification.groups, ...nicknameMethods(candidate.nickname)]);
+      if (rule.requiredMethods?.some(method => !methods.has(method))) return false;
+      const ruleComp = rule.requiredMethods?.length
+        ? { groups: methods, mixed: comp.mixed || methods.size > 1 }
+        : comp;
       return ruleMatches(
         {
           specialMixedDeco: rule.decoration === "mixed",
@@ -39,7 +47,7 @@ export function conditionalAutoPrintDestination(
           dueBusinessDays: rule.dueBusinessDays,
           nicknameKeywords: rule.nicknameKeywords,
         },
-        comp,
+        ruleComp,
         candidate.businessDaysOut,
         candidate.nickname,
       );

@@ -8,6 +8,7 @@ import { WorkorderSkip } from "./workorderRetry";
 import { classifyDecorationLines, destinationMappingForClassification } from "../../purchasing/decorationClassifier";
 import { conditionalAutoPrintDestination } from "./routing";
 import { businessDaysUntilDue } from "../../purchasing/businessDays";
+import { classifyAutoPrint, planMerchCategories } from "./decorationEvidence";
 
 /** Deferred detail failures still need normal reprint eligibility, not a bypass. */
 export async function prepareRetry(job: PqPrintJob, fingerprint: string,
@@ -39,20 +40,29 @@ export async function prepareRetry(job: PqPrintJob, fingerprint: string,
     eligibilityCycle = decision.cycle;
   }
   let targetStatusId = job.targetStatusId, targetStatusName = job.targetStatusName;
+  let routingRule = snapshot.routingRule ?? null;
   if (!snapshot.fingerprint || snapshot.routingPrepared === false) {
-    const classification = classifyDecorationLines(node.lineItemGroups.nodes.flatMap(g => g.lineItems.nodes)
-      .map(l => ({ categoryName: l.category?.name ?? null, items: l.items })), { positiveQuantityOnly: true });
+    const classification = classifyAutoPrint(node);
     const target = config.routingMode === "conditional"
       ? conditionalAutoPrintDestination(config.routingRules, { classification, nickname: node.nickname ?? job.nickname,
+        sourceStatusId: job.sourceStatusId,
         businessDaysOut: node.customerDueAt ? businessDaysUntilDue(new Date(), new Date(node.customerDueAt)) : null })
       : destinationMappingForClassification(classification, config.categoryMappings);
     targetStatusId = target?.statusId ?? null;
     targetStatusName = target?.statusName ?? null;
+    routingRule = config.routingMode === "conditional" ? target as import("./configValidation").AutoPrintRoutingRule | null : null;
+  }
+  let categoryAssignments;
+  try {
+    categoryAssignments = snapshot.orderKind === "invoice"
+      ? planMerchCategories(node, routingRule, node.nickname ?? job.nickname, job.sourceStatusName) : [];
+  } catch (error) {
+    throw new WorkorderSkip(`Category review required: ${String(error)}`);
   }
   const [prepared] = await db.update(jobs).set({
     contentFingerprint: fingerprint, eligibilityCycle: eligibilityCycle ?? "initial",
     isReprint: !!prior, priorPrintedAt: prior?.printedAt ?? null, targetStatusId, targetStatusName,
-    snapshotMetadata: { ...(job.snapshotMetadata as object), durableRetry: { ...snapshot, fingerprint, routingPrepared: true } },
+    snapshotMetadata: { ...(job.snapshotMetadata as object), durableRetry: { ...snapshot, fingerprint, routingPrepared: true, routingRule, categoryAssignments } },
   }).where(and(eq(jobs.id, job.id), eq(jobs.leaseToken, job.leaseToken!), eq(jobs.status, "pending"),
     sql`${jobs.leaseUntil} > now()`)).returning();
   if (!prepared) throw new Error("Lease lost during print preparation");

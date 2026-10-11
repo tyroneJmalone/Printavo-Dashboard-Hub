@@ -91,6 +91,8 @@ export * from './autoPrintRetryJobAttemptsItem';
 export * from './autoPrintRoutingRule';
 export * from './autoPrintRoutingRuleDecoration';
 export * from './autoPrintRoutingRuleDueComparator';
+export * from './autoPrintRoutingRuleMerchCategoryAction';
+export * from './autoPrintRoutingRuleRequiredMethodsItem';
 export * from './autoPrintRun';
 export * from './autoPrintRunCounts';
 export * from './autoPrintRunDiscoveryState';

@@ -7,8 +7,14 @@
  */
 import type { AutoPrintRoutingRuleDecoration } from './autoPrintRoutingRuleDecoration';
 import type { AutoPrintRoutingRuleDueComparator } from './autoPrintRoutingRuleDueComparator';
+import type { AutoPrintRoutingRuleMerchCategoryAction } from './autoPrintRoutingRuleMerchCategoryAction';
+import type { AutoPrintRoutingRuleRequiredMethodsItem } from './autoPrintRoutingRuleRequiredMethodsItem';
 
 export interface AutoPrintRoutingRule {
+  sourceStatusIds?: string[];
+  requiredMethods?: AutoPrintRoutingRuleRequiredMethodsItem[];
+  /** Missing-only MERCH assignment. Evidence requires line/group evidence; all_lines explicitly applies the required method combination to every blank merchandise line. */
+  merchCategoryAction?: AutoPrintRoutingRuleMerchCategoryAction;
   /** @minLength 1 */
   id: string;
   enabled: boolean;

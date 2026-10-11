@@ -24,6 +24,9 @@ export type AutoPrintRoutingMode = "simple" | "conditional";
 export type AutoPrintDecoration = "any" | "print" | "heat" | "embroidery" | "samples" | "mixed";
 
 export interface AutoPrintRoutingRule {
+  sourceStatusIds?: string[];
+  requiredMethods?: ("print" | "embroidery" | "heat")[];
+  merchCategoryAction?: "none" | "evidence" | "all_lines";
   id: string;
   enabled: boolean;
   decoration: AutoPrintDecoration;
@@ -56,6 +59,7 @@ export interface AutoPrintConfig {
   dryRun: boolean;
   /** Hide Printavo attachment/mockup blocks from auto-printed workorders. */
   excludeAttachments: boolean;
+  coverSheet?: boolean;
   /** Decoration category/group → post-print target status. */
   categoryMappings: CategoryMapping[];
   /** Selects either legacy mappings or the independent, prioritized rule list. */
@@ -77,6 +81,7 @@ export const DEFAULT_AUTO_PRINT_CONFIG: AutoPrintConfig = {
   copies: 1,
   dryRun: true,
   excludeAttachments: true,
+  coverSheet: true,
   categoryMappings: [],
   routingMode: "simple",
   routingRules: [],
@@ -88,6 +93,10 @@ const COMPARATORS = new Set(["more_than", "at_most"]);
 export function isValidAutoPrintRoutingRule(value: unknown): value is AutoPrintRoutingRule {
   if (!value || typeof value !== "object") return false;
   const r = value as Partial<AutoPrintRoutingRule>;
+  if (r.sourceStatusIds != null && (!Array.isArray(r.sourceStatusIds) || r.sourceStatusIds.some(s => typeof s !== "string" || !s))) return false;
+  if (r.requiredMethods != null && (!Array.isArray(r.requiredMethods) || r.requiredMethods.some(s => !["print", "embroidery", "heat"].includes(s)))) return false;
+  if (r.merchCategoryAction != null && !["none", "evidence", "all_lines"].includes(r.merchCategoryAction)) return false;
+  if (r.merchCategoryAction === "all_lines" && !r.requiredMethods?.length) return false;
   if (
     typeof r.id !== "string" ||
     !r.id ||
@@ -185,6 +194,7 @@ export function normalizeAutoPrintConfig(raw: unknown): AutoPrintConfig {
         : d.copies,
     dryRun: typeof v.dryRun === "boolean" ? v.dryRun : d.dryRun,
     excludeAttachments: true,
+    coverSheet: typeof v.coverSheet === "boolean" ? v.coverSheet : true,
     categoryMappings: Array.isArray(v.categoryMappings)
       ? v.categoryMappings.filter(
           (m): m is CategoryMapping =>

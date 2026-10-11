@@ -20,6 +20,7 @@ import { businessDaysUntilDue } from "../../purchasing/businessDays";
 import { prepareRetry } from "./retryPreparation";
 import { failureStatusEligible } from "./retryEligibility";
 import { isWorkorder403, nextForbiddenRetry, forbiddenRetryMessage } from "./forbiddenRetry";
+import { assignAcceptedMerchCategories } from "./merchCategoryFollowup";
 
 // Explicit dependencies allow failure injection without loading a renderer,
 // sending a PrintNode job, or changing a real Printavo status.
@@ -27,14 +28,16 @@ export const liveRetryDependencies = {
   claim: claimPrint, fence: fencePrint, finish: finishPrint,
   status: fetchLiveOrderStatus,
   detail: (kind: "invoice" | "quote", id: string) => getPrintavoClient().query<SingleOrderDetail & {
-    invoice?: NonNullable<SingleOrderDetail["invoice"]> & { workorderUrl?: string; nickname?: string; customerDueAt?: string };
-    quote?: NonNullable<SingleOrderDetail["quote"]> & { workorderUrl?: string; nickname?: string; customerDueAt?: string };
-  }>(singleOrderDetailQuery(kind, id).replace(/visualId\b/, "visualId workorderUrl nickname customerDueAt")),
+    invoice?: NonNullable<SingleOrderDetail["invoice"]> & { workorderUrl?: string; nickname?: string; customerDueAt?: string; productionDueAt?: string };
+    quote?: NonNullable<SingleOrderDetail["quote"]> & { workorderUrl?: string; nickname?: string; customerDueAt?: string; productionDueAt?: string };
+  }>(singleOrderDetailQuery(kind, id).replace(/visualId\b/, "visualId workorderUrl nickname customerDueAt productionDueAt")),
   render: async (url: string, job: PqPrintJob) => {
     const renderer = await openPdfRenderer({ maxStartupAttempts: 1 });
     try { return await renderer.renderUrl(url, {
       purchaseNotes: await loadPurchaseNotes(job.printavoOrderId), excludeAttachments: true, isReprint: job.isReprint,
       nickname: job.nickname,
+      coverSheet: (await getAutoPrintConfig()).coverSheet,
+      coverDetails: (job.snapshotMetadata as { coverDetails?: import("./coverSheet").CoverDetails })?.coverDetails,
     }); } finally { await renderer.close().catch(() => undefined); }
   },
   submit: submitPdfPrintJob,
@@ -93,7 +96,12 @@ async function executeSinglePrintAttempt(id: string, actor: string, deps: RetryD
     await deps.fence(job, phase);
     if (!node.workorderUrl) throw new Error("No workorder URL on this order");
     // Use the live nickname on every attempt, not the possibly older queued value.
-    const pdf = await deps.render(node.workorderUrl, { ...job, nickname: node.nickname ?? null });
+    const pdf = await deps.render(node.workorderUrl, { ...job, nickname: node.nickname ?? null,
+      snapshotMetadata: { ...(job.snapshotMetadata as object), coverDetails: {
+        visualId: node.visualId, nickname: node.nickname, customerDueAt: node.customerDueAt,
+        productionDueAt: node.productionDueAt, statusName: job.sourceStatusName,
+      } },
+    });
     phase = "verification";
     await check(job);
     const verifyData = await deps.detail(snapshot.orderKind, job.printavoOrderId);
@@ -172,6 +180,7 @@ export async function finalizePrintAttempt(job: PqPrintJob, log: Logger, deps = 
   }
   try {
     let target = job.status === "printed" ? job.targetStatusId : job.status === "exhausted" ? snapshot.errorStatusId : null;
+    if (job.status === "printed") await assignAcceptedMerchCategories(job, log);
     // Preparatory failures have no destination snapshot. Resolve routing from
     // authoritative detail only after the workorder was accepted.
     if (job.status === "printed" && !target && (!snapshot.fingerprint || snapshot.routingPrepared === false)) {
@@ -183,6 +192,7 @@ export async function finalizePrintAttempt(job: PqPrintJob, log: Logger, deps = 
           .map(l => ({ categoryName: l.category?.name ?? null, items: l.items })), { positiveQuantityOnly: true });
         target = config.routingMode === "conditional"
           ? conditionalAutoPrintDestination(config.routingRules, { classification, nickname: node.nickname ?? null,
+            sourceStatusId: job.sourceStatusId,
             businessDaysOut: node.customerDueAt ? businessDaysUntilDue(new Date(), new Date(node.customerDueAt)) : null })?.statusId ?? null
           : destinationMappingForClassification(classification, config.categoryMappings)?.statusId ?? null;
       }

@@ -4,6 +4,7 @@ import { logger } from "../../logger";
 import { isAllowedWorkorderUrl } from "../workorderHtml";
 import { WORKORDER_PRESENTATION_CSS } from "../workorderPresentation";
 import { workorderHeaderScript } from "./workorderHeader";
+import { coverSheetScript, COVER_SHEET_CSS, type CoverDetails } from "./coverSheet";
 import { AUTO_PRINT_COMPACT_CSS, presentationScript, type PurchaseNote } from "./presentation";
 import {
   closeBrowserBounded,
@@ -47,6 +48,8 @@ function chromiumPath(): string {
 }
 
 export interface WorkorderPdfOptions {
+  coverSheet?: boolean;
+  coverDetails?: CoverDetails;
   purchaseNotes?: PurchaseNote[];
   excludeAttachments?: boolean;
   isReprint?: boolean;
@@ -128,6 +131,10 @@ export async function openPdfRenderer(options?: { maxStartupAttempts?: number })
         await page.addStyleTag({ content: AUTO_PRINT_COMPACT_CSS });
         await page.evaluate(presentationScript(options?.purchaseNotes ?? []));
         await page.evaluate(workorderHeaderScript(options?.nickname, options?.isReprint));
+        if (options?.coverSheet !== false) {
+          await page.addStyleTag({ content: COVER_SHEET_CSS });
+          await page.evaluate(coverSheetScript({ ...options?.coverDetails, nickname: options?.nickname }, options?.isReprint));
+        }
         const pdf = await page.pdf({
           format: "letter",
           printBackground: true,

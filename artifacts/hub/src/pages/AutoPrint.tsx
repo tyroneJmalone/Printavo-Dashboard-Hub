@@ -276,6 +276,19 @@ const RULE_DECORATIONS: Record<RuleDecoration, string> = {
   mixed: "Mixed decoration (2+ types)",
 };
 
+type RuleMethod = "print" | "embroidery" | "heat";
+type MerchAction = "none" | "evidence" | "all_lines";
+const RULE_METHODS: { value: RuleMethod; label: string }[] = [
+  { value: "print", label: "Screen print" },
+  { value: "embroidery", label: "Embroidery" },
+  { value: "heat", label: "Heat press" },
+];
+const MERCH_ACTIONS: Record<MerchAction, string> = {
+  none: "Do not touch categories",
+  evidence: "Fill missing categories from line/group evidence",
+  all_lines: "Assign required methods to all blank merchandise lines",
+};
+
 function ConditionalRuleEditor({
   rule,
   statuses,
@@ -283,7 +296,7 @@ function ConditionalRuleEditor({
   onCancel,
 }: {
   rule: AutoPrintRoutingRule | null;
-  statuses: { id: string; name: string }[];
+  statuses: { id: string; name: string; color?: string | null }[];
   onSave: (rule: AutoPrintRoutingRule) => void;
   onCancel: () => void;
 }) {
@@ -292,7 +305,11 @@ function ConditionalRuleEditor({
   const [days, setDays] = useState(String(rule?.dueBusinessDays ?? 5));
   const [keywords, setKeywords] = useState(rule?.nicknameKeywords?.join(", ") ?? "");
   const [statusId, setStatusId] = useState(rule?.statusId ?? "");
+  const [ruleSources, setRuleSources] = useState<string[]>(rule?.sourceStatusIds ?? []);
+  const [methods, setMethods] = useState<RuleMethod[]>((rule?.requiredMethods ?? []) as RuleMethod[]);
+  const [merchAction, setMerchAction] = useState<MerchAction>((rule?.merchCategoryAction ?? "none") as MerchAction);
   const status = statuses.find((item) => item.id === statusId);
+  const allLinesMissing = merchAction === "all_lines" && methods.length === 0;
   const control =
     "mt-1 bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-[#059669]";
 
@@ -331,12 +348,50 @@ function ConditionalRuleEditor({
           {statuses.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
       </label>
+      <div className="text-[11px] text-slate-400">
+        Source statuses (checked before printing)
+        <div className="mt-1">
+          <StatusMultiPicker statuses={statuses} selected={ruleSources} onChange={setRuleSources} emptyLabel="Any source status" testId="rule-source-statuses" />
+        </div>
+      </div>
+      <fieldset className="text-[11px] text-slate-400">
+        <legend>Required methods (all checked must be present)</legend>
+        <div className="mt-1 flex gap-3 py-2">
+          {RULE_METHODS.map((m) => (
+            <label key={m.value} className="flex items-center gap-1.5 text-xs text-slate-200 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={methods.includes(m.value)}
+                onChange={() => setMethods((cur) => cur.includes(m.value) ? cur.filter((x) => x !== m.value) : [...cur, m.value])}
+                className="accent-[#059669]"
+                data-testid={`checkbox-rule-method-${m.value}`}
+              />
+              {m.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <label className="text-[11px] text-slate-400">
+        MERCH category follow-up
+        <select value={merchAction} onChange={(e) => setMerchAction(e.target.value as MerchAction)} className={`${control} block max-w-80`} data-testid="select-rule-merch-action">
+          {(Object.keys(MERCH_ACTIONS) as MerchAction[]).map((v) => <option key={v} value={v}>{MERCH_ACTIONS[v]}</option>)}
+        </select>
+      </label>
+      <div className="basis-full text-[11px] text-slate-500 space-y-1" data-testid="text-rule-merch-help">
+        <p>Source statuses are checked before printing; empty means any. Category follow-up runs only after the printer accepts the job and before the move to the destination status. It applies only to recognized MERCH invoices, and existing line categories are always preserved.</p>
+        {merchAction === "evidence" && <p>Evidence fills a blank category only when line or group evidence identifies the method.</p>}
+        {merchAction === "all_lines" && (
+          <p className="text-amber-300">All blank merchandise lines get the selected methods. Do not use this when only a subset of items is personalized.</p>
+        )}
+        {allLinesMissing && <p className="text-red-300" data-testid="text-rule-methods-required">Select at least one required method to use this action.</p>}
+      </div>
       <div className="flex gap-2 ml-auto">
         <button
           type="button"
-          disabled={!status}
+          disabled={!status || allLinesMissing}
+          data-testid="button-save-rule"
           onClick={() => {
-            if (!status) return;
+            if (!status || allLinesMissing) return;
             const words = keywords.split(",").map((word) => word.trim()).filter(Boolean);
             onSave({
               id: rule?.id ?? crypto.randomUUID(),
@@ -347,6 +402,9 @@ function ConditionalRuleEditor({
               nicknameKeywords: words.length ? words : null,
               statusId,
               statusName: status.name,
+              sourceStatusIds: ruleSources,
+              requiredMethods: methods,
+              merchCategoryAction: merchAction,
             });
           }}
           className="px-3 py-2 rounded-lg bg-[#059669]/15 border border-[#059669]/30 text-xs text-[#10b981] disabled:opacity-40"
@@ -383,6 +441,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
   const [dailyTimes, setDailyTimes] = useState<string[]>(
     hydrateDailyTimes(initial.dailyTimes),
   );
+  const [coverSheet, setCoverSheet] = useState(initial.coverSheet ?? true);
   const [copies, setCopies] = useState(String(initial.copies));
   const [sourceStatusIds, setSourceStatusIds] = useState<string[]>(
     initial.sourceStatusIds,
@@ -454,6 +513,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
       enabled,
       dryRun,
       excludeAttachments,
+      coverSheet,
       scheduleHours: Math.min(24, Math.max(1, Number(scheduleHours) || 6)),
       scheduleMode,
       dailyTimes,
@@ -598,6 +658,22 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
             <span className="block text-[13px] text-slate-200">Exclude Attachments</span>
             <span className="block text-[11px] text-slate-500">
               Always omit attachment and mockup pages from auto-printed PDFs. Workorder details and product thumbnails still print.
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-[#020617] px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={coverSheet}
+            onChange={(e) => setCoverSheet(e.target.checked)}
+            className="mt-0.5 accent-[#059669]"
+            data-testid="checkbox-autoprint-cover-sheet"
+          />
+          <span>
+            <span className="block text-[13px] text-slate-200">Print cover sheet</span>
+            <span className="block text-[11px] text-slate-500">
+              Adds a front page with order metadata and line images. Long content flows onto readable continuation pages. The original workorder pages print unchanged after it.
             </span>
           </span>
         </label>
@@ -966,6 +1042,9 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
                     <div className="text-[11px] text-slate-500">
                       {rule.dueComparator ? `${rule.dueComparator === "more_than" ? "more than" : "within"} ${rule.dueBusinessDays} business days` : "any due date"}
                       {rule.nicknameKeywords?.length ? ` · nickname: ${rule.nicknameKeywords.join(" OR ")}` : ""}
+                      {rule.sourceStatusIds?.length ? ` · from: ${rule.sourceStatusIds.map(statusName).join(" OR ")}` : ""}
+                      {rule.requiredMethods?.length ? ` · requires: ${rule.requiredMethods.map((m) => RULE_METHODS.find((x) => x.value === m)?.label ?? m).join(" AND ")}` : ""}
+                      {rule.merchCategoryAction && rule.merchCategoryAction !== "none" ? ` · MERCH categories: ${rule.merchCategoryAction === "evidence" ? "fill from evidence" : "all blank lines"}` : ""}
                     </div>
                   </div>
                   <span className="text-xs text-slate-500">→</span>

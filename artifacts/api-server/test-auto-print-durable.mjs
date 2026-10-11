@@ -16,10 +16,10 @@ try {
     },
     plugins: [{ name: "no-live-side-effects", setup(build) {
       build.onResolve({ filter: /^(pg|drizzle-zod)$/ }, args => ({ path: dbRequire.resolve(args.path), external: true }));
-      build.onResolve({ filter: /(?:printavoGateway|\/pdf|\/printNode|\/statusJobs|\/hubPoBatch|\/purchaseNotes)$/ }, args => ({ path: args.path, namespace: "blocked" }));
+      build.onResolve({ filter: /(?:printavoGateway|\/pdf|\/printNode|\/statusJobs|\/hubPoBatch|\/purchaseNotes|\/chipply\/categoryReview)$/ }, args => ({ path: args.path, namespace: "blocked" }));
       build.onLoad({ filter: /.*/, namespace: "blocked" }, () => ({
         contents: `const blocked=()=>{throw new Error("LIVE SIDE EFFECT BLOCKED IN TEST")};
-        export const getPrintavoClient=blocked,openPdfRenderer=blocked,submitPdfPrintJob=blocked,printNodeConfigured=()=>false,startPqStatusJob=blocked,runHubPoBatch=blocked,loadPurchaseNotes=blocked;`,
+        export const getPrintavoClient=blocked,openPdfRenderer=blocked,submitPdfPrintJob=blocked,printNodeConfigured=()=>false,startPqStatusJob=blocked,runHubPoBatch=blocked,loadPurchaseNotes=blocked,liveCategories=blocked,previewReview=blocked,commitReview=blocked;`,
       }));
     }}],
   });

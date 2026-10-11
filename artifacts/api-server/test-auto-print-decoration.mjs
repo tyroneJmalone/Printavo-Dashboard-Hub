@@ -1,7 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { build } from "esbuild";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
-const outfile = `${import.meta.dirname}/.auto-print-decoration.test.mjs`;
+const dir = mkdtempSync(path.join(tmpdir(), "autoprint-decoration-"));
+const outfile = path.join(dir, "test.mjs");
 
 await build({
   entryPoints: ["tests/autoPrintDecoration.test.ts"],
@@ -18,4 +22,5 @@ const result = spawnSync(
   ["--enable-source-maps", "--test", outfile],
   { stdio: "inherit" },
 );
+rmSync(dir, { recursive: true, force: true });
 process.exit(result.status ?? 1);
