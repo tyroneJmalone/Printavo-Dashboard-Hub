@@ -79,3 +79,15 @@ between decoration methods and the quantities actually receiving them.
 **How to apply:** Preserve recorded line/group relationships and subset
 quantities. Do not apply embroidery to all 24 or assume an additional
 decoration charge represents six additional physical garments.
+
+MERCH sample records inspected during this discussion had blank line
+categories and blank imprint methods/matrices, despite explicit EMB/HEAT
+or PRINT location clauses in their nicknames.
+
+**Why:** Requiring existing categories or matrices for every MERCH routing
+decision would leave these imports unmatched. A nickname can identify
+invoice-level methods without proving their applicability to every line.
+
+**How to apply:** Consider narrowly defined nickname-method conditions as
+explicit rule inputs, not blanket authoritative per-line evidence. Preserve
+review handling for conflicting evidence and subset personalization.
