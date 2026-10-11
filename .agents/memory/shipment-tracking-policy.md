@@ -36,3 +36,12 @@ The user said the team has not fully committed to Hub Purchasing and still purch
 **Why:** They want to consider using Order Tracking independently of where orders are placed and explicitly asked to log the discussion for later.
 
 **How to apply:** Revisit the full October 4, 2026 discussion in `docs/insights-log.md` before scoping work. It preserves targeted PO lookup versus account-history discovery, unverified vendor API visibility, and the recommendation—not an approved decision—to distinguish outside orders from Hub submissions.
+
+The user has now requested a plan for outside-Hub PO tracking, with separate
+expandable sections for Hub-submitted and externally placed POs.
+
+**Why:** Tracking should support their existing purchasing process while making
+the two PO sources distinct. This approves planning, not implementation.
+
+**How to apply:** Preserve both sections in the proposed interface; confirm
+vendor API visibility before promising external-order discovery.
