@@ -1,5 +1,14 @@
 import { pgTable, uuid, text, jsonb, timestamp, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 
+/** Observer-only checkpoints, transactionally committed with the delivery ledger.
+ * Separate forward/reconciliation lanes avoid a late commit falling behind forever.
+ */
+export const pqAdminAlertCursorsTable = pgTable("pq_admin_alert_cursors", {
+  key: text("key").primaryKey(),
+  cursor: jsonb("cursor").notNull().default({}),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Admin-only in-app delivery ledger. Never controls printing or status changes. */
 export const pqAdminAlertsTable = pgTable("pq_admin_alerts", {
   id: uuid("id").primaryKey().defaultRandom(),

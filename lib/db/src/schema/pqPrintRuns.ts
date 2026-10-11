@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, boolean, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Auto-print engine runs (PQ3a). One row per engine pass (scheduled or
@@ -27,7 +28,11 @@ export const pqPrintRunsTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("pq_print_runs_created_idx").on(t.createdAt)],
+  (t) => [
+    index("pq_print_runs_created_idx").on(t.createdAt),
+    index("pq_print_runs_updated_cursor_idx").on(t.updatedAt, t.id),
+    index("pq_print_runs_alert_active_idx").on(t.updatedAt, t.id).where(sql`${t.status} = 'running' and ${t.dryRun} = false`),
+  ],
 );
 
 export type PqPrintRun = typeof pqPrintRunsTable.$inferSelect;

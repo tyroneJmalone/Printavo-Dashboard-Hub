@@ -118,7 +118,9 @@ export function runAlertEvents(run: AlertRun, since: Date, now = new Date()): Al
 
 /** Durable delivery is injected; failures are isolated from every other alert. */
 export async function deliverAlertEvents(events: AlertEvent[], insertOnce: (event: AlertEvent) => Promise<void>, failed: (error: unknown) => void) {
+  let delivered = true;
   for (const event of events) {
-    try { await insertOnce(event); } catch (error) { failed(error); }
+    try { await insertOnce(event); } catch (error) { delivered = false; failed(error); }
   }
+  return delivered;
 }

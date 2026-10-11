@@ -53,6 +53,9 @@ export const pqPrintJobsTable = pgTable(
   },
   (t) => [
     index("pq_print_jobs_run_idx").on(t.runId),
+    index("pq_print_jobs_run_cursor_idx").on(t.runId, t.id),
+    index("pq_print_jobs_created_cursor_idx").on(t.createdAt, t.id),
+    index("pq_print_jobs_alert_active_idx").on(t.createdAt, t.id).where(sql`${t.status} in ('pending', 'submission_unknown')`),
     index("pq_print_jobs_order_idx").on(t.printavoOrderId),
     index("pq_print_jobs_visual_idx").on(t.visualId),
     index("pq_print_jobs_created_idx").on(t.createdAt),
