@@ -106,10 +106,12 @@ async function upsertProduct(p: ProductUpsert): Promise<void> {
       target: [catalogColorEvidenceTable.vendor, catalogColorEvidenceTable.styleName, catalogColorEvidenceTable.colorName],
       set: {
         sourceSwatchUrl: swatch,
+        // IS NULL alone gives PostgreSQL no parameter type (unlike the
+        // sourceSwatchUrl comparisons); cast this separate bind explicitly.
         status: sql`CASE
           WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch}
             THEN ${catalogColorEvidenceTable.status}
-          WHEN ${swatch} IS NULL THEN 'unavailable'
+          WHEN ${swatch}::text IS NULL THEN 'unavailable'
           ELSE 'pending' END`,
         sourceSwatchHash: sql`CASE WHEN ${catalogColorEvidenceTable.sourceSwatchUrl} IS NOT DISTINCT FROM ${swatch}
           THEN ${catalogColorEvidenceTable.sourceSwatchHash} ELSE NULL END`,
