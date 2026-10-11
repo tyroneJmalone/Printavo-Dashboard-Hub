@@ -43,6 +43,7 @@ import {
 import { runWorkorderAttempts, WorkorderSkip, type WorkorderRetryAudit } from "./workorderRetry";
 import { runHubPoBatch } from "./hubPoBatch";
 import { claimReplacementSlips } from "./replacementSlipQueue";
+import { discoverReplacementAdditions } from "./replacementAdditionDiscovery";
 import { runReplacementSlipBatch } from "./replacementSlipBatch";
 import { enqueuePrint, RETRY_BLOCKING_STATES } from "./retryStore";
 import { executePrintAttempt, finalizePrintAttempt, refreshRetryRun } from "./retryWorker";
@@ -393,11 +394,18 @@ async function runAutoPrint(
 ): Promise<void> {
   const counts = summary.counts;
   try {
-    // Replacement-only POs never produce workorder candidates. Process the
-    // prospective submission queue independently, without Printavo mutations.
+    // Makeups additions are independent of PO submission and invoice status.
+    // A first complete production observation seeds the baseline without printing.
     if (config.enabled && !dryRun && process.env.NODE_ENV === "production") {
       let slipRenderer: PdfRenderer | null = null;
       try {
+        try {
+          await discoverReplacementAdditions(runId);
+        } catch (err) {
+          const warning = `Makeups additions not checked: ${err instanceof Error ? err.message : String(err)}`;
+          summary.error = warning;
+          log.warn({ err }, warning);
+        }
         const slips = await runReplacementSlipBatch({
           runId, printerId: config.printerId, printerName: config.printerName,
           dryRun, production: true,

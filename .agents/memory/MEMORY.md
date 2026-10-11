@@ -69,6 +69,7 @@
 - [Auto-print durable retries](auto-print-durable-retries.md) — pre-submit failures may retry; uncertain sends require reconciliation; recovery stages approval without printing.
 - [Auto-print alert cursors](autoprint-alert-cursor-policy.md) — late commits require bounded reconciliation behind forward progress; delivery and checkpoints must commit atomically.
 - [Workorder visual references](workorder-visual-reference.md) — preserve actual Printavo layout; user rejected fictional redesigns; purchasing notes belong beside each line’s Goods Status.
+- [Makeups new-line slips](makeups-addition-policy.md) — new invoice lines trigger summaries, not Hub PO submission; print with “PO not assigned” rather than waiting.
 - [Auto-print decoration policy](auto-print-decoration-policy.md) — use Purchasing decoration groups, separate destinations, and no retroactive printing/status changes.
 - [Auto-print reprint policy](auto-print-reprint-policy.md) — re-entry plus changed lines; legacy baselines fail closed; one relevant Hub PO copy per successful workorder batch.
 - [Cap America catalog direction](cap-america-catalog-direction.md) — user wants unified Catalog Search; supplier product photos improve on PDF crops, without implying live inventory or ordering.

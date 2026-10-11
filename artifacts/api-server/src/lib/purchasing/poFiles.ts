@@ -3,7 +3,6 @@ import { db, poFilesTable, type PoFile as PoFileRow } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import { isPushActive } from "./pushRegistry";
 import type { PoPushState } from "./poPush";
-import { enqueueReplacementSlip } from "../printQueue/autoPrint/replacementSlipQueue";
 
 /**
  * Purchase order documents. Line items are jsonb snapshots — Printavo ids
@@ -299,7 +298,6 @@ export async function submitPoToVendor(
       })
       .where(eq(poFilesTable.id, id))
       .returning();
-    await enqueueReplacementSlip(tx, toDto(rows[0]));
     return { status: "ok" as const, po: toDto(rows[0]) };
   });
 }

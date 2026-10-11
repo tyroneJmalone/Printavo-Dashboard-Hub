@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { replacementSlipSnapshot, renderReplacementSlipHtml } from "../src/lib/printQueue/autoPrint/replacementSlip";
 import { runReplacementSlipBatch, type ReplacementSlipDependencies } from "../src/lib/printQueue/autoPrint/replacementSlipBatch";
 import type { PoFileDto } from "../src/lib/purchasing/poFiles";
+import { planMakeupAdditions, type MakeupObservation, type MakeupLine } from "../src/lib/printQueue/autoPrint/replacementAdditionPlan";
 
 const line = (id: string, visualId = 22787) => ({
   printavoOrderId: visualId === 22787 ? "internal-id" : "customer-id",
@@ -135,16 +136,94 @@ test("accepted job whose audit fails is not resubmitted", async () => {
   assert.equal(h.stats().status, "submission_unknown");
 });
 
-test("production hooks use the one transactional submission path; no historical scanner", () => {
+test("production additions replace the submission trigger without changing vendor submissions", () => {
   const source = (name: string) => readFileSync(new URL(`../src/lib/${name}`, import.meta.url), "utf8");
   // Runtime integration is intentionally checked without ordering garments.
   const po = source("purchasing/poFiles.ts");
   assert.match(po, /if \(row\.submittedToVendorAt\) return/);
-  assert.match(po, /await enqueueReplacementSlip\(tx, toDto\(rows\[0\]\)\)/);
+  assert.doesNotMatch(po, /enqueueReplacementSlip/);
   for (const file of ["vendorSubmit.ts", "vendorTracking.ts"]) assert.match(source(`purchasing/${file}`), /await submitPoToVendor\(poFileId, vendorOrderNumber\)/);
   assert.match(source("purchasing/vendorSubmit.ts"), /if \(mode === "live"\) await lockPoAsSubmitted/);
   const queue = source("printQueue/autoPrint/replacementSlipQueue.ts");
-  assert.match(queue, /process\.env\.NODE_ENV !== "production"/);
-  assert.match(queue, /attemptKey: `replacement-slip:\$\{po.id\}:22787`/);
   assert.match(queue, /eq\(pqPrintJobsTable.status, "queued"\)/);
+  const discovery = source("printQueue/autoPrint/replacementAdditionDiscovery.ts");
+  assert.match(discovery, /process\.env\.NODE_ENV !== "production"/);
+  assert.match(discovery, /pg_advisory_xact_lock/);
+  assert.match(discovery, /await db.transaction/);
+  assert.match(discovery, /onConflictDoNothing/);
+  const engine = source("printQueue/autoPrint/engine.ts");
+  assert.match(engine, /config.enabled && !dryRun && process.env.NODE_ENV === "production"/);
+  assert.match(engine, /await discoverReplacementAdditions\(runId\)/);
+});
+
+const observedLine = (id: string, groupId = "existing-group"): MakeupLine => ({
+  id, groupId, itemNumber: "BP36", color: "Oatmeal Heather",
+  description: "Full replacement instructions\nKeep this second line <verbatim>",
+  sizes: [{ size: "Other", count: 2 }],
+});
+const observation = (lines: MakeupLine[], observedAt = "2026-10-12T12:00:00Z"): MakeupObservation => ({
+  orderId: "internal-id", nickname: "Makeups", observedAt, lines,
+});
+const baseline = planMakeupAdditions(observation([observedLine("old")]), null).baseline;
+
+test("first complete observation baselines history; new lines in existing and new groups print", () => {
+  assert.equal(planMakeupAdditions(observation([observedLine("old")]), null).slips.length, 0);
+  const plan = planMakeupAdditions(observation([observedLine("old"), observedLine("new"), observedLine("new-group-line", "new-group")], "2026-10-12T12:05:00Z"), baseline);
+  assert.deepEqual(plan.slips[0].po.lineItems.map(l => l.printavoLineItemId), ["new", "new-group-line"]);
+  assert.equal(plan.slips[0].po.poNumber, "PO not assigned");
+  const html = renderReplacementSlipHtml(plan.slips[0]);
+  assert.match(html, /PO not assigned/);
+  assert.match(html, /Not recorded/);
+  assert.doesNotMatch(html, /Invalid Date/);
+  assert.match(html, /Keep this second line &lt;verbatim&gt;/);
+});
+
+test("each assigned Printavo PO gets its own slip and vendor, without inventing order dates", () => {
+  const a = { ...observedLine("a"), poLineItem: { purchaseOrder: { id: "pv-a", visualPoId: "Custom-123", vendor: { company: "Outside Vendor" } } } };
+  const b = { ...observedLine("b"), poLineItem: { purchaseOrder: { id: "pv-b", visualPoId: "Custom-456" } } };
+  const plan = planMakeupAdditions(observation([a, b], "2026-10-12T12:05:00Z"), baseline);
+  assert.equal(plan.slips.length, 2);
+  assert.equal(plan.slips[0].po.poNumber, "Custom-123");
+  assert.equal(plan.slips[0].po.vendorName, "Outside Vendor");
+  assert.equal(plan.slips[0].po.submittedToVendorAt, null);
+});
+
+test("later PO assignment, Hub submission, edits, group moves, removal/reappearance and restart do not reprint", () => {
+  const first = planMakeupAdditions(observation([observedLine("a")], "2026-10-12T12:05:00Z"), baseline);
+  const edited = { ...observedLine("a", "moved-group"), description: "Edited", sizes: [{ size: "Other", count: 20 }],
+    poLineItem: { purchaseOrder: { id: "pv-po", visualPoId: "PO-TEST" } } };
+  const restarted = JSON.parse(JSON.stringify(first.baseline));
+  const second = planMakeupAdditions(observation([edited], "2026-10-12T12:10:00Z"), restarted,
+    [{ poNumber: "PO-TEST", vendorName: "sanmar", submittedToVendorAt: fixture.submittedToVendorAt!, line: line("a") }]);
+  assert.equal(second.slips.length, 0);
+  const removed = planMakeupAdditions(observation([], "2026-10-12T12:15:00Z"), second.baseline);
+  assert.equal(planMakeupAdditions(observation([edited], "2026-10-12T12:20:00Z"), removed.baseline).slips.length, 0);
+  assert.equal(planMakeupAdditions(observation([observedLine("late")]), first.baseline).slips.length, 0);
+});
+
+test("exact Hub references enrich metadata but new-line quantities stay invoice quantities", () => {
+  const plan = planMakeupAdditions(observation([{ ...observedLine("a"), sizes: [{ size: "XL", count: 7 }] }], "2026-10-12T12:05:00Z"), baseline,
+    [{ poNumber: "PO-TEST", vendorName: "sanmar", submittedToVendorAt: fixture.submittedToVendorAt!, line: line("a") }]);
+  assert.equal(plan.slips[0].po.poNumber, "PO-TEST");
+  assert.equal(plan.slips[0].po.lineItems[0].sizes[0].qty, 7);
+  assert.equal(plan.slips[0].po.lineItems[0].warehouseName, "New Jersey");
+  assert.throws(() => planMakeupAdditions({ ...observation([]), orderId: "different" }, baseline), /identity changed/);
+});
+
+test("new-line slips use existing single-submission and uncertainty safeguards", async () => {
+  const snapshot = planMakeupAdditions(observation([observedLine("a")], "2026-10-12T12:05:00Z"), baseline).slips[0];
+  let claimed = false;
+  let submissions = 0;
+  let status = "queued";
+  const deps: ReplacementSlipDependencies = {
+    claim: async () => { if (claimed) return []; claimed = true; return [{ id: "addition", snapshotMetadata: snapshot }]; },
+    update: async (_id, patch) => { status = patch.status; },
+    render: async html => { assert.match(html, /PO not assigned/); return Buffer.from("offline pdf"); },
+    submit: async () => { submissions++; throw new Error("uncertain network response"); },
+  };
+  const input = { runId: "run", printerId: "1", printerName: "offline", dryRun: false, production: true };
+  await runReplacementSlipBatch(input, deps);
+  assert.equal(status, "submission_unknown");
+  await runReplacementSlipBatch(input, deps);
+  assert.equal(submissions, 1);
 });

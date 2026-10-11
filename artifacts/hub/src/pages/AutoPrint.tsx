@@ -678,6 +678,13 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
           </span>
         </label>
 
+        <p className="text-[11px] text-slate-400">
+          Makeups #22787 uses a separate text-only summary, not a full workorder or cover.
+          The first live run establishes its existing-line baseline without printing.
+          Later runs print newly added lines, including lines in new groups, with their assigned PO
+          or “PO not assigned”. Editing a line or assigning a PO later does not print it again.
+        </p>
+
         <div className="rounded-lg border border-slate-800 bg-[#020617] p-3 space-y-3">
           <div>
             <span className="text-[11px] uppercase tracking-wide text-slate-500">
@@ -1328,7 +1335,7 @@ function RunJobs({ run }: { run: AutoPrintRun }) {
         {visible.map((job: AutoPrintJob) => (
           <div key={job.id} data-testid={`row-job-${job.id}`} className="rounded-lg border border-slate-800 bg-[#0f172a] p-3 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-slate-200">{job.docType === "replacement_slip" ? `Replacement slip · PO #${job.hubPoNumber ?? "not recorded"}` : isPurchaseOrder(job) ? `PO copy #${job.hubPoNumber ?? job.hubPoId ?? "not recorded"}` : "Workorder"}</span>
+              <span className="font-medium text-slate-200">{job.docType === "replacement_slip" ? `Makeups summary · ${(job.snapshotMetadata?.po as { poNumber?: string } | undefined)?.poNumber ?? job.hubPoNumber ?? "PO not assigned"}` : isPurchaseOrder(job) ? `PO copy #${job.hubPoNumber ?? job.hubPoId ?? "not recorded"}` : "Workorder"}</span>
               <a href={`https://www.printavo.com/invoices/${encodeURIComponent(job.orderId)}`} target="_blank" rel="noreferrer" className="text-sky-300 underline underline-offset-2">Invoice #{job.visualId ?? job.orderId}</a>
               {job.isReprint && <span className="rounded bg-violet-500/15 text-violet-300 px-1.5 py-0.5">Reprint</span>}
               <span className={`rounded px-1.5 py-0.5 ${JOB_STATUS_STYLES[job.status] ?? "text-slate-300"}`}>{jobStatusLabel(job.status)}</span>

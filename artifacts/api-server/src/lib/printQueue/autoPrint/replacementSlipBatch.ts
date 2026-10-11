@@ -1,4 +1,4 @@
-import type { ReplacementSlipSnapshot } from "./replacementSlip";
+import type { AnyReplacementSlipSnapshot } from "./replacementSlip";
 import { renderReplacementSlipHtml } from "./replacementSlip";
 import type { submitPdfPrintJob } from "./printNode";
 
@@ -24,8 +24,8 @@ export async function runReplacementSlipBatch(
   for (const job of jobs) {
     let submitting = false;
     try {
-      const snapshot = job.snapshotMetadata as ReplacementSlipSnapshot;
-      if (snapshot?.version !== 1 || !snapshot.orderId || !snapshot.po?.lineItems?.length ||
+      const snapshot = job.snapshotMetadata as AnyReplacementSlipSnapshot;
+      if (![1, 2].includes(snapshot?.version) || !snapshot.orderId || !snapshot.po?.lineItems?.length ||
           snapshot.po.lineItems.some(line => line.visualId !== 22787 || line.printavoOrderId !== snapshot.orderId || !line.printavoLineItemId)) {
         throw new Error("Invalid replacement slip snapshot");
       }

@@ -7,6 +7,16 @@ export interface ReplacementSlipSnapshot {
   nickname: string | null;
 }
 
+/** New-line observation, not evidence that a purchase has been submitted. */
+export interface AdditionSlipSnapshot {
+  version: 2;
+  orderId: string;
+  nickname: string | null;
+  observedAt: string;
+  po: Pick<PoFileDto, "poNumber" | "vendorName" | "submittedToVendorAt" | "lineItems">;
+}
+export type AnyReplacementSlipSnapshot = ReplacementSlipSnapshot | AdditionSlipSnapshot;
+
 /** Exact saved PO identities and quantities only; never expand from live invoice lines. */
 export function replacementSlipSnapshot(
   po: PoFileDto,
@@ -36,10 +46,10 @@ const escape = (value: unknown) => String(value ?? "").replace(/[&<>"']/g,
 const warehouse = (line: PoFileDto["lineItems"][number]) =>
   [line.warehouseName, line.warehouseCode].filter(Boolean).join(" · ") || "Not recorded";
 
-export function renderReplacementSlipHtml(snapshot: ReplacementSlipSnapshot): string {
+export function renderReplacementSlipHtml(snapshot: AnyReplacementSlipSnapshot): string {
   const { po, nickname } = snapshot;
   const warehouses = [...new Set(po.lineItems.map(warehouse))];
-  const date = new Date(po.submittedToVendorAt!).toLocaleDateString("en-US", { timeZone: "America/New_York" });
+  const date = po.submittedToVendorAt ? new Date(po.submittedToVendorAt).toLocaleDateString("en-US", { timeZone: "America/New_York" }) : "Not recorded";
   const vendor = ({ sanmar: "SanMar", ss: "S&S Activewear" } as Record<string, string>)[po.vendorName] ?? po.vendorName;
   return `<!doctype html><html><head><meta charset="utf-8"><title>Replacement slip — PO ${escape(po.poNumber)}</title>
 <style>
@@ -54,6 +64,7 @@ td{padding:8pt 6pt;vertical-align:top;overflow-wrap:anywhere}.description{white-
 <div><span class="label">Vendor</span>${escape(vendor || "Not recorded")}</div><div><span class="label">Warehouse</span>${escape(warehouses.length === 1 ? warehouses[0] : "Multiple — shown by line")}</div></div>
 ${po.lineItems.map(line => `<section class="line"><table><thead><tr><th style="width:27%">Item / Style</th><th style="width:38%">Color</th><th style="width:22%">Size</th><th style="width:13%">Qty</th></tr></thead><tbody>
 ${line.sizes.filter(size => size.qty > 0).map(size => `<tr><td>${escape(line.styleNumber)}</td><td>${escape(line.color ?? "Not recorded")}</td><td>${escape(size.vendorSize ?? size.size)}</td><td>${size.qty}</td></tr>`).join("")}</tbody></table>
+${!line.sizes.some(size => size.qty > 0) ? `<p>Item / Style: ${escape(line.styleNumber)} · Color: ${escape(line.color ?? "Not recorded")} · No positive size quantities recorded</p>` : ""}
 ${warehouses.length > 1 ? `<p style="padding:0 6pt"><span class="label">Warehouse</span>${escape(warehouse(line))}</p>` : ""}
 <div class="description"><span class="label">Line-item description</span>${escape(line.description ?? "Not recorded")}</div></section>`).join("")}</body></html>`;
 }
