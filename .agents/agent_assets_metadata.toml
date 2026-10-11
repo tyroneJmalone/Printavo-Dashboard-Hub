@@ -389,3 +389,31 @@ mtime_ms = 1791696584714
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/e9c3c303-f98a-40fc-8ba7-ca96d45ea189/33da10c9-562a-4d21-933f-4481b19e6c30"
 storage_version_token = "1791696616088051"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "-9bf2AJfdS50cn6KCzvH2"
+uri = "file://generated-artifacts/invoice-23311-cover.png"
+type = "image"
+title = "Non-MERCH cover — invoice #23311"
+description = "Surf Hats: actual synced invoice details and product proof, rendered with the current EMB cover heading."
+logical_id = "b438b3ad-2af8-41f1-9ba8-403ffe77751e"
+content_hash = "sha256:d7443e31b712ba37acf202ca3299f367a02c40070923f0ab0aafae23592292c6"
+size = 290220
+mtime_ms = 1791697870762
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/b438b3ad-2af8-41f1-9ba8-403ffe77751e/8fffe6cd-7448-48f9-a71e-4287f37ad138"
+storage_version_token = "1791697881036012"
+content_type = "image/png"
+
+[[outputs]]
+id = "tzLKARTMG6hzmvQVVcyR2"
+uri = "file://generated-artifacts/invoice-23311-cover.pdf"
+type = "pdf"
+title = "Download #23311 cover PDF"
+description = "Verified single-page portrait US Letter preview. No print job submitted or invoice changed."
+logical_id = "84528d7e-af6a-4fa1-8fc7-8e773b73b15c"
+content_hash = "sha256:ea106fbcf890f32121d4cec4e362539bd5580b548b1f877c60eb467e52c6f531"
+size = 1363640
+mtime_ms = 1791697869510
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/84528d7e-af6a-4fa1-8fc7-8e773b73b15c/00a95bfc-c321-48c4-8352-996a4f247d58"
+storage_version_token = "1791697881507560"
+content_type = "application/pdf"
