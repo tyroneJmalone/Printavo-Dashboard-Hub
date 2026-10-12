@@ -1,3 +1,4 @@
+import { coverTotalQuantity } from "./coverSheet";
 import { db, pqPrintJobsTable as jobs, pqPrintRunsTable as runs, changeEventsTable, type PqPrintJob } from "@workspace/db";
 import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import type { Logger } from "pino";
@@ -101,6 +102,7 @@ async function executeSinglePrintAttempt(id: string, actor: string, deps: RetryD
       snapshotMetadata: { ...(job.snapshotMetadata as object), coverDetails: {
         visualId: node.visualId, nickname: node.nickname, customerDueAt: node.customerDueAt,
         productionDueAt: node.productionDueAt, statusName: job.sourceStatusName,
+        totalQuantity: coverTotalQuantity(node),
       } },
     });
     phase = "verification";

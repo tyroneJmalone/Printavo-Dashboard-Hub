@@ -1,4 +1,5 @@
 import { workorderHeaderText } from "./workorderHeader";
+import type { PvOrderDetailNode } from "@workspace/printavo";
 
 export interface CoverDetails {
   visualId?: string | number;
@@ -6,6 +7,23 @@ export interface CoverDetails {
   productionDueAt?: string | null;
   customerDueAt?: string | null;
   statusName?: string | null;
+  totalQuantity?: number | null;
+}
+/** Sum units, not row count or imprint count. Missing/incomplete data is unknown. */
+export function coverTotalQuantity(detail?: PvOrderDetailNode): number | null {
+  if (!detail?.lineItemGroups || detail.lineItemGroups.pageInfo.hasNextPage) return null;
+  let total = 0;
+  const seen = new Set<string>();
+  for (const group of detail.lineItemGroups.nodes) {
+    if (group.lineItems.pageInfo.hasNextPage) return null;
+    for (const line of group.lineItems.nodes) {
+      if (seen.has(line.id)) continue;
+      seen.add(line.id);
+      if (typeof line.items !== "number" || !Number.isFinite(line.items) || line.items < 0) return null;
+      total += line.items;
+    }
+  }
+  return total;
 }
 export function coverDate(value?: string | null): string {
   if (!value) return "Not recorded";
@@ -62,6 +80,9 @@ export function coverSheetScript(details: CoverDetails, isReprint = false): stri
       add("span", data.statusName || "Not recorded", heading);
       add("h2", data.nickname || "No nickname");
       add("p", "Production Due: " + data.productionDate + "   |   Customer Due: " + data.customerDate).className = "pq-cover-dates";
+      if (/^MERCH\\b/.test(data.statusName)) {
+        add("p", "Total QTY: " + (Number.isFinite(data.totalQuantity) && data.totalQuantity >= 0 ? data.totalQuantity.toLocaleString("en-US") : "Not recorded")).className = "pq-cover-quantity";
+      }
       const grid = document.createElement("div"); grid.className = "pq-cover-grid"; sheet.append(grid);
       const columns = Math.max(1, Math.ceil(Math.sqrt(images.length * 0.8)));
       grid.style.gridTemplateColumns = "repeat(" + columns + ", minmax(0, 1fr))";
@@ -95,6 +116,7 @@ export const COVER_SHEET_CSS = `
 .pq-cover-sheet h2 {font-size:17px !important; line-height:1.3; margin:0 0 12px; overflow-wrap:anywhere; flex-shrink:0}
 .pq-cover-sheet p {font-size:12px !important; margin:6px 0}
 .pq-cover-sheet .pq-cover-dates {font-size:18px !important; font-weight:bold; line-height:1.3 !important; flex-shrink:0}
+.pq-cover-sheet .pq-cover-quantity {font-size:18px !important; font-weight:bold; line-height:1.3 !important; flex-shrink:0}
 .pq-cover-banner {border:4px solid #111; font-size:25px !important; font-weight:bold; text-align:center; padding:8px; margin-bottom:12px}
 .pq-cover-grid {display:grid;gap:10px;margin-top:16px;flex:1;min-height:0}
 .pq-cover-grid figure {margin:0; min-width:0;min-height:0; display:flex;flex-direction:column;align-items:center;justify-content:center;break-inside:avoid}

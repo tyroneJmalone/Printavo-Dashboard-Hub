@@ -3,7 +3,7 @@ import test from "node:test";
 import { classifyAutoPrint, nicknameMethods, planMerchCategories } from "../src/lib/printQueue/autoPrint/decorationEvidence";
 import { conditionalAutoPrintDestination } from "../src/lib/printQueue/autoPrint/routing";
 import { normalizeAutoPrintConfig, isValidAutoPrintRoutingRule, type AutoPrintRoutingRule } from "../src/lib/printQueue/autoPrint/configValidation";
-import { coverDate, coverSheetScript } from "../src/lib/printQueue/autoPrint/coverSheet";
+import { coverDate, coverSheetScript, coverTotalQuantity } from "../src/lib/printQueue/autoPrint/coverSheet";
 import { workorderDetailQuery } from "../src/lib/printQueue/autoPrint/workorderDetailQuery";
 
 test("workorder live queries alias Printavo dueAt for cover dates on both order types", () => {
@@ -74,4 +74,18 @@ test("cover dates use UTC and labels remain literal text", () => {
   assert.ok(script.includes("textContent"));
   assert.ok(script.includes("Rush/Firm Deadline"));
   assert.ok(script.includes("UPDATED"));
+});
+
+test("MERCH cover quantities sum units across groups once, not decoration locations", () => {
+  const detail = node(group("a", ["Screen Printing","Embroidery"], null, 24), group("b", ["Embroidery"], null, 6));
+  assert.equal(coverTotalQuantity(detail), 30);
+  detail.lineItemGroups.nodes.push(detail.lineItemGroups.nodes[0]);
+  assert.equal(coverTotalQuantity(detail), 30);
+  detail.lineItemGroups.nodes[0].lineItems.pageInfo.hasNextPage = true;
+  assert.equal(coverTotalQuantity(detail), null);
+  assert.equal(coverTotalQuantity(), null);
+  assert.equal(coverTotalQuantity(node()), 0);
+  const script = coverSheetScript({statusName:"MERCH - Print Ordered",totalQuantity:30});
+  assert.match(script, /Total QTY:/);
+  assert.match(script, /"totalQuantity":30/);
 });

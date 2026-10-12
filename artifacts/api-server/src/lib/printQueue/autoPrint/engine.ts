@@ -1,4 +1,5 @@
 import { loadPurchaseNotes } from "./purchaseNotes";
+import { coverTotalQuantity } from "./coverSheet";
 import { startRunHeartbeat } from "./runHeartbeat";
 import type { Logger } from "pino";
 import {
@@ -849,6 +850,7 @@ async function runAutoPrint(
                 nickname: c.nickname,
                 coverSheet: config.coverSheet,
                 coverDetails: { visualId: c.visualId, statusName: c.statusName,
+                  totalQuantity: coverTotalQuantity(freshDetails.get(c.orderId)),
                   customerDueAt: c.customerDueAt?.toISOString(), productionDueAt: c.productionDueAt?.toISOString() },
               });
               if (dryRun) {

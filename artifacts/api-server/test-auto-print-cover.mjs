@@ -33,7 +33,8 @@ try {
   const fixture = count => `<html><head><style>${COVER_SHEET_CSS}.printing__keep-together{display:none}</style></head><body><main id="original"><h1>Original workorder</h1><p>Keep production notes and line details.</p></main><div class="printing__keep-together">${Array.from({ length: count }, (_, i) => `<img src="${svg(i)}" alt="Product ${i + 1}"/>`).join("")}<img src="${svg(0)}" alt="Duplicate"/><div class="production-preview__wrapper"><img src="${svg(999)}"/></div></div></body></html>`;
   for (const count of [1, 6, 7, 18, 40]) {
     await page.setContent(fixture(count));
-    await page.evaluate(coverSheetScript({ visualId: "EXAMPLE", nickname: "Illustrative Rush — Embroidered chest / Heat sleeve", productionDueAt: "2026-10-12T00:00:00Z", customerDueAt: "2026-10-14T00:00:00Z", statusName: "MERCH – Ordered" }, true));
+    await page.evaluate(coverSheetScript({ visualId: "EXAMPLE", nickname: "Illustrative Rush — Embroidered chest / Heat sleeve", productionDueAt: "2026-10-12T00:00:00Z", customerDueAt: "2026-10-14T00:00:00Z", statusName: "MERCH – Ordered", totalQuantity: 1234 }, true));
+    assert.equal(await page.$eval(".pq-cover-quantity", el => el.textContent), "Total QTY: 1,234");
     assert.equal(await page.$$eval(".pq-cover-sheet", els => els.length), 1);
     assert.equal(await page.$eval(".pq-cover-heading", el => getComputedStyle(el.children[0]).fontSize === getComputedStyle(el.children[1]).fontSize), true);
     assert.equal(await page.$eval(".pq-cover-heading span:last-child", el => el.textContent), "MERCH");
@@ -49,6 +50,7 @@ try {
   }
   await page.setContent("<body><main>Original</main></body>");
   await page.evaluate(coverSheetScript({ visualId: 1, nickname: "<script>evil()</script>" }));
+  assert.equal(await page.$$eval(".pq-cover-quantity", els => els.length), 0);
   assert.equal(await page.$$eval("script", els => els.length), 0);
   assert.ok((await page.$eval(".pq-cover-sheet", el => el.textContent)).includes("No product/design"));
   console.log("PASS: offline cover rendering, image deduplication, production-file exclusion, overflow, dates, urgency/reprint, original body, empty images and escaping.");
