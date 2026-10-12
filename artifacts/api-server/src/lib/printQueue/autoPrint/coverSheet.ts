@@ -7,6 +7,7 @@ export interface CoverDetails {
   productionDueAt?: string | null;
   customerDueAt?: string | null;
   statusName?: string | null;
+  destinationStatusName?: string | null;
   totalQuantity?: number | null;
 }
 /** Sum units, not row count or imprint count. Missing/incomplete data is unknown. */
@@ -49,13 +50,17 @@ export function coverStatusLabel(value?: string | null): string {
 /** Uses only images already loaded by the authorized Printavo workorder.
  * Text is assigned via textContent, never interpreted as HTML. */
 export function coverSheetScript(details: CoverDetails, isReprint = false): string {
-  const data = { ...details, statusName: coverStatusLabel(details.statusName), productionDate: coverDate(details.productionDueAt), customerDate: coverDate(details.customerDueAt),
+  const isMerch = /^MERCH\b/.test(coverStatusLabel(details.statusName));
+  const destination = coverStatusLabel(details.destinationStatusName);
+  const methodLabel = destination === "EMB" ? "EMBROIDERY" : destination === "Mixed Deco" ? "MIXED" : destination;
+  const data = { ...details, isMerch, statusName: isMerch ? coverStatusLabel(details.statusName) : details.destinationStatusName ? methodLabel : "Destination not mapped", productionDate: coverDate(details.productionDueAt), customerDate: coverDate(details.customerDueAt),
     banner: workorderHeaderText(details.nickname, isReprint) };
   return `(async () => {
     const data = ${JSON.stringify(data)};
     const originals = [...document.querySelectorAll(".printing__keep-together img")]
       .filter(image => !image.closest(".production-preview__wrapper, .production-file-preview__wrapper, .production-file-name"));
-    const images = [...new Map(originals.filter(i => i.currentSrc || i.src).map(i => [i.currentSrc || i.src, i])).values()];
+    const availableImages = [...new Map(originals.filter(i => i.currentSrc || i.src).map(i => [i.currentSrc || i.src, i])).values()];
+    const images = data.isMerch ? availableImages : originals.filter(i => i.currentSrc || i.src).slice(0, 1);
     // Decode concurrently so missing references share one bounded wait rather
     // than multiplying the render timeout by the number of images.
     const decoded = await Promise.all(images.map(async original => {
@@ -71,17 +76,20 @@ export function coverSheetScript(details: CoverDetails, isReprint = false): stri
     const fragment = document.createDocumentFragment();
     for (let page = 0; page < pages; page++) {
       const sheet = document.createElement("section");
-      sheet.className = "pq-cover-sheet";
+      sheet.className = "pq-cover-sheet" + (data.isMerch ? "" : " pq-cover-standard");
       const add = (tag, text, parent = sheet) => { const el = document.createElement(tag); el.textContent = text; parent.append(el); return el; };
       if (data.banner) add("div", data.banner).className = "pq-cover-banner";
-      const heading = add("h1", "");
+      const title = document.createElement("div");
+      title.className = "pq-cover-title";
+      sheet.append(title);
+      const heading = add("h1", "", title);
       heading.className = "pq-cover-heading";
-      add("span", "Workorder #" + (data.visualId ?? "Not recorded"), heading);
+      add("span", (data.isMerch ? "Workorder #" : "#") + (data.visualId ?? "Not recorded"), heading);
       add("span", data.statusName || "Not recorded", heading);
-      add("h2", data.nickname || "No nickname");
-      add("p", "Production Due: " + data.productionDate + "   |   Customer Due: " + data.customerDate).className = "pq-cover-dates";
-      if (/^MERCH\\b/.test(data.statusName)) {
-        add("p", "Total QTY: " + (Number.isFinite(data.totalQuantity) && data.totalQuantity >= 0 ? data.totalQuantity.toLocaleString("en-US") : "Not recorded")).className = "pq-cover-quantity";
+      add("h2", data.nickname || "No nickname", title);
+      add("p", "Production Due: " + data.productionDate + "   |   Customer Due: " + data.customerDate, title).className = "pq-cover-dates";
+      if (data.isMerch) {
+        add("p", "Total QTY: " + (Number.isFinite(data.totalQuantity) && data.totalQuantity >= 0 ? data.totalQuantity.toLocaleString("en-US") : "Not recorded"), title).className = "pq-cover-quantity";
       }
       const grid = document.createElement("div"); grid.className = "pq-cover-grid"; sheet.append(grid);
       const columns = Math.max(1, Math.ceil(Math.sqrt(images.length * 0.8)));
@@ -96,6 +104,7 @@ export function coverSheetScript(details: CoverDetails, isReprint = false): stri
         grid.append(figure);
       }
       if (!images.length) add("p", "No product/design attachment images on this workorder.");
+      if (!data.isMerch) sheet.append(title);
       fragment.append(sheet);
     }
     document.body.prepend(fragment);
@@ -113,6 +122,11 @@ export const COVER_SHEET_CSS = `
 .pq-cover-sheet .pq-cover-heading {display:flex; gap:18px; align-items:baseline; font-size:24px !important; line-height:1.15 !important; margin:0 0 12px; flex-shrink:0}
 .pq-cover-sheet .pq-cover-heading span {font-size:inherit !important; font-weight:bold !important; line-height:inherit !important}
 .pq-cover-heading span:first-child {white-space:nowrap}
+.pq-cover-title {flex-shrink:0}
+.pq-cover-standard .pq-cover-title {margin-top:16px}
+.pq-cover-standard .pq-cover-heading {justify-content:space-between}
+.pq-cover-standard .pq-cover-heading span:last-child {margin-left:auto;text-align:right}
+.pq-cover-standard .pq-cover-grid {margin-top:0}
 .pq-cover-sheet h2 {font-size:17px !important; line-height:1.3; margin:0 0 12px; overflow-wrap:anywhere; flex-shrink:0}
 .pq-cover-sheet p {font-size:12px !important; margin:6px 0}
 .pq-cover-sheet .pq-cover-dates {font-size:18px !important; font-weight:bold; line-height:1.3 !important; flex-shrink:0}

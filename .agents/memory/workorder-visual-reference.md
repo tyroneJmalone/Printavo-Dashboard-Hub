@@ -5,6 +5,18 @@ description: Use the actual Printavo workorder for Auto-Print formatting example
 
 Preserve the actual Printavo workorder layout when proposing Auto-Print changes. Place purchase date, vendor and warehouse beside the existing Goods Status at the bottom of the individual product line.
 
+Non-MERCH covers should be visually distinct from MERCH covers: one first
+line-item attachment image, with title information at the bottom and the
+planned destination decoration label opposite the invoice number.
+
+**Why:** Non-MERCH invoices are still in ORDERED/SEPSIO statuses when printed;
+the source status therefore cannot identify their post-print decoration method.
+The user requested the bottom title layout to distinguish them from MERCH.
+
+**How to apply:** Use the prepared destination on initial and retry renders,
+without changing the timing of actual status mutations. Preserve the MERCH
+multi-image/top-heading layout and its quantity line.
+
 **Why:** The user rejected a fictional redesigned workorder because it looked nothing like Hub's printed output. They supplied standalone and direct-Printavo PDFs to ground the comparison.
 
 **How to apply:** Use supplied workorder PDFs or actual renderer output as the visual base. Mark illustrative purchase details clearly; never imply they are verified. Distinguish a visual annotation from implemented Auto-Print behavior. Do not trigger printing or order-status changes to obtain a comparison.

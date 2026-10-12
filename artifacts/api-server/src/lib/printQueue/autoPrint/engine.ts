@@ -850,6 +850,7 @@ async function runAutoPrint(
                 nickname: c.nickname,
                 coverSheet: config.coverSheet,
                 coverDetails: { visualId: c.visualId, statusName: c.statusName,
+                  destinationStatusName: c.targetStatusName,
                   totalQuantity: coverTotalQuantity(freshDetails.get(c.orderId)),
                   customerDueAt: c.customerDueAt?.toISOString(), productionDueAt: c.productionDueAt?.toISOString() },
               });

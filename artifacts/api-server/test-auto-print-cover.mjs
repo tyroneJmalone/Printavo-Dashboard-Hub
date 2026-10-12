@@ -48,6 +48,19 @@ try {
       assert.match(execSync("pdfinfo /tmp/autoprint-cover-proof.pdf", { encoding: "utf8" }), /Pages:\s+2/);
     }
   }
+  for (const [destination, label] of [["PRINT - Waiting 4 Blanks","PRINT"], ["EMB - Waiting 4 Blanks","EMBROIDERY"], ["HEAT - Waiting 4 Blanks","HEAT"], ["MIXED DECO - Waiting 4 Blanks","MIXED"]]) {
+    await page.setContent(fixture(6));
+    await page.evaluate(coverSheetScript({visualId:23201,nickname:"Regular invoice",statusName:"SEPSIO - ORDERED",destinationStatusName:destination}));
+    assert.equal(await page.$eval(".pq-cover-heading span:first-child", el => el.textContent), "#23201");
+    assert.equal(await page.$eval(".pq-cover-heading span:last-child", el => el.textContent), label);
+    assert.equal(await page.$$eval(".pq-cover-grid img", els => els.length), 1);
+    assert.equal(await page.$eval(".pq-cover-grid img", el => el.src), svg(0));
+    assert.equal(await page.$eval(".pq-cover-grid figcaption", el => el.textContent), "Product 1");
+    assert.equal(await page.$eval(".pq-cover-sheet", el => el.lastElementChild.className), "pq-cover-title");
+    assert.equal(await page.$eval(".pq-cover-heading", el => getComputedStyle(el).justifyContent), "space-between");
+    await page.pdf({path:"/tmp/autoprint-standard-cover-proof.pdf",format:"letter",margin:{top:".4in",bottom:".4in",left:".4in",right:".4in"}});
+    assert.match(execSync("pdfinfo /tmp/autoprint-standard-cover-proof.pdf",{encoding:"utf8"}),/Pages:\s+2/);
+  }
   await page.setContent("<body><main>Original</main></body>");
   await page.evaluate(coverSheetScript({ visualId: 1, nickname: "<script>evil()</script>" }));
   assert.equal(await page.$$eval(".pq-cover-quantity", els => els.length), 0);
