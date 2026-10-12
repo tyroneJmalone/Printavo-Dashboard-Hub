@@ -41,7 +41,17 @@ The user has now requested a plan for outside-Hub PO tracking, with separate
 expandable sections for Hub-submitted and externally placed POs.
 
 **Why:** Tracking should support their existing purchasing process while making
-the two PO sources distinct. This approves planning, not implementation.
+the two PO sources distinct. The user subsequently authorized proceeding with
+vendor visibility checks and implementation once visibility is confirmed.
 
 **How to apply:** Preserve both sections in the proposed interface; confirm
 vendor API visibility before promising external-order discovery.
+
+Keep the vendor lookup reference separate from the Printavo display PO reference.
+
+**Why:** The user's external-order examples included differing vendor and Printavo
+PO numbers; silently replacing one with the other would make tracking unreliable.
+
+**How to apply:** Preserve the exact reference used for vendor lookup and any
+separately supplied Printavo reference or invoice links. No-match responses do
+not prove that the purchase does not exist or that external orders are unsupported.
