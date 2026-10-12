@@ -70,3 +70,15 @@ an explicit vendor order-number lookup option, separate from the customer PO
 and Printavo reference. Do not strip slashes or treat an HTTP 404 for an encoded
 reference as proof the order is absent. Label S&S delivery evidence as vendor
 reported; obtaining it does not require paid carrier tracking.
+
+Recent-history discovery has different date semantics by vendor.
+
+**Why:** Live read-only verification confirmed SanMar PromoStandards queryType 3
+returns orders with status updates since statusTimeStamp, without order creation
+dates. S&S GET orders with All=True returns recent history with orderDate
+(documented retention: last three months).
+
+**How to apply:** Do not label SanMar's last-update results as orders placed
+within a date range. Preserve the date basis in the import UI and confirm scope
+if the requested history window requires creation dates. Deduplicate against
+Hub submissions before importing; discovery counts are not non-Hub PO counts.
