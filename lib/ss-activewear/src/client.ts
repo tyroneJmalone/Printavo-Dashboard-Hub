@@ -137,6 +137,10 @@ export interface SSOrderResult {
 
 /** One order returned by GET /orders/{poNumber} (status/tracking lookup). */
 export interface SSOrderInfo {
+  poNumber?: string | null;
+  orderDate?: string | null;
+  warehouse?: string | null;
+  deliveryStatus?: string | null;
   orderNumber: string | null;
   /** e.g. "In Progress", "Shipped", "Cancelled" — S&S's own wording. */
   orderStatus: string | null;
@@ -315,6 +319,10 @@ export class SSClient {
     const orders = arr
       .filter((o): o is Record<string, unknown> => typeof o === "object" && o !== null)
       .map((o) => ({
+        poNumber: str(o, "poNumber", "PONumber"),
+        orderDate: str(o, "orderDate", "OrderDate"),
+        warehouse: str(o, "warehouseAbbr", "WarehouseAbbr"),
+        deliveryStatus: str(o, "deliveryStatus", "DeliveryStatus"),
         orderNumber: str(o, "orderNumber", "OrderNumber"),
         orderStatus: str(o, "orderStatus", "OrderStatus"),
         trackingNumber: str(o, "trackingNumber", "TrackingNumber"),
@@ -326,6 +334,35 @@ export class SSClient {
       // non-order object (e.g. {"message": ...} via the [raw] fallback) must
       // NOT flip found=true: found feeds the unknown→submitted auto-reconcile.
       .filter((o) => o.orderNumber !== null || o.orderStatus !== null);
+    return { found: orders.length > 0, orders };
+  }
+
+  /** Read-only discovery; filter by orderDate, not invoice or shipping date. */
+  async getRecentOrders(since: Date): Promise<SSOrderLookupResult> {
+    const raw = await this.get<unknown>("/orders/?All=True&lines=false&fields=orderNumber,poNumber,orderDate,orderStatus,shipDate");
+    if (!Array.isArray(raw) && !(raw && typeof raw === "object" && Array.isArray((raw as {orders?:unknown}).orders))) {
+      throw new SSApiError("Unexpected S&S order history response");
+    }
+    const orders = unwrapOrders(raw)
+      .filter((o): o is Record<string, unknown> => !!o && typeof o === "object")
+      .filter(o => {
+        const date = Date.parse(String(o.orderDate ?? ""));
+        if (!Number.isFinite(date)) throw new SSApiError("S&S order history is missing an order date");
+        return date >= since.getTime() && date <= Date.now();
+      })
+      .map(o => ({
+        orderNumber: String(o.orderNumber ?? ""),
+        poNumber: String(o.poNumber ?? ""),
+        orderDate: String(o.orderDate),
+        warehouse: o.warehouseAbbr == null ? null : String(o.warehouseAbbr),
+        deliveryStatus: o.deliveryStatus == null ? null : String(o.deliveryStatus),
+        orderStatus: o.orderStatus == null ? null : String(o.orderStatus),
+        trackingNumber: o.trackingNumber == null ? null : String(o.trackingNumber),
+        shippingCarrier: o.shippingCarrier == null ? null : String(o.shippingCarrier),
+        shippingMethod: o.shippingMethod == null ? null : String(o.shippingMethod),
+        shipDate: o.shipDate == null ? null : String(o.shipDate),
+      }));
+    if (orders.some(o => !o.orderNumber)) throw new SSApiError("S&S history contains an order without an identifier");
     return { found: orders.length > 0, orders };
   }
 

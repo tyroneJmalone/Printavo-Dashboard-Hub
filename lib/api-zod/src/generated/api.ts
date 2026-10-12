@@ -6316,6 +6316,61 @@ export const VendorSubmitResponse = zod.object({
 })
 
 
+export const ListExternalVendorOrdersResponseItem = zod.object({
+  "id": zod.string(),
+  "vendor": zod.string(),
+  "reference": zod.string(),
+  "poNumber": zod.string(),
+  "dateBasis": zod.string(),
+  "orderDate": zod.string().nullable(),
+  "vendorStatus": zod.string().nullable(),
+  "deliveryStatus": zod.string().nullable(),
+  "warehouse": zod.string().nullable(),
+  "orderNumbers": zod.array(zod.string()),
+  "tracking": zod.array(zod.object({
+  "trackingNumber": zod.string(),
+  "carrier": zod.string().nullable()
+})),
+  "checkedAt": zod.string(),
+  "terminal": zod.boolean()
+})
+export const ListExternalVendorOrdersResponse = zod.array(ListExternalVendorOrdersResponseItem)
+
+
+export const ImportExternalVendorOrdersResponse = zod.object({
+  "since": zod.string(),
+  "through": zod.string(),
+  "imported": zod.number(),
+  "updated": zod.number(),
+  "skippedHub": zod.number(),
+  "errors": zod.array(zod.string())
+})
+
+
+export const RefreshExternalVendorOrderParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RefreshExternalVendorOrderResponse = zod.object({
+  "id": zod.string(),
+  "vendor": zod.string(),
+  "reference": zod.string(),
+  "poNumber": zod.string(),
+  "dateBasis": zod.string(),
+  "orderDate": zod.string().nullable(),
+  "vendorStatus": zod.string().nullable(),
+  "deliveryStatus": zod.string().nullable(),
+  "warehouse": zod.string().nullable(),
+  "orderNumbers": zod.array(zod.string()),
+  "tracking": zod.array(zod.object({
+  "trackingNumber": zod.string(),
+  "carrier": zod.string().nullable()
+})),
+  "checkedAt": zod.string(),
+  "terminal": zod.boolean()
+})
+
+
 /**
  * @summary List electronic vendor order submissions (newest first), including vendor status and tracking numbers from the latest refresh.
  */

@@ -423,7 +423,7 @@ export class SanMarClient {
    * PO (which can be lag right after submission — never treat it as proof the
    * order doesn't exist).
    */
-  async getOrderStatus(poNumber: string): Promise<SanMarOrderStatusResult> {
+  async getOrderStatus(poNumber: string, queryType: 1 | 2 = 1): Promise<SanMarOrderStatusResult> {
     const body = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="${PS_ORDER_STATUS_NS}">
   <soapenv:Header/>
@@ -432,7 +432,7 @@ export class SanMarClient {
       <ns:wsVersion>1.0.0</ns:wsVersion>
       <ns:id>${xmlEscape(this.creds.username)}</ns:id>
       <ns:password>${xmlEscape(this.creds.password)}</ns:password>
-      <ns:queryType>1</ns:queryType>
+      <ns:queryType>${queryType}</ns:queryType>
       <ns:referenceNumber>${xmlEscape(poNumber)}</ns:referenceNumber>
     </ns:GetOrderStatusDetailsRequest>
   </soapenv:Body>
@@ -461,12 +461,33 @@ export class SanMarClient {
     return { found: details.length > 0, details };
   }
 
+  /** Discovery by status activity. This is NOT an order-creation date filter. */
+  async getRecentlyUpdatedOrders(since: Date): Promise<{poNumber: string; orderNumber: string | null}[]> {
+    const body = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="${PS_ORDER_STATUS_NS}">
+<soapenv:Header/><soapenv:Body><ns:GetOrderStatusDetailsRequest>
+<ns:wsVersion>1.0.0</ns:wsVersion><ns:id>${xmlEscape(this.creds.username)}</ns:id>
+<ns:password>${xmlEscape(this.creds.password)}</ns:password><ns:queryType>3</ns:queryType>
+<ns:statusTimeStamp>${since.toISOString()}</ns:statusTimeStamp>
+</ns:GetOrderStatusDetailsRequest></soapenv:Body></soapenv:Envelope>`;
+    const text = await this.soapCall(PS_ORDER_STATUS_ENDPOINT, body, "getOrderStatusDetails");
+    throwOnPromoStandardsError(text, "recent order history");
+    const blocks: string[] = text.match(/<(?:\w+:)?OrderStatus>[\s\S]*?<\/(?:\w+:)?OrderStatus>/g) ?? [];
+    if (!blocks.length && /<(?:\w+:)?purchaseOrderNumber>/.test(text)) throw new SanMarApiError("Unexpected SanMar history response");
+    return blocks.flatMap<{poNumber:string; orderNumber:string|null}>(block => {
+      const po = block.match(/<(?:\w+:)?purchaseOrderNumber>([\s\S]*?)<\/(?:\w+:)?purchaseOrderNumber>/)?.[1];
+      const poNumber = po ? xmlDecode(po.trim()) : "";
+      const orders = [...block.matchAll(/<(?:\w+:)?factoryOrderNumber>([\s\S]*?)<\/(?:\w+:)?factoryOrderNumber>/g)].map(m => xmlDecode(m[1].trim()));
+      return orders.length ? orders.map(orderNumber => ({poNumber, orderNumber})) : [{poNumber, orderNumber:null}];
+    });
+  }
+
   /**
    * Shipment notification / tracking by PO number (PromoStandards
    * getOrderShipmentNotification, 1.0.0). READ-ONLY and safe to retry.
    * found=false until SanMar generates a shipment (typically at ship time).
    */
-  async getShipmentNotification(poNumber: string): Promise<SanMarShipmentResult> {
+  async getShipmentNotification(poNumber: string, queryType: 1 | 2 = 1): Promise<SanMarShipmentResult> {
     const body = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns="${PS_OSN_NS}" xmlns:sh="${PS_OSN_SHARED_NS}">
   <soapenv:Header/>
@@ -475,7 +496,7 @@ export class SanMarClient {
       <sh:wsVersion>1.0.0</sh:wsVersion>
       <sh:id>${xmlEscape(this.creds.username)}</sh:id>
       <sh:password>${xmlEscape(this.creds.password)}</sh:password>
-      <ns:queryType>1</ns:queryType>
+      <ns:queryType>${queryType}</ns:queryType>
       <ns:referenceNumber>${xmlEscape(poNumber)}</ns:referenceNumber>
     </ns:GetOrderShipmentNotificationRequest>
   </soapenv:Body>

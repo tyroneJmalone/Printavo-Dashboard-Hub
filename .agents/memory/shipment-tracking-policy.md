@@ -82,3 +82,23 @@ dates. S&S GET orders with All=True returns recent history with orderDate
 within a date range. Preserve the date basis in the import UI and confirm scope
 if the requested history window requires creation dates. Deduplicate against
 Hub submissions before importing; discovery counts are not non-Hub PO counts.
+
+The user approved a seven-day import using S&S order-placement dates and SanMar
+status-update dates, including SanMar orders originally placed earlier.
+
+**Why:** Recently updated older purchases still matter for incoming-goods tracking.
+
+**How to apply:** Label the two date bases explicitly. Never imply the SanMar
+creation date is known. Imported external records are tracking-only, not Hub
+submissions, and must never release submission locks, change Printavo statuses,
+trigger AutoPrint, or activate paid carrier tracking.
+
+SanMar history may contain the literal customer PO “NOT AVAILABLE” while still
+providing a valid factory sales-order number.
+
+**Why:** A verified discovery result could not be fetched by that placeholder PO;
+the read-only sales-order lookup returned its actual shipment details.
+
+**How to apply:** Use queryType 2 for both status and shipment lookup when the PO
+is unavailable, retaining the factory order as the tracking identity rather
+than merging unrelated missing-PO records.

@@ -4241,6 +4241,41 @@ export interface CarrierTrackingSettingsInput {
   confirmFees: boolean;
 }
 
+export type ExternalVendorOrderTrackingItem = {
+  trackingNumber: string;
+  /** @nullable */
+  carrier: string | null;
+};
+
+export interface ExternalVendorOrder {
+  id: string;
+  vendor: string;
+  reference: string;
+  poNumber: string;
+  dateBasis: string;
+  /** @nullable */
+  orderDate: string | null;
+  /** @nullable */
+  vendorStatus: string | null;
+  /** @nullable */
+  deliveryStatus: string | null;
+  /** @nullable */
+  warehouse: string | null;
+  orderNumbers: string[];
+  tracking: ExternalVendorOrderTrackingItem[];
+  checkedAt: string;
+  terminal: boolean;
+}
+
+export interface ExternalVendorImportResult {
+  since: string;
+  through: string;
+  imported: number;
+  updated: number;
+  skippedHub: number;
+  errors: string[];
+}
+
 export interface VendorOrder {
   id: string;
   poFileId: string;

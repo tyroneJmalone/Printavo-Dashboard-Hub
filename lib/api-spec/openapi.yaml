@@ -2415,6 +2415,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /purchasing/external-vendor-orders:
+    get:
+      operationId: listExternalVendorOrders
+      tags: [purchasing]
+      responses:
+        "200":
+          description: External tracking records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExternalVendorOrder"
+  /purchasing/external-vendor-orders/import:
+    post:
+      operationId: importExternalVendorOrders
+      tags: [purchasing]
+      responses:
+        "200":
+          description: Seven-day import summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalVendorImportResult"
+  /purchasing/external-vendor-orders/{id}/refresh:
+    post:
+      operationId: refreshExternalVendorOrder
+      tags: [purchasing]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Latest tracking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExternalVendorOrder"
   /purchasing/vendor-orders:
     get:
       operationId: listVendorOrders
@@ -11598,6 +11638,40 @@ components:
         adminPin: { type: string, minLength: 1 }
         confirmFees: { type: boolean }
       required: [enabled, adminPin, confirmFees]
+    ExternalVendorOrder:
+      type: object
+      required: [id, vendor, reference, poNumber, dateBasis, orderDate, vendorStatus, deliveryStatus, warehouse, orderNumbers, tracking, checkedAt, terminal]
+      properties:
+        id: { type: string }
+        vendor: { type: string }
+        reference: { type: string }
+        poNumber: { type: string }
+        dateBasis: { type: string }
+        orderDate: { type: [string, "null"] }
+        vendorStatus: { type: [string, "null"] }
+        deliveryStatus: { type: [string, "null"] }
+        warehouse: { type: [string, "null"] }
+        orderNumbers: { type: array, items: { type: string } }
+        tracking:
+          type: array
+          items:
+            type: object
+            required: [trackingNumber, carrier]
+            properties:
+              trackingNumber: { type: string }
+              carrier: { type: [string, "null"] }
+        checkedAt: { type: string }
+        terminal: { type: boolean }
+    ExternalVendorImportResult:
+      type: object
+      required: [since, through, imported, updated, skippedHub, errors]
+      properties:
+        since: { type: string }
+        through: { type: string }
+        imported: { type: integer }
+        updated: { type: integer }
+        skippedHub: { type: integer }
+        errors: { type: array, items: { type: string } }
     VendorOrder:
       type: object
       properties:

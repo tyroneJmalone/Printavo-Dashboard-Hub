@@ -182,6 +182,8 @@ import type {
   EmailUnansweredResponse,
   ErrorResponse,
   EvaluateStatusRulesResponse,
+  ExternalVendorImportResult,
+  ExternalVendorOrder,
   FinderOrder,
   GetBrandBreakdownParams,
   GetCategoryBreakdownParams,
@@ -10159,6 +10161,205 @@ export const useVendorSubmit = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getVendorSubmitMutationOptions(options));
+    }
+
+export const getListExternalVendorOrdersUrl = () => {
+
+
+
+
+  return `/api/purchasing/external-vendor-orders`
+}
+
+export const listExternalVendorOrders = async ( options?: RequestInit): Promise<ExternalVendorOrder[]> => {
+
+  return customFetch<ExternalVendorOrder[]>(getListExternalVendorOrdersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListExternalVendorOrdersQueryKey = () => {
+    return [
+    `/api/purchasing/external-vendor-orders`
+    ] as const;
+    }
+
+
+export const getListExternalVendorOrdersQueryOptions = <TData = Awaited<ReturnType<typeof listExternalVendorOrders>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExternalVendorOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListExternalVendorOrdersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listExternalVendorOrders>>> = ({ signal }) => listExternalVendorOrders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listExternalVendorOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListExternalVendorOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof listExternalVendorOrders>>>
+export type ListExternalVendorOrdersQueryError = ErrorType<unknown>
+
+
+
+export function useListExternalVendorOrders<TData = Awaited<ReturnType<typeof listExternalVendorOrders>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listExternalVendorOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListExternalVendorOrdersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getImportExternalVendorOrdersUrl = () => {
+
+
+
+
+  return `/api/purchasing/external-vendor-orders/import`
+}
+
+export const importExternalVendorOrders = async ( options?: RequestInit): Promise<ExternalVendorImportResult> => {
+
+  return customFetch<ExternalVendorImportResult>(getImportExternalVendorOrdersUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getImportExternalVendorOrdersMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importExternalVendorOrders>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importExternalVendorOrders>>, TError,void, TContext> => {
+
+const mutationKey = ['importExternalVendorOrders'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importExternalVendorOrders>>, void> = () => {
+
+
+          return  importExternalVendorOrders(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportExternalVendorOrdersMutationResult = NonNullable<Awaited<ReturnType<typeof importExternalVendorOrders>>>
+
+    export type ImportExternalVendorOrdersMutationError = ErrorType<unknown>
+
+    export const useImportExternalVendorOrders = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importExternalVendorOrders>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importExternalVendorOrders>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getImportExternalVendorOrdersMutationOptions(options));
+    }
+
+export const getRefreshExternalVendorOrderUrl = (id: string,) => {
+
+
+
+
+  return `/api/purchasing/external-vendor-orders/${id}/refresh`
+}
+
+export const refreshExternalVendorOrder = async (id: string, options?: RequestInit): Promise<ExternalVendorOrder> => {
+
+  return customFetch<ExternalVendorOrder>(getRefreshExternalVendorOrderUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRefreshExternalVendorOrderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshExternalVendorOrder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshExternalVendorOrder>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['refreshExternalVendorOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshExternalVendorOrder>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  refreshExternalVendorOrder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshExternalVendorOrderMutationResult = NonNullable<Awaited<ReturnType<typeof refreshExternalVendorOrder>>>
+
+    export type RefreshExternalVendorOrderMutationError = ErrorType<unknown>
+
+    export const useRefreshExternalVendorOrder = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshExternalVendorOrder>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshExternalVendorOrder>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRefreshExternalVendorOrderMutationOptions(options));
     }
 
 export const getListVendorOrdersUrl = (params?: ListVendorOrdersParams,) => {

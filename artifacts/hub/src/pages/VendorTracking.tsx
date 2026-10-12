@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { trackingRefreshFinished } from "../../../../lib/shared/trackingRefreshPolicy";
 import { AppShell } from "@/components/layout/AppShell";
+import { ExternalVendorOrders } from "@/components/ExternalVendorOrders";
 import {
   useListVendorOrders,
   getListVendorOrdersQueryKey,
@@ -24,6 +25,8 @@ import {
   ExternalLink,
   AlertTriangle,
   ShieldAlert,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 function apiError(err: unknown): string | undefined {
@@ -167,6 +170,7 @@ export default function VendorTracking() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [showAll, setShowAll] = useState(false);
+  const [hubOpen, setHubOpen] = useState(true);
   const [filter, setFilter] = useState("All");
   const [expanded, setExpanded] = useState<string[]>([]);
   const [adminPin, setAdminPin] = useState("");
@@ -341,6 +345,13 @@ export default function VendorTracking() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          <section className="rounded-lg border border-slate-800 bg-slate-950/40" data-testid="section-hub-orders">
+          <button type="button" onClick={() => setHubOpen((v) => !v)} className="flex w-full items-center gap-2 px-4 py-3 text-left" data-testid="button-toggle-hub">
+            {hubOpen ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+            <span className="text-[15px] font-semibold text-slate-100">Hub-submitted POs</span>
+            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-300">{orders.length}</span>
+          </button>
+          {hubOpen && <div className="border-t border-slate-800 px-4 py-4">
           {refreshOutcomes.length > 0 && (
             <div className="mb-4 rounded-lg border border-slate-700 bg-slate-900/70 p-3 text-xs text-slate-300" role="status">
               <div className="font-semibold text-slate-100 mb-1">Refresh outcomes {refreshProgress ? `(${refreshProgress.done}/${refreshProgress.total})` : ""}</div>
@@ -534,6 +545,9 @@ export default function VendorTracking() {
               </table>
             </div>
           )}
+          </div>}
+          </section>
+          <ExternalVendorOrders />
         </div>
       </div>
     </AppShell>

@@ -1,3 +1,4 @@
+import { listExternalVendorOrders, importExternalVendorOrders, refreshExternalVendorOrder } from "../lib/purchasing/externalVendorTracking";
 import { Router, type IRouter, type Response } from "express";
 import { requireValidAdminPin } from "../lib/auth/adminPin";
 import vendorShippingTermsRouter from "./vendorShippingTerms";
@@ -748,6 +749,23 @@ router.get("/purchasing/vendor-orders", (req, res) => {
       req.log.error({ err }, "list vendor orders failed");
       res.status(500).json({ error: "Failed to load vendor orders" });
     });
+});
+
+router.get("/purchasing/external-vendor-orders", async (req, res) => {
+  try { res.json(await listExternalVendorOrders()); }
+  catch (err) { req.log.error({err}, "external tracking list failed"); res.status(500).json({error:"Could not load external orders"}); }
+});
+router.post("/purchasing/external-vendor-orders/import", async (req, res) => {
+  try { res.json(await importExternalVendorOrders()); }
+  catch (err) { req.log.error({err}, "external history import failed"); res.status(409).json({error:"External import is already running or unavailable"}); }
+});
+router.post("/purchasing/external-vendor-orders/:id/refresh", async (req, res) => {
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) { res.status(400).json({error:"Invalid tracking ID"}); return; }
+  try {
+    const row = await refreshExternalVendorOrder(req.params.id);
+    if (!row) { res.status(404).json({error:"External order not found"}); return; }
+    res.json(row);
+  } catch (err) { req.log.error({err}, "external tracking refresh failed"); res.status(502).json({error:"Vendor lookup failed. Previous tracking has been retained."}); }
 });
 
 router.get("/purchasing/carrier-tracking/settings", async (req, res) => {
