@@ -55,3 +55,18 @@ PO numbers; silently replacing one with the other would make tracking unreliable
 **How to apply:** Preserve the exact reference used for vendor lookup and any
 separately supplied Printavo reference or invoice links. No-match responses do
 not prove that the purchase does not exist or that external orders are unsupported.
+
+External-order API visibility has been verified for both SanMar and S&S using
+user-supplied purchases placed outside Hub. This establishes targeted lookup
+support, not automatic discovery of every historical PO.
+
+**Why:** SanMar returned status and shipment data for an exact slash-containing
+customer PO. S&S rejected a slash-containing PO in its encoded path with HTTP
+404, but lookup by its vendor order number returned the matching customer PO,
+warehouse, shipment tracking, and vendor-reported delivery status.
+
+**How to apply:** Preserve punctuation in customer POs. External tracking needs
+an explicit vendor order-number lookup option, separate from the customer PO
+and Printavo reference. Do not strip slashes or treat an HTTP 404 for an encoded
+reference as proof the order is absent. Label S&S delivery evidence as vendor
+reported; obtaining it does not require paid carrier tracking.
