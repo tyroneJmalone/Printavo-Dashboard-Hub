@@ -454,6 +454,8 @@ import type {
   SorterError,
   SorterProcessInput,
   SorterProcessResult,
+  SorterSpreadsheetInspectRequest,
+  SorterSpreadsheetInspectResult,
   StaffListResponse,
   StaffMember,
   StartAutoPrintRunRequest,
@@ -20363,6 +20365,15 @@ formData.append(`preset`, sorterProcessInput.preset);
 if(sorterProcessInput.sort_fields !== undefined) {
  formData.append(`sort_fields`, sorterProcessInput.sort_fields);
  }
+if(sorterProcessInput.single_line_item_first !== undefined) {
+ formData.append(`single_line_item_first`, sorterProcessInput.single_line_item_first.toString())
+ }
+if(sorterProcessInput.spreadsheet_mapping !== undefined) {
+ formData.append(`spreadsheet_mapping`, sorterProcessInput.spreadsheet_mapping);
+ }
+if(sorterProcessInput.remove_column_indexes !== undefined) {
+ formData.append(`remove_column_indexes`, sorterProcessInput.remove_column_indexes);
+ }
 
   return customFetch<SorterProcessResult>(getSorterProcessFilesUrl(),
   {
@@ -20419,6 +20430,78 @@ export const useSorterProcessFiles = <TError = ErrorType<SorterError>,
         TContext
       > => {
       return useMutation(getSorterProcessFilesMutationOptions(options));
+    }
+
+export const getSorterInspectSpreadsheetUrl = () => {
+
+
+
+
+  return `/api/sorter/spreadsheet/inspect`
+}
+
+/**
+ * @summary Preview CSV or XLSX sheets for sorting and export cleanup
+ */
+export const sorterInspectSpreadsheet = async (sorterSpreadsheetInspectRequest: SorterSpreadsheetInspectRequest, options?: RequestInit): Promise<SorterSpreadsheetInspectResult> => {
+    const formData = new FormData();
+formData.append(`spreadsheet`, sorterSpreadsheetInspectRequest.spreadsheet);
+
+  return customFetch<SorterSpreadsheetInspectResult>(getSorterInspectSpreadsheetUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+export const getSorterInspectSpreadsheetMutationOptions = <TError = ErrorType<SorterError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sorterInspectSpreadsheet>>, TError,{data: BodyType<SorterSpreadsheetInspectRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sorterInspectSpreadsheet>>, TError,{data: BodyType<SorterSpreadsheetInspectRequest>}, TContext> => {
+
+const mutationKey = ['sorterInspectSpreadsheet'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sorterInspectSpreadsheet>>, {data: BodyType<SorterSpreadsheetInspectRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sorterInspectSpreadsheet(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SorterInspectSpreadsheetMutationResult = NonNullable<Awaited<ReturnType<typeof sorterInspectSpreadsheet>>>
+    export type SorterInspectSpreadsheetMutationBody = BodyType<SorterSpreadsheetInspectRequest>
+    export type SorterInspectSpreadsheetMutationError = ErrorType<SorterError>
+
+    /**
+ * @summary Preview CSV or XLSX sheets for sorting and export cleanup
+ */
+export const useSorterInspectSpreadsheet = <TError = ErrorType<SorterError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sorterInspectSpreadsheet>>, TError,{data: BodyType<SorterSpreadsheetInspectRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sorterInspectSpreadsheet>>,
+        TError,
+        {data: BodyType<SorterSpreadsheetInspectRequest>},
+        TContext
+      > => {
+      return useMutation(getSorterInspectSpreadsheetMutationOptions(options));
     }
 
 export const getSorterDownloadFileUrl = (jobId: string,

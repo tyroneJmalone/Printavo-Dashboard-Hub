@@ -6277,6 +6277,10 @@ export const SorterProcessInputPreset = {
   sort_both: 'sort_both',
   match_labels: 'match_labels',
   custom_sort: 'custom_sort',
+  required_field: 'required_field',
+  split_required_field: 'split_required_field',
+  spreadsheet_sequence: 'spreadsheet_sequence',
+  parse_store_export: 'parse_store_export',
 } as const;
 
 export interface SorterProcessInput {
@@ -6284,6 +6288,32 @@ export interface SorterProcessInput {
   preset: SorterProcessInputPreset;
   /** JSON array of sort field names used when preset is custom_sort. Available fields: last_name, first_name, style, size, color, custom_field, delivery_method, location, sort_number, order_number, order_date */
   sort_fields?: string;
+  single_line_item_first?: boolean;
+  /** JSON column mapping for spreadsheet sequencing */
+  spreadsheet_mapping?: string;
+  /** JSON array of additional zero-based CSV columns to remove */
+  remove_column_indexes?: string;
+}
+
+export interface SorterSpreadsheetInspectRequest {
+  spreadsheet: Blob;
+}
+
+export interface SorterSpreadsheetPreviewSheet {
+  name: string;
+  rows: string[][];
+}
+
+export interface SorterSpreadsheetInspectResult {
+  sheets: SorterSpreadsheetPreviewSheet[];
+}
+
+export interface SorterSortWarning {
+  /** @items.minimum 1 */
+  sourcePages: number[];
+  orderNumber: string;
+  missingFields: string[];
+  message: string;
 }
 
 export interface SorterOutputFile {
@@ -6294,6 +6324,7 @@ export interface SorterOutputFile {
 }
 
 export interface SorterProcessResult {
+  warnings: SorterSortWarning[];
   jobId: string;
   outputs: SorterOutputFile[];
 }

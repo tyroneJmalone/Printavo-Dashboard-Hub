@@ -5634,6 +5634,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/SorterError"
 
+  /sorter/spreadsheet/inspect:
+    post:
+      operationId: sorterInspectSpreadsheet
+      tags: [sorter]
+      summary: Preview CSV or XLSX sheets for sorting and export cleanup
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SorterSpreadsheetInspectRequest"
+      responses:
+        "200":
+          description: Spreadsheet preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SorterSpreadsheetInspectResult"
+        "400":
+          description: Invalid spreadsheet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SorterError"
+
   /sorter/jobs/{jobId}/files/{key}:
     get:
       operationId: sorterDownloadFile
@@ -13503,11 +13528,72 @@ components:
               sort_both,
               match_labels,
               custom_sort,
+              required_field,
+              split_required_field,
+              spreadsheet_sequence,
+              parse_store_export,
             ]
           description: Processing preset
         sort_fields:
           type: string
           description: "JSON array of sort field names used when preset is custom_sort. Available fields: last_name, first_name, style, size, color, custom_field, delivery_method, location, sort_number, order_number, order_date"
+        single_line_item_first:
+          type: boolean
+          default: false
+        spreadsheet_mapping:
+          type: string
+          description: JSON column mapping for spreadsheet sequencing
+        remove_column_indexes:
+          type: string
+          description: JSON array of additional zero-based CSV columns to remove
+
+    SorterSpreadsheetInspectRequest:
+      type: object
+      required: [spreadsheet]
+      properties:
+        spreadsheet:
+          type: string
+          format: binary
+
+    SorterSpreadsheetPreviewSheet:
+      type: object
+      required: [name, rows]
+      properties:
+        name:
+          type: string
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+
+    SorterSpreadsheetInspectResult:
+      type: object
+      required: [sheets]
+      properties:
+        sheets:
+          type: array
+          items:
+            $ref: "#/components/schemas/SorterSpreadsheetPreviewSheet"
+
+    SorterSortWarning:
+      type: object
+      required: [sourcePages, orderNumber, missingFields, message]
+      properties:
+        sourcePages:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+        orderNumber:
+          type: string
+        missingFields:
+          type: array
+          items:
+            type: string
+        message:
+          type: string
 
     SorterOutputFile:
       type: object
@@ -13520,8 +13606,12 @@ components:
 
     SorterProcessResult:
       type: object
-      required: [jobId, outputs]
+      required: [jobId, outputs, warnings]
       properties:
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SorterSortWarning"
         jobId: { type: string }
         outputs:
           type: array

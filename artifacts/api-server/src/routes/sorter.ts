@@ -4,10 +4,24 @@ import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
+import { SorterProcessFilesResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
 const upload = multer({ dest: "/tmp/mint-uploads/" });
+
+// Also clean up files after rejected inputs and failed processing.
+router.use("/sorter", (req, res, next) => {
+  res.once("finish", () => {
+    const files = req.files;
+    const uploaded = Array.isArray(files) ? files : Object.values(files ?? {}).flat();
+    if (req.file) uploaded.push(req.file);
+    for (const file of uploaded) {
+      fs.rm(file.path, { force: true }, () => {});
+    }
+  });
+  next();
+});
 
 // In-memory job store (jobId → { key → filepath })
 const jobs = new Map<string, Map<string, { filepath: string; filename: string; mime: string; label: string }>>();
@@ -18,6 +32,7 @@ const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"
   : process.cwd();
 
 const processorScript = path.resolve(workspaceRoot, "artifacts/api-server/python/processor_cli.py");
+const spreadsheetInspectScript = path.resolve(workspaceRoot, "artifacts/api-server/python/spreadsheet_inspect_cli.py");
 
 function mimeForExt(ext: string): string {
   if (ext === ".zip") return "application/zip";
@@ -26,16 +41,24 @@ function mimeForExt(ext: string): string {
 }
 
 const OUTPUT_LABELS: Record<string, string> = {
+  packing_slip_consolidation_report: "Download packing-slip consolidation report CSV",
   combined_labels: "Download combined labels PDF",
   sorted_packing_slips: "Download sorted packing slips PDF",
   sorted_shipping_labels: "Download sorted shipping labels PDF",
   match_report: "Download match report CSV",
   custom_field_report: "Download custom field report CSV",
   custom_sort_report: "Download sort report CSV",
+  required_field_report: "Download required field report CSV",
+  birth_year_batch_manifest: "Download birth year batch manifest CSV",
+  spreadsheet_sequence_packing_slips: "Download spreadsheet-sequenced packing slips PDF",
+  spreadsheet_sequence_shipping_labels: "Download spreadsheet-sequenced shipping labels PDF",
+  spreadsheet_sequence_match_report: "Download spreadsheet match report CSV",
+  spreadsheet_sequence_label_report: "Download shipping label match report CSV",
+  parsed_store_export: "Download parsed store export CSV",
   zip: "Download all outputs (ZIP)",
 };
 
-const ALL_PRESETS = [
+const VALID_PRESETS = [
   "combine_labels",
   "sort_slips",
   "sort_slips_name",
@@ -45,9 +68,13 @@ const ALL_PRESETS = [
   "sort_both",
   "match_labels",
   "custom_sort",
-];
+  "required_field",
+  "split_required_field",
+  "spreadsheet_sequence",
+  "parse_store_export",
+] as const;
 
-const NEEDS_SLIPS = [
+const PACKING_SLIP_PRESETS = [
   "sort_slips",
   "sort_slips_name",
   "sort_slips_custom",
@@ -56,34 +83,82 @@ const NEEDS_SLIPS = [
   "sort_both",
   "match_labels",
   "custom_sort",
+  "required_field",
+  "split_required_field",
+  "spreadsheet_sequence",
 ];
 
-const NEEDS_LABELS = ["combine_labels", "sort_labels", "sort_both", "match_labels"];
+router.post("/sorter/spreadsheet/inspect", upload.single("spreadsheet"), async (req, res): Promise<void> => {
+  const spreadsheet = req.file;
+  if (!spreadsheet) {
+    res.status(400).json({ error: "Spreadsheet file is required" });
+    return;
+  }
+  try {
+    const stdout = await new Promise<string>((resolve, reject) => {
+      const proc = spawn("python3", [
+        spreadsheetInspectScript,
+        spreadsheet.path,
+        spreadsheet.originalname,
+      ]);
+      let output = "";
+      let stderr = "";
+      proc.stdout.on("data", (data) => { output += data.toString(); });
+      proc.stderr.on("data", (data) => { stderr += data.toString(); });
+      proc.on("close", (code) => {
+        if (code === 0) resolve(output);
+        else reject(new Error(stderr || `Python exited with code ${code}`));
+      });
+      proc.on("error", reject);
+    });
+    res.json(JSON.parse(stdout));
+  } catch (err) {
+    req.log.error({ err }, "Spreadsheet inspection failed");
+    res.status(400).json({ error: `Could not read spreadsheet: ${(err as Error).message}` });
+  } finally {
+    try { fs.unlinkSync(spreadsheet.path); } catch { /* ignore */ }
+  }
+});
 
 router.post(
   "/sorter/process",
   upload.fields([
     { name: "packing_slips", maxCount: 1 },
     { name: "labels", maxCount: 20 },
+    { name: "spreadsheet", maxCount: 1 },
+    { name: "store_export", maxCount: 1 },
   ]),
   async (req, res): Promise<void> => {
     const preset = req.body?.preset as string | undefined;
-    if (!preset || !ALL_PRESETS.includes(preset)) {
+    if (!preset || !VALID_PRESETS.includes(preset as (typeof VALID_PRESETS)[number])) {
       res.status(400).json({ error: "Invalid or missing preset" });
       return;
     }
 
     const sortFieldsRaw = req.body?.sort_fields as string | undefined;
+    const priorityRaw = req.body?.single_line_item_first;
+    if (priorityRaw !== undefined && priorityRaw !== "true" && priorityRaw !== "false") {
+      res.status(400).json({ error: "single_line_item_first must be true or false" });
+      return;
+    }
+    const singleLineItemFirst = priorityRaw === "true";
+    if (singleLineItemFirst && ["combine_labels", "match_labels", "parse_store_export"].includes(preset)) {
+      res.status(400).json({ error: "Single-line-item priority is not available for this preset" });
+      return;
+    }
     let sortFields: string[] = [];
     if (sortFieldsRaw) {
       try {
         sortFields = JSON.parse(sortFieldsRaw);
+        const allowedFields = new Set([
+          "last_name", "first_name", "style", "size", "color", "custom_field",
+          "delivery_method", "location", "sort_number", "order_number", "order_date",
+        ]);
+        if (!Array.isArray(sortFields) || sortFields.some((field) => typeof field !== "string" || !allowedFields.has(field))) {
+          throw new Error("Unknown sort field");
+        }
       } catch {
-        res.status(400).json({ error: "sort_fields must be a valid JSON array" });
-        return;
-      }
-      if (!Array.isArray(sortFields) || sortFields.some((f) => typeof f !== "string")) {
-        res.status(400).json({ error: "sort_fields must be a JSON array of strings" });
+        res.status(400).json({ error: "sort_fields must be a JSON array of supported sort field names" });
         return;
       }
     }
@@ -91,47 +166,145 @@ router.post(
       res.status(400).json({ error: "custom_sort preset requires at least one sort field" });
       return;
     }
+    const spreadsheetMappingRaw = req.body?.spreadsheet_mapping as string | undefined;
+    let spreadsheetMapping: Record<string, unknown> | undefined;
+    if (spreadsheetMappingRaw) {
+      try {
+        spreadsheetMapping = JSON.parse(spreadsheetMappingRaw);
+        if (!spreadsheetMapping || typeof spreadsheetMapping !== "object" || Array.isArray(spreadsheetMapping)) {
+          throw new Error("Expected an object");
+        }
+        if (spreadsheetMapping.header_row !== undefined &&
+            (!Number.isInteger(spreadsheetMapping.header_row) || Number(spreadsheetMapping.header_row) < 1)) {
+          throw new Error("header_row must be a positive integer");
+        }
+        for (const field of ["sheet_name", "order_number_column", "first_name_column", "last_name_column"]) {
+          if (spreadsheetMapping[field] !== undefined && typeof spreadsheetMapping[field] !== "string") {
+            throw new Error(`${field} must be a string`);
+          }
+        }
+      } catch {
+        res.status(400).json({ error: "spreadsheet_mapping must be a valid column-mapping object" });
+        return;
+      }
+    }
 
     const files = req.files as Record<string, Express.Multer.File[]> | undefined;
     const packingFiles = files?.["packing_slips"] ?? [];
     const labelFiles = files?.["labels"] ?? [];
+    const spreadsheetFiles = files?.["spreadsheet"] ?? [];
+    const storeExportFiles = files?.["store_export"] ?? [];
 
-    if (NEEDS_SLIPS.includes(preset) && packingFiles.length === 0) {
+    if (PACKING_SLIP_PRESETS.includes(preset) && packingFiles.length === 0) {
       res.status(400).json({ error: "Packing slips PDF is required for this preset" });
       return;
     }
-    if (NEEDS_LABELS.includes(preset) && labelFiles.length === 0) {
+    if (["combine_labels", "sort_labels", "sort_both", "match_labels"].includes(preset) && labelFiles.length === 0) {
       res.status(400).json({ error: "At least one shipping label PDF is required for this preset" });
       return;
+    }
+    if (preset === "spreadsheet_sequence" && labelFiles.length === 0) {
+      res.status(400).json({ error: "Shipping labels are required for spreadsheet sequencing" });
+      return;
+    }
+    if (preset === "spreadsheet_sequence" && (spreadsheetFiles.length === 0 || !spreadsheetMapping)) {
+      res.status(400).json({ error: "Spreadsheet and column mapping are required" });
+      return;
+    }
+    if (
+      preset === "spreadsheet_sequence"
+      && (
+        typeof spreadsheetMapping?.order_number_column !== "string"
+        || !spreadsheetMapping.order_number_column.trim()
+      )
+    ) {
+      res.status(400).json({ error: "Spreadsheet order-number column mapping is required" });
+      return;
+    }
+    let removeColumnIndexes: number[] = [];
+    if (preset === "parse_store_export") {
+      const rawIndexes = req.body?.remove_column_indexes as string | undefined;
+      if (rawIndexes) {
+        try {
+          const parsed = JSON.parse(rawIndexes) as unknown;
+          if (
+            !Array.isArray(parsed)
+            || parsed.some((index) => !Number.isInteger(index) || index < 0)
+          ) {
+            throw new Error("Expected a JSON array of non-negative column indexes");
+          }
+          removeColumnIndexes = Array.from(new Set(parsed as number[]));
+        } catch (err) {
+          res.status(400).json({ error: `Invalid remove_column_indexes: ${(err as Error).message}` });
+          return;
+        }
+      }
+      if (storeExportFiles.length === 0) {
+        res.status(400).json({ error: "Store export CSV is required for this preset" });
+        return;
+      }
+      if (!storeExportFiles[0].originalname.toLowerCase().endsWith(".csv")) {
+        res.status(400).json({ error: "Store export must be a CSV file" });
+        return;
+      }
     }
 
     const jobId = randomUUID();
     const outDir = `/tmp/mint-jobs/${jobId}`;
     fs.mkdirSync(outDir, { recursive: true });
 
-    // Build CLI args: preset, packing_slips_path (or ""), outDir, [--sort-fields], label_paths...
+    // Build CLI args: preset, packing_slips_path (or ""), label_paths..., outDir
     const packingPath = packingFiles[0]?.path ?? "";
     const labelPaths = labelFiles.map((f) => f.path);
+    const spreadsheetFile = spreadsheetFiles[0];
+    const storeExportFile = storeExportFiles[0];
 
     const args = [
       processorScript,
       preset,
       packingPath,
       outDir,
+      ...(singleLineItemFirst ? ["--single-line-item-first"] : []),
       ...(sortFields.length > 0 ? ["--sort-fields", JSON.stringify(sortFields)] : []),
+      ...(spreadsheetFile
+        ? [
+            "--spreadsheet-path",
+            spreadsheetFile.path,
+            "--spreadsheet-name",
+            spreadsheetFile.originalname,
+            "--spreadsheet-mapping",
+            JSON.stringify(spreadsheetMapping),
+          ]
+        : []),
+      ...(storeExportFile
+        ? [
+            "--store-export-path",
+            storeExportFile.path,
+            "--remove-column-indexes",
+            JSON.stringify(removeColumnIndexes),
+          ]
+        : []),
       ...labelPaths,
     ];
 
-    req.log.info({ preset, labelCount: labelPaths.length }, "Sorter: starting PDF processing");
-
+    req.log.info({ preset, labelCount: labelPaths.length }, "Starting PDF processing");
+    let processingMetadata: { warnings: unknown[] };
     try {
       await new Promise<void>((resolve, reject) => {
         const proc = spawn("python3", args);
         let stderr = "";
+        let stdout = "";
+        proc.stdout.on("data", (d) => { stdout += d.toString(); });
         proc.stderr.on("data", (d) => { stderr += d.toString(); });
         proc.on("close", (code) => {
           if (code === 0) {
-            resolve();
+            try {
+              processingMetadata = JSON.parse(stdout);
+              SorterProcessFilesResponse.parse({ jobId, outputs: [], warnings: processingMetadata.warnings });
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
           } else {
             reject(new Error(`Python exited with code ${code}: ${stderr}`));
           }
@@ -139,17 +312,12 @@ router.post(
         proc.on("error", reject);
       });
     } catch (err) {
-      req.log.error({ err }, "Sorter: Python processing failed");
+      req.log.error({ err }, "Python processing failed");
+      fs.rmSync(outDir, { recursive: true, force: true });
       res.status(500).json({ error: `Processing failed: ${(err as Error).message}` });
       return;
-    } finally {
-      // Clean up uploads
-      [...packingFiles, ...labelFiles].forEach((f) => {
-        try { fs.unlinkSync(f.path); } catch { /* ignore */ }
-      });
     }
 
-    // Read output files from outDir
     const outputFiles = fs.readdirSync(outDir);
     const jobFiles = new Map<string, { filepath: string; filename: string; mime: string; label: string }>();
 
@@ -157,7 +325,12 @@ router.post(
       const ext = path.extname(filename);
       const key = ext.toLowerCase() === ".zip" ? "zip" : path.basename(filename, ext);
       const mime = mimeForExt(ext);
-      const label = OUTPUT_LABELS[key] ?? `Download ${filename}`;
+      const birthYear = key.match(/^packing_slips_birth_year_(\d{4}|unknown)$/)?.[1];
+      const label = birthYear
+        ? `Download ${birthYear === "unknown" ? "unknown birth year" : `birth year ${birthYear}`} batch PDF`
+        : key === "zip" && preset === "split_required_field"
+          ? "Download all birth year batches (ZIP)"
+          : OUTPUT_LABELS[key] ?? `Download ${filename}`;
       jobFiles.set(key, {
         filepath: path.join(outDir, filename),
         filename,
@@ -168,6 +341,11 @@ router.post(
 
     jobs.set(jobId, jobFiles);
 
+    // Clean up uploads
+    [...packingFiles, ...labelFiles, ...spreadsheetFiles, ...storeExportFiles].forEach((f) => {
+      try { fs.unlinkSync(f.path); } catch { /* ignore */ }
+    });
+
     const outputs = Array.from(jobFiles.entries()).map(([key, info]) => ({
       key,
       filename: info.filename,
@@ -175,11 +353,17 @@ router.post(
       mime: info.mime,
     }));
 
-    // Put zip last, sort others first
-    outputs.sort((a, b) => (a.key === "zip" ? 1 : b.key === "zip" ? -1 : 0));
+    // Put the all-outputs ZIP last.
+    outputs.sort((a, b) =>
+      a.key === "zip"
+        ? 1
+        : b.key === "zip"
+          ? -1
+          : 0
+    );
 
-    req.log.info({ jobId, outputCount: outputs.length }, "Sorter: processing complete");
-    res.json({ jobId, outputs });
+    req.log.info({ jobId, outputCount: outputs.length }, "Processing complete");
+    res.json({ jobId, outputs, warnings: processingMetadata!.warnings });
   }
 );
 

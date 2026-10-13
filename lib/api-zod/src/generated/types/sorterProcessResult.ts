@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SorterOutputFile } from './sorterOutputFile';
+import type { SorterSortWarning } from './sorterSortWarning';
 
 export interface SorterProcessResult {
+  warnings: SorterSortWarning[];
   jobId: string;
   outputs: SorterOutputFile[];
 }

@@ -1,15 +1,45 @@
 from __future__ import annotations
 
 import io
+import csv
+import json
 import re
 import zipfile
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Iterable, List, Dict, Tuple, Optional
+from xml.etree import ElementTree
 
 import pandas as pd
 import pdfplumber
 from pypdf import PdfReader, PdfWriter
+from line_items import count_product_rows, prioritize_single_line_items
+
+
+SHEET_NS = {"a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+REL_NS = {"r": "http://schemas.openxmlformats.org/package/2006/relationships"}
+OFFICE_REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+STORE_EXPORT_DEFAULT_DROP_COLUMNS = {
+    "Dealer Name",
+    "Organization County",
+    "Catalog Sales Id",
+    "Sales Id",
+    "Status",
+    "Ship Country",
+    "Ship Country Code",
+    "Product Status",
+    "Event Product ID",
+    "Sub Category",
+    "Product Image URL",
+    "Product UPC",
+    "Tax Total",
+    "Salesperson Id",
+    "Salesperson External Id",
+    "BatchID",
+    "External Organization ID",
+    "External Organization Branch ID",
+    "Batch Standalone",
+}
 
 
 def norm_text(s: str | None) -> str:
@@ -25,6 +55,142 @@ def norm_name(s: str | None) -> str:
     # Convert LAST FIRST-ish noise into stable tokens. Keep token order mostly intact.
     stop = {"USA", "US", "UNIT", "APT", "STE", "SUITE"}
     return " ".join(t for t in s.split() if t not in stop)
+
+
+def _column_index(cell_reference: str) -> int:
+    letters = re.match(r"[A-Z]+", cell_reference.upper())
+    if not letters:
+        return 0
+    value = 0
+    for letter in letters.group(0):
+        value = value * 26 + ord(letter) - ord("A") + 1
+    return value - 1
+
+
+def _read_xlsx_sheets(path: str | Path) -> dict[str, list[list[str]]]:
+    with zipfile.ZipFile(path) as archive:
+        shared_strings: list[str] = []
+        if "xl/sharedStrings.xml" in archive.namelist():
+            root = ElementTree.fromstring(archive.read("xl/sharedStrings.xml"))
+            for item in root.findall("a:si", SHEET_NS):
+                shared_strings.append("".join(node.text or "" for node in item.iter(f"{{{SHEET_NS['a']}}}t")))
+
+        workbook = ElementTree.fromstring(archive.read("xl/workbook.xml"))
+        relationships = ElementTree.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
+        targets = {
+            relationship.attrib["Id"]: relationship.attrib["Target"].lstrip("/")
+            for relationship in relationships.findall("r:Relationship", REL_NS)
+        }
+        sheets: dict[str, list[list[str]]] = {}
+        for sheet in workbook.findall(".//a:sheets/a:sheet", SHEET_NS):
+            name = sheet.attrib.get("name", "Sheet")
+            relationship_id = sheet.attrib.get(f"{{{OFFICE_REL_NS}}}id", "")
+            target = targets.get(relationship_id, "")
+            if target.startswith("xl/"):
+                sheet_path = target
+            else:
+                sheet_path = f"xl/{target}"
+            sheet_root = ElementTree.fromstring(archive.read(sheet_path))
+            rows: list[list[str]] = []
+            for row in sheet_root.findall(".//a:sheetData/a:row", SHEET_NS):
+                values: dict[int, str] = {}
+                for cell in row.findall("a:c", SHEET_NS):
+                    reference = cell.attrib.get("r", "A1")
+                    cell_type = cell.attrib.get("t", "")
+                    value_node = cell.find("a:v", SHEET_NS)
+                    value = value_node.text or "" if value_node is not None else ""
+                    if cell_type == "s" and value:
+                        value = shared_strings[int(value)]
+                    elif cell_type == "inlineStr":
+                        value = "".join(
+                            node.text or ""
+                            for node in cell.iter(f"{{{SHEET_NS['a']}}}t")
+                        )
+                    values[_column_index(reference)] = value
+                width = max(values, default=-1) + 1
+                rows.append([values.get(index, "") for index in range(width)])
+            sheets[name] = rows
+        return sheets
+
+
+def read_spreadsheet_sheets(path: str | Path, original_name: str = "") -> dict[str, list[list[str]]]:
+    suffix = Path(original_name or path).suffix.lower()
+    if suffix == ".csv":
+        with open(path, newline="", encoding="utf-8-sig") as file:
+            return {"CSV": [[str(value) for value in row] for row in csv.reader(file)]}
+    if suffix == ".xlsx":
+        return _read_xlsx_sheets(path)
+    raise ValueError("Spreadsheet must be a CSV or XLSX file")
+
+
+def inspect_spreadsheet(path: str | Path, original_name: str = "") -> dict:
+    sheets = read_spreadsheet_sheets(path, original_name)
+    return {
+        "sheets": [
+            {
+                "name": name,
+                "rows": rows[:20],
+            }
+            for name, rows in sheets.items()
+        ]
+    }
+
+
+def parse_store_export(
+    input_csv: str | Path,
+    out_dir: Path,
+    additional_drop_indexes: list[int] | None = None,
+) -> Path:
+    """Remove the standard and user-selected columns without coercing cell values."""
+    input_path = Path(input_csv)
+    with open(input_path, "rb") as source:
+        prefix = source.read(4)
+        source.seek(0)
+        has_bom = prefix.startswith(b"\xef\xbb\xbf")
+        sample = source.read(8192)
+        source.seek(0)
+        text_sample = sample.decode("utf-8-sig", errors="replace")
+        try:
+            dialect = csv.Sniffer().sniff(text_sample, delimiters=",;\t")
+        except csv.Error:
+            dialect = csv.excel
+        newline = "\r\n" if b"\r\n" in sample else "\n"
+        with open(input_path, "r", encoding="utf-8-sig", newline="") as csv_source:
+            reader = csv.reader(csv_source, dialect)
+            try:
+                headers = next(reader)
+            except StopIteration as exc:
+                raise ValueError("The uploaded CSV is empty") from exc
+            if not headers:
+                raise ValueError("The uploaded CSV has no header row")
+
+            requested_indexes = additional_drop_indexes or []
+            if any(
+                isinstance(index, bool) or not isinstance(index, int) or index < 0 or index >= len(headers)
+                for index in requested_indexes
+            ):
+                raise ValueError("A selected column index is outside the CSV header range")
+
+            drop_indexes = {
+                index for index, header in enumerate(headers)
+                if header in STORE_EXPORT_DEFAULT_DROP_COLUMNS
+            }
+            drop_indexes.update(requested_indexes)
+            keep_indexes = [index for index in range(len(headers)) if index not in drop_indexes]
+            if not keep_indexes:
+                raise ValueError("At least one CSV column must remain")
+
+            output_path = out_dir / "parsed_store_export.csv"
+            output_encoding = "utf-8-sig" if has_bom else "utf-8"
+            with open(output_path, "w", encoding=output_encoding, newline="") as csv_target:
+                writer = csv.writer(csv_target, dialect, lineterminator=newline)
+                writer.writerow([headers[index] for index in keep_indexes])
+                for row in reader:
+                    writer.writerow([
+                        row[index] if index < len(row) else ""
+                        for index in keep_indexes
+                    ])
+    return output_path
 
 
 def read_pdf_text_pages(path: str | Path) -> list[str]:
@@ -103,6 +269,103 @@ def extract_custom_field(text: str) -> tuple[str, str]:
     return ("", "")
 
 
+def _is_red_color(color: object) -> bool:
+    """Return whether a pdfplumber color value is visibly red."""
+    if not isinstance(color, (tuple, list)) or len(color) < 3:
+        return False
+    try:
+        red, green, blue = (float(channel) for channel in color[:3])
+    except (TypeError, ValueError):
+        return False
+    return red > 0.35 and red > green * 1.4 and red > blue * 1.4
+
+
+def extract_required_field_from_page(page) -> str:
+    """
+    Read the red text in the Product Name column.
+
+    Printavo marks required product fields with red text. The normal text
+    extractor intentionally ignores color, so this uses page characters and
+    the table header coordinates to isolate that red value.
+    """
+    words = page.extract_words(x_tolerance=1, y_tolerance=3)
+    product_word = next(
+        (word for word in words if word["text"].strip().lower() == "product"),
+        None,
+    )
+    size_word = next(
+        (
+            word for word in words
+            if word["text"].strip().lower() == "size"
+            and product_word is not None
+            and abs(word["top"] - product_word["top"]) < 3
+            and word["x0"] > product_word["x0"]
+        ),
+        None,
+    )
+    if product_word is None or size_word is None:
+        return ""
+
+    left = float(product_word["x0"]) - 2
+    right = float(size_word["x0"]) - 2
+    table_top = float(product_word["bottom"]) + 2
+    red_chars = [
+        char
+        for char in page.chars
+        if float(char.get("top", 0)) >= table_top
+        and left <= float(char.get("x0", 0)) < right
+        and (
+            _is_red_color(char.get("non_stroking_color"))
+            or _is_red_color(char.get("stroking_color"))
+        )
+    ]
+    if not red_chars:
+        return ""
+
+    # Keep line breaks and word gaps while only retaining the red characters.
+    lines: list[list[dict]] = []
+    for char in sorted(red_chars, key=lambda item: (float(item["top"]), float(item["x0"]))):
+        if not lines or abs(float(char["top"]) - float(lines[-1][0]["top"])) > 2:
+            lines.append([char])
+        else:
+            lines[-1].append(char)
+
+    rendered_lines: list[str] = []
+    for line in lines:
+        line = sorted(line, key=lambda item: float(item["x0"]))
+        rendered = line[0]["text"]
+        for previous, char in zip(line, line[1:]):
+            gap = float(char["x0"]) - float(previous["x1"])
+            if gap > max(1.5, float(previous.get("size", 8)) * 0.25):
+                rendered += " "
+            rendered += char["text"]
+        if rendered.strip():
+            rendered_lines.append(rendered.strip())
+    return " ".join(rendered_lines)
+
+
+def _extract_birth_year(value: str) -> str:
+    """Extract a plausible birth year from a year or common full-date value."""
+    standalone_year = re.search(r"(?<!\d)((?:18|19|20)\d{2})(?!\d)", value)
+    if standalone_year:
+        return standalone_year.group(1)
+
+    digits = re.sub(r"\D", "", value)
+    # Compact MMDDYYYY or MDDYYYY values, such as 04062016.
+    if 7 <= len(digits) <= 8:
+        candidate = digits[-4:]
+        if re.fullmatch(r"(?:18|19|20)\d{2}", candidate):
+            return candidate
+
+    date_match = re.search(
+        r"(?<!\d)\d{1,2}[/-]\d{1,2}[/-](\d{2})(?!\d)",
+        value,
+    )
+    if date_match:
+        return str(2000 + int(date_match.group(1)))
+    return ""
+
+
 @dataclass
 class SlipPage:
     page_index: int
@@ -119,6 +382,8 @@ class SlipPage:
     location: str = ""
     sort_number: str = ""
     order_date: str = ""
+    required_field_value: str = ""
+    line_item_count: int | None = None
 
     @property
     def sort_key(self):
@@ -127,10 +392,7 @@ class SlipPage:
 
     @property
     def sort_key_name(self):
-        # shipping_name is "Last, First" — sort by last name token
-        last = self.shipping_name.split(",")[0].strip().upper() if self.shipping_name else ""
-        size_rank = SIZE_ORDER.get(self.size.upper(), 99)
-        return (self.style, self.color, size_rank, last, self.page_index)
+        return self.build_sort_key(["style", "color", "size", "last_name"])
 
     @property
     def sort_key_custom(self):
@@ -146,6 +408,15 @@ class SlipPage:
         custom = norm_text(self.custom_field_value)
         last = self.shipping_name.split(",")[0].strip().upper() if self.shipping_name else ""
         return (custom, last, self.page_index)
+
+    @property
+    def sort_key_required_field(self):
+        # Birth years sort chronologically, oldest first. Slips without a
+        # recognizable year are kept after slips with a valid year.
+        birth_year = _extract_birth_year(self.required_field_value)
+        if birth_year:
+            return (0, int(birth_year), self.page_index)
+        return (1, 9999, norm_text(self.required_field_value), self.page_index)
 
     def sort_value_for_field(self, field: str):
         if field == "last_name":
@@ -178,6 +449,8 @@ class SlipPage:
                 return (1, norm_text(self.order_number))
         if field == "order_date":
             return self.order_date or ""
+        if field == "required_field":
+            return self.sort_key_required_field
         return ""
 
     def build_sort_key(self, fields: list[str]) -> tuple:
@@ -200,7 +473,7 @@ def _first_match(pattern: str, text: str, flags=re.I | re.S) -> str:
     return m.group(1).strip() if m else ""
 
 
-def parse_slip_text(text: str, page_index: int) -> SlipPage:
+def parse_slip_text(text: str, page_index: int, required_field_value: str = "") -> SlipPage:
     order = _first_match(r"Order\s*(?:Number|#)\s*:?\s*#?\s*(\d+)", text)
     if not order:
         order = _first_match(r"Order\s*#\s*(\d+)", text)
@@ -265,11 +538,94 @@ def parse_slip_text(text: str, page_index: int) -> SlipPage:
     return SlipPage(page_index, order, customer_name, shipping_name, style, color, size, text,
                     custom_field_label=cf_label, custom_field_value=cf_value,
                     delivery_method=delivery_method, location=location,
-                    sort_number=sort_number, order_date=order_date)
+                    sort_number=sort_number, order_date=order_date,
+                    required_field_value=required_field_value)
+
+
+def apply_positioned_slip_fields(page, slip: SlipPage) -> None:
+    """Read column cells rather than guessing from interleaved PDF text lines."""
+    words = page.extract_words(x_tolerance=1, y_tolerance=3)
+    slip.line_item_count = count_product_rows(page, words)
+    style_header = next((w for w in words if w["text"] == "Style"), None)
+    if style_header:
+        headers = {
+            w["text"]: w for w in words
+            if abs(w["top"] - style_header["top"]) < 3
+        }
+        if all(key in headers for key in ("Product", "Size", "Color", "Qty")):
+            style_right = headers.get("Vendor", headers["Product"])["x0"]
+            # The first item supplies the order's product sort key. Keep the
+            # complete order intact, including all subsequent product pages.
+            candidates = [
+                w for w in words
+                if style_header["x0"] - 2 <= w["x0"] < style_right - 2
+                and w["top"] > style_header["bottom"] + 2
+                and w["top"] < page.height - 50
+            ]
+            if candidates:
+                anchor = min(candidates, key=lambda w: (w["top"], w["x0"]))
+                # Chipply draws cell rectangles around each product row.
+                cells = [
+                    r for r in page.rects
+                    if r["x0"] <= anchor["x0"] < r["x1"]
+                    and r["top"] <= anchor["top"] and r["bottom"] >= anchor["bottom"]
+                    and r["height"] > 10 and r["width"] > 10
+                ]
+                if cells:
+                    cell = min(cells, key=lambda r: r["height"])
+                    top, bottom = cell["top"], cell["bottom"]
+                else:
+                    top, bottom = anchor["top"] - 2, anchor["bottom"] + 2
+
+                def cell_text(left, right):
+                    selected = [
+                        w for w in words
+                        if left - 2 <= w["x0"] < right - 2
+                        and top <= (w["top"] + w["bottom"]) / 2 < bottom
+                    ]
+                    return " ".join(w["text"] for w in sorted(
+                        selected, key=lambda w: (round(w["top"], 1), w["x0"])
+                    )).strip()
+
+                slip.style = cell_text(style_header["x0"], style_right)
+                slip.size = cell_text(headers["Size"]["x0"], headers["Color"]["x0"])
+                slip.color = cell_text(headers["Color"]["x0"], headers["Qty"]["x0"])
+                # Export colors may append the style code; it is not a color.
+                slip.color = re.sub(
+                    r"\s+-\s*" + re.escape(slip.style) + r"$", "", slip.color
+                ).strip()
+
+    # Recipient fields are more reliable than a store-title/first-line fallback.
+    recipient = {}
+    for word in words:
+        if word["text"] != "Recipient":
+            continue
+        line = sorted(
+            [w for w in words if abs(w["top"] - word["top"]) < 2 and w["x0"] >= word["x0"]],
+            key=lambda w: w["x0"],
+        )
+        kind = next((w for w in line if w["text"] in ("First", "Last")), None)
+        if kind:
+            value = " ".join(
+                w["text"] for w in line
+                if w["x0"] > kind["x1"] + 2 and w["text"] not in ("Name:", "Name")
+            )
+            if value:
+                recipient[kind["text"]] = value
+    if recipient.get("First") and recipient.get("Last"):
+        slip.shipping_name = f"{recipient['Last']}, {recipient['First']}"
 
 
 def parse_packing_slips(path: str | Path) -> list[SlipPage]:
-    return [parse_slip_text(txt, i) for i, txt in enumerate(read_pdf_text_pages(path))]
+    slips: list[SlipPage] = []
+    with pdfplumber.open(str(path)) as pdf:
+        for i, page in enumerate(pdf.pages):
+            text = page.extract_text(x_tolerance=1, y_tolerance=3) or ""
+            required_field_value = extract_required_field_from_page(page)
+            slip = parse_slip_text(text, i, required_field_value)
+            apply_positioned_slip_fields(page, slip)
+            slips.append(slip)
+    return slips
 
 
 def parse_label_text(text: str, page_index: int, source_file: str, source_page_index: int) -> LabelPage:
@@ -373,10 +729,12 @@ def group_slip_pages(slips: list[SlipPage]) -> list[list[SlipPage]]:
     return groups
 
 
-def sort_packing_slips(input_pdf: str | Path, output_pdf: str | Path) -> list[SlipPage]:
-    slips = parse_packing_slips(input_pdf)
-    groups = group_slip_pages(slips)
+def sort_packing_slips(input_pdf: str | Path, output_pdf: str | Path, single_line_item_first=False,
+                       groups: list[list[SlipPage]] | None = None) -> list[SlipPage]:
+    if groups is None:
+        groups = group_slip_pages(parse_packing_slips(input_pdf))
     sorted_groups = sorted(groups, key=lambda g: g[0].sort_key)
+    sorted_groups = prioritize_single_line_items(sorted_groups, single_line_item_first)
     all_pages = [s.page_index for g in sorted_groups for s in g]
     write_selected_pages(input_pdf, output_pdf, all_pages)
     return [g[0] for g in sorted_groups]
@@ -481,6 +839,7 @@ def _write_custom_sort_report(sorted_groups: list[list[SlipPage]], report_csv: P
         rows.append({
             "sequence": seq,
             "order_number": s.order_number,
+            "source_pages": ", ".join(str(page.page_index + 1) for page in group),
             "last_name": last,
             "first_name": first,
             "style": s.style,
@@ -492,6 +851,7 @@ def _write_custom_sort_report(sorted_groups: list[list[SlipPage]], report_csv: P
             "location": s.location,
             "sort_number": s.sort_number,
             "order_date": s.order_date,
+            "required_field_value": s.required_field_value,
         })
     pd.DataFrame(rows).to_csv(report_csv, index=False)
 
@@ -514,10 +874,296 @@ def _write_custom_field_report(sorted_groups: list[list[SlipPage]], report_csv: 
     pd.DataFrame(rows).to_csv(report_csv, index=False)
 
 
-def process_batch(packing_slips_pdf: str | Path, label_pdfs: list[str | Path], out_dir: str | Path, preset: str, sort_fields: list[str] | None = None) -> dict[str, Path]:
+def split_packing_slips_by_required_field(
+    input_pdf: str | Path,
+    out_dir: Path,
+    single_line_item_first=False,
+) -> dict[str, Path]:
+    """
+    Split a packing-slip PDF into one PDF per birth year without re-sorting it.
+
+    Orders remain whole, and their relative sequence within each generated batch
+    is identical to their sequence in the source PDF.
+    """
+    slips = parse_packing_slips(input_pdf)
+    groups = group_slip_pages(slips)
+    batches: dict[str, list[list[SlipPage]]] = {}
+    manifest_rows = []
+
+    for source_sequence, group in enumerate(groups, start=1):
+        first = group[0]
+        birth_year = _extract_birth_year(first.required_field_value)
+        batch_value = birth_year or "unknown"
+        batches.setdefault(batch_value, []).append(group)
+        manifest_rows.append({
+            "source_sequence": source_sequence,
+            "order_number": first.order_number,
+            "birth_year": birth_year,
+            "required_field_value": first.required_field_value,
+            "batch": batch_value,
+            "source_pages": ", ".join(str(page.page_index + 1) for page in group),
+            "page_count": len(group),
+        })
+
+    outputs: dict[str, Path] = {}
+    for batch_value in sorted(batches, key=lambda value: (value == "unknown", value)):
+        batch_groups = prioritize_single_line_items(batches[batch_value], single_line_item_first)
+        filename = f"packing_slips_birth_year_{batch_value}.pdf"
+        output_pdf = out_dir / filename
+        page_indices = [page.page_index for group in batch_groups for page in group]
+        write_selected_pages(input_pdf, output_pdf, page_indices)
+        outputs[f"birth_year_{batch_value}"] = output_pdf
+
+    manifest_path = out_dir / "birth_year_batch_manifest.csv"
+    pd.DataFrame(manifest_rows).to_csv(manifest_path, index=False)
+    outputs["birth_year_batch_manifest"] = manifest_path
+    return outputs
+
+
+def sort_to_spreadsheet_sequence(
+    packing_slips_pdf: str | Path,
+    label_pdfs: list[str | Path],
+    spreadsheet_path: str | Path,
+    spreadsheet_name: str,
+    mapping: dict,
+    out_dir: Path,
+    single_line_item_first=False,
+) -> dict[str, Path]:
+    sheets = read_spreadsheet_sheets(spreadsheet_path, spreadsheet_name)
+    sheet_name = str(mapping.get("sheet_name") or next(iter(sheets), ""))
+    if sheet_name not in sheets:
+        raise ValueError(f"Spreadsheet sheet not found: {sheet_name}")
+    rows = sheets[sheet_name]
+    header_row = int(mapping.get("header_row", 1))
+    if header_row < 1 or header_row > len(rows):
+        raise ValueError("Spreadsheet header row is out of range")
+    headers = rows[header_row - 1]
+    header_lookup = {str(value).strip(): index for index, value in enumerate(headers) if str(value).strip()}
+
+    def mapped_value(row: list[str], key: str) -> str:
+        column = str(mapping.get(key) or "").strip()
+        index = header_lookup.get(column)
+        if index is None or index >= len(row):
+            return ""
+        return str(row[index]).strip()
+
+    if not mapping.get("order_number_column"):
+        raise ValueError("Map the spreadsheet order number column")
+
+    slips = parse_packing_slips(packing_slips_pdf)
+    groups = group_slip_pages(slips)
+    unused = set(range(len(groups)))
+    ordered_group_indices: list[int] = []
+    matched_order_sequences: dict[str, int] = {}
+    report_rows = []
+
+    for spreadsheet_row, row in enumerate(rows[header_row:], start=header_row + 1):
+        spreadsheet_order = re.sub(r"\D", "", mapped_value(row, "order_number_column"))
+        match_index: int | None = None
+        method = ""
+
+        if spreadsheet_order and spreadsheet_order in matched_order_sequences:
+            report_rows.append({
+                "spreadsheet_row": spreadsheet_row,
+                "status": "duplicate_spreadsheet_order",
+                "match_method": "order_number",
+                "spreadsheet_order_number": spreadsheet_order,
+                "slip_name": "",
+                "slip_order_number": spreadsheet_order,
+                "output_sequence": matched_order_sequences[spreadsheet_order],
+            })
+            continue
+
+        if spreadsheet_order:
+            match_index = next(
+                (
+                    index
+                    for index in unused
+                    if groups[index][0].order_number == spreadsheet_order
+                ),
+                None,
+            )
+            if match_index is not None:
+                method = "order_number"
+
+        if match_index is None:
+            report_rows.append({
+                "spreadsheet_row": spreadsheet_row,
+                "status": "spreadsheet_row_unmatched",
+                "match_method": "",
+                "spreadsheet_order_number": spreadsheet_order,
+                "slip_name": "",
+                "slip_order_number": "",
+                "output_sequence": "",
+            })
+            continue
+
+        unused.remove(match_index)
+        ordered_group_indices.append(match_index)
+        slip = groups[match_index][0]
+        if slip.order_number:
+            matched_order_sequences[slip.order_number] = len(ordered_group_indices)
+        report_rows.append({
+            "spreadsheet_row": spreadsheet_row,
+            "status": "matched",
+            "match_method": method,
+            "spreadsheet_order_number": spreadsheet_order,
+            "slip_name": slip.shipping_name or slip.customer_name,
+            "slip_order_number": slip.order_number,
+            "output_sequence": len(ordered_group_indices),
+        })
+
+    unmatched_group_indices = sorted(unused)
+    ordered_group_indices.extend(unmatched_group_indices)
+    for index in unmatched_group_indices:
+        slip = groups[index][0]
+        report_rows.append({
+            "spreadsheet_row": "",
+            "status": "slip_not_in_spreadsheet",
+            "match_method": "",
+            "spreadsheet_order_number": "",
+            "slip_name": slip.shipping_name or slip.customer_name,
+            "slip_order_number": slip.order_number,
+            "output_sequence": ordered_group_indices.index(index) + 1,
+        })
+
+    ordered_groups = [groups[index] for index in ordered_group_indices]
+    ordered_groups = prioritize_single_line_items(ordered_groups, single_line_item_first)
+    final_sequences = {g[0].order_number: n for n, g in enumerate(ordered_groups, 1)}
+    for row in report_rows:
+        if row["output_sequence"] != "":
+            row["output_sequence"] = final_sequences[row["slip_order_number"]]
+    sorted_slips_pdf = out_dir / "spreadsheet_sequence_packing_slips.pdf"
+    write_selected_pages(
+        packing_slips_pdf,
+        sorted_slips_pdf,
+        [page.page_index for group in ordered_groups for page in group],
+    )
+    outputs = {"spreadsheet_sequence_packing_slips": sorted_slips_pdf}
+
+    labels, label_sources = parse_label_pdfs(label_pdfs)
+    selected, label_report = match_labels_to_slips([group[0] for group in ordered_groups], labels)
+    sorted_labels_pdf = out_dir / "spreadsheet_sequence_shipping_labels.pdf"
+    write_sorted_labels(label_sources, sorted_labels_pdf, selected)
+    outputs["spreadsheet_sequence_shipping_labels"] = sorted_labels_pdf
+
+    match_report = out_dir / "spreadsheet_sequence_match_report.csv"
+    pd.DataFrame(report_rows).to_csv(match_report, index=False)
+    outputs["spreadsheet_sequence_match_report"] = match_report
+    label_report_path = out_dir / "spreadsheet_sequence_label_report.csv"
+    label_report.to_csv(label_report_path, index=False)
+    outputs["spreadsheet_sequence_label_report"] = label_report_path
+    return outputs
+
+
+def missing_sort_field_warnings(
+    groups: list[list[SlipPage]], preset: str, sort_fields: list[str] | None = None,
+) -> list[dict]:
+    """Check the same first-page keys used for sorting, not continuation pages."""
+    product_fields = ["style", "color", "size"]
+    fields = {
+        "sort_slips": [*product_fields, "order_number"],
+        "sort_labels": [*product_fields, "order_number"],
+        "sort_both": [*product_fields, "order_number"],
+        "sort_slips_name": [*product_fields, "last_name"],
+        "sort_slips_custom": [*product_fields, "last_name", "custom_field"],
+        "sort_slips_custom_first": ["custom_field", "last_name"],
+        "required_field": ["required_field"],
+        "custom_sort": sort_fields or ["last_name"],
+    }.get(preset, [])
+    labels = {"style": "style", "color": "color", "size": "size",
+              "first_name": "recipient first name", "last_name": "recipient last name",
+              "order_number": "order number", "custom_field": "custom field",
+              "required_field": "recognizable birth year", "location": "location",
+              "delivery_method": "delivery method", "sort_number": "sort number",
+              "order_date": "order date"}
+    warnings = []
+    for group in groups:
+        slip = group[0]
+        missing = []
+        for field in dict.fromkeys(fields):
+            if field not in labels:
+                continue
+            if field == "required_field":
+                value = _extract_birth_year(slip.required_field_value)
+            elif field in {"first_name", "last_name"}:
+                value = slip.sort_value_for_field(field)
+            else:
+                value = getattr(slip, "custom_field_value" if field == "custom_field" else field, "")
+            # Unstructured header/store text is not a reliable recipient name.
+            if not norm_text(value) or (
+                field in {"first_name", "last_name"} and "," not in slip.shipping_name
+            ):
+                missing.append(labels[field])
+        if missing:
+            pages = [page.page_index + 1 for page in group]
+            warnings.append({
+                "sourcePages": pages,
+                "orderNumber": slip.order_number,
+                "missingFields": missing,
+                "message": (
+                    f"Could not reliably read {', '.join(missing)} on source page "
+                    f"{pages[0]}. This order was kept, but its sort position may be incorrect. "
+                    "Check these fields in the original packing-slip PDF and verify the output "
+                    "before printing, or choose a sort that does not use them."
+                ),
+            })
+        # Grouping itself depends on order numbers. A missing number may hide
+        # a separate order inside an otherwise complete group.
+        if fields:
+            for page in group[1:]:
+                if page.order_number:
+                    continue
+                page_marker = re.search(r"Page\s+(\d+)\s+of\s+\d+", page.raw_text, re.I)
+                known_continuation = page_marker and int(page_marker.group(1)) > 1
+                totals_only = (
+                    re.search(r"\btotal\b", page.raw_text, re.I)
+                    and not any((page.style, page.color, page.size))
+                )
+                if known_continuation or totals_only:
+                    continue
+                warnings.append({
+                    "sourcePages": [page.page_index + 1],
+                    "orderNumber": "",
+                    "missingFields": ["order number"],
+                    "message": (
+                        f"Could not read an order number on source page {page.page_index + 1}. "
+                        "This page was kept with the preceding order, but may be a separate order. "
+                        "Check the original PDF and verify both grouping and sort position before printing."
+                    ),
+                })
+    return warnings
+
+
+def process_batch(
+    packing_slips_pdf: str | Path,
+    label_pdfs: list[str | Path],
+    out_dir: str | Path,
+    preset: str,
+    sort_fields: list[str] | None = None,
+    spreadsheet_path: str | Path | None = None,
+    spreadsheet_name: str = "",
+    spreadsheet_mapping: dict | None = None,
+    store_export_path: str | Path | None = None,
+    remove_column_indexes: list[int] | None = None,
+    single_line_item_first: bool = False,
+    warnings: list[dict] | None = None,
+) -> dict[str, Path]:
+    if single_line_item_first and preset in {"combine_labels", "match_labels", "parse_store_export"}:
+        raise ValueError("Single-line-item priority is not available for this preset")
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     outputs: dict[str, Path] = {}
+    sorting_presets = {
+        "sort_slips", "sort_labels", "sort_both", "sort_slips_name",
+        "sort_slips_custom", "sort_slips_custom_first", "custom_sort", "required_field",
+    }
+    groups = []
+    if preset in sorting_presets:
+        groups = group_slip_pages(parse_packing_slips(packing_slips_pdf))
+        detected = missing_sort_field_warnings(groups, preset, sort_fields)
+        if warnings is not None:
+            warnings.extend(detected)
 
     if preset in {"combine_labels", "sort_labels", "sort_both"}:
         combined = out_dir / "combined_labels.pdf"
@@ -525,18 +1171,19 @@ def process_batch(packing_slips_pdf: str | Path, label_pdfs: list[str | Path], o
         outputs["combined_labels"] = combined
 
     if preset == "sort_slips_name":
-        slips = parse_packing_slips(packing_slips_pdf)
-        groups = group_slip_pages(slips)
         sorted_groups = sorted(groups, key=lambda g: g[0].sort_key_name)
+        sorted_groups = prioritize_single_line_items(sorted_groups, single_line_item_first)
         sorted_slips_pdf = out_dir / "sorted_packing_slips.pdf"
         write_selected_pages(packing_slips_pdf, sorted_slips_pdf,
                              [s.page_index for g in sorted_groups for s in g])
         outputs["sorted_packing_slips"] = sorted_slips_pdf
+        report_csv = out_dir / "custom_sort_report.csv"
+        _write_custom_sort_report(sorted_groups, report_csv)
+        outputs["custom_sort_report"] = report_csv
 
     if preset == "sort_slips_custom":
-        slips = parse_packing_slips(packing_slips_pdf)
-        groups = group_slip_pages(slips)
         sorted_groups = sorted(groups, key=lambda g: g[0].sort_key_custom)
+        sorted_groups = prioritize_single_line_items(sorted_groups, single_line_item_first)
         sorted_slips_pdf = out_dir / "sorted_packing_slips.pdf"
         write_selected_pages(packing_slips_pdf, sorted_slips_pdf,
                              [s.page_index for g in sorted_groups for s in g])
@@ -546,9 +1193,8 @@ def process_batch(packing_slips_pdf: str | Path, label_pdfs: list[str | Path], o
         outputs["custom_field_report"] = report_csv
 
     if preset == "sort_slips_custom_first":
-        slips = parse_packing_slips(packing_slips_pdf)
-        groups = group_slip_pages(slips)
         sorted_groups = sorted(groups, key=lambda g: g[0].sort_key_custom_first)
+        sorted_groups = prioritize_single_line_items(sorted_groups, single_line_item_first)
         sorted_slips_pdf = out_dir / "sorted_packing_slips.pdf"
         write_selected_pages(packing_slips_pdf, sorted_slips_pdf,
                              [s.page_index for g in sorted_groups for s in g])
@@ -559,9 +1205,8 @@ def process_batch(packing_slips_pdf: str | Path, label_pdfs: list[str | Path], o
 
     if preset == "custom_sort":
         fields = sort_fields or ["last_name"]
-        slips = parse_packing_slips(packing_slips_pdf)
-        groups = group_slip_pages(slips)
         sorted_groups = sorted(groups, key=lambda g: g[0].build_sort_key(fields))
+        sorted_groups = prioritize_single_line_items(sorted_groups, single_line_item_first)
         sorted_slips_pdf = out_dir / "sorted_packing_slips.pdf"
         write_selected_pages(packing_slips_pdf, sorted_slips_pdf,
                              [s.page_index for g in sorted_groups for s in g])
@@ -570,10 +1215,48 @@ def process_batch(packing_slips_pdf: str | Path, label_pdfs: list[str | Path], o
         _write_custom_sort_report(sorted_groups, report_csv)
         outputs["custom_sort_report"] = report_csv
 
+    if preset == "required_field":
+        sorted_groups = sorted(groups, key=lambda g: g[0].sort_key_required_field)
+        sorted_groups = prioritize_single_line_items(sorted_groups, single_line_item_first)
+        sorted_slips_pdf = out_dir / "sorted_packing_slips.pdf"
+        write_selected_pages(packing_slips_pdf, sorted_slips_pdf,
+                             [s.page_index for g in sorted_groups for s in g])
+        outputs["sorted_packing_slips"] = sorted_slips_pdf
+        report_csv = out_dir / "required_field_report.csv"
+        _write_custom_sort_report(sorted_groups, report_csv)
+        outputs["required_field_report"] = report_csv
+
+    if preset == "split_required_field":
+        outputs.update(split_packing_slips_by_required_field(packing_slips_pdf, out_dir, single_line_item_first))
+
+    if preset == "spreadsheet_sequence":
+        if not spreadsheet_path or not spreadsheet_mapping:
+            raise ValueError("Spreadsheet and column mapping are required")
+        outputs.update(
+            sort_to_spreadsheet_sequence(
+                packing_slips_pdf,
+                label_pdfs,
+                spreadsheet_path,
+                spreadsheet_name,
+                spreadsheet_mapping,
+                out_dir,
+                single_line_item_first,
+            )
+        )
+
+    if preset == "parse_store_export":
+        if not store_export_path:
+            raise ValueError("A store export CSV is required")
+        outputs["parsed_store_export"] = parse_store_export(
+            store_export_path,
+            out_dir,
+            remove_column_indexes,
+        )
+
     sorted_slips: list[SlipPage] | None = None
     if preset in {"sort_slips", "sort_labels", "sort_both"}:
         sorted_slips_pdf = out_dir / "sorted_packing_slips.pdf"
-        sorted_slips = sort_packing_slips(packing_slips_pdf, sorted_slips_pdf)
+        sorted_slips = sort_packing_slips(packing_slips_pdf, sorted_slips_pdf, single_line_item_first, groups=groups)
         outputs["sorted_packing_slips"] = sorted_slips_pdf
 
     if preset in {"sort_labels", "sort_both"}:
@@ -599,7 +1282,35 @@ def process_batch(packing_slips_pdf: str | Path, label_pdfs: list[str | Path], o
         report.to_csv(report_csv, index=False)
         outputs["match_report"] = report_csv
 
-    zip_path = out_dir / "mint_pdf_sorter_outputs.zip"
+    # Consolidation is a final formatting step, after sequencing and matching.
+    # It never changes order grouping, label order, or the uploaded source PDF.
+    from slip_consolidation import consolidate_packing_slips
+    consolidation_rows = []
+    for key, output_path in outputs.items():
+        if output_path.suffix.lower() == ".pdf" and (
+            key in ("sorted_packing_slips", "spreadsheet_sequence_packing_slips")
+            or key.startswith("birth_year_")
+        ):
+            consolidation_rows.extend(consolidate_packing_slips(output_path))
+    if consolidation_rows:
+        consolidation_report = out_dir / "packing_slip_consolidation_report.csv"
+        pd.DataFrame(consolidation_rows).to_csv(consolidation_report, index=False)
+        outputs["packing_slip_consolidation_report"] = consolidation_report
+        if "birth_year_batch_manifest" in outputs:
+            manifest_path = outputs["birth_year_batch_manifest"]
+            with manifest_path.open(newline="") as source:
+                manifest_rows = list(csv.DictReader(source))
+            output_counts = {}
+            for row in consolidation_rows:
+                key = (row["pdf"], row["order_number"])
+                output_counts[key] = output_counts.get(key, 0) + row["output_pages"]
+            for row in manifest_rows:
+                row["output_page_count"] = output_counts.get(
+                    (f"packing_slips_birth_year_{row['batch']}.pdf", row["order_number"]), ""
+                )
+            pd.DataFrame(manifest_rows).to_csv(manifest_path, index=False)
+
+    zip_path = out_dir / "mint_sorter_parser_outputs.zip"
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
         for name, path in outputs.items():
             z.write(path, arcname=path.name)

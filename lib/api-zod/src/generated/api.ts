@@ -12257,18 +12257,47 @@ export const GetDashboardSummaryResponse = zod.object({
  * Upload PDF files (multipart/form-data) with a preset; returns a job ID and output file list
  * @summary Process packing slips and shipping labels
  */
+export const sorterProcessFilesBodySingleLineItemFirstDefault = false;
+
 export const SorterProcessFilesBody = zod.object({
-  "preset": zod.enum(['combine_labels', 'sort_slips', 'sort_slips_name', 'sort_slips_custom', 'sort_slips_custom_first', 'sort_labels', 'sort_both', 'match_labels', 'custom_sort']).describe('Processing preset'),
-  "sort_fields": zod.string().optional().describe('JSON array of sort field names used when preset is custom_sort. Available fields: last_name, first_name, style, size, color, custom_field, delivery_method, location, sort_number, order_number, order_date')
+  "preset": zod.enum(['combine_labels', 'sort_slips', 'sort_slips_name', 'sort_slips_custom', 'sort_slips_custom_first', 'sort_labels', 'sort_both', 'match_labels', 'custom_sort', 'required_field', 'split_required_field', 'spreadsheet_sequence', 'parse_store_export']).describe('Processing preset'),
+  "sort_fields": zod.string().optional().describe('JSON array of sort field names used when preset is custom_sort. Available fields: last_name, first_name, style, size, color, custom_field, delivery_method, location, sort_number, order_number, order_date'),
+  "single_line_item_first": zod.boolean().default(sorterProcessFilesBodySingleLineItemFirstDefault),
+  "spreadsheet_mapping": zod.string().optional().describe('JSON column mapping for spreadsheet sequencing'),
+  "remove_column_indexes": zod.string().optional().describe('JSON array of additional zero-based CSV columns to remove')
 })
 
+
+
+
 export const SorterProcessFilesResponse = zod.object({
+  "warnings": zod.array(zod.object({
+  "sourcePages": zod.array(zod.number().min(1)),
+  "orderNumber": zod.string(),
+  "missingFields": zod.array(zod.string()),
+  "message": zod.string()
+})),
   "jobId": zod.string(),
   "outputs": zod.array(zod.object({
   "key": zod.string(),
   "filename": zod.string(),
   "label": zod.string(),
   "mime": zod.string()
+}))
+})
+
+
+/**
+ * @summary Preview CSV or XLSX sheets for sorting and export cleanup
+ */
+export const SorterInspectSpreadsheetBody = zod.object({
+  "spreadsheet": zod.instanceof(File)
+})
+
+export const SorterInspectSpreadsheetResponse = zod.object({
+  "sheets": zod.array(zod.object({
+  "name": zod.string(),
+  "rows": zod.array(zod.array(zod.string()))
 }))
 })
 
