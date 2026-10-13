@@ -30,6 +30,7 @@ import {
   GetOrdersReportParams
 } from "@workspace/api-client-react";
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
+import { reportShare } from "@/lib/report-share";
 import { useEffect, useState } from "react";
 import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays } from "lucide-react";
 
@@ -53,6 +54,22 @@ function formatObservedAt(value: string | null | undefined): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function ShareCell({ value, total }: { value: number; total: number }) {
+  const percentage = reportShare(value, total);
+  return (
+    <td className="px-6 py-4 text-right">
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-slate-400 font-mono text-xs w-12 text-right">
+          {percentage.toFixed(1)}%
+        </span>
+        <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden" aria-hidden="true">
+          <div className="h-full bg-[#10b981] rounded-full" style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }} />
+        </div>
+      </div>
+    </td>
+  );
 }
 
 export default function Orders() {
@@ -689,6 +706,10 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             <div className="h-full">
               {activeTab === 'quantity' && <p className="mb-3 text-sm text-slate-400">Click a range or order count to see matching orders. Ranges use total order quantity and include both endpoints. Orders with zero quantity are excluded.</p>}
               {activeTab === 'category' && <p className="mb-3 text-sm text-slate-400">Line-item categories: revenue is price × quantity, excluding invoice fees and taxes. Orders count once per category and may appear in more than one. Missing categories appear as Uncategorized.</p>}
+              <p className="mb-3 text-xs text-slate-400">
+                Percentages use the full filtered report totals. Orders may appear in multiple groups,
+                so their percentages may add up to more than 100%. Quantity uses each row’s existing allocation.
+              </p>
               {activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : activeTab === 'decoration' ? <DecorationProductionReport params={params} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
@@ -700,7 +721,9 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                       <tr>
                         <th className="px-6 py-4 w-1/3">Label</th>
                         <th className="px-6 py-4 text-right">Orders</th>
+                        <th className="px-6 py-4 text-right whitespace-nowrap">% of Orders</th>
                         <th className="px-6 py-4 text-right">Quantity</th>
+                        <th className="px-6 py-4 text-right whitespace-nowrap">% of QTY</th>
                         <th className="px-6 py-4 text-right">Revenue</th>
                         <th className="px-6 py-4 text-right">% of Revenue</th>
                       </tr>
@@ -710,7 +733,9 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                         <tr key={row.label} className="hover:bg-slate-800/40 transition-colors">
                           <td className="px-6 py-4 font-medium text-white">{activeTab === 'quantity' ? <button className="text-emerald-400 underline underline-offset-4" onClick={() => setQuantityRange(row.label)}>QTY {row.label}</button> : row.label}</td>
                           <td className="px-6 py-4 text-right text-slate-300">{activeTab === 'quantity' ? <button aria-label={`View ${row.orders} orders with quantity ${row.label}`} className="text-emerald-400 underline underline-offset-4" onClick={() => setQuantityRange(row.label)}>{formatNumber(row.orders)}</button> : formatNumber(row.orders)}</td>
+                          <ShareCell value={row.orders} total={activeBreakdownData.stats.orders} />
                           <td className="px-6 py-4 text-right text-slate-300">{formatNumber(row.quantity)}</td>
+                          <ShareCell value={row.quantity} total={activeBreakdownData.stats.quantity} />
                           <td className="px-6 py-4 text-right font-mono font-medium text-[#10b981]">
                             {formatMoney(row.revenue)}
                           </td>
@@ -728,7 +753,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                       ))}
                       {activeBreakdownData.rows.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                          <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                             No breakdown data found.
                           </td>
                         </tr>
