@@ -89,3 +89,4 @@
 - [Purchasing rule priority safety](purchasing-rule-priority.md) — preserve explicit precedence; verify current environment and never restore stale rules or re-evaluate suggestions implicitly.
 - [Vendor shipping eligibility](vendor-shipping-eligibility.md) — no assumed account thresholds; queue totals cannot prove warehouse/method conditions or guarantee free freight.
 - [Label Sorter upstream parity](label-sorter-upstream.md) — Mint-Sorter/Breezy Sort is the upstream; user chose full parity while preserving Hub access and routing.
+- [Report comparison semantics](report-comparison-policy.md) — same filters and date basis, calendar-year offsets, honest zero baselines and current-status evidence.

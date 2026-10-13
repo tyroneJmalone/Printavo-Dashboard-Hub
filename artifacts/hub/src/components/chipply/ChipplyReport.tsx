@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { useQuery } from "@tanstack/react-query";
+import { previousYearRange, comparisonChange } from "@/lib/report-comparison";
+import { reportDateRange } from "@/lib/report-date-presets";
 import { customFetch } from "../../../../../lib/api-client-react/src/custom-fetch";
 
 interface ReportLine {
@@ -45,6 +47,15 @@ export function ChipplyReport() {
   const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
   const url = `/api/reports/chipply?${params}`;
   const query = useQuery({ queryKey: ["chipply-report", filters], queryFn: () => customFetch<Report>(url) });
+  const [compare, setCompare] = useState(false);
+  let priorRange: { start: string; end: string } | null = null, compareError = "";
+  if (compare) { try { priorRange = previousYearRange(filters.start ?? "", filters.end ?? ""); } catch (e) { compareError = e instanceof Error ? e.message : "Choose a complete date range."; } }
+  const priorFilters = priorRange ? { ...filters, start: priorRange.start, end: priorRange.end } : null;
+  const priorQuery = useQuery({ queryKey: ["chipply-report", priorFilters], enabled: !!priorFilters, queryFn: () => customFetch<Report>(`/api/reports/chipply?${new URLSearchParams(Object.entries(priorFilters ?? {}).filter(([, v]) => v))}`) });
+  const toggleCompare = (on: boolean) => {
+    setCompare(on);
+    if (on && !filters.start && !filters.end) { const ytd = reportDateRange("ytd"); setDraft(prev => ({ ...prev, start: ytd.start, end: ytd.end })); setFilters(prev => ({ ...prev, start: ytd.start, end: ytd.end })); setPage(0); }
+  };
   const change = (key: string, value: string) => setDraft(prev => ({ ...prev, [key]: value }));
   async function exportCsv() {
     setExportError(""); setExporting(true);
@@ -68,8 +79,36 @@ export function ChipplyReport() {
       {["start", "end"].map(key => <label key={key} className="text-xs text-slate-400">{key === "start" ? "From (inclusive)" : "Through (inclusive)"}<input type="date" className={inputClass} value={draft[key] ?? ""} onChange={e => change(key, e.target.value)} /></label>)}
       <button className="self-end rounded bg-emerald-600 p-2 text-sm" type="submit">Apply filters</button>
       <div className="sm:col-span-3 lg:col-span-5"><ReportDatePresets onChange={r => setDraft(prev => ({ ...prev, start: r.start, end: r.end }))} /></div>
-      <button className="self-end rounded border border-slate-700 p-2 text-sm" type="button" onClick={() => { const reset = { dateBasis: "closed" }; setDraft(reset); setFilters(reset); setPage(0); }}>Reset</button>
+      <button className="self-end rounded border border-slate-700 p-2 text-sm" type="button" onClick={() => { const reset = { dateBasis: "closed" }; setCompare(false); setDraft(reset); setFilters(reset); setPage(0); }}>Reset</button>
     </form>
+    <div className="flex flex-wrap items-center gap-4 rounded border border-slate-800 bg-slate-900/40 px-3 py-2 text-xs">
+      <label className="flex items-center gap-2 font-medium text-slate-200"><input type="checkbox" role="switch" aria-checked={compare} checked={compare} onChange={e => toggleCompare(e.target.checked)} className="h-4 w-4 accent-emerald-500" data-testid="toggle-chipply-compare" />Compare with last year</label>
+      {compare && (priorRange ? <span className="text-slate-400">Applied <span className="font-mono text-slate-200">{filters.start} – {filters.end}</span> vs prior <span className="font-mono text-slate-200">{priorRange.start} – {priorRange.end}</span> (inclusive, same filters and date basis)</span>
+        : <span role="alert" className="text-amber-300">{compareError} Apply a complete date range to compare.</span>)}
+    </div>
+    {compare && priorFilters && <section className="space-y-3 rounded border border-slate-800 bg-slate-900/30 p-4" data-testid="section-chipply-comparison">
+      <h2 className="text-sm font-bold">Known imported Chipply totals compared with last year</h2>
+      {query.error || priorQuery.error ? <p role="alert" className="text-red-400">Comparison unavailable. <button className="underline" onClick={() => { query.refetch(); priorQuery.refetch(); }}>Retry</button></p>
+        : query.isFetching || priorQuery.isFetching || !query.data || !priorQuery.data ? <div className="h-24 animate-pulse rounded bg-slate-800/60" aria-busy="true" />
+        : <>
+          <div className="overflow-x-auto"><table className="w-full min-w-[560px] whitespace-nowrap text-sm"><thead className="text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="p-2 text-left">Metric</th><th className="p-2 text-right">Current</th><th className="p-2 text-right">Prior year</th><th className="p-2 text-right">Change</th><th className="p-2 text-right">% change</th></tr></thead>
+            <tbody className="divide-y divide-slate-800">{([["Item revenue", query.data.summary.itemTotalCents, priorQuery.data.summary.itemTotalCents, true], ["Distinct orders", query.data.summary.orderCount, priorQuery.data.summary.orderCount, false], ["Quantity", query.data.summary.quantity, priorQuery.data.summary.quantity, false]] as const).map(([label, c, p, isMoney]) => {
+              const d = comparisonChange(isMoney ? c / 100 : c, isMoney ? p / 100 : p);
+              const f = (v: number) => isMoney ? money(Math.abs(v)) : Math.abs(v).toLocaleString("en-US");
+              return <tr key={label}><td className="p-2">{label}</td><td className="p-2 text-right font-mono text-emerald-400">{isMoney ? money(c) : c.toLocaleString("en-US")}</td><td className="p-2 text-right font-mono text-slate-400">{isMoney ? money(p) : p.toLocaleString("en-US")}</td>
+                <td className="p-2 text-right font-mono">{d.difference > 0 ? "+" : d.difference < 0 ? "−" : ""}{f(isMoney ? d.difference * 100 : d.difference)}</td>
+                <td className="p-2 text-right font-mono text-xs text-slate-400">{d.percent === null ? "No prior-year baseline" : `${d.percent > 0 ? "+" : d.percent < 0 ? "−" : ""}${Math.abs(d.percent).toFixed(1)}%`}</td></tr>;
+            })}</tbody></table></div>
+          <div className="grid gap-3 md:grid-cols-2 text-xs">{([["Current coverage", query.data], ["Prior-year coverage", priorQuery.data]] as const).map(([label, r]) => <div key={label} className="rounded border border-amber-900/60 bg-amber-950/20 p-3 text-amber-100">
+            <p className="font-semibold">{label}</p>
+            <p>{r.coverage.scope}. Coverage counts are not specific to the selected period.</p>
+            <p>Detailed financials: {r.coverage.storesWithDetailedFinancials} / {r.coverage.totalStores} stores. Missing dates: {r.coverage.linesMissingTransactionDate} transaction, {r.coverage.linesMissingClosedDate} closed.</p>
+            {r.coverage.missingStores.length > 0 && <p>{r.coverage.missingStores.length} store(s) without detailed financials are unknown, not $0.</p>}
+            {r.warnings.length > 0 && <ul className="mt-1 list-disc pl-4 text-amber-200/80">{r.warnings.map(w => <li key={w}>{w}</li>)}</ul>}
+          </div>)}</div>
+          <p className="text-xs text-slate-400">Changes compare known imported totals only, not missing financials. Status filters use current recorded statuses, not historical snapshots. Comparison is summary-only: the detail table below lists individual current-period lines, not aggregate groups. Chipply revenue is never combined with Printavo dollars.</p>
+        </>}
+    </section>}
     {query.isFetching && <p role="status">Loading Chipply report…</p>}
     {query.error && <p role="alert" className="text-red-400">Report unavailable: {query.error.message}</p>}
     {report && !query.error && <>

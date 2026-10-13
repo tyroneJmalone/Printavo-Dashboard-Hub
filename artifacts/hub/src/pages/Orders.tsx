@@ -4,6 +4,8 @@ import { DecorationProductionReport } from "@/components/DecorationProductionRep
 import { QuantityOrders } from "@/components/QuantityOrders";
 import { REPORT_DATE_PRESETS, reportDateRange, type ReportDatePreset } from "@/lib/report-date-presets";
 import { ChipplyReport, ReportSourceSelector } from "@/components/chipply/ChipplyReport";
+import { SummaryComparison, BreakdownComparison, rangeLabel, type ComparableTab } from "@/components/ReportComparison";
+import { previousYearRange, previousYearFilters, type ComparisonRange } from "@/lib/report-comparison";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
 import { ActivityOrderDetailPanel } from "@/components/ActivityOrderDetailPanel";
@@ -32,7 +34,7 @@ import {
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { reportShare } from "@/lib/report-share";
 import { useEffect, useState } from "react";
-import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays } from "lucide-react";
+import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays, GitCompare } from "lucide-react";
 
 type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category' | 'decoration';
 type ReportMode = "normal" | "activity";
@@ -154,6 +156,23 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
     activityOwner: reportMode === "activity" && activityOwner ? activityOwner : undefined,
   };
 
+  const [compare, setCompare] = useState(false);
+  let comparison: { current: ComparisonRange; previous: ComparisonRange; previousParams: GetOrdersReportParams } | null = null;
+  let comparisonError = "";
+  if (compare && reportMode === "normal") {
+    try {
+      const previous = previousYearRange(dateStart, dateEnd);
+      comparison = { current: { start: dateStart, end: dateEnd }, previous, previousParams: previousYearFilters(params, dateBasis, previous) };
+    } catch (e) { comparisonError = e instanceof Error ? e.message : "Choose a complete date range to compare."; }
+  }
+  const comparableTabs: BreakdownType[] = ["status", "pricing", "tier", "quantity", "style", "brand", "color", "category"];
+  const comparingBreakdown = compare && reportMode === "normal" && comparableTabs.includes(activeTab);
+  const enableCompare = (on: boolean) => {
+    setCompare(on);
+    if (on && !dateStart && !dateEnd) { const range = reportDateRange("ytd"); setDatePreset("ytd"); setDateStart(range.start); setDateEnd(range.end); setPage(0); }
+  };
+  const applyComparePreset = (id: ReportDatePreset) => { const range = reportDateRange(id); setCompare(true); setDatePreset(id); setDateStart(range.start); setDateEnd(range.end); setPage(0); };
+
   const { data: ordersData, isLoading: isLoadingOrders, isFetching: isFetchingOrders, isError: isOrdersError } = useGetOrdersReport({ ...params, limit, offset: page * limit }, {
     query: { queryKey: getGetOrdersReportQueryKey({ ...params, limit, offset: page * limit }) }
   });
@@ -165,15 +184,15 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
     }
   }, [ordersData, page]);
 
-  const { data: statusBreakdown, isLoading: isLoadingStatus } = useGetStatusBreakdown(params, { query: { queryKey: getGetStatusBreakdownQueryKey(params), enabled: activeTab === 'status' } });
-  const { data: pricingBreakdown, isLoading: isLoadingPricing } = useGetPricingMatrixBreakdown(params, { query: { queryKey: getGetPricingMatrixBreakdownQueryKey(params), enabled: activeTab === 'pricing' } });
-  const { data: tierBreakdown, isLoading: isLoadingTier } = useGetImprintsByTier(params, { query: { queryKey: getGetImprintsByTierQueryKey(params), enabled: activeTab === 'tier' } });
-  const { data: quantityBreakdown, isLoading: isLoadingQuantity } = useGetOrderQuantityBreakdown(params, { query: { queryKey: getGetOrderQuantityBreakdownQueryKey(params), enabled: activeTab === 'quantity' } });
-  const { data: styleBreakdown, isLoading: isLoadingStyle } = useGetStyleNumberBreakdown(params, { query: { queryKey: getGetStyleNumberBreakdownQueryKey(params), enabled: activeTab === 'style' } });
-  const { data: brandBreakdown, isLoading: isLoadingBrand } = useGetBrandBreakdown(params, { query: { queryKey: getGetBrandBreakdownQueryKey(params), enabled: activeTab === 'brand' } });
-  const { data: colorBreakdown, isLoading: isLoadingColor } = useGetColorBreakdown(params, { query: { queryKey: getGetColorBreakdownQueryKey(params), enabled: activeTab === 'color' } });
+  const { data: statusBreakdown, isLoading: isLoadingStatus } = useGetStatusBreakdown(params, { query: { queryKey: getGetStatusBreakdownQueryKey(params), enabled: activeTab === 'status' && !comparingBreakdown } });
+  const { data: pricingBreakdown, isLoading: isLoadingPricing } = useGetPricingMatrixBreakdown(params, { query: { queryKey: getGetPricingMatrixBreakdownQueryKey(params), enabled: activeTab === 'pricing' && !comparingBreakdown } });
+  const { data: tierBreakdown, isLoading: isLoadingTier } = useGetImprintsByTier(params, { query: { queryKey: getGetImprintsByTierQueryKey(params), enabled: activeTab === 'tier' && !comparingBreakdown } });
+  const { data: quantityBreakdown, isLoading: isLoadingQuantity } = useGetOrderQuantityBreakdown(params, { query: { queryKey: getGetOrderQuantityBreakdownQueryKey(params), enabled: activeTab === 'quantity' && !comparingBreakdown } });
+  const { data: styleBreakdown, isLoading: isLoadingStyle } = useGetStyleNumberBreakdown(params, { query: { queryKey: getGetStyleNumberBreakdownQueryKey(params), enabled: activeTab === 'style' && !comparingBreakdown } });
+  const { data: brandBreakdown, isLoading: isLoadingBrand } = useGetBrandBreakdown(params, { query: { queryKey: getGetBrandBreakdownQueryKey(params), enabled: activeTab === 'brand' && !comparingBreakdown } });
+  const { data: colorBreakdown, isLoading: isLoadingColor } = useGetColorBreakdown(params, { query: { queryKey: getGetColorBreakdownQueryKey(params), enabled: activeTab === 'color' && !comparingBreakdown } });
 
-  const categoryQuery = useGetCategoryBreakdown(params, { query: { queryKey: getGetCategoryBreakdownQueryKey(params), enabled: activeTab === 'category' } });
+  const categoryQuery = useGetCategoryBreakdown(params, { query: { queryKey: getGetCategoryBreakdownQueryKey(params), enabled: activeTab === 'category' && !comparingBreakdown } });
   const activeBreakdownData = 
     activeTab === 'category' ? categoryQuery.data :
     activeTab === 'status' ? statusBreakdown :
@@ -210,6 +229,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
     setDateStart("");
     setDateEnd("");
     setDatePreset(null);
+    setCompare(false);
     setMinQty("");
     setMaxQty("");
     setMinTotal("");
@@ -281,6 +301,32 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
               </button>
             </div>
           </div>
+
+          {reportMode === "normal" && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2" data-testid="panel-compare-controls">
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-200">
+                <input type="checkbox" role="switch" aria-checked={compare} checked={compare} onChange={e => enableCompare(e.target.checked)} className="h-4 w-4 accent-[#10b981]" data-testid="toggle-compare-last-year" />
+                <GitCompare size={14} className="text-[#10b981]" /> Compare with last year
+              </label>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <select aria-label="Comparison date basis" value={dateBasis} onChange={e => { setDateBasis(e.target.value as typeof dateBasis); setPage(0); }} className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-white">
+                  <option value="created">Created</option><option value="invoice">Invoice date</option><option value="productionDue">Production due</option><option value="due">Customer due</option>
+                </select>
+                <input aria-label="Comparison start date" type="date" value={dateStart} onChange={e => { setDatePreset(null); setDateStart(e.target.value); setPage(0); }} className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white" />
+                <span className="text-slate-500">to</span>
+                <input aria-label="Comparison end date" type="date" value={dateEnd} onChange={e => { setDatePreset(null); setDateEnd(e.target.value); setPage(0); }} className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white" />
+              </div>
+              <div className="flex flex-wrap gap-1" role="group" aria-label="Comparison presets">
+                {REPORT_DATE_PRESETS.map(([id, label, description]) => <button key={id} type="button" title={`${description} compared with the same calendar dates a year earlier`} onClick={() => applyComparePreset(id)} aria-pressed={compare && datePreset === id} data-testid={`button-compare-preset-${id}`}
+                  className={`rounded border px-2 py-1 text-[11px] ${compare && datePreset === id ? "border-emerald-500 bg-emerald-950 text-emerald-300" : "border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500"}`}>{label} vs prior year</button>)}
+              </div>
+              {compare && (comparison ? (
+                <p className="text-[11px] text-slate-400" data-testid="text-compare-ranges">Current <span className="font-mono text-slate-200">{rangeLabel(comparison.current)}</span> vs prior <span className="font-mono text-slate-200">{rangeLabel(comparison.previous)}</span> <span className="text-slate-500">(inclusive)</span></p>
+              ) : (
+                <p role="alert" className="text-[11px] text-amber-300" data-testid="text-compare-invalid">{comparisonError} Comparison is paused until the range is complete.</p>
+              ))}
+            </div>
+          )}
 
           {showFilters && (
             <div className="mt-4 p-4 bg-slate-900/80 border border-slate-700 rounded-xl space-y-4">
@@ -581,6 +627,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
         <div className="flex-1 shrink-0 p-6 bg-[#020617]">
           {activeTab === 'table' ? (
             <div className="flex flex-col space-y-4">
+                {comparison && <SummaryComparison currentParams={params} previousParams={comparison.previousParams} currentRange={comparison.current} previousRange={comparison.previous} />}
                 {isLoadingOrders || isFetchingOrders ? (
                 <div className="flex items-center justify-center flex-1">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
@@ -706,11 +753,17 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             <div className="h-full">
               {activeTab === 'quantity' && <p className="mb-3 text-sm text-slate-400">Click a range or order count to see matching orders. Ranges use total order quantity and include both endpoints. Orders with zero quantity are excluded.</p>}
               {activeTab === 'category' && <p className="mb-3 text-sm text-slate-400">Line-item categories: revenue is price × quantity, excluding invoice fees and taxes. Orders count once per category and may appear in more than one. Missing categories appear as Uncategorized.</p>}
-              <p className="mb-3 text-xs text-slate-400">
+              {!comparingBreakdown && <p className="mb-3 text-xs text-slate-400">
                 Percentages use the full filtered report totals. Orders may appear in multiple groups,
                 so their percentages may add up to more than 100%. Quantity uses each row’s existing allocation.
-              </p>
-              {activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : activeTab === 'decoration' ? <DecorationProductionReport params={params} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
+              </p>}
+              {comparison && (activeTab === 'fees' || activeTab === 'decoration') && (
+                <div className="mb-4 space-y-3">
+                  <SummaryComparison currentParams={params} previousParams={comparison.previousParams} currentRange={comparison.current} previousRange={comparison.previous} />
+                  <p className="text-xs text-slate-400" data-testid="text-summary-only-note">Last-year comparison for {activeTab === 'fees' ? 'fees' : 'decoration production'} is summary-only. This breakdown has no prior-year version, so the report below shows the current period only.</p>
+                </div>
+              )}
+              {comparingBreakdown ? (comparison ? <BreakdownComparison tab={activeTab as ComparableTab} currentParams={params} previousParams={comparison.previousParams} currentRange={comparison.current} previousRange={comparison.previous} /> : <div className="rounded-xl border border-dashed border-amber-800/60 p-10 text-center text-sm text-amber-300">Choose a complete, valid date range to compare. {comparisonError}</div>) : activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : activeTab === 'decoration' ? <DecorationProductionReport params={params} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
                 </div>
