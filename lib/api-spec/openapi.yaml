@@ -13540,6 +13540,14 @@ components:
         single_line_item_first:
           type: boolean
           default: false
+        preferred_style:
+          type: string
+          maxLength: 100
+          description: Exact style to use as the representative sorting product when found on an order.
+        preferred_color:
+          type: string
+          maxLength: 100
+          description: Optional exact color for the preferred style. Requires preferred_style.
         spreadsheet_mapping:
           type: string
           description: JSON column mapping for spreadsheet sequencing

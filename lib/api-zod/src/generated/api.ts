@@ -12258,11 +12258,18 @@ export const GetDashboardSummaryResponse = zod.object({
  * @summary Process packing slips and shipping labels
  */
 export const sorterProcessFilesBodySingleLineItemFirstDefault = false;
+export const sorterProcessFilesBodyPreferredStyleMax = 100;
+
+export const sorterProcessFilesBodyPreferredColorMax = 100;
+
+
 
 export const SorterProcessFilesBody = zod.object({
   "preset": zod.enum(['combine_labels', 'sort_slips', 'sort_slips_name', 'sort_slips_custom', 'sort_slips_custom_first', 'sort_labels', 'sort_both', 'match_labels', 'custom_sort', 'required_field', 'split_required_field', 'spreadsheet_sequence', 'parse_store_export']).describe('Processing preset'),
   "sort_fields": zod.string().optional().describe('JSON array of sort field names used when preset is custom_sort. Available fields: last_name, first_name, style, size, color, custom_field, delivery_method, location, sort_number, order_number, order_date'),
   "single_line_item_first": zod.boolean().default(sorterProcessFilesBodySingleLineItemFirstDefault),
+  "preferred_style": zod.string().max(sorterProcessFilesBodyPreferredStyleMax).optional().describe('Exact style to use as the representative sorting product when found on an order.'),
+  "preferred_color": zod.string().max(sorterProcessFilesBodyPreferredColorMax).optional().describe('Optional exact color for the preferred style. Requires preferred_style.'),
   "spreadsheet_mapping": zod.string().optional().describe('JSON column mapping for spreadsheet sequencing'),
   "remove_column_indexes": zod.string().optional().describe('JSON array of additional zero-based CSV columns to remove')
 })

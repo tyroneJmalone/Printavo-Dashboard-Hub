@@ -71,11 +71,16 @@ labels.write(root / "labels.pdf")
     "custom_sort", "required_field", "split_required_field", "spreadsheet_sequence", "parse_store_export",
   ]) {
     const priority = !["combine_labels", "match_labels", "parse_store_export"].includes(preset);
-    const response = await fetch(`${base}/process`, { method: "POST", body: form(preset, { single_line_item_first: String(priority) }) });
+    const preferred = ["sort_slips", "sort_slips_name", "sort_slips_custom", "sort_both", "sort_labels", "custom_sort"].includes(preset);
+    const response = await fetch(`${base}/process`, { method: "POST", body: form(preset, {
+      single_line_item_first: String(priority),
+      ...(preferred ? { preferred_style: "5000", preferred_color: "Royal" } : {}),
+    }) });
     const result = await response.json();
     assert.equal(response.status, 200, JSON.stringify(result));
     assert.ok(Array.isArray(result.warnings));
     assert.equal(result.outputs.at(-1).key, "zip");
+    assert.equal(result.outputs.some(o => o.key === "preferred_product_report"), preferred);
     for (const output of result.outputs) {
       const download = await fetch(`${base}/jobs/${result.jobId}/files/${output.key}`);
       assert.equal(download.status, 200, `${preset}: ${output.key}`);
@@ -84,6 +89,11 @@ labels.write(root / "labels.pdf")
       assert.ok(bytes.length > 0);
       if (output.mime === "application/pdf") assert.equal(bytes.subarray(0, 4).toString(), "%PDF");
       if (output.key === "parsed_store_export") assert.equal(bytes.toString(), "Order Number,Keep\n00123,00456\n");
+      if (output.key === "preferred_product_report") {
+        assert.match(output.label, /preferred-product selection report/);
+        assert.match(bytes.toString(), /order_number,preferred_style,preferred_color,selection,source_page,product_row,style,color,size/);
+        assert.match(bytes.toString(), /5000,Royal/);
+      }
     }
     // Remove only synthetic test outputs created by this harness.
     rmSync(`/tmp/mint-jobs/${result.jobId}`, { recursive: true, force: true });
@@ -96,6 +106,12 @@ labels.write(root / "labels.pdf")
     ["spreadsheet_sequence", { spreadsheet_mapping: '{"header_row":0}' }],
     ["match_labels", { single_line_item_first: "true" }],
     ["sort_slips", { single_line_item_first: "yes" }],
+    ["sort_slips", { preferred_color: "Royal" }],
+    ["sort_slips", { preferred_style: "x".repeat(101) }],
+    ["sort_slips", { preferred_style: "5000", preferred_color: "x".repeat(101) }],
+    ["match_labels", { preferred_style: "5000" }],
+    ["required_field", { preferred_style: "5000" }],
+    ["spreadsheet_sequence", { preferred_style: "5000" }],
     ["parse_store_export", { remove_column_indexes: "[-1]" }],
     ["not_a_preset", {}],
   ]) {

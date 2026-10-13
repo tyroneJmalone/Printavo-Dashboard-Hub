@@ -20368,6 +20368,12 @@ if(sorterProcessInput.sort_fields !== undefined) {
 if(sorterProcessInput.single_line_item_first !== undefined) {
  formData.append(`single_line_item_first`, sorterProcessInput.single_line_item_first.toString())
  }
+if(sorterProcessInput.preferred_style !== undefined) {
+ formData.append(`preferred_style`, sorterProcessInput.preferred_style);
+ }
+if(sorterProcessInput.preferred_color !== undefined) {
+ formData.append(`preferred_color`, sorterProcessInput.preferred_color);
+ }
 if(sorterProcessInput.spreadsheet_mapping !== undefined) {
  formData.append(`spreadsheet_mapping`, sorterProcessInput.spreadsheet_mapping);
  }

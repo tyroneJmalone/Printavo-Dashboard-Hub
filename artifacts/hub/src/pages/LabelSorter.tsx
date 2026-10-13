@@ -93,6 +93,8 @@ export default function LabelSorter() {
   const [preset, setPreset] = useState<SorterProcessInputPreset>("combine_labels");
   const [sortFields, setSortFields] = useState<string[]>([]);
   const [singleLineItemFirst, setSingleLineItemFirst] = useState(false);
+  const [preferredStyle, setPreferredStyle] = useState("");
+  const [preferredColor, setPreferredColor] = useState("");
   const [packingSlips, setPackingSlips] = useState<File[]>([]);
   const [labels, setLabels] = useState<File[]>([]);
   const [spreadsheet, setSpreadsheet] = useState<File[]>([]);
@@ -117,6 +119,7 @@ export default function LabelSorter() {
   const needsSpreadsheet = preset === "spreadsheet_sequence";
   const needsStoreExport = preset === "parse_store_export";
   const supportsSingleLineItemFirst = needsPackingSlips && preset !== "match_labels";
+  const supportsPreferredProduct = ["sort_slips", "sort_slips_name", "sort_slips_custom", "sort_both", "sort_labels", "custom_sort"].includes(preset);
 
   const clearSpreadsheet = () => {
     spreadsheetToken.current += 1;
@@ -221,6 +224,13 @@ export default function LabelSorter() {
     try {
       const formData = new FormData();
       formData.append("preset", preset);
+      if (supportsPreferredProduct) {
+        if (preferredColor.trim() && !preferredStyle.trim()) {
+          throw new Error("Enter a preferred style before specifying a preferred color.");
+        }
+        formData.append("preferred_style", preferredStyle.trim());
+        formData.append("preferred_color", preferredColor.trim());
+      }
       if (supportsSingleLineItemFirst) formData.append("single_line_item_first", String(singleLineItemFirst));
       if (preset === "custom_sort") formData.append("sort_fields", JSON.stringify(sortFields));
       if (needsSpreadsheet && spreadsheet[0] && spreadsheetMapping) {
@@ -276,6 +286,8 @@ export default function LabelSorter() {
   };
 
   const handleReset = () => {
+    setPreferredStyle("");
+    setPreferredColor("");
     setSingleLineItemFirst(false);
     setPackingSlips([]);
     setLabels([]);
@@ -298,7 +310,7 @@ export default function LabelSorter() {
   const fileOutputs = results?.outputs.filter((o) => !isZip(o)) ?? [];
   const nothingToReset =
     packingSlips.length === 0 && labels.length === 0 && spreadsheet.length === 0 &&
-    storeExport.length === 0 && !results && !error;
+    storeExport.length === 0 && !results && !error && !preferredStyle && !preferredColor && !singleLineItemFirst;
 
   return (
     <AppShell>
@@ -366,6 +378,31 @@ export default function LabelSorter() {
                       Single-line orders come first; both groups keep your selected sort.
                       {preset === "spreadsheet_sequence" && " Spreadsheet sequence is preserved within each group."}
                       {preset === "split_required_field" && " Applied separately inside each birth-year batch."}
+                    </p>
+                  </div>
+                )}
+
+                {supportsPreferredProduct && (
+                  <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-800/40 p-3" data-testid="preferred-product-options">
+                    <div className={sectionLabel}>Preferred sorting product (optional)</div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="space-y-1 text-xs text-slate-300">
+                        <span>Preferred style</span>
+                        <input value={preferredStyle} onChange={e => setPreferredStyle(e.target.value)} maxLength={100} disabled={isProcessing} placeholder="e.g. 5000"
+                          data-testid="input-preferred-style" aria-describedby="preferred-product-help"
+                          className="block w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50" />
+                      </label>
+                      <label className="space-y-1 text-xs text-slate-300">
+                        <span>Preferred color (optional)</span>
+                        <input value={preferredColor} onChange={e => setPreferredColor(e.target.value)} maxLength={100} disabled={isProcessing} placeholder="e.g. Royal"
+                          data-testid="input-preferred-color" aria-describedby="preferred-product-help"
+                          className="block w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-50" />
+                      </label>
+                    </div>
+                    <p id="preferred-product-help" className={helpText}>
+                      Uses the first matching product anywhere in an order as its style/color/size sort key.
+                      Matches exact values, ignoring case and extra spaces. Orders without a match use their first product.
+                      Does not split orders or change printed items. Download the selection report to review matches.
                     </p>
                   </div>
                 )}
