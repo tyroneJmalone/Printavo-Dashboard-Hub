@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import { AutoPrintNotificationList } from "@/components/autoprint/AutoPrintNotificationList";
+import { AutoPrintSection } from "@/components/autoprint/AutoPrintSection";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AutoPrintRetryQueue } from "./AutoPrintRetryQueue";
 import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
@@ -584,13 +585,13 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 space-y-4">
+      <AutoPrintSection title="Schedule & printing settings" testId="autoprint-schedule-section">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+            <div className="text-sm font-semibold text-slate-100 flex items-center gap-2">
               <Power size={15} className={enabled ? "text-[#059669]" : "text-slate-500"} />
               Scheduled auto-printing
-            </h2>
+            </div>
             <p
               className="text-[12px] text-slate-400 mt-0.5"
               data-testid="text-schedule-summary-header"
@@ -910,13 +911,13 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
             and print when it reconnects.
           </p>
         )}
-      </div>
+      </AutoPrintSection>
 
-      <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 space-y-3">
+      <AutoPrintSection title="Status destinations & decoration rules" testId="autoprint-status-section">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">
+          <p className="text-sm font-semibold text-slate-100">
             After successful printer submission, move orders by decoration
-          </h2>
+          </p>
           <p className="text-[12px] text-slate-400 mt-0.5">
             This is independent from Purchasing’s PO-push rules. It runs only
             after a workorder is accepted by PrintNode; there is no PO completion
@@ -1085,7 +1086,7 @@ function ConfigEditor({ initial }: { initial: AutoPrintConfig }) {
             </p>
           </div>
         )}
-      </div>
+      </AutoPrintSection>
 
       <div className="flex justify-end">
         <button
@@ -1187,10 +1188,9 @@ function RunPanel() {
   const running = activeRun?.status === "running";
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 space-y-3">
+    <AutoPrintSection title="Run now" testId="autoprint-run-section">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">Run now</h2>
           <p className="text-[12px] text-slate-400 mt-0.5">
             Test run simulates without printing. Print now uses your live settings.
           </p>
@@ -1294,7 +1294,7 @@ function RunPanel() {
           )}
         </div>
       )}
-    </div>
+    </AutoPrintSection>
   );
 }
 
@@ -1419,8 +1419,7 @@ function HistoryTables() {
 
   return (
     <div className="space-y-4">
-      <div id="autoprint-run-history" className="scroll-mt-4 rounded-xl border border-slate-800 bg-[#0f172a] p-4">
-        <h2 className="text-sm font-semibold text-slate-100 mb-3">Recent runs</h2>
+      <AutoPrintSection title="Recent run logs" id="autoprint-run-history" revealParam="run" testId="autoprint-history-section">
         {linkedOffPage && linkedRunId && <LinkedRun runId={linkedRunId} />}
         <p className="text-[12px] text-slate-400 mb-3">Showing the latest 10 runs. Expand a run to review its invoices, skipped reasons, reprints, and separate PO copies. “Sent to printer” means PrintNode accepted the job, not confirmed paper output.</p>
         {isLoading ? <p className="text-slate-400 text-xs">Loading runs…</p> : isError ? <p role="alert" className="text-red-300 text-xs">Could not load runs. <button type="button" onClick={() => refetch()} className="underline">Retry</button></p> : runs.length === 0 ? (
@@ -1467,7 +1466,7 @@ function HistoryTables() {
             ))}
           </div>
         )}
-      </div>
+      </AutoPrintSection>
 
     </div>
   );
@@ -1479,11 +1478,10 @@ function AdminNotificationInbox() {
   const { role } = useStaff();
   if (role !== "admin") return null;
   return (
-    <section id="autoprint-notifications" className="scroll-mt-4 rounded-xl border border-slate-800 bg-[#0f172a] p-4" data-testid="autoprint-notification-inbox">
-      <h2 className="text-sm font-semibold text-slate-100 mb-1">Failure notifications</h2>
-      <p className="text-[12px] text-slate-400 mb-2">Read-only alerts. Use the linked run or retry review below for any action; nothing here retries, prints, or changes status.</p>
+    <AutoPrintSection title="Failure notifications" id="autoprint-notifications" testId="autoprint-notification-inbox">
+      <p className="text-[12px] text-slate-400 mb-2">Read-only alerts. Use the linked run or retry review for any action; nothing here retries, prints, or changes status.</p>
       <AutoPrintNotificationList />
-    </section>
+    </AutoPrintSection>
   );
 }
 
@@ -1504,17 +1502,8 @@ export default function AutoPrint() {
           </div>
         </div>
 
-        <RunPanel />
-        <AdminNotificationInbox />
-        <div id="autoprint-retry-review" className="scroll-mt-4">
-          <AutoPrintRetryQueue />
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-[#0f172a] p-4 text-[12px] text-slate-400 space-y-1">
-          <h2 className="font-semibold text-slate-200">Duplicate protection & eligible reprints</h2>
-          <p>A previously sent invoice is eligible for a reprint only after an observed return to Ordered (a configured source status) and changed line items compared with its last successful submission. Simply running again does not qualify it.</p>
-          <p>Legacy prints without a comparable baseline are skipped for review. Only verified pre-submission failures retry automatically. Unknown submissions stay blocked until an administrator reconciles them with PrintNode and the printer.</p>
-        </div>
-
+        <div className="space-y-4" aria-label="Auto-Print settings">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Settings & controls</h2>
         {isLoading || !config ? (
           <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">
             <Loader2 size={16} className="animate-spin" /> Loading settings…
@@ -1522,8 +1511,19 @@ export default function AutoPrint() {
         ) : (
           <ConfigEditor initial={config} />
         )}
+        <RunPanel />
+        <AutoPrintSection title="Duplicate protection & eligible reprints" defaultOpen={false}>
+          <p className="text-xs text-slate-400">A previously sent invoice is eligible for a reprint only after an observed return to Ordered (a configured source status) and changed line items compared with its last successful submission. Simply running again does not qualify it.</p>
+          <p className="text-xs text-slate-400">Legacy prints without a comparable baseline are skipped for review. Only verified pre-submission failures retry automatically. Unknown submissions stay blocked until an administrator reconciles them with PrintNode and the printer.</p>
+        </AutoPrintSection>
+        </div>
 
-        <HistoryTables />
+        <div className="space-y-4 border-t border-slate-800 pt-5" aria-label="Auto-Print activity and follow-up">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Run history, retries & notifications</h2>
+          <HistoryTables />
+          <AutoPrintRetryQueue />
+          <AdminNotificationInbox />
+        </div>
       </div>
     </AppShell>
   );
