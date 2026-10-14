@@ -741,6 +741,71 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getConfirmAutoPrintFollowupMutationOptions(options));
     }
 
+export const getReviewAutoPrintFollowupUrl = (previewId: string,) => {
+
+
+
+
+  return `/api/print-queue/auto-print/followup/${previewId}/review`
+}
+
+export const reviewAutoPrintFollowup = async (previewId: string,
+    autoPrintFollowupSelection: AutoPrintFollowupSelection, options?: RequestInit): Promise<AutoPrintFollowupPreview> => {
+
+  return customFetch<AutoPrintFollowupPreview>(getReviewAutoPrintFollowupUrl(previewId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(autoPrintFollowupSelection)
+  }
+);}
+
+
+
+
+export const getReviewAutoPrintFollowupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAutoPrintFollowup>>, TError,{previewId: string;data: BodyType<AutoPrintFollowupSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewAutoPrintFollowup>>, TError,{previewId: string;data: BodyType<AutoPrintFollowupSelection>}, TContext> => {
+
+const mutationKey = ['reviewAutoPrintFollowup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewAutoPrintFollowup>>, {previewId: string;data: BodyType<AutoPrintFollowupSelection>}> = (props) => {
+          const {previewId,data} = props ?? {};
+
+          return  reviewAutoPrintFollowup(previewId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewAutoPrintFollowupMutationResult = NonNullable<Awaited<ReturnType<typeof reviewAutoPrintFollowup>>>
+    export type ReviewAutoPrintFollowupMutationBody = BodyType<AutoPrintFollowupSelection>
+    export type ReviewAutoPrintFollowupMutationError = ErrorType<unknown>
+
+    export const useReviewAutoPrintFollowup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAutoPrintFollowup>>, TError,{previewId: string;data: BodyType<AutoPrintFollowupSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewAutoPrintFollowup>>,
+        TError,
+        {previewId: string;data: BodyType<AutoPrintFollowupSelection>},
+        TContext
+      > => {
+      return useMutation(getReviewAutoPrintFollowupMutationOptions(options));
+    }
+
 export const getPreviewChipplySummaryUrl = () => {
 
 

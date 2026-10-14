@@ -15,13 +15,15 @@ import { businessDaysUntilDue } from "../../purchasing/businessDays";
 import { liveCategories, previewReview, commitReview } from "../../chipply/categoryReview";
 import { startPqStatusJob, getPqStatusJob } from "../statusJobs";
 import { followupEligibility, followupHash, followupDisplayState } from "./followupPolicy";
+import { readRecoveryParent, inspectRecovery, claimRecovery, type Recovery } from "./followupRecovery";
 
 const PREFIX = "autoprint.followup.preview:";
 const lockKey = (id: string) => `autoprint.followup.invoice:${id}`;
 type Detail = PvOrderDetailNode & { nickname?: string | null; customerDueAt?: string | null };
 type Entry = AutoPrintFollowupInvoice & {
   orderId: string; fingerprint?: string; expectedStatusId?: string;
-  targetStatusId?: string; reviews?: string[];
+  targetStatusId?: string; reviews?: string[]; recovery?: Recovery;
+  statusDispatchState?: "not_started" | "attempted" | "not_submitted";
 };
 type Preview = Omit<AutoPrintFollowupPreview, "invoices"> & {
   runId: string; configHash: string; invoices: Entry[];
@@ -29,7 +31,7 @@ type Preview = Omit<AutoPrintFollowupPreview, "invoices"> & {
 const message = (e: unknown) => e instanceof Error ? e.message : String(e);
 const dto = (p: Preview): AutoPrintFollowupPreview => ({
   previewId: p.previewId, state: followupDisplayState(p.state, p.invoices), expiresAt: p.expiresAt, actor: p.actor,
-  invoices: p.invoices.map(({ orderId, fingerprint, expectedStatusId, targetStatusId, reviews, ...row }) => row),
+  invoices: p.invoices.map(({ orderId, fingerprint, expectedStatusId, targetStatusId, reviews, recovery, statusDispatchState, ...row }) => row),
 });
 async function save(p: Preview) {
   await pool.query("UPDATE app_settings SET value=$2::jsonb,updated_at=now() WHERE key=$1", [PREFIX + p.previewId, JSON.stringify(p)]);
@@ -42,7 +44,7 @@ async function candidates(runId: string) {
 function base(job: PqPrintJob): Entry {
   return { jobId: job.id, orderId: job.printavoOrderId, visualId: job.visualId ?? "",
     nickname: job.nickname ?? "", currentStatus: job.sourceStatusName ?? "Unknown",
-    targetStatus: "", categories: [], eligible: true, message: "Preview will read the live invoice and current saved rules.", state: "candidate" };
+    targetStatus: "", categories: [], eligible: true, statusDispatchState: "not_started", message: "Preview will read the live invoice and current saved rules.", state: "candidate" };
 }
 async function livePlan(job: PqPrintJob, dryRun: boolean, config: Awaited<ReturnType<typeof getAutoPrintConfig>>) {
   const [latest] = await db.select().from(jobs).where(and(eq(jobs.printavoOrderId, job.printavoOrderId),
@@ -76,7 +78,7 @@ async function livePlan(job: PqPrintJob, dryRun: boolean, config: Awaited<Return
   return { node, live, target: target!, assignments, fingerprint };
 }
 
-export async function previewFollowup(runId: string, jobIds: string[], actor: string): Promise<AutoPrintFollowupPreview> {
+export async function previewFollowup(runId: string, jobIds: string[], actor: string, recoveryParent?: string): Promise<AutoPrintFollowupPreview> {
   const config = await getAutoPrintConfig();
   const available = await candidates(runId);
   const p: Preview = { previewId: randomUUID(), state: "preview", actor, runId, configHash: followupHash(config),
@@ -88,8 +90,10 @@ export async function previewFollowup(runId: string, jobIds: string[], actor: st
     const entry = base(job);
     try {
       const locked = await pool.query("SELECT 1 FROM app_settings WHERE key=$1", [lockKey(job.printavoOrderId)]);
-      if (locked.rowCount) throw new Error("A previous correction is active or needs manual verification. Do not resend.");
+      if (locked.rowCount && !recoveryParent) throw new Error("A previous correction is active or needs manual verification. Use Review & Resolve in correction history.");
       const plan = await livePlan(job, dryRun, config);
+      if (recoveryParent) entry.recovery = await inspectRecovery(recoveryParent, job.id, plan.node,
+        plan.live.statusId!, plan.target.statusId, plan.assignments);
       entry.nickname = plan.node.nickname ?? entry.nickname;
       entry.currentStatus = plan.live.statusName ?? "";
       entry.expectedStatusId = plan.live.statusId!;
@@ -117,11 +121,24 @@ export async function previewFollowup(runId: string, jobIds: string[], actor: st
       entry.state = entry.categories.length || entry.expectedStatusId !== entry.targetStatusId ? "ready" : "noop";
       entry.eligible = entry.state === "ready";
       entry.message = entry.eligible ? "Only the listed changes will be applied. Existing nonblank categories are preserved." : "Already matches the rules; no changes needed.";
+      if (entry.recovery) {
+        const verified = entry.recovery.categories.filter(c => c.currentId === c.targetId);
+        entry.categories.unshift(...verified.map(c => `Confirmed · Line ${c.lineId} → ${c.targetName} (no write)`));
+        entry.state = "ready"; entry.eligible = true;
+        entry.message = `Recovery review: ${verified.length} categories already correct; ${plan.assignments.length} still blank. Confirmation applies only remaining changes and resolves this hold. No printing. Avoid editing this invoice in Printavo during recovery.`;
+      }
     } catch (e) { entry.eligible = false; entry.state = "blocked"; entry.message = message(e); }
     p.invoices.push(entry);
   }
   await pool.query("INSERT INTO app_settings(key,value) VALUES($1,$2::jsonb)", [PREFIX + p.previewId, JSON.stringify(p)]);
   return dto(p);
+}
+
+export async function reviewFollowup(parentId: string, jobIds: string[], actor: string) {
+  // One invoice per recovery preview keeps each hold and confirmation independent.
+  if (jobIds.length !== 1) throw new Error("Review one held invoice at a time.");
+  const { parent } = await readRecoveryParent(parentId, jobIds[0]);
+  return previewFollowup(parent.runId, jobIds, actor, parentId);
 }
 
 /** Claim before side effects. Restart/timeout ambiguity is durable and cannot replay. */
@@ -141,13 +158,21 @@ export async function confirmFollowup(id: string, actor: string, log: Logger) {
     try {
       const selected = available.find(c => c.job.id === entry.jobId);
       if (!selected) throw new Error("Accepted print is no longer available.");
-      locked = !!(await pool.query("INSERT INTO app_settings(key,value) VALUES($1,$2::jsonb) ON CONFLICT DO NOTHING RETURNING key",
+      if (!entry.recovery) locked = !!(await pool.query("INSERT INTO app_settings(key,value) VALUES($1,$2::jsonb) ON CONFLICT DO NOTHING RETURNING key",
         [lockKey(entry.orderId), JSON.stringify({ previewId: id, actor })])).rowCount;
-      if (!locked) throw new Error("Another correction is active or unresolved; manual review required.");
+      if (!entry.recovery && !locked) throw new Error("Another correction is active or unresolved; manual review required.");
       const freshConfig = await getAutoPrintConfig();
       if (followupHash(freshConfig) !== p.configHash) throw new Error("Rules changed after preview.");
       const plan = await livePlan(selected.job, selected.dryRun, freshConfig);
       if (plan.fingerprint !== entry.fingerprint) throw new Error("Invoice details, status, or destination changed since preview. No changes made.");
+      if (entry.recovery) {
+        const freshRecovery = await inspectRecovery(entry.recovery.parentId, entry.jobId, plan.node,
+          plan.live.statusId!, plan.target.statusId, plan.assignments);
+        if (followupHash(freshRecovery) !== followupHash(entry.recovery)) throw new Error("Recovery evidence changed since preview; review again.");
+        attempted = true; // A lost COMMIT response must remain reviewable, not silently unlock.
+        await claimRecovery(entry.recovery, entry.jobId, entry.orderId, id, actor);
+        locked = true; attempted = true; // Transferred holds must survive any subsequent interruption.
+      }
       entry.state = "applying"; await save(p);
       for (const reviewId of entry.reviews ?? []) {
         attempted = true;
@@ -177,10 +202,15 @@ export async function confirmFollowup(id: string, actor: string, log: Logger) {
   if (statusEntries.length) {
     try {
       if (followupHash(await getAutoPrintConfig()) !== p.configHash) throw new Error("Rules changed during category processing; status batch withheld.");
+      for (const entry of statusEntries) entry.statusDispatchState = "attempted";
+      await save(p); // Persist before the non-idempotent status submission.
       const result = await startPqStatusJob("autoprint", statusEntries.map(entry => ({
         orderId: entry.orderId, expectedStatusId: entry.expectedStatusId!, targetStatusId: entry.targetStatusId!,
       })), log);
-      if (result.status !== "started") throw new Error("Status worker could not accept the batch. Review completed categories before any further action.");
+      if (result.status !== "started") {
+        for (const entry of statusEntries) entry.statusDispatchState = "not_submitted";
+        throw new Error("Status worker could not accept the batch. Review completed categories before any further action.");
+      }
       for (const entry of statusEntries) {
         entry.statusJobId = result.job.id; entry.state = "status_queued";
         entry.message = "Category steps completed; status update queued with a live-status guard. Watch this result before any further action.";
@@ -195,7 +225,12 @@ export async function confirmFollowup(id: string, actor: string, log: Logger) {
 
 export async function listFollowup(runId: string) {
   const available = await candidates(runId);
-  const saved = await pool.query("SELECT value FROM app_settings WHERE key LIKE $1 AND value->>'runId'=$2 ORDER BY updated_at DESC LIMIT 20", [PREFIX + "%", runId]);
+  // Keep older held corrections reachable even after many newer previews.
+  const saved = await pool.query(`SELECT value FROM app_settings p WHERE p.key LIKE $1 AND p.value->>'runId'=$2
+    AND (p.key IN (SELECT key FROM app_settings WHERE key LIKE $1 AND value->>'runId'=$2 ORDER BY updated_at DESC LIMIT 20)
+      OR EXISTS (SELECT 1 FROM app_settings h WHERE h.key LIKE 'autoprint.followup.invoice:%'
+        AND h.value->>'previewId'=p.value->>'previewId'))
+    ORDER BY p.updated_at DESC`, [PREFIX + "%", runId]);
   const history: AutoPrintFollowupPreview[] = [];
   for (const row of saved.rows) {
     const p = row.value as Preview;
@@ -210,12 +245,18 @@ export async function listFollowup(runId: string) {
       entry.message = confirmed ? "Status and category steps completed. No documents printed." : "Status update needs manual review; do not repeat blindly.";
       // This save is restricted to completed previews; never overwrite an applying worker.
       if (p.state === "complete") {
-        await save(p);
-        if (confirmed) await pool.query("DELETE FROM app_settings WHERE key=$1 AND value->>'previewId'=$2", [lockKey(entry.orderId), p.previewId]);
+        const recorded = await pool.query(`UPDATE app_settings SET
+          value=jsonb_set(value,ARRAY['invoices',$3::text],$2::jsonb),updated_at=now()
+          WHERE key=$1 AND value->>'state'='complete'
+          AND value->'invoices'->($3::int)->>'jobId'=$4
+          AND value->'invoices'->($3::int)->>'state'='status_queued'
+          AND value->'invoices'->($3::int)->>'statusJobId'=$5 RETURNING key`,
+          [PREFIX + p.previewId, JSON.stringify(entry), String(p.invoices.indexOf(entry)), entry.jobId, entry.statusJobId]);
+        if (confirmed && recorded.rowCount) await pool.query("DELETE FROM app_settings WHERE key=$1 AND value->>'previewId'=$2", [lockKey(entry.orderId), p.previewId]);
       }
     }
     history.push(dto(p));
   }
   return { invoices: available.filter(c => !c.dryRun && c.job.printnodeJobId && /\bMERCH\b/i.test(c.job.sourceStatusName ?? ""))
-    .map(c => { const { orderId, ...entry } = base(c.job); return entry; }), history };
+    .map(c => { const { orderId, statusDispatchState, ...entry } = base(c.job); return entry; }), history };
 }

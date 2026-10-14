@@ -102,6 +102,38 @@ export const ConfirmAutoPrintFollowupResponse = zod.object({
 })
 
 
+export const ReviewAutoPrintFollowupParams = zod.object({
+  "previewId": zod.coerce.string()
+})
+
+export const reviewAutoPrintFollowupBodyJobIdsMax = 20;
+
+
+
+export const ReviewAutoPrintFollowupBody = zod.object({
+  "jobIds": zod.array(zod.string()).min(1).max(reviewAutoPrintFollowupBodyJobIdsMax)
+})
+
+export const ReviewAutoPrintFollowupResponse = zod.object({
+  "previewId": zod.string(),
+  "state": zod.string(),
+  "expiresAt": zod.string(),
+  "actor": zod.string(),
+  "invoices": zod.array(zod.object({
+  "jobId": zod.string(),
+  "visualId": zod.string(),
+  "nickname": zod.string(),
+  "currentStatus": zod.string(),
+  "targetStatus": zod.string(),
+  "categories": zod.array(zod.string()),
+  "eligible": zod.boolean(),
+  "message": zod.string(),
+  "state": zod.string(),
+  "statusJobId": zod.string().optional()
+}))
+})
+
+
 export const PreviewChipplySummaryBody = zod.object({
   "file": zod.instanceof(File),
   "expectedStoreId": zod.string().uuid().optional()

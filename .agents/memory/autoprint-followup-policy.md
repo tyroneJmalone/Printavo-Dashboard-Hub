@@ -36,3 +36,21 @@ the user requested targeted recovery rather than resending all assignments.
 atomic compare-and-set, so warn against simultaneous upstream edits. A finished
 worker is not necessarily a successful correction: show queued/review-required
 outcomes until every invoice's changes are confirmed.
+
+Held, finished corrections now support an explicitly confirmed Review & Resolve
+flow. This is permission for a fresh live review, not an automatic replay.
+Compare remaining assignments with the original review targets and the current
+rules; preserve already-correct categories and reject conflicting categories,
+new unrelated lines, changed destinations, or claims owned by another review.
+Transfer the invoice and category holds atomically, preserving predecessor
+history. Persist status-submission intent before queueing: a lost acknowledgement
+must not be mistaken for a category-only failure that never submitted status.
+
+**Why:** The user needed a usable recovery action for older Review Required
+corrections, rather than a warning with no way to resolve the held categories.
+
+**How to apply:** Read-only review first, actor-bound expiring confirmation second.
+Only proven remaining changes can execute. Active/interrupted or ambiguous
+status submissions stay blocked unless completion at the intended destination
+is verified and the old worker is no longer active. Never silently drop a hold
+after an uncertain database COMMIT response.

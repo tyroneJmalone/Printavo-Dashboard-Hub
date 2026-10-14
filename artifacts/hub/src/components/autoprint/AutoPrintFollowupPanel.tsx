@@ -5,6 +5,7 @@ import {
   getGetAutoPrintFollowupQueryKey,
   usePreviewAutoPrintFollowup,
   useConfirmAutoPrintFollowup,
+  useReviewAutoPrintFollowup,
   type AutoPrintFollowupInvoice,
   type AutoPrintFollowupPreview,
 } from "@workspace/api-client-react";
@@ -28,6 +29,7 @@ const STATE_STYLES: Record<string, string> = {
 
 const STATE_LABELS: Record<string, string> = {
   complete: "all changes confirmed",
+  recovery_started: "continued in recovery",
   noop: "no change",
   status_queued: "status queued",
   review_required: "review required",
@@ -104,11 +106,20 @@ function FollowupBody({ runId }: { runId: string }) {
 
   const previewMut = usePreviewAutoPrintFollowup();
   const confirmMut = useConfirmAutoPrintFollowup();
+  const reviewMut = useReviewAutoPrintFollowup();
 
   const candidates = (list.data?.invoices ?? []).filter((i) => i.state === "candidate");
   const history = list.data?.history ?? [];
   const readyCount = preview?.invoices.filter((i) => i.eligible && i.state === "ready").length ?? 0;
-  const busy = previewMut.isPending || confirmMut.isPending;
+  const busy = previewMut.isPending || confirmMut.isPending || reviewMut.isPending;
+  const runRecoveryReview = (previewId: string, jobId: string) => {
+    setError(null); setResult(null); setPreview(null);
+    reviewMut.mutate({ previewId, data: { jobIds: [jobId] } }, {
+      onSuccess: setPreview,
+      onError: e => setError(errInfo(e).message ?? "Could not verify the held correction. No changes applied."),
+      onSettled: invalidate,
+    });
+  };
 
   const toggle = (id: string) =>
     setSelected((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= MAX_SELECT ? cur : [...cur, id]);
@@ -210,7 +221,15 @@ function FollowupBody({ runId }: { runId: string }) {
                 <div className="flex flex-wrap items-center gap-2 text-slate-400">
                   <StateBadge state={h.state} /><span>{h.actor}</span><span className="ml-auto">{fmt(h.expiresAt)}</span>
                 </div>
-                <ul className="mt-1.5 space-y-1.5">{h.invoices.map((i) => <InvoiceRow key={i.jobId} inv={i} />)}</ul>
+                <div className="mt-1.5 space-y-1.5">{h.invoices.map((i) => <div key={i.jobId}>
+                  <ul><InvoiceRow inv={i} /></ul>
+                  {i.state === "review_required" && <button type="button" disabled={busy}
+                    onClick={() => runRecoveryReview(h.previewId, i.jobId)}
+                    className="my-2 inline-flex items-center gap-1.5 rounded border border-amber-500/40 px-3 py-1.5 text-amber-200 disabled:opacity-40"
+                    data-testid={`button-followup-resolve-${i.jobId}`}>
+                    {reviewMut.isPending && <Loader2 size={13} className="animate-spin" />} Review &amp; Resolve #{i.visualId}
+                  </button>}
+                </div>)}</div>
               </li>
             ))}
           </ul>

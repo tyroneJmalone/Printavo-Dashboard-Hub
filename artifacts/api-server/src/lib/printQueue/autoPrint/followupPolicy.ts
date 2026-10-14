@@ -5,6 +5,7 @@ export function followupDisplayState(state: string, invoices: { state: string }[
   if (state !== "complete") return state;
   if (invoices.some(i => ["review_required", "blocked"].includes(i.state))) return "review_required";
   if (invoices.some(i => i.state === "status_queued")) return "status_queued";
+  if (invoices.some(i => i.state === "recovery_started")) return "recovery_started";
   return invoices.length && invoices.every(i => ["updated", "noop"].includes(i.state)) ? "complete" : "review_required";
 }
 

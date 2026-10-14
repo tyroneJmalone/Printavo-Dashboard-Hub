@@ -88,6 +88,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AutoPrintFollowupPreview"
+  /print-queue/auto-print/followup/{previewId}/review:
+    post:
+      operationId: reviewAutoPrintFollowup
+      tags: [PrintQueue]
+      parameters:
+        - in: path
+          name: previewId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoPrintFollowupSelection"
+      responses:
+        "200":
+          description: Read-only live recovery preview; confirmation applies only remaining changes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintFollowupPreview"
   /chipply/summary/preview:
     $ref: './chipply-summary.openapi.yaml#/paths/~1chipply~1summary~1preview'
   /chipply/summary/confirm:

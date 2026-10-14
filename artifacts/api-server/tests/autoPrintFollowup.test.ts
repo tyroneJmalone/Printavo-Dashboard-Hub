@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { reset, state } from "./autoPrintFollowupFixture";
-import { previewFollowup, confirmFollowup, listFollowup } from "../src/lib/printQueue/autoPrint/followup";
+import { previewFollowup, confirmFollowup, listFollowup, reviewFollowup } from "../src/lib/printQueue/autoPrint/followup";
 import { followupHash, followupEligibility, followupDisplayState } from "../src/lib/printQueue/autoPrint/followupPolicy";
 import express from "express";
 import { createAutoPrintFollowupRouter } from "../src/routes/autoPrintFollowup";
@@ -45,7 +45,7 @@ test("uncertain category writes hold invoice and never advance status or resend"
   assert.equal(result.state,"review_required");
   const next=await previewFollowup("run",["job"],"admin");
   assert.equal(next.invoices[0].state,"blocked");
-  assert.match(next.invoices[0].message,/manual verification/);
+  assert.match(next.invoices[0].message,/Review & Resolve/);
 });
 test("concurrent confirm is one-shot",async()=>{
   reset();const p=await previewFollowup("run",["job"],"admin");
@@ -96,6 +96,7 @@ test("all correction endpoints require admin; invalid or duplicate selections ne
     listFollowup:async()=>{calls++;return {invoices:[],history:[]};},
     previewFollowup:async()=>{throw Error("must not reach service");},
     confirmFollowup:async()=>{throw Error("must not reach service");},
+    reviewFollowup:async()=>{throw Error("must not reach service");},
   }));
   const server=app.listen(0,"127.0.0.1");await new Promise<void>(r=>server.once("listening",r));
   const id="00000000-0000-4000-8000-000000000001";
@@ -106,6 +107,7 @@ test("all correction endpoints require admin; invalid or duplicate selections ne
       assert.equal((await fetch(base+"/runs/"+id+"/followup",{headers})).status,403);
       assert.equal((await fetch(base+"/runs/"+id+"/followup/preview",{method:"POST",headers,body:JSON.stringify({jobIds:[id]})})).status,403);
       assert.equal((await fetch(base+"/followup/"+id+"/confirm",{method:"POST",headers})).status,403);
+      assert.equal((await fetch(base+"/followup/"+id+"/review",{method:"POST",headers,body:JSON.stringify({jobIds:[id]})})).status,403);
     }
     const headers={"x-role":"admin","content-type":"application/json"};
     assert.equal((await fetch(base+"/runs/"+id+"/followup",{headers})).status,200);
@@ -114,4 +116,66 @@ test("all correction endpoints require admin; invalid or duplicate selections ne
     }
     assert.equal(calls,1);
   }finally{await new Promise<void>(r=>server.close(()=>r()));}
+});
+async function heldCorrection() {
+  reset();state.unknown=true;
+  const p=await previewFollowup("run",["job"],"admin");
+  await confirmFollowup(p.previewId,"admin",log);
+  state.unknown=false;
+  return p;
+}
+test("held category recovery previews without writes, then applies only missing changes and preserves history",async()=>{
+  const original=await heldCorrection();
+  const p=await reviewFollowup(original.previewId,["job"],"other-admin");
+  assert.equal(p.invoices[0].state,"ready");assert.equal(state.categoryCalls,1);assert.equal(state.statusCalls,0);
+  assert.equal(state.claims.get("line").state,"unknown");
+  const r=await confirmFollowup(p.previewId,"other-admin",log);
+  assert.equal(r.state,"status_queued");assert.equal(state.categoryCalls,2);assert.equal(state.statusCalls,1);
+  assert.equal(state.settings.get("autoprint.followup.preview:"+original.previewId).invoices[0].state,"recovery_started");
+  await assert.rejects(confirmFollowup(p.previewId,"other-admin",log));
+  const history=await listFollowup("run");
+  assert.equal(history.history.find(h=>h.previewId===p.previewId)?.state,"complete");
+  assert.equal(state.settings.has("autoprint.followup.invoice:invoice"),false);
+});
+test("already correct category and destination resolve the hold without any upstream writes",async()=>{
+  const original=await heldCorrection();
+  state.node.lineItemGroups.nodes[0].lineItems.nodes[0].category={id:"cat",name:"Screen Printing"};
+  state.live.statusId="target";
+  const p=await reviewFollowup(original.previewId,["job"],"admin");
+  assert.match(p.invoices[0].categories[0],/Confirmed/);
+  const result=await confirmFollowup(p.previewId,"admin",log);
+  assert.equal(result.state,"complete");assert.equal(state.categoryCalls,1);assert.equal(state.statusCalls,0);
+  assert.equal(state.claims.get("line").state,"updated");
+  assert.equal(state.settings.has("autoprint.followup.invoice:invoice"),false);
+});
+test("changed live data, other category owners and active status submissions block recovery",async()=>{
+  for(const change of [
+    ()=>state.node.lineItemGroups.nodes[0].lineItems.nodes[0].category={id:"other",name:"Other"},
+    ()=>state.claims.get("line").review_id="someone-else",
+    ()=>state.live.statusId="progressed",
+    ()=>state.config.routingRules[0].statusId="different-target",
+    ()=>{state.reviews.values().next().value.state="committing";},
+  ]) {
+    const original=await heldCorrection();change();
+    const p=await reviewFollowup(original.previewId,["job"],"admin");
+    assert.equal(p.invoices[0].state,"blocked");
+    assert.equal(state.categoryCalls,1);assert.equal(state.statusCalls,0);
+  }
+  const original=await heldCorrection();
+  state.settings.get("autoprint.followup.preview:"+original.previewId).invoices[0].statusJobId="prior-job";
+  state.priorStatus={status:"running"};
+  const p=await reviewFollowup(original.previewId,["job"],"admin");assert.equal(p.invoices[0].state,"blocked");
+});
+test("two recovery previews cannot both apply; changed evidence leaves original hold intact",async()=>{
+  let original=await heldCorrection();
+  const a=await reviewFollowup(original.previewId,["job"],"admin");
+  const b=await reviewFollowup(original.previewId,["job"],"admin2");
+  await confirmFollowup(a.previewId,"admin",log);
+  const blocked=await confirmFollowup(b.previewId,"admin2",log);
+  assert.equal(blocked.invoices[0].state,"blocked");assert.equal(state.categoryCalls,2);assert.equal(state.statusCalls,1);
+  original=await heldCorrection();
+  const preview=await reviewFollowup(original.previewId,["job"],"admin");
+  state.node.lineItemGroups.nodes[0].lineItems.nodes[0].items=99;
+  assert.equal((await confirmFollowup(preview.previewId,"admin",log)).invoices[0].state,"blocked");
+  assert.equal(state.settings.get("autoprint.followup.invoice:invoice").previewId,original.previewId);
 });
