@@ -3,7 +3,7 @@ import { useSearch } from "wouter";
 import { ChevronDown } from "lucide-react";
 
 /** Keep children mounted so hiding a section never discards edits or stops polling. */
-export function AutoPrintSection({ title, children, id, defaultOpen = true, revealParam, testId }: {
+export function AutoPrintSection({ title, children, id, defaultOpen = false, revealParam, testId }: {
   title: string;
   children: ReactNode;
   id?: string;
