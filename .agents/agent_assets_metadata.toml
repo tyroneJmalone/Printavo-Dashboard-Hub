@@ -473,3 +473,31 @@ mtime_ms = 1791941032379
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/f741c536-bac9-40b8-8504-4cb547cfe81f/8a17ce9c-ccce-473d-b97b-856b3e737376"
 storage_version_token = "1791941046021161"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "O8Bgm5Snzwfp5LeibPmzO"
+uri = "file://generated-artifacts/mint-makeups-latest-slip-2026-10-14.pdf"
+type = "pdf"
+title = "Latest Mint Makeups Slip — Invoice #22787"
+description = "Recreated from the saved print audit accepted October 14 at 6:30 AM Eastern: LST353, Black, XS, quantity 1, for invoice #23001. No new print submitted."
+logical_id = "4f5f5f52-57f4-4f37-89da-886b9548e19b"
+content_hash = "sha256:74a8649fc982f92ca8baa77e1e281a2a847ee32a27960464540c976b274258a2"
+size = 26892
+mtime_ms = 1791986429178
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/4f5f5f52-57f4-4f37-89da-886b9548e19b/21fc12f2-e43d-4036-81b8-ce32be05d759"
+storage_version_token = "1791986459799386"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "FC7OsE7YR8YU1v-UzCOGC"
+uri = "file://generated-artifacts/mint-makeups-latest-slip-2026-10-14.png"
+type = "image"
+title = "Mint Makeups Slip — Page Preview"
+description = "One-page Letter portrait preview using the saved line-item data and current slip renderer."
+logical_id = "5c075836-1deb-4d7c-803d-c0458018213a"
+content_hash = "sha256:dce4a2af89fb39c6681bc36c0a0901f9be309f1aecaa2f215783106f33382785"
+size = 35538
+mtime_ms = 1791986433486
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/5c075836-1deb-4d7c-803d-c0458018213a/110fd6cf-53d7-4243-8779-717fd2052685"
+storage_version_token = "1791986460801505"
+content_type = "image/png"
