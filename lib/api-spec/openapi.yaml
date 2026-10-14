@@ -4817,6 +4817,10 @@ paths:
   /print-queue/autoprint/retries:
     get:
       operationId: listAutoPrintRetries
+      parameters:
+        - name: jobId
+          in: query
+          schema: { type: string, format: uuid }
       tags: [printQueue]
       summary: Admin durable retry queue, including legacy failures eligible for review
       responses:
@@ -4864,6 +4868,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /print-queue/autoprint/invoice-search:
+    get:
+      operationId: searchAutoPrintInvoice
+      tags: [printQueue]
+      summary: Exact invoice search across saved print and correction history
+      parameters:
+        - name: invoice
+          in: query
+          required: true
+          schema: { type: string, pattern: '^[0-9]{1,12}$' }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: Newest first, up to 50 records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintInvoiceSearchResponse"
+        "400":
+          description: Invalid invoice or offset
+        "403":
+          description: Administrator access required
   /print-queue/autoprint/jobs:
     get:
       operationId: listAutoPrintJobs
@@ -13222,6 +13250,27 @@ components:
         confirmedNotSubmitted: { type: boolean }
         printnodeJobId: { type: string, pattern: "^[1-9][0-9]*$" }
         note: { type: string, minLength: 1, maxLength: 2000 }
+    AutoPrintInvoiceSearchResponse:
+      type: object
+      required: [items, hasMore]
+      properties:
+        hasMore: { type: boolean }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AutoPrintInvoiceSearchItem" }
+    AutoPrintInvoiceSearchItem:
+      type: object
+      required: [id, runId, jobId, kind, status, message, nickname, occurredAt, dateLabel]
+      properties:
+        id: { type: string }
+        runId: { type: string }
+        jobId: { type: string }
+        kind: { type: string }
+        status: { type: string }
+        message: { type: string }
+        nickname: { type: string }
+        occurredAt: { type: string }
+        dateLabel: { type: string }
     AutoPrintRetryJob:
       type: object
       required: [id, runId, printavoOrderId, visualId, status, retryManaged, retryPhase, retryCount, nextRetryAt, errorMessage, sourceStatusId, sourceStatusName, printnodeJobId, attempts]
@@ -13229,6 +13278,7 @@ components:
         id: { type: string }
         runId: { type: string }
         printavoOrderId: { type: string }
+        createdAt: { type: string }
         visualId: { type: ["string", "null"] }
         status: { type: string }
         retryManaged: { type: boolean }

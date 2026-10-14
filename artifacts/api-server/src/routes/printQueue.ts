@@ -62,11 +62,17 @@ import { validateAutoPrintRoutingRules } from "../lib/printQueue/autoPrint/confi
 import { requireAdmin } from "../middlewares/requireStaff";
 import { listRetryJobs } from "../lib/printQueue/autoPrint/retryStore";
 import { applyRetryAction } from "../lib/printQueue/autoPrint/retryAdmin";
+import { createInvoiceSearchRouter } from "./autoPrintInvoiceSearch";
 
 const router: IRouter = Router();
+router.use(createInvoiceSearchRouter());
 
 router.get("/print-queue/autoprint/retries", requireAdmin, async (req, res) => {
-  try { res.json({ jobs: await listRetryJobs() }); }
+  const jobId = req.query.jobId;
+  if (jobId !== undefined && (typeof jobId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(jobId))) {
+    res.status(400).json({ error: "Invalid job ID" }); return;
+  }
+  try { res.json({ jobs: await listRetryJobs(jobId as string | undefined) }); }
   catch (error) { req.log.error({ err: error }, "Retry queue read failed"); res.status(500).json({ error: "Failed to read retry queue" }); }
 });
 router.post("/print-queue/autoprint/jobs/:id/retry-action", requireAdmin, async (req, res) => {

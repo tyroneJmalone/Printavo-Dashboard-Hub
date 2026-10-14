@@ -5838,6 +5838,23 @@ export interface AutoPrintRetryActionRequest {
   note?: string;
 }
 
+export interface AutoPrintInvoiceSearchItem {
+  id: string;
+  runId: string;
+  jobId: string;
+  kind: string;
+  status: string;
+  message: string;
+  nickname: string;
+  occurredAt: string;
+  dateLabel: string;
+}
+
+export interface AutoPrintInvoiceSearchResponse {
+  hasMore: boolean;
+  items: AutoPrintInvoiceSearchItem[];
+}
+
 export type AutoPrintRetryJobAttemptsItem = {
   id: string;
   attempt: number;
@@ -5855,6 +5872,7 @@ export interface AutoPrintRetryJob {
   id: string;
   runId: string;
   printavoOrderId: string;
+  createdAt?: string;
   /** @nullable */
   visualId: string | null;
   status: string;
@@ -11098,12 +11116,27 @@ export type ListAutoPrintRunsParams = {
 limit?: number;
 };
 
+export type ListAutoPrintRetriesParams = {
+jobId?: string;
+};
+
 export type ListAutoPrintRetries200 = {
   jobs: AutoPrintRetryJob[];
 };
 
 export type ActOnAutoPrintRetry200 = {
   ok: boolean;
+};
+
+export type SearchAutoPrintInvoiceParams = {
+/**
+ * @pattern ^[0-9]{1,12}$
+ */
+invoice: string;
+/**
+ * @minimum 0
+ */
+offset?: number;
 };
 
 export type ListAutoPrintJobsParams = {

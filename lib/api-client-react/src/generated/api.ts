@@ -56,6 +56,7 @@ import type {
   AutoPrintFollowupList,
   AutoPrintFollowupPreview,
   AutoPrintFollowupSelection,
+  AutoPrintInvoiceSearchResponse,
   AutoPrintJobsResponse,
   AutoPrintPrintersResponse,
   AutoPrintRetryActionRequest,
@@ -283,6 +284,7 @@ import type {
   ListAutoPrintNotifications200,
   ListAutoPrintNotificationsParams,
   ListAutoPrintRetries200,
+  ListAutoPrintRetriesParams,
   ListAutoPrintRunsParams,
   ListCatalogPantonesParams,
   ListChangeEventsParams,
@@ -441,6 +443,7 @@ import type {
   RewardsSummary,
   RunInsightsPresetResponse,
   SearchAiQuoteCustomersParams,
+  SearchAutoPrintInvoiceParams,
   SearchCustomerArtworkParams,
   SearchHubInvoicesParams,
   SearchOrderActivityLogParams,
@@ -17382,20 +17385,27 @@ export function useGetAutoPrintRun<TData = Awaited<ReturnType<typeof getAutoPrin
 
 
 
-export const getListAutoPrintRetriesUrl = () => {
+export const getListAutoPrintRetriesUrl = (params?: ListAutoPrintRetriesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/print-queue/autoprint/retries`
+  return stringifiedParams.length > 0 ? `/api/print-queue/autoprint/retries?${stringifiedParams}` : `/api/print-queue/autoprint/retries`
 }
 
 /**
  * @summary Admin durable retry queue, including legacy failures eligible for review
  */
-export const listAutoPrintRetries = async ( options?: RequestInit): Promise<ListAutoPrintRetries200> => {
+export const listAutoPrintRetries = async (params?: ListAutoPrintRetriesParams, options?: RequestInit): Promise<ListAutoPrintRetries200> => {
 
-  return customFetch<ListAutoPrintRetries200>(getListAutoPrintRetriesUrl(),
+  return customFetch<ListAutoPrintRetries200>(getListAutoPrintRetriesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -17408,23 +17418,23 @@ export const listAutoPrintRetries = async ( options?: RequestInit): Promise<List
 
 
 
-export const getListAutoPrintRetriesQueryKey = () => {
+export const getListAutoPrintRetriesQueryKey = (params?: ListAutoPrintRetriesParams,) => {
     return [
-    `/api/print-queue/autoprint/retries`
+    `/api/print-queue/autoprint/retries`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListAutoPrintRetriesQueryOptions = <TData = Awaited<ReturnType<typeof listAutoPrintRetries>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAutoPrintRetries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListAutoPrintRetriesQueryOptions = <TData = Awaited<ReturnType<typeof listAutoPrintRetries>>, TError = ErrorType<unknown>>(params?: ListAutoPrintRetriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAutoPrintRetries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListAutoPrintRetriesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListAutoPrintRetriesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAutoPrintRetries>>> = ({ signal }) => listAutoPrintRetries({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAutoPrintRetries>>> = ({ signal }) => listAutoPrintRetries(params, { signal, ...requestOptions });
 
 
 
@@ -17442,11 +17452,11 @@ export type ListAutoPrintRetriesQueryError = ErrorType<unknown>
  */
 
 export function useListAutoPrintRetries<TData = Awaited<ReturnType<typeof listAutoPrintRetries>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAutoPrintRetries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListAutoPrintRetriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAutoPrintRetries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListAutoPrintRetriesQueryOptions(options)
+  const queryOptions = getListAutoPrintRetriesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -17529,6 +17539,90 @@ export const useActOnAutoPrintRetry = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getActOnAutoPrintRetryMutationOptions(options));
     }
+
+export const getSearchAutoPrintInvoiceUrl = (params: SearchAutoPrintInvoiceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/print-queue/autoprint/invoice-search?${stringifiedParams}` : `/api/print-queue/autoprint/invoice-search`
+}
+
+/**
+ * @summary Exact invoice search across saved print and correction history
+ */
+export const searchAutoPrintInvoice = async (params: SearchAutoPrintInvoiceParams, options?: RequestInit): Promise<AutoPrintInvoiceSearchResponse> => {
+
+  return customFetch<AutoPrintInvoiceSearchResponse>(getSearchAutoPrintInvoiceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchAutoPrintInvoiceQueryKey = (params?: SearchAutoPrintInvoiceParams,) => {
+    return [
+    `/api/print-queue/autoprint/invoice-search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchAutoPrintInvoiceQueryOptions = <TData = Awaited<ReturnType<typeof searchAutoPrintInvoice>>, TError = ErrorType<void>>(params: SearchAutoPrintInvoiceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchAutoPrintInvoice>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchAutoPrintInvoiceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchAutoPrintInvoice>>> = ({ signal }) => searchAutoPrintInvoice(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchAutoPrintInvoice>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchAutoPrintInvoiceQueryResult = NonNullable<Awaited<ReturnType<typeof searchAutoPrintInvoice>>>
+export type SearchAutoPrintInvoiceQueryError = ErrorType<void>
+
+
+/**
+ * @summary Exact invoice search across saved print and correction history
+ */
+
+export function useSearchAutoPrintInvoice<TData = Awaited<ReturnType<typeof searchAutoPrintInvoice>>, TError = ErrorType<void>>(
+ params: SearchAutoPrintInvoiceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchAutoPrintInvoice>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchAutoPrintInvoiceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListAutoPrintJobsUrl = (params?: ListAutoPrintJobsParams,) => {
   const normalizedParams = new URLSearchParams();

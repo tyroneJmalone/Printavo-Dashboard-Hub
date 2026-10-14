@@ -11,6 +11,7 @@ export interface AutoPrintRetryJob {
   id: string;
   runId: string;
   printavoOrderId: string;
+  createdAt?: string;
   /** @nullable */
   visualId: string | null;
   status: string;

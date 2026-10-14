@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { AutoPrintNotificationList } from "@/components/autoprint/AutoPrintNotificationList";
 import { AutoPrintSection } from "@/components/autoprint/AutoPrintSection";
 import { AutoPrintFollowupPanel } from "@/components/autoprint/AutoPrintFollowupPanel";
+import { AutoPrintInvoiceSearch } from "@/components/autoprint/AutoPrintInvoiceSearch";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AutoPrintRetryQueue } from "./AutoPrintRetryQueue";
 import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
@@ -1489,6 +1490,7 @@ function AdminNotificationInbox() {
 }
 
 export default function AutoPrint() {
+  const staff = useStaff();
   const { data: config, isLoading } = useGetAutoPrintConfig();
 
   return (
@@ -1506,6 +1508,7 @@ export default function AutoPrint() {
         </div>
 
         <div className="space-y-4" aria-label="Auto-Print settings">
+        {staff.role === "admin" && <AutoPrintInvoiceSearch />}
         <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Settings & controls</h2>
         {isLoading || !config ? (
           <div className="flex items-center gap-2 text-slate-400 text-sm py-8 justify-center">

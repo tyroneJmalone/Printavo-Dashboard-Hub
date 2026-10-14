@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListAutoPrintRetries, useActOnAutoPrintRetry, getListAutoPrintRetriesQueryKey,
@@ -8,16 +8,21 @@ import {
 } from "@workspace/api-client-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AutoPrintSection } from "@/components/autoprint/AutoPrintSection";
+import { settingsHref } from "./settingsNavigation";
 
 const button = "rounded border border-slate-600 px-2 py-1 text-xs disabled:opacity-40";
 const field = "w-full rounded border border-slate-600 bg-slate-900 p-2 text-sm";
-const time = (value: string | null) => value ? new Date(value).toLocaleString() : "—";
+const time = (value: string | null | undefined) => value ? new Date(value).toLocaleString("en-US", {
+  timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric",
+  hour: "numeric", minute: "2-digit", timeZoneName: "short",
+}) : "—";
 
 export function AutoPrintRetryQueue() {
   const linkedJobId = new URLSearchParams(useSearch()).get("job");
   const staff = useStaff();
   const admin = staff.role === "admin";
-  const queue = useListAutoPrintRetries({ query: { queryKey: getListAutoPrintRetriesQueryKey(), enabled: admin, refetchInterval: 10_000 } });
+  const params = linkedJobId ? { jobId: linkedJobId } : undefined;
+  const queue = useListAutoPrintRetries(params, { query: { queryKey: getListAutoPrintRetriesQueryKey(params), enabled: admin, refetchInterval: 10_000 } });
   const cache = useQueryClient();
   const [selected, setSelected] = useState<AutoPrintRetryJob | null>(null);
   const [action, setAction] = useState<AutoPrintRetryActionRequest["action"]>("retry");
@@ -60,6 +65,7 @@ export function AutoPrintRetryQueue() {
     <p className="text-xs text-slate-400">Temporary failures stay here without moving the order to its failure status. Automatic retries run only in production while live Auto-Print is enabled. Accepted jobs never retry; uncertain sends require PrintNode and printer verification.</p>
     <p className="text-xs text-slate-400">Printavo workorder-page 403s get up to three attempts, then a 15-minute cooldown and one final three-attempt round. Print Error is withheld during the cooldown. “Retry now” is a single manual attempt and overrides the wait.</p>
     <input aria-label="Find invoice in retry queue" placeholder="Find invoice number or order ID" className={field} value={search} onChange={e => setSearch(e.target.value)} />
+    {linkedJobId && <p className="text-xs text-slate-400">Showing the linked attempt. <Link className="text-sky-300 underline" href={`${settingsHref("auto-print")}#autoprint-retry-review`} onClick={() => setSearch("")}>Show the full retry queue</Link></p>}
     {queue.isLoading && <p className="text-sm text-slate-400">Loading retry queue…</p>}
     {queue.isError && <p role="alert" className="text-red-300">Could not load retries. <button className={button} onClick={() => queue.refetch()}>Refresh</button></p>}
     {!queue.isLoading && !queue.isError && jobs.length === 0 && <p className="text-sm text-slate-400">No matching retry jobs.</p>}
@@ -67,8 +73,12 @@ export function AutoPrintRetryQueue() {
       {jobs.map(job => <article key={job.id} id={`autoprint-job-${job.id}`} className={`space-y-2 rounded-lg border bg-slate-950 p-3 text-xs text-slate-300 ${job.id === linkedJobId ? "border-sky-500" : "border-slate-800"}`}>
         <div className="flex flex-wrap justify-between gap-2">
           <strong>Invoice #{job.visualId ?? job.printavoOrderId}</strong>
-          <span>{job.status} · {job.retryPhase ?? "legacy"} · {job.retryCount} durable attempt(s)</span>
+          <span className="text-right text-slate-400">
+            {job.attempts.length ? <>Last attempt: {time(job.attempts.reduce((latest, a) => Date.parse(a.startedAt) > Date.parse(latest) ? a.startedAt : latest, job.attempts[0].startedAt))}</>
+              : <>Recorded: {time(job.createdAt)} · attempt time unavailable</>}
+          </span>
         </div>
+        <p>{job.status} · {job.retryPhase ?? "legacy"} · {job.retryCount} durable attempt(s)</p>
         <p>Expected status: {job.sourceStatusName ?? "unknown"} ({job.sourceStatusId ?? "unknown"}) · Next retry: {time(job.nextRetryAt)}</p>
         {job.printnodeJobId && <p>Accepted PrintNode job: {job.printnodeJobId} — not eligible for resend.</p>}
         {job.errorMessage && <p className="whitespace-pre-wrap text-amber-200">{job.errorMessage}</p>}

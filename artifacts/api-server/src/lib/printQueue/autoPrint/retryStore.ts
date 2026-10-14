@@ -106,9 +106,9 @@ export async function finishPrint(job: PqPrintJob, patch: Partial<InsertPqPrintJ
     return row;
   });
 }
-export async function listRetryJobs() {
+export async function listRetryJobs(jobId?: string) {
   const rows = await db.select().from(jobs).where(and(eq(jobs.docType, "workorder"),
-    or(eq(jobs.retryManaged, true), inArray(jobs.status, ["failed", "held", "submission_unknown"]))))
+    jobId ? eq(jobs.id, jobId) : or(eq(jobs.retryManaged, true), inArray(jobs.status, ["failed", "held", "submission_unknown"]))))
     .orderBy(sql`case when ${jobs.status} in ('printed', 'cancelled') then 1 else 0 end`, desc(jobs.createdAt)).limit(200);
   const history = rows.length ? await db.select().from(attempts).where(inArray(attempts.jobId, rows.map(j => j.id)))
     .orderBy(desc(attempts.startedAt)) : [];

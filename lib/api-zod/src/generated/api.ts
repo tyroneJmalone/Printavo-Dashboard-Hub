@@ -11428,11 +11428,16 @@ export const GetAutoPrintRunResponse = zod.object({
 /**
  * @summary Admin durable retry queue, including legacy failures eligible for review
  */
+export const ListAutoPrintRetriesQueryParams = zod.object({
+  "jobId": zod.coerce.string().uuid().optional()
+})
+
 export const ListAutoPrintRetriesResponse = zod.object({
   "jobs": zod.array(zod.object({
   "id": zod.string(),
   "runId": zod.string(),
   "printavoOrderId": zod.string(),
+  "createdAt": zod.string().optional(),
   "visualId": zod.string().nullable(),
   "status": zod.string(),
   "retryManaged": zod.boolean(),
@@ -11480,6 +11485,36 @@ export const ActOnAutoPrintRetryBody = zod.object({
 
 export const ActOnAutoPrintRetryResponse = zod.object({
   "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Exact invoice search across saved print and correction history
+ */
+export const searchAutoPrintInvoiceQueryInvoiceRegExp = new RegExp('^[0-9]{1,12}$');
+export const searchAutoPrintInvoiceQueryOffsetDefault = 0;
+export const searchAutoPrintInvoiceQueryOffsetMin = 0;
+
+
+
+export const SearchAutoPrintInvoiceQueryParams = zod.object({
+  "invoice": zod.coerce.string().regex(searchAutoPrintInvoiceQueryInvoiceRegExp),
+  "offset": zod.coerce.number().min(searchAutoPrintInvoiceQueryOffsetMin).default(searchAutoPrintInvoiceQueryOffsetDefault)
+})
+
+export const SearchAutoPrintInvoiceResponse = zod.object({
+  "hasMore": zod.boolean(),
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "runId": zod.string(),
+  "jobId": zod.string(),
+  "kind": zod.string(),
+  "status": zod.string(),
+  "message": zod.string(),
+  "nickname": zod.string(),
+  "occurredAt": zod.string(),
+  "dateLabel": zod.string()
+}))
 })
 
 
