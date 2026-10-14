@@ -26,6 +26,21 @@ try {
   ]) assert.equal(coverStatusLabel(status), expected);
   browser = await puppeteer.launch({ executablePath: execSync("command -v chromium", { encoding: "utf8" }).trim(), headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   const page = await browser.newPage();
+  const assertBadge = async () => {
+    const result = await page.$eval(".pq-cover-method", el => {
+      const style = getComputedStyle(el);
+      const range = document.createRange(); range.selectNodeContents(el);
+      return { background:style.backgroundColor,color:style.color,
+        extraWidth:el.getBoundingClientRect().width-range.getBoundingClientRect().width,
+        rightGap:el.parentElement.getBoundingClientRect().right-el.getBoundingClientRect().right,
+        printColor:style.printColorAdjust };
+    });
+    assert.equal(result.background,"rgb(0, 0, 0)");
+    assert.equal(result.color,"rgb(255, 255, 255)");
+    assert.ok(Math.abs(result.extraWidth-18)<2);
+    assert.ok(Math.abs(result.rightGap)<2);
+    assert.equal(result.printColor,"exact");
+  };
   await page.setViewport({ width: 816, height: 1056 });
   await page.setRequestInterception(true);
   page.on("request", request => /^(data:|about:)/.test(request.url()) ? request.continue() : request.abort());
@@ -38,6 +53,8 @@ try {
     assert.equal(await page.$$eval(".pq-cover-sheet", els => els.length), 1);
     assert.equal(await page.$eval(".pq-cover-heading", el => getComputedStyle(el.children[0]).fontSize === getComputedStyle(el.children[1]).fontSize), true);
     assert.equal(await page.$eval(".pq-cover-heading span:last-child", el => el.textContent), "MERCH");
+    assert.equal(await page.$eval(".pq-cover-heading span:first-child", el => el.textContent), "#EXAMPLE");
+    await assertBadge();
     assert.equal(await page.$$eval(".pq-cover-grid img", els => els.length), count);
     assert.equal(await page.$eval("#original p", el => el.textContent), "Keep production notes and line details.");
     assert.ok((await page.$eval(".pq-cover-sheet", el => el.textContent)).includes("10/12/2026"));
@@ -53,6 +70,7 @@ try {
     await page.evaluate(coverSheetScript({visualId:23201,nickname:"Regular invoice",statusName:"SEPSIO - ORDERED",destinationStatusName:destination}));
     assert.equal(await page.$eval(".pq-cover-heading span:first-child", el => el.textContent), "#23201");
     assert.equal(await page.$eval(".pq-cover-heading span:last-child", el => el.textContent), label);
+    await assertBadge();
     assert.equal(await page.$$eval(".pq-cover-grid img", els => els.length), 1);
     assert.equal(await page.$eval(".pq-cover-grid img", el => el.src), svg(0));
     assert.equal(await page.$eval(".pq-cover-grid figcaption", el => el.textContent), "Product 1");

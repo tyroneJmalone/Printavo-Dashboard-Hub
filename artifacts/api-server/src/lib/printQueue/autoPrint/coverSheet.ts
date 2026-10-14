@@ -84,8 +84,8 @@ export function coverSheetScript(details: CoverDetails, isReprint = false): stri
       sheet.append(title);
       const heading = add("h1", "", title);
       heading.className = "pq-cover-heading";
-      add("span", (data.isMerch ? "Workorder #" : "#") + (data.visualId ?? "Not recorded"), heading);
-      add("span", data.statusName || "Not recorded", heading);
+      add("span", "#" + (data.visualId ?? "Not recorded"), heading);
+      add("span", data.statusName || "Not recorded", heading).className = "pq-cover-method";
       add("h2", data.nickname || "No nickname", title);
       add("p", "Production Due: " + data.productionDate + "   |   Customer Due: " + data.customerDate, title).className = "pq-cover-dates";
       if (data.isMerch) {
@@ -119,9 +119,10 @@ export function coverSheetScript(details: CoverDetails, isReprint = false): stri
 }
 export const COVER_SHEET_CSS = `
 .pq-cover-sheet { box-sizing:border-box; width:100%; height:10in; display:flex; flex-direction:column; break-after:page; page-break-after:always; break-inside:avoid; font-family:Arial,sans-serif; color:#111; padding:8px; }
-.pq-cover-sheet .pq-cover-heading {display:flex; gap:18px; align-items:baseline; font-size:24px !important; line-height:1.15 !important; margin:0 0 12px; flex-shrink:0}
+.pq-cover-sheet .pq-cover-heading {display:flex; justify-content:space-between; gap:18px; align-items:baseline; font-size:24px !important; line-height:1.15 !important; margin:0 0 12px; flex-shrink:0}
 .pq-cover-sheet .pq-cover-heading span {font-size:inherit !important; font-weight:bold !important; line-height:inherit !important}
 .pq-cover-heading span:first-child {white-space:nowrap}
+.pq-cover-sheet .pq-cover-heading .pq-cover-method {margin-left:auto; flex:0 0 auto; white-space:nowrap; padding:5px 9px; background:#000 !important; color:#fff !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important}
 .pq-cover-title {flex-shrink:0}
 .pq-cover-standard .pq-cover-title {margin-top:16px}
 .pq-cover-standard .pq-cover-heading {justify-content:space-between}
