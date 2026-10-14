@@ -11,9 +11,14 @@ Use the linked Printavo PO number in the same position as a Hub PO number.
 **Why:** Hub-only PO submission missed purchases placed through other processes.
 
 **How to apply:** Preserve the full-workorder skip. Capture exact new-line IDs,
-descriptions and current invoice size quantities. Separate distinct assigned POs,
+descriptions and current invoice size quantities. Print each new line on its own slip,
+even when multiple additions share a PO or have no assigned PO,
 and show unavailable order date, vendor or warehouse explicitly. A later PO
 assignment or Hub submission must not duplicate the new-line slip.
+
+**Why:** The user clarified that different new line items often belong to different
+orders requiring different handling. Keep all sizes of one line together, but never
+combine separate new lines merely because their PO matches.
 
 The first complete live production run establishes the baseline without printing
 historical lines; subsequent complete observations reserve slips and advance the

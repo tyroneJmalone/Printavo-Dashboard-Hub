@@ -50,7 +50,8 @@ export function planMakeupAdditions(
     const reference = matches.length === 1 ? matches[0] : undefined;
     const poNumber = assigned?.visualPoId || reference?.poNumber || "PO not assigned";
     const vendorName = assigned?.vendor?.company || assigned?.vendor?.name || reference?.vendorName || "Not recorded";
-    const key = assigned?.id ? `printavo:${assigned.id}` : reference ? `hub:${reference.vendorName}:${reference.poNumber}` : "unassigned";
+    // Different additions may belong to different customer orders even on one PO.
+    const key = line.id;
     let slip = groups.get(key);
     if (!slip) {
       slip = { version: 2, orderId: observation.orderId, nickname: observation.nickname, observedAt: observation.observedAt,

@@ -183,13 +183,25 @@ test("Makeups accepts unused null size cells but rejects invalid nonblank quanti
 test("first complete observation baselines history; new lines in existing and new groups print", () => {
   assert.equal(planMakeupAdditions(observation([observedLine("old")]), null).slips.length, 0);
   const plan = planMakeupAdditions(observation([observedLine("old"), observedLine("new"), observedLine("new-group-line", "new-group")], "2026-10-12T12:05:00Z"), baseline);
-  assert.deepEqual(plan.slips[0].po.lineItems.map(l => l.printavoLineItemId), ["new", "new-group-line"]);
+  assert.deepEqual(plan.slips.map(s => s.po.lineItems.map(l => l.printavoLineItemId)), [["new"], ["new-group-line"]]);
   assert.equal(plan.slips[0].po.poNumber, "PO not assigned");
   const html = renderReplacementSlipHtml(plan.slips[0]);
   assert.match(html, /PO not assigned/);
   assert.match(html, /Not recorded/);
   assert.doesNotMatch(html, /Invalid Date/);
   assert.match(html, /Keep this second line &lt;verbatim&gt;/);
+});
+
+test("new lines sharing a PO still get separate slips and retain their own quantities", () => {
+  const purchaseOrder = { id: "shared-po", visualPoId: "Shared-123", vendor: { company: "Vendor" } };
+  const lines = ["a", "b"].map((id, i) => ({ ...observedLine(id),
+    poLineItem: { purchaseOrder }, sizes: [{ size: "M", count: i + 1 }] }));
+  const plan = planMakeupAdditions(observation(lines, "2026-10-12T12:05:00Z"), baseline);
+  assert.equal(plan.slips.length, 2);
+  assert.deepEqual(plan.slips.map(s => s.po.poNumber), ["Shared-123", "Shared-123"]);
+  assert.deepEqual(plan.slips.map(s => s.po.lineItems.length), [1, 1]);
+  assert.deepEqual(plan.slips.map(s => s.po.lineItems[0].sizes[0].qty), [1, 2]);
+  assert.equal(planMakeupAdditions(observation(lines, "2026-10-12T12:10:00Z"), plan.baseline).slips.length, 0);
 });
 
 test("each assigned Printavo PO gets its own slip and vendor, without inventing order dates", () => {
