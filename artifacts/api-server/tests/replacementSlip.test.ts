@@ -158,6 +158,7 @@ test("production additions replace the submission trigger without changing vendo
 
 const observedLine = (id: string, groupId = "existing-group"): MakeupLine => ({
   id, groupId, itemNumber: "BP36", color: "Oatmeal Heather",
+  productStatus: "ordered", category: { id: "deco", name: "Embroidery" },
   description: "Full replacement instructions\nKeep this second line <verbatim>",
   sizes: [{ size: "Other", count: 2 }],
 });
@@ -165,6 +166,30 @@ const observation = (lines: MakeupLine[], observedAt = "2026-10-12T12:00:00Z"): 
   orderId: "internal-id", nickname: "Makeups", observedAt, lines,
 });
 const baseline = planMakeupAdditions(observation([observedLine("old")]), null).baseline;
+test("only eligible goods statuses print; deferred lines survive restarts and print once when ordered", () => {
+  const lines = ["need_ordering", "arrived", "partially_received", "received", "in", null, undefined, "unknown"]
+    .map((productStatus, i) => ({ ...observedLine(`deferred-${i}`), productStatus }));
+  const skipped = planMakeupAdditions(observation(lines, "2026-10-12T12:05:00Z"), baseline);
+  assert.equal(skipped.slips.length, 0);
+  assert.deepEqual(skipped.baseline.seenLineIds, baseline.seenLineIds);
+  const eligible = lines.slice(0, 2).map((l, i) => ({ ...l, productStatus: i ? "attached_to_po" : "ordered" }));
+  const next = planMakeupAdditions(observation(eligible, "2026-10-12T12:10:00Z"),
+    JSON.parse(JSON.stringify(skipped.baseline)));
+  assert.equal(next.slips.length, 2);
+  assert.equal(planMakeupAdditions(observation(eligible, "2026-10-12T12:15:00Z"), next.baseline).slips.length, 0);
+  const historical = planMakeupAdditions(observation(lines), null);
+  assert.equal(planMakeupAdditions(observation(eligible, "2026-10-12T12:10:00Z"), historical.baseline).slips.length, 0);
+});
+
+test("decoration category is frozen and escaped, with an explicit missing-category label", () => {
+  const source = { ...observedLine("new"), category: { id: "deco", name: "Print & <Embroidery>" } };
+  const slip = planMakeupAdditions(observation([source], "2026-10-12T12:05:00Z"), baseline).slips[0];
+  source.category.name = "Changed later";
+  assert.match(renderReplacementSlipHtml(slip), /Decoration Category.*Print &amp; &lt;Embroidery&gt;/s);
+  const missing = planMakeupAdditions(observation([{ ...observedLine("missing"), category: null }],
+    "2026-10-12T12:05:00Z"), baseline).slips[0];
+  assert.match(renderReplacementSlipHtml(missing), /Decoration Category<\/span>Not recorded/);
+});
 test("Makeups accepts unused null size cells but rejects invalid nonblank quantities", () => {
   const line = { ...observedLine("new-medium"), itemNumber: "BC3513", color: "Solid Black Triblend",
     sizes: [{ size: "size_s", count: null }, { size: "size_m", count: 2 }, { size: "size_l", count: null }] };

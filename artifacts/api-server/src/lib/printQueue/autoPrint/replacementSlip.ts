@@ -13,7 +13,9 @@ export interface AdditionSlipSnapshot {
   orderId: string;
   nickname: string | null;
   observedAt: string;
-  po: Pick<PoFileDto, "poNumber" | "vendorName" | "submittedToVendorAt" | "lineItems">;
+  po: Pick<PoFileDto, "poNumber" | "vendorName" | "submittedToVendorAt"> & {
+    lineItems: (PoFileDto["lineItems"][number] & { decorationCategory?: string | null })[];
+  };
 }
 export type AnyReplacementSlipSnapshot = ReplacementSlipSnapshot | AdditionSlipSnapshot;
 
@@ -66,5 +68,6 @@ ${po.lineItems.map(line => `<section class="line"><table><thead><tr><th style="w
 ${line.sizes.filter(size => size.qty > 0).map(size => `<tr><td>${escape(line.styleNumber)}</td><td>${escape(line.color ?? "Not recorded")}</td><td>${escape(size.vendorSize ?? size.size)}</td><td>${size.qty}</td></tr>`).join("")}</tbody></table>
 ${!line.sizes.some(size => size.qty > 0) ? `<p>Item / Style: ${escape(line.styleNumber)} · Color: ${escape(line.color ?? "Not recorded")} · No positive size quantities recorded</p>` : ""}
 ${warehouses.length > 1 ? `<p style="padding:0 6pt"><span class="label">Warehouse</span>${escape(warehouse(line))}</p>` : ""}
+<p style="padding:6pt"><span class="label">Decoration Category</span>${escape(("decorationCategory" in line && line.decorationCategory) || "Not recorded")}</p>
 <div class="description"><span class="label">Line-item description</span>${escape(line.description ?? "Not recorded")}</div></section>`).join("")}</body></html>`;
 }

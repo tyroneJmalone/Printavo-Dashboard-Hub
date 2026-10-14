@@ -19,7 +19,7 @@ export function makeupObservationQuery(orderId: string, after: string | null, in
     id visualId nickname
     lineItemGroups(first: 10${after ? `, after: ${JSON.stringify(after)}` : ""}) {
       nodes { id lineItems(first: 40) { nodes {
-        id itemNumber color description sizes { size count }
+        id itemNumber color description productStatus category { id name } sizes { size count }
         poLineItem { purchaseOrder { id visualPoId ${includeVendor ? "vendor { name company }" : ""} } }
       } pageInfo { hasNextPage } } }
       pageInfo { hasNextPage endCursor }

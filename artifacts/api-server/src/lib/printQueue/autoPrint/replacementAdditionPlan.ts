@@ -7,6 +7,8 @@ export interface MakeupLine {
   itemNumber: string | null;
   color: string | null;
   description: string | null;
+  productStatus?: string | null;
+  category?: { id: string; name: string | null } | null;
   sizes: { size: string; count: number | null }[] | null;
   poLineItem?: { purchaseOrder?: {
     id: string; visualPoId?: string | null;
@@ -37,6 +39,9 @@ export function planMakeupAdditions(
   const added = observation.lines.filter(l => !seen.has(l.id));
   const groups = new Map<string, AdditionSlipSnapshot>();
   for (const line of added) {
+    // Leave ineligible additions unseen so a later eligible observation can print.
+    // The initial baseline still consumes all historical lines, regardless of status.
+    if (line.productStatus !== "attached_to_po" && line.productStatus !== "ordered") continue;
     if (!line.id || !line.groupId || line.sizes?.some(s => s.count !== null && (!Number.isSafeInteger(s.count) || s.count < 0))) {
       throw new Error(`Invalid Makeups line snapshot for ${line.itemNumber ?? "unknown style"} ${line.color ?? ""} (line ${line.id || "missing ID"}); check line/group identity and size quantities; baseline unchanged`);
     }
@@ -61,13 +66,16 @@ export function planMakeupAdditions(
     slip.po.lineItems.push({
       printavoLineItemId: line.id, printavoOrderId: observation.orderId, visualId: 22787,
       styleNumber: line.itemNumber ?? "", color: line.color, description: line.description,
+      decorationCategory: line.category?.name ?? null,
       vendorCatalogColor: null, brand: null, source: "manual",
       warehouseCode: reference?.line.warehouseCode, warehouseName: reference?.line.warehouseName,
       sizes: (line.sizes ?? []).map(s => ({ size: s.size, qty: s.count ?? 0, unitCost: 0,
         sku: null, inventoryKey: null, sizeIndex: null })),
     });
   }
-  for (const line of observation.lines) seen.add(line.id);
+  for (const slip of groups.values()) {
+    for (const line of slip.po.lineItems) seen.add(line.printavoLineItemId!);
+  }
   return { baseline: { orderId: observation.orderId, seenLineIds: [...seen], observedAt: observation.observedAt },
     slips: [...groups.values()] };
 }
