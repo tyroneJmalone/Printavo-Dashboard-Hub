@@ -2,10 +2,36 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { reset, state } from "./autoPrintFollowupFixture";
 import { previewFollowup, confirmFollowup, listFollowup, reviewFollowup } from "../src/lib/printQueue/autoPrint/followup";
-import { followupHash, followupEligibility, followupDisplayState } from "../src/lib/printQueue/autoPrint/followupPolicy";
+import { followupHash, followupEligibility, followupDisplayState, normalizeFollowupDates } from "../src/lib/printQueue/autoPrint/followupPolicy";
 import express from "express";
 import { createAutoPrintFollowupRouter } from "../src/routes/autoPrintFollowup";
 const log = {} as any;
+test("timezone-only changes allow confirmation, genuine changes release the safe pre-write hold",async()=>{
+  reset();
+  state.node.productionDueAt="2026-10-21T19:00:00-04:00";
+  const p=await previewFollowup("run",["job"],"admin");
+  state.node.productionDueAt="2026-10-21T23:00:00Z";
+  assert.equal((await confirmFollowup(p.previewId,"admin",log)).invoices[0].state,"status_queued");
+  reset();
+  state.node.productionDueAt="2026-10-21T23:00:00Z";
+  const stale=await previewFollowup("run",["job"],"admin");
+  state.node.productionDueAt="2026-10-22T00:00:00Z";
+  assert.equal((await confirmFollowup(stale.previewId,"admin",log)).invoices[0].state,"blocked");
+  assert.equal(state.categoryCalls+state.statusCalls,0);
+  assert.equal((await previewFollowup("run",["job"],"admin")).invoices[0].state,"ready");
+});
+test("known instants normalize without changing descriptions, nulls, invalid dates or source objects",()=>{
+  const a={productionDueAt:"2026-10-21T19:00:00-04:00",customerDueAt:null,
+    timestamps:{createdAt:"2026-10-12T10:42:43-05:00",updatedAt:"invalid"},
+    description:"2026-10-21T19:00:00-04:00"};
+  const b=normalizeFollowupDates(a);
+  assert.equal(b.productionDueAt,"2026-10-21T23:00:00.000Z");
+  assert.equal(b.timestamps.createdAt,"2026-10-12T15:42:43.000Z");
+  assert.equal(b.timestamps.updatedAt,"invalid");
+  assert.equal(b.customerDueAt,null);
+  assert.equal(b.description,a.description);
+  assert.equal(a.productionDueAt,"2026-10-21T19:00:00-04:00");
+});
 test("preview, confirmation, recovery history, and duplicate claim use no print boundary", async()=>{
   reset();
   const p=await previewFollowup("run",["job"],"admin");

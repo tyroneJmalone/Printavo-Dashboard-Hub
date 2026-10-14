@@ -14,7 +14,7 @@ import { destinationMappingForClassification } from "../../purchasing/decoration
 import { businessDaysUntilDue } from "../../purchasing/businessDays";
 import { liveCategories, previewReview, commitReview } from "../../chipply/categoryReview";
 import { startPqStatusJob, getPqStatusJob } from "../statusJobs";
-import { followupEligibility, followupHash, followupDisplayState } from "./followupPolicy";
+import { followupEligibility, followupHash, followupDisplayState, normalizeFollowupDates } from "./followupPolicy";
 import { readRecoveryParent, inspectRecovery, claimRecovery, type Recovery } from "./followupRecovery";
 
 const PREFIX = "autoprint.followup.preview:";
@@ -74,7 +74,7 @@ async function livePlan(job: PqPrintJob, dryRun: boolean, config: Awaited<Return
   });
   if (reason) throw new Error(reason);
   const assignments = planMerchCategories(node, rule, node.nickname ?? null, job.sourceStatusName);
-  const fingerprint = followupHash({ node, live, assignments, target });
+  const fingerprint = followupHash({ node: normalizeFollowupDates(node), live, assignments, target });
   return { node, live, target: target!, assignments, fingerprint };
 }
 

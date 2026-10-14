@@ -1,5 +1,22 @@
 import { createHash } from "node:crypto";
 
+/** Normalize only known invoice instants; never descriptions or calendar-date strings. */
+export function normalizeFollowupDates<T>(node: T): T {
+  const copy = structuredClone(node) as any;
+  const instant = (v: unknown) => {
+    if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(v)) return v;
+    const ms = Date.parse(v);
+    return Number.isFinite(ms) ? new Date(ms).toISOString() : v;
+  };
+  for (const key of ["productionDueAt", "customerDueAt"]) {
+    if (Object.hasOwn(copy, key)) copy[key] = instant(copy[key]);
+  }
+  if (copy.timestamps) for (const key of ["createdAt", "updatedAt"]) {
+    if (Object.hasOwn(copy.timestamps, key)) copy.timestamps[key] = instant(copy.timestamps[key]);
+  }
+  return copy;
+}
+
 /** Stored "complete" means the worker stopped, not that every invoice succeeded. */
 export function followupDisplayState(state: string, invoices: { state: string }[]) {
   if (state !== "complete") return state;
