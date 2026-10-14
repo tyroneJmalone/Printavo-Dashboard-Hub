@@ -24,3 +24,13 @@ not an upstream event stream.
 
 **Why:** Enabling the feature must not print the full historical Makeups invoice,
 and restarts, edits, or uncertain printer acceptance must not cause duplicate slips.
+
+Printavo returns `null` counts for unused size columns on otherwise valid lines.
+These mean blank/zero, not invalid quantities.
+
+**Why:** Real additions with a valid positive quantity were blocked because the
+validator rejected the other, unused size columns.
+
+**How to apply:** Accept explicit null size counts while rejecting negative,
+fractional, nonnumeric, or otherwise malformed nonblank counts. Do not reset the
+baseline to work around a rejected observation.

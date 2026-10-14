@@ -165,6 +165,20 @@ const observation = (lines: MakeupLine[], observedAt = "2026-10-12T12:00:00Z"): 
   orderId: "internal-id", nickname: "Makeups", observedAt, lines,
 });
 const baseline = planMakeupAdditions(observation([observedLine("old")]), null).baseline;
+test("Makeups accepts unused null size cells but rejects invalid nonblank quantities", () => {
+  const line = { ...observedLine("new-medium"), itemNumber: "BC3513", color: "Solid Black Triblend",
+    sizes: [{ size: "size_s", count: null }, { size: "size_m", count: 2 }, { size: "size_l", count: null }] };
+  const plan = planMakeupAdditions(observation([line], "2026-10-12T12:05:00Z"), baseline);
+  assert.equal(plan.slips.length, 1);
+  assert.equal(plan.slips[0].po.lineItems[0].sizes.reduce((n, s) => n + s.qty, 0), 2);
+  assert.ok(plan.baseline.seenLineIds.includes("new-medium"));
+  for (const count of [-1, 1.5, NaN, "2", undefined]) {
+    assert.throws(() => planMakeupAdditions(observation([{ ...line,
+      sizes: [{ size: "size_m", count: count as number }] }], "2026-10-12T12:05:00Z"), baseline),
+    /BC3513 Solid Black Triblend.*baseline unchanged/);
+  }
+  assert.ok(!baseline.seenLineIds.includes("new-medium"));
+});
 
 test("first complete observation baselines history; new lines in existing and new groups print", () => {
   assert.equal(planMakeupAdditions(observation([observedLine("old")]), null).slips.length, 0);

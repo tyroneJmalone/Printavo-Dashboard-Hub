@@ -1479,7 +1479,7 @@ function AdminNotificationInbox() {
   if (role !== "admin") return null;
   return (
     <AutoPrintSection title="Failure notifications" id="autoprint-notifications" testId="autoprint-notification-inbox">
-      <p className="text-[12px] text-slate-400 mb-2">Read-only alerts. Use the linked run or retry review for any action; nothing here retries, prints, or changes status.</p>
+      <p className="text-[12px] text-slate-400 mb-2">Unresolved failures needing review only. Successful retries, scheduled retries, and ordinary skips are excluded. Full attempt history remains in the run logs. Use the linked run or retry review for any action; nothing here retries, prints, or changes status.</p>
       <AutoPrintNotificationList />
     </AutoPrintSection>
   );

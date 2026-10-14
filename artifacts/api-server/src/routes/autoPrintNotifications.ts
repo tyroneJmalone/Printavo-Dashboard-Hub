@@ -6,6 +6,7 @@ import { ListAutoPrintNotificationsResponse } from "@workspace/api-zod";
 import { z } from "zod";
 import { requireAdmin } from "../middlewares/requireStaff";
 import type { AlertPayload } from "../lib/printQueue/autoPrint/alertEvents";
+import { activeAlertPredicate } from "../lib/printQueue/autoPrint/activeAlerts";
 
 export const autoPrintNotificationStore = {
   async list(email: string, offset: number) {
@@ -14,10 +15,15 @@ export const autoPrintNotificationStore = {
         nextRetryAt: jobs.nextRetryAt, runStatus: runs.status }).from(alerts)
         .leftJoin(reads, and(eq(reads.alertId, alerts.id), eq(reads.adminEmail, email)))
         .leftJoin(jobs, eq(jobs.id, alerts.jobId)).leftJoin(runs, eq(runs.id, alerts.runId))
+        .where(activeAlertPredicate)
         .orderBy(desc(alerts.createdAt), desc(alerts.id)).limit(30).offset(offset),
-      db.select({ n: count() }).from(alerts),
       db.select({ n: count() }).from(alerts)
-        .leftJoin(reads, and(eq(reads.alertId, alerts.id), eq(reads.adminEmail, email))).where(isNull(reads.alertId)),
+        .leftJoin(jobs, eq(jobs.id, alerts.jobId)).leftJoin(runs, eq(runs.id, alerts.runId))
+        .where(activeAlertPredicate),
+      db.select({ n: count() }).from(alerts)
+        .leftJoin(reads, and(eq(reads.alertId, alerts.id), eq(reads.adminEmail, email)))
+        .leftJoin(jobs, eq(jobs.id, alerts.jobId)).leftJoin(runs, eq(runs.id, alerts.runId))
+        .where(and(activeAlertPredicate, isNull(reads.alertId))),
     ]);
     return {
       total: totals[0]?.n ?? 0, unread: unread[0]?.n ?? 0,

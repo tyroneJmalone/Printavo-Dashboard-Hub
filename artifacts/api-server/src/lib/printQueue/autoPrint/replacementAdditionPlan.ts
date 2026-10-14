@@ -7,7 +7,7 @@ export interface MakeupLine {
   itemNumber: string | null;
   color: string | null;
   description: string | null;
-  sizes: { size: string; count: number }[] | null;
+  sizes: { size: string; count: number | null }[] | null;
   poLineItem?: { purchaseOrder?: {
     id: string; visualPoId?: string | null;
     vendor?: { name?: string | null; company?: string | null } | null;
@@ -37,8 +37,8 @@ export function planMakeupAdditions(
   const added = observation.lines.filter(l => !seen.has(l.id));
   const groups = new Map<string, AdditionSlipSnapshot>();
   for (const line of added) {
-    if (!line.id || !line.groupId || line.sizes?.some(s => !Number.isSafeInteger(s.count) || s.count < 0)) {
-      throw new Error("Invalid Makeups line snapshot; baseline unchanged");
+    if (!line.id || !line.groupId || line.sizes?.some(s => s.count !== null && (!Number.isSafeInteger(s.count) || s.count < 0))) {
+      throw new Error(`Invalid Makeups line snapshot for ${line.itemNumber ?? "unknown style"} ${line.color ?? ""} (line ${line.id || "missing ID"}); check line/group identity and size quantities; baseline unchanged`);
     }
     const assigned = line.poLineItem?.purchaseOrder;
     const matches = hub.filter(h => h.line.printavoOrderId === observation.orderId && h.line.printavoLineItemId === line.id &&
@@ -62,7 +62,7 @@ export function planMakeupAdditions(
       styleNumber: line.itemNumber ?? "", color: line.color, description: line.description,
       vendorCatalogColor: null, brand: null, source: "manual",
       warehouseCode: reference?.line.warehouseCode, warehouseName: reference?.line.warehouseName,
-      sizes: (line.sizes ?? []).map(s => ({ size: s.size, qty: s.count, unitCost: 0,
+      sizes: (line.sizes ?? []).map(s => ({ size: s.size, qty: s.count ?? 0, unitCost: 0,
         sku: null, inventoryKey: null, sizeIndex: null })),
     });
   }
