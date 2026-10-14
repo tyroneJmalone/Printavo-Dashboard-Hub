@@ -417,3 +417,31 @@ mtime_ms = 1791697869510
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/84528d7e-af6a-4fa1-8fc7-8e773b73b15c/00a95bfc-c321-48c4-8352-996a4f247d58"
 storage_version_token = "1791697881507560"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "XbgLFFDvwDXuj3NMibVV-"
+uri = "file://generated-artifacts/current-merch-cover-23260.pdf"
+type = "pdf"
+title = "MERCH cover — invoice #23260"
+description = "One-page cover using the current renderer, production invoice details, and previously captured actual workorder images. Total quantity: 11. Nothing sent to a printer."
+logical_id = "a42e1a6a-d56b-4949-be80-c3a9c3f45ef1"
+content_hash = "sha256:63ac7d87c0601ea137ea687818baf30911da61c0d648a79a4c521c5bbc8b778e"
+size = 267665
+mtime_ms = 1791939254476
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/a42e1a6a-d56b-4949-be80-c3a9c3f45ef1/94231925-842b-4b5c-8d27-c6e42a089d43"
+storage_version_token = "1791939276597868"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "BBDt7Mpw518QPqCpcGQxO"
+uri = "file://generated-artifacts/current-standard-cover-23311.pdf"
+type = "pdf"
+title = "Non-MERCH cover — invoice #23311"
+description = "One-page embroidery cover with one actual attachment image and invoice details at the bottom. Preview uses the invoice’s current EMB method label; it is not a reproduction of an earlier print run."
+logical_id = "1a93ac47-47c3-45e6-a0e6-96861404e618"
+content_hash = "sha256:a598fd843a60976958cd6ea40ca7053007174d7e35055c6851583c2035cd521a"
+size = 1363592
+mtime_ms = 1791939256096
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/1a93ac47-47c3-45e6-a0e6-96861404e618/fb4eb911-3193-4dce-8d40-b831877e8b3a"
+storage_version_token = "1791939277189275"
+content_type = "application/pdf"
