@@ -8,6 +8,100 @@
 import * as zod from 'zod';
 
 
+export const GetAutoPrintFollowupParams = zod.object({
+  "runId": zod.coerce.string()
+})
+
+export const GetAutoPrintFollowupResponse = zod.object({
+  "invoices": zod.array(zod.object({
+  "jobId": zod.string(),
+  "visualId": zod.string(),
+  "nickname": zod.string(),
+  "currentStatus": zod.string(),
+  "targetStatus": zod.string(),
+  "categories": zod.array(zod.string()),
+  "eligible": zod.boolean(),
+  "message": zod.string(),
+  "state": zod.string(),
+  "statusJobId": zod.string().optional()
+})),
+  "history": zod.array(zod.object({
+  "previewId": zod.string(),
+  "state": zod.string(),
+  "expiresAt": zod.string(),
+  "actor": zod.string(),
+  "invoices": zod.array(zod.object({
+  "jobId": zod.string(),
+  "visualId": zod.string(),
+  "nickname": zod.string(),
+  "currentStatus": zod.string(),
+  "targetStatus": zod.string(),
+  "categories": zod.array(zod.string()),
+  "eligible": zod.boolean(),
+  "message": zod.string(),
+  "state": zod.string(),
+  "statusJobId": zod.string().optional()
+}))
+}))
+})
+
+
+export const PreviewAutoPrintFollowupParams = zod.object({
+  "runId": zod.coerce.string()
+})
+
+export const previewAutoPrintFollowupBodyJobIdsMax = 20;
+
+
+
+export const PreviewAutoPrintFollowupBody = zod.object({
+  "jobIds": zod.array(zod.string()).min(1).max(previewAutoPrintFollowupBodyJobIdsMax)
+})
+
+export const PreviewAutoPrintFollowupResponse = zod.object({
+  "previewId": zod.string(),
+  "state": zod.string(),
+  "expiresAt": zod.string(),
+  "actor": zod.string(),
+  "invoices": zod.array(zod.object({
+  "jobId": zod.string(),
+  "visualId": zod.string(),
+  "nickname": zod.string(),
+  "currentStatus": zod.string(),
+  "targetStatus": zod.string(),
+  "categories": zod.array(zod.string()),
+  "eligible": zod.boolean(),
+  "message": zod.string(),
+  "state": zod.string(),
+  "statusJobId": zod.string().optional()
+}))
+})
+
+
+export const ConfirmAutoPrintFollowupParams = zod.object({
+  "previewId": zod.coerce.string()
+})
+
+export const ConfirmAutoPrintFollowupResponse = zod.object({
+  "previewId": zod.string(),
+  "state": zod.string(),
+  "expiresAt": zod.string(),
+  "actor": zod.string(),
+  "invoices": zod.array(zod.object({
+  "jobId": zod.string(),
+  "visualId": zod.string(),
+  "nickname": zod.string(),
+  "currentStatus": zod.string(),
+  "targetStatus": zod.string(),
+  "categories": zod.array(zod.string()),
+  "eligible": zod.boolean(),
+  "message": zod.string(),
+  "state": zod.string(),
+  "statusJobId": zod.string().optional()
+}))
+})
+
+
 export const PreviewChipplySummaryBody = zod.object({
   "file": zod.instanceof(File),
   "expectedStoreId": zod.string().uuid().optional()

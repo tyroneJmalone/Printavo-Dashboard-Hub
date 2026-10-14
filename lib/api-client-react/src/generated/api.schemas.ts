@@ -5,6 +5,40 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface AutoPrintFollowupSelection {
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  jobIds: string[];
+}
+
+export interface AutoPrintFollowupInvoice {
+  jobId: string;
+  visualId: string;
+  nickname: string;
+  currentStatus: string;
+  targetStatus: string;
+  categories: string[];
+  eligible: boolean;
+  message: string;
+  state: string;
+  statusJobId?: string;
+}
+
+export interface AutoPrintFollowupPreview {
+  previewId: string;
+  state: string;
+  expiresAt: string;
+  actor: string;
+  invoices: AutoPrintFollowupInvoice[];
+}
+
+export interface AutoPrintFollowupList {
+  invoices: AutoPrintFollowupInvoice[];
+  history: AutoPrintFollowupPreview[];
+}
+
 /**
  * Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.
  */

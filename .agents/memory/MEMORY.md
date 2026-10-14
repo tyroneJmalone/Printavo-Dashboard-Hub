@@ -67,6 +67,7 @@
 - [Auto-print schedule policy](auto-print-schedule-policy.md) — Eastern civil time, no missed-slot catch-up, and no repeated fall-back printing.
 - [Auto-print live freshness](auto-print-live-freshness.md) — source-status discovery bypasses recent sync depth; incomplete reads mean unknown matches, never cached fallback.
 - [Auto-print durable retries](auto-print-durable-retries.md) — pre-submit failures may retry; uncertain sends require reconciliation; recovery stages approval without printing.
+- [AutoPrint follow-up corrections](autoprint-followup-policy.md) — current-rule, preview-confirm MERCH status/category corrections must never reprint or bypass uncertain-write holds.
 - [Auto-print alert cursors](autoprint-alert-cursor-policy.md) — late commits require bounded reconciliation behind forward progress; delivery and checkpoints must commit atomically.
 - [Workorder visual references](workorder-visual-reference.md) — preserve actual Printavo layout; user rejected fictional redesigns; purchasing notes belong beside each line’s Goods Status.
 - [Makeups new-line slips](makeups-addition-policy.md) — new invoice lines trigger summaries, not Hub PO submission; print with “PO not assigned” rather than waiting.

@@ -43,6 +43,51 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /print-queue/auto-print/runs/{runId}/followup:
+    get:
+      operationId: getAutoPrintFollowup
+      tags: [printQueue]
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Accepted MERCH workorders and recent correction previews
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintFollowupList"
+  /print-queue/auto-print/runs/{runId}/followup/preview:
+    post:
+      operationId: previewAutoPrintFollowup
+      tags: [printQueue]
+      parameters:
+        - { name: runId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoPrintFollowupSelection"
+      responses:
+        "200":
+          description: Read-only preview using current rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintFollowupPreview"
+  /print-queue/auto-print/followup/{previewId}/confirm:
+    post:
+      operationId: confirmAutoPrintFollowup
+      tags: [printQueue]
+      parameters:
+        - { name: previewId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Durable correction result, never prints
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintFollowupPreview"
   /chipply/summary/preview:
     $ref: './chipply-summary.openapi.yaml#/paths/~1chipply~1summary~1preview'
   /chipply/summary/confirm:
@@ -8633,6 +8678,55 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    AutoPrintFollowupSelection:
+      type: object
+      required: [jobIds]
+      properties:
+        jobIds:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string }
+    AutoPrintFollowupInvoice:
+      type: object
+      required: [jobId, visualId, nickname, currentStatus, targetStatus, categories, eligible, message, state]
+      properties:
+        jobId: { type: string }
+        visualId: { type: string }
+        nickname: { type: string }
+        currentStatus: { type: string }
+        targetStatus: { type: string }
+        categories:
+          type: array
+          items: { type: string }
+        eligible: { type: boolean }
+        message: { type: string }
+        state: { type: string }
+        statusJobId: { type: string }
+    AutoPrintFollowupPreview:
+      type: object
+      required: [previewId, state, expiresAt, actor, invoices]
+      properties:
+        previewId: { type: string }
+        state: { type: string }
+        expiresAt: { type: string }
+        actor: { type: string }
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintFollowupInvoice"
+    AutoPrintFollowupList:
+      type: object
+      required: [invoices, history]
+      properties:
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintFollowupInvoice"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintFollowupPreview"
     ChipplyDataCentsMap:
       $ref: './chipply-data.openapi.yaml#/components/schemas/ChipplyDataCentsMap'
     ChipplyDataSummary:

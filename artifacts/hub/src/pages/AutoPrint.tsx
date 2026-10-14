@@ -3,6 +3,7 @@ import { useSearch } from "wouter";
 import { AppShell } from "@/components/layout/AppShell";
 import { AutoPrintNotificationList } from "@/components/autoprint/AutoPrintNotificationList";
 import { AutoPrintSection } from "@/components/autoprint/AutoPrintSection";
+import { AutoPrintFollowupPanel } from "@/components/autoprint/AutoPrintFollowupPanel";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AutoPrintRetryQueue } from "./AutoPrintRetryQueue";
 import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
@@ -1395,6 +1396,7 @@ function LinkedRun({ runId }: { runId: string }) {
           <div className="text-slate-400 mt-1">{countsLine(run)}</div>
           {run.error && <div className="text-red-300 mt-0.5">{run.error}</div>}
           <RunJobs key={run.id} run={run} />
+          <AutoPrintFollowupPanel runId={run.id} />
         </>}
     </div>
   );
@@ -1462,6 +1464,7 @@ function HistoryTables() {
                   {expandedRunId === r.id ? "Hide" : "View"} run documents & skipped invoices
                 </button>
                 {expandedRunId === r.id && <RunJobs key={r.id} run={r} />}
+                {expandedRunId === r.id && <AutoPrintFollowupPanel runId={r.id} />}
               </div>
             ))}
           </div>

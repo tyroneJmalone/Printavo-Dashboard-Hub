@@ -53,6 +53,9 @@ import type {
   AuthMe,
   AutoPrintCategoriesResponse,
   AutoPrintConfig,
+  AutoPrintFollowupList,
+  AutoPrintFollowupPreview,
+  AutoPrintFollowupSelection,
   AutoPrintJobsResponse,
   AutoPrintPrintersResponse,
   AutoPrintRetryActionRequest,
@@ -537,6 +540,206 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAutoPrintFollowupUrl = (runId: string,) => {
+
+
+
+
+  return `/api/print-queue/auto-print/runs/${runId}/followup`
+}
+
+export const getAutoPrintFollowup = async (runId: string, options?: RequestInit): Promise<AutoPrintFollowupList> => {
+
+  return customFetch<AutoPrintFollowupList>(getGetAutoPrintFollowupUrl(runId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAutoPrintFollowupQueryKey = (runId: string,) => {
+    return [
+    `/api/print-queue/auto-print/runs/${runId}/followup`
+    ] as const;
+    }
+
+
+export const getGetAutoPrintFollowupQueryOptions = <TData = Awaited<ReturnType<typeof getAutoPrintFollowup>>, TError = ErrorType<unknown>>(runId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutoPrintFollowup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAutoPrintFollowupQueryKey(runId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAutoPrintFollowup>>> = ({ signal }) => getAutoPrintFollowup(runId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: runId !== null && runId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAutoPrintFollowup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAutoPrintFollowupQueryResult = NonNullable<Awaited<ReturnType<typeof getAutoPrintFollowup>>>
+export type GetAutoPrintFollowupQueryError = ErrorType<unknown>
+
+
+
+export function useGetAutoPrintFollowup<TData = Awaited<ReturnType<typeof getAutoPrintFollowup>>, TError = ErrorType<unknown>>(
+ runId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutoPrintFollowup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAutoPrintFollowupQueryOptions(runId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPreviewAutoPrintFollowupUrl = (runId: string,) => {
+
+
+
+
+  return `/api/print-queue/auto-print/runs/${runId}/followup/preview`
+}
+
+export const previewAutoPrintFollowup = async (runId: string,
+    autoPrintFollowupSelection: AutoPrintFollowupSelection, options?: RequestInit): Promise<AutoPrintFollowupPreview> => {
+
+  return customFetch<AutoPrintFollowupPreview>(getPreviewAutoPrintFollowupUrl(runId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(autoPrintFollowupSelection)
+  }
+);}
+
+
+
+
+export const getPreviewAutoPrintFollowupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewAutoPrintFollowup>>, TError,{runId: string;data: BodyType<AutoPrintFollowupSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewAutoPrintFollowup>>, TError,{runId: string;data: BodyType<AutoPrintFollowupSelection>}, TContext> => {
+
+const mutationKey = ['previewAutoPrintFollowup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewAutoPrintFollowup>>, {runId: string;data: BodyType<AutoPrintFollowupSelection>}> = (props) => {
+          const {runId,data} = props ?? {};
+
+          return  previewAutoPrintFollowup(runId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewAutoPrintFollowupMutationResult = NonNullable<Awaited<ReturnType<typeof previewAutoPrintFollowup>>>
+    export type PreviewAutoPrintFollowupMutationBody = BodyType<AutoPrintFollowupSelection>
+    export type PreviewAutoPrintFollowupMutationError = ErrorType<unknown>
+
+    export const usePreviewAutoPrintFollowup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewAutoPrintFollowup>>, TError,{runId: string;data: BodyType<AutoPrintFollowupSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewAutoPrintFollowup>>,
+        TError,
+        {runId: string;data: BodyType<AutoPrintFollowupSelection>},
+        TContext
+      > => {
+      return useMutation(getPreviewAutoPrintFollowupMutationOptions(options));
+    }
+
+export const getConfirmAutoPrintFollowupUrl = (previewId: string,) => {
+
+
+
+
+  return `/api/print-queue/auto-print/followup/${previewId}/confirm`
+}
+
+export const confirmAutoPrintFollowup = async (previewId: string, options?: RequestInit): Promise<AutoPrintFollowupPreview> => {
+
+  return customFetch<AutoPrintFollowupPreview>(getConfirmAutoPrintFollowupUrl(previewId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConfirmAutoPrintFollowupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAutoPrintFollowup>>, TError,{previewId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAutoPrintFollowup>>, TError,{previewId: string}, TContext> => {
+
+const mutationKey = ['confirmAutoPrintFollowup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAutoPrintFollowup>>, {previewId: string}> = (props) => {
+          const {previewId} = props ?? {};
+
+          return  confirmAutoPrintFollowup(previewId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAutoPrintFollowupMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAutoPrintFollowup>>>
+
+    export type ConfirmAutoPrintFollowupMutationError = ErrorType<unknown>
+
+    export const useConfirmAutoPrintFollowup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAutoPrintFollowup>>, TError,{previewId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAutoPrintFollowup>>,
+        TError,
+        {previewId: string},
+        TContext
+      > => {
+      return useMutation(getConfirmAutoPrintFollowupMutationOptions(options));
+    }
 
 export const getPreviewChipplySummaryUrl = () => {
 
