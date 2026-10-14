@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { reset, state } from "./autoPrintFollowupFixture";
 import { previewFollowup, confirmFollowup, listFollowup } from "../src/lib/printQueue/autoPrint/followup";
-import { followupHash, followupEligibility } from "../src/lib/printQueue/autoPrint/followupPolicy";
+import { followupHash, followupEligibility, followupDisplayState } from "../src/lib/printQueue/autoPrint/followupPolicy";
 import express from "express";
 import { createAutoPrintFollowupRouter } from "../src/routes/autoPrintFollowup";
 const log = {} as any;
@@ -14,12 +14,14 @@ test("preview, confirmation, recovery history, and duplicate claim use no print 
   assert.equal(state.categoryCalls+state.statusCalls,0);
   const result=await confirmFollowup(p.previewId,"admin",log);
   assert.equal(result.invoices[0].state,"status_queued");
+  assert.equal(result.state,"status_queued");
   assert.equal(state.categoryCalls,1);assert.equal(state.statusCalls,1);
   assert.equal(state.statusInputs[0].expectedStatusId,"source");
   await assert.rejects(confirmFollowup(p.previewId,"admin",log),/already claimed/);
   assert.equal(state.categoryCalls,1);
   const history=await listFollowup("run");
   assert.equal(history.history[0].invoices[0].state,"updated");
+  assert.equal(history.history[0].state,"complete");
   assert.equal(state.settings.has("autoprint.followup.invoice:invoice"),false);
 });
 test("stale details never mutate; changed rules, actor and expiry reject before claim",async()=>{
@@ -40,6 +42,7 @@ test("uncertain category writes hold invoice and never advance status or resend"
   reset(); const p=await previewFollowup("run",["job"],"admin");state.unknown=true;
   const result=await confirmFollowup(p.previewId,"admin",log);
   assert.equal(result.invoices[0].state,"review_required");assert.equal(state.statusCalls,0);
+  assert.equal(result.state,"review_required");
   const next=await previewFollowup("run",["job"],"admin");
   assert.equal(next.invoices[0].state,"blocked");
   assert.match(next.invoices[0].message,/manual verification/);
@@ -77,6 +80,13 @@ test("category-only corrections and existing category no-ops",async()=>{
 test("hash canonicalizes keys without losing line content",()=>{
   assert.equal(followupHash({a:1,b:2}),followupHash({b:2,a:1}));
   assert.notEqual(followupHash({a:[1,2]}),followupHash({a:[2,1]}));
+});
+test("finished processing is not mislabeled as successful correction",()=>{
+  for(const state of ["blocked","review_required","applying"]){
+    assert.equal(followupDisplayState("complete",[{state}]),"review_required");
+  }
+  assert.equal(followupDisplayState("complete",[{state:"updated"},{state:"status_queued"}]),"status_queued");
+  assert.equal(followupDisplayState("complete",[{state:"updated"},{state:"noop"}]),"complete");
 });
 test("all correction endpoints require admin; invalid or duplicate selections never reach service",async()=>{
   let calls=0;

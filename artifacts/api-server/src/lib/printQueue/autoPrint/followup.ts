@@ -14,7 +14,7 @@ import { destinationMappingForClassification } from "../../purchasing/decoration
 import { businessDaysUntilDue } from "../../purchasing/businessDays";
 import { liveCategories, previewReview, commitReview } from "../../chipply/categoryReview";
 import { startPqStatusJob, getPqStatusJob } from "../statusJobs";
-import { followupEligibility, followupHash } from "./followupPolicy";
+import { followupEligibility, followupHash, followupDisplayState } from "./followupPolicy";
 
 const PREFIX = "autoprint.followup.preview:";
 const lockKey = (id: string) => `autoprint.followup.invoice:${id}`;
@@ -28,7 +28,7 @@ type Preview = Omit<AutoPrintFollowupPreview, "invoices"> & {
 };
 const message = (e: unknown) => e instanceof Error ? e.message : String(e);
 const dto = (p: Preview): AutoPrintFollowupPreview => ({
-  previewId: p.previewId, state: p.state, expiresAt: p.expiresAt, actor: p.actor,
+  previewId: p.previewId, state: followupDisplayState(p.state, p.invoices), expiresAt: p.expiresAt, actor: p.actor,
   invoices: p.invoices.map(({ orderId, fingerprint, expectedStatusId, targetStatusId, reviews, ...row }) => row),
 });
 async function save(p: Preview) {
@@ -151,8 +151,9 @@ export async function confirmFollowup(id: string, actor: string, log: Logger) {
       entry.state = "applying"; await save(p);
       for (const reviewId of entry.reviews ?? []) {
         attempted = true;
-        const result = await commitReview(actor, reviewId, log);
-        if (result.results.some(r => r.outcome !== "updated" && r.outcome !== "skipped")) throw new Error("Category changes were not fully confirmed. Review the invoice before any further action.");
+        const result = await commitReview(actor, reviewId, log, { postCheckMissing: true });
+        const unconfirmed = result.results.filter(r => r.outcome !== "updated" && r.outcome !== "skipped");
+        if (unconfirmed.length) throw new Error(`Status change withheld: ${unconfirmed.map(r => `line ${r.lineItemId}: ${r.message}`).join("; ")}`);
       }
       if (entry.expectedStatusId !== entry.targetStatusId) {
         const live = await fetchLiveOrderStatus("invoice", entry.orderId);

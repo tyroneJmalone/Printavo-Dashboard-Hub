@@ -30,7 +30,7 @@ export async function assignAcceptedMerchCategories(job: PqPrintJob, log: Logger
         (l.currentCategoryId !== null && l.currentCategoryId !== matching[0].id))) {
         throw new Error("Status or category changed since printing; review required");
       }
-      const result = await deps.commitReview(actor, preview.previewId, log);
+      const result = await deps.commitReview(actor, preview.previewId, log, { postCheckMissing: true });
       if (result.results.some(r => !["updated", "skipped"].includes(r.outcome))) {
         throw new Error("Some category assignments require manual review; accepted workorder will not be resent");
       }

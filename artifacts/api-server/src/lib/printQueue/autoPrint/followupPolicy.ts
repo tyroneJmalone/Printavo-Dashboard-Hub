@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
 
+/** Stored "complete" means the worker stopped, not that every invoice succeeded. */
+export function followupDisplayState(state: string, invoices: { state: string }[]) {
+  if (state !== "complete") return state;
+  if (invoices.some(i => ["review_required", "blocked"].includes(i.state))) return "review_required";
+  if (invoices.some(i => i.state === "status_queued")) return "status_queued";
+  return invoices.length && invoices.every(i => ["updated", "noop"].includes(i.state)) ? "complete" : "review_required";
+}
+
 /** Canonical fingerprints ignore object-key order, never array membership/order. */
 export function followupHash(value: unknown): string {
   const canonical = (v: any): any => Array.isArray(v) ? v.map(canonical) :

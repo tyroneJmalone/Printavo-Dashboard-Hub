@@ -27,6 +27,7 @@ const STATE_STYLES: Record<string, string> = {
 };
 
 const STATE_LABELS: Record<string, string> = {
+  complete: "all changes confirmed",
   noop: "no change",
   status_queued: "status queued",
   review_required: "review required",
@@ -145,13 +146,13 @@ function FollowupBody({ runId }: { runId: string }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-slate-400">Corrects Printavo status and line categories for accepted, printed MERCH invoices using the current saved routing rules. Nothing is printed. Existing line categories are preserved.</p>
+      <p className="text-slate-400">Corrects Printavo status and line categories for accepted, printed MERCH invoices using the current saved routing rules. Nothing is printed. Existing line categories are preserved. Unconfirmed category assignments get a live post-check and at most one retry if still blank and unchanged. Avoid editing these invoices in Printavo during correction.</p>
 
       {error && <div role="alert" className="flex gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-2 text-red-200" data-testid="text-followup-error"><AlertTriangle size={14} className="mt-0.5 shrink-0" />{error}</div>}
 
       {result && (
-        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5" data-testid="panel-followup-result">
-          <div className="flex items-center gap-2 text-emerald-300"><ShieldCheck size={14} /> Correction submitted <StateBadge state={result.state} /></div>
+        <div className="rounded-md border border-slate-600 bg-slate-800/30 p-2.5" data-testid="panel-followup-result">
+          <div className="flex items-center gap-2 text-slate-200">{result.state === "complete" ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />} Correction results <StateBadge state={result.state} /></div>
           <ul className="mt-2 space-y-1.5">{result.invoices.map((i) => <InvoiceRow key={i.jobId} inv={i} />)}</ul>
         </div>
       )}

@@ -4,6 +4,7 @@ import { accountReferencePageQuery } from "@workspace/printavo";
 import { getPrintavoClient } from "../printavoGateway";
 import type { Logger } from "pino";
 import { newDetailAgg, refreshOrderDetail } from "../sync/detail";
+import { postCheckCategory } from "./categoryPostCheck";
 
 export const SELECTION_CAP = 100;
 export type Category = { id: string; name: string };
@@ -50,6 +51,10 @@ type Live = { id: string; position: number; category: Category | null; lineItemG
 async function liveLine(id: string): Promise<Live> {
   const data = await getPrintavoClient().query<{ lineItem: Live | null }>(`query { lineItem(id:${JSON.stringify(id)}) { id position category {id name} lineItemGroup { order { __typename ... on Invoice { id nickname status {id name} } } } } }`);
   if (!data.lineItem || !Object.hasOwn(data.lineItem, "category")) throw new Error("Current line item could not be read safely");
+  if (data.lineItem.category !== null &&
+      (typeof data.lineItem.category?.id !== "string" || !data.lineItem.category.id.trim())) {
+    throw new Error("Current category is incomplete; it must not be treated as unassigned");
+  }
   return data.lineItem;
 }
 export function validSelection(live: Live, selection: Selection) {
@@ -92,7 +97,7 @@ export function staleLine(live: Live, line: ReviewLine, snapshot: Snapshot, cate
   if (!snapshot.overwrite && live.category) return "Existing category preserved.";
   return null;
 }
-export async function commitReview(actor: string, previewId: string, logger?: Logger) {
+export async function commitReview(actor: string, previewId: string, logger?: Logger, options?: { postCheckMissing?: boolean }) {
   const claimed = await pool.query("UPDATE chipply_category_reviews SET state='committing' WHERE id=$1 AND actor=$2 AND state='preview' AND expires_at>now() RETURNING snapshot", [previewId, actor]);
   if (!claimed.rowCount) throw new Error("Preview expired, already committed, or belongs to another user");
   const snapshot = claimed.rows[0].snapshot as Snapshot;
@@ -103,6 +108,7 @@ export async function commitReview(actor: string, previewId: string, logger?: Lo
       const connection = await pool.connect();
       let locked = false;
       let attempted = false;
+      let original: Live | undefined;
       try {
         locked = (await connection.query("SELECT pg_try_advisory_lock(hashtextextended($1,719204)) AS acquired", [line.lineItemId])).rows[0].acquired;
         if (!locked) throw new Error("Another update is in progress");
@@ -112,6 +118,7 @@ export async function commitReview(actor: string, previewId: string, logger?: Lo
         const live = await liveLine(line.lineItemId);
         const stale = staleLine(live, line, snapshot, categories);
         if (stale) throw new Error(stale);
+        original = live;
         const document = categoryMutation(line.lineItemId, live.position, line.recommendedCategoryId!);
         // Durable claim commits BEFORE the sole upstream attempt; crashes remain held.
         await connection.query("INSERT INTO chipply_category_claims(line_item_id,review_id,state) VALUES($1,$2,'in_flight') ON CONFLICT(line_item_id) DO UPDATE SET review_id=$2,state='in_flight',updated_at=now()", [line.lineItemId, previewId]);
@@ -136,6 +143,46 @@ export async function commitReview(actor: string, previewId: string, logger?: Lo
         }
         if (result.outcome !== "updated") result = { ...result, outcome: attempted ? "unknown" : "conflict", message: attempted ? "Outcome unconfirmed; held for manual verification in Printavo. Do not resend." : (err as Error).message };
         if (attempted && result.outcome === "unknown") await connection.query("UPDATE chipply_category_claims SET state='unknown',updated_at=now() WHERE line_item_id=$1", [line.lineItemId]).catch(() => {});
+        if (locked && attempted && result.outcome === "unknown" && original &&
+            options?.postCheckMissing && !snapshot.overwrite && line.currentCategoryId === null) {
+          // Only recover this invocation's own uncertain write, never a prior hold.
+          const before = original;
+          const recovered = await postCheckCategory({
+            read: () => liveLine(line.lineItemId),
+            categoryId: live => live.category?.id ?? null,
+            targetId: line.recommendedCategoryId!,
+            validate: live => {
+              if (!validSelection(live, line)) return "Invoice recognition or line membership changed.";
+              if (live.position !== before.position || live.lineItemGroup.order.nickname !== before.lineItemGroup.order.nickname)
+                return "Line position or invoice nickname changed; retry withheld.";
+              const status = live.lineItemGroup.order.status;
+              return status.id !== line.statusId || status.name !== line.statusName ? "Invoice status changed; retry withheld." : null;
+            },
+            claimRetry: async () => {
+              const categories = await liveCategories();
+              if (!categories.some(c => c.id === line.recommendedCategoryId && c.name === line.recommendedCategoryName)) return false;
+              return !!(await connection.query(`UPDATE chipply_category_claims SET state='in_flight',updated_at=now()
+                WHERE line_item_id=$1 AND review_id=$2 AND state='unknown' RETURNING line_item_id`, [line.lineItemId, previewId])).rowCount;
+            },
+            retry: async live => {
+              await getPrintavoClient().mutate(categoryMutation(line.lineItemId, live.position, line.recommendedCategoryId!));
+            },
+          });
+          result = { ...result, ...recovered };
+          if (recovered.outcome === "updated") {
+            try {
+              await connection.query("UPDATE chipply_category_claims SET state='updated',updated_at=now() WHERE line_item_id=$1 AND review_id=$2", [line.lineItemId, previewId]);
+              await connection.query(`INSERT INTO change_events(entity_type,entity_id,order_id,visual_id,event_type,field,old_value,new_value)
+                SELECT 'line_item',$1,$2,visual_id,'field_change','category',$3::jsonb,$4::jsonb FROM pv_orders WHERE printavo_id=$2`,
+                [line.lineItemId, line.orderId, JSON.stringify(null), JSON.stringify(line.recommendedCategoryId)]);
+              await connection.query("UPDATE pv_line_items SET category_id=$2,category_name=$3,synced_at=now() WHERE printavo_id=$1 AND order_id=$4",
+                [line.lineItemId, line.recommendedCategoryId, line.recommendedCategoryName, line.orderId]);
+            } catch {
+              result = { ...result, outcome: "unknown", message: "Live category verified but recovery audit could not be saved; manual review required." };
+            }
+          }
+          if (result.outcome !== "updated") await connection.query("UPDATE chipply_category_claims SET state='unknown',updated_at=now() WHERE line_item_id=$1 AND review_id=$2", [line.lineItemId, previewId]).catch(() => {});
+        }
       } finally {
         let destroy = false;
         try {
