@@ -197,6 +197,7 @@ export default function CustomersDirectory() {
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [searchScope, setSearchScope] = useState<"names" | "all">("names");
   // all | uncategorized | <categoryId> — supports ?filter=uncategorized deep link
   const [filter, setFilter] = useState<string>(() =>
     new URLSearchParams(window.location.search).get("filter") === "uncategorized"
@@ -218,6 +219,7 @@ export default function CustomersDirectory() {
 
   const params: ListDirectoryCustomersParams = {
     sort,
+    searchScope,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
     ...(search ? { search } : {}),
@@ -229,7 +231,7 @@ export default function CustomersDirectory() {
   };
 
   const { data, isLoading, isFetching } = useListDirectoryCustomers(params, {
-    query: { queryKey: getListDirectoryCustomersQueryKey(params) },
+    query: { queryKey: getListDirectoryCustomersQueryKey(params), staleTime: 0, refetchInterval: 30_000 },
   });
   const { data: catData } = useListCustomerCategories({
     query: { queryKey: getListCustomerCategoriesQueryKey() },
@@ -291,6 +293,7 @@ export default function CustomersDirectory() {
   const filterActive = Boolean(search) || filter !== "all";
   const canSelectAllMatching =
     filterActive && total > customers.length && total <= 500;
+  const selectionBusy = isFetching || searchInput.trim() !== search || selectingAll || assign.isPending;
 
   const selectAllMatching = async () => {
     setSelectingAll(true);
@@ -334,16 +337,33 @@ export default function CustomersDirectory() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <Input
             className="pl-8 w-72"
-            placeholder="Search name, email, or order keyword…"
+            placeholder={searchScope === "names" ? "Customer name keyword, e.g. School…" : "Name, email, contact, or order keyword…"}
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            disabled={selectingAll || assign.isPending}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              setSelected(new Set());
+            }}
           />
         </div>
+        <Select value={searchScope} disabled={selectingAll || assign.isPending} onValueChange={(v) => {
+          setSearchScope(v as "names" | "all");
+          setSelected(new Set());
+          setPage(0);
+        }}>
+          <SelectTrigger className="w-52" aria-label="Search scope"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="names">Customer names only</SelectItem>
+            <SelectItem value="all">Names, contacts & orders</SelectItem>
+          </SelectContent>
+        </Select>
         <Select
           value={filter}
+          disabled={selectingAll || assign.isPending}
           onValueChange={(v) => {
             setFilter(v);
             setPage(0);
+            setSelected(new Set());
           }}
         >
           <SelectTrigger className="w-56">
@@ -384,7 +404,7 @@ export default function CustomersDirectory() {
           <Button
             variant="outline"
             size="sm"
-            disabled={selectingAll}
+            disabled={selectionBusy}
             onClick={selectAllMatching}
           >
             {selectingAll ? (
@@ -396,13 +416,19 @@ export default function CustomersDirectory() {
         )}
       </div>
 
+      <p className="px-8 pb-3 text-xs text-slate-400">
+        Bulk niche assignment: search a keyword such as School or Soccer, select customers using the checkboxes,
+        then choose a niche and apply. Use “Uncategorized only” to avoid replacing existing niches.
+        {total > 500 && " Assign in batches of up to 500 customers."}
+      </p>
       <div className="px-8 pb-28">
+        {data === undefined && !isLoading && <p role="alert" className="text-red-400 pb-3">Unable to load customers. Please refresh and try again.</p>}
         <div className="border border-slate-800 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-900/60 text-slate-400 text-xs uppercase tracking-wider">
                 <th className="px-4 py-3 w-10">
-                  <Checkbox checked={allOnPageSelected} onCheckedChange={toggleAllOnPage} />
+                  <Checkbox aria-label="Select customers on this page" disabled={selectionBusy} checked={allOnPageSelected} onCheckedChange={toggleAllOnPage} />
                 </th>
                 <th className="px-4 py-3 text-left font-semibold">Customer</th>
                 <th className="px-4 py-3 text-left font-semibold">Contact</th>
@@ -431,6 +457,8 @@ export default function CustomersDirectory() {
                   <tr key={c.printavoId} className="hover:bg-slate-900/40">
                     <td className="px-4 py-2.5">
                       <Checkbox
+                        aria-label={`Select ${c.displayName}`}
+                        disabled={selectionBusy}
                         checked={selected.has(c.printavoId)}
                         onCheckedChange={(v) =>
                           setSelected((prev) => {
@@ -529,13 +557,13 @@ export default function CustomersDirectory() {
       </div>
 
       {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl px-5 py-3">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-wrap max-w-[95vw] items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl px-5 py-3">
           <span className="text-sm text-slate-200 font-medium tabular-nums">
             {selected.size} selected
           </span>
           <Select value={bulkCategory} onValueChange={setBulkCategory}>
             <SelectTrigger className="w-60 h-9">
-              <SelectValue placeholder="Choose category…" />
+              <SelectValue placeholder="Choose niche…" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">— Clear category —</SelectItem>
@@ -548,17 +576,18 @@ export default function CustomersDirectory() {
           </Select>
           <Button
             size="sm"
-            disabled={!bulkCategory || assign.isPending}
-            onClick={() =>
+            disabled={!bulkCategory || selectionBusy || selected.size > 500}
+            onClick={() => {
+              if (!window.confirm(`${bulkCategory === "none" ? "Clear the niche" : `Assign “${catById.get(bulkCategory)}”`} for ${selected.size} selected customers? This replaces any existing niche assignments for those customers.`)) return;
               assign.mutate({
                 data: {
                   customerIds: Array.from(selected),
                   categoryId: bulkCategory === "none" ? null : bulkCategory,
                 },
-              })
-            }
+              });
+            }}
           >
-            {assign.isPending ? <Loader2 size={14} className="animate-spin" /> : "Apply"}
+            {assign.isPending ? <Loader2 size={14} className="animate-spin" /> : "Apply niche"}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
             <X size={14} />

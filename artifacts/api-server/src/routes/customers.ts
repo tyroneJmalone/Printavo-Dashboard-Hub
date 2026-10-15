@@ -170,6 +170,10 @@ router.patch("/customers/categories/:id", requireAdmin, async (req, res) => {
 
 router.get("/customers", async (req, res) => {
   const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  if (req.query.searchScope !== undefined && !["all", "names"].includes(String(req.query.searchScope))) {
+    res.status(400).json({ error: "searchScope must be all or names" });
+    return;
+  }
   const categoryId =
     typeof req.query.categoryId === "string" ? req.query.categoryId : "";
   if (categoryId && !UUID_RE.test(categoryId)) {
@@ -189,7 +193,9 @@ router.get("/customers", async (req, res) => {
     // Match the company/primary contact, any linked contact, or keywords in
     // order nicknames. A secondary contact search still returns the parent
     // customer account (for example, Pat Traynor → MYA Baseball).
-    where.push(
+    where.push(req.query.searchScope === "names"
+      ? `${DISPLAY_NAME_SQL} ILIKE $${params.length}`
+      :
       `(${DISPLAY_NAME_SQL} ILIKE $${params.length}
         OR c.data->'primaryContact'->>'email' ILIKE $${params.length}
         OR EXISTS (SELECT 1 FROM pv_contacts ct

@@ -872,11 +872,14 @@ paths:
       operationId: listDirectoryCustomers
       tags: [clients]
       summary: Customer directory with lifetime stats and category
-      description: search matches customer name, email, or keywords in their order nicknames (e.g. "soccer").
+      description: Search matches names only when searchScope is names; otherwise also matches contacts, emails, and order nicknames.
       parameters:
         - name: search
           in: query
           schema: { type: string }
+        - name: searchScope
+          in: query
+          schema: { type: string, enum: [all, names] }
         - name: categoryId
           in: query
           schema: { type: string }

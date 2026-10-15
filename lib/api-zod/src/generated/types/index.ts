@@ -603,6 +603,7 @@ export * from './listCorrespondenceThreadsParams';
 export * from './listCreditsParams';
 export * from './listCustomersParams';
 export * from './listDirectoryCustomersParams';
+export * from './listDirectoryCustomersSearchScope';
 export * from './listDirectoryCustomersSort';
 export * from './listDirectoryCustomersUncategorized';
 export * from './listDraftBacktestRunsParams';

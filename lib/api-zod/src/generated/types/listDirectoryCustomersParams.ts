@@ -5,11 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListDirectoryCustomersSearchScope } from './listDirectoryCustomersSearchScope';
 import type { ListDirectoryCustomersSort } from './listDirectoryCustomersSort';
 import type { ListDirectoryCustomersUncategorized } from './listDirectoryCustomersUncategorized';
 
 export type ListDirectoryCustomersParams = {
 search?: string;
+searchScope?: ListDirectoryCustomersSearchScope;
 categoryId?: string;
 uncategorized?: ListDirectoryCustomersUncategorized;
 sort?: ListDirectoryCustomersSort;

@@ -9948,12 +9948,21 @@ eventType?: string;
 
 export type ListDirectoryCustomersParams = {
 search?: string;
+searchScope?: ListDirectoryCustomersSearchScope;
 categoryId?: string;
 uncategorized?: ListDirectoryCustomersUncategorized;
 sort?: ListDirectoryCustomersSort;
 limit?: number;
 offset?: number;
 };
+
+export type ListDirectoryCustomersSearchScope = typeof ListDirectoryCustomersSearchScope[keyof typeof ListDirectoryCustomersSearchScope];
+
+
+export const ListDirectoryCustomersSearchScope = {
+  all: 'all',
+  names: 'names',
+} as const;
 
 export type ListDirectoryCustomersUncategorized = typeof ListDirectoryCustomersUncategorized[keyof typeof ListDirectoryCustomersUncategorized];
 

@@ -3010,11 +3010,12 @@ export const DownloadBackupExportResponse = zod.unknown()
 
 
 /**
- * search matches customer name, email, or keywords in their order nicknames (e.g. "soccer").
+ * Search matches names only when searchScope is names; otherwise also matches contacts, emails, and order nicknames.
  * @summary Customer directory with lifetime stats and category
  */
 export const ListDirectoryCustomersQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
+  "searchScope": zod.enum(['all', 'names']).optional(),
   "categoryId": zod.coerce.string().optional(),
   "uncategorized": zod.enum(['true', 'false']).optional(),
   "sort": zod.enum(['spend', 'name']).optional(),
