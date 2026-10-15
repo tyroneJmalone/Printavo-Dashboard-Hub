@@ -5,6 +5,257 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type SalesEventPrecision = typeof SalesEventPrecision[keyof typeof SalesEventPrecision];
+
+
+export const SalesEventPrecision = {
+  day: 'day',
+  month: 'month',
+} as const;
+
+export type SalesEventRecurrence = typeof SalesEventRecurrence[keyof typeof SalesEventRecurrence];
+
+
+export const SalesEventRecurrence = {
+  once: 'once',
+  annual: 'annual',
+} as const;
+
+export interface SalesEvent {
+  title: string;
+  startDate: string;
+  /** @nullable */
+  endDate: string | null;
+  precision: SalesEventPrecision;
+  recurrence: SalesEventRecurrence;
+  leadDays: number;
+  nicheIds: string[];
+  customerIds: string[];
+  owner: string;
+  notes: string;
+  merchandise: string;
+}
+
+export type SalesFollowupStatus = typeof SalesFollowupStatus[keyof typeof SalesFollowupStatus];
+
+
+export const SalesFollowupStatus = {
+  needs_contact: 'needs_contact',
+  contacted: 'contacted',
+  waiting: 'waiting',
+  opportunity: 'opportunity',
+  snoozed: 'snoozed',
+  dismissed: 'dismissed',
+  completed: 'completed',
+} as const;
+
+export type SalesFollowupSourceType = typeof SalesFollowupSourceType[keyof typeof SalesFollowupSourceType];
+
+
+export const SalesFollowupSourceType = {
+  manual: 'manual',
+  event: 'event',
+  anniversary: 'anniversary',
+  custom_field: 'custom_field',
+} as const;
+
+export interface SalesFollowup {
+  customerId: string;
+  /** @nullable */
+  contactId?: string | null;
+  title: string;
+  dueDate: string;
+  status: SalesFollowupStatus;
+  owner: string;
+  notes: string;
+  sourceType: SalesFollowupSourceType;
+  /** @nullable */
+  sourceId: string | null;
+  /** @nullable */
+  occurrenceDate: string | null;
+  invoiceIds: string[];
+}
+
+export type SalesFieldScope = typeof SalesFieldScope[keyof typeof SalesFieldScope];
+
+
+export const SalesFieldScope = {
+  customer: 'customer',
+  contact: 'contact',
+} as const;
+
+export type SalesFieldType = typeof SalesFieldType[keyof typeof SalesFieldType];
+
+
+export const SalesFieldType = {
+  text: 'text',
+  number: 'number',
+  date: 'date',
+  annual_date: 'annual_date',
+  dropdown: 'dropdown',
+  boolean: 'boolean',
+} as const;
+
+export interface SalesField {
+  name: string;
+  scope: SalesFieldScope;
+  type: SalesFieldType;
+  options: string[];
+  reminderEnabled: boolean;
+  leadDays: number;
+}
+
+export interface SalesValue {
+  fieldId: string;
+  customerId: string;
+  /** @nullable */
+  contactId: string | null;
+  /** Typed value serialized as text; annual dates use MM-DD. Empty clears the value. */
+  value: string;
+}
+
+export interface SalesOverride {
+  eventId: string;
+  customerId: string;
+  occurrenceDate: string;
+  excluded: boolean;
+  /** @nullable */
+  startDate: string | null;
+  notes: string;
+}
+
+export interface SalesEventRecord {
+  id: string;
+  version: number;
+  event: SalesEvent;
+}
+
+export interface SalesFollowupRecord {
+  id: string;
+  version: number;
+  followup: SalesFollowup;
+}
+
+export interface SalesFieldRecord {
+  id: string;
+  version: number;
+  field: SalesField;
+}
+
+export interface SalesValueRecord {
+  id: string;
+  version: number;
+  value: SalesValue;
+}
+
+export interface SalesOverrideRecord {
+  id: string;
+  version: number;
+  override: SalesOverride;
+}
+
+export type SalesSaveRequestKind = typeof SalesSaveRequestKind[keyof typeof SalesSaveRequestKind];
+
+
+export const SalesSaveRequestKind = {
+  event: 'event',
+  followup: 'followup',
+  field: 'field',
+  value: 'value',
+  override: 'override',
+} as const;
+
+export interface SalesSaveRequest {
+  kind: SalesSaveRequestKind;
+  id?: string;
+  version?: number;
+  event?: SalesEvent;
+  followup?: SalesFollowup;
+  field?: SalesField;
+  value?: SalesValue;
+  override?: SalesOverride;
+}
+
+export interface SalesArchiveRequest {
+  id: string;
+  version: number;
+}
+
+export type SalesOccurrenceSourceType = typeof SalesOccurrenceSourceType[keyof typeof SalesOccurrenceSourceType];
+
+
+export const SalesOccurrenceSourceType = {
+  event: 'event',
+  custom_field: 'custom_field',
+} as const;
+
+export type SalesOccurrencePrecision = typeof SalesOccurrencePrecision[keyof typeof SalesOccurrencePrecision];
+
+
+export const SalesOccurrencePrecision = {
+  day: 'day',
+  month: 'month',
+} as const;
+
+export interface SalesOccurrence {
+  key: string;
+  sourceType: SalesOccurrenceSourceType;
+  sourceId: string;
+  title: string;
+  date: string;
+  /** @nullable */
+  endDate: string | null;
+  outreachDate: string;
+  precision: SalesOccurrencePrecision;
+  /** @nullable */
+  customerId: string | null;
+  inherited: boolean;
+  excluded: boolean;
+  originalDate: string;
+  owner: string;
+}
+
+export interface SalesPerson {
+  id: string;
+  name: string;
+}
+
+export interface SalesWorkspace {
+  events: SalesEventRecord[];
+  followups: SalesFollowupRecord[];
+  fields: SalesFieldRecord[];
+  values: SalesValueRecord[];
+  overrides: SalesOverrideRecord[];
+  occurrences: SalesOccurrence[];
+  customers: SalesPerson[];
+  contacts: SalesPerson[];
+  owners: string[];
+}
+
+export interface SalesInvoice {
+  id: string;
+  number: number;
+  /** @nullable */
+  nickname: string | null;
+  date: string;
+  total: number;
+  /** @nullable */
+  owner: string | null;
+  quantity: number;
+}
+
+export interface SalesProspect {
+  customerId: string;
+  name: string;
+  /** @nullable */
+  niche: string | null;
+  invoices: SalesInvoice[];
+  /** @nullable */
+  latestOrderDate: string | null;
+  /** Current non-cancelled quotes; not proof of a related reorder. */
+  activeQuoteCount: number;
+}
+
 export interface AutoPrintFollowupSelection {
   /**
      * @minItems 1
@@ -9616,6 +9867,45 @@ export type ActivityEndParamParameter = string;
  * Current invoice/quote owner email
  */
 export type ActivityOwnerParamParameter = string;
+
+export type GetSalesWorkspaceParams = {
+from: string;
+to: string;
+customerId?: string;
+owner?: string;
+nicheId?: string;
+};
+
+export type GetSalesHistoryParams = {
+from: string;
+to: string;
+customerId?: string;
+owner?: string;
+nicheId?: string;
+dateBasis?: GetSalesHistoryDateBasis;
+offset?: number;
+};
+
+export type GetSalesHistoryDateBasis = typeof GetSalesHistoryDateBasis[keyof typeof GetSalesHistoryDateBasis];
+
+
+export const GetSalesHistoryDateBasis = {
+  invoice: 'invoice',
+  customerDue: 'customerDue',
+} as const;
+
+export type GetSalesHistory200 = {
+  customers: SalesProspect[];
+  hasMore: boolean;
+};
+
+export type SaveSalesRecord200 = {
+  id: string;
+};
+
+export type ArchiveSalesRecord200 = {
+  ok: boolean;
+};
 
 export type SearchOrderActivityLogParams = {
 /**

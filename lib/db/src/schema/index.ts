@@ -1,3 +1,5 @@
+export * from "./salesRecords";
+export * from "./salesRecordActivity";
 export * from "./externalVendorOrders";
 export * from "./pqPrintAttempts";
 export * from "./chipplyData";

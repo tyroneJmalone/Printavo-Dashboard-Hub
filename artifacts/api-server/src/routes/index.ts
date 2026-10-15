@@ -26,6 +26,7 @@ import printQueueRouter from "./printQueue";
 import sorterRouter from "./sorter";
 import shippingRouter from "./shipping";
 import customersRouter from "./customers";
+import salesRouter from "./sales";
 import customerBrandingRouter from "./customerBranding";
 import pipelineRouter from "./pipeline";
 import merchPipelineRouter from "./merchPipeline";
@@ -109,6 +110,7 @@ router.use(pricingRouter);
 router.use(printQueueRouter);
 router.use(sorterRouter);
 router.use(shippingRouter);
+router.use(salesRouter); // same customers module gate; before customer-id routes
 router.use(customersRouter); // category manage routes are admin-only inside
 router.use(customerBrandingRouter); // branding/artwork writes are admin-only inside
 router.use(pipelineRouter);

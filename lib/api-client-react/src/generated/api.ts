@@ -42,6 +42,7 @@ import type {
   AiQuoteDraftListResponse,
   AppendPoLineItemsRequest,
   ApplyStatusSuggestionError,
+  ArchiveSalesRecord200,
   ArtworkBookmark,
   ArtworkBookmarkRequest,
   ArtworkBookmarkUpdate,
@@ -228,6 +229,9 @@ import type {
   GetProductionWorkloadParams,
   GetPurchasingApprovedMappingParams,
   GetRecentActivityParams,
+  GetSalesHistory200,
+  GetSalesHistoryParams,
+  GetSalesWorkspaceParams,
   GetStatusActivityOrdersParams,
   GetStatusActivityParams,
   GetStatusBreakdownParams,
@@ -442,6 +446,10 @@ import type {
   RewardsSettingsInput,
   RewardsSummary,
   RunInsightsPresetResponse,
+  SalesArchiveRequest,
+  SalesSaveRequest,
+  SalesWorkspace,
+  SaveSalesRecord200,
   SearchAiQuoteCustomersParams,
   SearchAutoPrintInvoiceParams,
   SearchCustomerArtworkParams,
@@ -543,6 +551,290 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetSalesWorkspaceUrl = (params: GetSalesWorkspaceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers/sales/workspace?${stringifiedParams}` : `/api/customers/sales/workspace`
+}
+
+export const getSalesWorkspace = async (params: GetSalesWorkspaceParams, options?: RequestInit): Promise<SalesWorkspace> => {
+
+  return customFetch<SalesWorkspace>(getGetSalesWorkspaceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSalesWorkspaceQueryKey = (params?: GetSalesWorkspaceParams,) => {
+    return [
+    `/api/customers/sales/workspace`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSalesWorkspaceQueryOptions = <TData = Awaited<ReturnType<typeof getSalesWorkspace>>, TError = ErrorType<unknown>>(params: GetSalesWorkspaceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSalesWorkspace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSalesWorkspaceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSalesWorkspace>>> = ({ signal }) => getSalesWorkspace(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSalesWorkspace>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSalesWorkspaceQueryResult = NonNullable<Awaited<ReturnType<typeof getSalesWorkspace>>>
+export type GetSalesWorkspaceQueryError = ErrorType<unknown>
+
+
+
+export function useGetSalesWorkspace<TData = Awaited<ReturnType<typeof getSalesWorkspace>>, TError = ErrorType<unknown>>(
+ params: GetSalesWorkspaceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSalesWorkspace>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSalesWorkspaceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSalesHistoryUrl = (params: GetSalesHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/customers/sales/history?${stringifiedParams}` : `/api/customers/sales/history`
+}
+
+export const getSalesHistory = async (params: GetSalesHistoryParams, options?: RequestInit): Promise<GetSalesHistory200> => {
+
+  return customFetch<GetSalesHistory200>(getGetSalesHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSalesHistoryQueryKey = (params?: GetSalesHistoryParams,) => {
+    return [
+    `/api/customers/sales/history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSalesHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getSalesHistory>>, TError = ErrorType<unknown>>(params: GetSalesHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSalesHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSalesHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSalesHistory>>> = ({ signal }) => getSalesHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSalesHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSalesHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getSalesHistory>>>
+export type GetSalesHistoryQueryError = ErrorType<unknown>
+
+
+
+export function useGetSalesHistory<TData = Awaited<ReturnType<typeof getSalesHistory>>, TError = ErrorType<unknown>>(
+ params: GetSalesHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSalesHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSalesHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveSalesRecordUrl = () => {
+
+
+
+
+  return `/api/customers/sales/save`
+}
+
+export const saveSalesRecord = async (salesSaveRequest: SalesSaveRequest, options?: RequestInit): Promise<SaveSalesRecord200> => {
+
+  return customFetch<SaveSalesRecord200>(getSaveSalesRecordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(salesSaveRequest)
+  }
+);}
+
+
+
+
+export const getSaveSalesRecordMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSalesRecord>>, TError,{data: BodyType<SalesSaveRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveSalesRecord>>, TError,{data: BodyType<SalesSaveRequest>}, TContext> => {
+
+const mutationKey = ['saveSalesRecord'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveSalesRecord>>, {data: BodyType<SalesSaveRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveSalesRecord(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveSalesRecordMutationResult = NonNullable<Awaited<ReturnType<typeof saveSalesRecord>>>
+    export type SaveSalesRecordMutationBody = BodyType<SalesSaveRequest>
+    export type SaveSalesRecordMutationError = ErrorType<void>
+
+    export const useSaveSalesRecord = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveSalesRecord>>, TError,{data: BodyType<SalesSaveRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveSalesRecord>>,
+        TError,
+        {data: BodyType<SalesSaveRequest>},
+        TContext
+      > => {
+      return useMutation(getSaveSalesRecordMutationOptions(options));
+    }
+
+export const getArchiveSalesRecordUrl = () => {
+
+
+
+
+  return `/api/customers/sales/archive`
+}
+
+export const archiveSalesRecord = async (salesArchiveRequest: SalesArchiveRequest, options?: RequestInit): Promise<ArchiveSalesRecord200> => {
+
+  return customFetch<ArchiveSalesRecord200>(getArchiveSalesRecordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(salesArchiveRequest)
+  }
+);}
+
+
+
+
+export const getArchiveSalesRecordMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveSalesRecord>>, TError,{data: BodyType<SalesArchiveRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof archiveSalesRecord>>, TError,{data: BodyType<SalesArchiveRequest>}, TContext> => {
+
+const mutationKey = ['archiveSalesRecord'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof archiveSalesRecord>>, {data: BodyType<SalesArchiveRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  archiveSalesRecord(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ArchiveSalesRecordMutationResult = NonNullable<Awaited<ReturnType<typeof archiveSalesRecord>>>
+    export type ArchiveSalesRecordMutationBody = BodyType<SalesArchiveRequest>
+    export type ArchiveSalesRecordMutationError = ErrorType<unknown>
+
+    export const useArchiveSalesRecord = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveSalesRecord>>, TError,{data: BodyType<SalesArchiveRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof archiveSalesRecord>>,
+        TError,
+        {data: BodyType<SalesArchiveRequest>},
+        TContext
+      > => {
+      return useMutation(getArchiveSalesRecordMutationOptions(options));
+    }
 
 export const getGetAutoPrintFollowupUrl = (runId: string,) => {
 

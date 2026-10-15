@@ -8,6 +8,210 @@
 import * as zod from 'zod';
 
 
+export const GetSalesWorkspaceQueryParams = zod.object({
+  "from": zod.coerce.string(),
+  "to": zod.coerce.string(),
+  "customerId": zod.coerce.string().optional(),
+  "owner": zod.coerce.string().optional(),
+  "nicheId": zod.coerce.string().optional()
+})
+
+export const GetSalesWorkspaceResponse = zod.object({
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "version": zod.number(),
+  "event": zod.object({
+  "title": zod.string(),
+  "startDate": zod.string(),
+  "endDate": zod.string().nullable(),
+  "precision": zod.enum(['day', 'month']),
+  "recurrence": zod.enum(['once', 'annual']),
+  "leadDays": zod.number(),
+  "nicheIds": zod.array(zod.string()),
+  "customerIds": zod.array(zod.string()),
+  "owner": zod.string(),
+  "notes": zod.string(),
+  "merchandise": zod.string()
+})
+})),
+  "followups": zod.array(zod.object({
+  "id": zod.string(),
+  "version": zod.number(),
+  "followup": zod.object({
+  "customerId": zod.string(),
+  "contactId": zod.string().nullish(),
+  "title": zod.string(),
+  "dueDate": zod.string(),
+  "status": zod.enum(['needs_contact', 'contacted', 'waiting', 'opportunity', 'snoozed', 'dismissed', 'completed']),
+  "owner": zod.string(),
+  "notes": zod.string(),
+  "sourceType": zod.enum(['manual', 'event', 'anniversary', 'custom_field']),
+  "sourceId": zod.string().nullable(),
+  "occurrenceDate": zod.string().nullable(),
+  "invoiceIds": zod.array(zod.string())
+})
+})),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "version": zod.number(),
+  "field": zod.object({
+  "name": zod.string(),
+  "scope": zod.enum(['customer', 'contact']),
+  "type": zod.enum(['text', 'number', 'date', 'annual_date', 'dropdown', 'boolean']),
+  "options": zod.array(zod.string()),
+  "reminderEnabled": zod.boolean(),
+  "leadDays": zod.number()
+})
+})),
+  "values": zod.array(zod.object({
+  "id": zod.string(),
+  "version": zod.number(),
+  "value": zod.object({
+  "fieldId": zod.string(),
+  "customerId": zod.string(),
+  "contactId": zod.string().nullable(),
+  "value": zod.string().describe('Typed value serialized as text; annual dates use MM-DD. Empty clears the value.')
+})
+})),
+  "overrides": zod.array(zod.object({
+  "id": zod.string(),
+  "version": zod.number(),
+  "override": zod.object({
+  "eventId": zod.string(),
+  "customerId": zod.string(),
+  "occurrenceDate": zod.string(),
+  "excluded": zod.boolean(),
+  "startDate": zod.string().nullable(),
+  "notes": zod.string()
+})
+})),
+  "occurrences": zod.array(zod.object({
+  "key": zod.string(),
+  "sourceType": zod.enum(['event', 'custom_field']),
+  "sourceId": zod.string(),
+  "title": zod.string(),
+  "date": zod.string(),
+  "endDate": zod.string().nullable(),
+  "outreachDate": zod.string(),
+  "precision": zod.enum(['day', 'month']),
+  "customerId": zod.string().nullable(),
+  "inherited": zod.boolean(),
+  "excluded": zod.boolean(),
+  "originalDate": zod.string(),
+  "owner": zod.string()
+})),
+  "customers": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})),
+  "contacts": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})),
+  "owners": zod.array(zod.string())
+})
+
+
+export const GetSalesHistoryQueryParams = zod.object({
+  "from": zod.coerce.string(),
+  "to": zod.coerce.string(),
+  "customerId": zod.coerce.string().optional(),
+  "owner": zod.coerce.string().optional(),
+  "nicheId": zod.coerce.string().optional(),
+  "dateBasis": zod.enum(['invoice', 'customerDue']).optional(),
+  "offset": zod.coerce.number().optional()
+})
+
+export const GetSalesHistoryResponse = zod.object({
+  "customers": zod.array(zod.object({
+  "customerId": zod.string(),
+  "name": zod.string(),
+  "niche": zod.string().nullable(),
+  "invoices": zod.array(zod.object({
+  "id": zod.string(),
+  "number": zod.number(),
+  "nickname": zod.string().nullable(),
+  "date": zod.string(),
+  "total": zod.number(),
+  "owner": zod.string().nullable(),
+  "quantity": zod.number()
+})),
+  "latestOrderDate": zod.string().nullable(),
+  "activeQuoteCount": zod.number().describe('Current non-cancelled quotes; not proof of a related reorder.')
+})),
+  "hasMore": zod.boolean()
+})
+
+
+export const SaveSalesRecordBody = zod.object({
+  "kind": zod.enum(['event', 'followup', 'field', 'value', 'override']),
+  "id": zod.string().optional(),
+  "version": zod.number().optional(),
+  "event": zod.object({
+  "title": zod.string(),
+  "startDate": zod.string(),
+  "endDate": zod.string().nullable(),
+  "precision": zod.enum(['day', 'month']),
+  "recurrence": zod.enum(['once', 'annual']),
+  "leadDays": zod.number(),
+  "nicheIds": zod.array(zod.string()),
+  "customerIds": zod.array(zod.string()),
+  "owner": zod.string(),
+  "notes": zod.string(),
+  "merchandise": zod.string()
+}).optional(),
+  "followup": zod.object({
+  "customerId": zod.string(),
+  "contactId": zod.string().nullish(),
+  "title": zod.string(),
+  "dueDate": zod.string(),
+  "status": zod.enum(['needs_contact', 'contacted', 'waiting', 'opportunity', 'snoozed', 'dismissed', 'completed']),
+  "owner": zod.string(),
+  "notes": zod.string(),
+  "sourceType": zod.enum(['manual', 'event', 'anniversary', 'custom_field']),
+  "sourceId": zod.string().nullable(),
+  "occurrenceDate": zod.string().nullable(),
+  "invoiceIds": zod.array(zod.string())
+}).optional(),
+  "field": zod.object({
+  "name": zod.string(),
+  "scope": zod.enum(['customer', 'contact']),
+  "type": zod.enum(['text', 'number', 'date', 'annual_date', 'dropdown', 'boolean']),
+  "options": zod.array(zod.string()),
+  "reminderEnabled": zod.boolean(),
+  "leadDays": zod.number()
+}).optional(),
+  "value": zod.object({
+  "fieldId": zod.string(),
+  "customerId": zod.string(),
+  "contactId": zod.string().nullable(),
+  "value": zod.string().describe('Typed value serialized as text; annual dates use MM-DD. Empty clears the value.')
+}).optional(),
+  "override": zod.object({
+  "eventId": zod.string(),
+  "customerId": zod.string(),
+  "occurrenceDate": zod.string(),
+  "excluded": zod.boolean(),
+  "startDate": zod.string().nullable(),
+  "notes": zod.string()
+}).optional()
+})
+
+export const SaveSalesRecordResponse = zod.object({
+  "id": zod.string()
+})
+
+
+export const ArchiveSalesRecordBody = zod.object({
+  "id": zod.string(),
+  "version": zod.number()
+})
+
+export const ArchiveSalesRecordResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
 export const GetAutoPrintFollowupParams = zod.object({
   "runId": zod.coerce.string()
 })

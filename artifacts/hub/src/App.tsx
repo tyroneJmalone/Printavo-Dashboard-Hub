@@ -34,6 +34,7 @@ import { legacySettingsHref } from "./pages/settingsNavigation";
 import BackupDashboard from "./pages/BackupDashboard";
 import CustomersDirectory from "./pages/CustomersDirectory";
 import CustomerProfile from "./pages/CustomerProfile";
+import SalesFollowups from "./pages/SalesFollowups";
 import BrandSheet from "./pages/BrandSheet";
 import NicheReport from "./pages/NicheReport";
 import AskAI from "./pages/AskAI";
@@ -248,6 +249,7 @@ function HubRoutes() {
       <Route path="/backups" component={BackupDashboard} />
       {/* Keep /customers/report ABOVE the /customers/:id param route */}
       <Route path="/customers/report" component={NicheReport} />
+      <Route path="/customers/follow-ups" component={SalesFollowups} />
       <Route path="/customers/:id/brand-sheet" component={BrandSheet} />
       <Route path="/customers/:id" component={CustomerProfile} />
       <Route path="/customers" component={CustomersDirectory} />

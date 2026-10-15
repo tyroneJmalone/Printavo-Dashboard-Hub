@@ -49,6 +49,7 @@ import {
 
 import { CustomerBrandingCard } from "@/components/customers/CustomerBrandingCard";
 import { CustomerArtworkCard } from "@/components/customers/CustomerArtworkCard";
+import { CustomerSalesPanel } from "@/components/sales/CustomerSalesPanel";
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -438,6 +439,8 @@ export default function CustomerProfile() {
             sub={s.firstOrderAt ? `first ${s.firstOrderAt}` : undefined}
           />
         </div>
+
+        <CustomerSalesPanel customerId={data.printavoId} customerName={data.displayName} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <CustomerBrandingCard customerId={id} />

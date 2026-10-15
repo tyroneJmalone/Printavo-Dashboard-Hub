@@ -43,6 +43,87 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /customers/sales/workspace:
+    get:
+      operationId: getSalesWorkspace
+      tags: [clients]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string } }
+        - { name: to, in: query, required: true, schema: { type: string } }
+        - { name: customerId, in: query, schema: { type: string } }
+        - { name: owner, in: query, schema: { type: string } }
+        - { name: nicheId, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Shared sales events and follow-ups
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SalesWorkspace" }
+  /customers/sales/history:
+    get:
+      operationId: getSalesHistory
+      tags: [clients]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string } }
+        - { name: to, in: query, required: true, schema: { type: string } }
+        - { name: customerId, in: query, schema: { type: string } }
+        - { name: owner, in: query, schema: { type: string } }
+        - { name: nicheId, in: query, schema: { type: string } }
+        - { name: dateBasis, in: query, schema: { type: string, enum: [invoice, customerDue] } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Customer-grouped historical invoices, 50 customers per page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [customers, hasMore]
+                properties:
+                  customers:
+                    type: array
+                    items: { $ref: "#/components/schemas/SalesProspect" }
+                  hasMore: { type: boolean }
+  /customers/sales/save:
+    post:
+      operationId: saveSalesRecord
+      tags: [clients]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SalesSaveRequest" }
+      responses:
+        "200":
+          description: Saved; edits require the current version
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { type: string }
+        "409":
+          description: Another user changed this record; reload before editing
+  /customers/sales/archive:
+    post:
+      operationId: archiveSalesRecord
+      tags: [clients]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SalesArchiveRequest" }
+      responses:
+        "200":
+          description: Archived without deleting history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
   /print-queue/auto-print/runs/{runId}/followup:
     get:
       operationId: getAutoPrintFollowup
@@ -8731,6 +8812,174 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    SalesEvent:
+      type: object
+      required: [title, startDate, endDate, precision, recurrence, leadDays, nicheIds, customerIds, owner, notes, merchandise]
+      properties:
+        title: { type: string }
+        startDate: { type: string }
+        endDate: { type: ["string", "null"] }
+        precision: { type: string, enum: [day, month] }
+        recurrence: { type: string, enum: [once, annual] }
+        leadDays: { type: integer }
+        nicheIds: { type: array, items: { type: string } }
+        customerIds: { type: array, items: { type: string } }
+        owner: { type: string }
+        notes: { type: string }
+        merchandise: { type: string }
+    SalesFollowup:
+      type: object
+      required: [customerId, title, dueDate, status, owner, notes, sourceType, sourceId, occurrenceDate, invoiceIds]
+      properties:
+        customerId: { type: string }
+        contactId: { type: ["string", "null"] }
+        title: { type: string }
+        dueDate: { type: string }
+        status: { type: string, enum: [needs_contact, contacted, waiting, opportunity, snoozed, dismissed, completed] }
+        owner: { type: string }
+        notes: { type: string }
+        sourceType: { type: string, enum: [manual, event, anniversary, custom_field] }
+        sourceId: { type: ["string", "null"] }
+        occurrenceDate: { type: ["string", "null"] }
+        invoiceIds: { type: array, items: { type: string } }
+    SalesField:
+      type: object
+      required: [name, scope, type, options, reminderEnabled, leadDays]
+      properties:
+        name: { type: string }
+        scope: { type: string, enum: [customer, contact] }
+        type: { type: string, enum: [text, number, date, annual_date, dropdown, boolean] }
+        options: { type: array, items: { type: string } }
+        reminderEnabled: { type: boolean }
+        leadDays: { type: integer }
+    SalesValue:
+      type: object
+      required: [fieldId, customerId, contactId, value]
+      properties:
+        fieldId: { type: string }
+        customerId: { type: string }
+        contactId: { type: ["string", "null"] }
+        value: { type: string, description: "Typed value serialized as text; annual dates use MM-DD. Empty clears the value." }
+    SalesOverride:
+      type: object
+      required: [eventId, customerId, occurrenceDate, excluded, startDate, notes]
+      properties:
+        eventId: { type: string }
+        customerId: { type: string }
+        occurrenceDate: { type: string }
+        excluded: { type: boolean }
+        startDate: { type: ["string", "null"] }
+        notes: { type: string }
+    SalesEventRecord:
+      type: object
+      required: [id, version, event]
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        event: { $ref: "#/components/schemas/SalesEvent" }
+    SalesFollowupRecord:
+      type: object
+      required: [id, version, followup]
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        followup: { $ref: "#/components/schemas/SalesFollowup" }
+    SalesFieldRecord:
+      type: object
+      required: [id, version, field]
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        field: { $ref: "#/components/schemas/SalesField" }
+    SalesValueRecord:
+      type: object
+      required: [id, version, value]
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        value: { $ref: "#/components/schemas/SalesValue" }
+    SalesOverrideRecord:
+      type: object
+      required: [id, version, override]
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        override: { $ref: "#/components/schemas/SalesOverride" }
+    SalesSaveRequest:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [event, followup, field, value, override] }
+        id: { type: string }
+        version: { type: integer }
+        event: { $ref: "#/components/schemas/SalesEvent" }
+        followup: { $ref: "#/components/schemas/SalesFollowup" }
+        field: { $ref: "#/components/schemas/SalesField" }
+        value: { $ref: "#/components/schemas/SalesValue" }
+        override: { $ref: "#/components/schemas/SalesOverride" }
+    SalesArchiveRequest:
+      type: object
+      required: [id, version]
+      properties:
+        id: { type: string }
+        version: { type: integer }
+    SalesOccurrence:
+      type: object
+      required: [key, sourceType, sourceId, title, date, endDate, outreachDate, precision, customerId, inherited, excluded, originalDate, owner]
+      properties:
+        key: { type: string }
+        sourceType: { type: string, enum: [event, custom_field] }
+        sourceId: { type: string }
+        title: { type: string }
+        date: { type: string }
+        endDate: { type: ["string", "null"] }
+        outreachDate: { type: string }
+        precision: { type: string, enum: [day, month] }
+        customerId: { type: ["string", "null"] }
+        inherited: { type: boolean }
+        excluded: { type: boolean }
+        originalDate: { type: string }
+        owner: { type: string }
+    SalesPerson:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    SalesWorkspace:
+      type: object
+      required: [events, followups, fields, values, overrides, occurrences, customers, contacts, owners]
+      properties:
+        events: { type: array, items: { $ref: "#/components/schemas/SalesEventRecord" } }
+        followups: { type: array, items: { $ref: "#/components/schemas/SalesFollowupRecord" } }
+        fields: { type: array, items: { $ref: "#/components/schemas/SalesFieldRecord" } }
+        values: { type: array, items: { $ref: "#/components/schemas/SalesValueRecord" } }
+        overrides: { type: array, items: { $ref: "#/components/schemas/SalesOverrideRecord" } }
+        occurrences: { type: array, items: { $ref: "#/components/schemas/SalesOccurrence" } }
+        customers: { type: array, items: { $ref: "#/components/schemas/SalesPerson" } }
+        contacts: { type: array, items: { $ref: "#/components/schemas/SalesPerson" } }
+        owners: { type: array, items: { type: string } }
+    SalesInvoice:
+      type: object
+      required: [id, number, nickname, date, total, owner, quantity]
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        nickname: { type: ["string", "null"] }
+        date: { type: string }
+        total: { type: number }
+        owner: { type: ["string", "null"] }
+        quantity: { type: number }
+    SalesProspect:
+      type: object
+      required: [customerId, name, niche, invoices, latestOrderDate, activeQuoteCount]
+      properties:
+        customerId: { type: string }
+        name: { type: string }
+        niche: { type: ["string", "null"] }
+        invoices: { type: array, items: { $ref: "#/components/schemas/SalesInvoice" } }
+        latestOrderDate: { type: ["string", "null"] }
+        activeQuoteCount: { type: integer, description: "Current non-cancelled quotes; not proof of a related reorder." }
     AutoPrintFollowupSelection:
       type: object
       required: [jobIds]

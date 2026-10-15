@@ -92,4 +92,4 @@
 - [Vendor shipping eligibility](vendor-shipping-eligibility.md) — no assumed account thresholds; queue totals cannot prove warehouse/method conditions or guarantee free freight.
 - [Label Sorter upstream parity](label-sorter-upstream.md) — Mint-Sorter/Breezy Sort is the upstream; user chose full parity while preserving Hub access and routing.
 - [Report comparison semantics](report-comparison-policy.md) — same filters and date basis, calendar-year offsets, honest zero baselines and current-status evidence.
-- [Sales check-in direction](sales-checkin-direction.md) — proposed owner-based repeat-customer outreach from prior order dates; no outreach automation approved yet.
+- [Sales check-in direction](sales-checkin-direction.md) — approved calendar/follow-ups and client/contact fields; future email must preserve provenance and remain opt-in.

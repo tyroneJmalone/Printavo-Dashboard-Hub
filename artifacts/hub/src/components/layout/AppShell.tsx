@@ -7,7 +7,7 @@ import { PrintavoSyncBar } from "@/components/PrintavoSyncBar";
 import { useStaff } from "@/components/auth/StaffGate";
 import { activeSidebarItem, toggleSidebarGroup } from "./navAccordion";
 import mintLogo from "@assets/MINT_Scripty_1783693134382.png";
-import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity, History, Library } from "lucide-react";
+import { LayoutDashboard, FileSpreadsheet, CreditCard, Sparkles, Inbox, Scan, Truck, Printer, Palette, Calculator, Package, FileText, Shield, Settings, ClipboardList, Wand2, PackageSearch, ChevronDown, LogOut, ListChecks, BadgeDollarSign, Users, Gift, Award, BarChart3, QrCode, SlidersHorizontal, Store, Filter, Search, Star, Menu, X, Mail, Activity, History, Library, CalendarClock } from "lucide-react";
 
 interface NavItem {
   id: string;
@@ -99,6 +99,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "pipeline", label: "Pipeline", href: "/pipeline", icon: Filter, module: "pipeline" },
       { id: "status-activity", label: "Status Activity", href: "/status-activity", icon: Activity, module: "status-activity" },
       { id: "chipply", label: "Chipply Stores", href: "/chipply", icon: Store, module: "chipply" },
+      { id: "sales-followups", label: "Sales Follow-ups", href: "/customers/follow-ups", icon: CalendarClock, module: "customers" },
       { id: "reorders", label: "Reorder Requests", href: "/reorder-requests", icon: Inbox, module: "reorder" },
     ],
   },
