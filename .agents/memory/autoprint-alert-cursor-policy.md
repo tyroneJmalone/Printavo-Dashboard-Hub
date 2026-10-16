@@ -18,3 +18,15 @@ policy because recovered and expected events obscured problems needing review.
 **How to apply:** Evaluate current job state for both inbox entries and badge
 counts. Preserve unresolved printer acceptance and post-print status-update
 errors. Collapse duplicate alerts rather than deleting print evidence.
+
+The user requested email monitoring of AutoPrint print, status-change, and
+category-assignment problems to the designated IT mailbox, including missing
+MERCH destination mappings. Keep notification delivery separate from print and
+invoice mutation recovery. Start prospectively, not by mailing historical logs.
+
+**Why:** Shop staff should not have to discover and report automation failures;
+ordinary skips and successfully recovered attempts must not become alert noise.
+
+**How to apply:** Preserve durable incident deduplication and provider idempotency,
+send only in production, and treat uncertain delivery beyond the provider's
+idempotency window as a manual reconciliation issue rather than blindly resending.

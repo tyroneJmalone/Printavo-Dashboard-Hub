@@ -3,6 +3,7 @@ import { db, appSettingsTable, pqPrintJobsTable as jobs, pqPrintAttemptsTable as
 import { and, asc, eq, gt, gte, inArray, sql } from "drizzle-orm";
 import type { Logger } from "pino";
 import { jobAlertEvents, runAlertEvents, type AlertEvent, type AlertAttempt } from "./alertEvents";
+import { sendAutoPrintFailureEmails } from "./failureEmails";
 import { ALERT_BATCH_SIZE, ALERT_STREAMS, collectAlertPage, nextAlertCursor,
   type AlertCursor, type AlertStream } from "./alertCursor";
 
@@ -160,7 +161,10 @@ export function startAutoPrintAlerts(log: Logger) {
   const tick = async () => {
     if (busy) return;
     busy = true;
-    try { await collectAutoPrintAlerts(log); }
+    try {
+      await collectAutoPrintAlerts(log);
+      await sendAutoPrintFailureEmails(log);
+    }
     catch (err) { log.error({ err }, "AutoPrint admin notification scan failed; printing is unaffected"); }
     finally { busy = false; }
   };
