@@ -5,9 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ExternalVendorOrderInvoicesItem } from './externalVendorOrderInvoicesItem';
 import type { ExternalVendorOrderTrackingItem } from './externalVendorOrderTrackingItem';
 
 export interface ExternalVendorOrder {
+  invoices?: ExternalVendorOrderInvoicesItem[];
   id: string;
   vendor: string;
   reference: string;

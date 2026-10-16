@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import {
   useListExternalVendorOrders,
   getListExternalVendorOrdersQueryKey,
@@ -33,11 +34,13 @@ function fmtDate(iso: string | null): string {
     d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-function dateBasisLabel(vendor: string, basis: string): string {
-  const b = basis.toLowerCase();
-  if (b.includes("place")) return "Placed";
-  if (b.includes("status") || b.includes("update")) return "Status updated";
-  return vendor === "sanmar" ? "Status updated" : basis;
+function orderDate(iso: string | null): string {
+  const date = iso?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+  if (!date) return "Not provided by vendor";
+  const value = new Date(`${date}T12:00:00Z`);
+  return Number.isFinite(value.getTime())
+    ? value.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
+    : "Not provided by vendor";
 }
 
 export function ExternalVendorOrders() {
@@ -191,7 +194,7 @@ export function ExternalVendorOrders() {
                     <th className="px-4 py-2.5 font-semibold">Warehouse</th>
                     <th className="px-4 py-2.5 font-semibold">Delivery (vendor)</th>
                     <th className="px-4 py-2.5 font-semibold">Tracking</th>
-                    <th className="px-4 py-2.5 font-semibold">Date</th>
+                    <th className="px-4 py-2.5 font-semibold">Order date</th>
                     <th className="px-4 py-2.5 font-semibold">Last checked</th>
                     <th className="px-4 py-2.5" />
                   </tr>
@@ -201,7 +204,12 @@ export function ExternalVendorOrders() {
                     const busy = refreshOne.isPending && refreshOne.variables?.id === o.id;
                     return (
                       <tr key={o.id} className="border-t border-slate-800/80 bg-[#0b1220]" data-testid={`row-external-order-${o.id}`}>
-                        <td className="px-4 py-3 font-semibold text-slate-200">{o.poNumber}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-200">
+                          {o.poNumber}
+                          <div className="mt-1 flex flex-wrap gap-2 text-xs text-emerald-400">
+                            {o.invoices?.map(invoice => <PrintavoOrderLink key={invoice.orderId} orderId={invoice.orderId} visualId={invoice.visualId} />)}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-slate-300">{VENDOR_LABELS[o.vendor] ?? o.vendor}</td>
                         <td className="px-4 py-3 text-slate-400">
                           {o.orderNumbers.length ? o.orderNumbers.join(", ") : "—"}
@@ -211,7 +219,7 @@ export function ExternalVendorOrders() {
                           {o.vendorStatus ?? "—"}
                           {o.terminal && <span className="ml-1.5 rounded bg-slate-700/60 px-1.5 py-0.5 text-[10px] uppercase text-slate-300">final</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-400">{o.warehouse ?? "—"}</td>
+                        <td className="px-4 py-3 text-slate-400">{o.warehouse ?? "Not provided by vendor"}</td>
                         <td className="px-4 py-3 text-slate-400">{o.deliveryStatus ?? "—"}</td>
                         <td className="px-4 py-3">
                           {o.tracking.length === 0 ? <span className="text-slate-500">—</span> : (
@@ -226,9 +234,7 @@ export function ExternalVendorOrders() {
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-[10px] uppercase tracking-wide text-slate-500">{dateBasisLabel(o.vendor, o.dateBasis)}</div>
-                          <div className="text-slate-400">{fmtDate(o.orderDate)}</div>
-                          {o.vendor === "sanmar" && <div className="text-[11px] text-slate-500">Order date unknown</div>}
+                          <div className="text-slate-400">{orderDate(o.orderDate)}</div>
                         </td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtDate(o.checkedAt)}</td>
                         <td className="px-4 py-3 text-right">
@@ -240,7 +246,7 @@ export function ExternalVendorOrders() {
                             data-testid={`button-refresh-external-${o.id}`}
                           >
                             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                            Check vendor
+                            {o.terminal ? "Refresh details" : "Check vendor"}
                           </button>
                         </td>
                       </tr>

@@ -6648,6 +6648,10 @@ export const VendorSubmitResponse = zod.object({
 
 
 export const ListExternalVendorOrdersResponseItem = zod.object({
+  "invoices": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number()
+})).optional(),
   "id": zod.string(),
   "vendor": zod.string(),
   "reference": zod.string(),
@@ -6683,6 +6687,10 @@ export const RefreshExternalVendorOrderParams = zod.object({
 })
 
 export const RefreshExternalVendorOrderResponse = zod.object({
+  "invoices": zod.array(zod.object({
+  "orderId": zod.string(),
+  "visualId": zod.number()
+})).optional(),
   "id": zod.string(),
   "vendor": zod.string(),
   "reference": zod.string(),

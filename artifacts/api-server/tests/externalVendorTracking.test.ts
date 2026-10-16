@@ -49,3 +49,33 @@ test("SanMar discovers status activity, preserving sales orders for missing cust
     assert.deepEqual(result,[{poNumber:"12/34",orderNumber:"1"},{poNumber:"NOT AVAILABLE",orderNumber:"2"}]);
   } finally { globalThis.fetch = original; }
 });
+
+test("SanMar warehouses come only from shipment origins, with split origins deduplicated", async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response(`<OrderShipmentNotification><complete>true</complete>
+      <SalesOrder><salesOrderNumber>123</salesOrderNumber>
+      <ShipmentLocation><ShipFromAddress><city>Robbinsville</city><region>NJ</region></ShipFromAddress>
+        <ShipToAddress><city>Customer City</city><region>NH</region></ShipToAddress>
+        <Package><trackingNumber>ABC</trackingNumber></Package></ShipmentLocation>
+      <ShipmentLocation><ShipFromAddress><city>Robbinsville</city><region>NJ</region></ShipFromAddress></ShipmentLocation>
+      <ShipmentLocation><ShipFromAddress><city>Reno</city><region>NV</region></ShipFromAddress></ShipmentLocation>
+      </SalesOrder></OrderShipmentNotification>`, { status: 200 });
+    const result = await new SanMarClient({customerNumber:"test",username:"test",password:"test"}).getShipmentNotification("test");
+    assert.deepEqual(result.warehouses, ["Robbinsville, NJ", "Reno, NV"]);
+    assert.equal(result.packages[0].trackingNumber, "ABC");
+    assert.equal(result.complete, true);
+  } finally { globalThis.fetch = original; }
+});
+
+test("S&S detail lookup retains vendor placement date and warehouse", async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response(JSON.stringify({ orders: [{
+      orderNumber:"123",orderDate:"2026-10-07T15:30:00.36",warehouseAbbr:"MA",orderStatus:"Complete",
+    }] }), {status:200});
+    const result = await new SSClient({accountNumber:"test",apiKey:"test"}).getOrders("123");
+    assert.equal(result.orders[0].warehouse,"MA");
+    assert.equal(result.orders[0].orderDate,"2026-10-07T15:30:00.36");
+  } finally { globalThis.fetch = original; }
+});

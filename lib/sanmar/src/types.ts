@@ -105,6 +105,8 @@ export interface SanMarShipmentPackage {
 }
 
 export interface SanMarShipmentResult {
+  /** Actual shipment-origin cities/regions, never the ship-to address. */
+  warehouses?: string[];
   /** false = no shipment notification exists (yet) for this PO number. */
   found: boolean;
   /** All shipments for the PO are complete (null when not reported). */

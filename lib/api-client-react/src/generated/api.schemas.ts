@@ -4526,6 +4526,11 @@ export interface CarrierTrackingSettingsInput {
   confirmFees: boolean;
 }
 
+export type ExternalVendorOrderInvoicesItem = {
+  orderId: string;
+  visualId: number;
+};
+
 export type ExternalVendorOrderTrackingItem = {
   trackingNumber: string;
   /** @nullable */
@@ -4533,6 +4538,7 @@ export type ExternalVendorOrderTrackingItem = {
 };
 
 export interface ExternalVendorOrder {
+  invoices?: ExternalVendorOrderInvoicesItem[];
   id: string;
   vendor: string;
   reference: string;

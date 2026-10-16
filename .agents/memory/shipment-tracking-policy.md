@@ -1,3 +1,15 @@
+External PO display must distinguish placement dates from status activity and
+shipment dates. SanMar's currently integrated tracking services expose shipment
+origins but not a reliable order-placement date; do not relabel either date as
+the order date. Explicit read-only detail refreshes may enrich completed orders,
+while routine active-order refreshes should still skip them.
+
+**Why:** The user needs warehouses, order dates, and working invoice links in
+outside-Hub tracking without restoring unnecessary completed-order polling.
+
+**How to apply:** Match complete Printavo PO references or exact invoice numbers;
+never expand abbreviated slash-separated PO numbers into guessed invoice IDs.
+Use the internal Printavo ID for admin links and leave unavailable dates explicit.
 ---
 name: Shipment tracking billing and evidence
 description: Why Shippo connection is separate from paid tracking approval, and why known shipments do not establish whole-order delivery.

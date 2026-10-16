@@ -518,6 +518,11 @@ export class SanMarClient {
     )?.[0];
     if (!notif) return { found: false, complete: null, packages: [] };
     const completeRaw = pick(notif, "complete");
+    const warehouses = [...new Set(
+      (notif.match(/<(?:\w+:)?ShipFromAddress>[\s\S]*?<\/(?:\w+:)?ShipFromAddress>/g) ?? [])
+        .map(address => [pick(address, "city"), pick(address, "region")].filter(Boolean).join(", "))
+        .filter(Boolean),
+    )];
     const packages: SanMarShipmentResult["packages"] = [];
     const salesOrders =
       notif.match(/<(?:\w+:)?SalesOrder>[\s\S]*?<\/(?:\w+:)?SalesOrder>/g) ?? [];
@@ -538,6 +543,7 @@ export class SanMarClient {
     return {
       found: true,
       complete: completeRaw == null ? null : completeRaw === "true",
+      warehouses,
       packages,
     };
   }

@@ -12063,6 +12063,14 @@ components:
       type: object
       required: [id, vendor, reference, poNumber, dateBasis, orderDate, vendorStatus, deliveryStatus, warehouse, orderNumbers, tracking, checkedAt, terminal]
       properties:
+        invoices:
+          type: array
+          items:
+            type: object
+            required: [orderId, visualId]
+            properties:
+              orderId: { type: string }
+              visualId: { type: integer }
         id: { type: string }
         vendor: { type: string }
         reference: { type: string }

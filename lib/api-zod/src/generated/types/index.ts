@@ -386,6 +386,7 @@ export * from './evaluateStatusRulesResponse';
 export * from './excludeParamParameter';
 export * from './externalVendorImportResult';
 export * from './externalVendorOrder';
+export * from './externalVendorOrderInvoicesItem';
 export * from './externalVendorOrderTrackingItem';
 export * from './finderOrder';
 export * from './finderOrderLineItem';

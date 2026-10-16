@@ -1,4 +1,4 @@
-import { db, externalVendorOrdersTable as external, vendorOrdersTable as hub } from "@workspace/db";
+import { db, pool, externalVendorOrdersTable as external, vendorOrdersTable as hub } from "@workspace/db";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { sanMarClient, ssClient } from "./vendorSubmit";
 import type { SSOrderInfo } from "@workspace/ss-activewear";
@@ -41,7 +41,7 @@ async function fromSanmar(poNumber: string, salesOrder?: string): Promise<Candid
     vendor: "sanmar", reference: salesOrder ? `SO:${salesOrder}` : poNumber, poNumber,
     snapshot: {
       dateBasis: "Status updated", orderDate: null,
-      vendorStatus: statuses.join(", ") || null, deliveryStatus: null, warehouse: null,
+      vendorStatus: statuses.join(", ") || null, deliveryStatus: null, warehouse: shipment.warehouses?.join("; ") || null,
       orderNumbers: [...new Set([...status.details.map(d => d.factoryOrderNumber), ...shipment.packages.map(p => p.orderNumber)].filter((s): s is string => !!s))],
       tracking: [...new Map(shipment.packages.filter(p => p.trackingNumber).map(p => [p.trackingNumber, {trackingNumber: p.trackingNumber!, carrier: p.carrier}])).values()],
       terminal: statuses.length > 0 && statuses.every(complete),
@@ -49,9 +49,21 @@ async function fromSanmar(poNumber: string, salesOrder?: string): Promise<Candid
   };
 }
 
-function dto(row: Row) {
+async function dto(row: Row) {
+  // Match the complete reference, never guess invoices by splitting abbreviated POs.
+  // Only remove conventional P prefix and slash/space separators, not arbitrary
+  // punctuation which may distinguish unrelated customer references.
+  const invoices = await pool.query<{ orderId: string; visualId: number }>(`
+    SELECT DISTINCT o.printavo_id AS "orderId",o.visual_id AS "visualId"
+    FROM pv_orders o WHERE o.order_type='invoice' AND (
+      o.visual_id::text=$1 OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(coalesce(o.extras->'lineItems','[]')) line
+        WHERE regexp_replace(upper(regexp_replace(line->'poLineItem'->'purchaseOrder'->>'visualPoId','^[Pp](?=[0-9])','')), '[/[:space:]]', '', 'g')
+          = regexp_replace(upper(regexp_replace($1,'^[Pp](?=[0-9])','')), '[/[:space:]]', '', 'g')
+          AND length(regexp_replace($1,'[^a-zA-Z0-9]','','g')) > 0
+      )) ORDER BY o.visual_id`, [row.poNumber]);
   return { id: row.id, vendor: row.vendor, reference: row.reference, poNumber: row.poNumber,
-    ...(row.snapshot as Snapshot), checkedAt: row.checkedAt.toISOString() };
+    ...(row.snapshot as Snapshot), invoices: invoices.rows, checkedAt: row.checkedAt.toISOString() };
 }
 
 export async function listExternalVendorOrders() {
@@ -60,7 +72,7 @@ export async function listExternalVendorOrders() {
     db.select().from(hub).where(eq(hub.mode, "live")),
   ]);
   // An order subsequently identified as Hub-owned must not appear in both groups.
-  return rows.filter(r => !matchesHub({...r, snapshot: r.snapshot as Snapshot}, submitted)).map(dto);
+  return Promise.all(rows.filter(r => !matchesHub({...r, snapshot: r.snapshot as Snapshot}, submitted)).map(dto));
 }
 
 async function save(candidate: Candidate) {
@@ -137,7 +149,8 @@ export async function importExternalVendorOrders() {
 export async function refreshExternalVendorOrder(id: string) {
   const [row] = await db.select().from(external).where(eq(external.id, id));
   if (!row) return null;
-  if ((row.snapshot as Snapshot).terminal) return dto(row);
+  // Explicit checks may enrich completed legacy records. Routine Refresh active
+  // still excludes them, so completed POs are not repeatedly polled.
   let candidate: Candidate;
   if (row.vendor === "sanmar") candidate = await fromSanmar(row.poNumber, row.reference.startsWith("SO:") ? row.reference.slice(3) : undefined);
   else {
@@ -147,6 +160,8 @@ export async function refreshExternalVendorOrder(id: string) {
     candidate = fromSs(match);
   }
   candidate.snapshot.tracking = [...new Map([...(row.snapshot as Snapshot).tracking, ...candidate.snapshot.tracking].map(t => [t.trackingNumber,t])).values()];
+  candidate.snapshot.orderDate ??= (row.snapshot as Snapshot).orderDate;
+  candidate.snapshot.warehouse ??= (row.snapshot as Snapshot).warehouse;
   const [saved] = await db.update(external).set({...candidate, checkedAt: new Date()}).where(eq(external.id, id)).returning();
   return dto(saved);
 }
