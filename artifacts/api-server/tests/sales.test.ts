@@ -18,13 +18,13 @@ before(async () => {
   await pool.query(`
     CREATE TABLE pv_customers(printavo_id text PRIMARY KEY,company_name text,data jsonb);
     CREATE TABLE customer_meta(printavo_customer_id text,category_id uuid);
-    CREATE TABLE customer_categories(id uuid,name text,active boolean);
+    CREATE TABLE customer_categories(id uuid PRIMARY KEY,name text,active boolean,parent_id uuid);
     CREATE TABLE pv_contacts(printavo_id text,customer_id text,full_name text);
     CREATE TABLE pv_orders(printavo_id text,visual_id int,customer_id text,order_type text,nickname text,owner_email text,invoice_at date,customer_due_at timestamptz,total numeric,status_name text);
     CREATE TABLE pv_line_items(order_id text,items int);
     INSERT INTO pv_customers VALUES('1','School','{}'),('2','Club','{}');
     INSERT INTO customer_meta VALUES('1','${niche}');
-    INSERT INTO customer_categories VALUES('${niche}','Schools',true);
+    INSERT INTO customer_categories VALUES('${niche}','Schools',true,NULL);
     INSERT INTO pv_contacts VALUES('10','1','Test Contact'),('20','2','Other Contact');
     INSERT INTO pv_orders VALUES('100',100,'1','invoice','Annual event','sales@example.test','2025-04-01','2025-04-10',100,'Complete'),
       ('101',101,'1','invoice','New order','other@example.test','2026-02-01','2026-02-10',200,'Complete'),
@@ -111,4 +111,20 @@ test("history groups invoices with quantities and newer-order/quote context, dat
   assert.equal(c.activeQuoteCount, 1);
   assert.equal((await salesHistory({ from: "2025-04-10", to: "2025-04-10", dateBasis: "customerDue", offset: 0 })).customers.length, 1);
   assert.equal((await salesHistory({ from: "2025-04-10", to: "2025-04-10", offset: 0 })).customers.length, 0);
+});
+test("sub-niches inherit parent events, permit overrides, and appear in parent history without matching siblings", async () => {
+  const child = "22222222-2222-4222-8222-222222222222";
+  const sibling = "33333333-3333-4333-8333-333333333333";
+  await pool.query("INSERT INTO customer_categories VALUES($1,'Middle School',true,$3),($2,'Elementary School',true,$3)", [child, sibling, niche]);
+  await pool.query("UPDATE customer_meta SET category_id=$1 WHERE printavo_customer_id='1'", [child]);
+  const e = await save({ kind: "event", event: { ...event, title: "Parent-wide opportunity", startDate: "2026-08-01", recurrence: "once" } });
+  await save({ kind: "event", event: { ...event, title: "Sibling only", nicheIds: [sibling], startDate: "2026-08-01", recurrence: "once" } });
+  const w = await salesWorkspace({ from: "2026-07-01", to: "2026-08-31", customerId: "1" });
+  assert.ok(w.occurrences.some(o => o.title === "Parent-wide opportunity"));
+  assert.ok(!w.occurrences.some(o => o.title === "Sibling only"));
+  await save({ kind: "override", override: { eventId: e.id, customerId: "1", occurrenceDate: "2026-08-01", excluded: true, startDate: null, notes: "" } });
+  const h = await salesHistory({ from: "2025-04-01", to: "2025-04-30", offset: 0, nicheId: niche });
+  assert.equal(h.customers.length, 1);
+  assert.equal(h.customers[0].niche, "Schools → Middle School");
+  assert.equal((await salesHistory({ from: "2025-04-01", to: "2025-04-30", offset: 0, nicheId: sibling })).customers.length, 0);
 });

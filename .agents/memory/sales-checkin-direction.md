@@ -36,3 +36,15 @@ without treating a status change as an external communication.
 access controls. Automated sending needs separate opt-in, recipient/consent rules,
 reply-aware cancellation and delivery audit; never infer sending consent from a
 calendar event, niche assignment, custom date field, or manual follow-up status.
+
+The user wants client sub-niches such as Basketball under Sports Team Organization
+and Caterer under Food Service. Treat these as refinements of a single client niche,
+not a separate multi-tag system. Parent-level targeting includes child niches;
+child-specific events must not reach sibling niches.
+
+**Why:** Staff need more precise manual segmentation without losing broader
+industry-based filtering and seasonal outreach.
+
+**How to apply:** Preserve parent-audience inheritance when extending niche filters,
+calendar matching, or future email targeting. Do not infer communication consent
+from either parent or child membership.

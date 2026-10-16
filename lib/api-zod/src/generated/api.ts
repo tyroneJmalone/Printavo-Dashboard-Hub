@@ -3248,7 +3248,9 @@ export const ListDirectoryCustomersResponse = zod.object({
 export const ListCustomerCategoriesResponse = zod.object({
   "categories": zod.array(zod.object({
   "id": zod.string(),
-  "name": zod.string(),
+  "name": zod.string().describe('Full niche path for display.'),
+  "localName": zod.string().optional().describe('Editable name without the parent prefix.'),
+  "parentId": zod.string().nullish(),
   "active": zod.boolean(),
   "sortOrder": zod.number(),
   "assignedCount": zod.number().optional()
@@ -3260,12 +3262,15 @@ export const ListCustomerCategoriesResponse = zod.object({
  * @summary Create a category (admin only)
  */
 export const CreateCustomerCategoryBody = zod.object({
-  "name": zod.string()
+  "name": zod.string(),
+  "parentId": zod.string().uuid().nullish().describe('Optional active top-level niche. Parent cannot be changed after creation.')
 })
 
 export const CreateCustomerCategoryResponse = zod.object({
   "id": zod.string(),
-  "name": zod.string(),
+  "name": zod.string().describe('Full niche path for display.'),
+  "localName": zod.string().optional().describe('Editable name without the parent prefix.'),
+  "parentId": zod.string().nullish(),
   "active": zod.boolean(),
   "sortOrder": zod.number(),
   "assignedCount": zod.number().optional()
@@ -3286,7 +3291,9 @@ export const UpdateCustomerCategoryBody = zod.object({
 
 export const UpdateCustomerCategoryResponse = zod.object({
   "id": zod.string(),
-  "name": zod.string(),
+  "name": zod.string().describe('Full niche path for display.'),
+  "localName": zod.string().optional().describe('Editable name without the parent prefix.'),
+  "parentId": zod.string().nullish(),
   "active": zod.boolean(),
   "sortOrder": zod.number(),
   "assignedCount": zod.number().optional()

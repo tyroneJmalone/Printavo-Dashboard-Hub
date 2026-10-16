@@ -16,16 +16,22 @@ export async function salesWorkspace(filter: WindowFilter) {
   });
   const clients = await pool.query(`SELECT c.printavo_id AS id,${displayName} AS name,m.category_id FROM pv_customers c LEFT JOIN customer_meta m ON m.printavo_customer_id=c.printavo_id WHERE c.printavo_id=ANY($1::text[])`, [[...ids]]);
   const byCustomer = new Map(clients.rows.map(c => [c.id, c]));
+  const niches = await pool.query("SELECT id,parent_id FROM customer_categories");
+  const parentById = new Map<string, string | null>(niches.rows.map(n => [n.id, n.parent_id]));
+  const nicheMatches = (assigned: string | undefined, target: string) =>
+    Boolean(assigned && (assigned === target || parentById.get(assigned) === target));
+  const audienceMatches = (assigned: string | undefined, audience: string[]) =>
+    audience.some(n => nicheMatches(assigned, n));
   if (filter.customerId && !byCustomer.has(filter.customerId)) throw new SalesError(404, "Customer not found");
-  const clientMatches = (id: string) => (!filter.customerId || id === filter.customerId) && (!filter.nicheId || byCustomer.get(id)?.category_id === filter.nicheId);
+  const clientMatches = (id: string) => (!filter.customerId || id === filter.customerId) && (!filter.nicheId || nicheMatches(byCustomer.get(id)?.category_id, filter.nicheId));
   const ownerMatches = (owner: string) => !filter.owner || owner === filter.owner.toLowerCase();
   const wrap = (r: RecordRow) => ({ id: r.id, version: r.version, [r.kind]: r.payload });
   const fields = records.filter(r => r.kind === "field");
   const fieldsById = new Map(fields.map(f => [f.id, f.payload as Field]));
   const overrides = records.filter(r => r.kind === "override");
   const events = records.filter(r => r.kind === "event" && ownerMatches(r.payload.owner)
-    && (!filter.nicheId || r.payload.nicheIds.includes(filter.nicheId) || r.payload.customerIds.some((id: string) => byCustomer.get(id)?.category_id === filter.nicheId))
-    && (!filter.customerId || r.payload.customerIds.includes(filter.customerId) || r.payload.nicheIds.includes(byCustomer.get(filter.customerId)?.category_id)));
+    && (!filter.nicheId || r.payload.nicheIds.some((n: string) => nicheMatches(n, filter.nicheId!) || nicheMatches(filter.nicheId, n)) || r.payload.customerIds.some((id: string) => nicheMatches(byCustomer.get(id)?.category_id, filter.nicheId!)))
+    && (!filter.customerId || r.payload.customerIds.includes(filter.customerId) || audienceMatches(byCustomer.get(filter.customerId)?.category_id, r.payload.nicheIds)));
   const occurrences: any[] = [];
   for (const row of events) {
     const event = row.payload as Event;

@@ -14,14 +14,14 @@ export async function salesHistory(filter: WindowFilter & { dateBasis?: string; 
         AND ${date} BETWEEN $1::date AND $2::date
         AND ($3::text IS NULL OR o.customer_id=$3)
         AND ($4::text IS NULL OR lower(o.owner_email)=$4)
-        AND ($5::uuid IS NULL OR cm.category_id=$5)
+        AND ($5::uuid IS NULL OR cm.category_id IN (SELECT id FROM customer_categories WHERE id=$5 OR parent_id=$5))
     ), clients AS (
       SELECT customer_id,max(match_date) AS last_match FROM matched WHERE customer_id IS NOT NULL
       GROUP BY customer_id ORDER BY last_match DESC,customer_id LIMIT 51 OFFSET $6
     )
     SELECT c.printavo_id AS "customerId",
       coalesce(nullif(c.company_name,''),c.data->'primaryContact'->>'fullName','(no name)') AS name,
-      cc.name AS niche,
+      coalesce((SELECT p.name || ' → ' FROM customer_categories p WHERE p.id=cc.parent_id),'') || cc.name AS niche,
       (SELECT max(invoice_at)::text FROM pv_orders o WHERE o.customer_id=c.printavo_id AND o.order_type='invoice' AND ${notChipplySql("o.nickname")}) AS "latestOrderDate",
       (SELECT count(*)::int FROM pv_orders o WHERE o.customer_id=c.printavo_id AND o.order_type='quote'
         AND coalesce(o.status_name,'') !~* '(cancel|declin|(^|[^a-z])(dead|lost|archive|archived)([^a-z]|$))'

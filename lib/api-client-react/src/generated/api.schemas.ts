@@ -7314,7 +7314,12 @@ export interface RewardsPipelineResult {
 
 export interface CustomerCategory {
   id: string;
+  /** Full niche path for display. */
   name: string;
+  /** Editable name without the parent prefix. */
+  localName?: string;
+  /** @nullable */
+  parentId?: string | null;
   active: boolean;
   sortOrder: number;
   assignedCount?: number;
@@ -7326,6 +7331,11 @@ export interface CustomerCategoriesResponse {
 
 export interface CustomerCategoryInput {
   name: string;
+  /**
+     * Optional active top-level niche. Parent cannot be changed after creation.
+     * @nullable
+     */
+  parentId?: string | null;
 }
 
 export interface CustomerCategoryUpdate {

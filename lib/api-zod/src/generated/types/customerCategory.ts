@@ -8,7 +8,12 @@
 
 export interface CustomerCategory {
   id: string;
+  /** Full niche path for display. */
   name: string;
+  /** Editable name without the parent prefix. */
+  localName?: string;
+  /** @nullable */
+  parentId?: string | null;
   active: boolean;
   sortOrder: number;
   assignedCount?: number;

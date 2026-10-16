@@ -14891,6 +14891,12 @@ components:
           type: string
         name:
           type: string
+          description: Full niche path for display.
+        localName:
+          type: string
+          description: Editable name without the parent prefix.
+        parentId:
+          type: ["string", "null"]
         active:
           type: boolean
         sortOrder:
@@ -14913,6 +14919,10 @@ components:
       properties:
         name:
           type: string
+        parentId:
+          type: ["string", "null"]
+          format: uuid
+          description: Optional active top-level niche. Parent cannot be changed after creation.
 
     CustomerCategoryUpdate:
       type: object

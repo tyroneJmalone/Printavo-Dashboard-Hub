@@ -6,6 +6,7 @@ import {
   boolean,
   timestamp,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -18,6 +19,7 @@ export const customerCategoriesTable = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
+    parentId: uuid("parent_id").references((): AnyPgColumn => customerCategoriesTable.id),
     active: boolean("active").notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

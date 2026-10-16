@@ -17,7 +17,8 @@ async function customer(client: PoolClient, id: string) {
 }
 async function audience(client: PoolClient, event: any, id: string) {
   const c = await customer(client, id);
-  if (!event.customerIds.includes(id) && !event.nicheIds.includes(c.category_id)) throw new SalesError(400, "Customer is not in this event's audience");
+  const parent = await client.query("SELECT parent_id FROM customer_categories WHERE id=$1", [c.category_id]);
+  if (!event.customerIds.includes(id) && !event.nicheIds.includes(c.category_id) && !event.nicheIds.includes(parent.rows[0]?.parent_id)) throw new SalesError(400, "Customer is not in this event's audience");
 }
 export async function saveRecord(client: PoolClient, input: any, actor: string, admin: boolean) {
   if (!input || !Object.hasOwn(schemas, input.kind)) throw new SalesError(400, "Invalid record kind");

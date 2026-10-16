@@ -60,17 +60,23 @@ function escapeLike(term: string): string {
 router.get("/customers/categories", async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT cc.id, cc.name, cc.active, cc.sort_order,
+      `SELECT cc.id, cc.name AS local_name, cc.parent_id,
+              concat(CASE WHEN p.id IS NOT NULL THEN p.name || ' → ' END, cc.name) AS name,
+              (cc.active AND coalesce(p.active, true)) AS active, cc.sort_order,
               count(cm.printavo_customer_id)::int AS assigned_count
          FROM customer_categories cc
+         LEFT JOIN customer_categories p ON p.id = cc.parent_id
          LEFT JOIN customer_meta cm ON cm.category_id = cc.id
-        GROUP BY cc.id
-        ORDER BY cc.sort_order, cc.name`,
+        GROUP BY cc.id, p.id
+        ORDER BY coalesce(p.sort_order, cc.sort_order), coalesce(p.name, cc.name),
+                 cc.parent_id NULLS FIRST, cc.name`,
     );
     res.json({
       categories: r.rows.map((row) => ({
         id: row.id as string,
         name: row.name as string,
+        localName: row.local_name as string,
+        parentId: row.parent_id,
         active: row.active as boolean,
         sortOrder: row.sort_order as number,
         assignedCount: row.assigned_count as number,
@@ -84,21 +90,35 @@ router.get("/customers/categories", async (req, res) => {
 
 router.post("/customers/categories", requireAdmin, async (req, res) => {
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  const parentId = req.body?.parentId ?? null;
+  if (parentId !== null && (typeof parentId !== "string" || !UUID_RE.test(parentId))) {
+    res.status(400).json({ error: "Choose a valid parent niche" });
+    return;
+  }
   if (!name || name.length > 80) {
     res.status(400).json({ error: "Category name is required (max 80 chars)" });
     return;
   }
   try {
     const r = await pool.query(
-      `INSERT INTO customer_categories (name, sort_order)
-       VALUES ($1, (SELECT coalesce(max(sort_order), 0) + 10 FROM customer_categories))
-       RETURNING id, name, active, sort_order`,
-      [name],
+      `INSERT INTO customer_categories (name, parent_id, sort_order)
+       SELECT $1, $2::uuid, (SELECT coalesce(max(sort_order), 0) + 10 FROM customer_categories)
+       WHERE $2::uuid IS NULL OR EXISTS (
+         SELECT 1 FROM customer_categories WHERE id=$2 AND active AND parent_id IS NULL
+       )
+       RETURNING id, name, parent_id, active, sort_order`,
+      [name, parentId],
     );
+    if (!r.rows.length) {
+      res.status(400).json({ error: "Parent must be an active top-level niche" });
+      return;
+    }
     const row = r.rows[0];
     res.status(201).json({
       id: row.id as string,
       name: row.name as string,
+      localName: row.name as string,
+      parentId: row.parent_id,
       active: row.active as boolean,
       sortOrder: row.sort_order as number,
       assignedCount: 0,
@@ -211,7 +231,7 @@ router.get("/customers", async (req, res) => {
     where.push(`cm.category_id IS NULL`);
   } else if (categoryId) {
     params.push(categoryId);
-    where.push(`cm.category_id = $${params.length}::uuid`);
+    where.push(`cm.category_id IN (SELECT id FROM customer_categories WHERE id=$${params.length}::uuid OR parent_id=$${params.length}::uuid)`);
   }
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
   // printavo_id tiebreaker keeps LIMIT/OFFSET pagination deterministic
@@ -274,7 +294,8 @@ router.get("/customers", async (req, res) => {
 
 async function assertAssignableCategory(categoryId: string): Promise<boolean> {
   const r = await pool.query(
-    `SELECT 1 FROM customer_categories WHERE id = $1::uuid AND active = true`,
+    `SELECT 1 FROM customer_categories cc LEFT JOIN customer_categories p ON p.id=cc.parent_id
+      WHERE cc.id = $1::uuid AND cc.active AND coalesce(p.active,true)`,
     [categoryId],
   );
   return r.rows.length > 0;
@@ -365,7 +386,7 @@ router.get("/customers/report", async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT cc.id AS category_id,
-              coalesce(cc.name, 'Uncategorized') AS category_name,
+              coalesce((SELECT p.name || ' → ' FROM customer_categories p WHERE p.id=cc.parent_id), '') || coalesce(cc.name, 'Uncategorized') AS category_name,
               coalesce(sum(o.total), 0) AS revenue,
               count(o.printavo_id)::int AS order_count,
               count(DISTINCT o.customer_id)::int AS customer_count
@@ -436,7 +457,7 @@ router.get("/customers/:id", async (req, res) => {
               c.data->'owner'->>'email' AS owner_email,
               c.data->'timestamps'->>'createdAt' AS customer_since,
               cm.category_id,
-              cc.name AS category_name
+              coalesce((SELECT p.name || ' → ' FROM customer_categories p WHERE p.id=cc.parent_id), '') || cc.name AS category_name
          FROM pv_customers c
          LEFT JOIN customer_meta cm ON cm.printavo_customer_id = c.printavo_id
          LEFT JOIN customer_categories cc ON cc.id = cm.category_id

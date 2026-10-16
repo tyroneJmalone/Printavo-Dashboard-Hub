@@ -8,4 +8,9 @@
 
 export interface CustomerCategoryInput {
   name: string;
+  /**
+     * Optional active top-level niche. Parent cannot be changed after creation.
+     * @nullable
+     */
+  parentId?: string | null;
 }

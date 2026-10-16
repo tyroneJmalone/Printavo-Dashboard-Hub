@@ -53,14 +53,16 @@ function CategoryManagerDialog() {
     query: { queryKey: getListCustomerCategoriesQueryKey() },
   });
   const [newName, setNewName] = useState("");
+  const [parentId, setParentId] = useState("none");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: getListCustomerCategoriesQueryKey() });
+    qc.invalidateQueries({ predicate: q => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/customers") });
   };
   const onError = (err: unknown) => {
     const msg =
+      (err as { data?: { error?: string } })?.data?.error ??
       (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
       "Something went wrong";
     toast({ title: "Category change failed", description: msg, variant: "destructive" });
@@ -96,6 +98,16 @@ function CategoryManagerDialog() {
         <DialogHeader>
           <DialogTitle>Niche categories</DialogTitle>
         </DialogHeader>
+        <label className="text-sm text-slate-400">Parent niche</label>
+        <Select value={parentId} onValueChange={setParentId}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None — create a top-level niche</SelectItem>
+            {(data?.categories ?? []).filter(c => c.active && !c.parentId).map(c => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="flex gap-2">
           <Input
             placeholder="New category name…"
@@ -103,13 +115,13 @@ function CategoryManagerDialog() {
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && newName.trim()) {
-                createCat.mutate({ data: { name: newName.trim() } });
+                if (!createCat.isPending) createCat.mutate({ data: { name: newName.trim(), parentId: parentId === "none" ? null : parentId } });
               }
             }}
           />
           <Button
             disabled={!newName.trim() || createCat.isPending}
-            onClick={() => createCat.mutate({ data: { name: newName.trim() } })}
+            onClick={() => createCat.mutate({ data: { name: newName.trim(), parentId: parentId === "none" ? null : parentId } })}
           >
             Add
           </Button>
@@ -162,7 +174,7 @@ function CategoryManagerDialog() {
                     title="Click to rename"
                     onClick={() => {
                       setEditingId(c.id);
-                      setEditName(c.name);
+                      setEditName(c.localName ?? c.name);
                     }}
                   >
                     {c.name}
@@ -172,6 +184,7 @@ function CategoryManagerDialog() {
                   </span>
                   <Switch
                     checked={c.active}
+                    disabled={Boolean(c.parentId && !data?.categories.find(p => p.id === c.parentId)?.active) || updateCat.isPending}
                     onCheckedChange={(active) =>
                       updateCat.mutate({ id: c.id, data: { active } })
                     }
@@ -182,8 +195,9 @@ function CategoryManagerDialog() {
           ))}
         </div>
         <p className="text-xs text-slate-500">
-          Toggling a category off hides it from assignment; existing assignments and
-          report history are kept.
+          Select a parent to create a sub-niche. Parent filters include their sub-niches.
+          Toggling a parent off also hides its sub-niches from assignment; existing
+          assignments and report history are kept.
         </p>
       </DialogContent>
     </Dialog>
