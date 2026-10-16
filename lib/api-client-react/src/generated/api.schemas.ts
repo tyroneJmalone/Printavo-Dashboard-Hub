@@ -333,6 +333,7 @@ export interface ChipplyDataInvoiceReference {
 }
 
 export interface ChipplyDataReconciliation {
+  splitInvoices?: ChipplyDataInvoiceReference[];
   outcome: ChipplyDataReconciliationOutcome;
   /**
      * screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)
@@ -379,6 +380,33 @@ export type ChipplyDataPreviewExistingStore = {
   id: string;
   storeName: string;
 } | null;
+
+export type ChipplySplitReviewAction = typeof ChipplySplitReviewAction[keyof typeof ChipplySplitReviewAction];
+
+
+export const ChipplySplitReviewAction = {
+  approve: 'approve',
+  revoke: 'revoke',
+} as const;
+
+export type ChipplySplitReviewState = typeof ChipplySplitReviewState[keyof typeof ChipplySplitReviewState];
+
+
+export const ChipplySplitReviewState = {
+  active: 'active',
+  stale: 'stale',
+  revoked: 'revoked',
+} as const;
+
+export interface ChipplySplitReview {
+  id: string;
+  invoiceIds: string[];
+  action: ChipplySplitReviewAction;
+  reason: string;
+  actor: string;
+  createdAt: string;
+  state: ChipplySplitReviewState;
+}
 
 export type ChipplyProcessComparisonState = typeof ChipplyProcessComparisonState[keyof typeof ChipplyProcessComparisonState];
 
@@ -435,6 +463,10 @@ export interface ChipplyQuantityCandidate {
 }
 
 export interface ChipplyProcessComparison {
+  splitEvidence?: string;
+  /** @nullable */
+  splitRevision?: string | null;
+  splitReview?: ChipplySplitReview | null;
   processKey: string;
   processNames: string[];
   state: ChipplyProcessComparisonState;
@@ -475,7 +507,18 @@ export interface ChipplyDataVersion {
   actor: string;
 }
 
+export interface ChipplySplitHistoryEntry {
+  id: string;
+  processKey: string;
+  invoiceIds: string[];
+  action: string;
+  reason: string;
+  actor: string;
+  createdAt: string;
+}
+
 export interface ChipplyDataDetail {
+  splitHistory?: ChipplySplitHistoryEntry[];
   storeId: string;
   snapshotId: string;
   sourceHash: string;
@@ -9742,6 +9785,53 @@ export interface ChipplyStoreSummary {
 
 export interface ChipplyStoreSummaryResponse {
   summary: null | ChipplyStoreSummary;
+}
+
+export type ChipplySplitRequestAction = typeof ChipplySplitRequestAction[keyof typeof ChipplySplitRequestAction];
+
+
+export const ChipplySplitRequestAction = {
+  preview: 'preview',
+  approve: 'approve',
+  revoke: 'revoke',
+} as const;
+
+export interface ChipplySplitRequest {
+  snapshotId: string;
+  processKey: string;
+  /** @maxItems 20 */
+  invoiceIds: string[];
+  action: ChipplySplitRequestAction;
+  /** @nullable */
+  revision: string | null;
+  evidence?: string;
+  /**
+     * @minLength 5
+     * @maxLength 1000
+     */
+  reason?: string;
+}
+
+export type ChipplySplitPreviewState = typeof ChipplySplitPreviewState[keyof typeof ChipplySplitPreviewState];
+
+
+export const ChipplySplitPreviewState = {
+  matched: 'matched',
+  different: 'different',
+  incomplete: 'incomplete',
+  stale: 'stale',
+} as const;
+
+export interface ChipplySplitPreview {
+  state: ChipplySplitPreviewState;
+  rows: ChipplyQuantityRow[];
+  issues: string[];
+  oneSizeNotes: string[];
+  eligible: boolean;
+  /** @nullable */
+  actualMethod: string | null;
+  invoices: ChipplyDataInvoiceReference[];
+  evidence: string;
 }
 
 export interface ChipplySetupRequest {

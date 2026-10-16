@@ -1,10 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { compareSplit, evidenceHash } from "../src/lib/chipply/splitReconciliation";
 import { readFileSync } from "node:fs";
 import ExcelJS from "exceljs";
 import { cents, parseDataCsv, parseDataRows } from "../src/lib/chipply/dataImport";
 import { parseCsvRows } from "../src/lib/chipply/parseCsv";
-import { reconcileData, compareQuantities, compareProcesses, type MirrorInvoice } from "../src/lib/chipply/dataReconciliation";
+import { reconcileData, compareQuantities, compareProcesses, processSuffix, type MirrorInvoice } from "../src/lib/chipply/dataReconciliation";
 import { parseDataUpload } from "../src/lib/chipply/dataUpload";
 import { confirmChipplyData } from "../src/lib/chipply/dataService";
 const csv = readFileSync("../../attached_assets/0_Fuel_Summer_26_Data_Export_1790655144068.csv", "utf8");
@@ -46,6 +47,32 @@ test("identical legitimate source lines preserved with distinct ordinals", () =>
 const line = parsed.lines[0];
 const one = [{ ...line, quantity: 1 }];
 const mirror: MirrorInvoice = { invoiceId: "123", nickname: "553498 Fuel Summer HEAT: FRONT: STRONG", statusName: "HEAT", detailSyncState: "complete", detailSyncedAt: "2026-07-02T00:00:00Z", syncedAt: "2026-07-01T00:00:00Z", items: [{ style: line.style, color: line.color, quantity: 1, sizes: [{ size: line.size, count: 1 }] }] };
+test("explicit split preserves full combination coverage, independent diagnostics, and duplicate/method fences", () => {
+  const source = [{ ...line, quantity: 3 }];
+  const a = { ...mirror, invoiceId: "a" };
+  const b = { ...mirror, invoiceId: "b", items: mirror.items.map(i => ({ ...i, quantity: 2, sizes: [{ size: line.size, count: 2 }] })) };
+  const run = (invoices = [a, b], ids = ["a", "b"]) => compareSplit(source, "553498", processSuffix(line.processName), invoices, ids);
+  assert.equal(run().eligible, true);
+  assert.equal(run().actualMethod, "heat-transfer");
+  assert.equal(reconcileData(source, "553498", [a, b])[0].reconciliation.outcome, "ambiguous");
+  assert.equal(run([a, b], ["a", "a", "b"]).eligible, false);
+  assert.equal(run([a, { ...a, invoiceId: "b" }]).eligible, false);
+  const duplicate = compareSplit([{ ...line, quantity: 2 }], "553498", processSuffix(line.processName), [a, { ...a, invoiceId: "b" }], ["a", "b"]);
+  assert.equal(duplicate.state, "matched", "Even exact totals cannot bless duplicated invoice breakdowns");
+  assert.equal(duplicate.eligible, false);
+  assert.ok(duplicate.issues.some(issue => issue.includes("possible duplicates")));
+  assert.equal(run([a, { ...b, nickname: b.nickname.replace("553498", "999999") }]).eligible, false);
+  assert.equal(run([a, { ...b, statusName: "EMB" }]).eligible, false);
+  assert.equal(run([a, { ...b, statusName: "PRINT + HEAT" }]).eligible, false);
+  assert.equal(run([a, { ...b, detailSyncState: "pending" }]).eligible, false);
+  assert.equal(run([a, { ...b, items: b.items.map(i => ({ ...i, color: "wrong color" })) }]).eligible, false);
+  assert.equal(run([a, { ...b, items: b.items.map(i => ({ ...i, sizes: [] })) }]).eligible, false);
+  assert.equal(run([a, b], ["a", "missing"]).eligible, false);
+});
+test("split evidence hashes are stable under SQL/JSON ordering but change with evidence", () => {
+  assert.equal(evidenceHash({ a: [1, 2], b: { x: 3, y: 4 } }), evidenceHash({ b: { y: 4, x: 3 }, a: [2, 1] }));
+  assert.notEqual(evidenceHash({ a: [1, 2] }), evidenceHash({ a: [1, 3] }));
+});
 test("actual current status outranks planned PRINT and nickname", () => {
   const r = reconcileData(one, "553498", [{ ...mirror, nickname: mirror.nickname.replace("HEAT:", "PRINT:") }])[0];
   assert.equal(r.plannedMethod, "screenprint");

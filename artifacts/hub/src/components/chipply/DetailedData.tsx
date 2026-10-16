@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ProcessComparisons } from "./ProcessComparison";
-import type { ChipplyProcessComparison } from "@workspace/api-client-react";
+import type { ChipplyProcessComparison, ChipplySplitPreview, ChipplySplitHistoryEntry } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getListChipplyStoresQueryKey, getListDetectedChipplyStoresQueryKey, getGetChipplyStoreQueryKey, getGetChipplySetupQueryKey, type ChipplyDataReconciliation } from "@workspace/api-client-react";
 
@@ -26,6 +26,7 @@ interface Preview {
   currentSnapshotId: string | null; requiresReplacement: boolean; summary: Summary; lines: Line[]; warnings: string[];
 }
 interface Detail {
+  splitHistory?: ChipplySplitHistoryEntry[];
   processComparisons: ChipplyProcessComparison[];
   storeId: string; snapshotId: string; sourceHash: string; salesOrder: string; storeName: string;
   sourceName: string; importedAt: string; summary: Summary; lines: Line[]; warnings: string[];
@@ -69,8 +70,9 @@ function Lines({ lines, onReview }: { lines: Line[]; onReview?: (line: Line) => 
       <td className="p-2 min-w-40">{line.productName}<p className="text-slate-400">{line.vendor} · {line.style} · {line.color} · {line.size}</p></td>
       <td className="p-2 min-w-40">{line.processName}<p className="text-slate-400">{method(line.plannedMethod)}</p></td>
       <td className="p-2">{line.quantity}<br />{money(line.itemTotalCents)}</td>
-      <td className="p-2">{method(line.reconciliation.actualMethod)}<p className="text-slate-400">{line.reconciliation.invoiceId ? <InvoiceLink visualId={line.reconciliation.invoiceVisualId} /> : "No verified invoice"}</p>
-        {!line.reconciliation.invoiceId && (line.reconciliation.candidateInvoices ?? []).map(candidate => <p key={candidate.invoiceId} className="mt-1 text-slate-400">Candidate (not verified): <InvoiceLink visualId={candidate.visualId} /></p>)}
+      <td className="p-2">{method(line.reconciliation.actualMethod)}<p className="text-slate-400">{line.reconciliation.invoiceId ? <InvoiceLink visualId={line.reconciliation.invoiceVisualId} /> : line.reconciliation.splitInvoices?.length ? "Verified invoice set" : "No verified invoice"}</p>
+        {line.reconciliation.splitInvoices?.map(invoice => <p key={invoice.invoiceId}>Reviewed split: <InvoiceLink visualId={invoice.visualId} /></p>)}
+        {!line.reconciliation.invoiceId && !line.reconciliation.splitInvoices?.length && (line.reconciliation.candidateInvoices ?? []).map(candidate => <p key={candidate.invoiceId} className="mt-1 text-slate-400">Candidate (not verified): <InvoiceLink visualId={candidate.visualId} /></p>)}
       </td>
       <td className="p-2 min-w-64"><strong className={["matched", "reviewed"].includes(line.reconciliation.outcome) ? "text-emerald-400" : "text-amber-300"}>{line.reconciliation.outcome}</strong><p className="mt-1 text-slate-400">{line.reconciliation.reason}</p>
         {onReview && line.reconciliation.candidateInvoiceIds.length > 0 && <button className="mt-2 text-emerald-400 underline" onClick={() => onReview(line)}>Review invoice choice</button>}
@@ -144,7 +146,7 @@ export function DetailedStoreData({ storeId, onBusyChange }: { storeId: string; 
       if (error instanceof Error && error.message === "No detailed Data Export imported for this store") return null;
       throw error;
     }
-  } });
+  }, refetchInterval: 30_000 });
   const [review, setReview] = useState<Line | null>(null);
   const [reviewSnapshot, setReviewSnapshot] = useState("");
   const [invoiceId, setInvoiceId] = useState("");
@@ -153,7 +155,8 @@ export function DetailedStoreData({ storeId, onBusyChange }: { storeId: string; 
     mutationFn: () => apiFetch(`/chipply/data/stores/${encodeURIComponent(storeId)}/overrides`, { method: "POST", body: JSON.stringify({ snapshotId: reviewSnapshot, rowOrdinal: review!.rowOrdinal, invoiceId, reason: reason.trim() }) }),
     onSuccess: () => { setReview(null); client.invalidateQueries({ queryKey: ["chipply-detailed-data", storeId] }); client.invalidateQueries({ queryKey: getGetChipplySetupQueryKey(storeId) }); },
   });
-  useBusyReport(save.isPending, onBusyChange);
+  const [splitBusy, setSplitBusy] = useState(false);
+  useBusyReport(save.isPending || splitBusy, onBusyChange);
   const data = query.data;
   return <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-4 text-slate-200">
     <div className="flex flex-wrap justify-between gap-3"><h2 className="font-bold text-white">Detailed financials & process reconciliation</h2><Button size="sm" variant="outline" onClick={() => query.refetch()} disabled={query.isFetching}>Refresh mirror comparison</Button></div>
@@ -170,8 +173,21 @@ export function DetailedStoreData({ storeId, onBusyChange }: { storeId: string; 
         return <div key={kind} className="rounded border border-slate-700 p-3"><h3 className="text-sm font-semibold">{kind === "plannedMethod" ? "Planned process" : "Verified actual process"} · Chipply line sales</h3>{[...groups].map(([name, value]) => <div key={name} className="flex justify-between gap-3 py-1 text-xs"><span>{name}</span><span>{value.quantity} units · {money(value.sales)}</span></div>)}</div>;
       })}</div>
       {data.warnings.map((warning, i) => <p key={i} className="text-xs text-amber-300">{warning}</p>)}
-      <ProcessComparisons comparisons={data.processComparisons ?? []} />
+      <ProcessComparisons comparisons={data.processComparisons ?? []} splitContext={{ snapshotId: data.snapshotId, submit: async request => {
+        setSplitBusy(true);
+        try {
+          const result = await apiFetch<ChipplySplitPreview>(`/chipply/data/stores/${encodeURIComponent(storeId)}/split-review`, { method: "POST", body: JSON.stringify(request) });
+          if (request.action !== "preview") {
+            await client.invalidateQueries({ queryKey: ["chipply-detailed-data", storeId] });
+            await client.invalidateQueries({ queryKey: getGetChipplySetupQueryKey(storeId) });
+          }
+          return result;
+        } finally { setSplitBusy(false); }
+      } }} />
       <Lines lines={data.lines} onReview={line => { setReview(line); setReviewSnapshot(data.snapshotId); setInvoiceId(line.reconciliation.invoiceId ?? ""); setReason(""); save.reset(); }} />
+      {!!data.splitHistory?.length && <details><summary className="cursor-pointer text-sm text-emerald-400">Split review audit history</summary>
+        <div className="space-y-2 pt-2 text-xs">{data.splitHistory.map(entry => <p key={entry.id}>{entry.processKey} · {entry.action} · invoice IDs {entry.invoiceIds.join(", ")} · {entry.reason} · {entry.actor} · {new Date(entry.createdAt).toLocaleString()}</p>)}</div>
+      </details>}
       <details><summary className="cursor-pointer text-sm text-emerald-400">Source versions & manual review history</summary><div className="space-y-2 pt-2 text-xs">{data.versions.map(version => <p key={version.id} className="break-all">{version.sourceName} · {new Date(version.createdAt).toLocaleString()} · {version.sourceHash}{version.id === data.snapshotId ? " · Current" : ""}</p>)}{data.overrides.map((override, i) => <p key={i}>Row {override.rowOrdinal} → invoice {override.invoiceId} · {override.reason} · {override.actor} · {new Date(override.createdAt).toLocaleString()}</p>)}</div></details>
     </>}
     <Dialog open={!!review} onOpenChange={open => { if (!open && !save.isPending) setReview(null); }}><DialogContent className="bg-slate-900 border-slate-700 text-slate-200"><DialogHeader><DialogTitle>Review invoice choice · row {review?.rowOrdinal}</DialogTitle><DialogDescription>This is a local audited selection, not a production-method override. The server validates the complete process group and quantity coverage. Unsupported or incomplete evidence cannot be forced.</DialogDescription></DialogHeader>

@@ -3,7 +3,7 @@ import multer from "multer";
 import { z } from "zod";
 import { MAX_DATA_BYTES } from "../lib/chipply/dataImport";
 import { parseDataUpload } from "../lib/chipply/dataUpload";
-import { previewChipplyData, confirmChipplyData, getChipplyDataDetail, overrideChipplyData } from "../lib/chipply/dataService";
+import { previewChipplyData, confirmChipplyData, getChipplyDataDetail, overrideChipplyData, reviewChipplySplit } from "../lib/chipply/dataService";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_DATA_BYTES, files: 1, fields: 1, fieldSize: 100 } }).single("file");
@@ -49,5 +49,18 @@ router.post(`${base}/stores/:storeId/overrides`, async (req, res) => {
     const b = body.data;
     res.json(await overrideChipplyData(String(req.params.storeId), b.snapshotId, b.rowOrdinal, b.invoiceId, b.reason, req.staff!.email));
   } catch (error) { res.status(409).json({ error: (error as Error).message }); }
+});
+router.post(`${base}/stores/:storeId/split-review`, async (req, res) => {
+  const body = z.object({
+    snapshotId: z.string().uuid(), processKey: z.string().min(1).max(500),
+    invoiceIds: z.array(z.string().min(1).max(100)).max(20),
+    action: z.enum(["preview", "approve", "revoke"]), evidence: z.string().length(64).optional(),
+    revision: z.string().uuid().nullable(), reason: z.string().trim().min(5).max(1000).optional(),
+  }).strict().safeParse(req.body);
+  if (!body.success || !z.string().uuid().safeParse(req.params.storeId).success) {
+    res.status(400).json({ error: "Valid store, snapshot, process, invoice selection and review action required" }); return;
+  }
+  try { res.json(await reviewChipplySplit(String(req.params.storeId), body.data, req.staff!.email)); }
+  catch (error) { res.status(409).json({ error: (error as Error).message }); }
 });
 export default router;

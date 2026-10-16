@@ -6,6 +6,7 @@ export interface MirrorInvoice {
   items: { style: string; color: string; quantity: number; sizes: { size: string; count: number }[] }[];
 }
 export interface Reconciliation {
+  splitInvoices?: { invoiceId: string; visualId: number | null }[];
   outcome: "matched" | "reviewed" | "ambiguous" | "quantity-mismatch" | "incomplete" | "unmatched" | "unverified";
   actualMethod: string | null; invoiceId: string | null; candidateInvoiceIds: string[]; reason: string;
   invoiceVisualId: number | null; candidateInvoices: { invoiceId: string; visualId: number | null }[];
@@ -30,7 +31,7 @@ function invoiceProcess(nickname: string): { event: string; suffix: string } | n
   if (!suffix || suffix.split(":").slice(0, -1).some(part => methodToken.test(part.trim()))) return null;
   return { event: header[1], suffix: norm(suffix) };
 }
-function sameProcess(line: DataLine, invoice: MirrorInvoice, event: string): boolean {
+export function sameProcess(line: DataLine, invoice: MirrorInvoice, event: string): boolean {
   const sourceColon = line.processName.indexOf(":");
   if (sourceColon < 0 || !methodToken.test(line.processName.slice(0, sourceColon).trim())) return false;
   const match = invoiceProcess(invoice.nickname);
@@ -141,6 +142,11 @@ export function reconcileData(lines: DataLine[], event: string, invoices: Mirror
     }
     if (comparison.state === "different")
       return { ...line, reconciliation: { ...base, outcome: "quantity-mismatch", reason: "Style/color/size quantities do not cover the complete source process group" } };
+    const { actualMethod, statusEvidence } = invoiceMethod(chosen);
+    return { ...line, reconciliation: { ...base, outcome: actualMethod ? override ? "reviewed" : "matched" : "unverified", actualMethod, invoiceId: chosen.invoiceId, invoiceVisualId: chosen.visualId ?? null, reason: actualMethod ? `${statusEvidence ? "Current mirrored status" : "Nickname fallback"}; full quantities verified${comparison.oneSizeNotes.length ? "; one-size labels reconciled with Printavo Other for matching products/colors" : ""}${override ? "; reviewed invoice selection" : ""}` : "No unambiguous production method evidence" } };
+  });
+}
+export function invoiceMethod(chosen: MirrorInvoice) {
     const statusMethod = method(chosen.statusName ?? "");
     const nicknameMethod = method(chosen.nickname.split(":")[0].split(/\s+/).pop() ?? "");
     const statusTokens = new Set((chosen.statusName ?? "").split(/[\s:/+,&-]+/).map(method).filter(Boolean));
@@ -149,6 +155,5 @@ export function reconcileData(lines: DataLine[], event: string, invoices: Mirror
     const explicitMixed = /\bMERCH\s*-?\s*MIXED(?:\s+DECO(?:RATION)?)?\b/i.test(chosen.statusName ?? "");
     const ambiguous = statusTokens.size > 1 || /\b(mixed|multiple)\b/i.test(chosen.statusName ?? "");
     const actualMethod = explicitMixed ? "mixed-decoration" : ambiguous ? null : statusMethod ?? nicknameMethod;
-    return { ...line, reconciliation: { ...base, outcome: actualMethod ? override ? "reviewed" : "matched" : "unverified", actualMethod, invoiceId: chosen.invoiceId, invoiceVisualId: chosen.visualId ?? null, reason: actualMethod ? `${statusMethod || explicitMixed ? "Current mirrored status" : "Nickname fallback"}; full quantities verified${comparison.oneSizeNotes.length ? "; one-size labels reconciled with Printavo Other for matching products/colors" : ""}${override ? "; reviewed invoice selection" : ""}` : "No unambiguous production method evidence" } };
-  });
+    return { actualMethod, statusEvidence: !!(statusMethod || explicitMixed) };
 }

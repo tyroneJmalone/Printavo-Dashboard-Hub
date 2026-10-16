@@ -9,6 +9,7 @@ import type { ChipplyDataInvoiceReference } from './chipplyDataInvoiceReference'
 import type { ChipplyDataReconciliationOutcome } from './chipplyDataReconciliationOutcome';
 
 export interface ChipplyDataReconciliation {
+  splitInvoices?: ChipplyDataInvoiceReference[];
   outcome: ChipplyDataReconciliationOutcome;
   /**
      * screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)

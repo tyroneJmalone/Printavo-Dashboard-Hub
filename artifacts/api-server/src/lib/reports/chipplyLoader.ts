@@ -22,8 +22,11 @@ export async function loadChipplyReport(filters: ChipplyReportFilters) {
       if (!detail) return;
       for (const line of detail.lines) {
         const rec = line.reconciliation;
-        const allocated = ["matched", "reviewed"].includes(rec.outcome) && !!rec.invoiceId;
-        const invoice = allocated ? invoices.get(rec.invoiceId!) : undefined;
+        // Split attribution is already revalidated by getChipplyDataDetail. Keep
+        // one source row and no arbitrary single invoice for an approved set.
+        const reviewedSplit = rec.outcome === "reviewed" && (rec.splitInvoices?.length ?? 0) >= 2;
+        const allocated = ["matched", "reviewed"].includes(rec.outcome) && (!!rec.invoiceId || reviewedSplit);
+        const invoice = allocated && rec.invoiceId ? invoices.get(rec.invoiceId) : undefined;
         const actualMethod = allocated ? rec.actualMethod : null;
         lines.push({
           storeId: store.id, storeName: store.store_name, eventId: store.event_id,
@@ -55,6 +58,7 @@ export async function loadChipplyReport(filters: ChipplyReportFilters) {
       "Chipply item revenue only; never combined with Printavo revenue.",
       "Order fees, shipping, tax and order totals are omitted: these cannot be allocated to filtered product rows.",
       "Actual method and Printavo metadata are shown only for matched or reviewed lines. All others are Unallocated.",
+      "Reviewed splits retain one Chipply revenue row and their verified common method; single-invoice metadata remains blank.",
       "Stores without detailed imports are missing coverage, not zero revenue.",
       "Dates use the exported order calendar date or store closed date; missing dates are excluded when a date range is set.",
     ],

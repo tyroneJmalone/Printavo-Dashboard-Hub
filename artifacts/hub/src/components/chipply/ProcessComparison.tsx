@@ -1,4 +1,5 @@
 import type { ChipplyProcessComparison, ChipplyQuantityCandidate } from "@workspace/api-client-react";
+import { SplitReview, type SplitReviewContext } from "./SplitReview";
 
 function Candidate({ candidate, ambiguous }: { candidate: ChipplyQuantityCandidate; ambiguous: boolean }) {
   const reliable = candidate.state === "matched" || candidate.state === "different";
@@ -30,16 +31,18 @@ function Candidate({ candidate, ambiguous }: { candidate: ChipplyQuantityCandida
   </details>;
 }
 
-export function ProcessComparisons({ comparisons }: { comparisons: ChipplyProcessComparison[] }) {
+export function ProcessComparisons({ comparisons, splitContext }: { comparisons: ChipplyProcessComparison[]; splitContext?: SplitReviewContext }) {
   return <section className="space-y-3" aria-label="Garment quantities by process">
     <h3 className="font-semibold text-white">Garment quantities by process</h3>
     <p className="text-xs text-slate-400">Read-only comparison of the complete source process group using normalized style, color and size labels. Equal grand totals do not prove matching garments. Colors are not substituted; generic Other stays distinct unless the existing product-specific one-size rule applies. Quantity matching alone does not verify a production method.</p>
     {comparisons.map(group => <details key={group.processKey} className="rounded-lg border border-slate-700 p-3">
-      <summary className="cursor-pointer text-sm text-emerald-400">{group.processNames.join(" / ")} · {group.state === "ambiguous" ? "Multiple candidates — split invoices unsupported" : group.state === "unmatched" ? "No supported invoice candidate" : group.candidates[0]?.state === "different" ? "Quantity differences" : group.candidates[0]?.state === "matched" ? "Quantities match" : "Incomplete evidence"}</summary>
+      <summary className="cursor-pointer text-sm text-emerald-400">{group.processNames.join(" / ")} · {group.splitReview ? `Split review: ${group.splitReview.state}` : group.state === "ambiguous" ? "Multiple candidates — explicit review required" : group.state === "unmatched" ? "No supported invoice candidate" : group.candidates[0]?.state === "different" ? "Quantity differences" : group.candidates[0]?.state === "matched" ? "Quantities match" : "Incomplete evidence"}</summary>
       <div className="mt-3 space-y-3">
-        {group.state === "ambiguous" && <p className="text-xs text-amber-300">These invoices may be duplicates or a split process. Each is compared separately against the full Chipply process; candidate differences do not establish a process-level shortage. Hub does not combine invoices or infer a split. Any existing reviewed selection remains subject to full quantity verification.</p>}
+        {group.state === "ambiguous" && <p className="text-xs text-amber-300">These invoices may be duplicates or a split process. Each is compared separately against the full Chipply process; candidate differences do not establish a process-level shortage. Hub does not automatically combine invoices or infer a split. Any existing reviewed selection remains subject to full quantity verification.</p>}
+        {group.splitReview && <p className="text-xs text-amber-300">Split review {group.splitReview.state} · {group.splitReview.reason} · {group.splitReview.actor} · {new Date(group.splitReview.createdAt).toLocaleString()}{group.splitReview.state === "stale" && " · Evidence changed. Attribution is withheld until reviewed again."}</p>}
         {group.state === "unmatched" && <p className="text-xs text-amber-300">No invoice satisfies the existing event and process-name rules. This is missing match evidence, not a confirmed garment shortage.</p>}
         {group.candidates.map(candidate => <Candidate key={candidate.invoiceId} candidate={candidate} ambiguous={group.state === "ambiguous"} />)}
+        {splitContext && (group.candidates.length > 1 || group.splitReview) && <SplitReview key={`${splitContext.snapshotId}:${group.splitEvidence}:${group.splitRevision}`} group={group} context={splitContext} />}
       </div>
     </details>)}
   </section>;

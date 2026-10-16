@@ -613,6 +613,17 @@ export const PreviewChipplyDataResponse = zod.object({
   "currentSnapshotId": zod.string().nullable(),
   "requiresReplacement": zod.boolean(),
   "processComparisons": zod.array(zod.object({
+  "splitEvidence": zod.string().optional(),
+  "splitRevision": zod.string().nullish(),
+  "splitReview": zod.union([zod.object({
+  "id": zod.string(),
+  "invoiceIds": zod.array(zod.string()),
+  "action": zod.enum(['approve', 'revoke']),
+  "reason": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.string(),
+  "state": zod.enum(['active', 'stale', 'revoked'])
+}),zod.null()]).optional(),
   "processKey": zod.string(),
   "processNames": zod.array(zod.string()),
   "state": zod.enum(['single', 'ambiguous', 'unmatched']),
@@ -659,6 +670,10 @@ export const PreviewChipplyDataResponse = zod.object({
   "itemTotalCents": zod.number().min(previewChipplyDataResponseLinesItemItemTotalCentsMin).max(previewChipplyDataResponseLinesItemItemTotalCentsMax),
   "unitCents": zod.record(zod.string(), zod.number().min(previewChipplyDataResponseLinesItemUnitCentsMinOne).max(previewChipplyDataResponseLinesItemUnitCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
   "reconciliation": zod.object({
+  "splitInvoices": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable()
+})).optional(),
   "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
   "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
   "invoiceId": zod.string().nullable(),
@@ -718,6 +733,15 @@ export const getChipplyDataDetailResponseLinesItemUnitCentsMaxOne = 900719925474
 
 
 export const GetChipplyDataDetailResponse = zod.object({
+  "splitHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "processKey": zod.string(),
+  "invoiceIds": zod.array(zod.string()),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.string()
+})).optional(),
   "storeId": zod.string().uuid(),
   "snapshotId": zod.string().uuid(),
   "sourceHash": zod.string(),
@@ -726,6 +750,17 @@ export const GetChipplyDataDetailResponse = zod.object({
   "sourceName": zod.string(),
   "importedAt": zod.coerce.date(),
   "processComparisons": zod.array(zod.object({
+  "splitEvidence": zod.string().optional(),
+  "splitRevision": zod.string().nullish(),
+  "splitReview": zod.union([zod.object({
+  "id": zod.string(),
+  "invoiceIds": zod.array(zod.string()),
+  "action": zod.enum(['approve', 'revoke']),
+  "reason": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.string(),
+  "state": zod.enum(['active', 'stale', 'revoked'])
+}),zod.null()]).optional(),
   "processKey": zod.string(),
   "processNames": zod.array(zod.string()),
   "state": zod.enum(['single', 'ambiguous', 'unmatched']),
@@ -772,6 +807,10 @@ export const GetChipplyDataDetailResponse = zod.object({
   "itemTotalCents": zod.number().min(getChipplyDataDetailResponseLinesItemItemTotalCentsMin).max(getChipplyDataDetailResponseLinesItemItemTotalCentsMax),
   "unitCents": zod.record(zod.string(), zod.number().min(getChipplyDataDetailResponseLinesItemUnitCentsMinOne).max(getChipplyDataDetailResponseLinesItemUnitCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
   "reconciliation": zod.object({
+  "splitInvoices": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable()
+})).optional(),
   "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
   "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
   "invoiceId": zod.string().nullable(),
@@ -845,6 +884,15 @@ export const reviewChipplyDataMatchResponseLinesItemUnitCentsMaxOne = 9007199254
 
 
 export const ReviewChipplyDataMatchResponse = zod.object({
+  "splitHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "processKey": zod.string(),
+  "invoiceIds": zod.array(zod.string()),
+  "action": zod.string(),
+  "reason": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.string()
+})).optional(),
   "storeId": zod.string().uuid(),
   "snapshotId": zod.string().uuid(),
   "sourceHash": zod.string(),
@@ -853,6 +901,17 @@ export const ReviewChipplyDataMatchResponse = zod.object({
   "sourceName": zod.string(),
   "importedAt": zod.coerce.date(),
   "processComparisons": zod.array(zod.object({
+  "splitEvidence": zod.string().optional(),
+  "splitRevision": zod.string().nullish(),
+  "splitReview": zod.union([zod.object({
+  "id": zod.string(),
+  "invoiceIds": zod.array(zod.string()),
+  "action": zod.enum(['approve', 'revoke']),
+  "reason": zod.string(),
+  "actor": zod.string(),
+  "createdAt": zod.string(),
+  "state": zod.enum(['active', 'stale', 'revoked'])
+}),zod.null()]).optional(),
   "processKey": zod.string(),
   "processNames": zod.array(zod.string()),
   "state": zod.enum(['single', 'ambiguous', 'unmatched']),
@@ -899,6 +958,10 @@ export const ReviewChipplyDataMatchResponse = zod.object({
   "itemTotalCents": zod.number().min(reviewChipplyDataMatchResponseLinesItemItemTotalCentsMin).max(reviewChipplyDataMatchResponseLinesItemItemTotalCentsMax),
   "unitCents": zod.record(zod.string(), zod.number().min(reviewChipplyDataMatchResponseLinesItemUnitCentsMinOne).max(reviewChipplyDataMatchResponseLinesItemUnitCentsMaxOne)).describe('Exact safe-integer cents keyed by original financial column name. Do not sum overlapping components.'),
   "reconciliation": zod.object({
+  "splitInvoices": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable()
+})).optional(),
   "outcome": zod.enum(['matched', 'reviewed', 'ambiguous', 'quantity-mismatch', 'incomplete', 'unmatched', 'unverified']),
   "actualMethod": zod.string().nullable().describe('screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)'),
   "invoiceId": zod.string().nullable(),
@@ -926,6 +989,53 @@ export const ReviewChipplyDataMatchResponse = zod.object({
   "actor": zod.string()
 })),
   "warnings": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Preview, explicitly approve or revoke a Hub-only split-invoice review
+ */
+export const ReviewChipplySplitParams = zod.object({
+  "storeId": zod.coerce.string().uuid()
+})
+
+export const reviewChipplySplitBodyInvoiceIdsMax = 20;
+
+export const reviewChipplySplitBodyReasonMin = 5;
+export const reviewChipplySplitBodyReasonMax = 1000;
+
+
+
+export const ReviewChipplySplitBody = zod.object({
+  "snapshotId": zod.string().uuid(),
+  "processKey": zod.string(),
+  "invoiceIds": zod.array(zod.string()).max(reviewChipplySplitBodyInvoiceIdsMax),
+  "action": zod.enum(['preview', 'approve', 'revoke']),
+  "revision": zod.string().nullable(),
+  "evidence": zod.string().optional(),
+  "reason": zod.string().min(reviewChipplySplitBodyReasonMin).max(reviewChipplySplitBodyReasonMax).optional()
+})
+
+export const ReviewChipplySplitResponse = zod.object({
+  "state": zod.enum(['matched', 'different', 'incomplete', 'stale']),
+  "rows": zod.array(zod.object({
+  "style": zod.string(),
+  "color": zod.string(),
+  "size": zod.string(),
+  "expected": zod.number(),
+  "actual": zod.number(),
+  "delta": zod.number().describe('Mirrored Printavo minus Chipply'),
+  "result": zod.enum(['matched', 'missing', 'extra', 'different'])
+})),
+  "issues": zod.array(zod.string()),
+  "oneSizeNotes": zod.array(zod.string()),
+  "eligible": zod.boolean(),
+  "actualMethod": zod.string().nullable(),
+  "invoices": zod.array(zod.object({
+  "invoiceId": zod.string(),
+  "visualId": zod.number().nullable()
+})),
+  "evidence": zod.string()
 })
 
 

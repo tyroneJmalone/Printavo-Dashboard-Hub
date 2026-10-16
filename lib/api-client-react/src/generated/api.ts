@@ -97,6 +97,8 @@ import type {
   ChipplyReport,
   ChipplySetupRequest,
   ChipplySetupResponse,
+  ChipplySplitPreview,
+  ChipplySplitRequest,
   ChipplyStoreDetailResponse,
   ChipplyStoreEnvelope,
   ChipplyStoreStylesResponse,
@@ -1832,6 +1834,77 @@ export const useReviewChipplyDataMatch = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getReviewChipplyDataMatchMutationOptions(options));
+    }
+
+export const getReviewChipplySplitUrl = (storeId: string,) => {
+
+
+
+
+  return `/api/chipply/data/stores/${storeId}/split-review`
+}
+
+/**
+ * @summary Preview, explicitly approve or revoke a Hub-only split-invoice review
+ */
+export const reviewChipplySplit = async (storeId: string,
+    chipplySplitRequest: ChipplySplitRequest, options?: RequestInit): Promise<ChipplySplitPreview> => {
+
+  return customFetch<ChipplySplitPreview>(getReviewChipplySplitUrl(storeId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(chipplySplitRequest)
+  }
+);}
+
+
+
+
+export const getReviewChipplySplitMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewChipplySplit>>, TError,{storeId: string;data: BodyType<ChipplySplitRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewChipplySplit>>, TError,{storeId: string;data: BodyType<ChipplySplitRequest>}, TContext> => {
+
+const mutationKey = ['reviewChipplySplit'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewChipplySplit>>, {storeId: string;data: BodyType<ChipplySplitRequest>}> = (props) => {
+          const {storeId,data} = props ?? {};
+
+          return  reviewChipplySplit(storeId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewChipplySplitMutationResult = NonNullable<Awaited<ReturnType<typeof reviewChipplySplit>>>
+    export type ReviewChipplySplitMutationBody = BodyType<ChipplySplitRequest>
+    export type ReviewChipplySplitMutationError = ErrorType<void>
+
+    /**
+ * @summary Preview, explicitly approve or revoke a Hub-only split-invoice review
+ */
+export const useReviewChipplySplit = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewChipplySplit>>, TError,{storeId: string;data: BodyType<ChipplySplitRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewChipplySplit>>,
+        TError,
+        {storeId: string;data: BodyType<ChipplySplitRequest>},
+        TContext
+      > => {
+      return useMutation(getReviewChipplySplitMutationOptions(options));
     }
 
 export const getListMerchOpportunitiesUrl = () => {

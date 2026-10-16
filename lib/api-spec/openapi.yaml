@@ -248,6 +248,8 @@ paths:
     $ref: './chipply-data.openapi.yaml#/paths/~1chipply~1data~1stores~1{storeId}'
   /chipply/data/stores/{storeId}/overrides:
     $ref: './chipply-data.openapi.yaml#/paths/~1chipply~1data~1stores~1{storeId}~1overrides'
+  /chipply/data/stores/{storeId}/split-review:
+    $ref: './chipply-data.openapi.yaml#/paths/~1chipply~1data~1stores~1{storeId}~1split-review'
   /merch-pipeline/opportunities:
     $ref: './merch-pipeline.openapi.yaml#/paths/~1merch-pipeline~1opportunities'
   /merch-pipeline/opportunities/{id}:

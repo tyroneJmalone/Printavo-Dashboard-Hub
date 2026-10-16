@@ -91,8 +91,73 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ChipplyDataDetail" }
         "409": { description: Stale snapshot or invoice not in same-event same-process candidates }
+  /chipply/data/stores/{storeId}/split-review:
+    post:
+      operationId: reviewChipplySplit
+      tags: [Chipply]
+      summary: Preview, explicitly approve or revoke a Hub-only split-invoice review
+      parameters:
+        - { name: storeId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChipplySplitRequest" }
+      responses:
+        "200":
+          description: Strict combined comparison and selection-bound evidence token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChipplySplitPreview" }
+        "400": { description: Invalid input }
+        "409": { description: "Stale evidence, concurrent review or ineligible selection" }
 components:
   schemas:
+    ChipplySplitRequest:
+      type: object
+      required: [snapshotId, processKey, invoiceIds, action, revision]
+      properties:
+        snapshotId: { type: string, format: uuid }
+        processKey: { type: string }
+        invoiceIds: { type: array, maxItems: 20, items: { type: string } }
+        action: { type: string, enum: [preview, approve, revoke] }
+        revision: { type: [string, "null"] }
+        evidence: { type: string }
+        reason: { type: string, minLength: 5, maxLength: 1000 }
+    ChipplySplitPreview:
+      type: object
+      required: [state, rows, issues, oneSizeNotes, eligible, actualMethod, invoices, evidence]
+      properties:
+        state: { type: string, enum: [matched, different, incomplete, stale] }
+        rows: { type: array, items: { $ref: "#/components/schemas/ChipplyQuantityRow" } }
+        issues: { type: array, items: { type: string } }
+        oneSizeNotes: { type: array, items: { type: string } }
+        eligible: { type: boolean }
+        actualMethod: { type: [string, "null"] }
+        invoices: { type: array, items: { $ref: "#/components/schemas/ChipplyDataInvoiceReference" } }
+        evidence: { type: string }
+    ChipplySplitReview:
+      type: object
+      required: [id, invoiceIds, action, reason, actor, createdAt, state]
+      properties:
+        id: { type: string }
+        invoiceIds: { type: array, items: { type: string } }
+        action: { type: string, enum: [approve, revoke] }
+        reason: { type: string }
+        actor: { type: string }
+        createdAt: { type: string }
+        state: { type: string, enum: [active, stale, revoked] }
+    ChipplySplitHistoryEntry:
+      type: object
+      required: [id, processKey, invoiceIds, action, reason, actor, createdAt]
+      properties:
+        id: { type: string }
+        processKey: { type: string }
+        invoiceIds: { type: array, items: { type: string } }
+        action: { type: string }
+        reason: { type: string }
+        actor: { type: string }
+        createdAt: { type: string }
     ChipplyDataCentsMap:
       type: object
       additionalProperties: { type: integer, minimum: -9007199254740991, maximum: 9007199254740991 }
@@ -112,6 +177,7 @@ components:
       type: object
       required: [outcome, actualMethod, invoiceId, invoiceVisualId, candidateInvoices, candidateInvoiceIds, reason]
       properties:
+        splitInvoices: { type: array, items: { $ref: "#/components/schemas/ChipplyDataInvoiceReference" } }
         outcome: { type: string, enum: [matched, reviewed, ambiguous, quantity-mismatch, incomplete, unmatched, unverified] }
         actualMethod: { type: [string, "null"], description: "screenprint, heat-transfer, embroidery, dtg, engraving, mixed-decoration (explicit MERCH MIXED status), or null (unallocated)" }
         invoiceId: { type: [string, "null"] }
@@ -154,6 +220,12 @@ components:
       type: object
       required: [processKey, processNames, state, candidates]
       properties:
+        splitEvidence: { type: string }
+        splitRevision: { type: [string, "null"] }
+        splitReview:
+          anyOf:
+            - { $ref: "#/components/schemas/ChipplySplitReview" }
+            - { type: "null" }
         processKey: { type: string }
         processNames: { type: array, items: { type: string } }
         state: { type: string, enum: [single, ambiguous, unmatched] }
@@ -220,6 +292,7 @@ components:
       type: object
       required: [storeId, snapshotId, sourceHash, salesOrder, storeName, sourceName, importedAt, summary, lines, processComparisons, overrides, versions, warnings]
       properties:
+        splitHistory: { type: array, items: { $ref: "#/components/schemas/ChipplySplitHistoryEntry" } }
         storeId: { type: string, format: uuid }
         snapshotId: { type: string, format: uuid }
         sourceHash: { type: string }

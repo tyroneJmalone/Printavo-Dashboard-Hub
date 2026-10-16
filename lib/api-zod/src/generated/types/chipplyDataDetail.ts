@@ -10,8 +10,10 @@ import type { ChipplyDataOverride } from './chipplyDataOverride';
 import type { ChipplyDataSummary } from './chipplyDataSummary';
 import type { ChipplyDataVersion } from './chipplyDataVersion';
 import type { ChipplyProcessComparison } from './chipplyProcessComparison';
+import type { ChipplySplitHistoryEntry } from './chipplySplitHistoryEntry';
 
 export interface ChipplyDataDetail {
+  splitHistory?: ChipplySplitHistoryEntry[];
   storeId: string;
   snapshotId: string;
   sourceHash: string;

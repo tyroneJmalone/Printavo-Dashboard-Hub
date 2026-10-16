@@ -1,9 +1,10 @@
 import { pool } from "@workspace/db";
 import type { ParsedData } from "./dataImport";
-import { reconcileData, compareProcesses, type MirrorInvoice, type DataOverride } from "./dataReconciliation";
+import { reconcileData, compareProcesses, processSuffix, type MirrorInvoice, type DataOverride } from "./dataReconciliation";
+import { compareSplit, evidenceHash } from "./splitReconciliation";
 
-export async function loadDataMirror(event: string): Promise<MirrorInvoice[]> {
-  const result = await pool.query(`SELECT o.printavo_id AS "invoiceId",o.visual_id AS "visualId",o.nickname,o.status_name AS "statusName",
+export async function loadDataMirror(event: string, db: Pick<typeof pool, "query"> = pool): Promise<MirrorInvoice[]> {
+  const result = await db.query(`SELECT o.printavo_id AS "invoiceId",o.visual_id AS "visualId",o.nickname,o.status_name AS "statusName",
     o.detail_sync_state AS "detailSyncState",o.detail_synced_at AS "detailSyncedAt",o.printavo_updated_at AS "syncedAt",
     COALESCE((SELECT jsonb_agg(jsonb_build_object('style',COALESCE(l.item_number,''),'color',COALESCE(l.color,''),
     'quantity',l.items,'sizes',COALESCE(l.sizes,'[]'::jsonb))) FROM pv_line_items l WHERE l.order_id=o.printavo_id),'[]'::jsonb) AS items
@@ -11,27 +12,90 @@ export async function loadDataMirror(event: string): Promise<MirrorInvoice[]> {
   return result.rows;
 }
 export async function getChipplyDataDetail(storeId: string) {
-  const result = await pool.query(`SELECT s.*,c.snapshot_id FROM chipply_data_current c
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    const result = await readDataDetail(storeId, client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) { await client.query("ROLLBACK"); throw err; } finally { client.release(); }
+}
+async function readDataDetail(storeId: string, db: Pick<typeof pool, "query">) {
+  const result = await db.query(`SELECT s.*,c.snapshot_id,c.updated_at AS current_revision FROM chipply_data_current c
     JOIN chipply_data_snapshots s ON s.id=c.snapshot_id WHERE c.store_id=$1`, [storeId]);
   if (!result.rowCount) return null;
   const row = result.rows[0], parsed = row.payload as ParsedData;
-  const [invoices, review, history] = await Promise.all([
-    loadDataMirror(parsed.salesOrder),
-    pool.query(`SELECT DISTINCT ON (row_ordinal) row_ordinal AS "rowOrdinal",invoice_id AS "invoiceId",reason,actor,created_at AS "createdAt"
-      FROM chipply_data_overrides WHERE snapshot_id=$1 ORDER BY row_ordinal,created_at DESC,id DESC`, [row.id]),
-    pool.query(`SELECT id,source_hash AS "sourceHash",source_name AS "sourceName",created_at AS "createdAt",actor
-      FROM chipply_data_snapshots WHERE store_id=$1 ORDER BY created_at DESC LIMIT 100`, [storeId]),
-  ]);
+  // One transaction connection: serialize queries rather than queue concurrent pg calls.
+  const invoices = await loadDataMirror(parsed.salesOrder, db);
+  const review = await db.query(`SELECT DISTINCT ON (row_ordinal) row_ordinal AS "rowOrdinal",invoice_id AS "invoiceId",reason,actor,created_at AS "createdAt"
+      FROM chipply_data_overrides WHERE snapshot_id=$1 ORDER BY row_ordinal,created_at DESC,id DESC`, [row.id]);
+  const history = await db.query(`SELECT id,source_hash AS "sourceHash",source_name AS "sourceName",created_at AS "createdAt",actor
+      FROM chipply_data_snapshots WHERE store_id=$1 ORDER BY created_at DESC LIMIT 100`, [storeId]);
+  const splits = await db.query(`SELECT id,process_key AS "processKey",invoice_ids AS "invoiceIds",evidence_hash AS "evidenceHash",action,reason,actor,created_at AS "createdAt"
+      FROM chipply_data_split_reviews WHERE snapshot_id=$1 ORDER BY created_at DESC,id DESC`, [row.id]);
+  const lines = reconcileData(parsed.lines, parsed.salesOrder, invoices, review.rows as DataOverride[]);
+  const processComparisons = compareProcesses(parsed.lines, parsed.salesOrder, invoices).map(group => {
+    const source = parsed.lines.filter(l => processSuffix(l.processName) === group.processKey);
+    const candidates = invoices.filter(i => group.candidates.some(c => c.invoiceId === i.invoiceId));
+    const hash = evidenceHash({ snapshotId: row.id, revision: row.current_revision, source, candidates,
+      overrides: review.rows.filter(o => source.some(l => l.rowOrdinal === o.rowOrdinal)) });
+    const saved = splits.rows.find(s => s.processKey === group.processKey);
+    const combined = saved?.action === "approve" ? compareSplit(parsed.lines, parsed.salesOrder, group.processKey, invoices, saved.invoiceIds) : null;
+    const valid = !!combined?.eligible && saved.evidenceHash === hash;
+    if (saved?.action === "approve") {
+      for (const line of lines.filter(l => processSuffix(l.processName) === group.processKey)) {
+        line.reconciliation = { ...line.reconciliation, invoiceId: null, invoiceVisualId: null,
+          actualMethod: valid ? combined!.actualMethod : null, outcome: valid ? "reviewed" : "incomplete",
+          splitInvoices: valid ? combined!.invoices : [],
+          reason: valid ? "Explicitly reviewed split; complete combined style/color/size coverage and common production method verified. Hub only."
+            : "Split review is stale or no longer eligible. Refresh, preview and review again; no split attribution is active." };
+      }
+    }
+    return { ...group, splitEvidence: hash, splitRevision: saved?.id ?? null,
+      splitReview: saved ? { ...saved, state: saved.action === "revoke" ? "revoked" as const : valid ? "active" as const : "stale" as const } : null };
+  });
   return {
     storeId, snapshotId: row.id as string, sourceHash: parsed.sourceHash, salesOrder: parsed.salesOrder,
     storeName: parsed.storeName, sourceName: row.source_name as string, importedAt: row.created_at,
-    summary: parsed.summary, lines: reconcileData(parsed.lines, parsed.salesOrder, invoices, review.rows as DataOverride[]),
-    processComparisons: compareProcesses(parsed.lines, parsed.salesOrder, invoices),
+    summary: parsed.summary, lines, processComparisons,
+    splitHistory: splits.rows,
     overrides: review.rows as DataOverride[], versions: history.rows,
     warnings: ["Chipply dollars are separate from Printavo invoice revenue.", "Combined includes Product Price and Process Price; do not add them again.", "Fundraising is not net profit.", "Quantity verification uses current mirrored detail, not a live Printavo fetch."],
   };
 }
 export type ChipplyDataDetail = NonNullable<Awaited<ReturnType<typeof getChipplyDataDetail>>>;
+
+export interface SplitRequest {
+  snapshotId: string; processKey: string; invoiceIds: string[];
+  action: "preview" | "approve" | "revoke"; evidence?: string; revision: string | null; reason?: string;
+}
+export async function reviewChipplySplit(storeId: string, input: SplitRequest, actor: string) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN ISOLATION LEVEL SERIALIZABLE");
+    await client.query("SELECT snapshot_id FROM chipply_data_current WHERE store_id=$1 FOR UPDATE", [storeId]);
+    const detail = await readDataDetail(storeId, client);
+    if (!detail || detail.snapshotId !== input.snapshotId) throw new Error("Snapshot changed; refresh before reviewing.");
+    const group = detail.processComparisons.find(g => g.processKey === input.processKey);
+    if (!group) throw new Error("Process not found.");
+    if (group.splitRevision !== input.revision) throw new Error("Another review changed this process; refresh before reviewing.");
+    const invoices = await loadDataMirror(detail.salesOrder, client);
+    const comparison = compareSplit(detail.lines, detail.salesOrder, input.processKey, invoices, input.invoiceIds);
+    // Selection-bound token prevents approving a different set than was previewed.
+    const token = evidenceHash({ evidence: group.splitEvidence, invoiceIds: input.invoiceIds, revision: input.revision });
+    if (input.action !== "preview") {
+      if (!input.reason || input.reason.trim().length < 5) throw new Error("A review reason is required.");
+      if (input.action === "approve" && (!comparison.eligible || input.evidence !== token))
+        throw new Error("Evidence changed or split is not eligible; preview again.");
+      if (input.action === "revoke" && !group.splitReview) throw new Error("No split review to revoke.");
+      await client.query(`INSERT INTO chipply_data_split_reviews(snapshot_id,process_key,invoice_ids,evidence_hash,action,reason,actor)
+        VALUES($1,$2,$3,$4,$5,$6,$7)`, [detail.snapshotId, input.processKey, JSON.stringify(input.invoiceIds),
+        group.splitEvidence, input.action, input.reason.trim(), actor]);
+    }
+    await client.query("COMMIT");
+    return { ...comparison, evidence: token };
+  } catch (err) { await client.query("ROLLBACK"); throw err; } finally { client.release(); }
+}
 
 export async function previewChipplyData(parsed: ParsedData, actor: string, sourceName: string, expectedStoreId?: string) {
   if (expectedStoreId) {

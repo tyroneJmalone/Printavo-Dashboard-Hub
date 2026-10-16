@@ -42,3 +42,14 @@ export const chipplyDataEventsTable = pgTable("chipply_data_events", {
   actor: text("actor").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+export const chipplyDataSplitReviewsTable = pgTable("chipply_data_split_reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  snapshotId: uuid("snapshot_id").notNull().references(() => chipplyDataSnapshotsTable.id),
+  processKey: text("process_key").notNull(),
+  invoiceIds: jsonb("invoice_ids").$type<string[]>().notNull(),
+  evidenceHash: text("evidence_hash").notNull(),
+  action: text("action").notNull(),
+  reason: text("reason").notNull(),
+  actor: text("actor").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [index("chipply_split_snapshot_idx").on(t.snapshotId)]);

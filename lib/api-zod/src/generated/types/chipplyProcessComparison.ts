@@ -7,8 +7,13 @@
  */
 import type { ChipplyProcessComparisonState } from './chipplyProcessComparisonState';
 import type { ChipplyQuantityCandidate } from './chipplyQuantityCandidate';
+import type { ChipplySplitReview } from './chipplySplitReview';
 
 export interface ChipplyProcessComparison {
+  splitEvidence?: string;
+  /** @nullable */
+  splitRevision?: string | null;
+  splitReview?: ChipplySplitReview | null;
   processKey: string;
   processNames: string[];
   state: ChipplyProcessComparisonState;

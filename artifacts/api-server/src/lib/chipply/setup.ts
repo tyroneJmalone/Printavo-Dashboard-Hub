@@ -60,7 +60,7 @@ export async function getSetup(storeId: string) {
   const evidenceKey = createHash("sha256").update(JSON.stringify({
     checks, customerId: store.pv_customer_id, invoices: stableInvoices,
     summary: summary?.summary ? [summary.summary.source, summary.summary.comparisons] : null,
-    allocations: detail?.lines.map(l => [l.rowOrdinal, l.reconciliation.invoiceId, l.reconciliation.actualMethod, l.reconciliation.outcome]),
+    allocations: detail?.lines.map(l => [l.rowOrdinal, l.reconciliation.invoiceId, l.reconciliation.splitInvoices, l.reconciliation.actualMethod, l.reconciliation.outcome]),
   })).digest("hex");
   return { storeId, ...effectiveProgress(progress.rows[0], evidenceKey), evidenceKey, checks };
 }
