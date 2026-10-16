@@ -130,7 +130,8 @@ WITH calendar AS (
   SELECT DISTINCT ON (customer_id, visual_id) *
   FROM eligible ORDER BY customer_id, visual_id,
     CASE WHEN order_type = 'invoice' THEN 0 ELSE 1 END, printavo_created_at, printavo_id
-), repeat_orders AS (
+), repeat_orders AS MATERIALIZED (
+  -- Rank history once, not once per period in customer_stats.
   SELECT l.*, row_number() OVER (
     PARTITION BY customer_id ORDER BY chronology_at, visual_id, printavo_id
   ) AS customer_order_number
@@ -172,22 +173,25 @@ WITH calendar AS (
         OR (p.order_id IS NULL AND shell.visual_id = p.order_visual_id))
         AND NOT ${notChipplySql("shell.nickname")})
   GROUP BY r.key
+), average_population AS (
+  -- Join quantities once before expanding periods/methods. A correlated EXISTS
+  -- against the materialized quantities rescans every group for each invoice.
+  SELECT i.*, q.qty, q.print, q.embroidery, q.heat
+  FROM invoice_population i LEFT JOIN order_quantities q
+    ON q.order_id = i.printavo_id AND i.detail_sync_state = 'complete'
 ), average_stats AS (
   SELECT r.key, m.method, count(i.printavo_id)::int AS orders,
     CASE WHEN count(i.printavo_id) = 0 THEN NULL
       ELSE (sum(i.total) / count(i.printavo_id))::float8 END AS average_order_value,
-    CASE WHEN count(i.printavo_id) = 0 OR count(q.qty) = 0 THEN NULL
-      ELSE (sum(q.qty)::numeric / count(q.qty))::float8 END AS average_order_volume,
-    count(q.qty)::int AS quantity_known_orders
+    CASE WHEN count(i.printavo_id) = 0 OR count(i.qty) = 0 THEN NULL
+      ELSE (sum(i.qty)::numeric / count(i.qty))::float8 END AS average_order_volume,
+    count(i.qty)::int AS quantity_known_orders
   FROM ranges r CROSS JOIN (VALUES ('all'), ('print'), ('embroidery'), ('heat')) m(method)
-  LEFT JOIN invoice_population i
+  LEFT JOIN average_population i
     ON i.created_day BETWEEN r.start_day AND r.end_day
-    AND (m.method = 'all' OR (i.detail_sync_state = 'complete' AND EXISTS (
-      SELECT 1 FROM order_quantities mq WHERE mq.order_id = i.printavo_id
-        AND CASE m.method WHEN 'print' THEN mq.print
-          WHEN 'embroidery' THEN mq.embroidery ELSE mq.heat END
-    )))
-  LEFT JOIN order_quantities q ON q.order_id = i.printavo_id AND i.detail_sync_state = 'complete'
+    AND (m.method = 'all' OR (i.detail_sync_state = 'complete'
+      AND CASE m.method WHEN 'print' THEN i.print
+        WHEN 'embroidery' THEN i.embroidery ELSE i.heat END))
   GROUP BY r.key, m.method
 ), close_orders AS (
   -- Pick the current invoice before applying eligibility or date boundaries.

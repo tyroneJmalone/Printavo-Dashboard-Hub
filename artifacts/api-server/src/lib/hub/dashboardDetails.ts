@@ -48,6 +48,11 @@ export function dashboardDetailsSql(metric: PerformanceMetric) {
     totalOrders: "i.total_orders", totalRevenue: "i.total_revenue", itemsDecorated: "i.items_decorated",
     netPayments: "p.net_payments", newCustomers: "c.new_customers", repeatCustomers: "c.repeat_customers",
   }[metric];
+  // Only reference the requested statistic. Joining all three forces unrelated
+  // payment, decoration and full repeat-history calculations on every drilldown.
+  const statsJoin = metric === "netPayments" ? "payment_stats p"
+    : metric === "newCustomers" || metric === "repeatCustomers" ? "customer_stats c"
+    : "invoice_stats i";
   return `${DASHBOARD_CTES},
     selected_range AS (SELECT * FROM ranges WHERE key = $1),
     detail_rows AS (${rows})
@@ -56,8 +61,7 @@ export function dashboardDetailsSql(metric: PerformanceMetric) {
       coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY page.date DESC, page.id) FROM (
         SELECT * FROM detail_rows ORDER BY date DESC, id LIMIT $2 OFFSET $3
       ) page), '[]'::jsonb) AS items
-    FROM selected_range r JOIN invoice_stats i USING (key)
-    JOIN customer_stats c USING (key) JOIN payment_stats p USING (key)`;
+    FROM selected_range r JOIN ${statsJoin} USING (key)`;
 }
 
 export async function getDashboardDetails(metric: PerformanceMetric, period: DashboardPeriod, offset: number) {
