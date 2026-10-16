@@ -42,7 +42,7 @@
 - [Clerk browser-test verification emails](clerk-browser-test-verification-emails.md) — programmatic Hub sign-in can send real development OTP emails; reuse a session or avoid auth UI tests.
 - [Printavo imprint matrix pricing](printavo-imprint-matrix-pricing.md) — matrix columns are attribution, not added charges; resolve live IDs before the one-shot quote claim.
 - [Printavo products API](printavo-products-api.md) — standalone search exposes custom product identity/colors, but not cost, sizes, inventory, or images; history is broader than the live library.
-- [Printavo quote vs invoice identity](printavo-quote-vs-invoice-ids.md) — conversion issues a NEW printavo id (visual number survives); Quote.visualId is a String; quoteUpdate input type is QuoteInput.
+- [Printavo quote vs invoice identity](printavo-quote-vs-invoice-ids.md) — conversions can preserve OR replace internal IDs; preserve quote dates in both paths; normalize visual IDs.
 - [html-to-image off-screen capture](html-to-image-offscreen-capture.md) — off-screen clone captures need a style offset reset in toPng options AND parent (not body) appending, or PNGs come out blank/textless.
 - [Fireflies Hub integration](fireflies-hub-integration.md) — deferred plan is documented; Business Team Admin needs a read-only visibility audit before choosing central vs per-user access.
 - [Missive API transport](missive-connector-routing.md) — direct secret-backed transport (connector host broken); one token per teammate, two-phase multi-account sync, shared pacing queue.
