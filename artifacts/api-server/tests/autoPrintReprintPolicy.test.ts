@@ -54,6 +54,47 @@ test("status observations support strings, JSON-wrapped strings and known object
   }
 });
 
+test("status names normalize whitespace on both sides and in wrapped observations", () => {
+  const statuses = [
+    { id: "need", name: "Seps.io - 👕🧢 Need 2 Order " },
+    { id: "ordered", name: "Seps.io -  👕🧢 ORDERED " },
+  ];
+  const sources = new Set(["ordered"]);
+  for (const value of [
+    " Seps.io - 👕🧢 Need 2 Order ",
+    JSON.stringify("Seps.io - 👕🧢 Need 2 Order "),
+    { status: { id: "need", name: "Seps.io - 👕🧢 Need 2 Order" } },
+  ]) assert.equal(observedSourceMembership(value, statuses, sources), false);
+  for (const value of [
+    "Seps.io - 👕🧢 ORDERED", " Seps.io -\t👕🧢\u00a0ORDERED ",
+    { statusId: "ordered", statusName: "Seps.io - 👕🧢 ORDERED" },
+  ]) assert.equal(observedSourceMembership(value, statuses, sources), true);
+  assert.equal(observedSourceMembership({ id: "need", name: "Seps.io - 👕🧢 ORDERED" }, statuses, sources), null);
+  assert.equal(observedSourceMembership("Unknown status", statuses, sources), null);
+  assert.equal(observedSourceMembership("Seps.io - 👕🧢 ORDERED", [
+    ...statuses, { id: "other", name: "Seps.io - 👕🧢 ORDERED" },
+  ], sources), null, "normalization must not authorize ambiguous source membership");
+});
+
+test("revised quantities plus whitespace-affected reentry qualify once, not on subsequent runs", () => {
+  const statuses = [
+    { id: "need", name: "Seps.io - 👕🧢 Need 2 Order " },
+    { id: "ordered", name: "Seps.io - 👕🧢 ORDERED" },
+  ];
+  const sources = new Set(["ordered"]);
+  const entry = { id: 10, occurredAt: after, oldValue: statuses[0].name, newValue: statuses[1].name };
+  const verified = observedSourceMembership(entry.oldValue, statuses, sources) === false
+    && observedSourceMembership(entry.newValue, statuses, sources) === true ? entry : null;
+  const oldLines = [{ id: "line", items: 60 }];
+  const changed = [{ id: "line", items: 40 }, { id: "addition", items: 5 }];
+  const fingerprint = lineItemFingerprint(changed);
+  const baseline = { printedAt: at, contentFingerprint: lineItemFingerprint(oldLines) };
+  assert.equal(decideReprint({ prior: baseline, fingerprint, reentry: verified }).isReprint, true);
+  assert.equal(decideReprint({ prior: baseline, fingerprint: baseline.contentFingerprint, reentry: verified }).reason, "line_items_unchanged");
+  assert.equal(decideReprint({ prior: { printedAt: new Date(after.getTime() + 1000), contentFingerprint: fingerprint },
+    fingerprint, reentry: verified }).reason, "no_source_reentry_after_print");
+});
+
 test("only definitive render/validation failures are error-routing candidates", () => {
   assert.deepEqual(definitiveFailureCandidates([
     { candidate: "render", outcome: "failed", definitivePreSubmitFailure: true },

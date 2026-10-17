@@ -38,6 +38,8 @@ export function canReservePrint(history: readonly { id: string; status: string }
   return (history.find((row) => row.status === "printed")?.id ?? null) === expectedPriorId;
 }
 
+const normalizeStatusName = (name: string): string => name.replace(/\s+/g, " ").trim();
+
 /** Only known recorded status shapes are accepted; arbitrary objects never prove an exit. */
 export function observedSourceMembership(value: unknown, statuses: readonly { id: string; name: string }[], sourceIds: ReadonlySet<string>, depth = 0): boolean | null {
   if (depth > 3 || value == null) return null;
@@ -47,7 +49,7 @@ export function observedSourceMembership(value: unknown, statuses: readonly { id
     if (text.startsWith('"') || text.startsWith("{")) {
       try { return observedSourceMembership(JSON.parse(text), statuses, sourceIds, depth + 1); } catch { return null; }
     }
-    const matches = statuses.filter((s) => s.id === text || s.name === text);
+    const matches = statuses.filter((s) => s.id === text || normalizeStatusName(s.name) === normalizeStatusName(text));
     const results = new Set(matches.map((s) => sourceIds.has(s.id)));
     return results.size === 1 ? [...results][0] : null;
   }
@@ -58,7 +60,7 @@ export function observedSourceMembership(value: unknown, statuses: readonly { id
   const name = object.name ?? object.statusName;
   if (typeof id === "string" || typeof id === "number") {
     const status = statuses.find((s) => s.id === String(id));
-    if (!status || (typeof name === "string" && name !== status.name)) return null;
+    if (!status || (typeof name === "string" && normalizeStatusName(name) !== normalizeStatusName(status.name))) return null;
     return sourceIds.has(status.id);
   }
   return typeof name === "string" ? observedSourceMembership(name, statuses, sourceIds, depth + 1) : null;
