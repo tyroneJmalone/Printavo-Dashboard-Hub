@@ -1,0 +1,206 @@
+--- a/raster.py	2026-09-21 23:00:01.000000000 +0000
++++ b/raster.py	2026-10-18 05:57:50.620508824 +0000
+@@ -106,11 +106,80 @@
+             "vanished": int(vanished), "choke_px": px}
+ 
+ 
++def info_bar_cut(cp, dpi=DPI):
++    """Last row of the Pre-Press Pro info bar, or None if it cannot be found.
++
++    The filename and swatch label block sit in a margin strip above the
++    artwork. They are painted in each ink, so a pixel measurement that counts
++    them is measuring furniture, not the design - and because the label block
++    never sits on the base, it drags underbase coverage down and produces a
++    yellow flag on a file that is correct.
++
++    Neither the layer nor the ink can tell them apart: art legitimately lives
++    on the marks layer, and the labels are painted in their own inks by design.
++    POSITION can, which is the same discriminator ART_TEXT_OUTLINED uses.
++
++    The bar is a stack of thin, light, evenly spaced text bands starting at the
++    top. Walk down while bands match that signature and stop at the first one
++    that does not. Measured per file rather than fixed, because the bar grows
++    with the ink count - 0.59in for one ink, 1.09in for five.
++
++    Returns None when no bar is found OR when the bar ends too close to the
++    first artwork band. Excluding the wrong rows would hide a real defect,
++    which is worse than the flag this exists to prevent, so an uncertain
++    reading declines to cut rather than guessing.
++    """
++    ink = None
++    for k, v in cp.items():
++        if k in ("Cyan", "Magenta", "Yellow", "Black", "All") or v.sum() < 50:
++            continue
++        ink = v if ink is None else (ink | v)
++    if ink is None:
++        return None
++    rows = ink.sum(axis=1)
++    nz = np.where(rows > 0)[0]
++    if len(nz) == 0:
++        return None
++
++    bands, start = [], None
++    for i in range(nz[0], nz[-1] + 2):
++        has = i <= nz[-1] and rows[i] > 0
++        if has and start is None:
++            start = i
++        elif not has and start is not None:
++            bands.append((start, i - 1, int(rows[start:i].sum())))
++            start = None
++
++    total = int(ink.sum())
++    max_band_in = 0.22          # a label line measures ~0.13in; allow headroom
++    max_share = max(total * 0.02, 6000)
++    top_strip_in = 3.0          # the bar never begins this far down
++    cut = None
++    for s, e, px in bands:
++        if ((e - s + 1) / dpi <= max_band_in and px <= max_share
++                and s / dpi < top_strip_in):
++            cut = e
++        else:
++            break
++    if cut is None:
++        return None
++
++    after = [b for b in bands if b[0] > cut]
++    if not after:
++        return None
++    # Refuse the cut when the bar crowds the artwork. Observed separation is
++    # 0.16in at its narrowest across the corpus, but the bar grows with ink
++    # count and the corpus tops out at five inks.
++    if (after[0][0] - cut) / dpi < 0.10:
++        return None
++    return cut
++
++
+ def base_coverage(src, colour_page, under_page, dpi=DPI):
+     """What fraction of each colour ink's area sits on the underbase.
+ 
+     Returns {ink: {pct, px}} plus the inks considered 'based', at or above
+-    CFG.BASED_INK_PCT.
++    CFG.BASED_INK_PCT, plus the info-bar row that was excluded (None if none).
+     """
+     cp = plates(src, colour_page, dpi)
+     up = plates(src, under_page, dpi)
+@@ -120,19 +189,25 @@
+             continue
+         base = vmask if base is None else (base | vmask)
+     if base is None:
+-        return {}, []
++        return {}, [], None
+     # dilate the base a little: a based ink stays based even when the plate is
+     # nudged out of register, which is the defect we still want to catch later
+     base_t = ndimage.binary_dilation(base, np.ones((9, 9), bool))
++    cut = info_bar_cut(cp, dpi)
+     cov = {}
+     for k, m in cp.items():
+         if k in ("Cyan", "Magenta", "Yellow", "Black", "All") or m.sum() < 50:
+             continue
+         if m.shape != base_t.shape:
+             continue
++        if cut is not None:
++            m = m.copy()
++            m[:cut + 1, :] = False
++            if m.sum() < 50:
++                continue
+         inside = int((m & base_t).sum())
+         tot = int(m.sum())
+         cov[k] = {"px": tot, "on_base_px": inside,
+                   "pct": round(100.0 * inside / max(tot, 1), 1)}
+     based = [k for k, d in cov.items() if d["pct"] >= CFG.BASED_INK_PCT]
+-    return cov, based
++    return cov, based, cut
+--- a/run.py	2026-09-22 19:40:42.000000000 +0000
++++ b/run.py	2026-10-18 05:57:58.132509270 +0000
+@@ -228,9 +228,15 @@
+     # which colours actually sit on the base — only those can be out of register
+     if unders and colours:
+         try:
+-            cov, based = RS.base_coverage(src, colours[0]["index"], unders[0]["index"])
++            cov, based, bar_cut = RS.base_coverage(
++                src, colours[0]["index"], unders[0]["index"])
+             ctx["coverage"] = cov
+             ctx["based_inks"] = based
++            # Row below which coverage was measured. None means the info bar
++            # could not be located safely and the whole plate was measured -
++            # which is the condition that produces the furniture false flag,
++            # so the rule says so rather than reporting a clean number.
++            ctx["coverage_bar_cut_px"] = bar_cut
+         except Exception as e:
+             ctx["coverage_error"] = str(e)
+             based = []
+--- a/detect.py	2026-09-21 23:00:00.000000000 +0000
++++ b/detect.py	2026-10-18 05:58:05.748509723 +0000
+@@ -499,6 +499,16 @@
+     if not cov:
+         return v(NOT_APPLICABLE, "no underbase to measure against")
+     rows = [f"{ink} — {d['pct']}% of its area sits on the base" for ink, d in sorted(cov.items())]
++    # The filename and swatch label block are painted in each ink and never sit
++    # on the base, so counting them drags coverage down and yellow-flags a file
++    # that is correct. They are excluded by position when they can be located.
++    if ctx.get("coverage_bar_cut_px") is None:
++        rows.append("The info bar could not be located, so these figures "
++                    "include the filename and swatch labels, which never sit "
++                    "on the base. Treat a borderline reading with caution.")
++    else:
++        rows.append("Measured below the info bar — the filename and swatch "
++                    "labels are excluded.")
+     lo = p.num("partial_below_pct", 15)
+     hi = p.num("partial_above_pct", 85)
+     bare = [ink for ink, d in cov.items()
+--- a/test_engine.py	2026-09-22 19:40:42.000000000 +0000
++++ b/test_engine.py	2026-10-18 06:00:48.218042421 +0000
+@@ -417,6 +417,37 @@
+     return True
+ 
+ 
++def t_info_bar_excluded_from_coverage(need):
++    """The filename and swatch label block are painted in each ink and never
++    sit on the base, so counting them drags underbase coverage down and yellow-
++    flags a correct file. -22771 LC reads 83.9% on Brown 7518 C with the strip
++    counted and 92.2% without it, which is the difference between a flag and a
++    pass. Neither layer nor ink can tell furniture from art; position can.
++    """
++    src = find("22771 LC") or find("22906 LC OUTPUT 1")
++    if not src:
++        return "skip"
++    facts = EX.extract(src)
++    und = [ab for ab in facts["artboards"] if ab["is_underbase"]]
++    cols = [ab for ab in facts["artboards"] if not ab["is_underbase"] and ab["inks"]]
++    if not und or not cols:
++        return "fixture has no underbase artboard"
++    cp = RS.plates(src, cols[0]["index"], 200)
++    cut = RS.info_bar_cut(cp, 200)
++    if cut is None:
++        return "info bar was not located on a fixture that has one"
++    if not 0.4 < cut / 200.0 < 1.25:
++        return f"info bar cut at {cut / 200.0:.2f}in is outside the observed band"
++    cov, based, bar = RS.base_coverage(src, cols[0]["index"], und[0]["index"])
++    if bar != cut:
++        return "base_coverage did not report the row it excluded"
++    for ink, d in cov.items():
++        if "Brown" in ink and d["pct"] < 85:
++            return (f"{ink} still reads {d['pct']}% - the info bar is still "
++                    "being counted")
++    return True
++
++
+ TESTS = [
+     ("register catches the planted 1pt nudge", t_register_catches_the_planted_nudge),
+     ("register passes a good file", t_register_passes_a_good_file),
+@@ -427,6 +458,7 @@
+     ("gradients suppress unreliable checks", t_gradient_suppresses_unreliable_checks),
+     ("live-text rule stays quiet", t_live_text_rule_is_quiet),
+     ("knockout mask survives recolour", t_knockout_mask_matches_the_rip),
++    ("info bar excluded from coverage", t_info_bar_excluded_from_coverage),
+     ("svg dimensions parse in both renderer formats",
+      t_svg_dimensions_parse_in_both_renderer_formats),
+     ("severity comes from the table", t_severity_comes_from_the_table),
+--- a/config.py	2026-09-22 19:40:42.000000000 +0000
++++ b/config.py	2026-10-18 06:01:51.344010207 +0000
+@@ -45,4 +45,4 @@
+ 
+ # Engine version. Stamp it on every result so an old verdict can be read in
+ # terms of the code that produced it.
+-ENGINE_VERSION = _p("PRINTSCOPE_ENGINE_VERSION", "0.4.1")
++ENGINE_VERSION = _p("PRINTSCOPE_ENGINE_VERSION", "0.4.2")
