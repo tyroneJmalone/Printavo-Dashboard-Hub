@@ -228,9 +228,12 @@ def build_ctx(src, facts):
     # which colours actually sit on the base — only those can be out of register
     if unders and colours:
         try:
-            cov, based = RS.base_coverage(src, colours[0]["index"], unders[0]["index"])
+            cov, based, bar_cut = RS.base_coverage(
+                src, colours[0]["index"], unders[0]["index"],
+                text_rows=RS.text_rows_for(colours[0]))
             ctx["coverage"] = cov
             ctx["based_inks"] = based
+            ctx["coverage_bar_cut_px"] = bar_cut
         except Exception as e:
             ctx["coverage_error"] = str(e)
             based = []

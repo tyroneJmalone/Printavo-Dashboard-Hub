@@ -500,6 +500,13 @@ def under_coverage(f, ctx, p):
     if not cov:
         return v(NOT_APPLICABLE, "no underbase to measure against")
     rows = [f"{ink} — {d['pct']}% of its area sits on the base" for ink, d in sorted(cov.items())]
+    if ctx.get("coverage_bar_cut_px") is None:
+        rows.append("The info bar could not be located, so these figures "
+                    "include any filename and swatch labels present, which never sit "
+                    "on the base. Treat a borderline reading with caution.")
+    else:
+        rows.append("Measured below the info bar — the filename and swatch "
+                    "labels are excluded.")
     lo = p.num("partial_below_pct", 15)
     hi = p.num("partial_above_pct", 85)
     bare = [ink for ink, d in cov.items()

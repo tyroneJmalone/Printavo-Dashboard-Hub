@@ -433,7 +433,66 @@ def t_not_applicable_is_distinct_from_unverified(need):
     return True
 
 
+def t_info_bar_excluded_from_coverage(need):
+    src = need("22771 LC")
+    if not src:
+        return "missing required Brown-ink fixture"
+    facts = EX.extract(src)
+    und = [ab for ab in facts["artboards"] if ab["is_underbase"]]
+    cols = [ab for ab in facts["artboards"] if not ab["is_underbase"] and ab["inks"]]
+    cp = RS.plates(src, cols[0]["index"], CFG.MEASURE_DPI)
+    text = RS.text_rows_for(cols[0])
+    cut = RS.info_bar_cut(cp, text, CFG.MEASURE_DPI)
+    if cut is None or not 0.4 < cut / CFG.MEASURE_DPI < 1.25:
+        return f"unexpected info-bar cut: {cut}"
+    cov, based, bar = RS.base_coverage(
+        src, cols[0]["index"], und[0]["index"], text_rows=text)
+    brown = cov.get("5-230-Brown 7518 C")
+    if not brown or brown["pct"] <= 85:
+        return f"expected Brown ink above 85%, got {brown}"
+    if bar != cut:
+        return "coverage did not report the excluded row"
+    result = DT.under_coverage(facts, {"coverage": cov, "coverage_bar_cut_px": bar},
+                               DT.Params({}))
+    if result["status"] != DT.PASS:
+        return f"coverage still flags: {result}"
+    if not any("Measured below the info bar" in row for row in result["detail"]):
+        return "missing info-bar measurement explanation"
+    return True
+
+
+def t_info_bar_detector_is_conservative(need):
+    import numpy as np
+    def plate(parts):
+        m = np.zeros((1000, 3200), bool)
+        for a, b, c, d in parts:
+            m[a:b, c:d] = True
+        return {"5-230-Ink": m}
+    small = plate([(60, 100, 1500, 1700), (300, 900, 800, 2400)])
+    for text in ([], None, [950]):
+        if RS.info_bar_cut(small, text, 200) is not None:
+            return "excluded artwork without supporting text origins"
+    crowded = plate([(28, 54, 1200, 2000), (60, 900, 800, 2400)])
+    if RS.info_bar_cut(crowded, [53], 200) is not None:
+        return "excluded crowded labels"
+    real = plate([(28, 54, 1200, 2000), (92, 118, 1200, 2000),
+                  (300, 900, 800, 2400)])
+    if RS.info_bar_cut(real, [53, 117], 200) != 117:
+        return "did not recognize two-line bar"
+    if RS.text_rows_for({"height_in": 5, "text_positions": [[0, 288]]}, 200) != [200]:
+        return "text coordinate conversion incorrect"
+    # A live-text origin at artwork height is an acknowledged ambiguity;
+    # retain the separate artwork-text failure, not an overall clean verdict.
+    facts = {"artboards": [{"index": 1, "ink_bbox": {"ink": [0, 0, 200, 400]},
+                            "text_positions": [[100, 350]]}]}
+    if DT.art_text(facts, {}, None)["status"] != DT.FAIL:
+        return "live text on artwork was not reported"
+    return True
+
+
 TESTS = [
+    ("info bar excluded from coverage", t_info_bar_excluded_from_coverage),
+    ("info bar detector is conservative", t_info_bar_detector_is_conservative),
     ("register catches the planted 1pt nudge", t_register_catches_the_planted_nudge),
     ("register passes a good file", t_register_passes_a_good_file),
     ("declared-but-unused plate is caught", t_declared_but_unused_plate),

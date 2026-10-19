@@ -34,3 +34,16 @@ not independently reproduced evidence merely because they appear in the UI.
 and historical inspection results. Enforce informational-only policy even
 when an older snapshot contains a stronger severity. Do not silently promote
 choke safety or use absent garment/order data as a passing result.
+
+Merge consultant engine updates narrowly rather than replacing the bundled
+engine, and preserve the Hub's additional rules and renderer-specific tests.
+
+**Why:** A supplied engine archive omitted the October checks and strengthened
+tests; the consultant withdrew it after review. The approved info-bar correction
+uses live-text evidence, not thin-band shape alone, because shape-only detection
+excluded real artwork in a no-label counterexample.
+
+**How to apply:** Validate all rule statuses on available real fixtures, not just
+the targeted coverage metric: coverage also supplies the based-ink set used by
+other measurements. Keep negative-space trap changes separate, and preserve old
+inspection records when updating the engine.

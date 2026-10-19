@@ -131,11 +131,69 @@ def erosion_topology(src, page, choke_pt=0.375, dpi=DPI, only=None):
             "vanished": int(vanished), "choke_px": px}
 
 
-def base_coverage(src, colour_page, under_page, dpi=DPI):
+def info_bar_cut(cp, text_rows=None, dpi=DPI):
+    """Locate a thin live-text label block above artwork; otherwise decline.
+
+    Neither layer nor ink distinguishes labels from artwork. Require a live
+    text origin in every candidate band and a clear gap before the artwork.
+    No text evidence means no exclusion. Live text on artwork remains a
+    separately reported ART_TEXT_OUTLINED defect.
+    """
+    if not text_rows:
+        return None
+    ink = None
+    for k, v in cp.items():
+        if k in ("Cyan", "Magenta", "Yellow", "Black", "All") or v.sum() < 50:
+            continue
+        ink = v if ink is None else (ink | v)
+    if ink is None:
+        return None
+    rows = ink.sum(axis=1)
+    nz = np.where(rows > 0)[0]
+    if len(nz) == 0:
+        return None
+    bands, start = [], None
+    for i in range(nz[0], nz[-1] + 2):
+        has = i <= nz[-1] and rows[i] > 0
+        if has and start is None:
+            start = i
+        elif not has and start is not None:
+            bands.append((start, i - 1))
+            start = None
+    pad = int(round(0.07 * dpi))
+    cut = None
+    for s, e in bands:
+        if ((e - s + 1) / dpi <= 0.22 and s / dpi < 3.0
+                and any(s - pad <= t <= e + pad for t in text_rows)):
+            cut = e
+        else:
+            break
+    if cut is None:
+        return None
+    after = [b for b in bands if b[0] > cut]
+    if not after or (after[0][0] - cut) / dpi < 0.10:
+        return None
+    return cut
+
+
+def text_rows_for(artboard, dpi=DPI):
+    """Convert bottom-up PDF text origins to top-down raster rows."""
+    hpt = float(artboard.get("height_in") or 0) * 72.0
+    out = []
+    for pos in artboard.get("text_positions") or []:
+        try:
+            out.append(int(round((hpt - float(pos[1])) / 72.0 * dpi)))
+        except (TypeError, ValueError, IndexError):
+            continue
+    return out
+
+
+def base_coverage(src, colour_page, under_page, dpi=DPI, text_rows=None):
     """What fraction of each colour ink's area sits on the underbase.
 
     Returns {ink: {pct, px}} plus the inks considered 'based', at or above
-    CFG.BASED_INK_PCT.
+    CFG.BASED_INK_PCT, plus the excluded info-bar row (None if not identified).
+    Without text origins the entire plate is measured, as before.
     """
     cp = plates(src, colour_page, dpi)
     up = plates(src, under_page, dpi)
@@ -145,19 +203,25 @@ def base_coverage(src, colour_page, under_page, dpi=DPI):
             continue
         base = vmask if base is None else (base | vmask)
     if base is None:
-        return {}, []
+        return {}, [], None
     # dilate the base a little: a based ink stays based even when the plate is
     # nudged out of register, which is the defect we still want to catch later
     base_t = ndimage.binary_dilation(base, np.ones((9, 9), bool))
+    cut = info_bar_cut(cp, text_rows, dpi)
     cov = {}
     for k, m in cp.items():
         if k in ("Cyan", "Magenta", "Yellow", "Black", "All") or m.sum() < 50:
             continue
         if m.shape != base_t.shape:
             continue
+        if cut is not None:
+            m = m.copy()
+            m[:cut + 1, :] = False
+            if m.sum() < 50:
+                continue
         inside = int((m & base_t).sum())
         tot = int(m.sum())
         cov[k] = {"px": tot, "on_base_px": inside,
                   "pct": round(100.0 * inside / max(tot, 1), 1)}
     based = [k for k, d in cov.items() if d["pct"] >= CFG.BASED_INK_PCT]
-    return cov, based
+    return cov, based, cut

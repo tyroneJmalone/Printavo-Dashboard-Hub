@@ -32,7 +32,7 @@ vector.py      per-separation plate extraction to SVG, and the knockout mask
 detect.py      one function per rule code. Returns a status; the CSV sets severity
 run.py         file -> facts -> context -> verdicts -> plate files -> queue/<slug>.json
 build_site.py  queue/*.json -> a static viewer
-test_engine.py 17 golden tests, each tied to a conclusion checked by hand
+test_engine.py 19 regression tests, including conservative info-bar exclusion
 export_golden.py  writes golden/ - baseline verdicts plus a fixture manifest
 ```
 
@@ -42,7 +42,7 @@ export_golden.py  writes golden/ - baseline verdicts plus a fixture manifest
 pip install -r requirements.txt          # see SYSTEM-DEPS.md for gs and mutool
 python3 run.py "/path/to/#22499 F OUTPUT.ai" [more files...]
 python3 build_site.py
-python3 test_engine.py /path/to/corpus   # expect 17 passed, 0 failed, 0 skipped
+python3 test_engine.py /path/to/corpus   # expect 19 passed, 0 failed, 0 skipped
 ```
 
 `run.py` appends to `queue/`; nothing is lost between runs. `queue/archive/` is
