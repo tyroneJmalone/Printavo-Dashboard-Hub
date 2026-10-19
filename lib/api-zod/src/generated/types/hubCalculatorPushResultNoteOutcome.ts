@@ -8,6 +8,8 @@
 
 export type HubCalculatorPushResultNoteOutcome = {
   ok: boolean;
+  /** True when Production Notes were not requested; existing notes are unchanged */
+  skipped?: boolean;
   /** True when note mutation is locked pending verification */
   locked?: boolean;
   error?: string | null;

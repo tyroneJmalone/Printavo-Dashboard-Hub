@@ -149,6 +149,7 @@ router.post("/hub/calculator/push", async (req, res) => {
   const body = parsed.data;
   try {
     const result = await pushCalcToInvoice({
+      includeProductionNotes: body.includeProductionNotes,
       uploadId: body.uploadId,
       invoiceId: body.invoiceId,
       visualId: body.visualId,

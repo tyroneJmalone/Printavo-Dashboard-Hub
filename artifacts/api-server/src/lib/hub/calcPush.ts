@@ -17,7 +17,8 @@
  *    Printavo write.
  * 3. The live invoice visualId is compared to the request before mutating.
  * 4. Submitted priceRows must match the snapshot stored in the upload row.
- * 5. Repeated identical confirmed requests are idempotent.
+ * 5. Repeated identical confirmed requests are idempotent. Opting out of notes
+ *    does not change upload identity or clear existing note/file attempt locks.
  */
 
 import { and, eq, inArray, isNull } from "drizzle-orm";
@@ -59,12 +60,13 @@ export type CalcPushStatus =
 export interface CalcPushResult {
   uploadId: string;
   status: CalcPushStatus;
-  noteOutcome: { ok: boolean; locked?: boolean; error?: string };
+  noteOutcome: { ok: boolean; skipped?: boolean; locked?: boolean; error?: string };
   fileOutcome: { ok: boolean; locked?: boolean; productionFileId?: string; error?: string };
   lineItemOutcome: LineItemPushOutcome;
 }
 
 export interface CalcPushRequest {
+  includeProductionNotes?: boolean;
   uploadId: string;
   invoiceId: string;
   visualId: number;
@@ -315,6 +317,7 @@ async function fetchMirrorOrder(
 export async function pushCalcToInvoice(
   req: CalcPushRequest,
 ): Promise<CalcPushResult> {
+  const includeNotes = req.includeProductionNotes !== false;
   // ── 1. Load and validate the upload row ────────────────────────────────
   const [upload] = await db
     .select()
@@ -433,14 +436,14 @@ export async function pushCalcToInvoice(
         "invalid",
       );
     }
-    const noteAlreadyPresent = noteContainsBlock(live?.productionNote, newBlock);
+    const noteAlreadyPresent = !includeNotes || noteContainsBlock(live?.productionNote, newBlock);
     const lineItemAlreadyComplete =
       !storedLineItem || Boolean(upload.lineItemGroupId && upload.lineItemId);
     if (noteAlreadyPresent && lineItemAlreadyComplete) {
       return {
         uploadId: req.uploadId,
         status: "file_ok",
-        noteOutcome: { ok: true },
+        noteOutcome: { ok: true, skipped: !includeNotes },
         fileOutcome: { ok: true, productionFileId: upload.productionFileId! },
         lineItemOutcome: storedLineItem
           ? {
@@ -460,7 +463,9 @@ export async function pushCalcToInvoice(
   const client = getPrintavoClient();
 
   // ── 7. Note attempt-lock + mutation ───────────────────────────────────
-  let noteOk = confirmedNoteMissing ? false : upload.noteOk;
+  // Treat an unrequested note as satisfied only for this response, never
+  // persist noteOk or claim/clear a note attempt when attaching PNG alone.
+  let noteOk = !includeNotes || (confirmedNoteMissing ? false : upload.noteOk);
   let noteError: string | undefined;
   let noteLocked = false;
 
@@ -629,14 +634,19 @@ export async function pushCalcToInvoice(
       fileError =
         upload.fileError ??
         "productionFileCreate was previously attempted with ambiguous outcome — manual verification required";
-    } else if (!(await fetchLiveOrder(req.invoiceId, orderType))) {
+    } else {
+      const liveTarget = await fetchLiveOrder(req.invoiceId, orderType);
+      if (liveTarget && liveTarget.visualId !== req.visualId) {
+        throw new CalcPushError("Live Printavo order number does not match the selected target", "invalid");
+      }
+      if (!liveTarget) {
       // Revalidate the live target before consuming the single file attempt.
       // A quote can be converted (or an order deleted) between the note write
       // and the file attach; attempting productionFileCreate against the dead
       // parent would permanently lock this upload for no benefit. Leave the
       // attempt unclaimed so a re-selected push can proceed cleanly.
       fileError = `Production file was not attempted: the live Printavo ${orderType} was not found (it may have been converted or deleted). Search for #${req.visualId} again and push to the current order.`;
-    } else {
+      } else {
       // Atomically claim the file mutation
       const claimResult = await db
         .update(hubCalcUploadsTable)
@@ -699,6 +709,7 @@ export async function pushCalcToInvoice(
           })
           .where(eq(hubCalcUploadsTable.id, req.uploadId));
       }
+      }
     }
   } else if (!fileAlreadyAttached && !noteOk) {
     fileError =
@@ -733,7 +744,7 @@ export async function pushCalcToInvoice(
   return {
     uploadId: req.uploadId,
     status: finalStatus,
-    noteOutcome: { ok: noteOk, locked: noteLocked || undefined, error: noteError },
+    noteOutcome: { ok: noteOk, skipped: !includeNotes, locked: noteLocked || undefined, error: noteError },
     fileOutcome: {
       ok: fileOk,
       locked: fileLocked || undefined,

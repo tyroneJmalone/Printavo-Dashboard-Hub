@@ -26,3 +26,9 @@ Calculator pushes must leave new line-item Goods Status at **Unset**, including 
 **Why:** The user tested and approved the calculator handoff, but explicitly said marking goods Needs Ordering at the pricing stage is premature.
 
 **How to apply:** Do not treat a calculated quote, even with quantities, as authorization to start purchasing. This rule is specific to the Price Calculator; do not silently change other quoting workflows or retroactively reset existing goods statuses.
+
+The user wants Production Notes optional when attaching the calculator pricing PNG.
+
+**Why:** Quantity/price tiers sometimes clutter Printavo's notes and are not always necessary.
+
+**How to apply:** Let staff attach the PNG alone without changing or removing existing notes. Keep the same file deduplication and uncertain-attempt locks when the notes choice changes; the choice is not a new attachment identity.

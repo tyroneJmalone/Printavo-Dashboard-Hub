@@ -8564,6 +8564,8 @@ export const HubCalculatorPushRequestRangeKey = {
 } as const;
 
 export interface HubCalculatorPushRequest {
+  /** When false, attach the PNG without changing Production Notes. File deduplication and attempt locks still apply. */
+  includeProductionNotes?: boolean;
   /** Upload row UUID from requestHubPngUploadUrl */
   uploadId: string;
   /** Internal Printavo invoice or quote id (must match upload row and live order) */
@@ -8601,6 +8603,8 @@ export const HubCalculatorPushResultStatus = {
 
 export type HubCalculatorPushResultNoteOutcome = {
   ok: boolean;
+  /** True when Production Notes were not requested; existing notes are unchanged */
+  skipped?: boolean;
   /** True when note mutation is locked pending verification */
   locked?: boolean;
   error?: string | null;

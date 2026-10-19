@@ -158,8 +158,9 @@ export function QuoteCalculator({
   const orderNumber = notesTarget ? String(notesTarget.visualId) : "";
 
   const [isPushing, setIsPushing] = useState(false);
+  const [includeProductionNotes, setIncludeProductionNotes] = useState(true);
   const [pushOutcome, setPushOutcome] = useState<{
-    noteOutcome: { ok: boolean; error?: string | null; locked?: boolean };
+    noteOutcome: { ok: boolean; skipped?: boolean; error?: string | null; locked?: boolean };
     fileOutcome: { ok: boolean; error?: string | null; locked?: boolean };
   } | null>(null);
   const requestUrlMutation = useRequestHubPngUploadUrl({ mutation: { retry: false } });
@@ -488,6 +489,7 @@ export function QuoteCalculator({
       }
       const pushRes = await pushMutation.mutateAsync({
         data: {
+          includeProductionNotes,
           uploadId: reqRes.uploadId,
           invoiceId: target.id,
           visualId: target.visualId,
@@ -502,7 +504,11 @@ export function QuoteCalculator({
       const ok = pushRes.noteOutcome.ok && pushRes.fileOutcome.ok;
       toast({
         title: ok ? "Push completed" : "Push partially completed",
-        description: ok ? "Production Notes and the PNG were added to Printavo." : "Review the separate push results below.",
+        description: ok
+          ? pushRes.noteOutcome.skipped
+            ? "The PNG was attached to Printavo. Production Notes were left unchanged."
+            : "Production Notes and the PNG were added to Printavo."
+          : "Review the separate push results below.",
         variant: ok ? "default" : "destructive",
       });
     } catch (error: unknown) {
@@ -1101,7 +1107,7 @@ export function QuoteCalculator({
                 <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3" data-testid="notes-push-panel">
                   <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
                     <FileText size={14} className="text-[#60a5fa]" />
-                    Attach pricing notes + PNG
+                    Attach pricing PNG
                   </div>
                   {mode === "compare" && (
                     <div>
@@ -1111,9 +1117,24 @@ export function QuoteCalculator({
                       </select>
                     </div>
                   )}
+                  <label className="flex items-center gap-2 text-xs text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={includeProductionNotes}
+                      disabled={isPushing}
+                      onChange={(event) => {
+                        setIncludeProductionNotes(event.target.checked);
+                        setPushOutcome(null);
+                      }}
+                      data-testid="checkbox-include-production-notes"
+                    />
+                    Include Production Notes
+                  </label>
                   <p className="text-[11px] text-slate-400" data-testid="text-notes-summary">
                     {notesPayload
-                      ? `${notesPayload.summary} in one Production Notes block on ${notesTarget.orderType} #${notesTarget.visualId}. It replaces any earlier calculator block there. The PNG shows every style above.`
+                      ? includeProductionNotes
+                        ? `${notesPayload.summary} in one Production Notes block on ${notesTarget.orderType} #${notesTarget.visualId}. It replaces any earlier calculator block there. The PNG shows every style above.`
+                        : `Attach the pricing PNG to ${notesTarget.orderType} #${notesTarget.visualId} only. Existing Production Notes will not be changed or removed.`
                       : mode === "mixed"
                         ? "Every style needs a cost and a size breakdown first."
                         : "Every style needs prices in the selected range."}
@@ -1125,12 +1146,12 @@ export function QuoteCalculator({
                     data-testid="button-push-printavo"
                   >
                     {isPushing ? <Loader2 className="animate-spin" size={14} /> : <CloudUpload size={14} />}
-                    Confirm & push notes + PNG
+                    {includeProductionNotes ? "Confirm & push notes + PNG" : "Confirm & push PNG only"}
                   </button>
                   {pushOutcome && (
                     <div className="space-y-2" data-testid="push-outcomes">
                       {([
-                        ["Note Updated", "Note Update Failed", pushOutcome.noteOutcome],
+                        [pushOutcome.noteOutcome.skipped ? "Production Notes skipped — unchanged" : "Note Updated", "Note Update Failed", pushOutcome.noteOutcome],
                         ["File Attached", "File Attachment Failed", pushOutcome.fileOutcome],
                       ] as const).map(([okLabel, failLabel, outcome]) => (
                         <div key={okLabel} className={`p-2.5 rounded-lg flex items-start gap-2.5 ${outcome.ok ? "bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981]" : "bg-amber-500/10 border border-amber-500/20 text-amber-500"}`}>

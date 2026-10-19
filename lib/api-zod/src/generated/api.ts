@@ -11005,7 +11005,7 @@ export const GetHubCalcPngResponse = zod.unknown()
  * Re-reads the live invoice or quote productionNote, replaces only the deterministic [Hub Price Calculator ...] block for the same quote/range marker, then calls the matching order update and productionFileCreate exactly once. Persists state before/between mutations. Idempotent for identical confirmed requests — will not duplicate the note block or attachment. When an explicit lineItem snapshot is included, also creates one line-item group exactly once.
  * @summary Push pricing calculator results to a Printavo invoice or quote
  */
-
+export const pushHubCalculatorBodyIncludeProductionNotesDefault = true;
 export const pushHubCalculatorBodyPriceRowsItemUnitPriceMin = 0;
 
 export const pushHubCalculatorBodyQuoteNumberMax = 20;
@@ -11034,6 +11034,7 @@ export const pushHubCalculatorBodyNoteSectionsOneMax = 12;
 
 
 export const PushHubCalculatorBody = zod.object({
+  "includeProductionNotes": zod.boolean().default(pushHubCalculatorBodyIncludeProductionNotesDefault).describe('When false, attach the PNG without changing Production Notes. File deduplication and attempt locks still apply.'),
   "uploadId": zod.string().describe('Upload row UUID from requestHubPngUploadUrl'),
   "invoiceId": zod.string().describe('Internal Printavo invoice or quote id (must match upload row and live order)'),
   "visualId": zod.number().describe('Visible invoice or quote number (must match upload row and live order)'),
@@ -11065,6 +11066,7 @@ export const PushHubCalculatorResponse = zod.object({
   "status": zod.enum(['note_ok', 'file_ok', 'note_failed', 'file_failed', 'file_locked', 'partial']).describe('file_locked means productionFileCreate was attempted but the outcome is ambiguous — manual verification required, no retry allowed.\n'),
   "noteOutcome": zod.object({
   "ok": zod.boolean(),
+  "skipped": zod.boolean().optional().describe('True when Production Notes were not requested; existing notes are unchanged'),
   "locked": zod.boolean().optional().describe('True when note mutation is locked pending verification'),
   "error": zod.string().nullish()
 }),

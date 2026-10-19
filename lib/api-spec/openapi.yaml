@@ -16186,6 +16186,10 @@ components:
       type: object
       required: [uploadId, invoiceId, visualId, rangeKey, priceRows, quoteNumber]
       properties:
+        includeProductionNotes:
+          type: boolean
+          default: true
+          description: When false, attach the PNG without changing Production Notes. File deduplication and attempt locks still apply.
         uploadId:
           type: string
           description: Upload row UUID from requestHubPngUploadUrl
@@ -16259,6 +16263,7 @@ components:
           required: [ok]
           properties:
             ok: { type: boolean }
+            skipped: { type: boolean, description: "True when Production Notes were not requested; existing notes are unchanged" }
             locked: { type: boolean, description: "True when note mutation is locked pending verification" }
             error: { type: string, nullable: true }
         fileOutcome:

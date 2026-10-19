@@ -11,6 +11,8 @@ import type { HubCalculatorPriceRow } from './hubCalculatorPriceRow';
 import type { HubCalculatorPushRequestRangeKey } from './hubCalculatorPushRequestRangeKey';
 
 export interface HubCalculatorPushRequest {
+  /** When false, attach the PNG without changing Production Notes. File deduplication and attempt locks still apply. */
+  includeProductionNotes?: boolean;
   /** Upload row UUID from requestHubPngUploadUrl */
   uploadId: string;
   /** Internal Printavo invoice or quote id (must match upload row and live order) */
