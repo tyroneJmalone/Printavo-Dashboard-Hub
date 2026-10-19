@@ -95,3 +95,4 @@
 - [Label Sorter upstream parity](label-sorter-upstream.md) — Mint-Sorter/Breezy Sort is the upstream; user chose full parity while preserving Hub access and routing.
 - [Report comparison semantics](report-comparison-policy.md) — same filters and date basis, calendar-year offsets, honest zero baselines and current-status evidence.
 - [Sales check-in direction](sales-checkin-direction.md) — approved calendar/follow-ups and client/contact fields; future email must preserve provenance and remain opt-in.
+- [Calculator multi-style direction](calculator-multi-style-direction.md) — shared-artwork garment quoting and single Printavo target; quantity-break semantics still need clarification.
