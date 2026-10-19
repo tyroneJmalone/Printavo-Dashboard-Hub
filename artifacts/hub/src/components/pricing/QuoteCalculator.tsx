@@ -38,6 +38,7 @@ import {
   type QuoteLocation,
 } from "./calcEngine";
 import { VendorCostLookup } from "./VendorCostLookup";
+import { VendorPriceChoice, type VendorPriceSelection, type VendorPriceMode } from "./VendorPriceChoice";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -134,6 +135,8 @@ export function QuoteCalculator({
     initialGarmentCost ? "initial" : "empty",
   );
   const [labelHint, setLabelHint] = useState(initialLabel || "");
+  const [vendorPriceSelection, setVendorPriceSelection] = useState<VendorPriceSelection | null>(null);
+  const [vendorPriceMode, setVendorPriceMode] = useState<VendorPriceMode | null>(null);
   const [markupSel, setMarkupSel] = useState(String(DEFAULT_MARKUP));
   const [customMarkupStr, setCustomMarkupStr] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("");
@@ -346,6 +349,8 @@ export function QuoteCalculator({
       { data: { prompt: aiPrompt } },
       {
         onSuccess: (res) => {
+          setVendorPriceSelection(null);
+          setVendorPriceMode(null);
           setAiGarmentMatch(res.garmentMatch);
           applySelectedProduct(
             res.garmentMatch
@@ -821,6 +826,8 @@ export function QuoteCalculator({
             <div className="border-t border-slate-800 -mx-4 px-4 pt-4">
               <VendorCostLookup
                 onApply={(selection) => {
+                  setVendorPriceSelection(selection);
+                  setVendorPriceMode(selection.priceMode);
                   setGarmentCostStr(selection.cost.toFixed(2));
                   garmentCostSourceRef.current = "vendor";
                   setAiGarmentMatch(null);
@@ -847,6 +854,7 @@ export function QuoteCalculator({
                   inputMode="decimal"
                   value={garmentCostStr}
                   onChange={(e) => {
+                    setVendorPriceMode(null);
                     setGarmentCostStr(e.target.value);
                     garmentCostSourceRef.current =
                       e.target.value.trim() === "" ? "empty" : "manual";
@@ -858,6 +866,27 @@ export function QuoteCalculator({
                   className={`${inputCls} pl-6 font-mono`}
                 />
               </div>
+              {vendorPriceSelection && (
+                <VendorPriceChoice
+                  selection={vendorPriceSelection}
+                  mode={vendorPriceMode}
+                  onChange={(mode) => {
+                    const price = mode === "sale"
+                      ? vendorPriceSelection.salePrice
+                      : vendorPriceSelection.regularPrice;
+                    if (price === null) return;
+                    setGarmentCostStr(price.toFixed(2));
+                    setVendorPriceMode(mode);
+                    garmentCostSourceRef.current = "vendor";
+                    setAiGarmentMatch(null);
+                    applySelectedProduct(vendorPriceSelection);
+                    setLabelHint(
+                      [vendorPriceSelection.brand, vendorPriceSelection.style, vendorPriceSelection.color]
+                        .filter(Boolean).join(" · "),
+                    );
+                  }}
+                />
+              )}
               {!garmentValid && (
                 <p className="text-[11px] text-amber-400 mt-1">
                   Enter a valid garment cost (0 or more).

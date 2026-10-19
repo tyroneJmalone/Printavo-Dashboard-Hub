@@ -7,6 +7,7 @@ import {
   type VendorSizeOffer,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import type { VendorPriceSelection } from "./VendorPriceChoice";
 
 const VENDOR_LABELS: Record<"sanmar" | "ss", string> = {
   sanmar: "SanMar",
@@ -131,13 +132,7 @@ export function VendorCostLookup({
   onApply,
 }: {
   /** Called with the chosen product and per-piece cost when the user applies a price. */
-  onApply: (selection: {
-    cost: number;
-    style: string;
-    color: string;
-    brand: string;
-    description: string;
-  }) => void;
+  onApply: (selection: VendorPriceSelection) => void;
 }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -236,13 +231,19 @@ export function VendorCostLookup({
   };
 
   const apply = () => {
-    if (chosenPrice === null || !result || !selectedColor) return;
+    if (chosenPrice === null || !result || !selectedColor || !base || base.cost === null) return;
     onApply({
       cost: chosenPrice,
       style: result.styleName ?? result.styleQueried,
       color: selectedColor.colorName,
       brand: result.brand ?? "",
       description: result.title ?? "",
+      vendor: result.vendor,
+      baseSize: base.size,
+      regularPrice: base.cost,
+      salePrice: base.salePrice,
+      saleEndsAt: base.saleEndsAt,
+      priceMode: priceMode === "sale" && base.salePrice !== null ? "sale" : "regular",
     });
     setOpen(false);
     toast({
