@@ -1,0 +1,316 @@
+--- a/raster.py	2026-09-21 23:00:01.000000000 +0000
++++ b/raster.py	2026-10-18 06:58:14.280990770 +0000
+@@ -106,11 +106,118 @@
+             "vanished": int(vanished), "choke_px": px}
+ 
+ 
+-def base_coverage(src, colour_page, under_page, dpi=DPI):
++def info_bar_cut(cp, text_rows=None, dpi=DPI):
++    """Last row of the Pre-Press Pro info bar, or None if it cannot be found.
++
++    The filename and swatch label block sit in a margin strip above the
++    artwork. They are painted in each ink, so a pixel measurement that counts
++    them is measuring furniture, not the design - and because the label block
++    never sits on the base, it drags underbase coverage down and produces a
++    yellow flag on a file that is correct.
++
++    Neither the layer nor the ink can tell them apart: art legitimately lives
++    on the marks layer, and the labels are painted in their own inks by design.
++    POSITION and LIVE TEXT can, together.
++
++    Three conditions must all hold for a band to count as part of the bar:
++
++    1. It sits in the top strip and is thin and light - the shape of a label
++       line rather than artwork.
++    2. **It contains a live-text origin.** This is the condition that matters.
++       Pre-Press Pro writes the filename and labels as live text; artwork text
++       is outlined and so has no text origin at all. Without this gate, a small
++       design element sitting above a larger one is indistinguishable from a
++       label line, and gets excluded as furniture. Measured across the corpus:
++       every band of every real info bar contains a text origin.
++    3. The bar must end clear of the first artwork band.
++
++    `text_rows` are raster rows of live-text origins on this artboard. When it
++    is None the function declines rather than guessing, because without the
++    text gate conditions 1 and 3 alone are not conservative enough.
++
++    Returns None when the bar cannot be identified. Excluding the wrong rows
++    would hide a real defect, which is worse than the flag this exists to
++    prevent, so an uncertain reading declines to cut.
++    """
++    if not text_rows:
++        return None
++    ink = None
++    for k, v in cp.items():
++        if k in ("Cyan", "Magenta", "Yellow", "Black", "All") or v.sum() < 50:
++            continue
++        ink = v if ink is None else (ink | v)
++    if ink is None:
++        return None
++    rows = ink.sum(axis=1)
++    nz = np.where(rows > 0)[0]
++    if len(nz) == 0:
++        return None
++
++    bands, start = [], None
++    for i in range(nz[0], nz[-1] + 2):
++        has = i <= nz[-1] and rows[i] > 0
++        if has and start is None:
++            start = i
++        elif not has and start is not None:
++            bands.append((start, i - 1, int(rows[start:i].sum())))
++            start = None
++
++    total = int(ink.sum())
++    max_band_in = 0.22          # a label line measures ~0.13in; allow headroom
++    top_strip_in = 3.0          # the bar never begins this far down
++    pad = int(round(0.07 * dpi))   # a text origin sits on the glyph baseline
++
++    def has_text(s, e):
++        return any(s - pad <= t <= e + pad for t in text_rows)
++
++    # The bar runs from the topmost ink band down. If the first band does not
++    # qualify there is no bar, and no later band can start one.
++    cut = None
++    for s, e, px in bands:
++        if ((e - s + 1) / dpi <= max_band_in
++                and s / dpi < top_strip_in and has_text(s, e)):
++            cut = e
++        else:
++            break
++    if cut is None:
++        return None
++
++    after = [b for b in bands if b[0] > cut]
++    if not after:
++        return None
++    # Refuse the cut when the bar crowds the artwork. Observed separation is
++    # 0.23in at its narrowest across the 57-file corpus, but the bar grows with
++    # ink count and the corpus tops out at five inks on one board.
++    if (after[0][0] - cut) / dpi < 0.10:
++        return None
++    return cut
++
++
++def text_rows_for(artboard, dpi=DPI):
++    """Live-text origins on an artboard, as raster rows at `dpi`.
++
++    PDF y runs up from the artboard's bottom edge; raster rows run down from
++    its top, so the two are mirrored about the board height.
++    """
++    hpt = float(artboard.get("height_in") or 0) * 72.0
++    out = []
++    for pos in artboard.get("text_positions") or []:
++        try:
++            out.append(int(round((hpt - float(pos[1])) / 72.0 * dpi)))
++        except (TypeError, ValueError, IndexError):
++            continue
++    return out
++
++
++def base_coverage(src, colour_page, under_page, dpi=DPI, text_rows=None):
+     """What fraction of each colour ink's area sits on the underbase.
+ 
+     Returns {ink: {pct, px}} plus the inks considered 'based', at or above
+-    CFG.BASED_INK_PCT.
++    CFG.BASED_INK_PCT, plus the info-bar row that was excluded (None if none).
++
++    `text_rows` comes from text_rows_for() on the colour artboard. Without it
++    the info bar cannot be identified safely and nothing is excluded, which is
++    the behaviour this function had before the bar was handled at all.
+     """
+     cp = plates(src, colour_page, dpi)
+     up = plates(src, under_page, dpi)
+@@ -120,19 +227,25 @@
+             continue
+         base = vmask if base is None else (base | vmask)
+     if base is None:
+-        return {}, []
++        return {}, [], None
+     # dilate the base a little: a based ink stays based even when the plate is
+     # nudged out of register, which is the defect we still want to catch later
+     base_t = ndimage.binary_dilation(base, np.ones((9, 9), bool))
++    cut = info_bar_cut(cp, text_rows, dpi)
+     cov = {}
+     for k, m in cp.items():
+         if k in ("Cyan", "Magenta", "Yellow", "Black", "All") or m.sum() < 50:
+             continue
+         if m.shape != base_t.shape:
+             continue
++        if cut is not None:
++            m = m.copy()
++            m[:cut + 1, :] = False
++            if m.sum() < 50:
++                continue
+         inside = int((m & base_t).sum())
+         tot = int(m.sum())
+         cov[k] = {"px": tot, "on_base_px": inside,
+                   "pct": round(100.0 * inside / max(tot, 1), 1)}
+     based = [k for k, d in cov.items() if d["pct"] >= CFG.BASED_INK_PCT]
+-    return cov, based
++    return cov, based, cut
+--- a/run.py	2026-09-22 19:40:42.000000000 +0000
++++ b/run.py	2026-10-18 06:24:13.320869449 +0000
+@@ -228,9 +228,16 @@
+     # which colours actually sit on the base — only those can be out of register
+     if unders and colours:
+         try:
+-            cov, based = RS.base_coverage(src, colours[0]["index"], unders[0]["index"])
++            cov, based, bar_cut = RS.base_coverage(
++                src, colours[0]["index"], unders[0]["index"],
++                text_rows=RS.text_rows_for(colours[0]))
+             ctx["coverage"] = cov
+             ctx["based_inks"] = based
++            # Row below which coverage was measured. None means the info bar
++            # could not be located safely and the whole plate was measured -
++            # which is the condition that produces the furniture false flag,
++            # so the rule says so rather than reporting a clean number.
++            ctx["coverage_bar_cut_px"] = bar_cut
+         except Exception as e:
+             ctx["coverage_error"] = str(e)
+             based = []
+--- a/detect.py	2026-09-21 23:00:00.000000000 +0000
++++ b/detect.py	2026-10-18 05:58:05.748509723 +0000
+@@ -499,6 +499,16 @@
+     if not cov:
+         return v(NOT_APPLICABLE, "no underbase to measure against")
+     rows = [f"{ink} — {d['pct']}% of its area sits on the base" for ink, d in sorted(cov.items())]
++    # The filename and swatch label block are painted in each ink and never sit
++    # on the base, so counting them drags coverage down and yellow-flags a file
++    # that is correct. They are excluded by position when they can be located.
++    if ctx.get("coverage_bar_cut_px") is None:
++        rows.append("The info bar could not be located, so these figures "
++                    "include the filename and swatch labels, which never sit "
++                    "on the base. Treat a borderline reading with caution.")
++    else:
++        rows.append("Measured below the info bar — the filename and swatch "
++                    "labels are excluded.")
+     lo = p.num("partial_below_pct", 15)
+     hi = p.num("partial_above_pct", 85)
+     bare = [ink for ink, d in cov.items()
+--- a/test_engine.py	2026-09-22 19:40:42.000000000 +0000
++++ b/test_engine.py	2026-10-18 07:04:36.007071018 +0000
+@@ -417,6 +417,86 @@
+     return True
+ 
+ 
++def t_info_bar_excluded_from_coverage(need):
++    """The filename and swatch label block are painted in each ink and never
++    sit on the base, so counting them drags underbase coverage down and yellow-
++    flags a correct file. -22771 LC reads 83.9% on Brown 7518 C with the strip
++    counted and 92.2% without it, which is the difference between a flag and a
++    pass. Neither layer nor ink can tell furniture from art; position can.
++    """
++    src = find("22771 LC") or find("22906 LC OUTPUT 1")
++    if not src:
++        return "skip"
++    facts = EX.extract(src)
++    und = [ab for ab in facts["artboards"] if ab["is_underbase"]]
++    cols = [ab for ab in facts["artboards"] if not ab["is_underbase"] and ab["inks"]]
++    if not und or not cols:
++        return "fixture has no underbase artboard"
++    cp = RS.plates(src, cols[0]["index"], 200)
++    cut = RS.info_bar_cut(cp, RS.text_rows_for(cols[0]), 200)
++    if cut is None:
++        return "info bar was not located on a fixture that has one"
++    if not 0.4 < cut / 200.0 < 1.25:
++        return f"info bar cut at {cut / 200.0:.2f}in is outside the observed band"
++    cov, based, bar = RS.base_coverage(src, cols[0]["index"], und[0]["index"],
++                                      text_rows=RS.text_rows_for(cols[0]))
++    if bar != cut:
++        return "base_coverage did not report the row it excluded"
++    for ink, d in cov.items():
++        if "Brown" in ink and d["pct"] < 85:
++            return (f"{ink} still reads {d['pct']}% - the info bar is still "
++                    "being counted")
++    return True
++
++
++def t_info_bar_detector_is_conservative(need):
++    """The detector must not mistake artwork for the label block.
++
++    Raised in review: a small design element above a larger one has the shape
++    of a label line, and the earlier version excluded it as furniture. The
++    discriminator is live text - Pre-Press Pro writes the filename and labels
++    as live text, while artwork text is outlined and has no text origin at all.
++
++    Three layouts the detector must decline, and one it must accept.
++    """
++    import numpy as np
++    H, W = 1000, 3200
++
++    def plate(parts):
++        m = np.zeros((H, W), bool)
++        for a, b, c, d in parts:
++            m[a:b, c:d] = True
++        return {"5-230-Ink": m}
++
++    small_above_large = plate([(60, 100, 1500, 1700), (300, 900, 800, 2400)])
++
++    # 1. no label block at all - a small element above a larger one
++    if RS.info_bar_cut(small_above_large, [], 200) is not None:
++        return "excluded a small artwork element as if it were a label line"
++
++    # 2. live text exists on the board but not in that band
++    if RS.info_bar_cut(small_above_large, [950], 200) is not None:
++        return "excluded artwork on the strength of text somewhere else"
++
++    # 3. no text information supplied - must decline rather than guess
++    if RS.info_bar_cut(small_above_large, None, 200) is not None:
++        return "guessed at the info bar with no text positions to go on"
++
++    # 4. labels sitting too close to the artwork - the separation guard
++    crowded = plate([(28, 54, 1200, 2000), (60, 900, 800, 2400)])
++    if RS.info_bar_cut(crowded, [53], 200) is not None:
++        return "cut a bar that crowds the artwork instead of declining"
++
++    # 5. a genuine two-line bar, clear of the art, with text on both lines
++    real = plate([(28, 54, 1200, 2000), (92, 118, 1200, 2000), (300, 900, 800, 2400)])
++    cut = RS.info_bar_cut(real, [53, 117], 200)
++    if cut is None:
++        return "failed to find a well-formed info bar"
++    if not 110 <= cut <= 125:
++        return f"bar ended at row {cut}, expected the second label line"
++    return True
++
++
+ TESTS = [
+     ("register catches the planted 1pt nudge", t_register_catches_the_planted_nudge),
+     ("register passes a good file", t_register_passes_a_good_file),
+@@ -427,6 +507,8 @@
+     ("gradients suppress unreliable checks", t_gradient_suppresses_unreliable_checks),
+     ("live-text rule stays quiet", t_live_text_rule_is_quiet),
+     ("knockout mask survives recolour", t_knockout_mask_matches_the_rip),
++    ("info bar excluded from coverage", t_info_bar_excluded_from_coverage),
++    ("info bar detector is conservative", t_info_bar_detector_is_conservative),
+     ("svg dimensions parse in both renderer formats",
+      t_svg_dimensions_parse_in_both_renderer_formats),
+     ("severity comes from the table", t_severity_comes_from_the_table),
+--- a/config.py	2026-09-22 19:40:42.000000000 +0000
++++ b/config.py	2026-10-18 07:05:42.288940401 +0000
+@@ -45,4 +45,4 @@
+ 
+ # Engine version. Stamp it on every result so an old verdict can be read in
+ # terms of the code that produced it.
+-ENGINE_VERSION = _p("PRINTSCOPE_ENGINE_VERSION", "0.4.1")
++ENGINE_VERSION = _p("PRINTSCOPE_ENGINE_VERSION", "0.4.3")
+--- a/README.md	2026-09-22 19:40:42.000000000 +0000
++++ b/README.md	2026-10-18 07:05:42.286343800 +0000
+@@ -32,7 +32,7 @@
+ detect.py      one function per rule code. Returns a status; the CSV sets severity
+ run.py         file -> facts -> context -> verdicts -> plate files -> queue/<slug>.json
+ build_site.py  queue/*.json -> a static viewer
+-test_engine.py 17 golden tests, each tied to a conclusion checked by hand
++test_engine.py 19 golden tests, each tied to a conclusion checked by hand
+ export_golden.py  writes golden/ - baseline verdicts plus a fixture manifest
+ ```
+ 
+@@ -42,7 +42,7 @@
+ pip install -r requirements.txt          # see SYSTEM-DEPS.md for gs and mutool
+ python3 run.py "/path/to/#22499 F OUTPUT.ai" [more files...]
+ python3 build_site.py
+-python3 test_engine.py /path/to/corpus   # expect 17 passed, 0 failed, 0 skipped
++python3 test_engine.py /path/to/corpus   # expect 19 passed, 0 failed, 0 skipped
+ ```
+ 
+ `run.py` appends to `queue/`; nothing is lost between runs. `queue/archive/` is
