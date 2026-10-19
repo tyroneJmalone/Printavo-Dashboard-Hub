@@ -14,3 +14,9 @@ The user selected “Support both with an explicit choice” for decoration quan
 **Why:** Both workflows must be supported rather than silently assuming that multiple styles are alternatives or a combined run.
 
 **How to apply:** Expose an explicit pricing-mode choice and keep garment costs separate in either mode. Do not infer combined-run eligibility merely from multiple garments being present.
+
+The user also asked to explore creating a new Printavo quote from the calculator by selecting the client, alongside pushing to an existing quote, and asked whether category and imprint-location details carry through.
+
+**Why:** The intended discussion covers a complete quote handoff, not just a pricing attachment.
+
+**How to apply:** Keep new-quote creation and full imprint handoff in the proposed scope; they have not yet authorized implementation. Explain the distinction between a quantity-price schedule and actual ordered quantities/unit prices before defining creation behavior.
