@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HubCalculatorLineItemRequest } from './hubCalculatorLineItemRequest';
+import type { HubCalculatorNoteSection } from './hubCalculatorNoteSection';
 import type { HubCalculatorPriceRow } from './hubCalculatorPriceRow';
 import type { HubPngUploadRequestRangeKey } from './hubPngUploadRequestRangeKey';
 
@@ -24,6 +25,8 @@ export interface HubPngUploadRequest {
      */
   quoteNumber: string;
   lineItem?: HubCalculatorLineItemRequest | null;
+  /** Multi-style pricing for ONE Production Notes block. When present, priceRows must be empty and every section is validated instead. "schedule" sections carry a range-filtered tier schedule (Compare styles); "order" sections carry one row {qty = pieces ordered, unitPrice} (Mixed order). Omit/null for the single-style format. */
+  noteSections?: HubCalculatorNoteSection[] | null;
   /** @maxLength 2000 */
   note?: string | null;
   /**

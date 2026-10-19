@@ -10937,6 +10937,15 @@ export const requestHubPngUploadUrlBodyLineItemOneBrandMax = 120;
 
 export const requestHubPngUploadUrlBodyLineItemOneDescriptionMax = 500;
 
+export const requestHubPngUploadUrlBodyNoteSectionsOneItemLabelMax = 200;
+
+
+export const requestHubPngUploadUrlBodyNoteSectionsOneItemRowsItemUnitPriceMin = 0;
+
+export const requestHubPngUploadUrlBodyNoteSectionsOneItemRowsMax = 50;
+
+export const requestHubPngUploadUrlBodyNoteSectionsOneMax = 12;
+
 export const requestHubPngUploadUrlBodyNoteMax = 2000;
 
 export const requestHubPngUploadUrlBodyFileSizeBytesMax = 10485760;
@@ -10959,6 +10968,14 @@ export const RequestHubPngUploadUrlBody = zod.object({
   "brand": zod.string().min(1).max(requestHubPngUploadUrlBodyLineItemOneBrandMax),
   "description": zod.string().min(1).max(requestHubPngUploadUrlBodyLineItemOneDescriptionMax)
 }),zod.null()]).optional(),
+  "noteSections": zod.union([zod.array(zod.object({
+  "label": zod.string().min(1).max(requestHubPngUploadUrlBodyNoteSectionsOneItemLabelMax),
+  "kind": zod.enum(['schedule', 'order']),
+  "rows": zod.array(zod.object({
+  "qty": zod.number().min(1),
+  "unitPrice": zod.number().min(requestHubPngUploadUrlBodyNoteSectionsOneItemRowsItemUnitPriceMin)
+})).min(1).max(requestHubPngUploadUrlBodyNoteSectionsOneItemRowsMax)
+})).min(1).max(requestHubPngUploadUrlBodyNoteSectionsOneMax),zod.null()]).optional().describe('Multi-style pricing for ONE Production Notes block. When present, priceRows must be empty and every section is validated instead. \"schedule\" sections carry a range-filtered tier schedule (Compare styles); \"order\" sections carry one row {qty = pieces ordered, unitPrice} (Mixed order). Omit\/null for the single-style format.\n'),
   "note": zod.string().max(requestHubPngUploadUrlBodyNoteMax).nullish(),
   "fileSizeBytes": zod.number().min(1).max(requestHubPngUploadUrlBodyFileSizeBytesMax).optional().describe('Declared file size (unused for server-side GCS verification but informational)')
 })
@@ -11005,6 +11022,15 @@ export const pushHubCalculatorBodyLineItemOneBrandMax = 120;
 
 export const pushHubCalculatorBodyLineItemOneDescriptionMax = 500;
 
+export const pushHubCalculatorBodyNoteSectionsOneItemLabelMax = 200;
+
+
+export const pushHubCalculatorBodyNoteSectionsOneItemRowsItemUnitPriceMin = 0;
+
+export const pushHubCalculatorBodyNoteSectionsOneItemRowsMax = 50;
+
+export const pushHubCalculatorBodyNoteSectionsOneMax = 12;
+
 
 
 export const PushHubCalculatorBody = zod.object({
@@ -11023,7 +11049,15 @@ export const PushHubCalculatorBody = zod.object({
   "color": zod.string().min(1).max(pushHubCalculatorBodyLineItemOneColorMax),
   "brand": zod.string().min(1).max(pushHubCalculatorBodyLineItemOneBrandMax),
   "description": zod.string().min(1).max(pushHubCalculatorBodyLineItemOneDescriptionMax)
-}),zod.null()]).optional()
+}),zod.null()]).optional(),
+  "noteSections": zod.union([zod.array(zod.object({
+  "label": zod.string().min(1).max(pushHubCalculatorBodyNoteSectionsOneItemLabelMax),
+  "kind": zod.enum(['schedule', 'order']),
+  "rows": zod.array(zod.object({
+  "qty": zod.number().min(1),
+  "unitPrice": zod.number().min(pushHubCalculatorBodyNoteSectionsOneItemRowsItemUnitPriceMin)
+})).min(1).max(pushHubCalculatorBodyNoteSectionsOneItemRowsMax)
+})).min(1).max(pushHubCalculatorBodyNoteSectionsOneMax),zod.null()]).optional().describe('Multi-style pricing for ONE Production Notes block. When present, priceRows must be empty and every section is validated instead. \"schedule\" sections carry a range-filtered tier schedule (Compare styles); \"order\" sections carry one row {qty = pieces ordered, unitPrice} (Mixed order). Omit\/null for the single-style format.\n')
 })
 
 export const PushHubCalculatorResponse = zod.object({
@@ -11059,6 +11093,234 @@ export const ListHubCalculatorCategoriesResponse = zod.object({
   "id": zod.string(),
   "name": zod.string()
 }))
+})
+
+
+/**
+ * @summary Recompute and preview the exact multi-style Printavo handoff (read-only)
+ */
+export const previewHubCalculatorHandoffBodyGarmentsItemIdMax = 64;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemStyleMax = 100;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemColorMax = 100;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemBrandMax = 120;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemDescriptionMax = 500;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemCategoryIdMax = 40;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemGarmentCostMin = 0;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemSizesItemSizeMax = 10;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemSizesItemQuantityMin = 0;
+
+export const previewHubCalculatorHandoffBodyGarmentsItemSizesMax = 30;
+
+export const previewHubCalculatorHandoffBodyGarmentsMax = 12;
+
+export const previewHubCalculatorHandoffBodyDecorationsItemIdMax = 64;
+
+export const previewHubCalculatorHandoffBodyDecorationsItemPlacementMax = 80;
+
+export const previewHubCalculatorHandoffBodyDecorationsItemDetailsMax = 300;
+
+export const previewHubCalculatorHandoffBodyDecorationsItemColumnIndexMin = 0;
+
+export const previewHubCalculatorHandoffBodyDecorationsMax = 4;
+
+export const previewHubCalculatorHandoffBodyNicknameMax = 120;
+
+
+
+export const PreviewHubCalculatorHandoffBody = zod.object({
+  "mode": zod.enum(['compare', 'mixed']),
+  "markup": zod.number(),
+  "rangeKey": zod.string(),
+  "garments": zod.array(zod.object({
+  "id": zod.string().min(1).max(previewHubCalculatorHandoffBodyGarmentsItemIdMax),
+  "style": zod.string().max(previewHubCalculatorHandoffBodyGarmentsItemStyleMax),
+  "color": zod.string().max(previewHubCalculatorHandoffBodyGarmentsItemColorMax),
+  "brand": zod.string().max(previewHubCalculatorHandoffBodyGarmentsItemBrandMax),
+  "description": zod.string().max(previewHubCalculatorHandoffBodyGarmentsItemDescriptionMax),
+  "categoryId": zod.string().max(previewHubCalculatorHandoffBodyGarmentsItemCategoryIdMax),
+  "garmentCost": zod.number().min(previewHubCalculatorHandoffBodyGarmentsItemGarmentCostMin),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().max(previewHubCalculatorHandoffBodyGarmentsItemSizesItemSizeMax),
+  "quantity": zod.number().min(previewHubCalculatorHandoffBodyGarmentsItemSizesItemQuantityMin)
+})).max(previewHubCalculatorHandoffBodyGarmentsItemSizesMax)
+})).max(previewHubCalculatorHandoffBodyGarmentsMax),
+  "decorations": zod.array(zod.object({
+  "id": zod.string().min(1).max(previewHubCalculatorHandoffBodyDecorationsItemIdMax),
+  "placement": zod.string().max(previewHubCalculatorHandoffBodyDecorationsItemPlacementMax),
+  "details": zod.string().max(previewHubCalculatorHandoffBodyDecorationsItemDetailsMax),
+  "matrixId": zod.string(),
+  "columnIndex": zod.number().min(previewHubCalculatorHandoffBodyDecorationsItemColumnIndexMin)
+})).max(previewHubCalculatorHandoffBodyDecorationsMax),
+  "targetKind": zod.enum(['existing', 'new_quote']),
+  "orderId": zod.string().nullish(),
+  "customerId": zod.string().nullish(),
+  "contactId": zod.string().nullish(),
+  "nickname": zod.string().max(previewHubCalculatorHandoffBodyNicknameMax).nullish(),
+  "dueDate": zod.string().nullish(),
+  "reviewedUnitPrices": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "unitPrice": zod.number()
+})).optional()
+})
+
+export const PreviewHubCalculatorHandoffResponse = zod.object({
+  "snapshot": zod.object({
+  "target": zod.object({
+  "kind": zod.enum(['existing', 'new_quote']),
+  "orderId": zod.string().optional(),
+  "visualId": zod.number().optional(),
+  "orderType": zod.enum(['invoice', 'quote']).optional(),
+  "groupPosition": zod.number().optional(),
+  "customerId": zod.string().optional(),
+  "companyName": zod.string().optional(),
+  "contactId": zod.string().optional(),
+  "contactName": zod.string().nullish(),
+  "nickname": zod.string().optional(),
+  "dueDate": zod.string().optional()
+}),
+  "mode": zod.enum(['compare', 'mixed']),
+  "markup": zod.number(),
+  "rangeKey": zod.string().nullable(),
+  "combinedQuantity": zod.number().nullable(),
+  "decorationCostPerPiece": zod.number().nullable(),
+  "lines": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "categoryId": zod.string(),
+  "categoryName": zod.string(),
+  "itemNumber": zod.string(),
+  "color": zod.string(),
+  "description": zod.string(),
+  "price": zod.number(),
+  "quantity": zod.number(),
+  "sizes": zod.array(zod.object({
+  "size": zod.string(),
+  "count": zod.number()
+}))
+})),
+  "imprints": zod.array(zod.object({
+  "details": zod.string(),
+  "matrixName": zod.string(),
+  "columnLabel": zod.string(),
+  "pricingMatrixColumnId": zod.string()
+}))
+}),
+  "snapshotHash": zod.string(),
+  "existing": zod.object({
+  "handoffId": zod.string(),
+  "status": zod.enum(['ok', 'attempting', 'unknown']),
+  "deduped": zod.boolean(),
+  "targetKind": zod.enum(['existing', 'new_quote']),
+  "orderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "publicUrl": zod.string().nullable(),
+  "printavoUrl": zod.string().nullable(),
+  "lineItemGroupId": zod.string().nullable(),
+  "lineItemIds": zod.array(zod.string()),
+  "error": zod.string().nullable()
+}).nullable()
+})
+
+
+/**
+ * @summary Send the reviewed handoff to Printavo exactly once
+ */
+export const commitHubCalculatorHandoffBodyOneGarmentsItemIdMax = 64;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemStyleMax = 100;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemColorMax = 100;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemBrandMax = 120;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemDescriptionMax = 500;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemCategoryIdMax = 40;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemGarmentCostMin = 0;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemSizesItemSizeMax = 10;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemSizesItemQuantityMin = 0;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsItemSizesMax = 30;
+
+export const commitHubCalculatorHandoffBodyOneGarmentsMax = 12;
+
+export const commitHubCalculatorHandoffBodyOneDecorationsItemIdMax = 64;
+
+export const commitHubCalculatorHandoffBodyOneDecorationsItemPlacementMax = 80;
+
+export const commitHubCalculatorHandoffBodyOneDecorationsItemDetailsMax = 300;
+
+export const commitHubCalculatorHandoffBodyOneDecorationsItemColumnIndexMin = 0;
+
+export const commitHubCalculatorHandoffBodyOneDecorationsMax = 4;
+
+export const commitHubCalculatorHandoffBodyOneNicknameMax = 120;
+
+export const commitHubCalculatorHandoffBodyTwoExpectedSnapshotHashMin = 64;
+export const commitHubCalculatorHandoffBodyTwoExpectedSnapshotHashMax = 64;
+
+
+
+export const CommitHubCalculatorHandoffBody = zod.object({
+  "mode": zod.enum(['compare', 'mixed']),
+  "markup": zod.number(),
+  "rangeKey": zod.string(),
+  "garments": zod.array(zod.object({
+  "id": zod.string().min(1).max(commitHubCalculatorHandoffBodyOneGarmentsItemIdMax),
+  "style": zod.string().max(commitHubCalculatorHandoffBodyOneGarmentsItemStyleMax),
+  "color": zod.string().max(commitHubCalculatorHandoffBodyOneGarmentsItemColorMax),
+  "brand": zod.string().max(commitHubCalculatorHandoffBodyOneGarmentsItemBrandMax),
+  "description": zod.string().max(commitHubCalculatorHandoffBodyOneGarmentsItemDescriptionMax),
+  "categoryId": zod.string().max(commitHubCalculatorHandoffBodyOneGarmentsItemCategoryIdMax),
+  "garmentCost": zod.number().min(commitHubCalculatorHandoffBodyOneGarmentsItemGarmentCostMin),
+  "sizes": zod.array(zod.object({
+  "size": zod.string().max(commitHubCalculatorHandoffBodyOneGarmentsItemSizesItemSizeMax),
+  "quantity": zod.number().min(commitHubCalculatorHandoffBodyOneGarmentsItemSizesItemQuantityMin)
+})).max(commitHubCalculatorHandoffBodyOneGarmentsItemSizesMax)
+})).max(commitHubCalculatorHandoffBodyOneGarmentsMax),
+  "decorations": zod.array(zod.object({
+  "id": zod.string().min(1).max(commitHubCalculatorHandoffBodyOneDecorationsItemIdMax),
+  "placement": zod.string().max(commitHubCalculatorHandoffBodyOneDecorationsItemPlacementMax),
+  "details": zod.string().max(commitHubCalculatorHandoffBodyOneDecorationsItemDetailsMax),
+  "matrixId": zod.string(),
+  "columnIndex": zod.number().min(commitHubCalculatorHandoffBodyOneDecorationsItemColumnIndexMin)
+})).max(commitHubCalculatorHandoffBodyOneDecorationsMax),
+  "targetKind": zod.enum(['existing', 'new_quote']),
+  "orderId": zod.string().nullish(),
+  "customerId": zod.string().nullish(),
+  "contactId": zod.string().nullish(),
+  "nickname": zod.string().max(commitHubCalculatorHandoffBodyOneNicknameMax).nullish(),
+  "dueDate": zod.string().nullish(),
+  "reviewedUnitPrices": zod.array(zod.object({
+  "garmentId": zod.string(),
+  "unitPrice": zod.number()
+})).optional()
+}).and(zod.object({
+  "expectedSnapshotHash": zod.string().min(commitHubCalculatorHandoffBodyTwoExpectedSnapshotHashMin).max(commitHubCalculatorHandoffBodyTwoExpectedSnapshotHashMax)
+}))
+
+export const CommitHubCalculatorHandoffResponse = zod.object({
+  "handoffId": zod.string(),
+  "status": zod.enum(['ok', 'attempting', 'unknown']),
+  "deduped": zod.boolean(),
+  "targetKind": zod.enum(['existing', 'new_quote']),
+  "orderId": zod.string().nullable(),
+  "visualId": zod.number().nullable(),
+  "publicUrl": zod.string().nullable(),
+  "printavoUrl": zod.string().nullable(),
+  "lineItemGroupId": zod.string().nullable(),
+  "lineItemIds": zod.array(zod.string()),
+  "error": zod.string().nullable()
 })
 
 

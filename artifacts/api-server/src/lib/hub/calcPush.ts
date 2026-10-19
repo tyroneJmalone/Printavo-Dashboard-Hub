@@ -36,7 +36,13 @@ import {
   pushCalculatorLineItem,
   type LineItemPushOutcome,
 } from "./calcLineItems";
-import type { HubCalculatorLineItemInput } from "./pureHelpers";
+import {
+  normalizeNoteSections,
+  noteSectionsEqual,
+  type HubCalculatorLineItemInput,
+  type NoteSection,
+} from "./pureHelpers";
+import { resolveConfirmedHandoffQuote } from "./pushTarget";
 import { CalcPushError } from "./calcPushError";
 export { CalcPushError } from "./calcPushError";
 
@@ -64,6 +70,7 @@ export interface CalcPushRequest {
   visualId: number;
   rangeKey: string;
   priceRows: Array<{ qty: number; unitPrice: number }>;
+  noteSections?: NoteSection[] | null;
   quoteNumber: string;
   lineItem?: HubCalculatorLineItemInput | null;
 }
@@ -91,6 +98,33 @@ export function blockMarker(
     throw new Error("A 1–20 digit Printavo quote number is required");
   }
   return `[Hub Price Calculator Q${quoteNumber}]`;
+}
+
+/**
+ * Multi-style variant: ONE block (same marker, so one safe splice replaces
+ * any earlier single- or multi-style block for this order).
+ */
+export function buildMultiNoteBlock(
+  quoteNumber: string,
+  rangeKey: string,
+  sections: NoteSection[],
+): string {
+  const open = blockMarker(quoteNumber, rangeKey);
+  const close = open.replace("[Hub Price Calculator", "[/Hub Price Calculator");
+  const normalized = normalizeNoteSections(sections);
+  const body: string[] = [];
+  if (normalized[0]?.kind === "order") {
+    const combined = normalized.reduce((sum, s) => sum + s.rows[0]!.qty, 0);
+    body.push(`Mixed order: ${combined} pcs combined`, "Style\tPcs\tUnit Price");
+    for (const s of normalized) body.push(`${s.label}\t${s.rows[0]!.qty}\t$${s.rows[0]!.unitPrice.toFixed(2)}`);
+  } else {
+    const rangeLabel = rangeKey === "all" ? "All" : rangeKey.replace("-", "–");
+    body.push(`Range: ${rangeLabel}`, `Compare styles: ${normalized.length}`);
+    for (const s of normalized) {
+      body.push("", s.label, "QTY\tUnit Price", ...s.rows.map((r) => `${r.qty}+\t$${r.unitPrice.toFixed(2)}`));
+    }
+  }
+  return [open, ...body, close].join("\n");
 }
 
 /**
@@ -321,6 +355,13 @@ export async function pushCalcToInvoice(
       "invalid",
     );
   }
+  const storedSections = (upload.noteSections as NoteSection[] | null) ?? null;
+  if (!noteSectionsEqual(req.noteSections ?? null, storedSections)) {
+    throw new CalcPushError(
+      "Submitted noteSections do not match the stored upload snapshot",
+      "invalid",
+    );
+  }
   const storedLineItem =
     (upload.lineItemSnapshot as HubCalculatorLineItemInput | null) ?? null;
   if (!lineItemSnapshotsEqual(req.lineItem, storedLineItem)) {
@@ -331,7 +372,11 @@ export async function pushCalcToInvoice(
   }
 
   // ── 3. Validate order (invoice or quote) against local mirror ──────────
-  const mirror = await fetchMirrorOrder(req.invoiceId);
+  // A quote this Hub just created via handoff may not be mirrored yet; its
+  // confirmed (id, visualId) from the handoff row is re-verified live.
+  const mirror =
+    (await fetchMirrorOrder(req.invoiceId)) ??
+    (await resolveConfirmedHandoffQuote(req.invoiceId, req.visualId));
   if (mirror === null) {
     // The id may be stale because Printavo quote→invoice conversion replaces
     // the quote row with an invoice row under a NEW Printavo id (same visual
@@ -371,7 +416,9 @@ export async function pushCalcToInvoice(
 
   // ── 5. Build the note block ────────────────────────────────────────────
   const effectiveQuoteNumber = upload.quoteNumber;
-  const newBlock = buildNoteBlock(effectiveQuoteNumber, req.rangeKey, req.priceRows);
+  const newBlock = storedSections
+    ? buildMultiNoteBlock(effectiveQuoteNumber, req.rangeKey, storedSections)
+    : buildNoteBlock(effectiveQuoteNumber, req.rangeKey, req.priceRows);
 
   // ── 6. Check fully-done idempotency ───────────────────────────────────
   const fileAlreadyAttached = Boolean(upload.productionFileId);

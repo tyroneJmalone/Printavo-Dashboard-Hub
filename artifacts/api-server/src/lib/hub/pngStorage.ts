@@ -1,3 +1,4 @@
+import { resolveConfirmedHandoffQuote } from "./pushTarget";
 import { randomBytes, randomUUID } from "node:crypto";
 import {
   objectStorageClient,
@@ -18,7 +19,10 @@ import {
   validateLineItemInput,
   normalizeLineItemInput,
   computeDedupeKey,
+  normalizeNoteSections,
+  validateNoteSections,
   sanitizeFilename,
+  type NoteSection,
   VALID_RANGE_KEYS,
   type HubCalculatorLineItemInput,
 } from "./pureHelpers";
@@ -107,6 +111,9 @@ async function validateInvoiceMirror(
     )
     .limit(1);
   if (!row) {
+    // A quote this Hub just created via handoff may not be mirrored yet.
+    const confirmed = await resolveConfirmedHandoffQuote(invoiceId, visualId);
+    if (confirmed) return confirmed.orderType;
     throw new HubUploadError(
       `Invoice or quote "${invoiceId}" not found in local mirror`,
       "not_found",
@@ -137,6 +144,7 @@ export async function reservePngUploadSlot(opts: {
   quoteNumber: string;
   note?: string | null;
   lineItem?: HubCalculatorLineItemInput | null;
+  noteSections?: NoteSection[] | null;
 }): Promise<PngUploadSlot> {
   const quoteNumber = opts.quoteNumber.trim();
   if (!/^\d{1,20}$/.test(quoteNumber)) {
@@ -146,8 +154,21 @@ export async function reservePngUploadSlot(opts: {
     );
   }
   // Validate range key + rows
-  const rowError = validatePriceRows(opts.priceRows, opts.rangeKey);
-  if (rowError) throw new HubUploadError(rowError, "invalid");
+  const noteSections = opts.noteSections ? normalizeNoteSections(opts.noteSections) : null;
+  if (noteSections) {
+    // Multi-style: one block from sections; the legacy rows field stays empty.
+    if (opts.priceRows.length !== 0) {
+      throw new HubUploadError("priceRows must be empty when noteSections are sent", "invalid");
+    }
+    if (opts.lineItem) {
+      throw new HubUploadError("Multi-style notes cannot carry a legacy line item; use the handoff", "invalid");
+    }
+    const sectionError = validateNoteSections(noteSections, opts.rangeKey);
+    if (sectionError) throw new HubUploadError(sectionError, "invalid");
+  } else {
+    const rowError = validatePriceRows(opts.priceRows, opts.rangeKey);
+    if (rowError) throw new HubUploadError(rowError, "invalid");
+  }
 
   // Validate invoice against local mirror
   await validateInvoiceMirror(opts.invoiceId, opts.visualId);
@@ -175,6 +196,7 @@ export async function reservePngUploadSlot(opts: {
     rangeKey: opts.rangeKey,
     priceRows: opts.priceRows,
     lineItem,
+    noteSections,
   });
 
   // Check for existing dedupe row
@@ -223,6 +245,7 @@ export async function reservePngUploadSlot(opts: {
     dedupeKey,
     priceRows: opts.priceRows,
     lineItemSnapshot: lineItem,
+    noteSections,
   };
 
   let created: typeof row & { id: string } | undefined;

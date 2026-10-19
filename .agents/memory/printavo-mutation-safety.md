@@ -14,3 +14,9 @@ For absolute line-item product-status setters, a fresh status check is best-effo
 **Why:** The inspected Printavo line-item update contract does not provide a conditional version/status guard. A remote edit can occur between the read and the write.
 
 **How to apply:** Keep the fresh check immediately before a one-attempt write, warn users to avoid concurrent upstream edits during bulk cleanup, and never describe local locks as guaranteeing protection from external writers. Reconcile ambiguous outcomes with reads rather than automatically replaying writes.
+
+For calculator handoffs, separate the reviewed snapshot hash from the durable duplicate-operation identity. The latter must exclude derived append positions and browser-generated garment row ids.
+
+**Why:** A successful or ambiguous group append changes the next available position; reopening a worksheet changes local row ids. Either can otherwise make the same proposed write appear new and bypass a duplicate/uncertainty hold.
+
+**How to apply:** Bind confirmation to the full preview, but check a stable content-and-destination identity before every write. Re-previewing or rebuilding identical input must retain completed results and uncertain-write locks.

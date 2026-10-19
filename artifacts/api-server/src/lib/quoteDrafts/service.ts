@@ -46,7 +46,7 @@ export class QuoteDraftConflictError extends Error {
   }
 }
 
-function isDefinitiveGraphqlValidationRejection(
+export function isDefinitiveGraphqlValidationRejection(
   err: unknown,
 ): err is PrintavoApiError {
   if (
@@ -564,7 +564,7 @@ function resolveBreakCost(
   return resolved;
 }
 
-async function verifySelectedCustomer(
+export async function verifySelectedCustomer(
   selected: AiQuoteCustomerCandidate | null,
 ): Promise<AiQuoteCustomerCandidate | null> {
   if (!selected) return null;
@@ -963,7 +963,7 @@ async function recoverStaleCreatingDrafts(): Promise<void> {
     );
 }
 
-function canonicalJson(value: unknown): string {
+export function canonicalJson(value: unknown): string {
   const normalize = (input: unknown): unknown => {
     if (Array.isArray(input)) return input.map(normalize);
     if (input && typeof input === "object") {
@@ -1003,7 +1003,7 @@ function trustedSnapshot(draft: AiQuoteDraftData): string {
   });
 }
 
-function newYorkDueAt(date: string): string {
+export function newYorkDueAt(date: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     timeZoneName: "longOffset",

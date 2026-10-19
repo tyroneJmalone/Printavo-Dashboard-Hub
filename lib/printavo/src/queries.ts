@@ -528,6 +528,56 @@ export function calculatorLineItemGroupCreateMutation(
   }`;
 }
 
+export interface CalculatorHandoffLineItem {
+  position: number;
+  categoryId: string;
+  itemNumber: string;
+  color: string;
+  description: string;
+  /** Reviewed unit price; imprints carry matrix attribution only (no price). */
+  price: number;
+  /** Pairs of (LineItemSize enum value, count). Empty for descriptive comparison lines. */
+  sizes: Array<{ size: string; count: number }>;
+}
+
+export interface CalculatorHandoffGroupInput {
+  position: number;
+  lineItems: CalculatorHandoffLineItem[];
+  imprints: Array<{ details: string; pricingMatrixColumnId: string }>;
+}
+
+/**
+ * Appends ONE new line-item group holding several garment lines that share
+ * the same imprints. Uses the same LineItemGroupCreateInput fields as
+ * quoteCreate's nested groups. Existing groups/lines are never referenced.
+ */
+export function calculatorHandoffGroupCreateMutation(
+  parentId: string,
+  input: CalculatorHandoffGroupInput,
+): string {
+  const lineItems = input.lineItems.map((item) => {
+    const sizes = item.sizes.map(
+      (size) =>
+        `{ size: ${enumLit(size.size, "LineItemSize")}, count: ${Math.trunc(size.count)} }`,
+    );
+    return `{ position: ${Math.trunc(item.position)}, category: { id: ${lit(item.categoryId)} }, itemNumber: ${lit(item.itemNumber)}, color: ${lit(item.color)}, description: ${lit(item.description)}, price: ${Number(item.price).toFixed(2)}, productStatus: need_ordering, taxed: true, sizes: [${sizes.join(", ")}] }`;
+  });
+  const imprints = input.imprints.map(
+    (imprint) =>
+      `{ details: ${lit(imprint.details)}, pricingMatrixColumn: { id: ${lit(imprint.pricingMatrixColumnId)} } }`,
+  );
+  return `mutation {
+    lineItemGroupCreate(
+      parentId: ${lit(parentId)}
+      input: { position: ${Math.trunc(input.position)}, lineItems: [${lineItems.join(", ")}], imprints: [${imprints.join(", ")}] }
+    ) {
+      id
+      position
+      lineItems(first: 50) { nodes { id position itemNumber color } }
+    }
+  }`;
+}
+
 export interface QuoteCreateLineItem {
   position: number;
   itemNumber: string;
@@ -536,6 +586,8 @@ export interface QuoteCreateLineItem {
   price: number;
   markupPercentage: number;
   sizes: Array<{ size: string; count: number }>;
+  /** Optional Printavo line-item category (mirror-verified by the caller). */
+  categoryId?: string;
 }
 
 export interface QuoteCreateImprint {
@@ -571,7 +623,8 @@ export function quoteCreateMutation(input: QuoteCreateInput): string {
         (size) =>
           `{ size: ${enumLit(size.size, "LineItemSize")}, count: ${Math.trunc(size.count)} }`,
       );
-      return `{ position: ${Math.trunc(item.position)}, itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, price: ${Number(item.price).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: need_ordering, taxed: true, sizes: [${sizes.join(", ")}] }`;
+      const category = item.categoryId ? `category: { id: ${lit(item.categoryId)} }, ` : "";
+      return `{ position: ${Math.trunc(item.position)}, ${category}itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, price: ${Number(item.price).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: need_ordering, taxed: true, sizes: [${sizes.join(", ")}] }`;
     });
     const imprints = group.imprints.map((imprint) => {
       return `{ details: ${lit(imprint.details)}, pricingMatrixColumn: { id: ${lit(imprint.pricingMatrixColumnId)} } }`;

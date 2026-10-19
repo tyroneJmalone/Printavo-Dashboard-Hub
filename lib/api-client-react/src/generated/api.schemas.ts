@@ -8279,6 +8279,28 @@ export interface HubCalculatorLineItemRequest {
   description: string;
 }
 
+export type HubCalculatorNoteSectionKind = typeof HubCalculatorNoteSectionKind[keyof typeof HubCalculatorNoteSectionKind];
+
+
+export const HubCalculatorNoteSectionKind = {
+  schedule: 'schedule',
+  order: 'order',
+} as const;
+
+export interface HubCalculatorNoteSection {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  label: string;
+  kind: HubCalculatorNoteSectionKind;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  rows: HubCalculatorPriceRow[];
+}
+
 export interface HubPngUploadRequest {
   /** Internal Printavo invoice or quote id (validated against local mirror) */
   invoiceId: string;
@@ -8294,6 +8316,8 @@ export interface HubPngUploadRequest {
      */
   quoteNumber: string;
   lineItem?: HubCalculatorLineItemRequest | null;
+  /** Multi-style pricing for ONE Production Notes block. When present, priceRows must be empty and every section is validated instead. "schedule" sections carry a range-filtered tier schedule (Compare styles); "order" sections carry one row {qty = pieces ordered, unitPrice} (Mixed order). Omit/null for the single-style format. */
+  noteSections?: HubCalculatorNoteSection[] | null;
   /** @maxLength 2000 */
   note?: string | null;
   /**
@@ -8320,6 +8344,207 @@ export interface HubPngUploadResponse {
 export interface HubCalculatorCategory {
   id: string;
   name: string;
+}
+
+export type HubCalculatorHandoffGarmentSizesItem = {
+  /** @maxLength 10 */
+  size: string;
+  /** @minimum 0 */
+  quantity: number;
+};
+
+export interface HubCalculatorHandoffGarment {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  id: string;
+  /** @maxLength 100 */
+  style: string;
+  /** @maxLength 100 */
+  color: string;
+  /** @maxLength 120 */
+  brand: string;
+  /** @maxLength 500 */
+  description: string;
+  /** @maxLength 40 */
+  categoryId: string;
+  /** @minimum 0 */
+  garmentCost: number;
+  /** @maxItems 30 */
+  sizes: HubCalculatorHandoffGarmentSizesItem[];
+}
+
+export interface HubCalculatorHandoffDecoration {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  id: string;
+  /** @maxLength 80 */
+  placement: string;
+  /** @maxLength 300 */
+  details: string;
+  matrixId: string;
+  /** @minimum 0 */
+  columnIndex: number;
+}
+
+export type HubCalculatorHandoffRequestMode = typeof HubCalculatorHandoffRequestMode[keyof typeof HubCalculatorHandoffRequestMode];
+
+
+export const HubCalculatorHandoffRequestMode = {
+  compare: 'compare',
+  mixed: 'mixed',
+} as const;
+
+export type HubCalculatorHandoffRequestTargetKind = typeof HubCalculatorHandoffRequestTargetKind[keyof typeof HubCalculatorHandoffRequestTargetKind];
+
+
+export const HubCalculatorHandoffRequestTargetKind = {
+  existing: 'existing',
+  new_quote: 'new_quote',
+} as const;
+
+export type HubCalculatorHandoffRequestReviewedUnitPricesItem = {
+  garmentId: string;
+  unitPrice: number;
+};
+
+export interface HubCalculatorHandoffRequest {
+  mode: HubCalculatorHandoffRequestMode;
+  markup: number;
+  rangeKey: string;
+  /** @maxItems 12 */
+  garments: HubCalculatorHandoffGarment[];
+  /** @maxItems 4 */
+  decorations: HubCalculatorHandoffDecoration[];
+  targetKind: HubCalculatorHandoffRequestTargetKind;
+  orderId?: string | null;
+  customerId?: string | null;
+  contactId?: string | null;
+  /** @maxLength 120 */
+  nickname?: string | null;
+  dueDate?: string | null;
+  reviewedUnitPrices?: HubCalculatorHandoffRequestReviewedUnitPricesItem[];
+}
+
+export type HubCalculatorHandoffCommitRequest = HubCalculatorHandoffRequest & {
+  /**
+     * @minLength 64
+     * @maxLength 64
+     */
+  expectedSnapshotHash: string;
+};
+
+export type HubCalculatorHandoffLineSizesItem = {
+  size: string;
+  count: number;
+};
+
+export interface HubCalculatorHandoffLine {
+  garmentId: string;
+  categoryId: string;
+  categoryName: string;
+  itemNumber: string;
+  color: string;
+  description: string;
+  price: number;
+  quantity: number;
+  sizes: HubCalculatorHandoffLineSizesItem[];
+}
+
+export type HubCalculatorHandoffTargetKind = typeof HubCalculatorHandoffTargetKind[keyof typeof HubCalculatorHandoffTargetKind];
+
+
+export const HubCalculatorHandoffTargetKind = {
+  existing: 'existing',
+  new_quote: 'new_quote',
+} as const;
+
+export type HubCalculatorHandoffTargetOrderType = typeof HubCalculatorHandoffTargetOrderType[keyof typeof HubCalculatorHandoffTargetOrderType];
+
+
+export const HubCalculatorHandoffTargetOrderType = {
+  invoice: 'invoice',
+  quote: 'quote',
+} as const;
+
+export interface HubCalculatorHandoffTarget {
+  kind: HubCalculatorHandoffTargetKind;
+  orderId?: string;
+  visualId?: number;
+  orderType?: HubCalculatorHandoffTargetOrderType;
+  groupPosition?: number;
+  customerId?: string;
+  companyName?: string;
+  contactId?: string;
+  contactName?: string | null;
+  nickname?: string;
+  dueDate?: string;
+}
+
+export type HubCalculatorHandoffSnapshotMode = typeof HubCalculatorHandoffSnapshotMode[keyof typeof HubCalculatorHandoffSnapshotMode];
+
+
+export const HubCalculatorHandoffSnapshotMode = {
+  compare: 'compare',
+  mixed: 'mixed',
+} as const;
+
+export type HubCalculatorHandoffSnapshotImprintsItem = {
+  details: string;
+  matrixName: string;
+  columnLabel: string;
+  pricingMatrixColumnId: string;
+};
+
+export interface HubCalculatorHandoffSnapshot {
+  target: HubCalculatorHandoffTarget;
+  mode: HubCalculatorHandoffSnapshotMode;
+  markup: number;
+  rangeKey: string | null;
+  combinedQuantity: number | null;
+  decorationCostPerPiece: number | null;
+  lines: HubCalculatorHandoffLine[];
+  imprints: HubCalculatorHandoffSnapshotImprintsItem[];
+}
+
+export type HubCalculatorHandoffResultStatus = typeof HubCalculatorHandoffResultStatus[keyof typeof HubCalculatorHandoffResultStatus];
+
+
+export const HubCalculatorHandoffResultStatus = {
+  ok: 'ok',
+  attempting: 'attempting',
+  unknown: 'unknown',
+} as const;
+
+export type HubCalculatorHandoffResultTargetKind = typeof HubCalculatorHandoffResultTargetKind[keyof typeof HubCalculatorHandoffResultTargetKind];
+
+
+export const HubCalculatorHandoffResultTargetKind = {
+  existing: 'existing',
+  new_quote: 'new_quote',
+} as const;
+
+export interface HubCalculatorHandoffResult {
+  handoffId: string;
+  status: HubCalculatorHandoffResultStatus;
+  deduped: boolean;
+  targetKind: HubCalculatorHandoffResultTargetKind;
+  orderId: string | null;
+  visualId: number | null;
+  publicUrl: string | null;
+  printavoUrl: string | null;
+  lineItemGroupId: string | null;
+  lineItemIds: string[];
+  error: string | null;
+}
+
+export interface HubCalculatorHandoffPreview {
+  snapshot: HubCalculatorHandoffSnapshot;
+  snapshotHash: string;
+  existing: HubCalculatorHandoffResult | null;
 }
 
 /**
@@ -8355,6 +8580,8 @@ export interface HubCalculatorPushRequest {
      */
   quoteNumber: string;
   lineItem?: HubCalculatorLineItemRequest | null;
+  /** Multi-style pricing for ONE Production Notes block. When present, priceRows must be empty and every section is validated instead. "schedule" sections carry a range-filtered tier schedule (Compare styles); "order" sections carry one row {qty = pieces ordered, unitPrice} (Mixed order). Omit/null for the single-style format. */
+  noteSections?: HubCalculatorNoteSection[] | null;
 }
 
 /**

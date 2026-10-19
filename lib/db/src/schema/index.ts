@@ -70,6 +70,7 @@ export * from "./correspondence";
 export * from "./aiQuoteDrafts";
 export * from "./aiQuoteDraftEvents";
 export * from "./hubCalcUploads";
+export * from "./hubCalcHandoffs";
 export * from "./customerBranding";
 export * from "./aiConsumers";
 export * from "./knowledgeEntries";

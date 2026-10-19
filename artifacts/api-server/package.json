@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test:quote-matrices": "node ./test-quote-matrices.mjs",
     "test:hub-calc": "node ./test-hub-calc.mjs",
+    "test:hub-calc-handoff": "node ./test-hub-calc-handoff.mjs",
     "test:line-item-history": "node ./test-line-item-history.mjs",
     "test:order-activity-log": "node ./test-order-activity-log.mjs",
     "test:auto-print-live-discovery": "node ./test-auto-print-live-discovery.mjs",

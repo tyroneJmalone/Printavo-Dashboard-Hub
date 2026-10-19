@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import {
@@ -30,30 +31,31 @@ import {
   type HubInvoiceSearchItem,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  computeQuote,
-  DEFAULT_MARKUP,
-  MARKUP_PRESETS,
-  MAX_LOCATIONS,
-  type QuoteLocation,
-} from "./calcEngine";
-import { VendorCostLookup } from "./VendorCostLookup";
-import { VendorPriceChoice, type VendorPriceSelection, type VendorPriceMode } from "./VendorPriceChoice";
+import { DEFAULT_MARKUP, MARKUP_PRESETS, MAX_LOCATIONS } from "./calcEngine";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { GarmentCard, cleanProductDescription } from "./GarmentCard";
+import { HandoffPanel, NewQuoteFields, type NewQuoteTarget } from "./HandoffPanel";
+import {
+  PLACEMENT_PRESETS,
+  buildHandoffRequest,
+  compareSchedule,
+  emptyDecoration,
+  emptyGarment,
+  garmentLabel,
+  handoffBlockers,
+  mixedSummary,
+  validDecorations,
+  type DecorationRow,
+  type GarmentRow,
+  type PricingMode,
+} from "./calcMulti";
 
-type RangeKey =
-  | "all"
-  | "12-48"
-  | "36-72"
-  | "60-96"
-  | "84-120"
-  | "108-144"
-  | "144-288";
+type RangeKey = "all" | "12-48" | "36-72" | "60-96" | "84-120" | "108-144" | "144-288";
 
 const RANGES: { label: string; key: RangeKey; filter: (q: number) => boolean }[] = [
   { label: "All", key: "all", filter: () => true },
@@ -66,52 +68,33 @@ const RANGES: { label: string; key: RangeKey; filter: (q: number) => boolean }[]
 ];
 
 const money = (n: number) =>
-  n.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-interface LocationRow {
-  matrixId: string;
-  columnIndex: number;
-}
-
-interface SelectedProduct {
-  style: string;
-  color: string;
-  brand: string;
-  description: string;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function cleanProductDescription(product: SelectedProduct): string {
-  let description = product.description.trim();
-  if (!description) return "";
-  if (product.brand.trim()) {
-    description = description.replace(
-      new RegExp(`^${escapeRegExp(product.brand.trim())}\\s*[-–—.:]*\\s*`, "i"),
-      "",
-    );
-  }
-  if (product.style.trim()) {
-    description = description.replace(
-      new RegExp(
-        `\\s*[.·|\\-–—:]*\\s*${escapeRegExp(product.style.trim())}\\s*$`,
-        "i",
-      ),
-      "",
-    );
-  }
-  return description.trim() || product.description.trim();
-}
+  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const inputCls =
   "w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#059669]";
-const labelCls =
-  "block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5";
+const labelCls = "block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5";
+
+const segBtn = (active: boolean) =>
+  `text-xs font-semibold px-3 py-2 rounded-lg border transition-colors ${
+    active
+      ? "bg-[#059669]/10 border-[#059669]/40 text-[#10b981]"
+      : "bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700"
+  }`;
+
+type Destination = "existing" | "new_quote";
+
+const SCHEDULE_HEADERS: Array<[string, "left" | "right"]> = [
+  ["Qty", "left"],
+  ["Garment Cost", "right"],
+  ["Garment Markup $", "right"],
+  ["Base Cost $", "right"],
+  ["Decoration/PC", "right"],
+  ["Unit Price", "right"],
+  ["Total Cost", "right"],
+  ["Total Blank Markup", "right"],
+  ["Total Deco", "right"],
+  ["Total Order Value", "right"],
+];
 
 export function QuoteCalculator({
   onGoToMatrices,
@@ -126,85 +109,61 @@ export function QuoteCalculator({
   const { data, isLoading } = useListDecorationMatrices({
     query: { queryKey: getListDecorationMatricesQueryKey() },
   });
-  const matrices = data?.matrices ?? [];
+  const matrices = useMemo(() => data?.matrices ?? [], [data]);
+  const { data: categoryData } = useListHubCalculatorCategories();
+  const categories = useMemo(() => categoryData?.categories ?? [], [categoryData]);
 
-  const [garmentCostStr, setGarmentCostStr] = useState(
-    initialGarmentCost || ""
-  );
-  const garmentCostSourceRef = useRef<"empty" | "initial" | "manual" | "vendor" | "ai">(
-    initialGarmentCost ? "initial" : "empty",
-  );
+  const [garments, setGarments] = useState<GarmentRow[]>(() => [emptyGarment(initialGarmentCost || "")]);
   const [labelHint, setLabelHint] = useState(initialLabel || "");
-  const [vendorPriceSelection, setVendorPriceSelection] = useState<VendorPriceSelection | null>(null);
-  const [vendorPriceMode, setVendorPriceMode] = useState<VendorPriceMode | null>(null);
+  const [mode, setMode] = useState<PricingMode>("compare");
   const [markupSel, setMarkupSel] = useState(String(DEFAULT_MARKUP));
   const [customMarkupStr, setCustomMarkupStr] = useState("");
-  const [quoteNumber, setQuoteNumber] = useState("");
-  const quoteNumberValid = /^\d{1,20}$/.test(quoteNumber.trim());
-  // Tracks a quote number derived from the selected push target, so clearing
-  // the selection can clear it without discarding manual entries.
-  const autoFilledQuoteNumberRef = useRef<string | null>(null);
-  const [rows, setRows] = useState<LocationRow[]>([
-    { matrixId: "", columnIndex: 0 },
-  ]);
-
-  const garmentCost = garmentCostStr.trim() === "" ? 0 : Number(garmentCostStr);
-  const garmentValid = Number.isFinite(garmentCost) && garmentCost >= 0;
+  const [decorations, setDecorations] = useState<DecorationRow[]>(() => [emptyDecoration(0)]);
+  const [rangeKey, setRangeKey] = useState<RangeKey>("all");
 
   const isCustomMarkup = markupSel === "custom";
   const markup = isCustomMarkup ? Number(customMarkupStr) : Number(markupSel);
   const markupValid = Number.isFinite(markup) && markup > 0;
 
-  const [rangeKey, setRangeKey] = useState<RangeKey>("all");
-
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiWarnings, setAiWarnings] = useState<string[]>([]);
-  const [aiGarmentMatch, setAiGarmentMatch] =
-    useState<HubPricingGarmentMatch | null>(null);
+  const [aiGarmentMatch, setAiGarmentMatch] = useState<HubPricingGarmentMatch | null>(null);
   const interpretMutation = useInterpretHubPricingPrompt();
 
+  // ── Destination (the ONLY source of the Printavo order number) ─────────
+  const [destination, setDestination] = useState<Destination>("existing");
   const [searchQ, setSearchQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  const [selectedInvoice, setSelectedInvoice] =
-    useState<HubInvoiceSearchItem | null>(null);
-  // Mirrors selectedInvoice for async callbacks (e.g. a late AI response).
+  const [selectedInvoice, setSelectedInvoice] = useState<HubInvoiceSearchItem | null>(null);
   const selectedInvoiceRef = useRef<HubInvoiceSearchItem | null>(null);
   useEffect(() => {
     selectedInvoiceRef.current = selectedInvoice;
   }, [selectedInvoice]);
+  const [newQuote, setNewQuote] = useState<NewQuoteTarget>({ customer: null, nickname: "", dueDate: "" });
+
+  /** A quote created by the handoff; usable as a notes + PNG target right away. */
+  const [createdQuote, setCreatedQuote] = useState<{ id: string; visualId: number } | null>(null);
+
+  /** The order Notes + PNG goes to: the selected destination, or the new quote. */
+  const notesTarget: { id: string; visualId: number; orderType: string } | null =
+    destination === "existing"
+      ? selectedInvoice
+        ? { id: selectedInvoice.id, visualId: selectedInvoice.visualId, orderType: selectedInvoice.orderType }
+        : null
+      : createdQuote
+        ? { ...createdQuote, orderType: "quote" }
+        : null;
+
+  /** Visible order number used for notes identity and export filenames. */
+  const orderNumber = notesTarget ? String(notesTarget.visualId) : "";
 
   const [isPushing, setIsPushing] = useState(false);
-  const [addLineItem, setAddLineItem] = useState(false);
-  const [lineItemCategoryId, setLineItemCategoryId] = useState("");
-  const [lineItemStyle, setLineItemStyle] = useState("");
-  const [lineItemColor, setLineItemColor] = useState("");
-  const [lineItemBrand, setLineItemBrand] = useState("");
-  const [lineItemDescription, setLineItemDescription] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
   const [pushOutcome, setPushOutcome] = useState<{
     noteOutcome: { ok: boolean; error?: string | null; locked?: boolean };
     fileOutcome: { ok: boolean; error?: string | null; locked?: boolean };
-    lineItemOutcome: {
-      requested: boolean;
-      ok: boolean;
-      error?: string | null;
-      locked?: boolean;
-    };
   } | null>(null);
-
-  const requestUrlMutation = useRequestHubPngUploadUrl();
-  const pushMutation = usePushHubCalculator();
-  const { data: categoryData } = useListHubCalculatorCategories();
-
-  const resetLineItemForTargetChange = () => {
-    setAddLineItem(false);
-    setLineItemCategoryId("");
-    setLineItemStyle("");
-    setLineItemColor("");
-    setLineItemBrand("");
-    setLineItemDescription("");
-    setPushOutcome(null);
-  };
+  const requestUrlMutation = useRequestHubPngUploadUrl({ mutation: { retry: false } });
+  const pushMutation = usePushHubCalculator({ mutation: { retry: false } });
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(searchQ), 300);
@@ -218,7 +177,7 @@ export function QuoteCalculator({
         enabled: debouncedQ.trim().length >= 2,
         queryKey: getSearchHubInvoicesQueryKey({ q: debouncedQ, limit: 20 }),
       },
-    }
+    },
   );
 
   const byId = useMemo(() => {
@@ -227,121 +186,48 @@ export function QuoteCalculator({
     return m;
   }, [matrices]);
 
-  type RowState =
-    | { status: "empty" }
-    | { status: "missing" }
-    | { status: "column-gone"; mx: DecorationMatrix }
-    | { status: "ok"; mx: DecorationMatrix };
+  const valid = useMemo(() => validDecorations(decorations, byId), [decorations, byId]);
 
-  const rowStates: RowState[] = useMemo(
-    () =>
-      rows.map((r) => {
-        if (!r.matrixId) return { status: "empty" as const };
-        const mx = byId.get(r.matrixId);
-        if (!mx) return { status: "missing" as const };
-        if (mx.data.xValues[r.columnIndex] === undefined)
-          return { status: "column-gone" as const, mx };
-        return { status: "ok" as const, mx };
-      }),
-    [rows, byId]
-  );
-
+  // Suggest a Printavo category from the first decoration matrix.
   const suggestedCategoryId = useMemo(() => {
-    const matrixName =
-      rowStates.find((state) => state.status === "ok")?.mx.name.toLowerCase() ?? "";
-    const categories = categoryData?.categories ?? [];
+    const matrixName = valid[0]?.matrix.name.toLowerCase() ?? "";
     if (!matrixName || categories.length === 0) return "";
-
-    const preferredTerm = matrixName.includes("embro")
-      ? "embro"
-      : matrixName.includes("print")
-        ? "screen print"
-        : "";
-    const preferred = preferredTerm
-      ? categories.find((category) =>
-          category.name.toLowerCase().includes(preferredTerm),
-        )
-      : undefined;
+    const term = matrixName.includes("embro") ? "embro" : matrixName.includes("print") ? "screen print" : "";
+    const preferred = term ? categories.find((c) => c.name.toLowerCase().includes(term)) : undefined;
     if (preferred) return preferred.id;
-
-    const matrixWords = matrixName
+    const words = matrixName
       .replace(/\b(1st|first|addnl|additional|location|loc)\b/g, " ")
       .split(/\W+/)
-      .filter((word) => word.length >= 4);
-    return (
-      categories.find((category) => {
-        const name = category.name.toLowerCase();
-        return matrixWords.some((word) => name.includes(word));
-      })?.id ?? ""
-    );
-  }, [categoryData?.categories, rowStates]);
-
-  const applySelectedProduct = (product: SelectedProduct | null) => {
-    const normalized = product
-      ? { ...product, description: cleanProductDescription(product) }
-      : null;
-    setSelectedProduct(normalized);
-    setLineItemStyle(normalized?.style ?? "");
-    setLineItemColor(normalized?.color ?? "");
-    setLineItemBrand(normalized?.brand ?? "");
-    setLineItemDescription(normalized?.description ?? "");
-  };
-
-  const prefillLineItemDraft = () => {
-    if (selectedProduct) {
-      setLineItemStyle((value) => value || selectedProduct.style);
-      setLineItemColor((value) => value || selectedProduct.color);
-      setLineItemBrand((value) => value || selectedProduct.brand);
-      setLineItemDescription((value) => value || selectedProduct.description);
-    }
-    if (suggestedCategoryId) {
-      setLineItemCategoryId((value) => value || suggestedCategoryId);
-    }
-  };
+      .filter((w) => w.length >= 4);
+    return categories.find((c) => words.some((w) => c.name.toLowerCase().includes(w)))?.id ?? "";
+  }, [valid, categories]);
 
   useEffect(() => {
-    if (addLineItem && !lineItemCategoryId && suggestedCategoryId) {
-      setLineItemCategoryId(suggestedCategoryId);
-    }
-  }, [addLineItem, lineItemCategoryId, suggestedCategoryId]);
+    if (!suggestedCategoryId) return;
+    setGarments((prev) =>
+      prev.some((g) => !g.categoryId)
+        ? prev.map((g) => (g.categoryId ? g : { ...g, categoryId: suggestedCategoryId }))
+        : prev,
+    );
+  }, [suggestedCategoryId, garments.length]);
 
-  const validEntries = useMemo(
-    () =>
-      rowStates.flatMap((s, i) =>
-        s.status === "ok"
-          ? [
-              {
-                loc: { data: s.mx.data, columnIndex: rows[i].columnIndex },
-                rowIndex: i,
-              },
-            ]
-          : []
-      ),
-    [rowStates, rows]
+  const schedules = useMemo(
+    () => (markupValid ? garments.map((g) => compareSchedule(g, markup, valid)) : garments.map(() => [])),
+    [garments, markup, markupValid, valid],
   );
-
-  const locations: QuoteLocation[] = useMemo(
-    () => validEntries.map((e) => e.loc),
-    [validEntries]
+  const mixed = useMemo(
+    () => (markupValid && mode === "mixed" ? mixedSummary(garments, markup, valid) : null),
+    [garments, markup, markupValid, mode, valid],
   );
-  /** Row whose column supplies the canonical qty tiers (first valid location). */
-  const tierRowIndex = validEntries.length > 0 ? validEntries[0].rowIndex : -1;
-
-  const quote = useMemo(
-    () =>
-      garmentValid && markupValid
-        ? computeQuote(garmentCost, markup, locations)
-        : [],
-    [garmentValid, markupValid, garmentCost, markup, locations]
-  );
-
+  const hasResults = mode === "compare" ? schedules.some((s) => s.length > 0) : mixed !== null && mixed.lines.length > 0;
   const activeRange = RANGES.find((r) => r.key === rangeKey) || RANGES[0];
 
-  const setRow = (i: number, patch: Partial<LocationRow>) =>
-    setRows((prev) =>
-      prev.map((r, ri) => (ri === i ? { ...r, ...patch } : r))
-    );
+  const patchGarment = (id: string, patch: Partial<GarmentRow>) =>
+    setGarments((prev) => prev.map((g) => (g.id === id ? { ...g, ...patch } : g)));
+  const patchDecoration = (id: string, patch: Partial<DecorationRow>) =>
+    setDecorations((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
 
+  // ── AI prompt fill (fills the first style; other styles are kept) ──────
   const handleInterpret = () => {
     if (!aiPrompt.trim()) return;
     setAiWarnings([]);
@@ -349,65 +235,61 @@ export function QuoteCalculator({
       { data: { prompt: aiPrompt } },
       {
         onSuccess: (res) => {
-          setVendorPriceSelection(null);
-          setVendorPriceMode(null);
           setAiGarmentMatch(res.garmentMatch);
-          applySelectedProduct(
-            res.garmentMatch
+          setGarments((prev) => {
+            const first = prev[0] ?? emptyGarment();
+            const match = res.garmentMatch;
+            const filled: GarmentRow = match
               ? {
-                  style: res.garmentMatch.styleName,
-                  color: res.garmentMatch.colorName,
-                  brand: res.garmentMatch.brand ?? "",
-                  description: res.garmentMatch.title ?? "",
+                  ...first,
+                  vendorSelection: null,
+                  vendorMode: null,
+                  style: match.styleName,
+                  color: match.colorName,
+                  brand: match.brand ?? "",
+                  description: cleanProductDescription({
+                    brand: match.brand ?? "",
+                    style: match.styleName,
+                    description: match.title ?? "",
+                  }),
+                  costStr: res.garmentCost !== null ? res.garmentCost.toFixed(2) : first.costStr,
                 }
-              : null,
-          );
-          if (res.garmentCost !== null) {
-            setGarmentCostStr(res.garmentCost.toFixed(2));
-            garmentCostSourceRef.current = "ai";
+              : res.garmentCost !== null
+                ? { ...first, vendorSelection: null, vendorMode: null, costStr: res.garmentCost.toFixed(2) }
+                : first;
+            return [filled, ...prev.slice(1)];
+          });
+          if (res.garmentMatch) {
             setLabelHint(
-              res.garmentMatch
-                ? [
-                    res.garmentMatch.brand,
-                    res.garmentMatch.styleName,
-                    res.garmentMatch.colorName,
-                    res.garmentMatch.vendor === "sanmar"
-                      ? "SanMar"
-                      : "S&S Activewear",
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                : "AI prompt",
+              [res.garmentMatch.brand, res.garmentMatch.styleName, res.garmentMatch.colorName,
+                res.garmentMatch.vendor === "sanmar" ? "SanMar" : "S&S Activewear"]
+                .filter(Boolean)
+                .join(" · "),
             );
-          } else if (garmentCostSourceRef.current === "ai") {
-            setGarmentCostStr("");
-            setLabelHint("");
-            garmentCostSourceRef.current = "empty";
           }
           if (res.markup !== null) {
-            if (MARKUP_PRESETS.includes(res.markup)) {
-              setMarkupSel(String(res.markup));
-            } else {
+            if (MARKUP_PRESETS.includes(res.markup)) setMarkupSel(String(res.markup));
+            else {
               setMarkupSel("custom");
               setCustomMarkupStr(String(res.markup));
             }
           }
+          // A quote number in the prompt seeds the destination search; it never
+          // overrides a destination the user already selected.
           if (res.quoteNumber !== null && !selectedInvoiceRef.current) {
-            // A selected push target owns the quote number — ignore AI fills
-            // that resolve after an order was selected.
-            setQuoteNumber(res.quoteNumber);
-            autoFilledQuoteNumberRef.current = null;
+            setDestination("existing");
+            setSearchQ(res.quoteNumber);
           }
           if (res.decorations && res.decorations.length > 0) {
-            const newRows = res.decorations.slice(0, MAX_LOCATIONS).map((d) => ({
-              matrixId: d.matrixId,
-              columnIndex: d.columnIndex,
-            }));
-            setRows(newRows);
+            setDecorations((prev) =>
+              res.decorations.slice(0, MAX_LOCATIONS).map((d, i) => ({
+                ...(prev[i] ?? emptyDecoration(i)),
+                matrixId: d.matrixId,
+                columnIndex: d.columnIndex,
+              })),
+            );
           }
-          if (res.warnings && res.warnings.length > 0) {
-            setAiWarnings(res.warnings);
-          }
+          if (res.warnings && res.warnings.length > 0) setAiWarnings(res.warnings);
         },
         onError: () => {
           toast({
@@ -416,51 +298,56 @@ export function QuoteCalculator({
             variant: "destructive",
           });
         },
-      }
+      },
     );
   };
 
+  // ── Copy ─────────────────────────────────────────────────────────────
   const copyQuote = async (selectedRange: RangeKey) => {
-    const range = RANGES.find((candidate) => candidate.key === selectedRange) ?? RANGES[0];
-    const filtered = quote.filter((q) => range.filter(q.qty));
-    if (filtered.length === 0) {
+    const range = RANGES.find((c) => c.key === selectedRange) ?? RANGES[0];
+    let text = "";
+    if (mode === "compare") {
+      const blocks = garments
+        .map((g, i) => {
+          const rows = schedules[i].filter((q) => range.filter(q.qty));
+          if (rows.length === 0) return "";
+          const lines = rows.map((q) => `${q.qty}+\t$${money(q.unitPrice)}`).join("\n");
+          return garments.length > 1 ? `${garmentLabel(g, i)}\n${lines}` : lines;
+        })
+        .filter(Boolean);
+      text = blocks.join("\n\n");
+    } else if (mixed) {
+      text = mixed.lines
+        .map((l, i) => `${garmentLabel(l.garment, i)}\t${l.qty} pcs\t$${money(l.unitPrice)}`)
+        .join("\n");
+    }
+    if (!text) {
       toast({ title: "No tiers in selected range", variant: "destructive" });
       return;
     }
-    const lines = filtered
-      .map((q) => `${q.qty}+\t$${money(q.unitPrice)}`)
-      .join("\n");
     try {
-      await navigator.clipboard.writeText(lines);
+      await navigator.clipboard.writeText(text);
       toast({ title: "Price breaks copied to clipboard" });
     } catch {
       toast({ title: "Couldn't copy to clipboard", variant: "destructive" });
     }
   };
 
+  // ── PNG export ───────────────────────────────────────────────────────
   const exportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
   const generateExportImage = async () => {
     const node = exportRef.current;
     if (!node) return null;
-
-    const sourceScroller = node.querySelector<HTMLElement>(
-      "[data-export-table-scroll]",
-    );
-    const sourceTable = sourceScroller?.querySelector<HTMLTableElement>("table");
+    const scrollers = [...node.querySelectorAll<HTMLElement>("[data-export-table-scroll]")];
     const fullTableWidth = Math.ceil(
-      Math.max(
-        sourceScroller?.scrollWidth ?? 0,
-        sourceTable?.scrollWidth ?? 0,
-        sourceTable?.getBoundingClientRect().width ?? 0,
-      ),
+      Math.max(0, ...scrollers.map((s) => {
+        const t = s.querySelector("table");
+        return Math.max(s.scrollWidth, t?.scrollWidth ?? 0, t?.getBoundingClientRect().width ?? 0);
+      })),
     );
     const sourceWidth = Math.ceil(node.getBoundingClientRect().width);
-    // Buffer covers the export container's p-4 (32px) plus the results card's
-    // 1px borders and a little slack, so a wide table never overhangs the
-    // card edge in the capture. (The results card is full-width below the
-    // input grid, so no grid-column offset needs to be added.)
     const captureWidth = Math.max(sourceWidth, fullTableWidth + 40);
 
     const captureNode = node.cloneNode(true) as HTMLDivElement;
@@ -475,26 +362,17 @@ export function QuoteCalculator({
       backgroundColor: "#020617",
       pointerEvents: "none",
     });
-
-    const captureScroller = captureNode.querySelector<HTMLElement>(
-      "[data-export-table-scroll]",
-    );
-    if (captureScroller) {
-      captureScroller.style.overflow = "visible";
-      captureScroller.style.width = "100%";
-      captureScroller.style.maxWidth = "none";
-    }
-    const captureTable =
-      captureScroller?.querySelector<HTMLTableElement>("table");
-    if (captureTable && fullTableWidth > 0) {
-      captureTable.style.width = `${fullTableWidth}px`;
-      captureTable.style.minWidth = `${fullTableWidth}px`;
-      captureTable.style.maxWidth = "none";
-    }
-
-    // Append next to the original node (not document.body) so the clone keeps
-    // inherited styles — text color, font family, etc. Appending to body made
-    // any inherited-color text render in the body default (near-invisible).
+    captureNode.querySelectorAll<HTMLElement>("[data-export-table-scroll]").forEach((s) => {
+      s.style.overflow = "visible";
+      s.style.width = "100%";
+      s.style.maxWidth = "none";
+      const t = s.querySelector<HTMLTableElement>("table");
+      if (t && fullTableWidth > 0) {
+        t.style.width = `${fullTableWidth}px`;
+        t.style.minWidth = `${fullTableWidth}px`;
+        t.style.maxWidth = "none";
+      }
+    });
     (node.parentElement ?? document.body).appendChild(captureNode);
 
     let dataUrl: string;
@@ -507,44 +385,21 @@ export function QuoteCalculator({
         height: captureHeight,
         backgroundColor: "#020617",
         skipFonts: true,
-        // The capture node is parked off-screen (position:absolute, negative
-        // left) so the user never sees it — but html-to-image copies those
-        // computed styles onto its internal render clone, which pushes all
-        // content outside the SVG viewport and yields a background-only PNG.
-        // Reset the offsets on the render clone so it draws at the origin.
-        style: {
-          position: "static",
-          left: "0",
-          top: "0",
-          margin: "0",
-        },
+        // The off-screen offsets must not carry into html-to-image's render clone.
+        style: { position: "static", left: "0", top: "0", margin: "0" },
       });
     } finally {
       captureNode.remove();
     }
-
-    const blobRes = await fetch(dataUrl);
-    const blob = await blobRes.blob();
-
-    const firstValid = rowStates.find(
-      (s): s is Extract<RowState, { status: "ok" }> => s.status === "ok"
-    );
-    const matrixSlug = (firstValid?.mx.data.name ?? "quote")
+    const blob = await (await fetch(dataUrl)).blob();
+    const matrixSlug = (valid[0]?.matrix.data.name ?? "quote")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
-
-    const quotePart = quoteNumber.trim()
-      ? `-${quoteNumber.trim().replace(/[^0-9]+/g, "-")}`
-      : "";
+    const orderPart = orderNumber ? `-${orderNumber}` : "";
     const d = new Date();
-    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}-${String(d.getDate()).padStart(2, "0")}`;
-    const filename = `quote-${matrixSlug || "quote"}${quotePart}-${date}.png`;
-
-    return { dataUrl, blob, filename };
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { dataUrl, blob, filename: `quote-${matrixSlug || "quote"}${orderPart}-${date}.png` };
   };
 
   const savePng = async () => {
@@ -560,125 +415,100 @@ export function QuoteCalculator({
       toast({ title: "Quote saved as PNG" });
     } catch (err) {
       console.error("PNG export failed", err);
-      toast({
-        title: "Couldn't save PNG",
-        description: "Something went wrong rendering the image — try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Couldn't save PNG", description: "Something went wrong rendering the image. Try again.", variant: "destructive" });
     } finally {
       setExporting(false);
     }
   };
 
+  // ── Production Notes + PNG (one block; single-style keeps legacy format) ─
+  const notesPayload = useMemo(() => {
+    if (mode === "mixed") {
+      if (!mixed || mixed.lines.length !== garments.length) return null;
+      return {
+        rangeKey: "all" as RangeKey,
+        priceRows: [] as Array<{ qty: number; unitPrice: number }>,
+        noteSections: mixed.lines.map((l) => ({
+          label: garmentLabel(l.garment, garments.indexOf(l.garment)),
+          kind: "order" as const,
+          rows: [{ qty: l.qty, unitPrice: l.unitPrice }],
+        })),
+        summary: `${mixed.lines.length} styles · ${mixed.combinedQty} pcs combined`,
+      };
+    }
+    const perStyle = schedules.map((rows) =>
+      rows.filter((q) => activeRange.filter(q.qty)).map((q) => ({ qty: q.qty, unitPrice: q.unitPrice })),
+    );
+    if (perStyle.length === 0 || perStyle.some((rows) => rows.length === 0)) return null;
+    if (garments.length === 1) {
+      return { rangeKey, priceRows: perStyle[0]!, noteSections: null, summary: `${perStyle[0]!.length} tiers` };
+    }
+    return {
+      rangeKey,
+      priceRows: [] as Array<{ qty: number; unitPrice: number }>,
+      noteSections: garments.map((g, i) => ({ label: garmentLabel(g, i), kind: "schedule" as const, rows: perStyle[i]! })),
+      summary: `${garments.length} styles · ${perStyle.reduce((n, r) => n + r.length, 0)} tiers`,
+    };
+  }, [mode, mixed, garments, schedules, activeRange, rangeKey]);
+
   const handlePush = async () => {
-    const normalizedQuoteNumber = quoteNumber.trim();
-    if (
-      !selectedInvoice ||
-      isPushing ||
-      !/^\d{1,20}$/.test(normalizedQuoteNumber)
-    ) {
+    const target = notesTarget;
+    const payload = notesPayload;
+    if (!target || isPushing) return;
+    if (!payload) {
+      toast({ title: "Nothing to push", description: "Every style needs prices in the selected range.", variant: "destructive" });
       return;
     }
-    const lineItem =
-      addLineItem
-        ? {
-            categoryId: lineItemCategoryId.trim(),
-            itemNumber: lineItemStyle.trim(),
-            color: lineItemColor.trim(),
-            brand: lineItemBrand.trim(),
-            description: lineItemDescription.trim(),
-          }
-        : null;
-    if (lineItem && Object.values(lineItem).some((value) => !value)) {
-      toast({
-        title: "Complete the line-item fields",
-        description: "Category, style, color, brand, and description are required.",
-        variant: "destructive",
-      });
-      return;
-    }
+    const { priceRows, noteSections, rangeKey: pushRange } = payload;
+    const quoteNumber = String(target.visualId);
     setIsPushing(true);
     setPushOutcome(null);
-
     try {
       const imgRes = await generateExportImage();
       if (!imgRes) throw new Error("Could not generate image");
-      const { blob } = imgRes;
-
-      const filtered = quote.filter((q) => activeRange.filter(q.qty));
-      const priceRows = filtered.map((q) => ({
-        qty: q.qty,
-        unitPrice: q.unitPrice,
-      }));
-
-      if (priceRows.length === 0) {
-        toast({
-          title: "No pricing rows",
-          description: "Selected range has no pricing rows.",
-          variant: "destructive",
-        });
-        setIsPushing(false);
-        return;
-      }
-
       const reqRes = await requestUrlMutation.mutateAsync({
         data: {
-          invoiceId: selectedInvoice.id,
-          visualId: selectedInvoice.visualId,
-          rangeKey,
+          invoiceId: target.id,
+          visualId: target.visualId,
+          rangeKey: pushRange,
           priceRows,
-          quoteNumber: normalizedQuoteNumber,
-          fileSizeBytes: blob.size,
-          lineItem,
+          quoteNumber,
+          fileSizeBytes: imgRes.blob.size,
+          lineItem: null,
+          noteSections,
         },
       });
-
       if (reqRes.uploadUrl) {
         const putRes = await fetch(reqRes.uploadUrl, {
           method: "PUT",
           headers: { "Content-Type": "image/png" },
-          body: blob,
+          body: imgRes.blob,
         });
         if (!putRes.ok) throw new Error("Failed to upload PNG to storage");
       }
-
       const pushRes = await pushMutation.mutateAsync({
         data: {
           uploadId: reqRes.uploadId,
-          invoiceId: selectedInvoice.id,
-          visualId: selectedInvoice.visualId,
-          rangeKey,
+          invoiceId: target.id,
+          visualId: target.visualId,
+          rangeKey: pushRange,
           priceRows,
-          quoteNumber: normalizedQuoteNumber,
-          lineItem,
+          quoteNumber,
+          lineItem: null,
+          noteSections,
         },
       });
-
-      setPushOutcome({
-        noteOutcome: pushRes.noteOutcome,
-        fileOutcome: pushRes.fileOutcome,
-        lineItemOutcome: pushRes.lineItemOutcome,
-      });
-
-      const fullyComplete =
-        pushRes.noteOutcome.ok &&
-        pushRes.fileOutcome.ok &&
-        (!pushRes.lineItemOutcome.requested || pushRes.lineItemOutcome.ok);
+      setPushOutcome({ noteOutcome: pushRes.noteOutcome, fileOutcome: pushRes.fileOutcome });
+      const ok = pushRes.noteOutcome.ok && pushRes.fileOutcome.ok;
       toast({
-        title: fullyComplete ? "Push completed" : "Push partially completed",
-        description: fullyComplete
-          ? pushRes.lineItemOutcome.requested
-            ? "Production Notes, PNG, and quoted line item were added to Printavo."
-            : "Production Notes and the PNG were added to Printavo."
-          : "Review the separate push results below.",
-        variant: fullyComplete ? "default" : "destructive",
+        title: ok ? "Push completed" : "Push partially completed",
+        description: ok ? "Production Notes and the PNG were added to Printavo." : "Review the separate push results below.",
+        variant: ok ? "default" : "destructive",
       });
     } catch (error: unknown) {
       console.error(error);
       const status =
-        typeof error === "object" && error !== null && "status" in error
-          ? Number(error.status)
-          : undefined;
+        typeof error === "object" && error !== null && "status" in error ? Number(error.status) : undefined;
       const msg =
         status === 409
           ? "Another push is already running, or a previous Printavo write is locked. Refresh before taking any further action."
@@ -693,10 +523,59 @@ export function QuoteCalculator({
     }
   };
 
+  // ── Line-item handoff request ────────────────────────────────────────
+  const blockers = useMemo(() => {
+    const out = handoffBlockers({ mode, garments, decorations, valid, mixed });
+    if (!markupValid) out.unshift("Enter a valid markup.");
+    if (destination === "existing" && !selectedInvoice) out.unshift("Select a destination invoice or quote.");
+    if (destination === "new_quote") {
+      if (!newQuote.customer?.contactId) out.unshift("Select a customer and contact.");
+      if (!newQuote.nickname.trim()) out.push("Enter a quote nickname.");
+      if (!newQuote.dueDate) out.push("Set a customer due date.");
+    }
+    return out;
+  }, [mode, garments, decorations, valid, mixed, markupValid, destination, selectedInvoice, newQuote]);
+
+  const handoffRequest = useMemo(() => {
+    if (blockers.length > 0) return null;
+    return buildHandoffRequest({
+      mode,
+      markup,
+      rangeKey,
+      garments,
+      decorations: valid,
+      mixed,
+      target:
+        destination === "existing"
+          ? { kind: "existing", orderId: selectedInvoice!.id }
+          : {
+              kind: "new_quote",
+              customerId: newQuote.customer!.customerId,
+              contactId: newQuote.customer!.contactId!,
+              nickname: newQuote.nickname,
+              dueDate: newQuote.dueDate,
+            },
+    });
+  }, [blockers, mode, markup, rangeKey, garments, valid, mixed, destination, selectedInvoice, newQuote]);
+
+  // A different new-quote destination invalidates the previously created one.
+  useEffect(() => {
+    setCreatedQuote(null);
+  }, [newQuote.customer?.customerId, newQuote.customer?.contactId, newQuote.nickname, newQuote.dueDate]);
+
+  const selectInvoice = (inv: HubInvoiceSearchItem | null) => {
+    setSelectedInvoice(inv);
+    setPushOutcome(null);
+  };
+
   if (isLoading) {
     return (
-      <div className="py-12 flex justify-center">
-        <Loader2 className="animate-spin text-[#10b981]" size={24} />
+      <div className="space-y-4" data-testid="calculator-loading">
+        <div className="h-16 rounded-xl bg-slate-900/60 animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
+          <div className="h-64 rounded-xl bg-slate-900/60 animate-pulse" />
+          <div className="h-64 rounded-xl bg-slate-900/60 animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -705,12 +584,8 @@ export function QuoteCalculator({
     return (
       <div className="bg-slate-900/40 border border-slate-800 rounded-xl px-6 py-12 text-center max-w-2xl mx-auto">
         <MapPin className="mx-auto text-slate-600 mb-3" size={36} />
-        <p className="text-sm text-slate-300 font-medium">
-          No pricing matrices yet
-        </p>
-        <p className="text-xs text-slate-500 mt-1.5">
-          The calculator needs at least one decoration pricing matrix.
-        </p>
+        <p className="text-sm text-slate-300 font-medium">No pricing matrices yet</p>
+        <p className="text-xs text-slate-500 mt-1.5">The calculator needs at least one decoration pricing matrix.</p>
         <button
           onClick={onGoToMatrices}
           className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-[#059669]/10 border border-[#059669]/30 text-[#10b981] hover:bg-[#059669]/20 transition-colors mt-4"
@@ -725,11 +600,7 @@ export function QuoteCalculator({
     <div className="space-y-6">
       {/* AI Calculator Assistant */}
       <div className="bg-[#059669]/5 border border-[#059669]/20 rounded-xl p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-[#10b981]">
-            AI Calculator Assistant
-          </label>
-        </div>
+        <label className="text-[11px] font-bold uppercase tracking-wider text-[#10b981]">AI Calculator Assistant</label>
         <div className="flex gap-2">
           <textarea
             className={`${inputCls} resize-none h-[42px]`}
@@ -740,52 +611,31 @@ export function QuoteCalculator({
           />
           <button
             onClick={handleInterpret}
-            disabled={
-              interpretMutation.isPending || aiPrompt.trim().length < 8
-            }
+            disabled={interpretMutation.isPending || aiPrompt.trim().length < 8}
             className="flex items-center justify-center gap-1.5 px-4 rounded-lg bg-[#059669]/10 text-[#10b981] border border-[#059669]/30 hover:bg-[#059669]/20 font-semibold text-xs transition-colors whitespace-nowrap disabled:opacity-50"
             data-testid="button-ai-submit"
           >
-            {interpretMutation.isPending ? (
-              <Loader2 className="animate-spin" size={14} />
-            ) : (
-              <Sparkles size={14} />
-            )}
+            {interpretMutation.isPending ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
             Interpret
           </button>
         </div>
+        <p className="text-[10px] text-slate-500">Fills style 1, markup and decorations. Other styles are kept.</p>
         {aiWarnings.length > 0 && (
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded p-3 mt-3">
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded p-3">
             <ul className="list-disc list-inside text-amber-400 text-[11px] space-y-1">
-              {aiWarnings.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
+              {aiWarnings.map((w, i) => <li key={i}>{w}</li>)}
             </ul>
           </div>
         )}
         {aiGarmentMatch && (
-          <div
-            className="bg-emerald-500/10 border border-emerald-500/20 rounded p-3 text-[11px] text-emerald-300"
-            data-testid="ai-garment-match"
-          >
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded p-3 text-[11px] text-emerald-300" data-testid="ai-garment-match">
             <div className="font-semibold">
-              Matched{" "}
-              {[aiGarmentMatch.brand, aiGarmentMatch.styleName]
-                .filter(Boolean)
-                .join(" ")}{" "}
-              · {aiGarmentMatch.colorName} ·{" "}
-              {aiGarmentMatch.vendor === "sanmar"
-                ? "SanMar"
-                : "S&S Activewear"}
+              Matched {[aiGarmentMatch.brand, aiGarmentMatch.styleName].filter(Boolean).join(" ")} · {aiGarmentMatch.colorName} ·{" "}
+              {aiGarmentMatch.vendor === "sanmar" ? "SanMar" : "S&S Activewear"}
             </div>
             <div className="mt-1 text-emerald-400/80">
               Regular XS–XL: ${money(aiGarmentMatch.regularCost)}
-              {aiGarmentMatch.saleCost !== null && (
-                <>
-                  {" "}
-                  · Sale: ${money(aiGarmentMatch.saleCost)} · using sale price
-                </>
-              )}
+              {aiGarmentMatch.saleCost !== null && <> · Sale: ${money(aiGarmentMatch.saleCost)} · using sale price</>}
               {aiGarmentMatch.saleCost === null && " · using regular price"}
             </div>
           </div>
@@ -793,125 +643,71 @@ export function QuoteCalculator({
       </div>
 
       <div ref={exportRef} className="space-y-4 bg-[#020617] p-4 -m-4">
-        {/* Inputs: narrow cost column on the left, locations to its right */}
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 items-start">
-          <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-4">
-            <div>
-              <label className={labelCls} htmlFor="quote-number">
-                Printavo Quote #
-              </label>
-              <input
-                id="quote-number"
-                type="text"
-                value={quoteNumber}
-                onChange={(e) => {
-                  setQuoteNumber(
-                    e.target.value.replace(/\D/g, "").slice(0, 20),
-                  );
-                  // Manual edits take ownership of the field.
-                  autoFilledQuoteNumberRef.current = null;
-                }}
-                inputMode="numeric"
-                placeholder="e.g. 12345"
-                className={inputCls}
-                data-testid="input-quote-number"
-              />
-              {!quoteNumber && (
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Required before pushing so Hub can safely refresh only this
-                  quote's Production Notes block.
-                </p>
-              )}
-            </div>
-            <div className="border-t border-slate-800 -mx-4 px-4 pt-4">
-              <VendorCostLookup
-                onApply={(selection) => {
-                  setVendorPriceSelection(selection);
-                  setVendorPriceMode(selection.priceMode);
-                  setGarmentCostStr(selection.cost.toFixed(2));
-                  garmentCostSourceRef.current = "vendor";
-                  setAiGarmentMatch(null);
-                  applySelectedProduct(selection);
-                  setLabelHint(
-                    [selection.brand, selection.style, selection.color]
-                      .filter(Boolean)
-                      .join(" · "),
-                  );
-                }}
-              />
-            </div>
-            <div className="border-t border-slate-800 -mx-4 px-4 pt-4">
-              <label className={labelCls} htmlFor="garment-cost">
-                Garment cost (per piece)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">
-                  $
-                </span>
-                <input
-                  id="garment-cost"
-                  type="text"
-                  inputMode="decimal"
-                  value={garmentCostStr}
-                  onChange={(e) => {
-                    setVendorPriceMode(null);
-                    setGarmentCostStr(e.target.value);
-                    garmentCostSourceRef.current =
-                      e.target.value.trim() === "" ? "empty" : "manual";
-                    setAiGarmentMatch(null);
-                    applySelectedProduct(null);
-                    if (labelHint) setLabelHint("");
-                  }}
-                  placeholder="0.00"
-                  className={`${inputCls} pl-6 font-mono`}
-                />
-              </div>
-              {vendorPriceSelection && (
-                <VendorPriceChoice
-                  selection={vendorPriceSelection}
-                  mode={vendorPriceMode}
-                  onChange={(mode) => {
-                    const price = mode === "sale"
-                      ? vendorPriceSelection.salePrice
-                      : vendorPriceSelection.regularPrice;
-                    if (price === null) return;
-                    setGarmentCostStr(price.toFixed(2));
-                    setVendorPriceMode(mode);
-                    garmentCostSourceRef.current = "vendor";
-                    setAiGarmentMatch(null);
-                    applySelectedProduct(vendorPriceSelection);
-                    setLabelHint(
-                      [vendorPriceSelection.brand, vendorPriceSelection.style, vendorPriceSelection.color]
-                        .filter(Boolean).join(" · "),
-                    );
-                  }}
-                />
-              )}
-              {!garmentValid && (
-                <p className="text-[11px] text-amber-400 mt-1">
-                  Enter a valid garment cost (0 or more).
-                </p>
-              )}
-              {labelHint && garmentValid && (
-                <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] px-2 py-1.5 rounded mt-2">
-                  <span className="truncate mr-2">From: {labelHint}</span>
-                  <button
-                    onClick={() => setLabelHint("")}
-                    className="hover:text-emerald-300"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              )}
-            </div>
+        {/* Pricing mode */}
+        <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-3 justify-between">
+          <div>
+            <div className={labelCls + " mb-1"}>Pricing mode</div>
+            <p className="text-[11px] text-slate-400 max-w-xl">
+              {mode === "compare"
+                ? "Compare styles: each style gets its own quantity schedule. Nothing is ordered yet."
+                : "Mixed order: real size breakdowns per style. The combined total sets one shared decoration tier; each style keeps its own garment cost."}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 shrink-0" role="group" aria-label="Pricing mode">
+            <button className={segBtn(mode === "compare")} aria-pressed={mode === "compare"} onClick={() => setMode("compare")} data-testid="mode-compare">
+              Compare styles
+            </button>
+            <button className={segBtn(mode === "mixed")} aria-pressed={mode === "mixed"} onClick={() => setMode("mixed")} data-testid="mode-mixed">
+              Mixed order
+            </button>
+          </div>
+        </div>
 
-            <div>
-              <span className={labelCls}>Markup multiplier</span>
-              <div
-                className="grid grid-cols-7 gap-1"
-                role="group"
-                aria-label="Markup multiplier"
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-4 items-start">
+          {/* Garments */}
+          <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className={`${labelCls} mb-0`}>Garment styles · {garments.length}</span>
+              <button
+                onClick={() => setGarments((prev) => [...prev, { ...emptyGarment(), categoryId: suggestedCategoryId }])}
+                disabled={garments.length >= 12}
+                className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-40"
+                data-testid="button-add-garment"
               >
+                <Plus size={12} /> Add style
+              </button>
+            </div>
+            {labelHint && (
+              <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] px-2 py-1.5 rounded">
+                <span className="truncate mr-2">From: {labelHint}</span>
+                <button onClick={() => setLabelHint("")} className="hover:text-emerald-300" aria-label="Dismiss source">
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-3">
+              {garments.map((g, i) => (
+                <GarmentCard
+                  key={g.id}
+                  row={g}
+                  index={i}
+                  mode={mode}
+                  markup={markup}
+                  markupValid={markupValid}
+                  canRemove={garments.length > 1}
+                  categories={categories}
+                  onChange={(patch) => patchGarment(g.id, patch)}
+                  onRemove={() => setGarments((prev) => prev.filter((x) => x.id !== g.id))}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {/* Shared markup */}
+            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+              <span className={labelCls}>Markup multiplier (shared)</span>
+              <div className="grid grid-cols-7 gap-1" role="group" aria-label="Markup multiplier">
                 {MARKUP_PRESETS.map((m) => (
                   <button
                     key={m}
@@ -952,124 +748,97 @@ export function QuoteCalculator({
                     placeholder="e.g. 2.25"
                     className={`${inputCls} font-mono`}
                     aria-label="Custom markup"
-                    // eslint-disable-next-line jsx-a11y/no-autofocus
-                    autoFocus
+                    data-testid="input-custom-markup"
                   />
                 )}
               </div>
-              {isCustomMarkup && !markupValid && (
-                <p className="text-[11px] text-amber-400 mt-1">
-                  Enter a markup greater than 0.
-                </p>
-              )}
-              {garmentValid && markupValid && garmentCost > 0 && (
-                <p className="text-[11px] text-slate-500 mt-1.5">
-                  ${money(garmentCost)} × {markup} ={" "}
-                  <span className="text-slate-300 font-mono">
-                    ${money(garmentCost * markup)}
-                  </span>{" "}
-                  per piece before decoration
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className={`${labelCls} mb-0`}>Decoration locations</span>
-              <button
-                onClick={() =>
-                  setRows((prev) => [...prev, { matrixId: "", columnIndex: 0 }])
-                }
-                disabled={rows.length >= MAX_LOCATIONS}
-                className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-40"
-              >
-                <Plus size={12} /> Add location
-              </button>
+              {isCustomMarkup && !markupValid && <p className="text-[11px] text-amber-400 mt-1">Enter a markup greater than 0.</p>}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {rows.map((r, i) => {
-                const state = rowStates[i];
-                const mx =
-                  state.status === "ok" || state.status === "column-gone"
-                    ? state.mx
-                    : undefined;
+            {/* Shared decorations */}
+            <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className={`${labelCls} mb-0`}>Decoration (shared by all styles)</span>
+                <button
+                  onClick={() => setDecorations((prev) => [...prev, emptyDecoration(prev.length)])}
+                  disabled={decorations.length >= MAX_LOCATIONS}
+                  className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors disabled:opacity-40"
+                  data-testid="button-add-location"
+                >
+                  <Plus size={12} /> Add placement
+                </button>
+              </div>
+              <datalist id="calc-placement-presets">
+                {PLACEMENT_PRESETS.map((p) => <option key={p} value={p} />)}
+              </datalist>
+              {decorations.map((r, i) => {
+                const mx = byId.get(r.matrixId);
+                const missing = r.matrixId !== "" && !mx;
+                const columnGone = mx !== undefined && mx.data.xValues[r.columnIndex] === undefined;
                 return (
-                  <div
-                    key={i}
-                    className="border border-slate-800 rounded-lg p-3 space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-slate-400">
-                        Location {i + 1}
-                        {i === tierRowIndex && quote.length > 0 && (
-                          <span className="text-slate-600">
-                            {" "}
-                            · sets the qty tiers
-                          </span>
-                        )}
-                      </span>
-                      {rows.length > 1 && (
+                  <div key={r.id} className="border border-slate-800 rounded-lg p-3 space-y-2" data-testid={`decoration-row-${i}`}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={r.placement}
+                        list="calc-placement-presets"
+                        onChange={(e) => patchDecoration(r.id, { placement: e.target.value.slice(0, 80) })}
+                        placeholder="Placement, e.g. Left Chest"
+                        className={`${inputCls} font-semibold`}
+                        aria-label={`Placement ${i + 1}`}
+                        data-testid={`input-placement-${i}`}
+                      />
+                      {i === 0 && valid.length > 0 && mode === "compare" && (
+                        <span className="text-[9px] text-slate-500 whitespace-nowrap">sets qty tiers</span>
+                      )}
+                      {decorations.length > 1 && (
                         <button
-                          onClick={() =>
-                            setRows((prev) => prev.filter((_, ri) => ri !== i))
-                          }
-                          className="text-slate-500 hover:text-red-400 transition-colors"
-                          aria-label={`Remove location ${i + 1}`}
+                          onClick={() => setDecorations((prev) => prev.filter((x) => x.id !== r.id))}
+                          className="text-slate-500 hover:text-red-400 transition-colors shrink-0"
+                          aria-label={`Remove placement ${i + 1}`}
+                          data-testid={`button-remove-placement-${i}`}
                         >
                           <Trash2 size={13} />
                         </button>
                       )}
                     </div>
-                    <select
-                      value={r.matrixId}
-                      onChange={(e) =>
-                        setRow(i, { matrixId: e.target.value, columnIndex: 0 })
-                      }
+                    <input
+                      value={r.details}
+                      onChange={(e) => patchDecoration(r.id, { details: e.target.value.slice(0, 300) })}
+                      placeholder="Details, e.g. 2 color logo, PMS 3285 + white"
                       className={inputCls}
-                      aria-label={`Location ${i + 1} matrix`}
-                    >
-                      <option value="">Select a matrix…</option>
-                      {matrices.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.data.name}
-                        </option>
-                      ))}
-                    </select>
-                    {mx && (
+                      aria-label={`Placement ${i + 1} details`}
+                      data-testid={`input-placement-details-${i}`}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
                       <select
-                        value={String(r.columnIndex)}
-                        onChange={(e) =>
-                          setRow(i, { columnIndex: Number(e.target.value) })
-                        }
+                        value={r.matrixId}
+                        onChange={(e) => patchDecoration(r.id, { matrixId: e.target.value, columnIndex: 0 })}
                         className={inputCls}
-                        aria-label={`Location ${i + 1} ${mx.data.xAxisLabel}`}
+                        aria-label={`Placement ${i + 1} matrix`}
+                        data-testid={`select-matrix-${i}`}
                       >
-                        {state.status === "column-gone" && (
-                          <option value={String(r.columnIndex)} disabled>
-                            Select {mx.data.xAxisLabel}…
-                          </option>
-                        )}
-                        {mx.data.xValues.map((x, xi) => (
-                          <option key={xi} value={String(xi)}>
-                            {mx.data.xAxisLabel}: {x.label}
-                          </option>
-                        ))}
+                        <option value="">Select a matrix…</option>
+                        {matrices.map((m) => <option key={m.id} value={m.id}>{m.data.name}</option>)}
                       </select>
-                    )}
-                    {state.status === "missing" && (
-                      <p className="text-[11px] text-amber-400">
-                        This matrix was deleted — select another. This location
-                        is not included in the price until you do.
-                      </p>
-                    )}
-                    {state.status === "column-gone" && mx && (
-                      <p className="text-[11px] text-amber-400">
-                        This matrix changed — pick a {mx.data.xAxisLabel} again.
-                        This location is not included in the price until you do.
-                      </p>
-                    )}
+                      {mx ? (
+                        <select
+                          value={String(r.columnIndex)}
+                          onChange={(e) => patchDecoration(r.id, { columnIndex: Number(e.target.value) })}
+                          className={inputCls}
+                          aria-label={`Placement ${i + 1} ${mx.data.xAxisLabel}`}
+                          data-testid={`select-column-${i}`}
+                        >
+                          {columnGone && <option value={String(r.columnIndex)} disabled>Select {mx.data.xAxisLabel}…</option>}
+                          {mx.data.xValues.map((x, xi) => (
+                            <option key={xi} value={String(xi)}>{mx.data.xAxisLabel}: {x.label}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="text-[10px] text-slate-600 flex items-center">Pick a matrix first</div>
+                      )}
+                    </div>
+                    {missing && <p className="text-[11px] text-amber-400">This matrix was deleted. Select another; it is not priced until you do.</p>}
+                    {columnGone && mx && <p className="text-[11px] text-amber-400">This matrix changed. Pick a {mx.data.xAxisLabel} again.</p>}
                   </div>
                 );
               })}
@@ -1082,13 +851,15 @@ export function QuoteCalculator({
           <div className="px-4 py-3 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-white">
-                Price breaks
+                {mode === "compare" ? "Price breaks by style" : "Mixed order pricing"}
+                {orderNumber && <span className="text-slate-500 font-normal"> · #{orderNumber}</span>}
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
                 Unit price = (garment × markup) + decoration per piece
+                {valid.length > 0 && ` · ${valid.map((d) => d.row.placement || "Placement").join(", ")}`}
               </div>
             </div>
-            {quote.length > 0 && (
+            {hasResults && (
               <div className="flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -1096,30 +867,25 @@ export function QuoteCalculator({
                       type="button"
                       className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-colors"
                       data-testid="button-copy-menu"
-                      aria-label={`Copy ${activeRange.label} price breaks`}
                     >
                       <Copy size={13} /> Copy
-                      <span className="text-slate-500">{activeRange.label}</span>
+                      {mode === "compare" && <span className="text-slate-500">{activeRange.label}</span>}
                       <ChevronDown size={12} />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="min-w-40 bg-slate-900 border-slate-700"
-                    data-testid="copy-range-menu"
-                  >
-                    {RANGES.map((range) => (
+                  <DropdownMenuContent align="end" className="min-w-40 bg-slate-900 border-slate-700" data-testid="copy-range-menu">
+                    {(mode === "compare" ? RANGES : RANGES.slice(0, 1)).map((range) => (
                       <DropdownMenuCheckboxItem
                         key={range.key}
                         checked={range.key === rangeKey}
                         onSelect={() => {
-                          setRangeKey(range.key);
+                          if (mode === "compare") setRangeKey(range.key);
                           void copyQuote(range.key);
                         }}
                         className="text-xs text-slate-300 focus:bg-slate-800 focus:text-white"
                         data-testid={`copy-range-${range.key}`}
                       >
-                        {range.label}
+                        {mode === "compare" ? range.label : "Copy unit prices"}
                       </DropdownMenuCheckboxItem>
                     ))}
                   </DropdownMenuContent>
@@ -1128,425 +894,285 @@ export function QuoteCalculator({
                   onClick={savePng}
                   disabled={exporting}
                   data-testid="save-png"
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-[#059669]/10 border border-[#059669]/30 text-[#10b981] hover:bg-[#059669]/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-[#059669]/10 border border-[#059669]/30 text-[#10b981] hover:bg-[#059669]/20 transition-colors disabled:opacity-60"
                 >
-                  {exporting ? (
-                    <Loader2 size={13} className="animate-spin" />
-                  ) : (
-                    <Download size={13} />
-                  )}
+                  {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
                   Save PNG
                 </button>
               </div>
             )}
           </div>
 
-          {quote.length === 0 ? (
+          {!hasResults ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-sm text-slate-300 font-medium">
-                No price breaks yet
-              </p>
+              <p className="text-sm text-slate-300 font-medium">No prices yet</p>
               <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                {garmentValid && markupValid
-                  ? "Pick a matrix and column for a location — the first filled location's quantity tiers become the rows of the quote."
-                  : "Fix the highlighted inputs to see price breaks."}
+                {!markupValid
+                  ? "Fix the markup to see prices."
+                  : mode === "compare"
+                    ? "Enter a garment cost and pick a matrix column for at least one placement. The first placement's quantity tiers become the rows."
+                    : "Enter garment costs, a size breakdown for each style, and a matrix column for each placement."}
               </p>
+            </div>
+          ) : mode === "compare" ? (
+            <div className="divide-y divide-slate-800">
+              {garments.map((g, gi) =>
+                schedules[gi].length === 0 ? (
+                  <div key={g.id} className="px-4 py-3 text-[11px] text-slate-500">
+                    {garmentLabel(g, gi)}: enter a garment cost to price this style.
+                  </div>
+                ) : (
+                  <div key={g.id}>
+                    {garments.length > 1 && (
+                      <div className="px-4 pt-3 text-xs font-semibold text-slate-200" data-testid={`text-schedule-title-${gi}`}>
+                        {garmentLabel(g, gi)}
+                      </div>
+                    )}
+                    <div className="overflow-x-auto custom-scrollbar" data-export-table-scroll>
+                      <table className="w-full text-xs border-collapse" data-testid={gi === 0 ? "quote-results" : `quote-results-${gi}`}>
+                        <thead>
+                          <tr className="bg-slate-900/60">
+                            {SCHEDULE_HEADERS.map(([label, align]) => (
+                              <th key={label} className={`px-3 py-2.5 ${align === "left" ? "text-left" : "text-right"} text-[9px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap`}>
+                                {label}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {schedules[gi].map((q) => (
+                            <tr key={q.qty} className="border-t border-slate-800">
+                              <td className="px-3 py-2.5 font-mono text-slate-300 whitespace-nowrap">{q.qty}+</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">${money(q.garmentCost)}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">${money(q.garmentMarkup)}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">${money(q.baseCost)}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">${money(q.decorationCost)}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-[#10b981] font-semibold whitespace-nowrap">${money(q.unitPrice)}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">${money(q.totalGarment)}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">${money(q.totalBlankMarkup)}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">${money(q.totalDecoration)}</td>
+                              <td className="px-3 py-2.5 text-right font-mono text-slate-200 font-semibold whitespace-nowrap">${money(q.total)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ),
+              )}
             </div>
           ) : (
-            <div
-              className="overflow-x-auto custom-scrollbar"
-              data-export-table-scroll
-            >
-              <table
-                className="w-full text-xs border-collapse"
-                data-testid="quote-results"
-              >
-                <thead>
-                  <tr className="bg-slate-900/60">
-                    {[
-                      ["Qty", "left"],
-                      ["Garment Cost", "right"],
-                      ["Garment Markup $", "right"],
-                      ["Base Cost $", "right"],
-                      ["Decoration/PC", "right"],
-                      ["Unit Price", "right"],
-                      ["Total Cost", "right"],
-                      ["Total Blank Markup", "right"],
-                      ["Total Deco", "right"],
-                      ["Total Order Value", "right"],
-                    ].map(([label, align]) => (
-                      <th
-                        key={label}
-                        className={`px-3 py-2.5 ${
-                          align === "left" ? "text-left" : "text-right"
-                        } text-[9px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap`}
-                      >
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {quote.map((q) => {
-                    return (
-                      <tr
-                        key={q.qty}
-                        className="border-t border-slate-800"
-                      >
-                        <td className="px-3 py-2.5 font-mono text-slate-300 whitespace-nowrap">
-                          {q.qty}+
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">
-                          ${money(q.garmentCost)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">
-                          ${money(q.garmentMarkup)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">
-                          ${money(q.baseCost)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">
-                          ${money(q.decorationCost)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-[#10b981] font-semibold whitespace-nowrap">
-                          ${money(q.unitPrice)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-500 whitespace-nowrap">
-                          ${money(q.totalGarment)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">
-                          ${money(q.totalBlankMarkup)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap">
-                          ${money(q.totalDecoration)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-mono text-slate-200 font-semibold whitespace-nowrap">
-                          ${money(q.total)}
-                        </td>
+            mixed && (
+              <div className="overflow-x-auto custom-scrollbar" data-export-table-scroll>
+                <table className="w-full text-xs border-collapse" data-testid="mixed-results">
+                  <thead>
+                    <tr className="bg-slate-900/60">
+                      {[["Style", "left"], ["Qty", "right"], ["Garment Cost", "right"], ["Base Cost $", "right"], ["Decoration/PC", "right"], ["Unit Price", "right"], ["Line Total", "right"]].map(([label, align]) => (
+                        <th key={label} className={`px-3 py-2.5 ${align === "left" ? "text-left" : "text-right"} text-[9px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap`}>
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mixed.lines.map((l, i) => (
+                      <tr key={l.garment.id} className="border-t border-slate-800" data-testid={`row-mixed-${i}`}>
+                        <td className="px-3 py-2.5 text-slate-200 whitespace-nowrap">{garmentLabel(l.garment, garments.indexOf(l.garment))}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-300">{l.qty}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-500">${money(l.garmentCost)}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-400">${money(l.baseCost)}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-400">${money(l.decorationCost)}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-[#10b981] font-semibold">${money(l.unitPrice)}</td>
+                        <td className="px-3 py-2.5 text-right font-mono text-slate-200 font-semibold">${money(l.total)}</td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                    <tr className="border-t-2 border-slate-700 bg-slate-900/60">
+                      <td className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Combined</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-white font-bold" data-testid="text-combined-qty">{mixed.combinedQty}</td>
+                      <td colSpan={4} className="px-3 py-2.5 text-right text-[10px] text-slate-500">
+                        Shared decoration tier at {mixed.combinedQty} pcs
+                        {mixed.lines.length < garments.length && ` · ${garments.length - mixed.lines.length} style(s) missing cost or sizes`}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-mono text-white font-bold" data-testid="text-mixed-total">${money(mixed.total)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )
           )}
         </div>
       </div>
 
-      {/* Push to Printavo (invoice or quote) */}
-      {quote.length > 0 && (
+      {/* Send to Printavo */}
+      {hasResults && (
         <div className="bg-[#1e293b]/30 border border-slate-800 rounded-xl p-5 space-y-4">
-          <div className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-            <CloudUpload className="text-[#3b82f6]" size={16} />
-            Push to Printavo
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <CloudUpload className="text-[#3b82f6]" size={16} />
+              Push to Printavo
+            </div>
+            <div className="grid grid-cols-2 gap-2" role="group" aria-label="Destination">
+              <button className={segBtn(destination === "existing")} aria-pressed={destination === "existing"} onClick={() => setDestination("existing")} data-testid="destination-existing">
+                Existing invoice / quote
+              </button>
+              <button className={segBtn(destination === "new_quote")} aria-pressed={destination === "new_quote"} onClick={() => setDestination("new_quote")} data-testid="destination-new-quote">
+                New quote
+              </button>
+            </div>
           </div>
 
-          {selectedInvoice && (
-            <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-                <input
-                  type="checkbox"
-                  checked={addLineItem}
-                  onChange={(event) => {
-                    const checked = event.target.checked;
-                    setAddLineItem(checked);
-                    if (checked) prefillLineItemDraft();
-                  }}
-                  className="accent-[#3b82f6]"
-                  data-testid="add-calculator-line-item"
-                />
-                Add quoted style as a new {selectedInvoice.orderType} line item
-              </label>
-              {addLineItem && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div>
-                      <label className={labelCls}>Category / Decoration Method</label>
-                      <select
-                        value={lineItemCategoryId}
-                        onChange={(event) => setLineItemCategoryId(event.target.value)}
-                        className={inputCls}
-                        data-testid="line-item-category"
-                      >
-                        <option value="">Select category…</option>
-                        {(categoryData?.categories ?? []).map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Item / Style #</label>
-                      <input value={lineItemStyle} onChange={(e) => setLineItemStyle(e.target.value.slice(0, 100))} className={inputCls} data-testid="line-item-style" />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Color</label>
-                      <input value={lineItemColor} onChange={(e) => setLineItemColor(e.target.value.slice(0, 100))} className={inputCls} data-testid="line-item-color" />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Brand</label>
-                      <input value={lineItemBrand} onChange={(e) => setLineItemBrand(e.target.value.slice(0, 120))} className={inputCls} data-testid="line-item-brand" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className={labelCls}>Product Description</label>
-                      <input value={lineItemDescription} onChange={(e) => setLineItemDescription(e.target.value.slice(0, 500))} className={inputCls} data-testid="line-item-description" />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Price Range in Description</label>
-                      <select value={rangeKey} onChange={(e) => setRangeKey(e.target.value as RangeKey)} className={inputCls} data-testid="line-item-range">
-                        {RANGES.map((range) => <option key={range.key} value={range.key}>{range.label}</option>)}
-                      </select>
-                    </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="space-y-4">
+              {destination === "existing" ? (
+                <div className="space-y-3">
+                  <label className={labelCls}>Search invoice / quote</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                    <input
+                      type="text"
+                      value={searchQ}
+                      onChange={(e) => {
+                        setSearchQ(e.target.value);
+                        selectInvoice(null);
+                      }}
+                      placeholder="Type invoice or quote number..."
+                      className={`${inputCls} pl-9`}
+                      data-testid="input-invoice-search"
+                    />
                   </div>
-                  <pre className="whitespace-pre-wrap rounded bg-slate-950 border border-slate-800 p-3 text-[11px] text-slate-300">
-                    {`${lineItemBrand.trim()} ${lineItemDescription.trim()}`.trim() || "Brand Product description"}
-                    {"\n\nQTY = PRICE\n"}
-                    {quote.filter((row) => activeRange.filter(row.qty)).map((row) => `${row.qty}+ = $${money(row.unitPrice)}`).join("\n")}
-                  </pre>
-                </>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className={labelCls}>Search Invoice / Quote</label>
-              <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                  size={14}
-                />
-                <input
-                  type="text"
-                  value={searchQ}
-                  onChange={(e) => {
-                    setSearchQ(e.target.value);
-                    setSelectedInvoice(null);
-                    resetLineItemForTargetChange();
-                    // Clear a selection-derived quote number along with the
-                    // selection; keep manually entered values.
-                    if (
-                      autoFilledQuoteNumberRef.current !== null &&
-                      quoteNumber === autoFilledQuoteNumberRef.current
-                    ) {
-                      setQuoteNumber("");
-                    }
-                    autoFilledQuoteNumberRef.current = null;
-                  }}
-                  placeholder="Type invoice or quote number..."
-                  className={`${inputCls} pl-9`}
-                  data-testid="input-invoice-search"
-                />
-              </div>
-
-              {searchLoading && (
-                <p className="text-[11px] text-slate-500 animate-pulse">
-                  Searching...
-                </p>
+                  {searchLoading && debouncedQ.trim().length >= 2 && (
+                    <div className="space-y-1.5">
+                      {[0, 1].map((i) => <div key={i} className="h-10 rounded-md bg-slate-800/60 animate-pulse" />)}
+                    </div>
+                  )}
+                  {searchData && searchData.invoices.length > 0 && !selectedInvoice && (
+                    <div className="bg-slate-900 border border-slate-700 rounded-lg max-h-48 overflow-y-auto" data-testid="invoice-search-results">
+                      {searchData.invoices.map((inv) => (
+                        <button
+                          key={inv.id}
+                          onClick={() => {
+                            selectInvoice(inv);
+                            setSearchQ(String(inv.visualId));
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-slate-800 border-b border-slate-800 last:border-0 transition-colors"
+                          data-testid={`invoice-result-${inv.visualId}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-slate-200">#{inv.visualId}</span>
+                              <span className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${inv.orderType === "quote" ? "bg-amber-500/15 text-amber-400" : "bg-emerald-500/15 text-emerald-400"}`}>
+                                {inv.orderType === "quote" ? "Quote" : "Invoice"}
+                              </span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 px-1.5 py-0.5 bg-slate-950 rounded">{inv.statusName || "No status"}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-300 truncate mt-0.5">{inv.nickname || "Untitled"}</div>
+                          <div className="text-[10px] text-slate-500 truncate mt-0.5">{inv.customerCompany || "No customer company"}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchData && searchData.invoices.length === 0 && debouncedQ.length >= 2 && !selectedInvoice && !searchLoading && (
+                    <p className="text-[11px] text-slate-500">No invoices or quotes found for "{debouncedQ}".</p>
+                  )}
+                  {selectedInvoice ? (
+                    <div className="bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-lg p-3" data-testid="selected-destination">
+                      <div className="text-[11px] text-[#60a5fa]">
+                        Destination {selectedInvoice.orderType} <strong>#{selectedInvoice.visualId}</strong>. This number labels the notes block and exports.
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-1">
+                        {selectedInvoice.nickname || "Untitled"}
+                        {selectedInvoice.customerCompany ? ` · ${selectedInvoice.customerCompany}` : ""}
+                        {selectedInvoice.statusName ? ` · ${selectedInvoice.statusName}` : ""}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-900/50 border border-slate-800 border-dashed rounded-lg py-6 text-center text-[11px] text-slate-500">
+                      Select an invoice or quote
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <NewQuoteFields value={newQuote} onChange={setNewQuote} />
               )}
 
-              {searchData &&
-                searchData.invoices.length > 0 &&
-                !selectedInvoice && (
-                  <div
-                    className="bg-slate-900 border border-slate-700 rounded-lg max-h-48 overflow-y-auto mt-2"
-                    data-testid="invoice-search-results"
-                  >
-                    {searchData.invoices.map((inv) => (
-                      <button
-                        key={inv.id}
-                        onClick={() => {
-                          setSelectedInvoice(inv);
-                          setSearchQ(String(inv.visualId));
-                          resetLineItemForTargetChange();
-                          // Auto-fill the Printavo Quote # field from the
-                          // selected order so it doesn't need manual entry.
-                          const autoFilled = String(inv.visualId)
-                            .replace(/\D/g, "")
-                            .slice(0, 20);
-                          setQuoteNumber(autoFilled);
-                          autoFilledQuoteNumberRef.current = autoFilled;
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-800 border-b border-slate-800 last:border-0 transition-colors"
-                        data-testid={`invoice-result-${inv.visualId}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-200">
-                              #{inv.visualId}
-                            </span>
-                            <span
-                              className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${
-                                inv.orderType === "quote"
-                                  ? "bg-amber-500/15 text-amber-400"
-                                  : "bg-emerald-500/15 text-emerald-400"
-                              }`}
-                            >
-                              {inv.orderType === "quote" ? "Quote" : "Invoice"}
-                            </span>
-                          </span>
-                          <span className="text-[10px] text-slate-400 px-1.5 py-0.5 bg-slate-950 rounded">
-                            {inv.statusName || "No status"}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-300 truncate mt-0.5">
-                          {inv.nickname || "Untitled"}
-                        </div>
-                        <div className="text-[10px] text-slate-500 truncate mt-0.5">
-                          {inv.customerCompany || "No customer company"}
-                        </div>
-                      </button>
-                    ))}
+              {/* Production Notes + PNG: one block for every style, any mode/destination */}
+              {notesTarget ? (
+                <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-4 space-y-3" data-testid="notes-push-panel">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
+                    <FileText size={14} className="text-[#60a5fa]" />
+                    Attach pricing notes + PNG
                   </div>
-                )}
-              {searchData &&
-                searchData.invoices.length === 0 &&
-                debouncedQ.length >= 2 &&
-                !selectedInvoice &&
-                !searchLoading && (
-                  <p className="text-[11px] text-slate-500 mt-2">
-                    No invoices or quotes found for "{debouncedQ}".
+                  {mode === "compare" && (
+                    <div>
+                      <label className={labelCls}>Range</label>
+                      <select value={rangeKey} onChange={(e) => setRangeKey(e.target.value as RangeKey)} className={inputCls} data-testid="select-notes-range">
+                        {RANGES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-slate-400" data-testid="text-notes-summary">
+                    {notesPayload
+                      ? `${notesPayload.summary} in one Production Notes block on ${notesTarget.orderType} #${notesTarget.visualId}. It replaces any earlier calculator block there. The PNG shows every style above.`
+                      : mode === "mixed"
+                        ? "Every style needs a cost and a size breakdown first."
+                        : "Every style needs prices in the selected range."}
                   </p>
-                )}
-            </div>
-
-            <div className="flex flex-col justify-end">
-              {selectedInvoice ? (
-                <div className="bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-lg p-3 space-y-3">
-                  <div className="text-[11px] text-[#60a5fa] leading-relaxed">
-                    Ready to push{" "}
-                    <strong>
-                      {quote.filter((q) => activeRange.filter(q.qty)).length}
-                    </strong>{" "}
-                    tiers from range <strong>{activeRange.label}</strong> to{" "}
-                    {selectedInvoice.orderType === "quote" ? "quote" : "invoice"}{" "}
-                    <strong>#{selectedInvoice.visualId}</strong>.
-                  </div>
-                   <div className="text-[10px] text-slate-400">
-                     {selectedInvoice.nickname || "Untitled"}
-                     {selectedInvoice.customerCompany
-                       ? ` · ${selectedInvoice.customerCompany}`
-                       : ""}
-                     {selectedInvoice.statusName
-                       ? ` · ${selectedInvoice.statusName}`
-                       : ""}
-                   </div>
                   <button
                     onClick={handlePush}
-                     disabled={isPushing || !quoteNumberValid}
+                    disabled={isPushing || !notesPayload}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#3b82f6] hover:bg-[#2563eb] text-white text-xs font-bold transition-colors disabled:opacity-50"
                     data-testid="button-push-printavo"
                   >
-                    {isPushing ? (
-                      <Loader2 className="animate-spin" size={14} />
-                    ) : (
-                      <CloudUpload size={14} />
-                    )}
-                    Confirm & Push
+                    {isPushing ? <Loader2 className="animate-spin" size={14} /> : <CloudUpload size={14} />}
+                    Confirm & push notes + PNG
                   </button>
-                   {!quoteNumberValid && (
-                     <div className="text-[10px] text-amber-400">
-                       Enter the Printavo Quote Number above before pushing.
-                     </div>
-                   )}
+                  {pushOutcome && (
+                    <div className="space-y-2" data-testid="push-outcomes">
+                      {([
+                        ["Note Updated", "Note Update Failed", pushOutcome.noteOutcome],
+                        ["File Attached", "File Attachment Failed", pushOutcome.fileOutcome],
+                      ] as const).map(([okLabel, failLabel, outcome]) => (
+                        <div key={okLabel} className={`p-2.5 rounded-lg flex items-start gap-2.5 ${outcome.ok ? "bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981]" : "bg-amber-500/10 border border-amber-500/20 text-amber-500"}`}>
+                          {outcome.ok ? <CheckCircle2 size={14} className="mt-0.5" /> : <AlertTriangle size={14} className="mt-0.5" />}
+                          <div>
+                            <div className="text-xs font-bold">{outcome.ok ? okLabel : failLabel}</div>
+                            {outcome.error && <div className="text-[11px] mt-0.5 opacity-80">{outcome.error}</div>}
+                            {outcome.locked && <div className="text-[10px] mt-1 font-bold uppercase tracking-wider">Manual Verification Required - Do Not Retry</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="bg-slate-900/50 border border-slate-800 border-dashed rounded-lg h-[92px] flex items-center justify-center">
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    Select an invoice or quote to push
-                  </span>
+              ) : destination === "new_quote" ? (
+                <div className="rounded-lg border border-dashed border-slate-800 p-4 text-[11px] text-slate-500" data-testid="notes-push-pending">
+                  Pricing notes + PNG can be attached once the new quote is created.
                 </div>
-              )}
+              ) : null}
             </div>
+
+            <HandoffPanel
+              onResult={(r) => {
+                if (r.status === "ok" && r.targetKind === "new_quote" && r.orderId && r.visualId) {
+                  setCreatedQuote({ id: r.orderId, visualId: r.visualId });
+                  setPushOutcome(null);
+                }
+              }}
+              request={handoffRequest}
+              blockers={blockers}
+              isNewQuote={destination === "new_quote"}
+              destinationLabel={
+                destination === "existing"
+                  ? selectedInvoice
+                    ? `${selectedInvoice.orderType} #${selectedInvoice.visualId}`
+                    : null
+                  : newQuote.customer
+                    ? `a new quote for ${newQuote.customer.companyName}`
+                    : null
+              }
+            />
           </div>
-
-          {pushOutcome && (
-            <div
-              className="border-t border-slate-800/50 pt-4 space-y-2 mt-4"
-              data-testid="push-outcomes"
-            >
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
-                Push Results
-              </div>
-
-              <div
-                className={`p-2.5 rounded-lg flex items-start gap-2.5 ${
-                  pushOutcome.noteOutcome.ok
-                    ? "bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981]"
-                    : "bg-amber-500/10 border border-amber-500/20 text-amber-500"
-                }`}
-              >
-                <div className="mt-0.5">
-                  {pushOutcome.noteOutcome.ok ? (
-                    <CheckCircle2 size={14} />
-                  ) : (
-                    <AlertTriangle size={14} />
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs font-bold">
-                    {pushOutcome.noteOutcome.ok
-                      ? "Note Updated"
-                      : "Note Update Failed"}
-                  </div>
-                  {pushOutcome.noteOutcome.error && (
-                    <div className="text-[11px] mt-0.5 opacity-80">
-                      {pushOutcome.noteOutcome.error}
-                    </div>
-                  )}
-                  {pushOutcome.noteOutcome.locked && (
-                    <div className="text-[10px] mt-1 font-bold uppercase tracking-wider text-amber-500">
-                      Manual Verification Required - Do Not Retry
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div
-                className={`p-2.5 rounded-lg flex items-start gap-2.5 ${
-                  pushOutcome.fileOutcome.ok
-                    ? "bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981]"
-                    : "bg-amber-500/10 border border-amber-500/20 text-amber-500"
-                }`}
-              >
-                <div className="mt-0.5">
-                  {pushOutcome.fileOutcome.ok ? (
-                    <CheckCircle2 size={14} />
-                  ) : (
-                    <AlertTriangle size={14} />
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs font-bold">
-                    {pushOutcome.fileOutcome.ok
-                      ? "File Attached"
-                      : "File Attachment Failed"}
-                  </div>
-                  {pushOutcome.fileOutcome.error && (
-                    <div className="text-[11px] mt-0.5 opacity-80">
-                      {pushOutcome.fileOutcome.error}
-                    </div>
-                  )}
-                  {pushOutcome.fileOutcome.locked && (
-                    <div className="text-[10px] mt-1 font-bold uppercase tracking-wider text-amber-500">
-                      Manual Verification Required - Do Not Retry
-                    </div>
-                  )}
-                </div>
-              </div>
-              {pushOutcome.lineItemOutcome.requested && (
-                <div className={`p-2.5 rounded-lg flex items-start gap-2.5 ${pushOutcome.lineItemOutcome.ok ? "bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981]" : "bg-amber-500/10 border border-amber-500/20 text-amber-500"}`}>
-                  {pushOutcome.lineItemOutcome.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                  <div>
-                    <div className="text-xs font-bold">{pushOutcome.lineItemOutcome.ok ? "Line Item Added" : "Line Item Failed"}</div>
-                    {pushOutcome.lineItemOutcome.error && <div className="text-[11px] mt-0.5">{pushOutcome.lineItemOutcome.error}</div>}
-                    {pushOutcome.lineItemOutcome.locked && <div className="text-[10px] mt-1 font-bold uppercase">Manual Verification Required - Do Not Retry</div>}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>

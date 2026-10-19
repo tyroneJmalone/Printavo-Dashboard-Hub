@@ -4390,6 +4390,60 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/HubCalculatorCategory"
+  /hub/calculator/handoff/preview:
+    post:
+      operationId: previewHubCalculatorHandoff
+      tags: [hub]
+      summary: Recompute and preview the exact multi-style Printavo handoff (read-only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HubCalculatorHandoffRequest"
+      responses:
+        "200":
+          description: Server-trusted snapshot and its hash
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubCalculatorHandoffPreview"
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /hub/calculator/handoff/commit:
+    post:
+      operationId: commitHubCalculatorHandoff
+      tags: [hub]
+      summary: Send the reviewed handoff to Printavo exactly once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HubCalculatorHandoffCommitRequest"
+      responses:
+        "200":
+          description: Handoff result (deduped when already completed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HubCalculatorHandoffResult"
+        "400":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Changed since preview, in flight, or locked after an uncertain result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /print-queue/orders:
     get:
       operationId: listPrintQueueOrders
@@ -15913,6 +15967,20 @@ components:
           oneOf:
             - $ref: "#/components/schemas/HubCalculatorLineItemRequest"
             - type: "null"
+        noteSections:
+          description: >
+            Multi-style pricing for ONE Production Notes block. When present,
+            priceRows must be empty and every section is validated instead.
+            "schedule" sections carry a range-filtered tier schedule (Compare
+            styles); "order" sections carry one row {qty = pieces ordered,
+            unitPrice} (Mixed order). Omit/null for the single-style format.
+          oneOf:
+            - type: array
+              minItems: 1
+              maxItems: 12
+              items:
+                $ref: "#/components/schemas/HubCalculatorNoteSection"
+            - type: "null"
         note:
           type: string
           nullable: true
@@ -15957,6 +16025,154 @@ components:
       properties:
         id: { type: string }
         name: { type: string }
+    HubCalculatorHandoffGarment:
+      type: object
+      required: [id, style, color, brand, description, categoryId, garmentCost, sizes]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        style: { type: string, maxLength: 100 }
+        color: { type: string, maxLength: 100 }
+        brand: { type: string, maxLength: 120 }
+        description: { type: string, maxLength: 500 }
+        categoryId: { type: string, maxLength: 40 }
+        garmentCost: { type: number, minimum: 0 }
+        sizes:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            required: [size, quantity]
+            properties:
+              size: { type: string, maxLength: 10 }
+              quantity: { type: integer, minimum: 0 }
+    HubCalculatorHandoffDecoration:
+      type: object
+      required: [id, placement, details, matrixId, columnIndex]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        placement: { type: string, maxLength: 80 }
+        details: { type: string, maxLength: 300 }
+        matrixId: { type: string }
+        columnIndex: { type: integer, minimum: 0 }
+    HubCalculatorHandoffRequest:
+      type: object
+      required: [mode, markup, rangeKey, garments, decorations, targetKind]
+      properties:
+        mode: { type: string, enum: [compare, mixed] }
+        markup: { type: number }
+        rangeKey: { type: string }
+        garments:
+          type: array
+          maxItems: 12
+          items: { $ref: "#/components/schemas/HubCalculatorHandoffGarment" }
+        decorations:
+          type: array
+          maxItems: 4
+          items: { $ref: "#/components/schemas/HubCalculatorHandoffDecoration" }
+        targetKind: { type: string, enum: [existing, new_quote] }
+        orderId: { type: string, nullable: true }
+        customerId: { type: string, nullable: true }
+        contactId: { type: string, nullable: true }
+        nickname: { type: string, nullable: true, maxLength: 120 }
+        dueDate: { type: string, nullable: true }
+        reviewedUnitPrices:
+          type: array
+          items:
+            type: object
+            required: [garmentId, unitPrice]
+            properties:
+              garmentId: { type: string }
+              unitPrice: { type: number }
+    HubCalculatorHandoffCommitRequest:
+      allOf:
+        - $ref: "#/components/schemas/HubCalculatorHandoffRequest"
+        - type: object
+          required: [expectedSnapshotHash]
+          properties:
+            expectedSnapshotHash: { type: string, minLength: 64, maxLength: 64 }
+    HubCalculatorHandoffLine:
+      type: object
+      required: [garmentId, categoryId, categoryName, itemNumber, color, description, price, sizes, quantity]
+      properties:
+        garmentId: { type: string }
+        categoryId: { type: string }
+        categoryName: { type: string }
+        itemNumber: { type: string }
+        color: { type: string }
+        description: { type: string }
+        price: { type: number }
+        quantity: { type: integer }
+        sizes:
+          type: array
+          items:
+            type: object
+            required: [size, count]
+            properties:
+              size: { type: string }
+              count: { type: integer }
+    HubCalculatorHandoffTarget:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [existing, new_quote] }
+        orderId: { type: string }
+        visualId: { type: integer }
+        orderType: { type: string, enum: [invoice, quote] }
+        groupPosition: { type: integer }
+        customerId: { type: string }
+        companyName: { type: string }
+        contactId: { type: string }
+        contactName: { type: string, nullable: true }
+        nickname: { type: string }
+        dueDate: { type: string }
+    HubCalculatorHandoffSnapshot:
+      type: object
+      required: [target, mode, markup, rangeKey, combinedQuantity, decorationCostPerPiece, lines, imprints]
+      properties:
+        target: { $ref: "#/components/schemas/HubCalculatorHandoffTarget" }
+        mode: { type: string, enum: [compare, mixed] }
+        markup: { type: number }
+        rangeKey: { type: string, nullable: true }
+        combinedQuantity: { type: integer, nullable: true }
+        decorationCostPerPiece: { type: number, nullable: true }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/HubCalculatorHandoffLine" }
+        imprints:
+          type: array
+          items:
+            type: object
+            required: [details, matrixName, columnLabel, pricingMatrixColumnId]
+            properties:
+              details: { type: string }
+              matrixName: { type: string }
+              columnLabel: { type: string }
+              pricingMatrixColumnId: { type: string }
+    HubCalculatorHandoffResult:
+      type: object
+      required: [handoffId, status, deduped, targetKind, orderId, visualId, publicUrl, printavoUrl, lineItemGroupId, lineItemIds, error]
+      properties:
+        handoffId: { type: string }
+        status: { type: string, enum: [ok, attempting, unknown] }
+        deduped: { type: boolean }
+        targetKind: { type: string, enum: [existing, new_quote] }
+        orderId: { type: string, nullable: true }
+        visualId: { type: integer, nullable: true }
+        publicUrl: { type: string, nullable: true }
+        printavoUrl: { type: string, nullable: true }
+        lineItemGroupId: { type: string, nullable: true }
+        lineItemIds: { type: array, items: { type: string } }
+        error: { type: string, nullable: true }
+    HubCalculatorHandoffPreview:
+      type: object
+      required: [snapshot, snapshotHash, existing]
+      properties:
+        snapshot: { $ref: "#/components/schemas/HubCalculatorHandoffSnapshot" }
+        snapshotHash: { type: string }
+        existing:
+          allOf:
+            - $ref: "#/components/schemas/HubCalculatorHandoffResult"
+          nullable: true
     HubCalculatorLineItemRequest:
       type: object
       required: [categoryId, itemNumber, color, brand, description]
@@ -15996,6 +16212,37 @@ components:
           oneOf:
             - $ref: "#/components/schemas/HubCalculatorLineItemRequest"
             - type: "null"
+        noteSections:
+          description: >
+            Multi-style pricing for ONE Production Notes block. When present,
+            priceRows must be empty and every section is validated instead.
+            "schedule" sections carry a range-filtered tier schedule (Compare
+            styles); "order" sections carry one row {qty = pieces ordered,
+            unitPrice} (Mixed order). Omit/null for the single-style format.
+          oneOf:
+            - type: array
+              minItems: 1
+              maxItems: 12
+              items:
+                $ref: "#/components/schemas/HubCalculatorNoteSection"
+            - type: "null"
+    HubCalculatorNoteSection:
+      type: object
+      required: [label, kind, rows]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 200
+        kind:
+          type: string
+          enum: [schedule, order]
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/HubCalculatorPriceRow"
     HubCalculatorPushResult:
       type: object
       required: [noteOutcome, fileOutcome, lineItemOutcome, uploadId, status]

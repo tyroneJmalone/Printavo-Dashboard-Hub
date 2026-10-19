@@ -18,7 +18,15 @@ import {
   RequestHubPngUploadUrlBody,
   PushHubCalculatorBody,
   SearchHubInvoicesQueryParams,
+  PreviewHubCalculatorHandoffBody,
+  CommitHubCalculatorHandoffBody,
 } from "@workspace/api-zod";
+import {
+  commitHandoff,
+  HandoffConflictError,
+  HandoffValidationError,
+  previewHandoff,
+} from "../lib/hub/calcHandoff";
 import { searchHubInvoices } from "../lib/hub/invoiceSearch";
 import {
   interpretPricingPrompt,
@@ -99,9 +107,11 @@ router.post("/hub/uploads/request-png-url", async (req, res) => {
       visualId: parsed.data.visualId,
       rangeKey: parsed.data.rangeKey,
       priceRows: parsed.data.priceRows,
-      quoteNumber: parsed.data.quoteNumber,
+      // The destination order's visible number is the only note/export identity.
+      quoteNumber: String(parsed.data.visualId),
       note: parsed.data.note ?? null,
       lineItem: parsed.data.lineItem ?? null,
+      noteSections: parsed.data.noteSections ?? null,
     });
     res.json({
       uploadId: slot.uploadId,
@@ -144,8 +154,9 @@ router.post("/hub/calculator/push", async (req, res) => {
       visualId: body.visualId,
       rangeKey: body.rangeKey,
       priceRows: body.priceRows,
-      quoteNumber: body.quoteNumber,
+      quoteNumber: String(body.visualId),
       lineItem: body.lineItem ?? null,
+      noteSections: body.noteSections ?? null,
     });
     res.json(result);
   } catch (err) {
@@ -177,6 +188,51 @@ router.post("/hub/calculator/push", async (req, res) => {
       return;
     }
     res.status(500).json({ error: "Calculator push failed" });
+  }
+});
+
+// ── Multi-style handoff (one new group or one new quote) ───────────────
+
+function handoffError(req: { log: { error: (o: object, m: string) => void } }, res: import("express").Response, err: unknown) {
+  if (err instanceof HandoffValidationError) {
+    res.status(400).json({ error: err.message });
+    return;
+  }
+  if (err instanceof HandoffConflictError) {
+    res.status(409).json({ error: err.message });
+    return;
+  }
+  req.log.error({ err }, "Hub calculator handoff failed");
+  if (err instanceof Error && err.message.includes("PRINTAVO_API")) {
+    res.status(503).json({ error: "Printavo not configured" });
+    return;
+  }
+  res.status(500).json({ error: "Calculator handoff failed. Nothing is retried automatically." });
+}
+
+router.post("/hub/calculator/handoff/preview", async (req, res) => {
+  const parsed = PreviewHubCalculatorHandoffBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid handoff request", details: parsed.error.issues });
+    return;
+  }
+  try {
+    res.json(await previewHandoff(parsed.data));
+  } catch (err) {
+    handoffError(req, res, err);
+  }
+});
+
+router.post("/hub/calculator/handoff/commit", async (req, res) => {
+  const parsed = CommitHubCalculatorHandoffBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid handoff request", details: parsed.error.issues });
+    return;
+  }
+  try {
+    res.json(await commitHandoff(parsed.data, req.staff?.email ?? null));
+  } catch (err) {
+    handoffError(req, res, err);
   }
 });
 

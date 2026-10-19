@@ -88,6 +88,7 @@ export function computeDedupeKey(opts: {
     brand: string;
     description: string;
   } | null;
+  noteSections?: NoteSection[] | null;
 }): string {
   const sorted = [...opts.priceRows].sort((a, b) => a.qty - b.qty);
   const canonical = JSON.stringify({
@@ -97,6 +98,8 @@ export function computeDedupeKey(opts: {
     rangeKey: opts.rangeKey,
     priceRows: sorted.map((r) => ({ qty: r.qty, unitPrice: r.unitPrice })),
     lineItem: opts.lineItem ? normalizeLineItemInput(opts.lineItem) : null,
+    // Only present for multi-style pushes so legacy dedupe keys are unchanged.
+    ...(opts.noteSections ? { noteSections: normalizeNoteSections(opts.noteSections) } : {}),
   });
   return createHash("sha256").update(canonical).digest("hex");
 }
@@ -161,4 +164,55 @@ export function sanitizeFilename(value: string): string {
     .replace(/[^A-Za-z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+}
+
+// ── Multi-style note sections ───────────────────────────────────────────
+
+export interface NoteSection {
+  label: string;
+  kind: "schedule" | "order";
+  rows: Array<{ qty: number; unitPrice: number }>;
+}
+
+export function normalizeNoteSections(sections: NoteSection[]): NoteSection[] {
+  return sections.map((s) => ({
+    label: s.label.replace(/\s+/g, " ").trim(),
+    kind: s.kind,
+    rows: s.rows.map((r) => ({ qty: r.qty, unitPrice: Math.round(r.unitPrice * 100) / 100 })),
+  }));
+}
+
+/**
+ * Validate multi-style sections. All sections share one kind. Schedules
+ * follow the single-style priceRows rules (range, ascending, unique);
+ * order sections carry exactly one row {qty = pieces, unitPrice}.
+ */
+export function validateNoteSections(sections: NoteSection[], rangeKey: string): string | null {
+  if (!VALID_RANGE_KEYS.has(rangeKey)) return `Invalid rangeKey "${rangeKey}"`;
+  if (sections.length === 0 || sections.length > 12) return "noteSections must contain 1–12 styles";
+  const kind = sections[0]!.kind;
+  for (let i = 0; i < sections.length; i++) {
+    const s = sections[i]!;
+    if (s.kind !== kind) return "noteSections must all be the same kind";
+    const label = s.label.replace(/\s+/g, " ").trim();
+    if (!label || label.length > 200) return `Section ${i}: label is required (max 200 chars)`;
+    if (/\[\/?Hub Price Calculator/i.test(label)) return `Section ${i}: label cannot contain a note marker`;
+    if (s.kind === "schedule") {
+      const err = validatePriceRows(s.rows, rangeKey);
+      if (err) return `Section ${i}: ${err}`;
+    } else if (s.kind === "order") {
+      if (s.rows.length !== 1) return `Section ${i}: an order section has exactly one row`;
+      const r = s.rows[0]!;
+      if (!Number.isInteger(r.qty) || r.qty < 1 || r.qty > 100000) return `Section ${i}: pieces must be a positive integer`;
+      if (!Number.isFinite(r.unitPrice) || r.unitPrice < 0) return `Section ${i}: unitPrice must be >= 0`;
+    } else {
+      return `Section ${i}: unknown kind`;
+    }
+  }
+  return null;
+}
+
+export function noteSectionsEqual(a: NoteSection[] | null | undefined, b: NoteSection[] | null | undefined): boolean {
+  if (!a || !b) return !a && !b;
+  return JSON.stringify(normalizeNoteSections(a)) === JSON.stringify(normalizeNoteSections(b));
 }

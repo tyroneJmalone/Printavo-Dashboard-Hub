@@ -116,6 +116,12 @@ export const hubCalcUploadsTable = pgTable(
     lineItemSnapshot: jsonb("line_item_snapshot"),
 
     /**
+     * Multi-style note sections (Compare schedules or Mixed order lines) for
+     * ONE Production Notes block. Null = legacy single-style priceRows block.
+     */
+    noteSections: jsonb("note_sections"),
+
+    /**
      * Printavo productionFile id, set once after a successful
      * productionFileCreate and never overwritten (prevents duplicate attaches).
      */

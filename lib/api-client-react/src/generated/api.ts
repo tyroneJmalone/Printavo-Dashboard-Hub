@@ -241,6 +241,10 @@ import type {
   GetTopCustomersParams,
   GoogleDriveSourceInput,
   HealthStatus,
+  HubCalculatorHandoffCommitRequest,
+  HubCalculatorHandoffPreview,
+  HubCalculatorHandoffRequest,
+  HubCalculatorHandoffResult,
   HubCalculatorPushRequest,
   HubCalculatorPushResult,
   HubDashboardDetails,
@@ -16071,6 +16075,146 @@ export function useListHubCalculatorCategories<TData = Awaited<ReturnType<typeof
 
 
 
+
+export const getPreviewHubCalculatorHandoffUrl = () => {
+
+
+
+
+  return `/api/hub/calculator/handoff/preview`
+}
+
+/**
+ * @summary Recompute and preview the exact multi-style Printavo handoff (read-only)
+ */
+export const previewHubCalculatorHandoff = async (hubCalculatorHandoffRequest: HubCalculatorHandoffRequest, options?: RequestInit): Promise<HubCalculatorHandoffPreview> => {
+
+  return customFetch<HubCalculatorHandoffPreview>(getPreviewHubCalculatorHandoffUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(hubCalculatorHandoffRequest)
+  }
+);}
+
+
+
+
+export const getPreviewHubCalculatorHandoffMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewHubCalculatorHandoff>>, TError,{data: BodyType<HubCalculatorHandoffRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewHubCalculatorHandoff>>, TError,{data: BodyType<HubCalculatorHandoffRequest>}, TContext> => {
+
+const mutationKey = ['previewHubCalculatorHandoff'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewHubCalculatorHandoff>>, {data: BodyType<HubCalculatorHandoffRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewHubCalculatorHandoff(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewHubCalculatorHandoffMutationResult = NonNullable<Awaited<ReturnType<typeof previewHubCalculatorHandoff>>>
+    export type PreviewHubCalculatorHandoffMutationBody = BodyType<HubCalculatorHandoffRequest>
+    export type PreviewHubCalculatorHandoffMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Recompute and preview the exact multi-style Printavo handoff (read-only)
+ */
+export const usePreviewHubCalculatorHandoff = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewHubCalculatorHandoff>>, TError,{data: BodyType<HubCalculatorHandoffRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewHubCalculatorHandoff>>,
+        TError,
+        {data: BodyType<HubCalculatorHandoffRequest>},
+        TContext
+      > => {
+      return useMutation(getPreviewHubCalculatorHandoffMutationOptions(options));
+    }
+
+export const getCommitHubCalculatorHandoffUrl = () => {
+
+
+
+
+  return `/api/hub/calculator/handoff/commit`
+}
+
+/**
+ * @summary Send the reviewed handoff to Printavo exactly once
+ */
+export const commitHubCalculatorHandoff = async (hubCalculatorHandoffCommitRequest: HubCalculatorHandoffCommitRequest, options?: RequestInit): Promise<HubCalculatorHandoffResult> => {
+
+  return customFetch<HubCalculatorHandoffResult>(getCommitHubCalculatorHandoffUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(hubCalculatorHandoffCommitRequest)
+  }
+);}
+
+
+
+
+export const getCommitHubCalculatorHandoffMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitHubCalculatorHandoff>>, TError,{data: BodyType<HubCalculatorHandoffCommitRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof commitHubCalculatorHandoff>>, TError,{data: BodyType<HubCalculatorHandoffCommitRequest>}, TContext> => {
+
+const mutationKey = ['commitHubCalculatorHandoff'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof commitHubCalculatorHandoff>>, {data: BodyType<HubCalculatorHandoffCommitRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  commitHubCalculatorHandoff(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CommitHubCalculatorHandoffMutationResult = NonNullable<Awaited<ReturnType<typeof commitHubCalculatorHandoff>>>
+    export type CommitHubCalculatorHandoffMutationBody = BodyType<HubCalculatorHandoffCommitRequest>
+    export type CommitHubCalculatorHandoffMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Send the reviewed handoff to Printavo exactly once
+ */
+export const useCommitHubCalculatorHandoff = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commitHubCalculatorHandoff>>, TError,{data: BodyType<HubCalculatorHandoffCommitRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof commitHubCalculatorHandoff>>,
+        TError,
+        {data: BodyType<HubCalculatorHandoffCommitRequest>},
+        TContext
+      > => {
+      return useMutation(getCommitHubCalculatorHandoffMutationOptions(options));
+    }
 
 export const getListPrintQueueOrdersUrl = (params: ListPrintQueueOrdersParams,) => {
   const normalizedParams = new URLSearchParams();
