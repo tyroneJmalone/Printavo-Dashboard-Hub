@@ -111,6 +111,7 @@ export function buildHandoffMutation(snapshot: HandoffSnapshot, handoffId: strin
           color: line.color,
           price: line.price,
           markupPercentage: snapshot.markup * 100,
+          productStatus: null,
           sizes: line.sizes,
         })),
         imprints,

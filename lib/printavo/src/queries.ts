@@ -508,7 +508,7 @@ export function calculatorLineItemGroupCreateMutation(
           itemNumber: ${lit(input.itemNumber)}
           color: ${lit(input.color)}
           description: ${lit(input.description)}
-          productStatus: need_ordering
+          productStatus: null
           taxed: true
         }]
       }
@@ -560,7 +560,7 @@ export function calculatorHandoffGroupCreateMutation(
       (size) =>
         `{ size: ${enumLit(size.size, "LineItemSize")}, count: ${Math.trunc(size.count)} }`,
     );
-    return `{ position: ${Math.trunc(item.position)}, category: { id: ${lit(item.categoryId)} }, itemNumber: ${lit(item.itemNumber)}, color: ${lit(item.color)}, description: ${lit(item.description)}, price: ${Number(item.price).toFixed(2)}, productStatus: need_ordering, taxed: true, sizes: [${sizes.join(", ")}] }`;
+    return `{ position: ${Math.trunc(item.position)}, category: { id: ${lit(item.categoryId)} }, itemNumber: ${lit(item.itemNumber)}, color: ${lit(item.color)}, description: ${lit(item.description)}, price: ${Number(item.price).toFixed(2)}, productStatus: null, taxed: true, sizes: [${sizes.join(", ")}] }`;
   });
   const imprints = input.imprints.map(
     (imprint) =>
@@ -588,6 +588,8 @@ export interface QuoteCreateLineItem {
   sizes: Array<{ size: string; count: number }>;
   /** Optional Printavo line-item category (mirror-verified by the caller). */
   categoryId?: string;
+  /** Calculator quotes explicitly leave goods Unset; other callers keep their existing default. */
+  productStatus?: "need_ordering" | null;
 }
 
 export interface QuoteCreateImprint {
@@ -624,7 +626,8 @@ export function quoteCreateMutation(input: QuoteCreateInput): string {
           `{ size: ${enumLit(size.size, "LineItemSize")}, count: ${Math.trunc(size.count)} }`,
       );
       const category = item.categoryId ? `category: { id: ${lit(item.categoryId)} }, ` : "";
-      return `{ position: ${Math.trunc(item.position)}, ${category}itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, price: ${Number(item.price).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: need_ordering, taxed: true, sizes: [${sizes.join(", ")}] }`;
+      const productStatus = item.productStatus === null ? "null" : "need_ordering";
+      return `{ position: ${Math.trunc(item.position)}, ${category}itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, price: ${Number(item.price).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: ${productStatus}, taxed: true, sizes: [${sizes.join(", ")}] }`;
     });
     const imprints = group.imprints.map((imprint) => {
       return `{ details: ${lit(imprint.details)}, pricingMatrixColumn: { id: ${lit(imprint.pricingMatrixColumnId)} } }`;

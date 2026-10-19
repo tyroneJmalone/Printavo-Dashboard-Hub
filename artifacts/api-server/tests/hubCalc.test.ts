@@ -125,7 +125,8 @@ test("calculatorLineItemGroupCreateMutation: safely emits category and descripti
   assert.match(mutation, /lineItemGroupCreate/);
   assert.match(mutation, /position: 3/);
   assert.match(mutation, /category: \{ id: "20421" \}/);
-  assert.match(mutation, /productStatus: need_ordering/);
+  assert.match(mutation, /productStatus: null/);
+  assert.doesNotMatch(mutation, /productStatus: need_ordering/);
   assert.match(mutation, /Port & Company \\"Core\\"\\n\\nQTY = PRICE/);
 });
 

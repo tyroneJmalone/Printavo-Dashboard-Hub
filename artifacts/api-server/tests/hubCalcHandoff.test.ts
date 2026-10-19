@@ -5,7 +5,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PrintavoApiError } from "@workspace/printavo";
+import { PrintavoApiError, quoteCreateMutation } from "@workspace/printavo";
 import {
   priceHandoff,
   buildHandoffLines,
@@ -137,6 +137,36 @@ test("snapshot hash changes when the destination changes", () => {
   const a = snapshotFor("existing");
   const b = { ...a, target: { ...a.target, groupPosition: 4 } } as HandoffSnapshot;
   assert.notEqual(snapshotHash(a), snapshotHash(b));
+});
+
+for (const target of ["existing", "new_quote"] as const) {
+  for (const mode of ["compare", "mixed"] as const) {
+    test(`payload: ${mode} calculator lines on ${target} leave goods Unset`, () => {
+      const snapshot = snapshotFor(target);
+      snapshot.mode = mode;
+      if (mode === "compare") {
+        snapshot.lines = snapshot.lines.map((line) => ({ ...line, price: 0, sizes: [] }));
+      }
+      const mutation = buildHandoffMutation(snapshot, "h1");
+      assert.equal((mutation.match(/productStatus: null/g) ?? []).length, snapshot.lines.length);
+      assert.doesNotMatch(mutation, /productStatus: need_ordering/);
+    });
+  }
+}
+
+test("shared quote builder preserves the default for non-calculator callers", () => {
+  const mutation = quoteCreateMutation({
+    contactId: "co1", customerDueAt: "2026-11-01", dueAt: "2026-11-01T17:00:00-05:00",
+    nickname: "Other quoting workflow",
+    lineItemGroups: [{
+      position: 1, imprints: [],
+      lineItems: [{
+        position: 1, itemNumber: "T1", description: "Tee", color: "Black",
+        price: 10, markupPercentage: 50, sizes: [],
+      }],
+    }],
+  });
+  assert.match(mutation, /productStatus: need_ordering/);
 });
 
 function memoryStore() {

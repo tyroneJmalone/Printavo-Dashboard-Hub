@@ -20,3 +20,9 @@ The user also asked to explore creating a new Printavo quote from the calculator
 **Why:** The intended discussion covers a complete quote handoff, not just a pricing attachment.
 
 **How to apply:** Include new-quote creation and full category/imprint handoff in the approved scope. Preserve the distinction between a quantity-price schedule for alternatives and actual ordered quantities/unit prices for mixed orders.
+
+Calculator pushes must leave new line-item Goods Status at **Unset**, including pushes into existing orders and new-quote creation in both pricing modes.
+
+**Why:** The user tested and approved the calculator handoff, but explicitly said marking goods Needs Ordering at the pricing stage is premature.
+
+**How to apply:** Do not treat a calculated quote, even with quantities, as authorization to start purchasing. This rule is specific to the Price Calculator; do not silently change other quoting workflows or retroactively reset existing goods statuses.
