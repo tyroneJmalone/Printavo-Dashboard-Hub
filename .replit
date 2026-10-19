@@ -35,3 +35,4 @@ MINTBUCKS_APP_URL = "https://mintbucks.replit.app"
 
 [userenv.production]
 KB_DRIVE_SYNC_ENABLED = "true"
+VENDOR_SUBMIT_ENABLED = "true"
