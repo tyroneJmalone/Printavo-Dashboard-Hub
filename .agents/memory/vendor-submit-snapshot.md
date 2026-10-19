@@ -50,3 +50,17 @@ sizeIndex; PC61 S–XL = 17576). Keying dedup on it falsely flagged every normal
 S/M/L/XL run as a duplicate. The per-line identity SanMar actually orders by is
 style+color+size (see the wire envelope in `lib/sanmar/src/client.ts`).
 
+# Production ordering is an established workflow
+
+The user has submitted multiple POs from the published Hub and explicitly
+approved enabling both S&S and SanMar production ordering.
+
+**Why:** A missing production enable setting was initially described without
+checking the successful historical submissions. The user corrected that
+implication: this was a regression, not first-time activation.
+
+**How to apply:** Treat loss of production ordering as a regression. Check
+production submission records and environment configuration independently.
+Do not infer why a setting disappeared from its current absence, and preserve
+PIN, duplicate-order, and uncertain-submission safeguards when restoring it.
+
