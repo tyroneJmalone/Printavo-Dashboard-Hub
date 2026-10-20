@@ -17,6 +17,12 @@ Further live checks found style searches returning 25 nodes with `hasNextPage: t
 
 Live introspection confirms `LineItemCreateInput` and `LineItemInput` accept `product: IDInput` (with `id`), separately from itemNumber/color, and optional `priceReceiptSignature`. A read-only `lineItemGroupPricing` query also exists with `LineItemGroupPricingInput`; its line pricing input accepts product references. The Product object itself lacks cost fields, but this does not mean the API has no pricing capability. Investigate the pricing query before proposing a write test or claiming a product ID alone reproduces Refresh.
 
+Read-only pricing probes reproduced the user's zero-product-cost failure without a product reference, and reproduced the manually entered line's full garment-plus-decoration price with the product reference alone (no incoming receipt signature). Quantity changes selected a different imprint tier; 2XL selected a higher garment cost. A mixed Small/2XL line priced all units using the higher garment cost in that probe, not a weighted average. Two lines sharing a group used the combined decoration tier. An explicit input selling price was ignored by the pricing query, and a linked zero-quantity line still returned $0 product cost plus decoration charges.
+
+**Why:** Native Printavo recalculation is not equivalent to preserving the Hub's reviewed selling price, cost choice, or alternative-style schedules.
+
+**How to apply:** Keep catalog linking distinct from choosing which pricing engine sets the initial price. Do not run native recalculation on Compare-mode zero-quantity descriptive lines. The query returns a receipt signature and writes accept one, but persistence and later UI Refresh behavior still require an explicitly authorized controlled write test; read-only pricing probes do not prove those.
+
 **Why:** Live schema and data probes found current custom Cap America, AS Colour, and Cotton Heritage variants, while historical Charles River lines did not resolve through exact style searches. The API's limited fields and odd search pagination make a naive catalog integration incomplete and potentially misleading.
 
 **How to apply:** Use exact normalized style searches for lookup, keep current Printavo products separate from historical line-item suggestions, and pair custom products with a separate/manual source for cost, sizes, inventory, and images before allowing automatic quote selection.
