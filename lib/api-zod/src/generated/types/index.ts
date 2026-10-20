@@ -474,6 +474,7 @@ export * from './hubCalculatorHandoffCommitRequest';
 export * from './hubCalculatorHandoffDecoration';
 export * from './hubCalculatorHandoffGarment';
 export * from './hubCalculatorHandoffGarmentSizesItem';
+export * from './hubCalculatorHandoffGarmentVendor';
 export * from './hubCalculatorHandoffLine';
 export * from './hubCalculatorHandoffLineSizesItem';
 export * from './hubCalculatorHandoffPreview';

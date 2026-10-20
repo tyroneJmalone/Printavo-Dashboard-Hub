@@ -22,6 +22,7 @@ import {
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { getPrintavoClient } from "../printavoGateway";
+import { resolvePrintavoProducts } from "./printavoProducts";
 import { listDecorationMatrices } from "../pricing/matrices";
 import { productSearch } from "../purchasing/productFinder";
 import { automaticMatrixColumnIndex } from "./embroideryStitchTiers";
@@ -1106,6 +1107,7 @@ function buildPrintavoQuoteMutation(
   draft: AiQuoteDraftData,
   draftId: string,
   resolvedColumns: Awaited<ReturnType<typeof resolveDraftPrintavoPricingColumns>>,
+  productIds: string[],
 ): string {
   const pricingMatrixColumnByDecorationId = new Map(
     resolvedColumns.map((resolved) => [
@@ -1146,6 +1148,7 @@ function buildPrintavoQuoteMutation(
         lineItems: [{
           position: 1,
           itemNumber: garment.selectedProduct!.styleName,
+          productId: productIds[index]!,
           description:
             garment.selectedProduct!.title ??
             garment.description ??
@@ -1255,7 +1258,18 @@ export async function createPrintavoQuote(
     );
   }
   const resolvedColumns = await resolveDraftPrintavoPricingColumns(freshDraft);
-  const mutation = buildPrintavoQuoteMutation(freshDraft, id, resolvedColumns);
+  let products;
+  try {
+    products = await resolvePrintavoProducts(freshDraft.garments.map((garment) => ({
+      style: garment.selectedProduct!.styleName,
+      color: garment.selectedProduct!.color,
+      brand: garment.selectedProduct!.brand,
+      vendor: garment.selectedProduct!.vendor,
+    })), (query) => getPrintavoClient().query(query));
+  } catch (err) {
+    throw new QuoteDraftValidationError(err instanceof Error ? err.message : "Printavo products could not be verified.");
+  }
+  const mutation = buildPrintavoQuoteMutation(freshDraft, id, resolvedColumns, products.map((p) => p.id));
 
   const claimed = await db.transaction(async (tx) => {
     const [row] = await tx

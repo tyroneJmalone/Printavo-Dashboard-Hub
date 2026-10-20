@@ -90,6 +90,7 @@ export function GarmentCard({
             vendorMode: selection.priceMode,
             costStr: selection.cost.toFixed(2),
             style: selection.style,
+            vendor: selection.vendor,
             color: selection.color,
             brand: selection.brand,
             description: cleanProductDescription(selection),
@@ -147,6 +148,25 @@ export function GarmentCard({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
+        <div className="col-span-2">
+          <label className={labelCls} htmlFor={`garment-catalog-${row.id}`}>Printavo catalog</label>
+          <select
+            id={`garment-catalog-${row.id}`}
+            value={row.vendorSelection?.vendor ?? row.vendor ?? ""}
+            onChange={(e) => onChange({
+              vendor: (e.target.value || undefined) as "sanmar" | "ss" | undefined,
+              vendorSelection: null,
+              vendorMode: null,
+            })}
+            className={inputCls}
+            data-testid={`select-garment-catalog-${index}`}
+          >
+            <option value="">Auto-match (must be unambiguous)</option>
+            <option value="sanmar">SanMar</option>
+            <option value="ss">S&amp;S Activewear</option>
+          </select>
+          <p className="mt-1 text-[10px] text-slate-500">Catalog matching does not change the garment cost entered above.</p>
+        </div>
         <div>
           <label className={labelCls}>Style #</label>
           <input value={row.style} onChange={(e) => onChange({ style: e.target.value.slice(0, 100) })} className={inputCls} data-testid={`input-garment-style-${index}`} />

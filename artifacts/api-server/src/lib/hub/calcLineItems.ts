@@ -10,6 +10,7 @@ import {
   orderLineItemGroupPositionsQuery,
 } from "@workspace/printavo";
 import { getPrintavoClient } from "../printavoGateway";
+import { resolvePrintavoProducts } from "../quoteDrafts/printavoProducts";
 import {
   buildLineItemDescription,
   normalizeLineItemInput,
@@ -143,6 +144,15 @@ export async function pushCalculatorLineItem(opts: {
 
   await validateLineItemCategory(snapshot.categoryId);
   const client = getPrintavoClient();
+  let productId: string;
+  try {
+    const products = await resolvePrintavoProducts([{
+      style: snapshot.itemNumber, color: snapshot.color, brand: snapshot.brand,
+    }], (query) => client.query(query));
+    productId = products[0]!.id;
+  } catch (err) {
+    return { requested: true, ok: false, error: err instanceof Error ? err.message : "Printavo product lookup failed." };
+  }
   const live = await client.query<{
     order: {
       id: string;
@@ -195,6 +205,7 @@ export async function pushCalculatorLineItem(opts: {
       calculatorLineItemGroupCreateMutation(opts.invoiceId, {
         position: nextPosition,
         categoryId: snapshot.categoryId,
+        productId,
         itemNumber: snapshot.itemNumber,
         color: snapshot.color,
         description: buildLineItemDescription(snapshot, opts.priceRows),

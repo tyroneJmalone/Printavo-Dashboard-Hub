@@ -22,6 +22,7 @@ export const PLACEMENT_PRESETS = [
 ];
 
 export interface GarmentRow {
+  vendor?: "sanmar" | "ss";
   id: string;
   style: string;
   color: string;
@@ -189,6 +190,7 @@ export function buildHandoffRequest(opts: {
       description: g.description.trim(),
       categoryId: g.categoryId,
       garmentCost: garmentCost(g) ?? -1,
+      vendor: g.vendorSelection?.vendor ?? g.vendor,
       sizes:
         opts.mode === "mixed"
           ? SIZE_COLUMNS.filter((s) => Number(g.sizes[s] ?? "") > 0).map((s) => ({

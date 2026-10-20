@@ -8,6 +8,8 @@
 import type { HubCalculatorHandoffLineSizesItem } from './hubCalculatorHandoffLineSizesItem';
 
 export interface HubCalculatorHandoffLine {
+  productId?: string;
+  productCatalog?: string;
   garmentId: string;
   categoryId: string;
   categoryName: string;

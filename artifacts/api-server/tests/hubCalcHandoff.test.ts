@@ -6,6 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PrintavoApiError, quoteCreateMutation } from "@workspace/printavo";
+import { matchPrintavoProduct, resolvePrintavoProducts, type PrintavoProduct } from "../src/lib/quoteDrafts/printavoProducts";
 import {
   priceHandoff,
   buildHandoffLines,
@@ -167,6 +168,102 @@ test("shared quote builder preserves the default for non-calculator callers", ()
     }],
   });
   assert.match(mutation, /productStatus: need_ordering/);
+});
+
+const catalogProduct = (id = "pv-product", catalog = "SanMar"): PrintavoProduct => ({
+  id, itemNumber: "ST350", color: "Black", brand: "Sport-Tek", catalog: { id: catalog, name: catalog },
+});
+const identity = { style: "ST350", color: "Black", brand: "Sport-Tek", vendor: "sanmar" as const };
+
+test("product match respects vendor, style, color and brand; dedupes repeated ids", () => {
+  const product = catalogProduct();
+  assert.equal(matchPrintavoProduct(identity, [
+    catalogProduct("ss", "S&S Activewear"), { ...product, id: "wrong-color", color: "Black Heather" },
+    { ...product, id: "wrong-style", itemNumber: "ST350LS" },
+    { ...product, id: "wrong-brand", brand: "Different" }, product, product,
+  ]).id, product.id);
+  assert.equal(matchPrintavoProduct({ ...identity, vendor: "ss" }, [
+    product, catalogProduct("ss", "S&S Activewear"),
+  ]).id, "ss");
+});
+
+test("product match normalizes only case and whitespace, never substitutes merchandise", () => {
+  assert.equal(matchPrintavoProduct({ ...identity, style: " st350 ", color: " BLACK " }, [catalogProduct()]).id, "pv-product");
+  assert.throws(() => matchPrintavoProduct({ ...identity, color: "Black/White" }, [catalogProduct()]), /no exact/);
+  assert.throws(() => matchPrintavoProduct({ ...identity, color: "" }, [catalogProduct()]), /enter a style and color/);
+  assert.throws(() => matchPrintavoProduct(identity, [{ ...catalogProduct(), catalog: null }]), /no exact/);
+});
+
+test("ambiguous and missing products fail closed", () => {
+  assert.throws(() => matchPrintavoProduct(identity, []), /Nothing was sent/);
+  assert.throws(() => matchPrintavoProduct(identity, [catalogProduct("a"), catalogProduct("b")]), /multiple exact/);
+  assert.throws(() => matchPrintavoProduct({ ...identity, vendor: undefined }, [
+    catalogProduct("a"), catalogProduct("b", "S&S Activewear"),
+  ]), /multiple exact/);
+});
+
+test("resolver uses bounded read-only searches, shares requests, and reverifies next call", async () => {
+  const queries: string[] = [];
+  const query = async <T>(q: string): Promise<T> => {
+    queries.push(q);
+    assert.match(q, /^query /);
+    assert.doesNotMatch(q, /mutation|after:/);
+    return { products: { nodes: [catalogProduct()] } } as T;
+  };
+  const result = await resolvePrintavoProducts([identity, identity], query);
+  assert.equal(result.length, 2);
+  assert.equal(queries.length, 2);
+  await resolvePrintavoProducts([identity], query);
+  assert.equal(queries.length, 4);
+});
+
+test("resolver fails explicitly on lookup failures and malformed responses", async () => {
+  await assert.rejects(resolvePrintavoProducts([identity], async () => { throw Error("timeout"); }), /lookup failed/);
+  await assert.rejects(resolvePrintavoProducts([identity], async <T>() => ({} as T)), /lookup failed/);
+});
+
+test("ambiguity across the two searches is not hidden by the first match", async () => {
+  let calls = 0;
+  await assert.rejects(resolvePrintavoProducts([identity], async <T>() => ({
+    products: { nodes: [catalogProduct(String(++calls))] },
+  } as T)), /multiple exact/);
+});
+
+for (const target of ["existing", "new_quote"] as const) {
+  test(`${target}: catalog links preserve prices, categories, imprints, markup and Unset goods`, () => {
+    const snapshot = snapshotFor(target);
+    snapshot.lines.forEach((line, index) => { line.productId = `product-${index}`; line.productCatalog = "SanMar"; });
+    const mutation = buildHandoffMutation(snapshot, "h1");
+    snapshot.lines.forEach((line) => {
+      assert.ok(mutation.includes(`product: { id: "${line.productId}" }`));
+      assert.ok(mutation.includes(`price: ${line.price.toFixed(2)}`));
+    });
+    assert.equal((mutation.match(/productStatus: null/g) ?? []).length, 2);
+    assert.equal((mutation.match(/markupPercentage: 200\.0000/g) ?? []).length, 2);
+    assert.match(mutation, /pricingMatrixColumn: \{ id: "pv-col-1" \}/);
+    assert.doesNotMatch(mutation, /priceReceiptSignature/);
+  });
+}
+
+test("product references bind preview but cannot evade historical duplicate/unknown holds", () => {
+  const original = snapshotFor("existing");
+  const linked = structuredClone(original);
+  linked.lines.forEach((line) => { line.productId = "product"; line.productCatalog = "SanMar"; });
+  assert.notEqual(snapshotHash(original), snapshotHash(linked));
+  assert.equal(operationKey(original), operationKey(linked));
+});
+
+test("AI/shared quote builder sends product id with reviewed price, not a native receipt", () => {
+  const mutation = quoteCreateMutation({
+    contactId: "c", customerDueAt: "2026-11-01", dueAt: "2026-11-01T17:00:00-05:00", nickname: "Test",
+    lineItemGroups: [{ position: 0, imprints: [{ details: "Front", pricingMatrixColumnId: "matrix-col" }],
+      lineItems: [{ position: 0, productId: "verified-product", itemNumber: "ST350", color: "Black",
+        description: "Test", price: 99.25, markupPercentage: 175, sizes: [{ size: "size_s", count: 24 }] }] }],
+  });
+  assert.match(mutation, /product: \{ id: "verified-product" \}/);
+  assert.match(mutation, /price: 99\.25/);
+  assert.match(mutation, /pricingMatrixColumn: \{ id: "matrix-col" \}/);
+  assert.doesNotMatch(mutation, /priceReceiptSignature/);
 });
 
 function memoryStore() {

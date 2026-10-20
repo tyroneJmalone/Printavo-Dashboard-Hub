@@ -288,6 +288,9 @@ export function HandoffPanel({
 
       {snap && (
         <div className={`space-y-3 ${stale ? "opacity-50" : ""}`} data-testid="handoff-preview">
+          <p className="text-[11px] text-slate-400">
+            Catalog products are verified before sending. Hub prices are preserved; Refresh Pricing in Printavo uses its current catalog costs and pricing rules, which may differ from your selected sale/regular cost.
+          </p>
           {stale && (
             <p className="text-[11px] text-amber-400 font-semibold">Inputs changed since this preview. Preview again before sending.</p>
           )}
@@ -321,7 +324,10 @@ export function HandoffPanel({
               <tbody>
                 {snap.lines.map((line, i) => (
                   <tr key={line.garmentId} className="border-t border-slate-800 align-top" data-testid={`row-preview-line-${i}`}>
-                    <td className="px-2 py-1.5 text-slate-300 whitespace-nowrap">{line.categoryName}</td>
+                    <td className="px-2 py-1.5 text-slate-300 whitespace-nowrap">
+                      {line.categoryName}
+                      {line.productId && <div className="text-emerald-400 text-[10px]">{line.productCatalog} product linked</div>}
+                    </td>
                     <td className="px-2 py-1.5 font-mono text-slate-200">{line.itemNumber}</td>
                     <td className="px-2 py-1.5 text-slate-300">{line.color}</td>
                     <td className="px-2 py-1.5 text-slate-400 whitespace-pre-wrap min-w-[180px]">{line.description}</td>

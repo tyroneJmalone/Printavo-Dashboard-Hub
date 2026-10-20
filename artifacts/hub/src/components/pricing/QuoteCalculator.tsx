@@ -248,6 +248,7 @@ export function QuoteCalculator({
                   style: match.styleName,
                   color: match.colorName,
                   brand: match.brand ?? "",
+                  vendor: match.vendor,
                   description: cleanProductDescription({
                     brand: match.brand ?? "",
                     style: match.styleName,

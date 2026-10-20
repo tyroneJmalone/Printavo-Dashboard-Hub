@@ -16029,6 +16029,7 @@ components:
       type: object
       required: [id, style, color, brand, description, categoryId, garmentCost, sizes]
       properties:
+        vendor: { type: string, enum: [sanmar, ss] }
         id: { type: string, minLength: 1, maxLength: 64 }
         style: { type: string, maxLength: 100 }
         color: { type: string, maxLength: 100 }
@@ -16094,6 +16095,8 @@ components:
       type: object
       required: [garmentId, categoryId, categoryName, itemNumber, color, description, price, sizes, quantity]
       properties:
+        productId: { type: string }
+        productCatalog: { type: string }
         garmentId: { type: string }
         categoryId: { type: string }
         categoryName: { type: string }

@@ -11142,6 +11142,7 @@ export const PreviewHubCalculatorHandoffBody = zod.object({
   "markup": zod.number(),
   "rangeKey": zod.string(),
   "garments": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']).optional(),
   "id": zod.string().min(1).max(previewHubCalculatorHandoffBodyGarmentsItemIdMax),
   "style": zod.string().max(previewHubCalculatorHandoffBodyGarmentsItemStyleMax),
   "color": zod.string().max(previewHubCalculatorHandoffBodyGarmentsItemColorMax),
@@ -11194,6 +11195,8 @@ export const PreviewHubCalculatorHandoffResponse = zod.object({
   "combinedQuantity": zod.number().nullable(),
   "decorationCostPerPiece": zod.number().nullable(),
   "lines": zod.array(zod.object({
+  "productId": zod.string().optional(),
+  "productCatalog": zod.string().optional(),
   "garmentId": zod.string(),
   "categoryId": zod.string(),
   "categoryName": zod.string(),
@@ -11278,6 +11281,7 @@ export const CommitHubCalculatorHandoffBody = zod.object({
   "markup": zod.number(),
   "rangeKey": zod.string(),
   "garments": zod.array(zod.object({
+  "vendor": zod.enum(['sanmar', 'ss']).optional(),
   "id": zod.string().min(1).max(commitHubCalculatorHandoffBodyOneGarmentsItemIdMax),
   "style": zod.string().max(commitHubCalculatorHandoffBodyOneGarmentsItemStyleMax),
   "color": zod.string().max(commitHubCalculatorHandoffBodyOneGarmentsItemColorMax),

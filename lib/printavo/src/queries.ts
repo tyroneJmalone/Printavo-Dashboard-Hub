@@ -481,6 +481,7 @@ export function orderLineItemGroupPositionsQuery(
 }
 
 export interface CalculatorLineItemCreateInput {
+  productId?: string;
   position: number;
   categoryId: string;
   itemNumber: string;
@@ -505,6 +506,7 @@ export function calculatorLineItemGroupCreateMutation(
         lineItems: [{
           position: 0
           category: { id: ${lit(input.categoryId)} }
+          ${input.productId ? `product: { id: ${lit(input.productId)} }` : ""}
           itemNumber: ${lit(input.itemNumber)}
           color: ${lit(input.color)}
           description: ${lit(input.description)}
@@ -529,6 +531,8 @@ export function calculatorLineItemGroupCreateMutation(
 }
 
 export interface CalculatorHandoffLineItem {
+  productId?: string;
+  markupPercentage?: number;
   position: number;
   categoryId: string;
   itemNumber: string;
@@ -560,7 +564,9 @@ export function calculatorHandoffGroupCreateMutation(
       (size) =>
         `{ size: ${enumLit(size.size, "LineItemSize")}, count: ${Math.trunc(size.count)} }`,
     );
-    return `{ position: ${Math.trunc(item.position)}, category: { id: ${lit(item.categoryId)} }, itemNumber: ${lit(item.itemNumber)}, color: ${lit(item.color)}, description: ${lit(item.description)}, price: ${Number(item.price).toFixed(2)}, productStatus: null, taxed: true, sizes: [${sizes.join(", ")}] }`;
+    const product = item.productId ? `product: { id: ${lit(item.productId)} }, ` : "";
+    const markup = item.markupPercentage === undefined ? "" : `markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, `;
+    return `{ position: ${Math.trunc(item.position)}, ${product}${markup}category: { id: ${lit(item.categoryId)} }, itemNumber: ${lit(item.itemNumber)}, color: ${lit(item.color)}, description: ${lit(item.description)}, price: ${Number(item.price).toFixed(2)}, productStatus: null, taxed: true, sizes: [${sizes.join(", ")}] }`;
   });
   const imprints = input.imprints.map(
     (imprint) =>
@@ -579,6 +585,7 @@ export function calculatorHandoffGroupCreateMutation(
 }
 
 export interface QuoteCreateLineItem {
+  productId?: string;
   position: number;
   itemNumber: string;
   description: string;
@@ -627,7 +634,8 @@ export function quoteCreateMutation(input: QuoteCreateInput): string {
       );
       const category = item.categoryId ? `category: { id: ${lit(item.categoryId)} }, ` : "";
       const productStatus = item.productStatus === null ? "null" : "need_ordering";
-      return `{ position: ${Math.trunc(item.position)}, ${category}itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, price: ${Number(item.price).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: ${productStatus}, taxed: true, sizes: [${sizes.join(", ")}] }`;
+      const product = item.productId ? `product: { id: ${lit(item.productId)} }, ` : "";
+      return `{ position: ${Math.trunc(item.position)}, ${product}${category}itemNumber: ${lit(item.itemNumber)}, description: ${lit(item.description)}, color: ${lit(item.color)}, price: ${Number(item.price).toFixed(2)}, markupPercentage: ${Number(item.markupPercentage).toFixed(4)}, productStatus: ${productStatus}, taxed: true, sizes: [${sizes.join(", ")}] }`;
     });
     const imprints = group.imprints.map((imprint) => {
       return `{ details: ${lit(imprint.details)}, pricingMatrixColumn: { id: ${lit(imprint.pricingMatrixColumnId)} } }`;

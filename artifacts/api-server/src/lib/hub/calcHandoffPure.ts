@@ -13,6 +13,7 @@ export const MAX_HANDOFF_GARMENTS = 12;
 export const MAX_HANDOFF_DECORATIONS = 4;
 
 export interface HandoffGarmentInput {
+  vendor?: "sanmar" | "ss";
   id: string;
   style: string;
   color: string;
@@ -212,6 +213,8 @@ export function priceHandoff(
 }
 
 export interface HandoffLine {
+  productId?: string;
+  productCatalog?: string;
   garmentId: string;
   categoryId: string;
   categoryName: string;
@@ -289,7 +292,7 @@ export function snapshotHash(snapshot: unknown): string {
 export function operationKey(snapshot: { target: object; lines?: HandoffLine[] }): string {
   const { groupPosition: _ignored, ...target } = snapshot.target as Record<string, unknown>;
   // Row ids are browser-local; recreating a worksheet must not evade a hold.
-  const lines = snapshot.lines?.map(({ garmentId: _rowId, ...line }) => line);
+  const lines = snapshot.lines?.map(({ garmentId: _rowId, productId: _productId, productCatalog: _catalog, ...line }) => line);
   return snapshotHash({ ...snapshot, target, ...(lines ? { lines } : {}) });
 }
 

@@ -8346,6 +8346,14 @@ export interface HubCalculatorCategory {
   name: string;
 }
 
+export type HubCalculatorHandoffGarmentVendor = typeof HubCalculatorHandoffGarmentVendor[keyof typeof HubCalculatorHandoffGarmentVendor];
+
+
+export const HubCalculatorHandoffGarmentVendor = {
+  sanmar: 'sanmar',
+  ss: 'ss',
+} as const;
+
 export type HubCalculatorHandoffGarmentSizesItem = {
   /** @maxLength 10 */
   size: string;
@@ -8354,6 +8362,7 @@ export type HubCalculatorHandoffGarmentSizesItem = {
 };
 
 export interface HubCalculatorHandoffGarment {
+  vendor?: HubCalculatorHandoffGarmentVendor;
   /**
      * @minLength 1
      * @maxLength 64
@@ -8443,6 +8452,8 @@ export type HubCalculatorHandoffLineSizesItem = {
 };
 
 export interface HubCalculatorHandoffLine {
+  productId?: string;
+  productCatalog?: string;
   garmentId: string;
   categoryId: string;
   categoryName: string;

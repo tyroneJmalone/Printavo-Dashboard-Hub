@@ -18,6 +18,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, hubCalcHandoffsTable, pvLineItemsTable, pvOrdersTable } from "@workspace/db";
 import { accountReferencePageQuery, orderLineItemGroupPositionsQuery } from "@workspace/printavo";
 import { getPrintavoClient } from "../printavoGateway";
+import { resolvePrintavoProducts } from "../quoteDrafts/printavoProducts";
 import { listDecorationMatrices } from "../pricing/matrices";
 import { verifySelectedCustomer, QuoteDraftValidationError } from "../quoteDrafts/service";
 import {
@@ -172,6 +173,15 @@ export async function buildHandoffSnapshot(req: HandoffRequest): Promise<Handoff
   assertReviewedPrices(priced, req.reviewedUnitPrices);
   const categoryNames = await loadCategoryNames(req.garments.map((g) => g.categoryId));
   const lines = buildHandoffLines(priced, categoryNames);
+  try {
+    const products = await resolvePrintavoProducts(req.garments, (query) => getPrintavoClient().query(query));
+    lines.forEach((line, i) => {
+      line.productId = products[i]!.id;
+      line.productCatalog = products[i]!.catalog!.name;
+    });
+  } catch (err) {
+    throw new HandoffValidationError(err instanceof Error ? err.message : "Printavo products could not be verified.");
+  }
 
   let resolved;
   try {

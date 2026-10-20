@@ -1025,7 +1025,8 @@ export default function AiQuoteDetail() {
               Create Printavo Quote
             </DialogTitle>
             <DialogDescription className="text-slate-400 pt-2 text-sm leading-relaxed">
-              This will create a real quote in Printavo. Once created, you cannot edit this draft anymore. 
+              This will create a real quote in Printavo. Once created, you cannot edit this draft anymore.
+              {" "}Each garment must match a verified Printavo catalog product. Your reviewed prices are preserved; using Refresh Pricing in Printavo later uses its current catalog costs and pricing rules.
               Please review all quantities, products, and prices before proceeding.
             </DialogDescription>
           </DialogHeader>

@@ -29,6 +29,12 @@ An authorized live test on the designated test order verified that creating a li
 
 **How to apply:** Choose either reviewed Hub price or native Printavo receipt per write, never both. Catalog-linked creation, quantity edits, API recalculation, and receipt persistence were verified live; the actual browser Refresh Pricing button was not exercised. Keep that distinction explicit.
 
+Approved integration policy: preserve the reviewed Hub selling price while attaching the verified Printavo product. Missing or ambiguous catalog matches must block the garment handoff rather than silently creating disconnected lines; notes/PNG-only attachment remains independent.
+
+**Why:** The user approved implementing the verified product connection after a controlled live test. A valid-looking style without a linked product silently loses garment cost on recalculation.
+
+**How to apply:** Resolve vendor/style/color/brand with live read-only searches before claiming any write. Do not silently substitute a different supplier, invent aliases, or repair historical orders. Exclude newly resolved product metadata from legacy calculator operation identity so deployment cannot bypass existing duplicate/uncertain holds.
+
 **Why:** Live schema and data probes found current custom Cap America, AS Colour, and Cotton Heritage variants, while historical Charles River lines did not resolve through exact style searches. The API's limited fields and odd search pagination make a naive catalog integration incomplete and potentially misleading.
 
 **How to apply:** Use exact normalized style searches for lookup, keep current Printavo products separate from historical line-item suggestions, and pair custom products with a separate/manual source for cost, sizes, inventory, and images before allowing automatic quote selection.

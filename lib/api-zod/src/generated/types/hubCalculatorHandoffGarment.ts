@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HubCalculatorHandoffGarmentSizesItem } from './hubCalculatorHandoffGarmentSizesItem';
+import type { HubCalculatorHandoffGarmentVendor } from './hubCalculatorHandoffGarmentVendor';
 
 export interface HubCalculatorHandoffGarment {
+  vendor?: HubCalculatorHandoffGarmentVendor;
   /**
      * @minLength 1
      * @maxLength 64

@@ -80,6 +80,8 @@ export function buildHandoffMutation(snapshot: HandoffSnapshot, handoffId: strin
       lineItems: snapshot.lines.map((line, index) => ({
         position: index,
         categoryId: line.categoryId,
+        productId: line.productId,
+        markupPercentage: snapshot.markup * 100,
         itemNumber: line.itemNumber,
         color: line.color,
         description: line.description,
@@ -106,6 +108,7 @@ export function buildHandoffMutation(snapshot: HandoffSnapshot, handoffId: strin
         lineItems: snapshot.lines.map((line, index) => ({
           position: index + 1,
           categoryId: line.categoryId,
+          productId: line.productId,
           itemNumber: line.itemNumber,
           description: line.description,
           color: line.color,
