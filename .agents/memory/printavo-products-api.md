@@ -19,6 +19,8 @@ Search pagination is non-standard: a brand query requested with `first: 100` ret
 
 The user reports that both Price Calculator and AI Quote Drafts pushes display the correct style, but changing size quantities and using Printavo Refresh produces a $0 garment cost while matrix imprint charges still populate.
 
+A read-only comparison of a user-supplied live quote confirmed the Hub line had `product: null`, while the manually entered matching style/color had a SanMar catalog product. Quantities and imprint matrix columns matched; the live pricing receipts showed $0 versus a nonzero product cost. The missing product link is confirmed, but the API write requirements for recreating fully refreshable pricing still need verification.
+
 **Why:** An initially correct selling price is not proof that the line supports Printavo's later product-cost recalculation.
 
 **How to apply:** Investigate Printavo catalog identity and refreshable cost data together. Verify the live API write contract and compare with a manually catalog-selected line before promising that attaching a product ID alone fixes Refresh. No live record repair or change to pricing policy was authorized by this report.
