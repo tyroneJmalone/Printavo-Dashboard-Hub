@@ -21,7 +21,13 @@ Read-only pricing probes reproduced the user's zero-product-cost failure without
 
 **Why:** Native Printavo recalculation is not equivalent to preserving the Hub's reviewed selling price, cost choice, or alternative-style schedules.
 
-**How to apply:** Keep catalog linking distinct from choosing which pricing engine sets the initial price. Do not run native recalculation on Compare-mode zero-quantity descriptive lines. The query returns a receipt signature and writes accept one, but persistence and later UI Refresh behavior still require an explicitly authorized controlled write test; read-only pricing probes do not prove those.
+**How to apply:** Keep catalog linking distinct from choosing which pricing engine sets the initial price. Do not run native recalculation on Compare-mode zero-quantity descriptive lines.
+
+An authorized live test on the designated test order verified that creating a line with `product: {id}` and an explicit selling price persists the catalog association without a receipt. Editing quantities preserves that association. Pricing from the persisted product and quantities then yields a valid receipt that can be saved successfully.
+
+**Why:** Printavo rejects a line write containing both `price` and `priceReceiptSignature` (422). Sending the receipt signature alone sets both the selling price and stored breakdown. Creating with a plain price instead leaves receipt price/description null.
+
+**How to apply:** Choose either reviewed Hub price or native Printavo receipt per write, never both. Catalog-linked creation, quantity edits, API recalculation, and receipt persistence were verified live; the actual browser Refresh Pricing button was not exercised. Keep that distinction explicit.
 
 **Why:** Live schema and data probes found current custom Cap America, AS Colour, and Cotton Heritage variants, while historical Charles River lines did not resolve through exact style searches. The API's limited fields and odd search pagination make a naive catalog integration incomplete and potentially misleading.
 
