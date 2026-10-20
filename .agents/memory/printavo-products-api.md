@@ -13,6 +13,10 @@ Historical order line items are broader than the current product library. A bran
 
 Search pagination is non-standard: a brand query requested with `first: 100` returned 25 nodes and `hasNextPage: false` even while `totalNodes` reported hundreds. Exact style searches were reliable in the probes; do not assume a brand search exhaustively enumerates the library or trust `totalNodes` as a matching-result count without more validation.
 
+Further live checks found style searches returning 25 nodes with `hasNextPage: true` but `endCursor: null`; requesting edge cursors failed with a non-nullable cursor error. Empty searches are rejected. Style-plus-color searches can return unrelated colors and duplicate-looking variants, so search ranking is not exact-match proof. Do not promise full enumeration through standard cursors.
+
+Live introspection confirms `LineItemCreateInput` and `LineItemInput` accept `product: IDInput` (with `id`), separately from itemNumber/color, and optional `priceReceiptSignature`. A read-only `lineItemGroupPricing` query also exists with `LineItemGroupPricingInput`; its line pricing input accepts product references. The Product object itself lacks cost fields, but this does not mean the API has no pricing capability. Investigate the pricing query before proposing a write test or claiming a product ID alone reproduces Refresh.
+
 **Why:** Live schema and data probes found current custom Cap America, AS Colour, and Cotton Heritage variants, while historical Charles River lines did not resolve through exact style searches. The API's limited fields and odd search pagination make a naive catalog integration incomplete and potentially misleading.
 
 **How to apply:** Use exact normalized style searches for lookup, keep current Printavo products separate from historical line-item suggestions, and pair custom products with a separate/manual source for cost, sizes, inventory, and images before allowing automatic quote selection.
