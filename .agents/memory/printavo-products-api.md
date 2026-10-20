@@ -16,3 +16,9 @@ Search pagination is non-standard: a brand query requested with `first: 100` ret
 **Why:** Live schema and data probes found current custom Cap America, AS Colour, and Cotton Heritage variants, while historical Charles River lines did not resolve through exact style searches. The API's limited fields and odd search pagination make a naive catalog integration incomplete and potentially misleading.
 
 **How to apply:** Use exact normalized style searches for lookup, keep current Printavo products separate from historical line-item suggestions, and pair custom products with a separate/manual source for cost, sizes, inventory, and images before allowing automatic quote selection.
+
+The user reports that both Price Calculator and AI Quote Drafts pushes display the correct style, but changing size quantities and using Printavo Refresh produces a $0 garment cost while matrix imprint charges still populate.
+
+**Why:** An initially correct selling price is not proof that the line supports Printavo's later product-cost recalculation.
+
+**How to apply:** Investigate Printavo catalog identity and refreshable cost data together. Verify the live API write contract and compare with a manually catalog-selected line before promising that attaching a product ID alone fixes Refresh. No live record repair or change to pricing policy was authorized by this report.
