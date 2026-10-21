@@ -63,6 +63,18 @@ Admin alerts must distinguish waiting for round two from final exhaustion.
 Alert delivery is a separate, read-only observer of durable print audit records.
 It must never trigger recovery, resends, or upstream status changes.
 
+PrintNode acceptance is not delivery confirmation. The user reports rare jobs
+accepted by PrintNode that subsequently error without printing.
+
+**Why:** PrintNode's documented stable states include new, sent_to_client, done,
+error, and expired. Even done means delivery to the operating-system print queue,
+not proof of physical paper output.
+
+**How to apply:** Future downstream monitoring can use print-job state webhooks
+and GET /printjobs/{jobId}/states. Keep acceptance and downstream outcome separate;
+alerts for downstream errors or overdue confirmation must not automatically resend.
+This monitoring is a recommendation, not yet an approved implementation.
+
 **Why:** Delivery failures must not roll back a printer-acceptance record or
 turn an uncertain print into a second submission. Imported history should not
 create a flood of alerts when the channel first starts.
