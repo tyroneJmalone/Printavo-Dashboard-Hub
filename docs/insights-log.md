@@ -6,6 +6,36 @@ A curated, dated log of explanations, insights, and decisions from our build cha
 
 ## October 2026
 
+### Oct 21 — PrintNode downstream failure alerts: use native notifications first
+
+**Logged and deferred; no Hub implementation approved.** AutoPrint has been working well, but the user reports roughly one affected workorder per week where Hub successfully submits to PrintNode, PrintNode subsequently errors, and no paperwork prints. Hub shows success, so staff discover the missing paperwork later and spend time investigating.
+
+**Current user direction:** The user has attempted to set up a notification within PrintNode to avoid building a duplicate alert system in Hub. That setup's delivery, coverage, and usefulness have not been verified. Do not describe it as confirmed working.
+
+**What the investigation established:** Hub currently treats receipt of a PrintNode job ID as successful submission and records the job as printed; it does not follow subsequent PrintNode outcomes. PrintNode documents job-state webhooks and read-only status history through `GET /printjobs/{jobId}/states` (also supports sets of jobs). State records include the job ID, state, timestamp, and an additional message when available. Stable states are:
+
+| State | Meaning |
+| --- | --- |
+| `new` | Registered with PrintNode |
+| `sent_to_client` | Sent to the PrintNode application |
+| `done` | Delivered to the operating system's print queue |
+| `error` | An error occurred while attempting to execute the print |
+| `expired` | Could not deliver to the client before expiry |
+
+**Important boundary:** Neither API acceptance nor `done` proves paper physically printed. PrintNode explicitly defines `done` as transfer to the operating-system queue, outside its control. Later jams or printer failures can therefore remain invisible to this API. PrintNode-reported failures are monitorable; universal physical-output confirmation is not established.
+
+**Recommendation now, not a new build decision:** Try the native PrintNode notification first. At the reported frequency, a second implementation adds maintenance and duplicate-alert noise without necessarily improving detection. Judge the native notification on whether it arrives promptly, identifies the affected workorder/job and printer, and gives enough error context to act. No deliberate failed live print is needed merely to evaluate the approach; the next naturally occurring incident can provide evidence.
+
+**Deferred Hub option discussed:** Receive job-state webhooks for prompt updates, with bounded periodic API checks to reconcile missed updates. Correlate saved job IDs to workorders and destinations. Use existing Hub notifications for `error` and `expired`, including workorder number, printer, job ID, and available error text. Separately warn on overdue confirmation as “Print confirmation delayed,” not proven failure. Distinguish “Sent to PrintNode” from “Delivered to print queue” in history instead of implying that acceptance confirms completion.
+
+**Example alert concept:** “Workorder #… — PrintNode reported an error on [printer]. Job [ID]: [reported error]. Review before reprinting.” This is illustrative, not an actual incident or implemented alert.
+
+**Safety and future choices:** Monitoring must remain separate from submission and recovery. Never automatically reprint or change Printavo status just because a webhook reports trouble or confirmation is late: delayed or partially processed jobs can produce duplicate paperwork. If built later, deduplicate notifications, tolerate repeated/out-of-order events, preserve accepted-job records, and distinguish an unavailable monitoring service from an actual failed print. Email or other delivery channels would require a separate choice; the original Hub proposal used existing in-app alerts.
+
+**When to revisit:** Native notifications fail to arrive, omit useful job/workorder context, are missed by the responsible staff, or the frequency/impact grows enough to justify a centralized Hub history and escalation. A smaller read-only reconciliation check could be considered before a full webhook-plus-polling system. These are options, not approved tasks.
+
+**Sources:** [PrintNode API reference](https://www.printnode.com/en/docs/api/curl) and [PrintNode webhooks](https://www.printnode.com/en/docs/webhooks). This discussion verified documentation and inspected Hub code; it did not verify the user's notification settings or query an actual failed PrintNode job. No app behavior or PrintNode configuration was changed.
+
 ### Oct 6 — Invoice profitability page: full discussion retained
 
 **Deferred; no implementation approved.** The user wants to revisit a job-profitability module showing invoice line revenue against corresponding vendor costs, with garment markup and imprint charges separated. Labor and supplies would come later.

@@ -75,6 +75,17 @@ and GET /printjobs/{jobId}/states. Keep acceptance and downstream outcome separa
 alerts for downstream errors or overdue confirmation must not automatically resend.
 This monitoring is a recommendation, not yet an approved implementation.
 
+Defer Hub downstream monitoring while the user tries PrintNode-native notifications.
+The user reports roughly one affected workorder per week and has attempted native
+notification setup; successful delivery has not been confirmed.
+
+**Why:** The user requested logging rather than building, preferring to avoid
+duplicate monitoring for a rare incident.
+
+**How to apply:** See the October 21, 2026 entry in `docs/insights-log.md` for the
+full discussion. Revisit only if native alerts prove insufficient or the user
+requests Hub monitoring; do not treat the deferred proposal as approved work.
+
 **Why:** Delivery failures must not roll back a printer-acceptance record or
 turn an uncertain print into a second submission. Imported history should not
 create a flood of alerts when the channel first starts.
