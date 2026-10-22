@@ -96,3 +96,4 @@
 - [Report comparison semantics](report-comparison-policy.md) — same filters and date basis, calendar-year offsets, honest zero baselines and current-status evidence.
 - [Sales check-in direction](sales-checkin-direction.md) — approved calendar/follow-ups and client/contact fields; future email must preserve provenance and remain opt-in.
 - [Calculator multi-style direction](calculator-multi-style-direction.md) — shared-artwork garments, single Printavo target, and explicit alternative-style versus mixed-order pricing modes.
+- [Breezy artwork reporting](breezy-artwork-report.md) — proposed invoice-level attachment proxy for artwork methods; absence is not proof of another method.
