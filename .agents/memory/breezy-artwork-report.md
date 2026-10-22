@@ -15,3 +15,16 @@ without `.breezy` as a verified alternative method or missing sync as no attachm
 Clarify invoice-period reporting versus file-upload-period reporting and distinguish
 current attachment presence from historical presence. Validate real filenames and
 sync coverage before asserting live counts or historical accuracy.
+
+The user also wants an invoice-level indicator for a mockup on at least one
+line item, plus the ability to exclude selected statuses.
+
+**Why:** Mockup presence provides additional context for the denominator, but
+is not mutually exclusive with a Breezy attachment. Observed live data showed
+Breezy invoices also having line-item mockups; do not assume exclusive methods.
+
+**How to apply:** Separate both, mockup-only, Breezy-only, and neither-observed
+categories. Apply status exclusions to all denominators and numerators equally,
+using current status rather than claiming historical status. Check extras
+partial-error/truncation flags as well as freshness before confirming absence:
+a snapshot not marked stale can still be incomplete.
