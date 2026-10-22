@@ -7704,6 +7704,90 @@ export const DismissStatusSuggestionResponse = zod.object({
 
 
 /**
+ * @summary Invoice artwork attachment evidence and paginated count drilldowns
+ */
+export const getArtworkReportQueryLimitMax = 100;
+
+export const getArtworkReportQueryOffsetMin = 0;
+
+
+
+export const GetArtworkReportQueryParams = zod.object({
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email'),
+  "metric": zod.enum(['total', 'breezy', 'mockup', 'both', 'mockupOnly', 'breezyOnly', 'neither', 'unknown']).optional(),
+  "month": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().min(1).max(getArtworkReportQueryLimitMax).optional(),
+  "offset": zod.coerce.number().min(getArtworkReportQueryOffsetMin).optional()
+})
+
+export const GetArtworkReportResponse = zod.object({
+  "summary": zod.object({
+  "total": zod.number(),
+  "breezy": zod.number(),
+  "mockup": zod.number(),
+  "both": zod.number(),
+  "mockupOnly": zod.number(),
+  "breezyOnly": zod.number(),
+  "neither": zod.number(),
+  "unknown": zod.number()
+}),
+  "monthly": zod.array(zod.object({
+  "total": zod.number(),
+  "breezy": zod.number(),
+  "mockup": zod.number(),
+  "both": zod.number(),
+  "mockupOnly": zod.number(),
+  "breezyOnly": zod.number(),
+  "neither": zod.number(),
+  "unknown": zod.number()
+}).and(zod.object({
+  "month": zod.string()
+}))),
+  "invoices": zod.array(zod.object({
+  "id": zod.string(),
+  "visualId": zod.number(),
+  "customer": zod.string(),
+  "nickname": zod.string(),
+  "status": zod.string(),
+  "invoiceDate": zod.string().nullable(),
+  "breezy": zod.boolean(),
+  "mockup": zod.boolean(),
+  "complete": zod.boolean(),
+  "category": zod.enum(['both', 'mockupOnly', 'breezyOnly', 'neither', 'unknown']),
+  "filenames": zod.array(zod.string()),
+  "warning": zod.string()
+})),
+  "total": zod.number(),
+  "offset": zod.number(),
+  "limit": zod.number(),
+  "breezyPercent": zod.number().nullable(),
+  "breezyOfMockupsPercent": zod.number().nullable()
+})
+
+
+/**
  * @summary Filtered orders list with summary stats
  */
 export const getOrdersReportQueryLimitMax = 500;

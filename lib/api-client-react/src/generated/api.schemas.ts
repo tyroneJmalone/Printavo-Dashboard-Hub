@@ -5,6 +5,61 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ArtworkCounts {
+  total: number;
+  breezy: number;
+  mockup: number;
+  both: number;
+  mockupOnly: number;
+  breezyOnly: number;
+  neither: number;
+  unknown: number;
+}
+
+export type ArtworkMonth = ArtworkCounts & {
+  month: string;
+};
+
+export type ArtworkInvoiceCategory = typeof ArtworkInvoiceCategory[keyof typeof ArtworkInvoiceCategory];
+
+
+export const ArtworkInvoiceCategory = {
+  both: 'both',
+  mockupOnly: 'mockupOnly',
+  breezyOnly: 'breezyOnly',
+  neither: 'neither',
+  unknown: 'unknown',
+} as const;
+
+export interface ArtworkInvoice {
+  id: string;
+  visualId: number;
+  customer: string;
+  nickname: string;
+  status: string;
+  /** @nullable */
+  invoiceDate: string | null;
+  breezy: boolean;
+  mockup: boolean;
+  complete: boolean;
+  category: ArtworkInvoiceCategory;
+  filenames: string[];
+  warning: string;
+}
+
+export interface ArtworkReport {
+  summary: ArtworkCounts;
+  monthly: ArtworkMonth[];
+  invoices: ArtworkInvoice[];
+  total: number;
+  offset: number;
+  limit: number;
+  /** @nullable */
+  breezyPercent: number | null;
+  /** @nullable */
+  breezyOfMockupsPercent: number | null;
+}
+
 export type SalesEventPrecision = typeof SalesEventPrecision[keyof typeof SalesEventPrecision];
 
 
@@ -10988,6 +11043,87 @@ export type ListStatusSuggestionsScope = typeof ListStatusSuggestionsScope[keyof
 export const ListStatusSuggestionsScope = {
   open: 'open',
   all: 'all',
+} as const;
+
+export type GetArtworkReportParams = {
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
+metric?: GetArtworkReportMetric;
+month?: string;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * @minimum 0
+ */
+offset?: number;
+};
+
+export type GetArtworkReportMetric = typeof GetArtworkReportMetric[keyof typeof GetArtworkReportMetric];
+
+
+export const GetArtworkReportMetric = {
+  total: 'total',
+  breezy: 'breezy',
+  mockup: 'mockup',
+  both: 'both',
+  mockupOnly: 'mockupOnly',
+  breezyOnly: 'breezyOnly',
+  neither: 'neither',
+  unknown: 'unknown',
 } as const;
 
 export type GetOrdersReportParams = {

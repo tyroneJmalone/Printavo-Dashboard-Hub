@@ -46,6 +46,7 @@ import type {
   ArtworkBookmark,
   ArtworkBookmarkRequest,
   ArtworkBookmarkUpdate,
+  ArtworkReport,
   AskInsightsRequest,
   AskInsightsResponse,
   AssignCustomerCategory200,
@@ -192,6 +193,7 @@ import type {
   ExternalVendorImportResult,
   ExternalVendorOrder,
   FinderOrder,
+  GetArtworkReportParams,
   GetBrandBreakdownParams,
   GetCategoryBreakdownParams,
   GetChipplyCategoryInvoiceParams,
@@ -12739,6 +12741,90 @@ export const useDismissStatusSuggestion = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getDismissStatusSuggestionMutationOptions(options));
     }
+
+export const getGetArtworkReportUrl = (params?: GetArtworkReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/artwork?${stringifiedParams}` : `/api/reports/artwork`
+}
+
+/**
+ * @summary Invoice artwork attachment evidence and paginated count drilldowns
+ */
+export const getArtworkReport = async (params?: GetArtworkReportParams, options?: RequestInit): Promise<ArtworkReport> => {
+
+  return customFetch<ArtworkReport>(getGetArtworkReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetArtworkReportQueryKey = (params?: GetArtworkReportParams,) => {
+    return [
+    `/api/reports/artwork`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetArtworkReportQueryOptions = <TData = Awaited<ReturnType<typeof getArtworkReport>>, TError = ErrorType<unknown>>(params?: GetArtworkReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getArtworkReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetArtworkReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getArtworkReport>>> = ({ signal }) => getArtworkReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getArtworkReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetArtworkReportQueryResult = NonNullable<Awaited<ReturnType<typeof getArtworkReport>>>
+export type GetArtworkReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Invoice artwork attachment evidence and paginated count drilldowns
+ */
+
+export function useGetArtworkReport<TData = Awaited<ReturnType<typeof getArtworkReport>>, TError = ErrorType<unknown>>(
+ params?: GetArtworkReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getArtworkReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetArtworkReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetOrdersReportUrl = (params?: GetOrdersReportParams,) => {
   const normalizedParams = new URLSearchParams();

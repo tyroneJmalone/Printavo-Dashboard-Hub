@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { ArtworkReport } from "@/components/ArtworkReport";
 import { FeeReport } from "@/components/FeeReport";
 import { DecorationProductionReport } from "@/components/DecorationProductionReport";
 import { QuantityOrders } from "@/components/QuantityOrders";
@@ -36,7 +37,7 @@ import { reportShare } from "@/lib/report-share";
 import { useEffect, useState } from "react";
 import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays, GitCompare } from "lucide-react";
 
-type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category' | 'decoration';
+type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category' | 'decoration' | 'artwork';
 type ReportMode = "normal" | "activity";
 type ActivityPreset = ReportDatePreset | "custom";
 
@@ -82,6 +83,17 @@ export default function Orders() {
 
 function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printavo" | "chipply") => void }) {
   const [activeTab, setActiveTab] = useState<BreakdownType>('table');
+  const [artworkInitialized, setArtworkInitialized] = useState(false);
+  const selectTab = (tab: BreakdownType) => {
+    if (tab === 'artwork' && !artworkInitialized) {
+      setArtworkInitialized(true);
+      setReportMode("normal");
+      setNormalOrderType("invoice");
+      setDateBasis("invoice");
+      setPage(0);
+    }
+    setActiveTab(tab);
+  };
   const [reportMode, setReportMode] = useState<ReportMode>("normal");
   const [activityPreset, setActivityPreset] = useState<ActivityPreset>("today");
   const defaultActivityRange = activityPresetRange("today");
@@ -607,11 +619,12 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
               { id: 'color', label: 'By Color' },
               { id: 'fees', label: 'By Fees' },
               { id: 'category', label: 'By Category' },
-              { id: 'decoration', label: 'Decoration Production' }
+              { id: 'decoration', label: 'Decoration Production' },
+              { id: 'artwork', label: 'Artwork & Proofing' }
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as BreakdownType)}
+                onClick={() => selectTab(tab.id as BreakdownType)}
                 className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab.id 
                     ? 'border-[#10b981] text-[#10b981]' 
@@ -753,7 +766,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             <div className="h-full">
               {activeTab === 'quantity' && <p className="mb-3 text-sm text-slate-400">Click a range or order count to see matching orders. Ranges use total order quantity and include both endpoints. Orders with zero quantity are excluded.</p>}
               {activeTab === 'category' && <p className="mb-3 text-sm text-slate-400">Line-item categories: revenue is price × quantity, excluding invoice fees and taxes. Orders count once per category and may appear in more than one. Missing categories appear as Uncategorized.</p>}
-              {!comparingBreakdown && <p className="mb-3 text-xs text-slate-400">
+              {!comparingBreakdown && activeTab !== 'artwork' && <p className="mb-3 text-xs text-slate-400">
                 Percentages use the full filtered report totals. Orders may appear in multiple groups,
                 so their percentages may add up to more than 100%. Quantity uses each row’s existing allocation.
               </p>}
@@ -763,7 +776,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                   <p className="text-xs text-slate-400" data-testid="text-summary-only-note">Last-year comparison for {activeTab === 'fees' ? 'fees' : 'decoration production'} is summary-only. This breakdown has no prior-year version, so the report below shows the current period only.</p>
                 </div>
               )}
-              {comparingBreakdown ? (comparison ? <BreakdownComparison tab={activeTab as ComparableTab} currentParams={params} previousParams={comparison.previousParams} currentRange={comparison.current} previousRange={comparison.previous} /> : <div className="rounded-xl border border-dashed border-amber-800/60 p-10 text-center text-sm text-amber-300">Choose a complete, valid date range to compare. {comparisonError}</div>) : activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : activeTab === 'decoration' ? <DecorationProductionReport params={params} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
+              {comparingBreakdown ? (comparison ? <BreakdownComparison tab={activeTab as ComparableTab} currentParams={params} previousParams={comparison.previousParams} currentRange={comparison.current} previousRange={comparison.previous} /> : <div className="rounded-xl border border-dashed border-amber-800/60 p-10 text-center text-sm text-amber-300">Choose a complete, valid date range to compare. {comparisonError}</div>) : activeTab === 'category' && categoryQuery.isError ? <p role="alert" className="p-6 text-red-300">Unable to load categories. <button className="underline" onClick={() => categoryQuery.refetch()}>Retry</button></p> : activeTab === 'fees' ? <FeeReport params={params} /> : activeTab === 'decoration' ? <DecorationProductionReport params={params} /> : activeTab === 'artwork' ? <ArtworkReport params={params} dateBasis={dateBasis} /> : isLoadingBreakdown || (activeTab === 'category' && categoryQuery.isLoading) ? (
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="animate-spin text-[#10b981]" size={32} />
                 </div>

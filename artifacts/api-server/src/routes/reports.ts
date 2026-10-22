@@ -7,6 +7,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { parseReportFilters, filtersEcho } from "../lib/reports/filters";
 import { loadReportOrders, type ReportOrder } from "../lib/reports/dataset";
 import { feeRows } from "../lib/reports/fees";
+import { artworkMetrics, buildArtworkReport, type ArtworkMetric } from "../lib/reports/artwork";
 import { parseChipplyReportFilters, chipplyReportCsv } from "../lib/reports/chipplyData";
 import { loadChipplyReport } from "../lib/reports/chipplyLoader";
 import {
@@ -38,6 +39,31 @@ import {
  */
 
 const router: IRouter = Router();
+
+router.get("/reports/artwork", (req, res) => {
+  (async () => {
+    const { filters, errors } = parseReportFilters(req.query as Record<string, unknown>);
+    const metric = req.query.metric === undefined ? "total" : String(req.query.metric);
+    const month = req.query.month === undefined ? undefined : String(req.query.month);
+    const limit = req.query.limit === undefined ? 50 : Number(req.query.limit);
+    const offset = req.query.offset === undefined ? 0 : Number(req.query.offset);
+    if (!artworkMetrics.includes(metric as ArtworkMetric)) errors.push("Invalid artwork metric");
+    if (month && !/^(?:\d{4}-(?:0[1-9]|1[0-2])|undated)$/.test(month)) errors.push("Invalid month");
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) errors.push("Invalid pagination");
+    if (errors.length) { res.status(400).json({ errors }); return; }
+    // This is an artwork adoption report, not revenue: Merch shell invoices
+    // must not silently disappear from the denominator.
+    const orders = await loadReportOrders({ ...filters, orderType: "invoice" }, { includeMerch: true, classifyMerch: false });
+    const sources = orders.length ? await db.execute(sql`
+      SELECT printavo_id, jsonb_build_object(
+        'productionFiles', extras->'productionFiles', 'lineItems', extras->'lineItems',
+        'truncated', extras->'truncated', 'partialErrors', extras->'partialErrors'
+      ) AS extras, extras_synced_at, extras_stale FROM pv_orders
+      WHERE printavo_id IN (${sql.join(orders.map(o => sql`${o.id}`), sql`, `)})
+    `) : { rows: [] };
+    res.json(buildArtworkReport(orders, sources.rows as { printavo_id: string }[], metric as ArtworkMetric, month, offset, limit));
+  })().catch(err => { req.log.error({ err }, "Artwork report failed"); res.status(500).json({ error: "Unable to load artwork report" }); });
+});
 
 router.get("/reports/fees", (req, res) => {
   (async () => {

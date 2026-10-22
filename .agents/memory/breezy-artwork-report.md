@@ -5,7 +5,8 @@ description: Production-file extension as an artwork/proofing method indicator
 The user handles artwork and proofing through multiple methods and wants to
 understand their ratio. A `.breezy` production-file attachment on an invoice is
 the only current indicator they identified. They asked about counting invoices
-with such attachments during selected periods; implementation is not approved.
+with such attachments during selected periods. The user approved building the
+report, including clickable stat lines showing the contributing invoices.
 
 **Why:** This is a proposed proxy for workflow adoption, not a confirmed exhaustive
 classification of artwork methods.
@@ -28,3 +29,16 @@ categories. Apply status exclusions to all denominators and numerators equally,
 using current status rather than claiming historical status. Check extras
 partial-error/truncation flags as well as freshness before confirming absence:
 a snapshot not marked stale can still be incomplete.
+
+Include Merch invoices in the artwork report, unlike financial reporting's
+shell-invoice exclusion. Keep it invoice-only and apply the same filters to
+summary counts and drilldowns.
+
+**Why:** This measures attachment adoption across invoices, not revenue; excluding
+Merch solely to prevent revenue double-counting would distort this denominator.
+
+**How to apply:** Explain the difference from financial totals. Exclusive workflow
+categories require complete/current snapshots and partition with Unknown.
+Observed Breezy/mockup counts may overlap Unknown, while the Breezy-among-mockups
+percentage uses only fully checked mockup invoices. Never imply those categories
+prove the actual artwork method.

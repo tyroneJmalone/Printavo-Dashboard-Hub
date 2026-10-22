@@ -3146,6 +3146,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /reports/artwork:
+    get:
+      operationId: getArtworkReport
+      tags: [reports]
+      summary: Invoice artwork attachment evidence and paginated count drilldowns
+      parameters:
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
+        - name: metric
+          in: query
+          schema: { type: string, enum: [total, breezy, mockup, both, mockupOnly, breezyOnly, neither, unknown] }
+        - name: month
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Artwork report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkReport"
   /reports/orders:
     get:
       operationId: getOrdersReport
@@ -8868,6 +8916,60 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    ArtworkCounts:
+      type: object
+      required: [total, breezy, mockup, both, mockupOnly, breezyOnly, neither, unknown]
+      properties:
+        total: { type: integer }
+        breezy: { type: integer }
+        mockup: { type: integer }
+        both: { type: integer }
+        mockupOnly: { type: integer }
+        breezyOnly: { type: integer }
+        neither: { type: integer }
+        unknown: { type: integer }
+    ArtworkMonth:
+      allOf:
+        - $ref: "#/components/schemas/ArtworkCounts"
+        - type: object
+          required: [month]
+          properties:
+            month: { type: string }
+    ArtworkInvoice:
+      type: object
+      required: [id, visualId, customer, nickname, status, invoiceDate, breezy, mockup, complete, category, filenames, warning]
+      properties:
+        id: { type: string }
+        visualId: { type: integer }
+        customer: { type: string }
+        nickname: { type: string }
+        status: { type: string }
+        invoiceDate: { type: [string, "null"] }
+        breezy: { type: boolean }
+        mockup: { type: boolean }
+        complete: { type: boolean }
+        category: { type: string, enum: [both, mockupOnly, breezyOnly, neither, unknown] }
+        filenames: { type: array, items: { type: string } }
+        warning: { type: string }
+    ArtworkReport:
+      type: object
+      required: [summary, monthly, invoices, total, offset, limit, breezyPercent, breezyOfMockupsPercent]
+      properties:
+        summary:
+          $ref: "#/components/schemas/ArtworkCounts"
+        monthly:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtworkMonth"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtworkInvoice"
+        total: { type: integer }
+        offset: { type: integer }
+        limit: { type: integer }
+        breezyPercent: { type: [number, "null"] }
+        breezyOfMockupsPercent: { type: [number, "null"] }
     SalesEvent:
       type: object
       required: [title, startDate, endDate, precision, recurrence, leadDays, nicheIds, customerIds, owner, notes, merchandise]

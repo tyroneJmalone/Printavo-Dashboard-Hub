@@ -333,7 +333,7 @@ function passesItemFilters(order: ReportOrder, f: ReportFilters): boolean {
 
 export async function loadReportOrders(
   f: ReportFilters,
-  options: { includeMerch?: boolean; orderIds?: string[] } = {},
+  options: { includeMerch?: boolean; classifyMerch?: boolean; orderIds?: string[] } = {},
 ): Promise<ReportOrder[]> {
   if (options.orderIds?.length === 0) return [];
   const activity = activityFragments(f);
@@ -347,7 +347,7 @@ export async function loadReportOrders(
   const orderRes = await db.execute(sql`
     ${activity.cte}
     SELECT printavo_id, visual_id, order_type, status_name, nickname,
-           ${options.includeMerch ? productionMerchSql : sql`false`} AS production_merch,
+           ${options.includeMerch && options.classifyMerch !== false ? productionMerchSql : sql`false`} AS production_merch,
            customer_company, contact_name, total, detail_sync_state,
            owner_email, printavo_created_at, invoice_at, production_due_at,
            customer_due_at,
