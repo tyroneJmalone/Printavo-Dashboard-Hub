@@ -30,6 +30,16 @@ using current status rather than claiming historical status. Check extras
 partial-error/truncation flags as well as freshness before confirming absence:
 a snapshot not marked stale can still be incomplete.
 
+Make multi-status exclusion easy in Artwork & Proofing, including selecting
+MERCH statuses as a group.
+
+**Why:** The user specifically requested excluding multiple statuses, with MERCH
+as their example, rather than relying on a separate generic filter-inversion step.
+
+**How to apply:** Keep exclusions explicit and editable. A MERCH shortcut matches
+live status names, not invoice nicknames, and must not silently invert existing
+Include-only selections into unrelated exclusions.
+
 Include Merch invoices in the artwork report, unlike financial reporting's
 shell-invoice exclusion. Keep it invoice-only and apply the same filters to
 summary counts and drilldowns.

@@ -9,6 +9,7 @@ import { SummaryComparison, BreakdownComparison, rangeLabel, type ComparableTab 
 import { previousYearRange, previousYearFilters, type ComparisonRange } from "@/lib/report-comparison";
 import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
+import { ArtworkStatusFilter } from "@/components/ArtworkStatusFilter";
 import { ActivityOrderDetailPanel } from "@/components/ActivityOrderDetailPanel";
 import { 
   useGetOrdersReport, 
@@ -85,6 +86,10 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
   const [activeTab, setActiveTab] = useState<BreakdownType>('table');
   const [artworkInitialized, setArtworkInitialized] = useState(false);
   const selectTab = (tab: BreakdownType) => {
+    if (tab === 'artwork') {
+      setShowFilters(true);
+      if (!statuses.length) setExclude(prev => [...new Set([...prev, "statuses"])]);
+    }
     if (tab === 'artwork' && !artworkInitialized) {
       setArtworkInitialized(true);
       setReportMode("normal");
@@ -468,8 +473,13 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-4">
-                <div className="space-y-1">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {activeTab === 'artwork' ? <ArtworkStatusFilter options={filterOpts?.statuses ?? []} selected={statuses}
+                  excluding={exclude.includes("statuses")} onChange={(next, excluding) => {
+                    setStatuses(next);
+                    setExclude(prev => excluding ? [...new Set([...prev, "statuses"])] : prev.filter(v => v !== "statuses"));
+                    setPage(0);
+                  }} /> : <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Statuses</label>
                   <select value="" onChange={e => { if (e.target.value) { toggleFilter(setStatuses, e.target.value); setPage(0); } }} className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5">
                     <option value="">Add status...</option>
@@ -478,7 +488,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                   <div className="flex flex-wrap gap-1 mt-1">
                     {statuses.map(s => <span key={s} className="text-[9px] bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30 px-1.5 py-0.5 rounded flex items-center gap-1">{s} <X size={8} className="cursor-pointer" onClick={() => { toggleFilter(setStatuses, s); setPage(0); }}/></span>)}
                   </div>
-                </div>
+                </div>}
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Brands</label>
                   <select value="" onChange={e => { if (e.target.value) { toggleFilter(setBrands, e.target.value); setPage(0); } }} className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5">
