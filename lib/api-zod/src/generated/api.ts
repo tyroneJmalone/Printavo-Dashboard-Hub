@@ -7704,6 +7704,79 @@ export const DismissStatusSuggestionResponse = zod.object({
 
 
 /**
+ * @summary Customer totals across matching orders, with aggregate customer ranges
+ */
+export const getCustomersReportQueryMinCustomerTotalMin = 0;
+
+export const getCustomersReportQueryMaxCustomerTotalMin = 0;
+
+export const getCustomersReportQueryMinCustomerQtyMin = 0;
+
+export const getCustomersReportQueryMaxCustomerQtyMin = 0;
+
+export const getCustomersReportQueryMinCustomerOrdersMin = 0;
+
+export const getCustomersReportQueryMaxCustomerOrdersMin = 0;
+
+
+
+export const GetCustomersReportQueryParams = zod.object({
+  "orderType": zod.enum(['invoice', 'quote', 'all']).optional(),
+  "statuses": zod.coerce.string().optional().describe('||-separated status names'),
+  "brands": zod.coerce.string().optional(),
+  "categories": zod.coerce.string().optional(),
+  "styleNumbers": zod.coerce.string().optional(),
+  "colors": zod.coerce.string().optional(),
+  "createdStart": zod.coerce.string().optional().describe('YYYY-MM-DD, record-created basis (ET)'),
+  "createdEnd": zod.coerce.string().optional(),
+  "invoiceStart": zod.coerce.string().optional().describe('YYYY-MM-DD, invoice-date basis'),
+  "invoiceEnd": zod.coerce.string().optional(),
+  "productionDueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, production-due basis (ET)'),
+  "productionDueEnd": zod.coerce.string().optional(),
+  "dueStart": zod.coerce.string().optional().describe('YYYY-MM-DD, customer-due basis (ET)'),
+  "dueEnd": zod.coerce.string().optional(),
+  "minQty": zod.coerce.number().optional(),
+  "maxQty": zod.coerce.number().optional(),
+  "minTotal": zod.coerce.number().optional(),
+  "maxTotal": zod.coerce.number().optional(),
+  "search": zod.coerce.string().optional(),
+  "exclude": zod.coerce.string().optional().describe('||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)'),
+  "activityOnly": zod.coerce.boolean().optional().describe('Keep only orders with qualifying recorded activity in the selected activity window'),
+  "activityStart": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityEnd": zod.coerce.string().optional().describe('Inclusive shop-local activity date (YYYY-MM-DD)'),
+  "activityOwner": zod.coerce.string().optional().describe('Current invoice\/quote owner email'),
+  "minCustomerTotal": zod.coerce.number().min(getCustomersReportQueryMinCustomerTotalMin).optional(),
+  "maxCustomerTotal": zod.coerce.number().min(getCustomersReportQueryMaxCustomerTotalMin).optional(),
+  "minCustomerQty": zod.coerce.number().min(getCustomersReportQueryMinCustomerQtyMin).optional(),
+  "maxCustomerQty": zod.coerce.number().min(getCustomersReportQueryMaxCustomerQtyMin).optional(),
+  "minCustomerOrders": zod.coerce.number().min(getCustomersReportQueryMinCustomerOrdersMin).optional(),
+  "maxCustomerOrders": zod.coerce.number().min(getCustomersReportQueryMaxCustomerOrdersMin).optional()
+})
+
+export const GetCustomersReportResponse = zod.object({
+  "customers": zod.array(zod.object({
+  "key": zod.string(),
+  "customerId": zod.string().nullable(),
+  "customerName": zod.string(),
+  "orders": zod.number(),
+  "invoices": zod.number(),
+  "quotes": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "avgOrderValue": zod.number(),
+  "categories": zod.array(zod.string()),
+  "firstInvoiceDate": zod.string().nullable(),
+  "lastInvoiceDate": zod.string().nullable()
+})),
+  "customerCount": zod.number(),
+  "orders": zod.number(),
+  "revenue": zod.number(),
+  "quantity": zod.number(),
+  "unlinkedOrders": zod.number()
+})
+
+
+/**
  * @summary Invoice artwork attachment evidence and paginated count drilldowns
  */
 export const getArtworkReportQueryLimitMax = 100;

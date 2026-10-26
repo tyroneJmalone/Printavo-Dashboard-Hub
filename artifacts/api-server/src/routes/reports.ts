@@ -7,6 +7,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { parseReportFilters, filtersEcho } from "../lib/reports/filters";
 import { loadReportOrders, type ReportOrder } from "../lib/reports/dataset";
 import { feeRows } from "../lib/reports/fees";
+import { buildCustomerReport, parseCustomerRanges } from "../lib/reports/customers";
 import { artworkMetrics, buildArtworkReport, type ArtworkMetric } from "../lib/reports/artwork";
 import { parseChipplyReportFilters, chipplyReportCsv } from "../lib/reports/chipplyData";
 import { loadChipplyReport } from "../lib/reports/chipplyLoader";
@@ -39,6 +40,21 @@ import {
  */
 
 const router: IRouter = Router();
+
+router.get("/reports/customers", (req, res) => {
+  (async () => {
+    const query = req.query as Record<string, unknown>;
+    const { filters, errors } = parseReportFilters(query);
+    const customer = parseCustomerRanges(query);
+    errors.push(...customer.errors);
+    if (errors.length) { res.status(400).json({ errors }); return; }
+    const orders = await loadReportOrders(filters);
+    res.json(buildCustomerReport(orders, customer.ranges));
+  })().catch(err => {
+    req.log.error({ err }, "Customer report failed");
+    res.status(500).json({ error: "Unable to load customer report" });
+  });
+});
 
 router.get("/reports/artwork", (req, res) => {
   (async () => {

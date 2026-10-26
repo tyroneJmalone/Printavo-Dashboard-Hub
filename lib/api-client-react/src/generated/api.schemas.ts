@@ -47,6 +47,33 @@ export interface ArtworkInvoice {
   warning: string;
 }
 
+export interface CustomerReportRow {
+  key: string;
+  /** @nullable */
+  customerId: string | null;
+  customerName: string;
+  orders: number;
+  invoices: number;
+  quotes: number;
+  revenue: number;
+  quantity: number;
+  avgOrderValue: number;
+  categories: string[];
+  /** @nullable */
+  firstInvoiceDate: string | null;
+  /** @nullable */
+  lastInvoiceDate: string | null;
+}
+
+export interface CustomerReport {
+  customers: CustomerReportRow[];
+  customerCount: number;
+  orders: number;
+  revenue: number;
+  quantity: number;
+  unlinkedOrders: number;
+}
+
 export interface ArtworkReport {
   summary: ArtworkCounts;
   monthly: ArtworkMonth[];
@@ -11044,6 +11071,87 @@ export const ListStatusSuggestionsScope = {
   open: 'open',
   all: 'all',
 } as const;
+
+export type GetCustomersReportParams = {
+orderType?: OrderTypeParamParameter;
+/**
+ * ||-separated status names
+ */
+statuses?: StatusesParamParameter;
+brands?: BrandsParamParameter;
+categories?: CategoriesParamParameter;
+styleNumbers?: StyleNumbersParamParameter;
+colors?: ColorsParamParameter;
+/**
+ * YYYY-MM-DD, record-created basis (ET)
+ */
+createdStart?: CreatedStartParamParameter;
+createdEnd?: CreatedEndParamParameter;
+/**
+ * YYYY-MM-DD, invoice-date basis
+ */
+invoiceStart?: InvoiceStartParamParameter;
+invoiceEnd?: InvoiceEndParamParameter;
+/**
+ * YYYY-MM-DD, production-due basis (ET)
+ */
+productionDueStart?: ProductionDueStartParamParameter;
+productionDueEnd?: ProductionDueEndParamParameter;
+/**
+ * YYYY-MM-DD, customer-due basis (ET)
+ */
+dueStart?: DueStartParamParameter;
+dueEnd?: DueEndParamParameter;
+minQty?: MinQtyParamParameter;
+maxQty?: MaxQtyParamParameter;
+minTotal?: MinTotalParamParameter;
+maxTotal?: MaxTotalParamParameter;
+search?: SearchParamParameter;
+/**
+ * ||-separated filter keys to invert (statuses, brands, categories, styleNumbers, colors)
+ */
+exclude?: ExcludeParamParameter;
+/**
+ * Keep only orders with qualifying recorded activity in the selected activity window
+ */
+activityOnly?: ActivityOnlyParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityStart?: ActivityStartParamParameter;
+/**
+ * Inclusive shop-local activity date (YYYY-MM-DD)
+ */
+activityEnd?: ActivityEndParamParameter;
+/**
+ * Current invoice/quote owner email
+ */
+activityOwner?: ActivityOwnerParamParameter;
+/**
+ * @minimum 0
+ */
+minCustomerTotal?: number;
+/**
+ * @minimum 0
+ */
+maxCustomerTotal?: number;
+/**
+ * @minimum 0
+ */
+minCustomerQty?: number;
+/**
+ * @minimum 0
+ */
+maxCustomerQty?: number;
+/**
+ * @minimum 0
+ */
+minCustomerOrders?: number;
+/**
+ * @minimum 0
+ */
+maxCustomerOrders?: number;
+};
 
 export type GetArtworkReportParams = {
 /**

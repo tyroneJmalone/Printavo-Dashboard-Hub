@@ -3146,6 +3146,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /reports/customers:
+    get:
+      operationId: getCustomersReport
+      tags: [reports]
+      summary: Customer totals across matching orders, with aggregate customer ranges
+      parameters:
+        - $ref: "#/components/parameters/OrderTypeParam"
+        - $ref: "#/components/parameters/StatusesParam"
+        - $ref: "#/components/parameters/BrandsParam"
+        - $ref: "#/components/parameters/CategoriesParam"
+        - $ref: "#/components/parameters/StyleNumbersParam"
+        - $ref: "#/components/parameters/ColorsParam"
+        - $ref: "#/components/parameters/CreatedStartParam"
+        - $ref: "#/components/parameters/CreatedEndParam"
+        - $ref: "#/components/parameters/InvoiceStartParam"
+        - $ref: "#/components/parameters/InvoiceEndParam"
+        - $ref: "#/components/parameters/ProductionDueStartParam"
+        - $ref: "#/components/parameters/ProductionDueEndParam"
+        - $ref: "#/components/parameters/DueStartParam"
+        - $ref: "#/components/parameters/DueEndParam"
+        - $ref: "#/components/parameters/MinQtyParam"
+        - $ref: "#/components/parameters/MaxQtyParam"
+        - $ref: "#/components/parameters/MinTotalParam"
+        - $ref: "#/components/parameters/MaxTotalParam"
+        - $ref: "#/components/parameters/SearchParam"
+        - $ref: "#/components/parameters/ExcludeParam"
+        - $ref: "#/components/parameters/ActivityOnlyParam"
+        - $ref: "#/components/parameters/ActivityStartParam"
+        - $ref: "#/components/parameters/ActivityEndParam"
+        - $ref: "#/components/parameters/ActivityOwnerParam"
+        - { name: minCustomerTotal, in: query, schema: { type: number, minimum: 0 } }
+        - { name: maxCustomerTotal, in: query, schema: { type: number, minimum: 0 } }
+        - { name: minCustomerQty, in: query, schema: { type: number, minimum: 0 } }
+        - { name: maxCustomerQty, in: query, schema: { type: number, minimum: 0 } }
+        - { name: minCustomerOrders, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: maxCustomerOrders, in: query, schema: { type: integer, minimum: 0 } }
+      responses:
+        "200":
+          description: All matching customer rows without pagination
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerReport"
+        "400":
+          description: Invalid report filters
   /reports/artwork:
     get:
       operationId: getArtworkReport
@@ -8951,6 +8996,34 @@ components:
         category: { type: string, enum: [both, mockupOnly, breezyOnly, neither, unknown] }
         filenames: { type: array, items: { type: string } }
         warning: { type: string }
+    CustomerReportRow:
+      type: object
+      required: [key, customerId, customerName, orders, invoices, quotes, revenue, quantity, avgOrderValue, categories, firstInvoiceDate, lastInvoiceDate]
+      properties:
+        key: { type: string }
+        customerId: { type: ["string", "null"] }
+        customerName: { type: string }
+        orders: { type: integer }
+        invoices: { type: integer }
+        quotes: { type: integer }
+        revenue: { type: number }
+        quantity: { type: number }
+        avgOrderValue: { type: number }
+        categories: { type: array, items: { type: string } }
+        firstInvoiceDate: { type: ["string", "null"] }
+        lastInvoiceDate: { type: ["string", "null"] }
+    CustomerReport:
+      type: object
+      required: [customers, customerCount, orders, revenue, quantity, unlinkedOrders]
+      properties:
+        customers:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerReportRow" }
+        customerCount: { type: integer }
+        orders: { type: integer }
+        revenue: { type: number }
+        quantity: { type: number }
+        unlinkedOrders: { type: integer }
     ArtworkReport:
       type: object
       required: [summary, monthly, invoices, total, offset, limit, breezyPercent, breezyOfMockupsPercent]

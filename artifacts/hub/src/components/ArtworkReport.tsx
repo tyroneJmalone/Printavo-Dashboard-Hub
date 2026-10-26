@@ -98,10 +98,10 @@ export function ArtworkReport({ params, dateBasis }: { params: GetOrdersReportPa
       ) : (<>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {METRICS.map(m => (
-            <button key={m.key} type="button" onClick={() => pick(m.key)} aria-pressed={isSel(m.key)} title={m.hint} data-testid={`stat-artwork-${m.key}`}
+            <button data-report-summary key={m.key} type="button" onClick={() => pick(m.key)} aria-pressed={isSel(m.key)} title={m.hint} data-testid={`stat-artwork-${m.key}`}
               className={`rounded-lg border p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60 ${isSel(m.key) ? "border-emerald-500 bg-emerald-950/40" : "border-slate-800 bg-slate-900 hover:border-slate-600"} ${m.key === "unknown" && s.unknown ? "text-amber-200" : ""}`}>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{m.label}</div>
-              <div className="mt-1 font-mono text-2xl tabular-nums text-white">{formatNumber(s[m.key])}</div>
+              <div data-summary-label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{m.label}</div>
+              <div data-summary-value className="mt-1 font-mono text-2xl tabular-nums text-white">{formatNumber(s[m.key])}</div>
               <div className="mt-0.5 text-[11px] leading-tight text-slate-500">{m.hint}</div>
             </button>
           ))}

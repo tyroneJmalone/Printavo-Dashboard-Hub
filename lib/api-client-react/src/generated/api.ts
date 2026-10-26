@@ -149,6 +149,7 @@ import type {
   CustomerCreditStat,
   CustomerInput,
   CustomerProfileResponse,
+  CustomerReport,
   CustomerUpdate,
   DashboardSummary,
   DecorationMatricesResponse,
@@ -207,6 +208,7 @@ import type {
   GetCustomerArtworkTemporaryLink200One,
   GetCustomerArtworkTemporaryLinkParams,
   GetCustomerProfileParams,
+  GetCustomersReportParams,
   GetDashboardDetailsParams,
   GetDashboardSummaryParams,
   GetDecorationProductionParams,
@@ -12741,6 +12743,90 @@ export const useDismissStatusSuggestion = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getDismissStatusSuggestionMutationOptions(options));
     }
+
+export const getGetCustomersReportUrl = (params?: GetCustomersReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/customers?${stringifiedParams}` : `/api/reports/customers`
+}
+
+/**
+ * @summary Customer totals across matching orders, with aggregate customer ranges
+ */
+export const getCustomersReport = async (params?: GetCustomersReportParams, options?: RequestInit): Promise<CustomerReport> => {
+
+  return customFetch<CustomerReport>(getGetCustomersReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomersReportQueryKey = (params?: GetCustomersReportParams,) => {
+    return [
+    `/api/reports/customers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCustomersReportQueryOptions = <TData = Awaited<ReturnType<typeof getCustomersReport>>, TError = ErrorType<void>>(params?: GetCustomersReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomersReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomersReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomersReport>>> = ({ signal }) => getCustomersReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomersReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCustomersReportQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomersReport>>>
+export type GetCustomersReportQueryError = ErrorType<void>
+
+
+/**
+ * @summary Customer totals across matching orders, with aggregate customer ranges
+ */
+
+export function useGetCustomersReport<TData = Awaited<ReturnType<typeof getCustomersReport>>, TError = ErrorType<void>>(
+ params?: GetCustomersReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCustomersReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCustomersReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetArtworkReportUrl = (params?: GetArtworkReportParams,) => {
   const normalizedParams = new URLSearchParams();

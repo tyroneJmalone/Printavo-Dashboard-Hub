@@ -171,3 +171,24 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* Report print isolation */
+@media screen { #report-print-root { display: none; } }
+@media print {
+  @page { margin: 12mm; }
+  body.report-printing { background: #fff !important; }
+  body.report-printing > *:not(#report-print-root) { display: none !important; }
+  #report-print-root, #report-print-root * { overflow: visible !important; max-height: none !important; height: auto !important; background: transparent !important; color: #111 !important; border-color: #bbb !important; box-shadow: none !important; }
+  #report-print-root { font-size: 10pt; }
+  #report-print-root table { width: 100% !important; min-width: 0 !important; white-space: normal !important; font-size: 8.5pt; border-collapse: collapse; }
+  #report-print-root th, #report-print-root td { padding: 3px 5px !important; border-bottom: 1px solid #ccc !important; }
+  #report-print-root th, #report-print-root td, #report-print-root .truncate, #report-print-root .whitespace-nowrap { white-space: normal !important; max-width: none !important; text-overflow: clip !important; overflow-wrap: anywhere; }
+  #report-print-root tr { break-inside: avoid; }
+  #report-print-root .grid { display: flex !important; flex-wrap: wrap; gap: 6px; }
+  #report-print-root .grid > * { flex: 1 1 140px; }
+  #report-print-root .print\:hidden, #report-print-root [data-print-exclude] { display: none !important; }
+  #report-print-root .animate-spin, #report-print-root svg { display: none !important; }
+  .report-print-header { margin-bottom: 10px; border-bottom: 2px solid #111; padding-bottom: 6px; }
+  .report-print-header h1 { font-size: 15pt; font-weight: 700; }
+  .report-print-header p { font-size: 9pt; }
+}

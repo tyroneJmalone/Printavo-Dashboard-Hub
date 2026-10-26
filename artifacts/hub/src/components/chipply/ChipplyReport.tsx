@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ReportOutputControls } from "@/components/ReportOutput";
 import { ReportDatePresets } from "@/components/ReportDatePresets";
 import { useQuery } from "@tanstack/react-query";
 import { previousYearRange, comparisonChange } from "@/lib/report-comparison";
@@ -68,9 +69,12 @@ export function ChipplyReport() {
     finally { setExporting(false); }
   }
   const report = query.data;
-  return <div className="space-y-5 p-6 text-slate-100 overflow-auto">
-    <header><h1 className="text-xl font-bold">Chipply report</h1><p className="mt-1 text-sm text-slate-400">Original Chipply item revenue • Current reconciled Printavo decoration and status • Never combined with Printavo dollars</p></header>
-    <form className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5" onSubmit={e => { e.preventDefault(); setFilters({ ...draft }); setPage(0); }}>
+  const printRef = useRef<HTMLDivElement>(null);
+  const printFilters = Object.entries(filters).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).concat(compare && priorRange ? [`Compared with ${priorRange.start} – ${priorRange.end}`] : []);
+  const lineCount = report?.lines.length ?? 0;
+  return <div ref={printRef} className="space-y-5 p-6 text-slate-100 overflow-auto">
+    <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-xl font-bold">Chipply report</h1><p className="mt-1 text-sm text-slate-400">Original Chipply item revenue • Current reconciled Printavo decoration and status • Never combined with Printavo dollars</p></div><ReportOutputControls printOnly targetRef={printRef} title="Chipply report" filters={printFilters} scope={lineCount > 100 ? `summary + lines ${page * 100 + 1}-${Math.min((page + 1) * 100, lineCount)} of ${lineCount} (current page; use Export filtered CSV for all lines)` : "summary + all matching lines"} /></header>
+    <form data-print-exclude className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5" onSubmit={e => { e.preventDefault(); setFilters({ ...draft }); setPage(0); }}>
       {[["store", "Store / event"], ["customer", "Customer"], ["status", "Printavo status"], ["vendor", "Vendor"], ["product", "Product"], ["style", "Style"]].map(([key, label]) =>
         <label key={key} className="text-xs text-slate-400">{label}<input className={inputClass} value={draft[key] ?? ""} onChange={e => change(key, e.target.value)} /></label>)}
       {[["plannedMethod", "Planned decoration", methods], ["actualMethod", "Actual decoration", [...methods, "Unallocated"]], ["methodChanged", "Method changed", ["yes", "no", "unallocated"]], ["outcome", "Match / review status", ["matched", "reviewed", "ambiguous", "quantity-mismatch", "incomplete", "unmatched", "unverified"]]].map(([key, label, options]) =>

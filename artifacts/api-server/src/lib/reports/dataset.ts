@@ -50,6 +50,7 @@ export interface ReportOrder {
   statusName: string | null;
   nickname: string | null;
   customerName: string | null;
+  customerId?: string | null;
   total: number;
   qty: number;
   createdAt: string | null;
@@ -257,6 +258,7 @@ function activityFragments(f: ReportFilters): {
 }
 
 interface OrderRow {
+  customer_id: string | null;
   detail_sync_state: string | null;
   printavo_id: string;
   visual_id: number;
@@ -348,7 +350,7 @@ export async function loadReportOrders(
     ${activity.cte}
     SELECT printavo_id, visual_id, order_type, status_name, nickname,
            ${options.includeMerch && options.classifyMerch !== false ? productionMerchSql : sql`false`} AS production_merch,
-           customer_company, contact_name, total, detail_sync_state,
+           customer_id, customer_company, contact_name, total, detail_sync_state,
            owner_email, printavo_created_at, invoice_at, production_due_at,
            customer_due_at,
            ${activity.select}
@@ -427,6 +429,7 @@ export async function loadReportOrders(
       statusName: r.status_name,
       nickname: r.nickname,
       customerName: r.customer_company?.trim() || r.contact_name?.trim() || null,
+      customerId: r.customer_id,
       total: r.total === null ? 0 : Number(r.total),
       qty,
       createdAt: r.printavo_created_at

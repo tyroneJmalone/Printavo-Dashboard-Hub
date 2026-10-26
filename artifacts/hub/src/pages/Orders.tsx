@@ -11,6 +11,8 @@ import { PrintavoOrderLink } from "@/components/PrintavoOrderLink";
 import { OrderLineItemHistory } from "@/components/OrderLineItemHistory";
 import { ArtworkStatusFilter } from "@/components/ArtworkStatusFilter";
 import { ActivityOrderDetailPanel } from "@/components/ActivityOrderDetailPanel";
+import { ReportOutputControls } from "@/components/ReportOutput";
+import { CustomersReport, CustomerAggregateControls, emptyCustomerAggregate, type CustomerAggregateFilters } from "@/components/CustomersReport";
 import { 
   useGetOrdersReport, 
   useGetReportFilterOptions,
@@ -35,10 +37,10 @@ import {
 } from "@workspace/api-client-react";
 import { formatMoney, formatNumber, formatDate } from "@/lib/format";
 import { reportShare } from "@/lib/report-share";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search, Filter, Loader2, FileText, ChevronLeft, ChevronRight, X, History, Activity, CalendarDays, GitCompare } from "lucide-react";
 
-type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category' | 'decoration' | 'artwork';
+type BreakdownType = 'table' | 'status' | 'pricing' | 'tier' | 'quantity' | 'style' | 'brand' | 'color' | 'fees' | 'category' | 'decoration' | 'artwork' | 'customers';
 type ReportMode = "normal" | "activity";
 type ActivityPreset = ReportDatePreset | "custom";
 
@@ -90,6 +92,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
       setShowFilters(true);
       if (!statuses.length) setExclude(prev => [...new Set([...prev, "statuses"])]);
     }
+    if (tab === 'customers') { setShowFilters(true); setReportMode("normal"); }
     if (tab === 'artwork' && !artworkInitialized) {
       setArtworkInitialized(true);
       setReportMode("normal");
@@ -138,6 +141,9 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
     invoiceAt: string | null;
   } | null>(null);
 
+  const [customerAggregate, setCustomerAggregate] = useState<CustomerAggregateFilters>(emptyCustomerAggregate);
+  const outputRef = useRef<HTMLDivElement>(null);
+  const customersRef = useRef<HTMLDivElement>(null);
   const { data: filterOpts } = useGetReportFilterOptions();
 
   useEffect(() => {
@@ -173,7 +179,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
     activityOwner: reportMode === "activity" && activityOwner ? activityOwner : undefined,
   };
 
-  const [compare, setCompare] = useState(false);
+  const [compareRaw, setCompare] = useState(false);
+  const compare = compareRaw && activeTab !== 'customers';
   let comparison: { current: ComparisonRange; previous: ComparisonRange; previousParams: GetOrdersReportParams } | null = null;
   let comparisonError = "";
   if (compare && reportMode === "normal") {
@@ -247,6 +254,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
     setDateEnd("");
     setDatePreset(null);
     setCompare(false);
+    setCustomerAggregate(emptyCustomerAggregate);
     setMinQty("");
     setMaxQty("");
     setMinTotal("");
@@ -260,6 +268,32 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
   };
 
   const hasActiveFilters = search || (reportMode === "normal" ? normalOrderType !== "invoice" : activityOrderType !== "all") || statuses.length || brands.length || categories.length || colors.length || styleNumbers.length || exclude.length || (reportMode === "normal" && (dateStart || dateEnd)) || minQty || maxQty || minTotal || maxTotal || (reportMode === "activity" && (activityOwner || activityPreset !== "today"));
+
+  const isCustomers = activeTab === 'customers';
+  const currentOrderType = reportMode === "activity" ? activityOrderType : normalOrderType;
+  const basisLabel = { created: "Created", invoice: "Invoice date", productionDue: "Production due", due: "Customer due" }[dateBasis];
+  const filterSummary: string[] = [
+    `Mode: ${reportMode === "activity" ? "Activity" : "Orders"}`,
+    `Order type: ${activeTab === 'artwork' || activeTab === 'fees' ? "invoice" : currentOrderType}`,
+    ...(debouncedSearch ? [`Search: "${debouncedSearch}"`] : []),
+    ...(reportMode === "normal" && (dateStart || dateEnd) ? [`${basisLabel}: ${dateStart || "any"} to ${dateEnd || "any"}`] : []),
+    ...(reportMode === "activity" ? [`Activity observed: ${activityStart || "any"} to ${activityEnd || "any"}`, ...(activityOwner ? [`Owner: ${activityOwner}`] : [])] : []),
+    ...([["Statuses", statuses, "statuses"], ["Brands", brands, "brands"], ["Categories", categories, "categories"], ["Colors", colors, "colors"], ["Style numbers", styleNumbers, "styleNumbers"]] as const)
+      .filter(([, v]) => v.length).map(([l, v, k]) => `${exclude.includes(k) ? "NOT " : ""}${l}: ${v.join(", ")}`),
+    ...(minQty || maxQty ? [`Order qty: ${minQty || "any"}-${maxQty || "any"}`] : []),
+    ...(minTotal || maxTotal ? [`Order total: $${minTotal || "any"}-$${maxTotal || "any"}`] : []),
+    ...(comparison ? [`Compared with ${rangeLabel(comparison.previous)}`] : []),
+  ];
+  const customerFilterSummary = [...filterSummary,
+    ...(customerAggregate.minTotal || customerAggregate.maxTotal ? [`Customer total: $${customerAggregate.minTotal || "any"}-$${customerAggregate.maxTotal || "any"}`] : []),
+    ...(customerAggregate.minQty || customerAggregate.maxQty ? [`Customer qty: ${customerAggregate.minQty || "any"}-${customerAggregate.maxQty || "any"}`] : []),
+    ...(customerAggregate.minOrders || customerAggregate.maxOrders ? [`Customer orders: ${customerAggregate.minOrders || "any"}-${customerAggregate.maxOrders || "any"}`] : []),
+  ];
+  const tabLabels: Record<BreakdownType, string> = { table: reportMode === "activity" ? "Activity Report" : "Orders List", status: "By Status", pricing: "By Pricing Matrix", tier: "By Imprint Tier", quantity: "By QTY", style: "By Style", brand: "By Brand", color: "By Color", fees: "By Fees", category: "By Category", decoration: "Decoration Production", artwork: "Artwork & Proofing", customers: "Customers" };
+  const outputScope = activeTab === 'table'
+    ? (ordersData && ordersData.total > limit ? `current page only: orders ${page * limit + 1}-${Math.min((page + 1) * limit, ordersData.total)} of ${ordersData.total}` : "all matching orders (single page)")
+    : activeTab === 'artwork' || activeTab === 'decoration' || activeTab === 'fees' ? "rendered view only (paged or collapsed sections are not included)"
+    : "full breakdown as rendered";
 
   return (
     <AppShell>
@@ -319,7 +353,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             </div>
           </div>
 
-          {reportMode === "normal" && (
+          {reportMode === "normal" && isCustomers && compareRaw && <p className="mt-4 text-[11px] text-amber-300" data-testid="text-customers-no-compare">Prior-year comparison is not available for the Customers report yet; showing the current range only.</p>}
+          {reportMode === "normal" && !isCustomers && (
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2" data-testid="panel-compare-controls">
               <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-200">
                 <input type="checkbox" role="switch" aria-checked={compare} checked={compare} onChange={e => enableCompare(e.target.checked)} className="h-4 w-4 accent-[#10b981]" data-testid="toggle-compare-last-year" />
@@ -473,6 +508,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                 </div>
               </div>
 
+              {isCustomers && <CustomerAggregateControls value={customerAggregate} onChange={setCustomerAggregate} valueLabel={normalOrderType === "invoice" ? "Revenue" : "Order value"} />}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {activeTab === 'artwork' ? <ArtworkStatusFilter options={filterOpts?.statuses ?? []} selected={statuses}
                   excluding={exclude.includes("statuses")} onChange={(next, excluding) => {
@@ -547,7 +583,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
             </div>
           )}
 
-           {!isLoadingOrders && !isFetchingOrders && ordersData?.stats && (
+           {!isCustomers && !isLoadingOrders && !isFetchingOrders && ordersData?.stats && (
             <div className="grid grid-cols-4 gap-4 mt-6">
               <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
                 <div className="text-xs text-slate-400 font-medium mb-1">Total Orders</div>
@@ -589,7 +625,7 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
                )}
             </div>
           )}
-           {!isLoadingOrders && !isFetchingOrders && reportMode === "activity" && ordersData?.stats && (
+           {!isCustomers && !isLoadingOrders && !isFetchingOrders && reportMode === "activity" && ordersData?.stats && (
              <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/10 p-4">
                <div className="flex items-center justify-between mb-3">
                  <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Changes by category</div>
@@ -630,7 +666,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
               { id: 'fees', label: 'By Fees' },
               { id: 'category', label: 'By Category' },
               { id: 'decoration', label: 'Decoration Production' },
-              { id: 'artwork', label: 'Artwork & Proofing' }
+              { id: 'artwork', label: 'Artwork & Proofing' },
+              { id: 'customers', label: 'Customers' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -648,6 +685,16 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
         </div>
 
         <div className="flex-1 shrink-0 p-6 bg-[#020617]">
+          {isCustomers ? (
+            <CustomersReport params={params} aggregate={customerAggregate} valueLabel={normalOrderType === "invoice" ? "Revenue" : "Order value"} filterSummary={customerFilterSummary} outputRef={customersRef} />
+          ) : <>
+          <div className="mb-4 flex justify-end">
+            <ReportOutputControls targetRef={outputRef} title={`${reportMode === "activity" ? "Activity" : "Orders"} Report — ${tabLabels[activeTab]}${comparison ? " (vs prior year)" : ""}`} filters={filterSummary} scope={outputScope} />
+          </div>
+          <div ref={outputRef}>
+          {activeTab === 'table' && !isFetchingOrders && ordersData?.stats && <div className="hidden print:grid grid-cols-4 gap-2 mb-3" aria-hidden="true">
+            {([["Total orders (all matching)", formatNumber(ordersData.stats.orders)], ["Total revenue (all matching)", formatMoney(ordersData.stats.revenue)], ["Items", formatNumber(ordersData.stats.quantity)], ["Avg order value", formatMoney(ordersData.stats.avgOrderValue)]] as const).map(([l, v]) => <div key={l} data-report-summary className="border p-2"><div data-summary-label className="text-[10px]">{l}</div><div data-summary-value className="font-bold">{v}</div></div>)}
+          </div>}
           {activeTab === 'table' ? (
             <div className="flex flex-col space-y-4">
                 {comparison && <SummaryComparison currentParams={params} previousParams={comparison.previousParams} currentRange={comparison.current} previousRange={comparison.previous} />}
@@ -840,6 +887,8 @@ function PrintavoReports({ onSourceChange }: { onSourceChange: (source: "printav
               ) : null}
             </div>
           )}
+          </div>
+          </>}
         </div>
       </div>
       {quantityRange && <QuantityOrders key={`${quantityRange}:${JSON.stringify(params)}`} range={quantityRange} params={params} onClose={() => setQuantityRange(null)} />}
