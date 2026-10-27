@@ -1061,15 +1061,17 @@ export interface HubDashboardPeriod {
   totalRevenue: number;
   itemsDecorated: number | null;
   netPayments: number;
+  /** Distinct active customer accounts in period with no qualifying order before the fixed 2026-01-01 Eastern cutoff. */
   newCustomers: number;
+  /** Distinct active customer accounts in period with a qualifying order before the fixed 2026-01-01 Eastern cutoff. */
   repeatCustomers: number;
-  /** New customers with a qualifying invoice in the period; invoice takes priority over quote. */
+  /** New-cohort customers with a qualifying invoice in period; invoice takes priority over quote. */
   newCustomerInvoices: number;
-  /** New customers with qualifying quotes but no qualifying invoice in the period. */
+  /** New-cohort customers with qualifying quotes but no qualifying invoice in period. */
   newCustomerQuotes: number;
-  /** New customer records without a qualifying logical order in the period. */
-  newCustomerNoOrders: number;
+  /** Repeat-cohort customers with a qualifying invoice in period; counted once per account. */
   repeatCustomerInvoices: number;
+  /** Repeat-cohort customers with qualifying quotes but no qualifying invoice in period. */
   repeatCustomerQuotes: number;
 }
 
@@ -10590,7 +10592,6 @@ export const GetDashboardDetailsMetric = {
   repeatCustomers: 'repeatCustomers',
   newCustomerInvoices: 'newCustomerInvoices',
   newCustomerQuotes: 'newCustomerQuotes',
-  newCustomerNoOrders: 'newCustomerNoOrders',
   repeatCustomerInvoices: 'repeatCustomerInvoices',
   repeatCustomerQuotes: 'repeatCustomerQuotes',
 } as const;

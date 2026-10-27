@@ -337,7 +337,7 @@ paths:
       operationId: getDashboardDetails
       tags: [Dashboard]
       parameters:
-        - { name: metric, in: query, required: true, schema: { type: string, enum: [totalOrders, totalRevenue, itemsDecorated, netPayments, newCustomers, repeatCustomers, newCustomerInvoices, newCustomerQuotes, newCustomerNoOrders, repeatCustomerInvoices, repeatCustomerQuotes] } }
+        - { name: metric, in: query, required: true, schema: { type: string, enum: [totalOrders, totalRevenue, itemsDecorated, netPayments, newCustomers, repeatCustomers, newCustomerInvoices, newCustomerQuotes, repeatCustomerInvoices, repeatCustomerQuotes] } }
         - { name: period, in: query, required: true, schema: { type: string, enum: [today, yesterday, wtd, lw, mtd, lm, qtd, lq, ytd, ly] } }
         - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
       responses:
@@ -9466,7 +9466,7 @@ components:
             quantity: { type: string }
     HubDashboardPeriod:
       type: object
-      required: [start, end, totalOrders, totalRevenue, itemsDecorated, netPayments, newCustomers, repeatCustomers, newCustomerInvoices, newCustomerQuotes, newCustomerNoOrders, repeatCustomerInvoices, repeatCustomerQuotes]
+      required: [start, end, totalOrders, totalRevenue, itemsDecorated, netPayments, newCustomers, repeatCustomers, newCustomerInvoices, newCustomerQuotes, repeatCustomerInvoices, repeatCustomerQuotes]
       properties:
         start: { type: string, format: date }
         end: { type: string, format: date }
@@ -9474,13 +9474,12 @@ components:
         totalRevenue: { type: number }
         itemsDecorated: { type: integer, nullable: true }
         netPayments: { type: number }
-        newCustomers: { type: integer }
-        repeatCustomers: { type: integer }
-        newCustomerInvoices: { type: integer, description: "New customers with a qualifying invoice in the period; invoice takes priority over quote." }
-        newCustomerQuotes: { type: integer, description: "New customers with qualifying quotes but no qualifying invoice in the period." }
-        newCustomerNoOrders: { type: integer, description: "New customer records without a qualifying logical order in the period." }
-        repeatCustomerInvoices: { type: integer }
-        repeatCustomerQuotes: { type: integer }
+        newCustomers: { type: integer, description: "Distinct active customer accounts in period with no qualifying order before the fixed 2026-01-01 Eastern cutoff." }
+        repeatCustomers: { type: integer, description: "Distinct active customer accounts in period with a qualifying order before the fixed 2026-01-01 Eastern cutoff." }
+        newCustomerInvoices: { type: integer, description: "New-cohort customers with a qualifying invoice in period; invoice takes priority over quote." }
+        newCustomerQuotes: { type: integer, description: "New-cohort customers with qualifying quotes but no qualifying invoice in period." }
+        repeatCustomerInvoices: { type: integer, description: "Repeat-cohort customers with a qualifying invoice in period; counted once per account." }
+        repeatCustomerQuotes: { type: integer, description: "Repeat-cohort customers with qualifying quotes but no qualifying invoice in period." }
     HubDashboardDetails:
       type: object
       required: [metric, period, start, end, value, total, offset, limit, items]

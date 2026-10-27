@@ -31,7 +31,8 @@ test("Eastern calendar starts are Monday, quarter and year; DST does not shift d
 });
 
 test("SQL retains separate populations, complete-detail quantity, status history and shell filters", () => {
-  assert.match(DASHBOARD_SQL, /PARTITION BY customer_id ORDER BY chronology_at, visual_id/);
+  assert.match(DASHBOARD_SQL, /min\(created_day\) < DATE '2026-01-01' AS is_repeat/);
+  assert.match(DASHBOARD_SQL, /GROUP BY r\.key, o\.customer_id, h\.is_repeat/);
   assert.match(DASHBOARD_SQL, /coalesce\(o\.status_name, ''\) !~\* '\(archive\|duplicat\|reference\)'/);
   assert.match(DASHBOARD_SQL, /DISTINCT ON \(customer_id, visual_id\)/);
   assert.match(DASHBOARD_SQL, /detail_sync_state = 'complete'/);
@@ -109,6 +110,8 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     await insertOrder("x3", 106, "returning", "quote", "REFERENCE");
     await insertOrder("shell", 107, "returning", "invoice", "Quote", 999, "123456 Store HEAT:");
     await insertOrder("first", 201, "fresh", "invoice");
+    await insertOrder("returning-history", 99, "returning", "invoice");
+    await client.query("UPDATE pv_orders SET printavo_created_at = '2025-12-31T23:59:59-05:00' WHERE printavo_id = 'returning-history'");
     await client.query(`INSERT INTO pv_customers (printavo_id, company_name, printavo_created_at, data, content_hash)
       VALUES ('fresh', 'Fixture Customer', $1::timestamptz, '{}', 'fixture')`, [instant]);
     await client.query(`INSERT INTO pv_payments
@@ -143,12 +146,11 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     assert.equal(row.periods.today.totalRevenue, 500);
     assert.equal(row.periods.today.netPayments, 130);
     assert.equal(row.periods.today.newCustomers, 1);
-    assert.equal(row.periods.today.repeatCustomers, 2); // q2 and i2, not conversion i1
+    assert.equal(row.periods.today.repeatCustomers, 1); // returning account once, not one per order
     assert.equal(row.periods.today.newCustomerInvoices, 1);
     assert.equal(row.periods.today.newCustomerQuotes, 0);
-    assert.equal(row.periods.today.newCustomerNoOrders, 0);
     assert.equal(row.periods.today.repeatCustomerInvoices, 1);
-    assert.equal(row.periods.today.repeatCustomerQuotes, 1);
+    assert.equal(row.periods.today.repeatCustomerQuotes, 0); // invoice wins over quotes
     assert.equal(row.periods.today.itemsDecorated, 20); // 15+2+3 decorated, no blank goods, no imprint fanout
     assert.equal(row.averages.today.all.quantityKnownOrders, 2); // zero-line order is known; absent detail is not
     assert.equal(row.averages.today.all.averageOrderVolume, 22.5); // (15+2+25+3+0)/2
@@ -178,17 +180,46 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     await insertOrder("new-excluded", 303, "excluded-only", "invoice", "ARCHIVED");
     await insertOrder("fresh-also-quote", 304, "fresh", "quote");
     const splits = (await client.query(DASHBOARD_SQL)).rows[0].periods.today;
-    assert.equal(splits.newCustomers, 4);
+    assert.equal(splits.newCustomers, 2); // fresh + quote-only; account creation alone is irrelevant
     assert.equal(splits.newCustomerInvoices, 1); // invoice wins over fresh's quote
     assert.equal(splits.newCustomerQuotes, 1); // two quotes still one new customer
-    assert.equal(splits.newCustomerNoOrders, 2); // no orders and excluded-only
-    assert.equal(splits.newCustomers, splits.newCustomerInvoices + splits.newCustomerQuotes + splits.newCustomerNoOrders);
+    assert.equal(splits.newCustomers, splits.newCustomerInvoices + splits.newCustomerQuotes);
     assert.equal(splits.repeatCustomers, splits.repeatCustomerInvoices + splits.repeatCustomerQuotes);
-    for (const metric of ["newCustomerInvoices", "newCustomerQuotes", "newCustomerNoOrders", "repeatCustomerInvoices", "repeatCustomerQuotes"] as const) {
+    for (const metric of ["newCustomerInvoices", "newCustomerQuotes", "repeatCustomerInvoices", "repeatCustomerQuotes"] as const) {
       const detail = (await client.query(dashboardDetailsSql(metric), ["today", 50, 0])).rows[0];
       assert.equal(detail.total, splits[metric]);
       assert.equal(detail.value, splits[metric]);
     }
+    // Account age is irrelevant: an old account's first business in 2026 is New.
+    await client.query("UPDATE pv_customers SET printavo_created_at = '2020-01-01T12:00:00Z' WHERE printavo_id = 'quote-only'");
+    // Exactly midnight Eastern on Jan 1 belongs to 2026, even with several later orders.
+    await insertOrder("fresh-year-start", 305, "fresh", "quote");
+    await client.query("UPDATE pv_orders SET printavo_created_at = '2026-01-01T05:00:00Z' WHERE printavo_id = 'fresh-year-start'");
+    await insertOrder("fresh-excluded-history", 306, "fresh", "invoice", "ARCHIVED");
+    await client.query("UPDATE pv_orders SET printavo_created_at = '2025-12-30T12:00:00Z' WHERE printavo_id = 'fresh-excluded-history'");
+    // Prior quote history remains qualifying history, as before, and one second
+    // before the Eastern cutoff is prior-year even though the UTC year is 2026.
+    await insertOrder("quote-history", 307, "quote-only", "quote");
+    await client.query("UPDATE pv_orders SET printavo_created_at = '2026-01-01T04:59:59Z' WHERE printavo_id = 'quote-history'");
+    const boundary = (await client.query(DASHBOARD_SQL)).rows[0];
+    assert.equal(boundary.periods.today.newCustomers, 1);
+    assert.equal(boundary.periods.today.repeatCustomers, 2);
+    assert.equal(boundary.periods.today.repeatCustomerQuotes, 1);
+    assert.equal(boundary.periods.today.repeatCustomerInvoices, 1);
+    assert.equal(boundary.periods.today.newCustomerInvoices, 1);
+    for (const [period, p] of Object.entries(boundary.periods) as [string, any][]) {
+      assert.equal(p.newCustomers, p.newCustomerInvoices + p.newCustomerQuotes);
+      assert.equal(p.repeatCustomers, p.repeatCustomerInvoices + p.repeatCustomerQuotes);
+      for (const metric of ["newCustomers", "repeatCustomers"] as const) {
+        const detail = (await client.query(dashboardDetailsSql(metric), [period, 50, 0])).rows[0];
+        assert.equal(detail.total, p[metric]);
+        assert.equal(new Set(detail.items.map((item: { customerId: string }) => item.customerId)).size, detail.items.length);
+      }
+    }
+    await client.query("DELETE FROM pv_orders WHERE printavo_id = 'quote-history'");
+    const oldAccount = (await client.query(DASHBOARD_SQL)).rows[0].periods.today;
+    assert.equal(oldAccount.newCustomers, 2);
+    assert.equal(oldAccount.repeatCustomers, 1);
     await client.query("ROLLBACK TO SAVEPOINT customer_split_cases");
     await client.query("UPDATE pv_orders SET detail_sync_state = 'incomplete' WHERE printavo_id = 'x2'");
     const incomplete = (await client.query(DASHBOARD_SQL)).rows[0];
@@ -261,7 +292,7 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     assert.equal(unknown.activity.lw.quotesCreated.total, 3);
     assert.equal(unknown.close_rate.today.estimatedDateOrders, 1);
     assert.equal(unknown.close_rate.today.percentage, 100);
-    // Conversion must not move the first customer order after its repeat order.
+    // Conversion must retain original order periods and pre-2026 cohort evidence.
     // All fixtures live in pg_temp, never mutate production or upstream records.
     await client.query("TRUNCATE pg_temp.pv_orders, pg_temp.change_events");
     await add("converted-first", 600, "invoice", "2026-01-01T12:00:00-05:00");
@@ -279,7 +310,10 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
       "(now() AT TIME ZONE 'America/New_York')::date AS today", "'2026-01-01'::date AS today");
     const repeatDetail = (await client.query(repeatDetailSql, ["lw", 50, 0])).rows[0];
     assert.equal(repeatDetail.value, chronology.periods.lw.repeatCustomers);
-    assert.equal(repeatDetail.items[0].orderId, "repeat-quote");
+    assert.equal(repeatDetail.total, 1);
+    assert.equal(repeatDetail.items[0].customerId, "c600");
+    assert.equal(repeatDetail.items[0].kind, "customer");
+    assert.equal(repeatDetail.items[0].orderId, null);
     assert.equal(repeatDetail.items[0].date, "2025-12-26");
     // Recoverable evidence still works if the current invoice lacks createdAt.
     await client.query("UPDATE pg_temp.pv_orders SET printavo_created_at = NULL WHERE printavo_id = 'converted-first'");
@@ -296,7 +330,9 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
       assert.equal(rejected.quote_history_from, null);
       assert.equal(rejected.unknown_quote_dates, 1);
       assert.equal(rejected.missing_quote_dates, 1);
-      assert.equal(rejected.periods.lw.repeatCustomers, 0);
+      assert.equal(rejected.periods.lw.repeatCustomers, 1); // surviving pre-2026 quote still proves history
+      assert.equal(rejected.periods.lw.repeatCustomerQuotes, 1);
+      assert.equal(rejected.periods.lw.repeatCustomerInvoices, 0);
       await client.query("ROLLBACK TO SAVEPOINT evidence_fixture");
     }
     // Close Rate is independently computable without any historical events.

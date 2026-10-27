@@ -3,32 +3,25 @@ name: Dashboard metric definitions
 description: User-approved Repeat Customer semantics and conservative reporting boundaries.
 ---
 
-The dashboard label is **Repeat Customer**, not Reorders. It means qualifying
-quote/invoice orders from a customer with a prior qualifying logical order, not
-distinct returning customers and not proof of a repeated design/job. Ignore
-ARCHIVE, DUPLICATED, and REFERENCE statuses case-insensitively.
+Both **New Customers** and **Repeat Customer** count distinct customer accounts
+with qualifying orders in the selected period. Use a fixed January 1, 2026
+Eastern cutoff: New means no qualifying orders before 2026; Repeat means at
+least one qualifying order before 2026. Account creation date does not classify
+the customer. Multiple orders in 2026 never turn a New-cohort account into Repeat.
 
-**Why:** The user explicitly selected returning-customer orders and required both
-quotes and invoices on September 25, 2026. A quote becoming an invoice must not
-be treated as a second customer order merely because Printavo changes its ID.
+**Why:** The user clarified: “the New Customer stat should be composed of orders
+under a customer account that has no other orders prior to 2026” and “the Repeat
+Customer stat should include clients who have ordered from us prior to 2026,
+clients should only be counted once.” This supersedes the earlier repeat-order
+count and customer-record-creation definitions.
 
-**How to apply:** Keep this definition visible; do not substitute invoice-only
-repeat business or count distinct customers. Treat customer + visual number as
-a conversion-aware identity heuristic, not a guaranteed global identifier.
-Report mirror-history and conversion-date limitations rather than inventing
-original quote dates.
-
-The user requested Invoice/Quote splits on New Customers and Repeat Customer
-to distinguish quoting from purchasing. Preserve the original units: new
-customer records versus repeat logical orders.
-
-**Why:** The two headline rows were intentionally defined differently; treating
-both as distinct customers or treating invoices as paid would misrepresent them.
-
-**How to apply:** New customer cohorts use mutually exclusive invoice-priority,
-quote-only, and no-qualifying-order buckets within each period. Repeat orders
-split by current order type with conversion deduplication. Include clickable
-matching populations, and state that an invoice does not establish payment.
+**How to apply:** Count each account once per period in one cohort. Preserve
+qualifying quote/invoice history and ARCHIVE, DUPLICATED, REFERENCE and Chipply
+shell exclusions. Use mutually exclusive invoice-priority and quotes-only splits
+in both rows; no-order accounts are not active and do not count. Clickable details
+must show unique customers, not one row per order. Keep the cutoff fixed even for
+other reporting years. State that invoices do not establish payment and that
+classification is limited by available synced history and original-date evidence.
 
 Use Eastern calendar periods with Monday-start weeks. The requested
 Orders Report presets follow the same rule: Today/Yesterday are civil dates,
@@ -61,8 +54,8 @@ known-history caveats. Chipply revenue and shell-order behavior remain separate.
 
 Performance-by-period values must let users inspect included invoices and/or
 customers. Details must use the same metric populations as the displayed totals;
-net payments show signed transactions, and Repeat Customer shows qualifying
-orders rather than distinct customers.
+net payments show signed transactions, and both customer rows show distinct
+accounts in the matching fixed-2026 cohort.
 
 **Why:** The user requested visibility into the records behind each statistic.
 
@@ -96,13 +89,12 @@ Preserve original quote-date evidence atomically before removing
 converted quotes, even during quiet seed runs; suppressing notifications must
 not suppress historical evidence.
 
-Use the same retained original quote date for Repeat Customer ordering and
-period allocation as for quote cohorts, while keeping their different status
-exclusions. Changing only the reporting period still leaves the customer's
-first and repeat orders incorrectly ranked after conversion.
+Use the same retained original quote date for customer-cohort classification
+and period allocation as for quote cohorts, while keeping their different status
+exclusions. Conversion must not erase an account's pre-2026 history.
 
-**Why:** Invoice creation can occur after a customer's next quote, reversing
-the apparent chronology even when logical-order deduplication is correct.
+**Why:** Invoice creation can occur after the 2026 boundary even when the original
+quote predates it; using only invoice creation would misclassify that account.
 
 **How to apply:** Preserve explicit estimated fallback labeling for legacy
 invoices; the earliest retained conversion observation describes evidence

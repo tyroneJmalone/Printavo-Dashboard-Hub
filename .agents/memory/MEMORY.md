@@ -83,7 +83,7 @@
 - [PrintScope renderer compatibility](printscope-renderer-compatibility.md) — MuPDF unitless SVG dimensions can silently omit choke masks even when golden verdicts match.
 - [SepScope pilot policy](printscope-pilot-policy.md) — formerly PrintScope; read-only comparisons and limited pilot-copy expiry, with historical identity preserved.
 - [Shipment tracking policy](shipment-tracking-policy.md) — Shippo connection is not paid-tracking consent; known-package delivery does not prove full PO delivery.
-- [Dashboard metric policy](dashboard-metric-policy.md) — Repeat Customer includes qualifying quotes + invoices; preserve distinct time bases, conversion caveats, and decoration overlap.
+- [Dashboard metric policy](dashboard-metric-policy.md) — New/Repeat count distinct active accounts by fixed pre-2026 history; preserve quote/invoice splits and original-date caveats.
 - [Dashboard query performance](dashboard-query-performance.md) — share work within queries before caching; repeated materialized-CTE scans need query changes, not base-table indexes.
 - [PostgreSQL fixture sequences](postgres-fixture-sequences.md) — temp tables copying defaults can advance public sequences despite rollback; give fixtures their own sequences.
 - [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — explicit generic JSX tags can break metadata injection; specialize component aliases outside JSX.

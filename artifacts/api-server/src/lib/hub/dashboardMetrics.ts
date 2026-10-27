@@ -130,12 +130,10 @@ WITH calendar AS (
   SELECT DISTINCT ON (customer_id, visual_id) *
   FROM eligible ORDER BY customer_id, visual_id,
     CASE WHEN order_type = 'invoice' THEN 0 ELSE 1 END, printavo_created_at, printavo_id
-), repeat_orders AS MATERIALIZED (
-  -- Rank history once, not once per period in customer_stats.
-  SELECT l.*, row_number() OVER (
-    PARTITION BY customer_id ORDER BY chronology_at, visual_id, printavo_id
-  ) AS customer_order_number
-  FROM logical_orders l
+), customer_history AS (
+  -- Fixed business cohort, not a rolling first/repeat-order ranking.
+  SELECT customer_id, min(created_day) < DATE '2026-01-01' AS is_repeat
+  FROM logical_orders GROUP BY customer_id
 ), ranges AS (
   SELECT 'today' AS key, today AS start_day, today AS end_day FROM bounds
   UNION ALL SELECT 'yesterday', today - 1, today - 1 FROM bounds
@@ -156,31 +154,25 @@ WITH calendar AS (
     ON i.created_day BETWEEN r.start_day AND r.end_day
   LEFT JOIN order_quantities q ON q.order_id = i.printavo_id AND i.detail_sync_state = 'complete'
   GROUP BY r.key
-), new_customer_cohorts AS (
-  SELECT r.key, c.printavo_id AS customer_id,
-    CASE WHEN bool_or(o.order_type = 'invoice') THEN 'invoice'
-      WHEN bool_or(o.order_type = 'quote') THEN 'quote'
-      ELSE 'none' END AS order_kind
-  FROM ranges r JOIN pv_customers c ON
-    (c.printavo_created_at AT TIME ZONE 'America/New_York')::date BETWEEN r.start_day AND r.end_day
-  LEFT JOIN logical_orders o ON o.customer_id = c.printavo_id
-    AND o.created_day BETWEEN r.start_day AND r.end_day
-  GROUP BY r.key, c.printavo_id
+), customer_cohorts AS MATERIALIZED (
+  SELECT r.key, o.customer_id, h.is_repeat,
+    CASE WHEN bool_or(o.order_type = 'invoice') THEN 'invoice' ELSE 'quote' END AS order_kind,
+    max(o.created_day) AS latest_order_day,
+    bool_or(o.date_estimated) AS date_estimated,
+    (array_agg(o.printavo_id ORDER BY o.chronology_at DESC, o.printavo_id))[1] AS representative_order_id
+  FROM ranges r JOIN logical_orders o ON o.created_day BETWEEN r.start_day AND r.end_day
+  JOIN customer_history h ON h.customer_id = o.customer_id
+  GROUP BY r.key, o.customer_id, h.is_repeat
 ), customer_stats AS (
   SELECT r.key,
-    (SELECT count(*)::int FROM pv_customers c
-      WHERE (c.printavo_created_at AT TIME ZONE 'America/New_York')::date
-        BETWEEN r.start_day AND r.end_day) AS new_customers,
-    (SELECT count(*)::int FROM repeat_orders o
-      WHERE o.customer_order_number > 1 AND o.created_day BETWEEN r.start_day AND r.end_day) AS repeat_customers,
-    (SELECT count(*)::int FROM new_customer_cohorts c WHERE c.key = r.key AND c.order_kind = 'invoice') AS new_customer_invoices,
-    (SELECT count(*)::int FROM new_customer_cohorts c WHERE c.key = r.key AND c.order_kind = 'quote') AS new_customer_quotes,
-    (SELECT count(*)::int FROM new_customer_cohorts c WHERE c.key = r.key AND c.order_kind = 'none') AS new_customer_no_orders,
-    (SELECT count(*)::int FROM repeat_orders o WHERE o.customer_order_number > 1
-      AND o.created_day BETWEEN r.start_day AND r.end_day AND o.order_type = 'invoice') AS repeat_customer_invoices,
-    (SELECT count(*)::int FROM repeat_orders o WHERE o.customer_order_number > 1
-      AND o.created_day BETWEEN r.start_day AND r.end_day AND o.order_type = 'quote') AS repeat_customer_quotes
-  FROM ranges r
+    count(c.customer_id) FILTER (WHERE NOT c.is_repeat)::int AS new_customers,
+    count(c.customer_id) FILTER (WHERE c.is_repeat)::int AS repeat_customers,
+    count(c.customer_id) FILTER (WHERE NOT c.is_repeat AND c.order_kind = 'invoice')::int AS new_customer_invoices,
+    count(c.customer_id) FILTER (WHERE NOT c.is_repeat AND c.order_kind = 'quote')::int AS new_customer_quotes,
+    count(c.customer_id) FILTER (WHERE c.is_repeat AND c.order_kind = 'invoice')::int AS repeat_customer_invoices,
+    count(c.customer_id) FILTER (WHERE c.is_repeat AND c.order_kind = 'quote')::int AS repeat_customer_quotes
+  FROM ranges r LEFT JOIN customer_cohorts c USING (key)
+  GROUP BY r.key
 ), payment_stats AS (
   SELECT r.key, coalesce(sum(p.amount), 0)::float8 AS net_payments
   FROM ranges r LEFT JOIN pv_payments p
@@ -309,7 +301,6 @@ SELECT (SELECT today::text FROM bounds) AS as_of,
     'itemsDecorated', i.items_decorated, 'netPayments', p.net_payments,
     'newCustomers', c.new_customers, 'repeatCustomers', c.repeat_customers,
     'newCustomerInvoices', c.new_customer_invoices, 'newCustomerQuotes', c.new_customer_quotes,
-    'newCustomerNoOrders', c.new_customer_no_orders,
     'repeatCustomerInvoices', c.repeat_customer_invoices, 'repeatCustomerQuotes', c.repeat_customer_quotes
   )) FROM invoice_stats i JOIN customer_stats c USING (key)
     JOIN payment_stats p USING (key) JOIN ranges r USING (key)) AS periods,
@@ -355,15 +346,15 @@ export async function getDashboardMetrics() {
       totalRevenue: "Tax-inclusive Printavo invoice total (not payment receipts); Chipply stores excluded.",
       itemsDecorated: "Sum of complete-detail invoice group line quantities only when the group has a canonical decoration category or an imprint; no multiple-imprint fanout. Null if any invoice in the period lacks complete detail.",
       netPayments: "Signed Printavo payment transaction amounts by transaction_date, excluding transactions linked to Chipply shells (unlike the broader Payments report).",
-      newCustomers: "Printavo customer creation timestamp, not mirror first-seen time.",
-      repeatCustomers: "Number of qualifying quote/invoice logical orders from customers with a prior qualifying logical order across synced history; not distinct customers or reorders. Statuses containing ARCHIVE, DUPLICATED or REFERENCE and Chipply shells excluded. Customer + visual ID is the conversion identity heuristic; a reused visual ID for the same customer could merge unrelated orders. Chronology and periods use retained original quote dates when available; otherwise invoice creation is an estimated fallback that may change the apparent order sequence.",
+      newCustomers: "Distinct customer accounts with qualifying quote/invoice orders in the selected period and no qualifying order before January 1, 2026 (Eastern) in synced history. Account creation date and number of orders do not change the cohort. Count once per period; an invoice takes priority over quotes-only. Excludes ARCHIVE, DUPLICATED, REFERENCE statuses and Chipply shells. Uses original quote dates when retained, otherwise estimated invoice creation dates; missing history can affect classification.",
+      repeatCustomers: "Distinct customer accounts with qualifying quote/invoice orders in the selected period and at least one qualifying order before the fixed January 1, 2026 (Eastern) cutoff. Count each account once regardless of order count. Invoice takes priority over quotes-only within each period; not proof of payment. Same exclusions and original-date/estimated-date rules as New Customers. Synced history may be incomplete.",
       averages: "Invoices created in period; method matched against canonical Purchasing line-item categories. Mixed-method invoices can appear in multiple method selections. Value uses whole tax-inclusive invoice total; volume averages known mirrored line-item quantities per order only. Null means no eligible denominator.",
       quotesCreated: "Total eligible quotes including those now invoiced, using the same population and Eastern cohort date as Close Rate. Retained original quote dates take priority; invoice createdAt is an explicitly estimated fallback. Customer + visual ID deduplicated with invoice priority; unknown customers remain separate.",
       closeRate: "Converted to invoices divided by total eligible quotes including converted quotes, per the business rule that every invoice begins as a quote. Cohort date is surviving quote creation, then versioned original quote history, then current Printavo createdAt as an estimated fallback for invoices. Current status need not be won. Both populations exclude statuses containing Merch, Contract, Dead, Archive or Reference case-insensitively and Chipply shells. Zero denominator yields null; no conversions yields zero. estimatedDateOrders counts invoices allocated by fallback date; coverageComplete means the mirror calculation is available, not complete historical coverage.",
       dealsWon: "First observed status transition from outside won/done into pipeline won/done for each customer + visual ID in the reporting horizon. Activity uses the selected Eastern period; legacy recent uses the last 7 days. Observation time is sync poll time, not the Printavo status-change time.",
     },
     coverage: {
-      orders: "Synced Printavo mirror only; historical seed is limited, so repeat history before the seed is unknown. Repeat chronology and periods use original quote dates from surviving quotes or verified conversion snapshots. Legacy invoice creation dates remain estimated, not recovered quote dates.",
+      orders: "Synced Printavo mirror only; historical seed is limited, so history before the seed is unknown. New/Repeat Customer are distinct account cohorts using the fixed January 1, 2026 Eastern cutoff, not account creation dates or order counts. Qualifying quote and invoice history uses retained original quote dates when available. Legacy invoice creation dates remain estimated and may affect cohort classification.",
       quotesCreated: `Includes all eligible current quotes and invoices (every invoice began as a quote). Original dates use surviving quotes or versioned conversion snapshots; other invoices use stored Printavo createdAt as an estimated period allocation. Earliest retained dated conversion observation: ${row.quote_history_from instanceof Date ? row.quote_history_from.toISOString() : row.quote_history_from ?? "none"}. This is evidence coverage, not a quote creation date or a guarantee of continuous history. ${row.unknown_quote_dates} eligible invoices have unknown original quote dates; ${row.missing_quote_dates} logical orders lack any usable date and are omitted from periods. Historical completeness is unknown.`,
       dealsWon: "Only status changes observed by sync; seed/current states without a recorded transition are excluded.",
       statusHistoryFrom: row.status_history_from instanceof Date

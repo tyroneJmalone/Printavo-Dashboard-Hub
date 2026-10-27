@@ -35,10 +35,10 @@ export function PerformanceDetails({ metric, period, label, note, money, onClose
         {!data.items.length ? <p className="py-6 text-slate-400">No records included in this period.</p> : <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead><tr className="border-b border-slate-700 text-slate-400">
-              <th className="p-2">Invoice / quote</th><th className="p-2">Customer / nickname</th><th className="p-2">Date</th><th className="p-2 text-right">{money ? "Amount" : metric === "itemsDecorated" ? "Pieces" : "Count"}</th>
+              <th className="p-2">{metric.startsWith("newCustomer") || metric.startsWith("repeatCustomer") ? "Record type" : "Invoice / quote"}</th><th className="p-2">Customer / nickname</th><th className="p-2">{metric.startsWith("newCustomer") || metric.startsWith("repeatCustomer") ? "Latest order date" : "Date"}</th><th className="p-2 text-right">{money ? "Amount" : metric === "itemsDecorated" ? "Pieces" : "Count"}</th>
             </tr></thead>
             <tbody>{data.items.map(row => <tr key={row.id} className="border-b border-slate-800 align-top">
-              <td className="p-2 whitespace-nowrap"><PrintavoOrderLink orderId={row.orderId} visualId={row.visualId} className="text-emerald-300" /><div className="text-xs text-slate-400">{row.kind}</div></td>
+              <td className="p-2 whitespace-nowrap">{row.kind !== "customer" && <PrintavoOrderLink orderId={row.orderId} visualId={row.visualId} className="text-emerald-300" />}<div className="text-xs text-slate-400">{row.kind === "customer" ? "Customer account" : row.kind}</div></td>
               <td className="p-2">{row.customerId
                 ? <Link href={`/customers/${encodeURIComponent(row.customerId)}`} className="text-emerald-300 hover:underline">{row.customerName || `Customer ${row.customerId}`}</Link>
                 : row.customerName || "Customer unavailable"}
