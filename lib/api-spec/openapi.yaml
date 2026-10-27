@@ -9474,8 +9474,8 @@ components:
         totalRevenue: { type: number }
         itemsDecorated: { type: integer, nullable: true }
         netPayments: { type: number }
-        newCustomers: { type: integer, description: "Distinct active customer accounts in period with no qualifying order before the fixed 2026-01-01 Eastern cutoff." }
-        repeatCustomers: { type: integer, description: "Distinct active customer accounts in period with a qualifying order before the fixed 2026-01-01 Eastern cutoff." }
+        newCustomers: { type: integer, description: "Distinct active customer accounts in period with no qualifying invoice before the fixed 2026-01-01 Eastern cutoff. Unconverted quotes do not establish Repeat history." }
+        repeatCustomers: { type: integer, description: "Distinct active customer accounts in period with a qualifying invoice before the fixed 2026-01-01 Eastern cutoff. Unconverted quotes do not establish Repeat history." }
         newCustomerInvoices: { type: integer, description: "New-cohort customers with a qualifying invoice in period; invoice takes priority over quote." }
         newCustomerQuotes: { type: integer, description: "New-cohort customers with qualifying quotes but no qualifying invoice in period." }
         repeatCustomerInvoices: { type: integer, description: "Repeat-cohort customers with a qualifying invoice in period; counted once per account." }

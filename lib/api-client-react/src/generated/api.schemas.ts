@@ -1061,9 +1061,9 @@ export interface HubDashboardPeriod {
   totalRevenue: number;
   itemsDecorated: number | null;
   netPayments: number;
-  /** Distinct active customer accounts in period with no qualifying order before the fixed 2026-01-01 Eastern cutoff. */
+  /** Distinct active customer accounts in period with no qualifying invoice before the fixed 2026-01-01 Eastern cutoff. Unconverted quotes do not establish Repeat history. */
   newCustomers: number;
-  /** Distinct active customer accounts in period with a qualifying order before the fixed 2026-01-01 Eastern cutoff. */
+  /** Distinct active customer accounts in period with a qualifying invoice before the fixed 2026-01-01 Eastern cutoff. Unconverted quotes do not establish Repeat history. */
   repeatCustomers: number;
   /** New-cohort customers with a qualifying invoice in period; invoice takes priority over quote. */
   newCustomerInvoices: number;

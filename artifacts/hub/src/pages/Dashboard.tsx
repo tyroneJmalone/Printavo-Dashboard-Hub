@@ -40,8 +40,8 @@ const METRICS: MetricRow[] = [
   { key: "totalRevenue", label: "Total Revenue", money: true, note: "Invoice totals by Printavo creation date (not editable invoice date)" },
   { key: "itemsDecorated", label: "Items Decorated", note: "Recorded pieces on decorated invoice groups, not production completion" },
   { key: "netPayments", label: "Net Payments", money: true, note: "Payment transactions, by transaction date" },
-  { key: "newCustomers", label: "New Customers", note: "Distinct active accounts · no qualifying orders before 2026" },
-  { key: "repeatCustomers", label: "Repeat Customer", note: "Distinct active accounts · qualifying orders before 2026" },
+  { key: "newCustomers", label: "New Customers", note: "Distinct active accounts · no qualifying invoices before 2026" },
+  { key: "repeatCustomers", label: "Repeat Customer", note: "Distinct active accounts · qualifying invoices before 2026" },
 ];
 
 const CUSTOMER_SPLITS: Partial<Record<MetricRow["key"], MetricRow[]>> = {
@@ -50,8 +50,8 @@ const CUSTOMER_SPLITS: Partial<Record<MetricRow["key"], MetricRow[]>> = {
     { key: "newCustomerQuotes", label: "Quotes only", note: "Distinct new customers with qualifying quotes but no qualifying invoice in this period. Current order type." },
   ],
   repeatCustomers: [
-    { key: "repeatCustomerInvoices", label: "Invoices", note: "Distinct customers with qualifying orders before 2026 and an invoice in this period. Invoice takes priority over quotes; not proof of payment." },
-    { key: "repeatCustomerQuotes", label: "Quotes only", note: "Distinct customers with qualifying orders before 2026 and quotes but no invoice in this period." },
+    { key: "repeatCustomerInvoices", label: "Invoices", note: "Distinct customers with qualifying invoices before 2026 and an invoice in this period. Invoice takes priority over quotes; not proof of payment." },
+    { key: "repeatCustomerQuotes", label: "Quotes only", note: "Distinct customers with qualifying invoices before 2026 and quotes but no invoice in this period." },
   ],
 };
 
@@ -191,7 +191,7 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
         ))}
       </div>
       <div className="px-5 py-3 border-t border-slate-800 text-[11px] text-slate-500">
-        <p className="mb-1">Both customer rows count each account once per period with qualifying quote/invoice activity. The cutoff is fixed at January 1, 2026 (Eastern): prior qualifying history means Repeat; otherwise New, regardless of account creation date or multiple orders during 2026. Invoice takes priority over quotes within each period; invoices do not prove payment. Order dates use retained original quote dates where available, otherwise estimated invoice creation dates. Classification is based on synced history, which may be incomplete; archived, duplicated, reference and Chipply-shell orders are excluded.</p>
+        <p className="mb-1">Both customer rows count each account once per period with qualifying quote/invoice activity. The cutoff is fixed at January 1, 2026 (Eastern): only prior qualifying invoices establish Repeat; otherwise New. Prior unconverted quotes, account creation date and multiple orders during 2026 do not establish Repeat. Invoice takes priority over quotes within each period; invoices do not prove payment. Order dates use retained original quote dates where available, otherwise estimated invoice creation dates. Classification is based on synced history, which may be incomplete; archived, duplicated, reference and Chipply-shell orders are excluded.</p>
         A dash means the value is unavailable (not zero). {data.coverage.quantity}
       </div>
       {selection && <PerformanceDetails key={`${selection.metric.key}-${selection.period}`}

@@ -21,8 +21,8 @@ export function dashboardDetailsSql(metric: PerformanceMetric) {
         nullif(o.customer_company, ''), o.contact_name) AS "customerName",
       NULL::text AS nickname, 'customer'::text AS kind, cc.latest_order_day::text AS date,
       1::float8 AS value,
-      (CASE WHEN cc.is_repeat THEN 'Customer with qualifying history before Jan 1, 2026'
-        ELSE 'Customer with no qualifying history before Jan 1, 2026 in synced records' END
+      (CASE WHEN cc.is_repeat THEN 'Customer with a qualifying invoice before Jan 1, 2026'
+        ELSE 'Customer with no qualifying invoice before Jan 1, 2026 in synced records' END
         || CASE WHEN cc.order_kind = 'invoice' THEN '; invoice in period (not proof of payment)'
           ELSE '; quotes only in period' END
         || '; date is latest qualifying order in period'

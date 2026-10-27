@@ -31,7 +31,7 @@ test("Eastern calendar starts are Monday, quarter and year; DST does not shift d
 });
 
 test("SQL retains separate populations, complete-detail quantity, status history and shell filters", () => {
-  assert.match(DASHBOARD_SQL, /min\(created_day\) < DATE '2026-01-01' AS is_repeat/);
+  assert.match(DASHBOARD_SQL, /bool_or\(order_type = 'invoice' AND created_day < DATE '2026-01-01'\) AS is_repeat/);
   assert.match(DASHBOARD_SQL, /GROUP BY r\.key, o\.customer_id, h\.is_repeat/);
   assert.match(DASHBOARD_SQL, /coalesce\(o\.status_name, ''\) !~\* '\(archive\|duplicat\|reference\)'/);
   assert.match(DASHBOARD_SQL, /DISTINCT ON \(customer_id, visual_id\)/);
@@ -193,14 +193,19 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     // Account age is irrelevant: an old account's first business in 2026 is New.
     await client.query("UPDATE pv_customers SET printavo_created_at = '2020-01-01T12:00:00Z' WHERE printavo_id = 'quote-only'");
     // Exactly midnight Eastern on Jan 1 belongs to 2026, even with several later orders.
-    await insertOrder("fresh-year-start", 305, "fresh", "quote");
+    await insertOrder("fresh-year-start", 305, "fresh", "invoice");
     await client.query("UPDATE pv_orders SET printavo_created_at = '2026-01-01T05:00:00Z' WHERE printavo_id = 'fresh-year-start'");
     await insertOrder("fresh-excluded-history", 306, "fresh", "invoice", "ARCHIVED");
     await client.query("UPDATE pv_orders SET printavo_created_at = '2025-12-30T12:00:00Z' WHERE printavo_id = 'fresh-excluded-history'");
-    // Prior quote history remains qualifying history, as before, and one second
-    // before the Eastern cutoff is prior-year even though the UTC year is 2026.
+    // Prior unconverted quotes must NOT classify an account as Repeat.
     await insertOrder("quote-history", 307, "quote-only", "quote");
     await client.query("UPDATE pv_orders SET printavo_created_at = '2026-01-01T04:59:59Z' WHERE printavo_id = 'quote-history'");
+    const quoteHistory = (await client.query(DASHBOARD_SQL)).rows[0].periods.today;
+    assert.equal(quoteHistory.newCustomers, 2);
+    assert.equal(quoteHistory.repeatCustomers, 1);
+    assert.equal(quoteHistory.newCustomerQuotes, 1);
+    // One second before the Eastern cutoff is prior-year despite the UTC year.
+    await client.query("UPDATE pv_orders SET order_type = 'invoice' WHERE printavo_id = 'quote-history'");
     const boundary = (await client.query(DASHBOARD_SQL)).rows[0];
     assert.equal(boundary.periods.today.newCustomers, 1);
     assert.equal(boundary.periods.today.repeatCustomers, 2);
@@ -330,8 +335,10 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
       assert.equal(rejected.quote_history_from, null);
       assert.equal(rejected.unknown_quote_dates, 1);
       assert.equal(rejected.missing_quote_dates, 1);
-      assert.equal(rejected.periods.lw.repeatCustomers, 1); // surviving pre-2026 quote still proves history
-      assert.equal(rejected.periods.lw.repeatCustomerQuotes, 1);
+      assert.equal(rejected.periods.lw.repeatCustomers, 0); // surviving quote alone cannot establish Repeat
+      assert.equal(rejected.periods.lw.newCustomers, 1);
+      assert.equal(rejected.periods.lw.newCustomerQuotes, 1);
+      assert.equal(rejected.periods.lw.repeatCustomerQuotes, 0);
       assert.equal(rejected.periods.lw.repeatCustomerInvoices, 0);
       await client.query("ROLLBACK TO SAVEPOINT evidence_fixture");
     }

@@ -5,18 +5,21 @@ description: User-approved Repeat Customer semantics and conservative reporting 
 
 Both **New Customers** and **Repeat Customer** count distinct customer accounts
 with qualifying orders in the selected period. Use a fixed January 1, 2026
-Eastern cutoff: New means no qualifying orders before 2026; Repeat means at
-least one qualifying order before 2026. Account creation date does not classify
+Eastern cutoff: New means no qualifying invoices before 2026; Repeat means at
+least one qualifying invoice before 2026. Account creation date does not classify
 the customer. Multiple orders in 2026 never turn a New-cohort account into Repeat.
 
 **Why:** The user clarified: “the New Customer stat should be composed of orders
 under a customer account that has no other orders prior to 2026” and “the Repeat
 Customer stat should include clients who have ordered from us prior to 2026,
 clients should only be counted once.” This supersedes the earlier repeat-order
-count and customer-record-creation definitions.
+count and customer-record-creation definitions. The user subsequently specified:
+“Use only pre2026 invoices to determine new vs repeat.” Unconverted quotes
+before the cutoff must not establish Repeat history.
 
 **How to apply:** Count each account once per period in one cohort. Preserve
-qualifying quote/invoice history and ARCHIVE, DUPLICATED, REFERENCE and Chipply
+invoice-only historical classification, quote/invoice activity within each period,
+and ARCHIVE, DUPLICATED, REFERENCE and Chipply
 shell exclusions. Use mutually exclusive invoice-priority and quotes-only splits
 in both rows; no-order accounts are not active and do not count. Clickable details
 must show unique customers, not one row per order. Keep the cutoff fixed even for
