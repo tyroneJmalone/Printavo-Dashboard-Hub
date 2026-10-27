@@ -2,7 +2,7 @@ import { pool } from "@workspace/db";
 import { DASHBOARD_CTES, type DashboardPeriod } from "./dashboardMetrics";
 import { notChipplySql } from "../chipply/matching";
 
-export const PERFORMANCE_METRICS = ["totalOrders", "totalRevenue", "itemsDecorated", "netPayments", "newCustomers", "repeatCustomers"] as const;
+export const PERFORMANCE_METRICS = ["totalOrders", "totalRevenue", "itemsDecorated", "netPayments", "newCustomers", "repeatCustomers", "newCustomerInvoices", "newCustomerQuotes", "newCustomerNoOrders", "repeatCustomerInvoices", "repeatCustomerQuotes"] as const;
 export type PerformanceMetric = typeof PERFORMANCE_METRICS[number];
 
 /** Reuse the exact aggregate populations, including conversion dedup and exclusions. */
@@ -11,13 +11,20 @@ export function dashboardDetailsSql(metric: PerformanceMetric) {
     coalesce(nullif(o.customer_company, ''), o.contact_name) AS "customerName",
     o.nickname, o.order_type AS "kind"`;
   let rows: string;
-  if (metric === "newCustomers") {
+  const isNew = metric === "newCustomers" || metric.startsWith("newCustomer");
+  const isRepeat = metric === "repeatCustomers" || metric.startsWith("repeatCustomer");
+  const cohortKind = metric === "newCustomerInvoices" ? "invoice" : metric === "newCustomerQuotes" ? "quote" : "none";
+  if (isNew) {
     rows = `SELECT c.printavo_id AS id, NULL::text AS "orderId", NULL::int AS "visualId",
       c.printavo_id AS "customerId", coalesce(nullif(c.company_name, ''), c.data->'primaryContact'->>'fullName') AS "customerName", NULL::text AS nickname,
       'customer'::text AS kind, (c.printavo_created_at AT TIME ZONE 'America/New_York')::date::text AS date,
-      1::float8 AS value, NULL::text AS note
+      1::float8 AS value, CASE nc.order_kind WHEN 'invoice' THEN 'Has qualifying invoice in period (not proof of payment)'
+        WHEN 'quote' THEN 'Qualifying quotes only in period'
+        ELSE 'No qualifying order in period' END::text AS note
       FROM pv_customers c JOIN selected_range r ON
-      (c.printavo_created_at AT TIME ZONE 'America/New_York')::date BETWEEN r.start_day AND r.end_day`;
+      (c.printavo_created_at AT TIME ZONE 'America/New_York')::date BETWEEN r.start_day AND r.end_day
+      JOIN new_customer_cohorts nc ON nc.customer_id = c.printavo_id AND nc.key = r.key
+      ${metric === "newCustomers" ? "" : `WHERE nc.order_kind = '${cohortKind}'`}`;
   } else if (metric === "netPayments") {
     rows = `SELECT p.printavo_id AS id, coalesce(p.order_id, o.printavo_id) AS "orderId", p.order_visual_id AS "visualId",
       o.customer_id AS "customerId", coalesce(nullif(o.customer_company, ''), o.contact_name) AS "customerName",
@@ -30,12 +37,13 @@ export function dashboardDetailsSql(metric: PerformanceMetric) {
       WHERE NOT EXISTS (SELECT 1 FROM pv_orders shell
         WHERE (shell.printavo_id = p.order_id OR (p.order_id IS NULL AND shell.visual_id = p.order_visual_id))
         AND NOT ${notChipplySql("shell.nickname")})`;
-  } else if (metric === "repeatCustomers") {
+  } else if (isRepeat) {
     rows = `SELECT o.printavo_id AS id, ${names}, e.created_day::text AS date, 1::float8 AS value,
       CASE WHEN e.date_estimated THEN 'Qualifying repeat order; original quote date unknown, invoice creation used as estimated chronology'
         ELSE 'Qualifying repeat order; original quote creation date' END::text AS note
       FROM repeat_orders e JOIN selected_range r ON e.created_day BETWEEN r.start_day AND r.end_day
-      JOIN pv_orders o ON o.printavo_id = e.printavo_id WHERE e.customer_order_number > 1`;
+      JOIN pv_orders o ON o.printavo_id = e.printavo_id WHERE e.customer_order_number > 1
+      ${metric === "repeatCustomerInvoices" ? "AND e.order_type = 'invoice'" : metric === "repeatCustomerQuotes" ? "AND e.order_type = 'quote'" : ""}`;
   } else {
     const value = metric === "totalOrders" ? "1::float8" : metric === "totalRevenue" ? "i.total::float8"
       : "CASE WHEN i.detail_sync_state = 'complete' THEN coalesce(q.decorated_qty, 0)::float8 ELSE NULL END";
@@ -47,11 +55,14 @@ export function dashboardDetailsSql(metric: PerformanceMetric) {
   const valueSql = {
     totalOrders: "i.total_orders", totalRevenue: "i.total_revenue", itemsDecorated: "i.items_decorated",
     netPayments: "p.net_payments", newCustomers: "c.new_customers", repeatCustomers: "c.repeat_customers",
+    newCustomerInvoices: "c.new_customer_invoices", newCustomerQuotes: "c.new_customer_quotes",
+    newCustomerNoOrders: "c.new_customer_no_orders", repeatCustomerInvoices: "c.repeat_customer_invoices",
+    repeatCustomerQuotes: "c.repeat_customer_quotes",
   }[metric];
   // Only reference the requested statistic. Joining all three forces unrelated
   // payment, decoration and full repeat-history calculations on every drilldown.
   const statsJoin = metric === "netPayments" ? "payment_stats p"
-    : metric === "newCustomers" || metric === "repeatCustomers" ? "customer_stats c"
+    : isNew || isRepeat ? "customer_stats c"
     : "invoice_stats i";
   return `${DASHBOARD_CTES},
     selected_range AS (SELECT * FROM ranges WHERE key = $1),

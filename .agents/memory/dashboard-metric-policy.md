@@ -18,6 +18,18 @@ a conversion-aware identity heuristic, not a guaranteed global identifier.
 Report mirror-history and conversion-date limitations rather than inventing
 original quote dates.
 
+The user requested Invoice/Quote splits on New Customers and Repeat Customer
+to distinguish quoting from purchasing. Preserve the original units: new
+customer records versus repeat logical orders.
+
+**Why:** The two headline rows were intentionally defined differently; treating
+both as distinct customers or treating invoices as paid would misrepresent them.
+
+**How to apply:** New customer cohorts use mutually exclusive invoice-priority,
+quote-only, and no-qualifying-order buckets within each period. Repeat orders
+split by current order type with conversion deduplication. Include clickable
+matching populations, and state that an invoice does not establish payment.
+
 Use Eastern calendar periods with Monday-start weeks. The requested
 Orders Report presets follow the same rule: Today/Yesterday are civil dates,
 LW is the previous Monday–Sunday, LM is the previous calendar month, LQ is

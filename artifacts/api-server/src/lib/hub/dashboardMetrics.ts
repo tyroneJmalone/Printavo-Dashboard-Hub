@@ -156,13 +156,30 @@ WITH calendar AS (
     ON i.created_day BETWEEN r.start_day AND r.end_day
   LEFT JOIN order_quantities q ON q.order_id = i.printavo_id AND i.detail_sync_state = 'complete'
   GROUP BY r.key
+), new_customer_cohorts AS (
+  SELECT r.key, c.printavo_id AS customer_id,
+    CASE WHEN bool_or(o.order_type = 'invoice') THEN 'invoice'
+      WHEN bool_or(o.order_type = 'quote') THEN 'quote'
+      ELSE 'none' END AS order_kind
+  FROM ranges r JOIN pv_customers c ON
+    (c.printavo_created_at AT TIME ZONE 'America/New_York')::date BETWEEN r.start_day AND r.end_day
+  LEFT JOIN logical_orders o ON o.customer_id = c.printavo_id
+    AND o.created_day BETWEEN r.start_day AND r.end_day
+  GROUP BY r.key, c.printavo_id
 ), customer_stats AS (
   SELECT r.key,
     (SELECT count(*)::int FROM pv_customers c
       WHERE (c.printavo_created_at AT TIME ZONE 'America/New_York')::date
         BETWEEN r.start_day AND r.end_day) AS new_customers,
     (SELECT count(*)::int FROM repeat_orders o
-      WHERE o.customer_order_number > 1 AND o.created_day BETWEEN r.start_day AND r.end_day) AS repeat_customers
+      WHERE o.customer_order_number > 1 AND o.created_day BETWEEN r.start_day AND r.end_day) AS repeat_customers,
+    (SELECT count(*)::int FROM new_customer_cohorts c WHERE c.key = r.key AND c.order_kind = 'invoice') AS new_customer_invoices,
+    (SELECT count(*)::int FROM new_customer_cohorts c WHERE c.key = r.key AND c.order_kind = 'quote') AS new_customer_quotes,
+    (SELECT count(*)::int FROM new_customer_cohorts c WHERE c.key = r.key AND c.order_kind = 'none') AS new_customer_no_orders,
+    (SELECT count(*)::int FROM repeat_orders o WHERE o.customer_order_number > 1
+      AND o.created_day BETWEEN r.start_day AND r.end_day AND o.order_type = 'invoice') AS repeat_customer_invoices,
+    (SELECT count(*)::int FROM repeat_orders o WHERE o.customer_order_number > 1
+      AND o.created_day BETWEEN r.start_day AND r.end_day AND o.order_type = 'quote') AS repeat_customer_quotes
   FROM ranges r
 ), payment_stats AS (
   SELECT r.key, coalesce(sum(p.amount), 0)::float8 AS net_payments
@@ -290,7 +307,10 @@ SELECT (SELECT today::text FROM bounds) AS as_of,
     'start', r.start_day::text, 'end', r.end_day::text,
     'totalOrders', i.total_orders, 'totalRevenue', i.total_revenue,
     'itemsDecorated', i.items_decorated, 'netPayments', p.net_payments,
-    'newCustomers', c.new_customers, 'repeatCustomers', c.repeat_customers
+    'newCustomers', c.new_customers, 'repeatCustomers', c.repeat_customers,
+    'newCustomerInvoices', c.new_customer_invoices, 'newCustomerQuotes', c.new_customer_quotes,
+    'newCustomerNoOrders', c.new_customer_no_orders,
+    'repeatCustomerInvoices', c.repeat_customer_invoices, 'repeatCustomerQuotes', c.repeat_customer_quotes
   )) FROM invoice_stats i JOIN customer_stats c USING (key)
     JOIN payment_stats p USING (key) JOIN ranges r USING (key)) AS periods,
   (SELECT jsonb_object_agg(key, methods) FROM (

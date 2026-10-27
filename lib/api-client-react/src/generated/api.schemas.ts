@@ -1063,6 +1063,14 @@ export interface HubDashboardPeriod {
   netPayments: number;
   newCustomers: number;
   repeatCustomers: number;
+  /** New customers with a qualifying invoice in the period; invoice takes priority over quote. */
+  newCustomerInvoices: number;
+  /** New customers with qualifying quotes but no qualifying invoice in the period. */
+  newCustomerQuotes: number;
+  /** New customer records without a qualifying logical order in the period. */
+  newCustomerNoOrders: number;
+  repeatCustomerInvoices: number;
+  repeatCustomerQuotes: number;
 }
 
 export interface HubDashboardPeriods {
@@ -10580,6 +10588,11 @@ export const GetDashboardDetailsMetric = {
   netPayments: 'netPayments',
   newCustomers: 'newCustomers',
   repeatCustomers: 'repeatCustomers',
+  newCustomerInvoices: 'newCustomerInvoices',
+  newCustomerQuotes: 'newCustomerQuotes',
+  newCustomerNoOrders: 'newCustomerNoOrders',
+  repeatCustomerInvoices: 'repeatCustomerInvoices',
+  repeatCustomerQuotes: 'repeatCustomerQuotes',
 } as const;
 
 export type GetDashboardDetailsPeriod = typeof GetDashboardDetailsPeriod[keyof typeof GetDashboardDetailsPeriod];

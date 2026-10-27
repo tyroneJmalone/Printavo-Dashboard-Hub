@@ -1784,7 +1784,7 @@ export const getDashboardDetailsQueryOffsetMin = 0;
 
 
 export const GetDashboardDetailsQueryParams = zod.object({
-  "metric": zod.enum(['totalOrders', 'totalRevenue', 'itemsDecorated', 'netPayments', 'newCustomers', 'repeatCustomers']),
+  "metric": zod.enum(['totalOrders', 'totalRevenue', 'itemsDecorated', 'netPayments', 'newCustomers', 'repeatCustomers', 'newCustomerInvoices', 'newCustomerQuotes', 'newCustomerNoOrders', 'repeatCustomerInvoices', 'repeatCustomerQuotes']),
   "period": zod.enum(['today', 'yesterday', 'wtd', 'lw', 'mtd', 'lm', 'qtd', 'lq', 'ytd', 'ly']),
   "offset": zod.coerce.number().min(getDashboardDetailsQueryOffsetMin).default(getDashboardDetailsQueryOffsetDefault)
 })
@@ -1828,7 +1828,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "yesterday": zod.object({
   "start": zod.coerce.date(),
@@ -1838,7 +1843,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "lm": zod.object({
   "start": zod.coerce.date(),
@@ -1848,7 +1858,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "lq": zod.object({
   "start": zod.coerce.date(),
@@ -1858,7 +1873,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "ly": zod.object({
   "start": zod.coerce.date(),
@@ -1868,7 +1888,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "wtd": zod.object({
   "start": zod.coerce.date(),
@@ -1878,7 +1903,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "lw": zod.object({
   "start": zod.coerce.date(),
@@ -1888,7 +1918,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "mtd": zod.object({
   "start": zod.coerce.date(),
@@ -1898,7 +1933,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "qtd": zod.object({
   "start": zod.coerce.date(),
@@ -1908,7 +1948,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 }),
   "ytd": zod.object({
   "start": zod.coerce.date(),
@@ -1918,7 +1963,12 @@ export const GetDashboardMetricsResponse = zod.object({
   "itemsDecorated": zod.number().nullable(),
   "netPayments": zod.number(),
   "newCustomers": zod.number(),
-  "repeatCustomers": zod.number()
+  "repeatCustomers": zod.number(),
+  "newCustomerInvoices": zod.number().describe('New customers with a qualifying invoice in the period; invoice takes priority over quote.'),
+  "newCustomerQuotes": zod.number().describe('New customers with qualifying quotes but no qualifying invoice in the period.'),
+  "newCustomerNoOrders": zod.number().describe('New customer records without a qualifying logical order in the period.'),
+  "repeatCustomerInvoices": zod.number(),
+  "repeatCustomerQuotes": zod.number()
 })
 }),
   "averages": zod.object({

@@ -44,6 +44,18 @@ const METRICS: MetricRow[] = [
   { key: "repeatCustomers", label: "Repeat Customer", note: "Qualifying repeat orders (quotes + invoices), not distinct customers" },
 ];
 
+const CUSTOMER_SPLITS: Partial<Record<MetricRow["key"], MetricRow[]>> = {
+  newCustomers: [
+    { key: "newCustomerInvoices", label: "Invoices", note: "Distinct new customers with a qualifying invoice in this period. Invoice takes priority over quotes. Current order type; not proof of payment." },
+    { key: "newCustomerQuotes", label: "Quotes only", note: "Distinct new customers with qualifying quotes but no qualifying invoice in this period. Current order type." },
+    { key: "newCustomerNoOrders", label: "No order", note: "New customer records without a qualifying order in this period. Excludes archived, duplicated, reference and Chipply-shell orders." },
+  ],
+  repeatCustomers: [
+    { key: "repeatCustomerInvoices", label: "Invoices", note: "Qualifying repeat logical orders currently invoiced. Not distinct customers or proof of payment." },
+    { key: "repeatCustomerQuotes", label: "Quotes", note: "Qualifying repeat logical orders currently quotes. Not distinct customers." },
+  ],
+};
+
 const DASH = "—";
 const fmtMoney = (v: number | null | undefined) => (v == null ? DASH : formatMoney(v));
 const fmtNum = (v: number | null | undefined, d = 0) =>
@@ -94,6 +106,17 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
   const [selection, setSelection] = useState<{ metric: MetricRow; period: PeriodKey } | null>(null);
   const p = data.periods;
   const cell = (m: MetricRow, v: number | null) => (m.money ? fmtMoney(v) : fmtNum(v));
+  const splits = (m: MetricRow, period: PeriodKey) => CUSTOMER_SPLITS[m.key] && (
+    <div className="mt-2 space-y-1 font-sans text-[10px] font-normal">
+      {CUSTOMER_SPLITS[m.key]!.map(part => <button key={part.key} type="button"
+        data-testid={`split-${part.key}-${period}`}
+        title={part.note} aria-label={`View ${m.label}: ${part.label} for ${period}`}
+        className="flex w-full items-center justify-end gap-2 rounded text-slate-400 hover:text-emerald-300 focus-visible:outline focus-visible:outline-emerald-400"
+        onClick={() => setSelection({ metric: { ...part, label: `${m.label} · ${part.label}` }, period })}>
+        <span>{part.label}</span><span className="font-mono text-slate-200 underline decoration-dotted underline-offset-2">{fmtNum(p[period][part.key] as number | undefined)}</span>
+      </button>)}
+    </div>
+  );
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900/40">
       <div className="px-5 py-4 border-b border-slate-800 flex flex-wrap items-baseline justify-between gap-2">
@@ -136,6 +159,7 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
                         title={`View records included in ${m.label} · ${pd.long}`}
                         aria-label={`View ${m.label} records for ${pd.long}`}
                         onClick={() => setSelection({ metric: m, period: pd.key })}>{cell(m, v)}</button>
+                      {splits(m, pd.key)}
                     </td>
                   );
                 })}
@@ -159,6 +183,7 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
                     <button type="button" className="rounded underline decoration-dotted underline-offset-4 hover:text-emerald-300 focus-visible:outline focus-visible:outline-emerald-400"
                       aria-label={`View ${m.label} records for ${pd.long}`}
                       onClick={() => setSelection({ metric: m, period: pd.key })}>{cell(m, p[pd.key][m.key] as number | null)}</button>
+                    {splits(m, pd.key)}
                   </div>
                 </div>
               ))}
@@ -167,6 +192,7 @@ function PeriodMatrix({ data }: { data: HubDashboardMetrics }) {
         ))}
       </div>
       <div className="px-5 py-3 border-t border-slate-800 text-[11px] text-slate-500">
+        <p className="mb-1">New Customers splits distinct customer records created in the period by qualifying orders in that period: invoice first, otherwise quotes only, otherwise no order. Repeat Customer splits repeat orders, not people. Current invoice/quote type is used; invoices do not prove payment. Converted orders count once, using retained original quote dates where available (otherwise estimated invoice creation dates).</p>
         A dash means the value is unavailable (not zero). {data.coverage.quantity}
       </div>
       {selection && <PerformanceDetails key={`${selection.metric.key}-${selection.period}`}

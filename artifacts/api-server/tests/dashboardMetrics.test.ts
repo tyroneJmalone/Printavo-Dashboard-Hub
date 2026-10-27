@@ -144,6 +144,11 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
     assert.equal(row.periods.today.netPayments, 130);
     assert.equal(row.periods.today.newCustomers, 1);
     assert.equal(row.periods.today.repeatCustomers, 2); // q2 and i2, not conversion i1
+    assert.equal(row.periods.today.newCustomerInvoices, 1);
+    assert.equal(row.periods.today.newCustomerQuotes, 0);
+    assert.equal(row.periods.today.newCustomerNoOrders, 0);
+    assert.equal(row.periods.today.repeatCustomerInvoices, 1);
+    assert.equal(row.periods.today.repeatCustomerQuotes, 1);
     assert.equal(row.periods.today.itemsDecorated, 20); // 15+2+3 decorated, no blank goods, no imprint fanout
     assert.equal(row.averages.today.all.quantityKnownOrders, 2); // zero-line order is known; absent detail is not
     assert.equal(row.averages.today.all.averageOrderVolume, 22.5); // (15+2+25+3+0)/2
@@ -164,6 +169,27 @@ test("isolated PostgreSQL fixture: repeat events, conversions, method overlap, w
         assert.deepEqual(page.items, detail.items.slice(1, 2));
       }
     }
+    await client.query("SAVEPOINT customer_split_cases");
+    await client.query(`INSERT INTO pv_customers (printavo_id, company_name, printavo_created_at, data, content_hash)
+      SELECT id, id, $1::timestamptz, '{}'::jsonb, 'fixture'
+      FROM unnest(ARRAY['quote-only','no-order','excluded-only']) id`, [instant]);
+    await insertOrder("new-quote", 301, "quote-only", "quote");
+    await insertOrder("new-quote-2", 302, "quote-only", "quote");
+    await insertOrder("new-excluded", 303, "excluded-only", "invoice", "ARCHIVED");
+    await insertOrder("fresh-also-quote", 304, "fresh", "quote");
+    const splits = (await client.query(DASHBOARD_SQL)).rows[0].periods.today;
+    assert.equal(splits.newCustomers, 4);
+    assert.equal(splits.newCustomerInvoices, 1); // invoice wins over fresh's quote
+    assert.equal(splits.newCustomerQuotes, 1); // two quotes still one new customer
+    assert.equal(splits.newCustomerNoOrders, 2); // no orders and excluded-only
+    assert.equal(splits.newCustomers, splits.newCustomerInvoices + splits.newCustomerQuotes + splits.newCustomerNoOrders);
+    assert.equal(splits.repeatCustomers, splits.repeatCustomerInvoices + splits.repeatCustomerQuotes);
+    for (const metric of ["newCustomerInvoices", "newCustomerQuotes", "newCustomerNoOrders", "repeatCustomerInvoices", "repeatCustomerQuotes"] as const) {
+      const detail = (await client.query(dashboardDetailsSql(metric), ["today", 50, 0])).rows[0];
+      assert.equal(detail.total, splits[metric]);
+      assert.equal(detail.value, splits[metric]);
+    }
+    await client.query("ROLLBACK TO SAVEPOINT customer_split_cases");
     await client.query("UPDATE pv_orders SET detail_sync_state = 'incomplete' WHERE printavo_id = 'x2'");
     const incomplete = (await client.query(DASHBOARD_SQL)).rows[0];
     assert.equal(incomplete.periods.today.itemsDecorated, null);

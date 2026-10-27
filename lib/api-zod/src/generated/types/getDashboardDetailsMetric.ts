@@ -16,4 +16,9 @@ export const GetDashboardDetailsMetric = {
   netPayments: 'netPayments',
   newCustomers: 'newCustomers',
   repeatCustomers: 'repeatCustomers',
+  newCustomerInvoices: 'newCustomerInvoices',
+  newCustomerQuotes: 'newCustomerQuotes',
+  newCustomerNoOrders: 'newCustomerNoOrders',
+  repeatCustomerInvoices: 'repeatCustomerInvoices',
+  repeatCustomerQuotes: 'repeatCustomerQuotes',
 } as const;

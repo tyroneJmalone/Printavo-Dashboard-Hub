@@ -15,4 +15,12 @@ export interface HubDashboardPeriod {
   netPayments: number;
   newCustomers: number;
   repeatCustomers: number;
+  /** New customers with a qualifying invoice in the period; invoice takes priority over quote. */
+  newCustomerInvoices: number;
+  /** New customers with qualifying quotes but no qualifying invoice in the period. */
+  newCustomerQuotes: number;
+  /** New customer records without a qualifying logical order in the period. */
+  newCustomerNoOrders: number;
+  repeatCustomerInvoices: number;
+  repeatCustomerQuotes: number;
 }
