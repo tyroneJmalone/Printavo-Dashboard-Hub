@@ -3,6 +3,7 @@ import { Switch, Route, useLocation } from "wouter";
 import { PrintScopeJobs } from "./PrintScopeJobs";
 import { PrintScopeRules } from "./PrintScopeRules";
 import { PrintScopePilot } from "./PrintScopePilot";
+import { PrintScopeAutomation } from "./PrintScopeAutomation";
 import "./Printscope.css";
 import { useStaff } from "@/components/auth/StaffGate";
 import { useGetPrintscopeCapabilities, getGetPrintscopeCapabilitiesQueryKey } from "@workspace/api-client-react";
@@ -46,6 +47,7 @@ export default function PrintScopeApp() {
             <Link href="/printscope/rules" className="text-xs font-semibold hover:text-[var(--accent)]">Rules</Link>
           )}
           <Link href="/printscope/pilot" className="text-xs font-semibold hover:text-[var(--accent)]">Pilot</Link>
+          <Link href="/printscope/automation" className="text-xs font-semibold hover:text-[var(--accent)]">Automation</Link>
         </div>
         <span className="legend">
           <span className="key"><i style={{ background: "var(--fail)" }}></i>send it back</span>
@@ -56,6 +58,7 @@ export default function PrintScopeApp() {
 
       <Switch>
         <Route path="/printscope/rules" component={PrintScopeRules} />
+        <Route path="/printscope/automation" component={PrintScopeAutomation} />
         <Route path="/printscope/pilot" component={PrintScopePilot} />
         <Route path="/printscope" component={() => <PrintScopeJobs caps={caps} />} />
         {/* Wildcard catchall */}

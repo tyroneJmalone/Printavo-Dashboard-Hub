@@ -57,6 +57,7 @@ import reorderPublicRouter from "./reorderPublic";
 import reorderRequestsRouter from "./reorderRequests";
 import knowledgeSourcesRouter from "./knowledgeSources";
 import printscopeRouter from "./printscope";
+import sepscopeAutomationRouter from "./sepscopeAutomation";
 
 const router: IRouter = Router();
 
@@ -89,6 +90,7 @@ router.use(requireStaff);
 // management, email-activity…) fall through to their existing guards.
 router.use(moduleAccessGate);
 router.use(printscopeRouter);
+router.use(sepscopeAutomationRouter);
 router.use(authRouter);
 router.use(staffRouter); // admin-only routes — requireAdmin per route inside
 router.use(syncRouter);

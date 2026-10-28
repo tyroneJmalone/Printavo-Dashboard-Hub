@@ -2605,6 +2605,52 @@ export const GetDashboardMetricsResponse = zod.object({
 })
 
 
+export const GetSepscopeAutomationResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const UpdateSepscopeAutomationBody = zod.object({
+  "version": zod.number(),
+  "enabled": zod.boolean(),
+  "times": zod.array(zod.string()),
+  "weekdays": zod.array(zod.number()),
+  "timezone": zod.string(),
+  "email": zod.string(),
+  "automaticActions": zod.boolean(),
+  "allowedStatusIds": zod.array(zod.string()),
+  "settleMinutes": zod.number()
+})
+
+export const UpdateSepscopeAutomationResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const ScanSepscopeAutomationResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const PreviewSepscopeActionsParams = zod.object({
+  "orderId": zod.coerce.string()
+})
+
+export const PreviewSepscopeActionsResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const ApproveSepscopeActionsParams = zod.object({
+  "orderId": zod.coerce.string()
+})
+
+export const approveSepscopeActionsBodyNoteMax = 2000;
+
+
+
+export const ApproveSepscopeActionsBody = zod.object({
+  "token": zod.string(),
+  "decision": zod.enum(['pass', 'fail']),
+  "confirmComplete": zod.boolean(),
+  "note": zod.string().max(approveSepscopeActionsBodyNoteMax)
+})
+
+export const ApproveSepscopeActionsResponse = zod.record(zod.string(), zod.unknown())
+
+
 export const GetPrintscopeCapabilitiesResponse = zod.object({
   "available": zod.boolean(),
   "reason": zod.string().optional(),

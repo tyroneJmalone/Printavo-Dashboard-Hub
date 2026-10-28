@@ -469,6 +469,9 @@ import type {
   SeedStartResult,
   SendTestRewardEmail200,
   SendToPrintavoResult,
+  SepscopeApprovalRequest,
+  SepscopeAutomationData,
+  SepscopeSettingsRequest,
   SetAdminPinRequest,
   SetCatalogColorFamily200,
   SetCatalogTagOverride200,
@@ -3423,6 +3426,334 @@ export function useGetDashboardMetrics<TData = Awaited<ReturnType<typeof getDash
 
 
 
+
+export const getGetSepscopeAutomationUrl = () => {
+
+
+
+
+  return `/api/printscope/automation`
+}
+
+export const getSepscopeAutomation = async ( options?: RequestInit): Promise<SepscopeAutomationData> => {
+
+  return customFetch<SepscopeAutomationData>(getGetSepscopeAutomationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSepscopeAutomationQueryKey = () => {
+    return [
+    `/api/printscope/automation`
+    ] as const;
+    }
+
+
+export const getGetSepscopeAutomationQueryOptions = <TData = Awaited<ReturnType<typeof getSepscopeAutomation>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSepscopeAutomation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSepscopeAutomationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSepscopeAutomation>>> = ({ signal }) => getSepscopeAutomation({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSepscopeAutomation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSepscopeAutomationQueryResult = NonNullable<Awaited<ReturnType<typeof getSepscopeAutomation>>>
+export type GetSepscopeAutomationQueryError = ErrorType<unknown>
+
+
+
+export function useGetSepscopeAutomation<TData = Awaited<ReturnType<typeof getSepscopeAutomation>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSepscopeAutomation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSepscopeAutomationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSepscopeAutomationUrl = () => {
+
+
+
+
+  return `/api/printscope/automation`
+}
+
+export const updateSepscopeAutomation = async (sepscopeSettingsRequest: SepscopeSettingsRequest, options?: RequestInit): Promise<SepscopeAutomationData> => {
+
+  return customFetch<SepscopeAutomationData>(getUpdateSepscopeAutomationUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sepscopeSettingsRequest)
+  }
+);}
+
+
+
+
+export const getUpdateSepscopeAutomationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSepscopeAutomation>>, TError,{data: BodyType<SepscopeSettingsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSepscopeAutomation>>, TError,{data: BodyType<SepscopeSettingsRequest>}, TContext> => {
+
+const mutationKey = ['updateSepscopeAutomation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSepscopeAutomation>>, {data: BodyType<SepscopeSettingsRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateSepscopeAutomation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSepscopeAutomationMutationResult = NonNullable<Awaited<ReturnType<typeof updateSepscopeAutomation>>>
+    export type UpdateSepscopeAutomationMutationBody = BodyType<SepscopeSettingsRequest>
+    export type UpdateSepscopeAutomationMutationError = ErrorType<unknown>
+
+    export const useUpdateSepscopeAutomation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSepscopeAutomation>>, TError,{data: BodyType<SepscopeSettingsRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSepscopeAutomation>>,
+        TError,
+        {data: BodyType<SepscopeSettingsRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdateSepscopeAutomationMutationOptions(options));
+    }
+
+export const getScanSepscopeAutomationUrl = () => {
+
+
+
+
+  return `/api/printscope/automation/scan`
+}
+
+export const scanSepscopeAutomation = async ( options?: RequestInit): Promise<SepscopeAutomationData> => {
+
+  return customFetch<SepscopeAutomationData>(getScanSepscopeAutomationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getScanSepscopeAutomationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanSepscopeAutomation>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof scanSepscopeAutomation>>, TError,void, TContext> => {
+
+const mutationKey = ['scanSepscopeAutomation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scanSepscopeAutomation>>, void> = () => {
+
+
+          return  scanSepscopeAutomation(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScanSepscopeAutomationMutationResult = NonNullable<Awaited<ReturnType<typeof scanSepscopeAutomation>>>
+
+    export type ScanSepscopeAutomationMutationError = ErrorType<unknown>
+
+    export const useScanSepscopeAutomation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanSepscopeAutomation>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof scanSepscopeAutomation>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getScanSepscopeAutomationMutationOptions(options));
+    }
+
+export const getPreviewSepscopeActionsUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/printscope/automation/invoices/${orderId}/preview`
+}
+
+export const previewSepscopeActions = async (orderId: string, options?: RequestInit): Promise<SepscopeAutomationData> => {
+
+  return customFetch<SepscopeAutomationData>(getPreviewSepscopeActionsUrl(orderId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPreviewSepscopeActionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewSepscopeActions>>, TError,{orderId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewSepscopeActions>>, TError,{orderId: string}, TContext> => {
+
+const mutationKey = ['previewSepscopeActions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewSepscopeActions>>, {orderId: string}> = (props) => {
+          const {orderId} = props ?? {};
+
+          return  previewSepscopeActions(orderId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewSepscopeActionsMutationResult = NonNullable<Awaited<ReturnType<typeof previewSepscopeActions>>>
+
+    export type PreviewSepscopeActionsMutationError = ErrorType<unknown>
+
+    export const usePreviewSepscopeActions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewSepscopeActions>>, TError,{orderId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewSepscopeActions>>,
+        TError,
+        {orderId: string},
+        TContext
+      > => {
+      return useMutation(getPreviewSepscopeActionsMutationOptions(options));
+    }
+
+export const getApproveSepscopeActionsUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/printscope/automation/invoices/${orderId}/approve`
+}
+
+export const approveSepscopeActions = async (orderId: string,
+    sepscopeApprovalRequest: SepscopeApprovalRequest, options?: RequestInit): Promise<SepscopeAutomationData> => {
+
+  return customFetch<SepscopeAutomationData>(getApproveSepscopeActionsUrl(orderId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sepscopeApprovalRequest)
+  }
+);}
+
+
+
+
+export const getApproveSepscopeActionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveSepscopeActions>>, TError,{orderId: string;data: BodyType<SepscopeApprovalRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveSepscopeActions>>, TError,{orderId: string;data: BodyType<SepscopeApprovalRequest>}, TContext> => {
+
+const mutationKey = ['approveSepscopeActions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveSepscopeActions>>, {orderId: string;data: BodyType<SepscopeApprovalRequest>}> = (props) => {
+          const {orderId,data} = props ?? {};
+
+          return  approveSepscopeActions(orderId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveSepscopeActionsMutationResult = NonNullable<Awaited<ReturnType<typeof approveSepscopeActions>>>
+    export type ApproveSepscopeActionsMutationBody = BodyType<SepscopeApprovalRequest>
+    export type ApproveSepscopeActionsMutationError = ErrorType<unknown>
+
+    export const useApproveSepscopeActions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveSepscopeActions>>, TError,{orderId: string;data: BodyType<SepscopeApprovalRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveSepscopeActions>>,
+        TError,
+        {orderId: string;data: BodyType<SepscopeApprovalRequest>},
+        TContext
+      > => {
+      return useMutation(getApproveSepscopeActionsMutationOptions(options));
+    }
 
 export const getGetPrintscopeCapabilitiesUrl = () => {
 

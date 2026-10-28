@@ -1,6 +1,6 @@
 ---
 name: SepScope scheduled intake direction
-description: Proposed Printavo intake, action targets and Dropbox archive matching; not authorization to enable automation.
+description: Approved build direction for scheduled Printavo intake; activation and completeness remain guarded.
 ---
 
 The user is exploring scheduled inspections of Printavo production files instead
@@ -34,12 +34,17 @@ with "#"; the user suggests invoice-number matching as the best approach.
 automatic inspection, task completion, failure status changes, and moving
 successfully inspected files from Printavo to the client's invoice folder.
 
-**How to apply:** Treat these as requirements for the proposed expansion, not
-permission to activate writes or delete files. Timezone, multiple-output
-completeness rules, and API deletion support remain unresolved. Preserve
+**How to apply:** The user approved building this workflow with staff review
+before actions; this does not authorize live validation writes or enabling
+unattended actions. Multiple-output completeness remains unresolved. Preserve
 staff approval by default; do not interpret the future toggle as permission
 to auto-approve incomplete invoices.
 Search for an existing invoice folder within the verified customer's root;
 do not silently create folders or pick an ambiguous/cross-customer match.
-Preserve the current pilot and Dropbox read-only restrictions until the
-new write workflow is explicitly approved.
+The build may add a narrowly scoped archive write path, but the existing
+customer artwork browser remains read-only. Dropbox connection permissions
+must be upgraded before archives can run; never remove a Printavo file to
+work around a blocked archive.
+
+**Why:** The user approved the new workflow, not a broad relaxation of artwork
+access restrictions or automatic completeness decisions.

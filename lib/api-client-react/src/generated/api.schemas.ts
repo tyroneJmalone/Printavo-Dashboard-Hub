@@ -5,6 +5,36 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface SepscopeAutomationData { [key: string]: unknown }
+
+export interface SepscopeSettingsRequest {
+  version: number;
+  enabled: boolean;
+  times: string[];
+  weekdays: number[];
+  timezone: string;
+  email: string;
+  automaticActions: boolean;
+  allowedStatusIds: string[];
+  settleMinutes: number;
+}
+
+export type SepscopeApprovalRequestDecision = typeof SepscopeApprovalRequestDecision[keyof typeof SepscopeApprovalRequestDecision];
+
+
+export const SepscopeApprovalRequestDecision = {
+  pass: 'pass',
+  fail: 'fail',
+} as const;
+
+export interface SepscopeApprovalRequest {
+  token: string;
+  decision: SepscopeApprovalRequestDecision;
+  confirmComplete: boolean;
+  /** @maxLength 2000 */
+  note: string;
+}
+
 export interface ArtworkCounts {
   total: number;
   breezy: number;

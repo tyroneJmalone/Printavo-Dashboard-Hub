@@ -1,3 +1,4 @@
+export * from "./sepscopeAutomation";
 export * from "./salesRecords";
 export * from "./salesRecordActivity";
 export * from "./externalVendorOrders";

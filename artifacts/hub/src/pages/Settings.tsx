@@ -375,6 +375,9 @@ export default function Settings() {
               : <SettingsEmbed value={true}>{content()}</SettingsEmbed>}
           </div>
         </div>
+        <div className="border-t border-slate-800 px-4 lg:px-6 py-3 text-xs text-slate-500">
+          SepScope · <Link href="/printscope/automation" className="text-slate-300 hover:text-emerald-300">Scheduled output inspection and review</Link>
+        </div>
         {available.some((section) => section.id === "shipping-address") && (
           <div className="border-t border-slate-800 px-4 lg:px-6 py-3 text-xs text-slate-500">
             General · <Link href={sectionHref("shipping-address")} className="text-slate-300 hover:text-emerald-300">Shipping address</Link>

@@ -82,7 +82,7 @@
 - [Pipeline owner choices](pipeline-owner-policy.md) — Sales Pipeline owner selector is limited to All, Info, Tommy, Andrew, Medina, and Tyler.
 - [PrintScope renderer compatibility](printscope-renderer-compatibility.md) — MuPDF unitless SVG dimensions can silently omit choke masks even when golden verdicts match.
 - [SepScope pilot policy](printscope-pilot-policy.md) — formerly PrintScope; read-only comparisons and limited pilot-copy expiry, with historical identity preserved.
-- [SepScope automation direction](sepscope-automation-direction.md) — proposed scheduled OUTPUT intake, exact task/failure status, and existing Dropbox invoice-folder matching.
+- [SepScope automation direction](sepscope-automation-direction.md) — approved scheduled OUTPUT intake with staff-gated actions; completeness remains manual and archive writes need permission.
 - [Shipment tracking policy](shipment-tracking-policy.md) — Shippo connection is not paid-tracking consent; known-package delivery does not prove full PO delivery.
 - [Dashboard metric policy](dashboard-metric-policy.md) — New/Repeat count distinct active accounts by fixed pre-2026 history; preserve quote/invoice splits and original-date caveats.
 - [Dashboard query performance](dashboard-query-performance.md) — share work within queries before caching; repeated materialized-CTE scans need query changes, not base-table indexes.

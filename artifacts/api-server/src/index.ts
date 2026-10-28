@@ -1,6 +1,7 @@
 import app from "./app";
 import { startAutoPrintAlerts } from "./lib/printQueue/autoPrint/alerts";
 import { startPrintscopeWorker } from "./lib/printscope/worker";
+import { startSepscopeAutomation } from "./lib/printscope/automationScheduler";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/sync/scheduler";
 import { startFileMirror } from "./lib/sync/fileMirror";
@@ -49,6 +50,7 @@ app.listen(port, (err) => {
   );
   startScheduler(logger);
   startPrintscopeWorker().catch(() => logger.warn("PrintScope processing unavailable; other modules unaffected"));
+  startSepscopeAutomation();
   startFileMirror(logger);
   startAutoPrintScheduler(logger);
   startAutoPrintAlerts(logger);

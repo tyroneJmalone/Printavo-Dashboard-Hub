@@ -362,6 +362,64 @@ paths:
                 $ref: "#/components/schemas/HubDashboardMetrics"
         "500":
           description: Aggregation unavailable
+  /printscope/automation:
+    get:
+      operationId: getSepscopeAutomation
+      responses:
+        "200":
+          description: Settings, recent intake, scans and action audit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SepscopeAutomationData" }
+    put:
+      operationId: updateSepscopeAutomation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SepscopeSettingsRequest" }
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SepscopeAutomationData" }
+  /printscope/automation/scan:
+    post:
+      operationId: scanSepscopeAutomation
+      responses:
+        "202":
+          description: Scan queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SepscopeAutomationData" }
+  /printscope/automation/invoices/{orderId}/preview:
+    post:
+      operationId: previewSepscopeActions
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Live bound review preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SepscopeAutomationData" }
+  /printscope/automation/invoices/{orderId}/approve:
+    post:
+      operationId: approveSepscopeActions
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SepscopeApprovalRequest" }
+      responses:
+        "200":
+          description: Durable action outcome, possibly held for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SepscopeAutomationData" }
   /printscope/capabilities:
     get:
       operationId: getPrintscopeCapabilities
@@ -8961,6 +9019,30 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    SepscopeAutomationData:
+      type: object
+      additionalProperties: true
+    SepscopeSettingsRequest:
+      type: object
+      required: [version, enabled, times, weekdays, timezone, email, automaticActions, allowedStatusIds, settleMinutes]
+      properties:
+        version: { type: integer }
+        enabled: { type: boolean }
+        times: { type: array, items: { type: string } }
+        weekdays: { type: array, items: { type: integer } }
+        timezone: { type: string }
+        email: { type: string }
+        automaticActions: { type: boolean }
+        allowedStatusIds: { type: array, items: { type: string } }
+        settleMinutes: { type: integer }
+    SepscopeApprovalRequest:
+      type: object
+      required: [token, decision, confirmComplete, note]
+      properties:
+        token: { type: string }
+        decision: { type: string, enum: [pass, fail] }
+        confirmComplete: { type: boolean }
+        note: { type: string, maxLength: 2000 }
     ArtworkCounts:
       type: object
       required: [total, breezy, mockup, both, mockupOnly, breezyOnly, neither, unknown]
