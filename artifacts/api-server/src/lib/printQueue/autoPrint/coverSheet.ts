@@ -50,10 +50,14 @@ export function coverStatusLabel(value?: string | null): string {
 /** Uses only images already loaded by the authorized Printavo workorder.
  * Text is assigned via textContent, never interpreted as HTML. */
 export function coverSheetScript(details: CoverDetails, isReprint = false): string {
-  const isMerch = /^MERCH\b/.test(coverStatusLabel(details.statusName));
+  // The nickname prefix describes the job even while its status is MERCH - Ordered.
+  // Presentation only: do not infer routing or per-line decoration assignments.
+  const nicknameMethod = details.nickname?.match(/^\s*MERCH\s*[-–—]\s*(PRINT|HEAT|EMB|MIXED)\b/i)?.[1];
+  const merchLabel = nicknameMethod ? `MERCH - ${nicknameMethod.toUpperCase()}` : coverStatusLabel(details.statusName);
+  const isMerch = /^MERCH\b/.test(merchLabel);
   const destination = coverStatusLabel(details.destinationStatusName);
   const methodLabel = destination === "EMB" ? "EMBROIDERY" : destination === "Mixed Deco" ? "MIXED" : destination;
-  const data = { ...details, isMerch, statusName: isMerch ? coverStatusLabel(details.statusName) : details.destinationStatusName ? methodLabel : "Destination not mapped", productionDate: coverDate(details.productionDueAt), customerDate: coverDate(details.customerDueAt),
+  const data = { ...details, isMerch, statusName: isMerch ? merchLabel : details.destinationStatusName ? methodLabel : "Destination not mapped", productionDate: coverDate(details.productionDueAt), customerDate: coverDate(details.customerDueAt),
     banner: workorderHeaderText(details.nickname, isReprint) };
   return `(async () => {
     const data = ${JSON.stringify(data)};

@@ -65,6 +65,27 @@ try {
       assert.match(execSync("pdfinfo /tmp/autoprint-cover-proof.pdf", { encoding: "utf8" }), /Pages:\s+2/);
     }
   }
+  for (const method of ["PRINT", "HEAT", "EMB", "MIXED"]) {
+    for (const isReprint of [false, true]) {
+      await page.setContent(fixture(6));
+      await page.evaluate(coverSheetScript({visualId:"EXAMPLE", nickname:`MERCH - ${method} (other details...)`, statusName:"MERCH - Ordered", totalQuantity:120}, isReprint));
+      assert.equal(await page.$eval(".pq-cover-method", el => el.textContent), `MERCH - ${method}`);
+      await assertBadge();
+      assert.equal(await page.$$eval(".pq-cover-grid img", els => els.length), 6);
+      assert.equal(await page.$eval(".pq-cover-quantity", el => el.textContent), "Total QTY: 120");
+      assert.equal(await page.$eval(".pq-cover-heading", el => el.scrollWidth <= el.clientWidth), true);
+    }
+  }
+  for (const [nickname, statusName, label] of [
+    [" merch – mixed (details)", "MERCH - Print Ordered", "MERCH - MIXED"],
+    ["MERCH - PRINTING details", "MERCH - Ordered", "MERCH"],
+    ["Unrelated MERCH - EMB details", "MERCH - Ordered", "MERCH"],
+    [null, "MERCH - Ordered", "MERCH"],
+  ]) {
+    await page.setContent(fixture(1));
+    await page.evaluate(coverSheetScript({nickname, statusName}));
+    assert.equal(await page.$eval(".pq-cover-method", el => el.textContent), label);
+  }
   for (const [destination, label] of [["PRINT - Waiting 4 Blanks","PRINT"], ["EMB - Waiting 4 Blanks","EMBROIDERY"], ["HEAT - Waiting 4 Blanks","HEAT"], ["MIXED DECO - Waiting 4 Blanks","MIXED"]]) {
     await page.setContent(fixture(6));
     await page.evaluate(coverSheetScript({visualId:23201,nickname:"Regular invoice",statusName:"SEPSIO - ORDERED",destinationStatusName:destination}));

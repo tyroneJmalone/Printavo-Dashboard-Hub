@@ -5,6 +5,16 @@ description: Use the actual Printavo workorder for Auto-Print formatting example
 
 Preserve the actual Printavo workorder layout when proposing Auto-Print changes. Place purchase date, vendor and warehouse beside the existing Goods Status at the bottom of the individual product line.
 
+MERCH workorder black labels must include the decoration descriptor from the
+nickname prefix: MERCH - PRINT, MERCH - HEAT, MERCH - EMB, or MERCH - MIXED.
+Exclude the remaining nickname details from that label.
+
+**Why:** The user identifies the decoration method in this nickname prefix and
+wants it visible in the existing black MERCH rectangle.
+
+**How to apply:** Treat it as presentation only, not permission to change routing
+or line categories; preserve the existing layout and quantity display.
+
 Non-MERCH covers should be visually distinct from MERCH covers: one first
 line-item attachment image, with title information at the bottom and the
 planned destination decoration label opposite the invoice number.
