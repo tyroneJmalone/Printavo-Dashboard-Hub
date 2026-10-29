@@ -35,7 +35,7 @@ async function executeScan(runId: string, actor: string, settings: Awaited<Retur
     const orders:string[]=[]; let cursor:string|null=null;
     const seen=new Set<string>();
     for(let page=0;page<100;page++) {
-      const data:any=await getPrintavoClient().query(`query {invoices(first:50,statusIds:${JSON.stringify(settings.allowedStatusIds)}${cursor ? `,after:${JSON.stringify(cursor)}`:""}) {nodes {id} pageInfo {hasNextPage endCursor}}}`);
+      const data:any=await getPrintavoClient().query(`query {invoices(first:25,statusIds:${JSON.stringify(settings.allowedStatusIds)}${cursor ? `,after:${JSON.stringify(cursor)}`:""}) {nodes {id} pageInfo {hasNextPage endCursor}}}`);
       for(const order of data.invoices.nodes) if(!seen.has(order.id)) {seen.add(order.id);orders.push(order.id);}
       if(!data.invoices.pageInfo.hasNextPage) break;
       const next=data.invoices.pageInfo.endCursor;

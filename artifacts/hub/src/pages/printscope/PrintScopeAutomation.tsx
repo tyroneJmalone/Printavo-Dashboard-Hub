@@ -8,11 +8,12 @@ import {
 } from "@workspace/api-client-react";
 import { Loader2, Info, X, RefreshCw, Plus, AlertTriangle, FolderOpen } from "lucide-react";
 import { useStaff } from "@/components/auth/StaffGate";
+import { automationLogText } from "./automationLog";
 
 type Settings = { version: number; enabled: boolean; times: string[]; weekdays: number[]; timezone: string; email: string; automaticActions: boolean; allowedStatusIds: string[]; settleMinutes: number; addedAfter: string; automaticSince?: string | null };
 type Item = { id: string; orderId: string; visualId: string | number; customerName: string | null; filename: string; jobId: string | null; state: string; verdict: string | null; error: string | null; createdAt: string };
-type Run = { id: string; state: string; detail: string | null; createdAt: string };
-type Action = { id: string; orderId: string; decision: string; state: string; detail: string | null; createdAt: string };
+type Run = { id: string; state: string; detail: unknown; createdAt: string };
+type Action = { id: string; orderId: string; decision: string; state: string; detail: unknown; createdAt: string };
 type Email = { id: string; state: string; error: string | null; createdAt: string };
 type Data = { settings: Settings; statuses: { id: string; name: string }[]; items: Item[]; runs: Run[]; actions: Action[]; emails: Email[]; limitations: string[] };
 type Preview = { token: string; orderId: string; visualId: string | number; customerName: string | null; statusName: string | null; files: { id: string; name: string; jobId: string | null; state: string; verdict: string | null }[]; task: { id: string; name: string; completed: boolean } | null; folder: { path: string; id: string } | null; blockers: string[]; canPass: boolean; canFail: boolean; printImprints: number | null; completeness: string };
@@ -123,8 +124,8 @@ export function PrintScopeAutomation() {
         </section>
 
         <div className="grid md:grid-cols-3 gap-4">
-          <LogList title="Scan runs" empty="No scans have run." rows={data.runs.map(r => ({ id: r.id, state: r.state, text: r.detail, at: r.createdAt }))} />
-          <LogList title="Status actions" empty="No actions recorded." rows={data.actions.map(a => ({ id: a.id, state: a.state, text: `${a.decision.toUpperCase()} · order ${a.orderId}${a.detail ? ` · ${a.detail}` : ""}`, at: a.createdAt }))} />
+          <LogList title="Scan runs" empty="No scans have run." rows={data.runs.map(r => ({ id: r.id, state: r.state, text: automationLogText(r.detail), at: r.createdAt }))} />
+          <LogList title="Status actions" empty="No actions recorded." rows={data.actions.map(a => ({ id: a.id, state: a.state, text: [a.decision.toUpperCase(), `order ${a.orderId}`, automationLogText(a.detail)].filter(Boolean).join(" · "), at: a.createdAt }))} />
           <LogList title="Notification emails" empty="No emails sent." rows={data.emails.map(e => ({ id: e.id, state: e.state, text: e.error, at: e.createdAt }))} />
         </div>
       </div>
@@ -159,7 +160,7 @@ function LogList({ title, empty, rows }: { title: string; empty: string; rows: {
           {rows.map(r => (
             <li key={r.id} className="p-3 border-b border-line last:border-b-0 text-xs">
               <div className="flex items-center gap-2"><Chip tone={stateTone(r.state)}>{r.state.replace(/_/g, " ")}</Chip><span className="text-ink-3 ml-auto">{when(r.at)}</span></div>
-              {r.text && <p className={`mt-1 ${stateTone(r.state) === "fail" ? "text-fail" : "text-ink-2"}`}>{r.text}</p>}
+              {r.text && <p className={`mt-1 whitespace-pre-wrap break-words ${stateTone(r.state) === "fail" ? "text-fail" : "text-ink-2"}`}>{r.text}</p>}
             </li>
           ))}
         </ul>

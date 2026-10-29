@@ -11,8 +11,8 @@ export async function readInvoice(id: string): Promise<any> {
   const data: any = await client.query(`query { invoice(id:${lit(id)}) {
     id visualId nickname status {id name}
     contact {id fullName customer {id companyName}}
-    productionFiles(first:50) {nodes {id name fileUrl timestamps {updatedAt createdAt}} pageInfo {hasNextPage endCursor}}
-    tasks(first:50) {nodes {id name completed} pageInfo {hasNextPage endCursor}}
+    productionFiles(first:25) {nodes {id name fileUrl timestamps {updatedAt createdAt}} pageInfo {hasNextPage endCursor}}
+    tasks(first:25) {nodes {id name completed} pageInfo {hasNextPage endCursor}}
   } }`);
   const inv = data.invoice;
   if (!inv) throw new Error("Invoice is unavailable in Printavo.");
@@ -25,7 +25,7 @@ export async function readInvoice(id: string): Promise<any> {
       if(!cursor || seen.has(cursor) || inv[field].nodes.length >= 2000) throw new Error("Incomplete Printavo file/task listing; review required.");
       seen.add(cursor);
       const fields = field==="tasks" ? "id name completed" : "id name fileUrl timestamps {updatedAt createdAt}";
-      const page: any = await client.query(`query { invoice(id:${lit(id)}) { ${field}(first:50,after:${lit(cursor)}) {nodes {${fields}} pageInfo {hasNextPage endCursor}} } }`);
+      const page: any = await client.query(`query { invoice(id:${lit(id)}) { ${field}(first:25,after:${lit(cursor)}) {nodes {${fields}} pageInfo {hasNextPage endCursor}} } }`);
       connection = page.invoice[field]; inv[field].nodes.push(...connection.nodes);
     }
   }
@@ -36,7 +36,7 @@ export async function readInvoice(id: string): Promise<any> {
 export async function liveStatuses() {
   const nodes: any[] = []; let cursor: string | null = null;
   for(let page=0;page<50;page++) {
-    const result: any = await getPrintavoClient().query(`query {statuses(first:100${cursor ? `,after:${lit(cursor)}`:""}) {nodes {id name} pageInfo {hasNextPage endCursor}}}`);
+    const result: any = await getPrintavoClient().query(`query {statuses(first:25${cursor ? `,after:${lit(cursor)}`:""}) {nodes {id name} pageInfo {hasNextPage endCursor}}}`);
     nodes.push(...result.statuses.nodes);
     if(!result.statuses.pageInfo.hasNextPage) return nodes;
     const next = result.statuses.pageInfo.endCursor;

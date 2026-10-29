@@ -1,5 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { automationLogText } from "../../hub/src/pages/printscope/automationLog";
+test("scan and action JSON details render readable text rather than objects",()=>{
+  const text=automationLogText({held:0,actor:"private-id",error:"'first' must not be greater than 25",
+    errors:[],queued:0,invoices:0,unchanged:0,settingsVersion:1});
+  assert.equal(typeof text,"string");
+  assert.match(text!,/first/);
+  assert.match(text!,/0 queued/);
+  assert.ok(!text!.includes("private-id"));
+  assert.equal(automationLogText({actor:"id",settingsVersion:1}),null);
+  assert.equal(automationLogText(null),null);
+  assert.equal(automationLogText("Legacy message"),"Legacy message");
+  assert.equal(automationLogText({message:"Skipped",errors:["File failed",{unexpected:true}]}),"Skipped\nFile failed");
+  assert.equal(automationLogText({note:"Reviewed",steps:[{name:"Archive file",state:"completed"}]}),"Reviewed\nArchive file: completed");
+});
 import { defaults, outputFilename, scheduleSlot, invoiceFolder, dropboxHash, digest, settingsInput, addedAfterCutoff } from "../src/lib/printscope/automationPolicy";
 test("persistent inclusive upload-date cutoff uses Eastern midnight and fails closed",()=>{
   assert.equal(defaults.addedAfter,"2026-10-27");
