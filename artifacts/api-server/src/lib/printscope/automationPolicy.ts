@@ -28,6 +28,13 @@ export function addedAfterCutoff(createdAt: string | null | undefined, settings:
   return `${parts.year}-${parts.month}-${parts.day}` >= settings.addedAfter;
 }
 export const normalizeName = (s: string) => s.trim().replace(/\s+/g," ").toLowerCase();
+export function invoiceHoldReason(inv: {status: {id: string}; prepTasks: {completed: boolean}[]}, allowed: string[]) {
+  if (!allowed.includes(inv.status.id)) return "Invoice status is no longer eligible.";
+  if (!inv.prepTasks.length) return `Missing task: ${TASK_NAME}.`;
+  if (inv.prepTasks.length !== 1) return "Multiple matching Prep Separations tasks; staff review required.";
+  if (inv.prepTasks[0].completed) return "Prep Separations task is already completed.";
+  return null;
+}
 export const outputFilename = (s: string) => s.length <= 240 && !/[\\/\x00-\x1f\x7f]/.test(s) && /(?:^|[\s_-])OUTPUT\.ai$/i.test(s);
 export const digest = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
 export function scheduleSlot(settings: typeof defaults, now = new Date()) {

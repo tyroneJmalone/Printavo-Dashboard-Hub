@@ -4,7 +4,7 @@ import { getPrivateObjectDir } from "../objectStorage";
 import { getPrintavoClient } from "../printavoGateway";
 import { activeRules } from "./rules";
 import { environment, objectFile, ensurePrintscopeAvailable } from "./worker";
-import { digest, addedAfterCutoff } from "./automationPolicy";
+import { digest, addedAfterCutoff, invoiceHoldReason } from "./automationPolicy";
 import { readInvoice, downloadOutput } from "./automationProviders";
 import { getSettings } from "./automationStore";
 import { logger } from "../logger";
@@ -25,7 +25,19 @@ export async function queueScan(actor: string, slot="manual:"+randomUUID()) {
 async function executeScan(runId: string, actor: string, settings: Awaited<ReturnType<typeof getSettings>>) {
   const c=await pool.connect();
   let locked=false;
-  const summary={invoices:0,queued:0,unchanged:0,held:0,errors:[] as string[]};
+  type Detail = {orderId?: string; visualId?: string; filename?: string; reason: string};
+  const summary={invoices:0,queued:0,unchanged:0,held:0,errors:[] as string[],
+    heldDetails:[] as Detail[],failedDetails:[] as Detail[],heldDetailsOmitted:0,failedDetailsOmitted:0};
+  const hold=(detail:Detail)=>{
+    summary.held++;
+    if(summary.heldDetails.length<500) summary.heldDetails.push(detail);
+    else summary.heldDetailsOmitted++;
+  };
+  const failure=(detail:Detail)=>{
+    summary.errors.push(`${detail.visualId ? `#${detail.visualId}` : detail.orderId ?? "Scan"}${detail.filename ? ` ${detail.filename}` : ""}: ${detail.reason}`);
+    if(summary.failedDetails.length<500) summary.failedDetails.push(detail);
+    else summary.failedDetailsOmitted++;
+  };
   try {
     locked=(await c.query("SELECT pg_try_advisory_lock(hashtext($1)) AS locked",["sepscope-scan:"+environment])).rows[0].locked;
     if(!locked) {await pool.query("UPDATE sepscope_automation_runs SET state='skipped',completed_at=now(),detail=detail||$2::jsonb WHERE id=$1",[runId,JSON.stringify({message:"Another scan is running."})]);return;}
@@ -33,27 +45,40 @@ async function executeScan(runId: string, actor: string, settings: Awaited<Retur
     await pool.query("UPDATE sepscope_automation_runs SET state='running' WHERE id=$1",[runId]);
     const rules=await activeRules();
     const orders:string[]=[]; let cursor:string|null=null;
+    const visualIds=new Map<string,string>();
     const seen=new Set<string>();
     for(let page=0;page<100;page++) {
-      const data:any=await getPrintavoClient().query(`query {invoices(first:25,statusIds:${JSON.stringify(settings.allowedStatusIds)}${cursor ? `,after:${JSON.stringify(cursor)}`:""}) {nodes {id} pageInfo {hasNextPage endCursor}}}`);
-      for(const order of data.invoices.nodes) if(!seen.has(order.id)) {seen.add(order.id);orders.push(order.id);}
+      const data:any=await getPrintavoClient().query(`query {invoices(first:25,statusIds:${JSON.stringify(settings.allowedStatusIds)}${cursor ? `,after:${JSON.stringify(cursor)}`:""}) {nodes {id visualId} pageInfo {hasNextPage endCursor}}}`);
+      for(const order of data.invoices.nodes) if(!seen.has(order.id)) {seen.add(order.id);orders.push(order.id);visualIds.set(order.id,String(order.visualId));}
       if(!data.invoices.pageInfo.hasNextPage) break;
       const next=data.invoices.pageInfo.endCursor;
       if(!next || next===cursor || page===99) throw new Error("Invoice discovery incomplete; narrow eligible statuses.");
       cursor=next;
     }
     for(const orderId of orders) {
+      let visualId=visualIds.get(orderId);
       try {
         const current=await getSettings();
         if(current.version!==settings.version) throw new Error("Settings changed during scan; remaining intake stopped.");
         const inv=await readInvoice(orderId);
-        if(!settings.allowedStatusIds.includes(inv.status.id) || inv.prepTasks.length!==1 || inv.prepTasks[0].completed) {summary.held++;continue;}
+        visualId=String(inv.visualId);
+        const reason=invoiceHoldReason(inv,settings.allowedStatusIds);
+        if(reason) {hold({orderId,visualId,reason});continue;}
         summary.invoices++;
+        if(!inv.files.length) {hold({orderId,visualId,reason:"No production file ends in OUTPUT.ai (case-insensitive)."});continue;}
         for(const file of inv.files) {
-          if(!addedAfterCutoff(file.timestamps?.createdAt,settings)) {summary.held++;continue;}
+          const context={orderId,visualId,filename:file.name};
+          if(!addedAfterCutoff(file.timestamps?.createdAt,settings)) {
+            hold({...context,reason:!file.timestamps?.createdAt || !Number.isFinite(Date.parse(file.timestamps.createdAt))
+              ? "Missing or invalid file upload date."
+              : `File added before ${settings.addedAfter} (${settings.timezone}).`});continue;
+          }
           const metadata={visualId:String(inv.visualId),customerName:inv.customerName,customerId:inv.contact?.customer?.id,filename:file.name,sourceStatusId:inv.status.id};
           const changed=Date.parse(file.timestamps?.updatedAt ?? file.timestamps?.createdAt ?? "");
-          if(!Number.isFinite(changed) || Date.now()-changed<settings.settleMinutes*60_000) {summary.held++;continue;}
+          if(!Number.isFinite(changed) || Date.now()-changed<settings.settleMinutes*60_000) {
+            hold({...context,reason:!Number.isFinite(changed) ? "Missing or invalid file modification date."
+              : `Waiting for the ${settings.settleMinutes}-minute settling period; eligible after ${new Date(changed+settings.settleMinutes*60_000).toISOString()}.`});continue;
+          }
           try {
             const {bytes,sha}=await downloadOutput(file);
             const existing=(await pool.query(`SELECT id FROM sepscope_automation_intake WHERE environment=$1 AND order_id=$2 AND file_id=$3 AND revision=$4 AND job_id IS NOT NULL`,[environment,orderId,file.id,sha])).rowCount;
@@ -76,20 +101,23 @@ async function executeScan(runId: string, actor: string, settings: Awaited<Retur
             await c.query("COMMIT");
           } catch(e:any) {
             await c.query("ROLLBACK");
-            const error=String(e.message).slice(0,500); summary.errors.push(`#${inv.visualId} ${file.name}: ${error}`);
+            const error=String(e.message).slice(0,500); failure({...context,reason:error});
             await pool.query(`INSERT INTO sepscope_automation_intake(id,environment,run_id,order_id,file_id,revision,metadata,error)
               VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING`,
               [randomUUID(),environment,runId,orderId,file.id,"error:"+digest(JSON.stringify([file.name,file.timestamps])),JSON.stringify(metadata),error]);
           }
         }
       } catch(e:any) {
-        summary.errors.push(`${orderId}: ${String(e.message).slice(0,500)}`);
+        failure({orderId,visualId,reason:String(e.message).slice(0,500)});
         if((await getSettings()).version!==settings.version) break;
+      } finally {
+        await pool.query("UPDATE sepscope_automation_runs SET detail=detail||$2::jsonb WHERE id=$1",[runId,JSON.stringify(summary)]);
       }
     }
     await pool.query("UPDATE sepscope_automation_runs SET state=$2,completed_at=now(),detail=detail||$3::jsonb WHERE id=$1",[runId,summary.errors.length?"partial":"completed",JSON.stringify(summary)]);
   } catch(e:any) {
     await c.query("ROLLBACK");
+    failure({reason:String(e.message).slice(0,500)});
     await pool.query("UPDATE sepscope_automation_runs SET state='failed',completed_at=now(),detail=detail||$2::jsonb WHERE id=$1",[runId,JSON.stringify({...summary,error:String(e.message).slice(0,500)})]);
   } finally {
     if(locked) await c.query("SELECT pg_advisory_unlock(hashtext($1))",["sepscope-scan:"+environment]);

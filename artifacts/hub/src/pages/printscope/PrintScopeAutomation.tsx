@@ -9,6 +9,7 @@ import {
 import { Loader2, Info, X, RefreshCw, Plus, AlertTriangle, FolderOpen } from "lucide-react";
 import { useStaff } from "@/components/auth/StaffGate";
 import { automationLogText } from "./automationLog";
+import { ScanRunHistory } from "./ScanRunHistory";
 
 type Settings = { version: number; enabled: boolean; times: string[]; weekdays: number[]; timezone: string; email: string; automaticActions: boolean; allowedStatusIds: string[]; settleMinutes: number; addedAfter: string; automaticSince?: string | null };
 type Item = { id: string; orderId: string; visualId: string | number; customerName: string | null; filename: string; jobId: string | null; state: string; verdict: string | null; error: string | null; createdAt: string };
@@ -97,7 +98,7 @@ export function PrintScopeAutomation() {
               No OUTPUT files have been picked up yet. Scans only look at invoices in the eligible source statuses chosen above.
             </div>
           ) : (
-            <div className="border border-line rounded overflow-hidden bg-white">
+            <div className="border border-line rounded overflow-hidden bg-[var(--surface)]">
               {orders.map(o => {
                 const files = data.items.filter(i => i.orderId === o.orderId);
                 return (
@@ -123,8 +124,17 @@ export function PrintScopeAutomation() {
           )}
         </section>
 
+        <details className="border border-[var(--line)] rounded p-3 bg-[var(--surface)]">
+          <summary className="cursor-pointer font-semibold text-sm">Failed inspections ({failed.length})</summary>
+          <p className="text-xs text-[var(--ink-3)] my-2">Files with a failed inspection verdict in the recent intake list. Open a file to view its findings.</p>
+          {!failed.length ? <p className="text-xs">No failed inspections in the recent intake list.</p> :
+            <ul className="space-y-2 text-sm">{failed.map(f=><li key={f.id}>
+              <span className="font-semibold">Invoice #{f.visualId} · </span>
+              {f.jobId ? <Link className="underline break-words" href={`/printscope?job=${f.jobId}`}>{f.filename}</Link> : f.filename}
+            </li>)}</ul>}
+        </details>
         <div className="grid md:grid-cols-3 gap-4">
-          <LogList title="Scan runs" empty="No scans have run." rows={data.runs.map(r => ({ id: r.id, state: r.state, text: automationLogText(r.detail), at: r.createdAt }))} />
+          <ScanRunHistory runs={data.runs} />
           <LogList title="Status actions" empty="No actions recorded." rows={data.actions.map(a => ({ id: a.id, state: a.state, text: [a.decision.toUpperCase(), `order ${a.orderId}`, automationLogText(a.detail)].filter(Boolean).join(" · "), at: a.createdAt }))} />
           <LogList title="Notification emails" empty="No emails sent." rows={data.emails.map(e => ({ id: e.id, state: e.state, text: e.error, at: e.createdAt }))} />
         </div>

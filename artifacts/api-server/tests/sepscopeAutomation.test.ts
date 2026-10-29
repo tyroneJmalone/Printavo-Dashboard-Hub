@@ -14,7 +14,15 @@ test("scan and action JSON details render readable text rather than objects",()=
   assert.equal(automationLogText({message:"Skipped",errors:["File failed",{unexpected:true}]}),"Skipped\nFile failed");
   assert.equal(automationLogText({note:"Reviewed",steps:[{name:"Archive file",state:"completed"}]}),"Reviewed\nArchive file: completed");
 });
-import { defaults, outputFilename, scheduleSlot, invoiceFolder, dropboxHash, digest, settingsInput, addedAfterCutoff } from "../src/lib/printscope/automationPolicy";
+import { defaults, outputFilename, scheduleSlot, invoiceFolder, dropboxHash, digest, settingsInput, addedAfterCutoff, invoiceHoldReason } from "../src/lib/printscope/automationPolicy";
+test("invoice holds report the actual status or task gate",()=>{
+  const inv={status:{id:"1"},prepTasks:[{completed:false}]};
+  assert.equal(invoiceHoldReason(inv,["1"]),null);
+  assert.match(invoiceHoldReason(inv,["2"])!,/status/);
+  assert.match(invoiceHoldReason({...inv,prepTasks:[]},["1"])!,/Missing task/);
+  assert.match(invoiceHoldReason({...inv,prepTasks:[{completed:true}]},["1"])!,/already completed/);
+  assert.match(invoiceHoldReason({...inv,prepTasks:[{completed:false},{completed:false}]},["1"])!,/Multiple/);
+});
 test("persistent inclusive upload-date cutoff uses Eastern midnight and fails closed",()=>{
   assert.equal(defaults.addedAfter,"2026-10-27");
   assert.equal(addedAfterCutoff("2026-10-27T03:59:59Z",defaults),false);

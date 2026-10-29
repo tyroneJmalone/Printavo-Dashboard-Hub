@@ -13,6 +13,12 @@ The rule: to run a throwaway TypeScript harness that imports api-server internal
 
 Do not use REPLIT_ENVIRONMENT alone to identify a harness database target.
 
+For standalone React rendering tests, explicitly set esbuild `jsx: "automatic"`.
+
+**Why:** A standalone bundle can select classic JSX transformation even though the Vite app uses the automatic runtime, producing a misleading “React is not defined” failure.
+
+**How to apply:** Run the bundler from a package that declares esbuild and use the automatic runtime when bundling frontend JSX for Node tests.
+
 **Why:** The development workspace reported that marker as production even while its existing DB pool used the local development database sidecar.
 
 **How to apply:** Verify the actual development connection target without displaying credentials before any permitted development repair. Never obtain production write credentials or bypass production read-only restrictions.
