@@ -40,7 +40,7 @@ unattended actions. Multiple-output completeness remains unresolved. Preserve
 staff approval by default; do not interpret the future toggle as permission
 to auto-approve incomplete invoices.
 
-The user chose October 28, 2026 as the persistent Added After date, not a
+The user chose October 27, 2026 as the persistent Added After date, not a
 first-scan-only cutoff. Include that day's uploads and keep applying the
 cutoff on later scans unless staff change it.
 

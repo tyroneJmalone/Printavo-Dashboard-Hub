@@ -7,7 +7,7 @@ export const defaults = {
   timezone: "America/New_York", email: "art@mintprintworks.com",
   automaticActions: false, allowedStatusIds: [] as string[], settleMinutes: 10,
   automaticSince: null as string | null,
-  addedAfter: "2026-10-28",
+  addedAfter: "2026-10-27",
 };
 export const settingsInput = z.object({
   version: z.number().int().min(0),

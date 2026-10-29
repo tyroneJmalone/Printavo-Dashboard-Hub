@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { defaults, outputFilename, scheduleSlot, invoiceFolder, dropboxHash, digest, settingsInput, addedAfterCutoff } from "../src/lib/printscope/automationPolicy";
 test("persistent inclusive upload-date cutoff uses Eastern midnight and fails closed",()=>{
-  assert.equal(defaults.addedAfter,"2026-10-28");
-  assert.equal(addedAfterCutoff("2026-10-28T03:59:59Z",defaults),false);
-  assert.equal(addedAfterCutoff("2026-10-28T04:00:00Z",defaults),true);
+  assert.equal(defaults.addedAfter,"2026-10-27");
+  assert.equal(addedAfterCutoff("2026-10-27T03:59:59Z",defaults),false);
+  assert.equal(addedAfterCutoff("2026-10-27T04:00:00Z",defaults),true);
   assert.equal(addedAfterCutoff("2026-10-28T23:00:00-04:00",defaults),true);
   assert.equal(addedAfterCutoff("2027-01-01T12:00:00Z",defaults),true);
   for(const value of [null,undefined,"","invalid"])assert.equal(addedAfterCutoff(value,defaults),false);
