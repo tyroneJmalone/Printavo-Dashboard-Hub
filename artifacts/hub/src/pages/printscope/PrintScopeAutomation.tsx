@@ -142,7 +142,7 @@ function FileBadge({ state, verdict }: { state: string; verdict: string | null }
 
 function Stat({ label, value, tone, note }: { label: string; value: number; tone: string; note: string }) {
   return (
-    <div className="border border-line rounded p-3 bg-white" style={{ borderLeft: `4px solid var(--${tone === "muted" ? "ink-3" : tone})` }}>
+    <div className="border border-line rounded p-3 bg-[var(--surface)]" style={{ borderLeft: `4px solid var(--${tone === "muted" ? "ink-3" : tone})` }}>
       <div className="text-[10px] uppercase font-bold tracking-wider text-ink-3">{label}</div>
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-[11px] text-ink-3">{note}</div>
@@ -152,7 +152,7 @@ function Stat({ label, value, tone, note }: { label: string; value: number; tone
 
 function LogList({ title, empty, rows }: { title: string; empty: string; rows: { id: string; state: string; text: string | null; at: string }[] }) {
   return (
-    <section className="border border-line rounded bg-white">
+    <section className="border border-line rounded bg-[var(--surface)]">
       <h3 className="font-bold text-sm p-3 border-b border-line">{title}</h3>
       {rows.length === 0 ? <p className="p-4 text-xs text-ink-3">{empty}</p> : (
         <ul className="max-h-72 overflow-y-auto">
@@ -217,7 +217,7 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
     } catch (e) { setMsg({ ok: false, text: errMsg(e) }); }
   };
 
-  const input = "border border-line rounded px-2 py-1.5 text-sm bg-white disabled:bg-surface-2";
+  const input = "border border-[var(--line-2)] rounded px-2 py-1.5 text-sm bg-[var(--surface-2)] text-[var(--ink)] [color-scheme:dark] placeholder:text-[var(--ink-3)] disabled:text-[var(--ink-2)] disabled:opacity-75";
   return (
     <section className="border border-line rounded bg-surface-1">
       <div className="flex items-center justify-between p-3 border-b border-line flex-wrap gap-2">
@@ -268,7 +268,7 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
             <div className="text-[10px] uppercase font-bold tracking-wider text-ink-3 mb-1">Eligible source statuses</div>
             <p className="text-xs text-ink-2 mb-2">Scans only touch invoices currently in these Printavo statuses. Pick them explicitly so historic, shipped and completed jobs are never inspected or moved. With none selected, scans do not run.</p>
             {noStatuses && <p className="text-xs font-semibold text-flag mb-2">No source statuses selected. Scans are blocked until at least one is chosen.</p>}
-            <div className="max-h-48 overflow-y-auto border border-line rounded bg-white p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+            <div className="max-h-48 overflow-y-auto border border-line rounded bg-[var(--surface-2)] text-[var(--ink)] [color-scheme:dark] p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
               {data.statuses.length === 0 && <span className="text-xs text-ink-3">No Printavo statuses available.</span>}
               {data.statuses.map(s => (
                 <label key={s.id} className="flex items-center gap-2 text-xs">
@@ -352,8 +352,8 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-3" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-white rounded-lg w-full max-w-2xl max-h-[92dvh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-line sticky top-0 bg-white">
+      <div role="dialog" aria-modal="true" className="bg-[var(--surface)] text-[var(--ink)] rounded-lg w-full max-w-2xl max-h-[92dvh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-line sticky top-0 bg-[var(--surface)]">
           <h3 className="font-bold">Invoice review{p ? ` · #${p.visualId}` : ""}</h3>
           <button aria-label="Close" onClick={onClose}><X size={18} /></button>
         </div>
@@ -418,7 +418,7 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
                 )}
                 {decision && (
                   <>
-                    <textarea maxLength={2000} value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="border border-line rounded p-2 text-sm h-16" />
+                    <textarea maxLength={2000} value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="border border-[var(--line-2)] rounded p-2 text-sm h-16 bg-[var(--surface-2)] text-[var(--ink)] placeholder:text-[var(--ink-3)] [color-scheme:dark]" />
                     <label className="flex items-start gap-2 text-xs font-semibold"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
                       I confirm: {decision === "pass" ? "clear this invoice to run" : "send this invoice back"} in Printavo.</label>
                     <button disabled={!canSubmit} onClick={submit} className="bg-slate-800 text-white py-2 rounded font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
