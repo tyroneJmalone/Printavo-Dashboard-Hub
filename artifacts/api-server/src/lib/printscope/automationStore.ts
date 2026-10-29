@@ -3,10 +3,12 @@ import { defaults, settingsInput } from "./automationPolicy";
 import { environment } from "./worker";
 export async function getSettings() {
   const row=(await pool.query("SELECT * FROM sepscope_automation_settings WHERE environment=$1",[environment])).rows[0];
-  return {...defaults,...row?.settings,version:row?.version ?? 0,updatedBy:row?.updated_by ?? null};
+  return {...defaults,...row?.settings,restrictedTestMode:environment==="development" && row?.settings?.restrictedTestMode===true,version:row?.version ?? 0,updatedBy:row?.updated_by ?? null};
 }
 export async function saveSettings(body: unknown, actor: string) {
   const input=settingsInput.parse(body);
+  if(input.restrictedTestMode && (environment!=="development" || input.enabled || input.automaticActions))
+    throw new Error("Restricted tests are development-only. Turn scheduled scans and automatic actions off first.");
   if((input.enabled || input.automaticActions) && !input.allowedStatusIds.length) throw new Error("Select eligible source statuses before enabling automation.");
   const c=await pool.connect();
   try {
@@ -37,10 +39,10 @@ export async function automationData() {
     pool.query(`SELECT id,state,error,created_at AS "createdAt" FROM sepscope_automation_emails WHERE environment=$1 ORDER BY created_at DESC LIMIT 50`,[environment]),
     pool.query("SELECT printavo_id AS id,name FROM pv_statuses ORDER BY name"),
   ]);
-  return {settings,items:items.rows,runs:runs.rows,actions:actions.rows,emails:emails.rows,statuses:statuses.rows,
+  return {settings,environment,items:items.rows,runs:runs.rows,actions:actions.rows,emails:emails.rows,statuses:statuses.rows,
     limitations:["Pass actions always require staff confirmation of all required output files. Imprint counts are advisory, not proof of completeness.",
       "Dropbox requires files.content.write permission. Existing customer/#invoice folders only; no overwrites or folder creation.",
       "Automatic actions apply only to new failed inspections after activation, never the existing backlog. Successful inspections remain staff-reviewed.",
-      "Scheduled scans, notification sending and upstream actions run only in production. Development supports manual read-only intake and inspection.",
+      "Development blocks upstream actions except explicitly approved administrator tests on #20625 in restricted live-test mode. No scheduled tests or automatic test actions.",
       "Recent intake view shows up to 300 file versions; preview always checks the complete live invoice."]};
 }

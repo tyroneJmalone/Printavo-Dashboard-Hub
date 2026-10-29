@@ -18,6 +18,7 @@ export interface SepscopeSettingsRequest {
   allowedStatusIds: string[];
   settleMinutes: number;
   addedAfter: string;
+  restrictedTestMode?: boolean;
 }
 
 export type SepscopeApprovalRequestDecision = typeof SepscopeApprovalRequestDecision[keyof typeof SepscopeApprovalRequestDecision];
@@ -26,11 +27,14 @@ export type SepscopeApprovalRequestDecision = typeof SepscopeApprovalRequestDeci
 export const SepscopeApprovalRequestDecision = {
   pass: 'pass',
   fail: 'fail',
+  email: 'email',
 } as const;
 
 export interface SepscopeApprovalRequest {
   token: string;
   decision: SepscopeApprovalRequestDecision;
+  testMode?: boolean;
+  selectedFileIds?: string[];
   confirmComplete: boolean;
   /** @maxLength 2000 */
   note: string;

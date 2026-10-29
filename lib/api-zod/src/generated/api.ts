@@ -2618,7 +2618,8 @@ export const UpdateSepscopeAutomationBody = zod.object({
   "automaticActions": zod.boolean(),
   "allowedStatusIds": zod.array(zod.string()),
   "settleMinutes": zod.number(),
-  "addedAfter": zod.coerce.date()
+  "addedAfter": zod.coerce.date(),
+  "restrictedTestMode": zod.boolean().optional()
 })
 
 export const UpdateSepscopeAutomationResponse = zod.record(zod.string(), zod.unknown())
@@ -2644,7 +2645,9 @@ export const approveSepscopeActionsBodyNoteMax = 2000;
 
 export const ApproveSepscopeActionsBody = zod.object({
   "token": zod.string(),
-  "decision": zod.enum(['pass', 'fail']),
+  "decision": zod.enum(['pass', 'fail', 'email']),
+  "testMode": zod.boolean().optional(),
+  "selectedFileIds": zod.array(zod.string()).optional(),
   "confirmComplete": zod.boolean(),
   "note": zod.string().max(approveSepscopeActionsBodyNoteMax)
 })

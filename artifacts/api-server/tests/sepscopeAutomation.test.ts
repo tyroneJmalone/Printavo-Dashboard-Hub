@@ -1,5 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {assertTestScope,assertTestFiles,TEST_ORDER_ID} from "../src/lib/printscope/testMode";
+test("restricted test guard rejects other invoices, production, automatic actions and unselected files",()=>{
+  const s={restrictedTestMode:true,enabled:false,automaticActions:false};
+  assert.doesNotThrow(()=>assertTestScope("development",s,TEST_ORDER_ID,false,true));
+  for(const [env,settings,id,auto,explicit] of [
+    ["production",s,TEST_ORDER_ID,false,true],
+    ["development",s,"123",false,true],
+    ["development",{...s,restrictedTestMode:false},TEST_ORDER_ID,false,true],
+    ["development",{...s,enabled:true},TEST_ORDER_ID,false,true],
+    ["development",{...s,automaticActions:true},TEST_ORDER_ID,false,true],
+    ["development",s,TEST_ORDER_ID,true,true],
+    ["development",s,TEST_ORDER_ID,false,false],
+  ] as const) assert.throws(()=>assertTestScope(env,settings,id,auto,explicit));
+  assert.doesNotThrow(()=>assertTestFiles(["2","1"],[{id:"1"},{id:"2"}]));
+  for(const ids of [undefined,[],["1"],["1","1"],["1","3"]]) assert.throws(()=>assertTestFiles(ids,[{id:"1"},{id:"2"}]));
+});
 import { previewAssetPrefix } from "../src/lib/printscope/assetPaths";
 test("preview paths retain bucket and pilot scope for manual and automated originals",()=>{
   const id="11111111-1111-1111-1111-111111111111", token="22222222-2222-2222-2222-222222222222";

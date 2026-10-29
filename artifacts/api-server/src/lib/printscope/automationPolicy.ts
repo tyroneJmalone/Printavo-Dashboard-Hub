@@ -8,6 +8,7 @@ export const defaults = {
   automaticActions: false, allowedStatusIds: [] as string[], settleMinutes: 10,
   automaticSince: null as string | null,
   addedAfter: "2026-10-27",
+  restrictedTestMode: false,
 };
 export const settingsInput = z.object({
   version: z.number().int().min(0),
@@ -18,6 +19,7 @@ export const settingsInput = z.object({
   allowedStatusIds: z.array(z.string().regex(/^\d+$/)).max(100),
   settleMinutes: z.number().int().min(1).max(120),
   addedAfter: z.string().date(),
+  restrictedTestMode: z.boolean().default(false),
 }).strict();
 // Inclusive civil date in the configured scan timezone, never a rolling cutoff.
 export function addedAfterCutoff(createdAt: string | null | undefined, settings: Pick<typeof defaults, "addedAfter" | "timezone">) {

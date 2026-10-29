@@ -12,4 +12,5 @@ export type SepscopeApprovalRequestDecision = typeof SepscopeApprovalRequestDeci
 export const SepscopeApprovalRequestDecision = {
   pass: 'pass',
   fail: 'fail',
+  email: 'email',
 } as const;

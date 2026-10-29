@@ -10,6 +10,8 @@ import type { SepscopeApprovalRequestDecision } from './sepscopeApprovalRequestD
 export interface SepscopeApprovalRequest {
   token: string;
   decision: SepscopeApprovalRequestDecision;
+  testMode?: boolean;
+  selectedFileIds?: string[];
   confirmComplete: boolean;
   /** @maxLength 2000 */
   note: string;

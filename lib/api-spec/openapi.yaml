@@ -9036,12 +9036,15 @@ components:
         allowedStatusIds: { type: array, items: { type: string } }
         settleMinutes: { type: integer }
         addedAfter: { type: string, format: date }
+        restrictedTestMode: { type: boolean }
     SepscopeApprovalRequest:
       type: object
       required: [token, decision, confirmComplete, note]
       properties:
         token: { type: string }
-        decision: { type: string, enum: [pass, fail] }
+        decision: { type: string, enum: [pass, fail, email] }
+        testMode: { type: boolean }
+        selectedFileIds: { type: array, items: { type: string } }
         confirmComplete: { type: boolean }
         note: { type: string, maxLength: 2000 }
     ArtworkCounts:

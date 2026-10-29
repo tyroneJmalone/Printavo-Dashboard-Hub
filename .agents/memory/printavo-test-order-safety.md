@@ -11,11 +11,14 @@ description: Which order may be used for real-write testing and why status chang
 
 For SepScope testing, the user identified #20625 as their own internal invoice,
 not a client invoice, and proposed it for status/email/task/archive tests.
-This is a proposed, scoped exception—not blanket permission for writes.
+The user approved adding a restricted live-test mode for this invoice—not
+automatically enabling the mode or executing live tests.
 
 **Why:** The user supplied the invoice's internal purpose and suggested planting
 a bad OUTPUT file to exercise the failure workflow.
 
-**How to apply:** Confirm the controlled live-test scope before writes, check
+**How to apply:** Keep the mode administrator-only, development-only, and
+disabled by default, with scheduled/automatic actions off and explicit
+test-file selection. Confirm the controlled live-test scope before writes, check
 Printavo's notification side effects, and never use unrelated attachments or
 broaden this exception to other modules.

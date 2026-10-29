@@ -8,6 +8,7 @@ import { digest, addedAfterCutoff, invoiceHoldReason } from "./automationPolicy"
 import { readInvoice, downloadOutput } from "./automationProviders";
 import { getSettings } from "./automationStore";
 import { logger } from "../logger";
+import { TEST_ORDER_ID, TEST_VISUAL_ID } from "./testMode";
 
 export async function queueScan(actor: string, slot="manual:"+randomUUID()) {
   const settings=await getSettings();
@@ -47,7 +48,8 @@ async function executeScan(runId: string, actor: string, settings: Awaited<Retur
     const orders:string[]=[]; let cursor:string|null=null;
     const visualIds=new Map<string,string>();
     const seen=new Set<string>();
-    for(let page=0;page<100;page++) {
+    if(settings.restrictedTestMode) {orders.push(TEST_ORDER_ID);visualIds.set(TEST_ORDER_ID,TEST_VISUAL_ID);}
+    for(let page=0;!settings.restrictedTestMode && page<100;page++) {
       const data:any=await getPrintavoClient().query(`query {invoices(first:25,statusIds:${JSON.stringify(settings.allowedStatusIds)}${cursor ? `,after:${JSON.stringify(cursor)}`:""}) {nodes {id visualId} pageInfo {hasNextPage endCursor}}}`);
       for(const order of data.invoices.nodes) if(!seen.has(order.id)) {seen.add(order.id);orders.push(order.id);visualIds.set(order.id,String(order.visualId));}
       if(!data.invoices.pageInfo.hasNextPage) break;

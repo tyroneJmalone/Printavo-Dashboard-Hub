@@ -17,4 +17,5 @@ export interface SepscopeSettingsRequest {
   allowedStatusIds: string[];
   settleMinutes: number;
   addedAfter: Date;
+  restrictedTestMode?: boolean;
 }

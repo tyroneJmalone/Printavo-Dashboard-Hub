@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { ReplitConnectors } from "@replit/connectors-sdk";
+import { deliverNotification } from "./notificationDelivery";
 import { pool } from "@workspace/db";
 import { environment } from "./worker";
 import { getSettings } from "./automationStore";
@@ -50,8 +50,7 @@ export async function automationTick() {
       }
       await c.query("UPDATE sepscope_automation_emails SET state='sending' WHERE id=$1",[email.id]);
       try {
-        const result=await new ReplitConnectors().proxy("resend","/emails",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":digest("sepscope:"+email.id)},body:JSON.stringify(email.body)});
-        if(!result.ok || !(await result.json() as any).id) throw new Error("Email provider did not confirm acceptance.");
+        await deliverNotification(email.body,email.id);
         await c.query("UPDATE sepscope_automation_emails SET state='sent',error=NULL WHERE id=$1",[email.id]);
       } catch(e:any) {await c.query("UPDATE sepscope_automation_emails SET state='pending',error=$2 WHERE id=$1",[email.id,String(e.message).slice(0,500)]);}
     }

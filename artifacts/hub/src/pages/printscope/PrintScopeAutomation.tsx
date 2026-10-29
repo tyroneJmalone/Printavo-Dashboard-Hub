@@ -11,13 +11,13 @@ import { useStaff } from "@/components/auth/StaffGate";
 import { automationLogText } from "./automationLog";
 import { ScanRunHistory } from "./ScanRunHistory";
 
-type Settings = { version: number; enabled: boolean; times: string[]; weekdays: number[]; timezone: string; email: string; automaticActions: boolean; allowedStatusIds: string[]; settleMinutes: number; addedAfter: string; automaticSince?: string | null };
+type Settings = { version: number; enabled: boolean; times: string[]; weekdays: number[]; timezone: string; email: string; automaticActions: boolean; allowedStatusIds: string[]; settleMinutes: number; addedAfter: string; restrictedTestMode: boolean; automaticSince?: string | null };
 type Item = { id: string; orderId: string; visualId: string | number; customerName: string | null; filename: string; jobId: string | null; state: string; verdict: string | null; error: string | null; createdAt: string };
 type Run = { id: string; state: string; detail: unknown; createdAt: string };
 type Action = { id: string; orderId: string; decision: string; state: string; detail: unknown; createdAt: string };
 type Email = { id: string; state: string; error: string | null; createdAt: string };
-type Data = { settings: Settings; statuses: { id: string; name: string }[]; items: Item[]; runs: Run[]; actions: Action[]; emails: Email[]; limitations: string[] };
-type Preview = { token: string; orderId: string; visualId: string | number; customerName: string | null; statusName: string | null; files: { id: string; name: string; jobId: string | null; state: string; verdict: string | null; error?: string }[]; task: { id: string; name: string; completed: boolean } | null; folder: { path: string; id: string } | null; blockers: string[]; canPass: boolean; canFail: boolean; printImprints: number | null; completeness: string };
+type Data = { settings: Settings; environment: string; statuses: { id: string; name: string }[]; items: Item[]; runs: Run[]; actions: Action[]; emails: Email[]; limitations: string[] };
+type Preview = { token: string; orderId: string; visualId: string | number; customerName: string | null; statusName: string | null; files: { id: string; name: string; jobId: string | null; state: string; verdict: string | null; error?: string }[]; task: { id: string; name: string; completed: boolean } | null; folder: { path: string; id: string } | null; blockers: string[]; canPass: boolean; canFail: boolean; testMode: boolean; emailRecipient: string; printImprints: number | null; completeness: string };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const when = (s: string) => { const d = new Date(s); return isNaN(+d) ? s : d.toLocaleString(); };
@@ -208,6 +208,7 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
         timezone: form.timezone, email: form.email, automaticActions: form.automaticActions,
         allowedStatusIds: form.allowedStatusIds, settleMinutes: Number(form.settleMinutes),
         addedAfter: form.addedAfter,
+        restrictedTestMode: form.restrictedTestMode,
       } });
       setDirty(false);
       const next = (res as unknown as Data)?.settings;
@@ -236,9 +237,15 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
         {!isAdmin && <span className="text-xs text-ink-3">Read only. Admins change the schedule and run scans.</span>}
       </div>
       <div className="p-4 grid md:grid-cols-2 gap-5">
+        {data.environment==="development" && <div className="md:col-span-2 border border-amber-600 rounded p-3 text-sm">
+          <label className="flex gap-2 font-semibold"><input type="checkbox" disabled={ro} checked={form.restrictedTestMode}
+            onChange={e=>{setForm(f=>({...f,restrictedTestMode:e.target.checked,enabled:false,automaticActions:false}));setDirty(true);}} />
+            Restricted live-test mode — invoice #20625 only</label>
+          <p className="text-xs mt-2">Real Printavo, email and Dropbox actions, individually confirmed by an administrator. Saving this mode disables scheduled scans and automatic actions. Scan now is limited to #20625. All current OUTPUT files must be explicitly selected as test files before an action. No action runs merely by enabling this mode.</p>
+        </div>}
         <div className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" disabled={ro} checked={form.enabled} onChange={e => set("enabled", e.target.checked)} /> Scheduled scans enabled
+            <input type="checkbox" disabled={ro || form.restrictedTestMode} checked={form.enabled} onChange={e => set("enabled", e.target.checked)} /> Scheduled scans enabled
           </label>
           <div>
             <div className="text-[10px] uppercase font-bold tracking-wider text-ink-3 mb-1">Run times ({form.timezone})</div>
@@ -292,7 +299,7 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
           </div>
           <div className="relative">
             <label className="flex items-center gap-2 text-sm font-semibold">
-              <input type="checkbox" disabled={ro} checked={form.automaticActions} onChange={e => set("automaticActions", e.target.checked)} /> Automatic failure actions
+              <input type="checkbox" disabled={ro || form.restrictedTestMode} checked={form.automaticActions} onChange={e => set("automaticActions", e.target.checked)} /> Automatic failure actions
               <button type="button" aria-label="About automatic actions" onMouseEnter={() => setTip(true)} onMouseLeave={() => setTip(false)} onFocus={() => setTip(true)} onBlur={() => setTip(false)} className="text-ink-3"><Info size={14} /></button>
             </label>
             {tip && (
@@ -320,6 +327,7 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
 }
 
 function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+  const {role}=useStaff();
   const qc = useQueryClient();
   const preview = usePreviewSepscopeActions({mutation:{
     mutationFn: ({orderId}) => previewSepscopeActions(orderId,{signal:AbortSignal.timeout(90_000)}),
@@ -327,7 +335,8 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
   const approve = useApproveSepscopeActions();
   const [p, setP] = useState<Preview | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [decision, setDecision] = useState<"pass" | "fail" | null>(null);
+  const [decision, setDecision] = useState<"pass" | "fail" | "email" | null>(null);
+  const [selectedFiles,setSelectedFiles]=useState<string[]>([]);
   const [complete, setComplete] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [note, setNote] = useState("");
@@ -340,6 +349,7 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
     const sequence=++loadSequence.current;
     setLoadErr(null);
     setP(null); setDecision(null); setComplete(false); setConfirmed(false);
+    setSelectedFiles([]);
     try {
       const value=await previewRef.current({ orderId }) as unknown as Preview;
       if(sequence!==loadSequence.current) return;
@@ -359,7 +369,7 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
     if (!p || !decision) return;
     setResult(null);
     try {
-      const res = (await approve.mutateAsync({ orderId, data: { token: p.token, decision, confirmComplete: decision === "pass" ? complete : false, note } })) as unknown as { action: { state: string; detail: unknown } };
+      const res = (await approve.mutateAsync({ orderId, data: { token: p.token, decision, confirmComplete: decision === "pass" ? complete : false, note, testMode:p.testMode,selectedFileIds:p.testMode?selectedFiles:undefined } })) as unknown as { action: { state: string; detail: unknown } };
       qc.invalidateQueries({ queryKey: getGetSepscopeAutomationQueryKey() });
       const st = res?.action?.state;
       const detail=automationLogText(res?.action?.detail);
@@ -374,7 +384,9 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
     }
   };
 
-  const canSubmit = !!p && !!decision && confirmed && !preview.isPending && !approve.isPending && (decision === "pass" ? p.canPass && complete : p.canFail);
+  const canSubmit = !!p && !!decision && confirmed && !preview.isPending && !approve.isPending &&
+    (!p.testMode || (role==="admin" && String(p.visualId)==="20625" && p.files.length>0 && selectedFiles.length===p.files.length)) &&
+    (decision === "pass" ? p.canPass && complete : p.canFail);
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-900/70 flex items-center justify-center p-3" onClick={onClose}>
@@ -397,6 +409,14 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
           )}
           {p && (
             <>
+              {p.testMode && <div className="border border-amber-500 bg-amber-950 text-amber-100 rounded p-3 text-xs space-y-2">
+                <strong>RESTRICTED LIVE TEST — #20625 only</strong>
+                <p>These are real actions. Status changes may trigger Printavo’s own notifications. Verify those automations before confirming.</p>
+                <p>Email recipient: <strong>{p.emailRecipient}</strong>. The email test sends a [TEST] failure notification only.</p>
+                <p>Pass: copy selected OUTPUT files to <strong>{p.folder?.path ?? "unresolved Dropbox folder"}</strong>, verify each copy, remove those attachments from Printavo, then complete the prep task. No folders are created. Keep backup copies before confirming.</p>
+                <p>Failure: change status to PRINT ERROR - REVIEW only; task and attachments remain unchanged.</p>
+                {role!=="admin" && <p>Only administrators may execute live tests.</p>}
+              </div>}
               <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-2">
                 <span>Customer: <strong className="text-ink-1">{p.customerName || "Unknown"}</strong></span>
                 <span>Status: <strong className="text-ink-1">{p.statusName || "Unknown"}</strong></span>
@@ -409,6 +429,8 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
                   <ul className="border border-line rounded divide-y divide-[var(--line)]">
                     {p.files.map(f => (
                       <li key={f.id} className="p-2 flex items-center gap-2 text-[13px] flex-wrap">
+                        {p.testMode && <label className="flex gap-1 text-xs"><input type="checkbox" disabled={role!=="admin" || approve.isPending} checked={selectedFiles.includes(f.id)}
+                          onChange={e=>{setSelectedFiles(ids=>e.target.checked?[...ids,f.id]:ids.filter(id=>id!==f.id));setConfirmed(false);}} />Test file</label>}
                         <FileBadge state={f.state} verdict={f.verdict} />
                         <span className="font-mono truncate flex-1">{f.name}</span>
                         {f.jobId && <Link href={`/printscope?job=${f.jobId}`} className="text-xs underline shrink-0" onClick={onClose}>Findings</Link>}
@@ -442,6 +464,8 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
                 <div className="flex gap-2">
                   <button disabled={!p.canPass} onClick={() => { setDecision("pass"); setConfirmed(false); }} className={`flex-1 py-2 rounded font-semibold border ${decision === "pass" ? "bg-pass text-white border-pass" : "border-line"} disabled:opacity-40`}>Clear to run</button>
                   <button disabled={!p.canFail} onClick={() => { setDecision("fail"); setConfirmed(false); }} className={`flex-1 py-2 rounded font-semibold border ${decision === "fail" ? "bg-fail text-white border-fail" : "border-line"} disabled:opacity-40`}>Send it back</button>
+                  {p.testMode && <button disabled={!p.canFail || role!=="admin"} onClick={()=>{setDecision("email");setConfirmed(false);}}
+                    className="flex-1 py-2 rounded font-semibold border border-amber-500 disabled:opacity-40">Test failure email</button>}
                 </div>
                 {!p.canPass && !p.canFail && <p className="text-xs text-ink-3">No action is available for this invoice right now. See blockers above.</p>}
                 {decision === "pass" && (
@@ -452,7 +476,7 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
                   <>
                     <textarea maxLength={2000} value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="border border-[var(--line-2)] rounded p-2 text-sm h-16 bg-[var(--surface-2)] text-[var(--ink)] placeholder:text-[var(--ink-3)] [color-scheme:dark]" />
                     <label className="flex items-start gap-2 text-xs font-semibold"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-                      I confirm: {decision === "pass" ? "clear this invoice to run" : "send this invoice back"} in Printavo.</label>
+                      I confirm: {decision === "email" ? `send a real test failure email to ${p.emailRecipient}` : decision === "pass" ? "archive the reviewed files, remove their Printavo attachments and complete the prep task" : "change this invoice to PRINT ERROR - REVIEW"}{p.testMode ? " for internal invoice #20625. I verified the test files, backups and notification side effects." : "."}</label>
                     <button disabled={!canSubmit} onClick={submit} className="bg-slate-800 text-white py-2 rounded font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
                       {approve.isPending && <Loader2 size={14} className="animate-spin" />} Approve {decision}</button>
                   </>
