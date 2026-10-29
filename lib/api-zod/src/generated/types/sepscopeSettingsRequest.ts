@@ -16,4 +16,5 @@ export interface SepscopeSettingsRequest {
   automaticActions: boolean;
   allowedStatusIds: string[];
   settleMinutes: number;
+  addedAfter: Date;
 }

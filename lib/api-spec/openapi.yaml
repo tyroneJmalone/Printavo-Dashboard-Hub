@@ -9024,7 +9024,7 @@ components:
       additionalProperties: true
     SepscopeSettingsRequest:
       type: object
-      required: [version, enabled, times, weekdays, timezone, email, automaticActions, allowedStatusIds, settleMinutes]
+      required: [version, enabled, times, weekdays, timezone, email, automaticActions, allowedStatusIds, settleMinutes, addedAfter]
       properties:
         version: { type: integer }
         enabled: { type: boolean }
@@ -9035,6 +9035,7 @@ components:
         automaticActions: { type: boolean }
         allowedStatusIds: { type: array, items: { type: string } }
         settleMinutes: { type: integer }
+        addedAfter: { type: string, format: date }
     SepscopeApprovalRequest:
       type: object
       required: [token, decision, confirmComplete, note]

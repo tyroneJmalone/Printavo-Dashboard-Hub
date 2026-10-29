@@ -7,6 +7,7 @@ export const defaults = {
   timezone: "America/New_York", email: "art@mintprintworks.com",
   automaticActions: false, allowedStatusIds: [] as string[], settleMinutes: 10,
   automaticSince: null as string | null,
+  addedAfter: "2026-10-28",
 };
 export const settingsInput = z.object({
   version: z.number().int().min(0),
@@ -16,7 +17,16 @@ export const settingsInput = z.object({
   email: z.string().email(), automaticActions: z.boolean(),
   allowedStatusIds: z.array(z.string().regex(/^\d+$/)).max(100),
   settleMinutes: z.number().int().min(1).max(120),
+  addedAfter: z.string().date(),
 }).strict();
+// Inclusive civil date in the configured scan timezone, never a rolling cutoff.
+export function addedAfterCutoff(createdAt: string | null | undefined, settings: Pick<typeof defaults, "addedAfter" | "timezone">) {
+  if (!createdAt || !Number.isFinite(Date.parse(createdAt))) return false;
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: settings.timezone, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date(createdAt)).map(p => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}` >= settings.addedAfter;
+}
 export const normalizeName = (s: string) => s.trim().replace(/\s+/g," ").toLowerCase();
 export const outputFilename = (s: string) => s.length <= 240 && !/[\\/\x00-\x1f\x7f]/.test(s) && /(?:^|[\s_-])OUTPUT\.ai$/i.test(s);
 export const digest = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");

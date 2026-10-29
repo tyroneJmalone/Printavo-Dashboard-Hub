@@ -17,6 +17,7 @@ export interface SepscopeSettingsRequest {
   automaticActions: boolean;
   allowedStatusIds: string[];
   settleMinutes: number;
+  addedAfter: string;
 }
 
 export type SepscopeApprovalRequestDecision = typeof SepscopeApprovalRequestDecision[keyof typeof SepscopeApprovalRequestDecision];

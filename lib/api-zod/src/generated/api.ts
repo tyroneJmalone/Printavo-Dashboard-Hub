@@ -2617,7 +2617,8 @@ export const UpdateSepscopeAutomationBody = zod.object({
   "email": zod.string(),
   "automaticActions": zod.boolean(),
   "allowedStatusIds": zod.array(zod.string()),
-  "settleMinutes": zod.number()
+  "settleMinutes": zod.number(),
+  "addedAfter": zod.coerce.date()
 })
 
 export const UpdateSepscopeAutomationResponse = zod.record(zod.string(), zod.unknown())

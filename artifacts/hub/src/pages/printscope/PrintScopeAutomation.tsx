@@ -9,7 +9,7 @@ import {
 import { Loader2, Info, X, RefreshCw, Plus, AlertTriangle, FolderOpen } from "lucide-react";
 import { useStaff } from "@/components/auth/StaffGate";
 
-type Settings = { version: number; enabled: boolean; times: string[]; weekdays: number[]; timezone: string; email: string; automaticActions: boolean; allowedStatusIds: string[]; settleMinutes: number; automaticSince?: string | null };
+type Settings = { version: number; enabled: boolean; times: string[]; weekdays: number[]; timezone: string; email: string; automaticActions: boolean; allowedStatusIds: string[]; settleMinutes: number; addedAfter: string; automaticSince?: string | null };
 type Item = { id: string; orderId: string; visualId: string | number; customerName: string | null; filename: string; jobId: string | null; state: string; verdict: string | null; error: string | null; createdAt: string };
 type Run = { id: string; state: string; detail: string | null; createdAt: string };
 type Action = { id: string; orderId: string; decision: string; state: string; detail: string | null; createdAt: string };
@@ -196,6 +196,7 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
         version: form.version, enabled: form.enabled, times: form.times, weekdays: [...form.weekdays].sort(),
         timezone: form.timezone, email: form.email, automaticActions: form.automaticActions,
         allowedStatusIds: form.allowedStatusIds, settleMinutes: Number(form.settleMinutes),
+        addedAfter: form.addedAfter,
       } });
       setDirty(false);
       const next = (res as unknown as Data)?.settings;
@@ -251,11 +252,14 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
             </div>
           </div>
           <div className="flex gap-3 flex-wrap">
+            <label className="flex flex-col text-[10px] uppercase font-bold tracking-wider text-ink-3 gap-1">Added After
+              <input type="date" required disabled={ro} className={input} value={form.addedAfter} onChange={e => set("addedAfter", e.target.value)} /></label>
             <label className="flex flex-col text-[10px] uppercase font-bold tracking-wider text-ink-3 gap-1">Timezone
               <input disabled={ro} className={input} value={form.timezone} onChange={e => set("timezone", e.target.value)} /></label>
             <label className="flex flex-col text-[10px] uppercase font-bold tracking-wider text-ink-3 gap-1">Settle minutes
               <input type="number" min={0} disabled={ro} className={`${input} w-24`} value={form.settleMinutes} onChange={e => set("settleMinutes", Number(e.target.value))} /></label>
           </div>
+          <p className="text-xs text-ink-2">Only files added on or after this date in {form.timezone} are downloaded for inspection. Applies to every scan until changed; older files and files without an upload date are skipped.</p>
           <label className="flex flex-col text-[10px] uppercase font-bold tracking-wider text-ink-3 gap-1">Summary email
             <input type="email" disabled={ro} className={input} value={form.email} onChange={e => set("email", e.target.value)} /></label>
         </div>

@@ -39,6 +39,17 @@ before actions; this does not authorize live validation writes or enabling
 unattended actions. Multiple-output completeness remains unresolved. Preserve
 staff approval by default; do not interpret the future toggle as permission
 to auto-approve incomplete invoices.
+
+The user chose October 28, 2026 as the persistent Added After date, not a
+first-scan-only cutoff. Include that day's uploads and keep applying the
+cutoff on later scans unless staff change it.
+
+**Why:** The user wants to exclude historical OUTPUT attachments, including
+on the initial scan, without excluding new files on older invoices.
+
+**How to apply:** Filter by production-file creation time before downloading,
+not invoice creation time or file modification time.
+
 Search for an existing invoice folder within the verified customer's root;
 do not silently create folders or pick an ambiguous/cross-customer match.
 The build may add a narrowly scoped archive write path, but the existing

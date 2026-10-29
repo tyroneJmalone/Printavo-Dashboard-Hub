@@ -4,7 +4,7 @@ import { getPrivateObjectDir } from "../objectStorage";
 import { getPrintavoClient } from "../printavoGateway";
 import { activeRules } from "./rules";
 import { environment, objectFile, ensurePrintscopeAvailable } from "./worker";
-import { digest } from "./automationPolicy";
+import { digest, addedAfterCutoff } from "./automationPolicy";
 import { readInvoice, downloadOutput } from "./automationProviders";
 import { getSettings } from "./automationStore";
 import { logger } from "../logger";
@@ -50,6 +50,7 @@ async function executeScan(runId: string, actor: string, settings: Awaited<Retur
         if(!settings.allowedStatusIds.includes(inv.status.id) || inv.prepTasks.length!==1 || inv.prepTasks[0].completed) {summary.held++;continue;}
         summary.invoices++;
         for(const file of inv.files) {
+          if(!addedAfterCutoff(file.timestamps?.createdAt,settings)) {summary.held++;continue;}
           const metadata={visualId:String(inv.visualId),customerName:inv.customerName,customerId:inv.contact?.customer?.id,filename:file.name,sourceStatusId:inv.status.id};
           const changed=Date.parse(file.timestamps?.updatedAt ?? file.timestamps?.createdAt ?? "");
           if(!Number.isFinite(changed) || Date.now()-changed<settings.settleMinutes*60_000) {summary.held++;continue;}
