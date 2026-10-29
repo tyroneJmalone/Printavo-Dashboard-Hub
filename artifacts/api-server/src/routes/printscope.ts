@@ -304,6 +304,8 @@ router.post("/printscope/jobs/:id/reinspect", async (req, res) => {
     if (count >= 20) { await c.query("ROLLBACK"); res.status(429).json({ error: "Inspection queue is full" }); return; }
     const values = rerunValues(old, version.id, req.staff!.id);
     const job = (await c.query("INSERT INTO printscope_jobs(id,environment,state,filename,byte_size,content_type,source_path,generation,sha256,rule_version_id,submitted_by,parent_job_id,pilot_id,pilot_source_id,pilot_provenance) VALUES($1,$2,'queued',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *", [...values, old.pilot_id, old.pilot_source_id, old.pilot_provenance ? JSON.stringify(old.pilot_provenance) : null])).rows[0];
+    // Move only the current intake pointer; retain the original job and its failure history.
+    await c.query("UPDATE sepscope_automation_intake SET job_id=$1 WHERE environment=$2 AND job_id=$3",[job.id,environment,old.id]);
     await c.query("COMMIT"); res.status(201).json(jobDto(job));
   } catch (e) { await c.query("ROLLBACK"); throw e; } finally { c.release(); }
 });

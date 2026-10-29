@@ -8,6 +8,7 @@ import { pool } from "@workspace/db";
 import { getPrivateObjectDir, objectStorageClient, parseObjectPath } from "../objectStorage";
 import { pythonRoot, parseCsv, toCsv } from "./rules";
 import { logger } from "../logger";
+import { previewAssetPrefix } from "./assetPaths";
 
 export const MAX_BYTES = 50 * 1024 * 1024;
 export const environment = process.env.REPLIT_DEPLOYMENT === "1" ? "production" : "development";
@@ -114,7 +115,8 @@ export async function processOne(onlyJobId?: string, scopeEnvironment = environm
   const dir = await mkdtemp(resolve(tmpdir(), "printscope-"));
   const abort = new AbortController();
   let finalized = false;
-  const assetPrefix = job.source_path.substring(0, job.source_path.lastIndexOf("/originals/")) + `/plates/${job.id}/${token}/`;
+  let assetPrefix: string | undefined;
+  let stage = "source";
   const assertLease = async () => {
     if (abort.signal.aborted) throw new Error("LEASE_LOST");
     try {
@@ -127,6 +129,7 @@ export async function processOne(onlyJobId?: string, scopeEnvironment = environm
       .then(r => { if (!r.rowCount) abort.abort(); }).catch(() => abort.abort());
   }, 20000);
   try {
+    assetPrefix = previewAssetPrefix(job.source_path,job.id,token);
     const [data] = await objectFile(job.source_path, job.generation).download();
     if (data.length !== job.byte_size || createHash("sha256").update(data).digest("hex") !== job.sha256) throw new Error("SOURCE_INTEGRITY");
     const rules = (await pool.query("SELECT csv,rows,hash FROM printscope_rule_versions WHERE id=$1", [job.rule_version_id])).rows[0];
@@ -138,6 +141,7 @@ export async function processOne(onlyJobId?: string, scopeEnvironment = environm
     await writeFile(resolve(dir, "rules.csv"), rules.csv);
     const output = resolve(dir, "output");
     await mkdir(output);
+    stage = "inspection";
     const response = await runPython(["--input", input, "--output-dir", output, "--rules", resolve(dir, "rules.csv")], dir, 600_000, abort.signal);
     // Protocol paths are fixed by the Hub, never used as arbitrary read locations.
     validateProtocol(response, output);
@@ -146,6 +150,7 @@ export async function processOne(onlyJobId?: string, scopeEnvironment = environm
     const result = JSON.parse(await readFile(resultFile, "utf8"));
     if (!Array.isArray(result.results) || !Array.isArray(result.previews) || typeof result.completeness?.complete !== "boolean" || !["pass", "flag", "fail"].includes(result.verdict)) throw new Error("ENGINE_PROTOCOL");
     const assets: Record<string, { path: string; kind: string; generation: string }> = {};
+    stage = "preview storage";
     let totalBytes = 0;
     for (const preview of result.previews) for (const plate of preview.plates ?? []) {
       if (!["svg", "png"].includes(plate.kind) || typeof plate.src !== "string" || !plate.src.endsWith("." + plate.kind)) throw new Error("ASSET_TYPE");
@@ -169,6 +174,7 @@ export async function processOne(onlyJobId?: string, scopeEnvironment = environm
     finalized = true;
   } catch (e) {
     const code = e instanceof Error && /^[A-Z_]+$/.test(e.message) ? e.message : "PROCESSING_FAILED";
+    logger.error({jobId:job.id,stage,code},"SepScope inspection attempt failed");
     if (!abort.signal.aborted) await pool.query("UPDATE printscope_jobs SET state='failed',error=$3,completed_at=now(),lease_until=NULL WHERE id=$1 AND lease_token=$2 AND state='processing' AND lease_until>now()", [job.id, token, JSON.stringify({ code, message: "Inspection could not finish. Reinspect to retry; contact an administrator if this persists." })]);
   } finally {
     clearInterval(heartbeat);
@@ -177,7 +183,7 @@ export async function processOne(onlyJobId?: string, scopeEnvironment = environm
         const state = (await pool.query("SELECT state,lease_token FROM printscope_jobs WHERE id=$1", [job.id])).rows[0];
         // An UPDATE can commit even when its network response is lost. Never remove
         // committed assets; if DB ownership cannot be checked, retain rather than guess.
-        if (!(state?.state === "completed" && state.lease_token === token)) {
+        if (assetPrefix && !(state?.state === "completed" && state.lease_token === token)) {
           const { bucketName, objectName } = parseObjectPath(assetPrefix);
           const [files] = await objectStorageClient.bucket(bucketName).getFiles({ prefix: objectName });
           for (const file of files) {

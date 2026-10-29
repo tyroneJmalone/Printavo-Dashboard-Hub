@@ -1,5 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { previewAssetPrefix } from "../src/lib/printscope/assetPaths";
+test("preview paths retain bucket and pilot scope for manual and automated originals",()=>{
+  const id="11111111-1111-1111-1111-111111111111", token="22222222-2222-2222-2222-222222222222";
+  const root="/bucket/.private/printscope/development";
+  for(const source of [`${root}/originals/file`,`${root}/automation/123/456/hash.ai`])
+    assert.equal(previewAssetPrefix(source,id,token),`${root}/plates/${id}/${token}/`);
+  assert.equal(previewAssetPrefix(`${root}/pilots/pilot/originals/file`,id,token),`${root}/pilots/pilot/plates/${id}/${token}/`);
+  assert.throws(()=>previewAssetPrefix("/unknown/path",id,token),/SOURCE_SCOPE/);
+});
 import { automationLogText } from "../../hub/src/pages/printscope/automationLog";
 test("scan and action JSON details render readable text rather than objects",()=>{
   const text=automationLogText({held:0,actor:"private-id",error:"'first' must not be greater than 25",
