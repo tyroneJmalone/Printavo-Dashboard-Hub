@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetSepscopeAutomation, getGetSepscopeAutomationQueryKey,
   useUpdateSepscopeAutomation, useScanSepscopeAutomation,
-  usePreviewSepscopeActions, useApproveSepscopeActions,
+  usePreviewSepscopeActions, useApproveSepscopeActions, previewSepscopeActions,
 } from "@workspace/api-client-react";
 import { Loader2, Info, X, RefreshCw, Plus, AlertTriangle, FolderOpen } from "lucide-react";
 import { useStaff } from "@/components/auth/StaffGate";
@@ -17,7 +17,7 @@ type Run = { id: string; state: string; detail: unknown; createdAt: string };
 type Action = { id: string; orderId: string; decision: string; state: string; detail: unknown; createdAt: string };
 type Email = { id: string; state: string; error: string | null; createdAt: string };
 type Data = { settings: Settings; statuses: { id: string; name: string }[]; items: Item[]; runs: Run[]; actions: Action[]; emails: Email[]; limitations: string[] };
-type Preview = { token: string; orderId: string; visualId: string | number; customerName: string | null; statusName: string | null; files: { id: string; name: string; jobId: string | null; state: string; verdict: string | null }[]; task: { id: string; name: string; completed: boolean } | null; folder: { path: string; id: string } | null; blockers: string[]; canPass: boolean; canFail: boolean; printImprints: number | null; completeness: string };
+type Preview = { token: string; orderId: string; visualId: string | number; customerName: string | null; statusName: string | null; files: { id: string; name: string; jobId: string | null; state: string; verdict: string | null; error?: string }[]; task: { id: string; name: string; completed: boolean } | null; folder: { path: string; id: string } | null; blockers: string[]; canPass: boolean; canFail: boolean; printImprints: number | null; completeness: string };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const when = (s: string) => { const d = new Date(s); return isNaN(+d) ? s : d.toLocaleString(); };
@@ -321,7 +321,9 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
 
 function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => void }) {
   const qc = useQueryClient();
-  const preview = usePreviewSepscopeActions();
+  const preview = usePreviewSepscopeActions({mutation:{
+    mutationFn: ({orderId}) => previewSepscopeActions(orderId,{signal:AbortSignal.timeout(90_000)}),
+  }});
   const approve = useApproveSepscopeActions();
   const [p, setP] = useState<Preview | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -331,24 +333,37 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
   const [note, setNote] = useState("");
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const previewRef = useRef(preview.mutateAsync);
+  const loadSequence = useRef(0);
   previewRef.current = preview.mutateAsync;
 
   const load = async () => {
+    const sequence=++loadSequence.current;
     setLoadErr(null);
-    try { setP((await previewRef.current({ orderId })) as unknown as Preview); }
-    catch (e) { setP(null); setLoadErr(errMsg(e)); }
+    setP(null); setDecision(null); setComplete(false); setConfirmed(false);
+    try {
+      const value=await previewRef.current({ orderId }) as unknown as Preview;
+      if(sequence!==loadSequence.current) return;
+      if(!value || !Array.isArray(value.files) || !Array.isArray(value.blockers)) throw new Error("The server returned an incomplete invoice preview. Please retry.");
+      setP(value);
+    }
+    catch (e) { if(sequence===loadSequence.current) {
+      setP(null); setLoadErr(e instanceof Error && /timeout|abort/i.test(e.name)
+        ? "The live review took too long. No invoice changes were made. Please retry." : errMsg(e));
+    }}
   };
   useEffect(() => { load(); setDecision(null); setComplete(false); setConfirmed(false); // eslint-disable-next-line react-hooks/exhaustive-deps
+    return ()=>{loadSequence.current++;};
   }, [orderId]);
 
   const submit = async () => {
     if (!p || !decision) return;
     setResult(null);
     try {
-      const res = (await approve.mutateAsync({ orderId, data: { token: p.token, decision, confirmComplete: decision === "pass" ? complete : false, note } })) as unknown as { action: { state: string; detail: string | null } };
+      const res = (await approve.mutateAsync({ orderId, data: { token: p.token, decision, confirmComplete: decision === "pass" ? complete : false, note } })) as unknown as { action: { state: string; detail: unknown } };
       qc.invalidateQueries({ queryKey: getGetSepscopeAutomationQueryKey() });
       const st = res?.action?.state;
-      setResult({ ok: st === "completed", text: st === "completed" ? `Recorded: ${decision.toUpperCase()}. ${res.action.detail ?? ""}` : `Needs review: ${res?.action?.detail ?? "The server could not confirm the status change. Check Printavo before trying again."}` });
+      const detail=automationLogText(res?.action?.detail);
+      setResult({ ok: st === "completed", text: st === "completed" ? `Recorded: ${decision.toUpperCase()}. ${detail ?? ""}` : `Needs review: ${detail ?? "The server could not confirm the status change. Check Printavo before trying again."}` });
       setDecision(null); setConfirmed(false);
     } catch (e) {
       if ((e as { status?: number })?.status === 409) {
@@ -359,17 +374,21 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
     }
   };
 
-  const canSubmit = !!p && !!decision && confirmed && !approve.isPending && (decision === "pass" ? p.canPass && complete : p.canFail);
+  const canSubmit = !!p && !!decision && confirmed && !preview.isPending && !approve.isPending && (decision === "pass" ? p.canPass && complete : p.canFail);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-3" onClick={onClose}>
-      <div role="dialog" aria-modal="true" className="bg-[var(--surface)] text-[var(--ink)] rounded-lg w-full max-w-2xl max-h-[92dvh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[80] bg-slate-900/70 flex items-center justify-center p-3" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Invoice review" className="bg-slate-900 text-slate-100 border border-slate-700 rounded-lg w-full max-w-2xl min-h-48 max-h-[92dvh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-4 border-b border-line sticky top-0 bg-[var(--surface)]">
           <h3 className="font-bold">Invoice review{p ? ` · #${p.visualId}` : ""}</h3>
           <button aria-label="Close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="p-4 flex flex-col gap-4 text-sm">
-          {preview.isPending && !p && <div className="space-y-2">{[0, 1, 2].map(i => <div key={i} className="h-10 bg-surface-2 rounded animate-pulse" />)}</div>}
+          {!p && !loadErr && <div role="status" className="flex items-start gap-3 rounded bg-slate-800 text-slate-100 p-4">
+            <Loader2 className="animate-spin shrink-0" size={20} />
+            <div><p className="font-semibold">Loading live invoice review…</p>
+              <p className="text-xs mt-1 text-slate-300">Checking Printavo files, inspection results and Dropbox. This may take a little while. No invoice changes are being made.</p></div>
+          </div>}
           {loadErr && (
             <div role="alert" className="border border-fail bg-fail-bg rounded p-3">
               <p className="font-semibold text-fail">Live preview failed</p><p className="text-xs mt-1">{loadErr}</p>
@@ -389,10 +408,12 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
                 {p.files.length === 0 ? <p className="text-xs text-ink-3">No output files found.</p> : (
                   <ul className="border border-line rounded divide-y divide-[var(--line)]">
                     {p.files.map(f => (
-                      <li key={f.id} className="p-2 flex items-center gap-2 text-[13px]">
+                      <li key={f.id} className="p-2 flex items-center gap-2 text-[13px] flex-wrap">
                         <FileBadge state={f.state} verdict={f.verdict} />
                         <span className="font-mono truncate flex-1">{f.name}</span>
                         {f.jobId && <Link href={`/printscope?job=${f.jobId}`} className="text-xs underline shrink-0" onClick={onClose}>Findings</Link>}
+                        {f.error && <p className="w-full text-xs text-red-300 break-words">Not inspected: {f.error}</p>}
+                        {f.state==="not_inspected" && <p className="w-full text-xs text-slate-300">No inspection is recorded for this file version. Run a scan to queue it.</p>}
                       </li>
                     ))}
                   </ul>

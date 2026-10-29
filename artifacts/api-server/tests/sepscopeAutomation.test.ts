@@ -14,7 +14,12 @@ test("scan and action JSON details render readable text rather than objects",()=
   assert.equal(automationLogText({message:"Skipped",errors:["File failed",{unexpected:true}]}),"Skipped\nFile failed");
   assert.equal(automationLogText({note:"Reviewed",steps:[{name:"Archive file",state:"completed"}]}),"Reviewed\nArchive file: completed");
 });
-import { defaults, outputFilename, scheduleSlot, invoiceFolder, dropboxHash, digest, settingsInput, addedAfterCutoff, invoiceHoldReason } from "../src/lib/printscope/automationPolicy";
+import { defaults, outputFilename, scheduleSlot, invoiceFolder, dropboxHash, digest, settingsInput, addedAfterCutoff, invoiceHoldReason, safeDownloadUrl } from "../src/lib/printscope/automationPolicy";
+test("Printavo Filepicker CDN is allowed without widening arbitrary download access",()=>{
+  assert.equal(safeDownloadUrl("https://cdn.filepicker.io/api/file/example").hostname,"cdn.filepicker.io");
+  assert.doesNotThrow(()=>safeDownloadUrl("https://example.cloudfront.net/file"));
+  for(const url of ["http://cdn.filepicker.io/file","https://cdn.filepicker.io.evil.test/file","https://evil.filepicker.io/file","https://localhost/file","https://127.0.0.1/file","https://cdn.filepicker.io:8443/file","https://user:pass@cdn.filepicker.io/file"]) assert.throws(()=>safeDownloadUrl(url));
+});
 test("invoice holds report the actual status or task gate",()=>{
   const inv={status:{id:"1"},prepTasks:[{completed:false}]};
   assert.equal(invoiceHoldReason(inv,["1"]),null);

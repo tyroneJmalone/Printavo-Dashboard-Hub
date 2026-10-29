@@ -37,6 +37,14 @@ export function invoiceHoldReason(inv: {status: {id: string}; prepTasks: {comple
 }
 export const outputFilename = (s: string) => s.length <= 240 && !/[\\/\x00-\x1f\x7f]/.test(s) && /(?:^|[\s_-])OUTPUT\.ai$/i.test(s);
 export const digest = (s: string | Buffer) => createHash("sha256").update(s).digest("hex");
+export function safeDownloadUrl(raw: string) {
+  const u = new URL(raw);
+  const allowed = u.hostname === "cdn.filepicker.io" ||
+    /(^|\.)(printavo\.com|cloudfront\.net|amazonaws\.com)$/.test(u.hostname);
+  if(u.protocol!=="https:" || u.username || u.password || u.port || !allowed)
+    throw new Error("Download blocked: this artwork host is not approved. The file has not been inspected.");
+  return u;
+}
 export function scheduleSlot(settings: typeof defaults, now = new Date()) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:settings.timezone,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23",weekday:"short"}).formatToParts(now).map(x=>[x.type,x.value]));
   const day = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(p.weekday);

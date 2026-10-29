@@ -2,7 +2,7 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 import { pool } from "@workspace/db";
 import { getPrintavoClient } from "../printavoGateway";
 import { getDropboxMetadata, isDropboxPathWithinRoot, listDropboxFolder, searchDropbox } from "../dropbox";
-import { digest, dropboxHash, invoiceFolder, normalizeName, outputFilename, TASK_NAME } from "./automationPolicy";
+import { digest, dropboxHash, invoiceFolder, normalizeName, outputFilename, TASK_NAME, safeDownloadUrl } from "./automationPolicy";
 import { MAX_BYTES } from "./worker";
 
 const lit = JSON.stringify;
@@ -44,12 +44,6 @@ export async function liveStatuses() {
     cursor = next;
   }
   throw new Error("Incomplete status listing.");
-}
-function safeDownloadUrl(raw: string) {
-  const u = new URL(raw);
-  if(u.protocol!=="https:" || u.username || u.password || u.port ||
-    !/(^|\.)(printavo\.com|cloudfront\.net|amazonaws\.com)$/.test(u.hostname)) throw new Error("Unsupported artwork download host.");
-  return u;
 }
 export async function downloadOutput(file: any) {
   let url = safeDownloadUrl(file.fileUrl);
