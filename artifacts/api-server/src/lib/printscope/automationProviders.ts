@@ -116,19 +116,30 @@ export async function archiveFile(folder: any, name: string, bytes: Buffer, sha:
   if(!current.path_lower || !root.path_lower || current.path_lower!==folder.path.toLowerCase() ||
     !isDropboxPathWithinRoot(current.path_lower,root.path_lower)) throw new Error("Dropbox destination changed; preview again.");
   const path=archivePath(folder,name,sha);
+  const expectedHash=dropboxHash(bytes);
+  const verify=(file:any)=>{
+    if(file?.[".tag"]!=="file" || !file.id || file.path_lower!==path.toLowerCase() ||
+      file.size!==bytes.length || file.content_hash!==expectedHash) {
+      throw new Error("Dropbox copy verification failed (path, size or content hash mismatch); Printavo source retained.");
+    }
+    return {id:file.id,path:file.path_display,contentHash:file.content_hash};
+  };
   let existing: any;
   try {existing=await getDropboxMetadata(path);} catch(e: any) {
     if(e.status!==409 || !e.message.includes("not_found")) throw e;
   }
   if(existing) {
-    if(existing.size!==bytes.length || existing.content_hash!==dropboxHash(bytes)) throw new Error("Archive name conflict; refusing to overwrite.");
-    return {id:existing.id,path:existing.path_display,contentHash:existing.content_hash};
+    return verify(existing);
   }
   const link=await uploadLink(path);
   const response=await fetch(link,{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:new Uint8Array(bytes),signal:AbortSignal.timeout(120_000)});
   if(!response.ok) throw new Error(`Dropbox upload not confirmed (${response.status}); manual reconciliation required.`);
   const uploaded: any=await response.json();
-  const verified: any=await getDropboxMetadata(uploaded.id);
-  if(verified.path_lower!==path.toLowerCase() || verified.size!==bytes.length || verified.content_hash!==dropboxHash(bytes)) throw new Error("Dropbox copy verification failed; Printavo source retained.");
-  return {id:verified.id,path:verified.path_display,contentHash:verified.content_hash};
+  // Temporary uploads return {"content-hash": ...}, NOT FileMetadata/id.
+  if(uploaded?.["content-hash"]!==expectedHash) throw new Error("Dropbox upload content hash not confirmed; Printavo source retained.");
+  try {
+    return verify(await getDropboxMetadata(path));
+  } catch(e:any) {
+    throw new Error(`Dropbox upload accepted, but archive verification failed: ${e.message}. Printavo source retained; manual reconciliation required.`);
+  }
 }

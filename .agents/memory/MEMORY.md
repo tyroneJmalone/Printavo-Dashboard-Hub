@@ -50,6 +50,7 @@
 - [Email access role model](email-access-role-model.md) — Admin reads every mailbox; Managers are limited to selected groups/ownership/thread grants; customer history aggregates authorized mailboxes.
 - [Dropbox customer artwork boundaries](dropbox-customer-artwork-boundaries.md) — Hub artwork is read-only; revalidate stable Dropbox IDs against the current linked customer root before access.
 - [Dropbox artwork previews](dropbox-artwork-previews.md) — temporary links do not embed reliably; proxy only allowlisted browser-safe files through the authorized Hub route.
+- [Dropbox upload verification](dropbox-upload-verification.md) — temporary uploads return a hash, not file metadata; verify by destination path before removing source files.
 - [Shared production color catalog](shared-production-color-catalog.md) — Hub and BreezyTweak should consume one catalog for Pantone, ink, thread, conversions, and stock notes.
 - [AI context layer architecture](ai-context-layer.md) — one protocol-independent core, thin MCP/REST/internal doors, per-consumer tokens, internal vs external trust tiers from day one.
 - [Drizzle push misses index predicates](drizzle-push-index-predicates.md) — adding WHERE to an existing unique index silently no-ops on push; verify pg_indexes and recreate manually.
