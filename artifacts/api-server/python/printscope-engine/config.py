@@ -45,4 +45,4 @@ BASED_INK_PCT = float(_p("PRINTSCOPE_BASED_INK_PCT", "85"))
 
 # Engine version. Stamp it on every result so an old verdict can be read in
 # terms of the code that produced it.
-ENGINE_VERSION = _p("PRINTSCOPE_ENGINE_VERSION", "0.4.3")
+ENGINE_VERSION = _p("PRINTSCOPE_ENGINE_VERSION", "0.5.0")

@@ -496,6 +496,19 @@ def in_register(f, ctx, p):
 
 @rule("UNDERBASE_COVERAGE")
 def under_coverage(f, ctx, p):
+    local = ctx.get("local_underbase")
+    if local and local.get("error"):
+        return v(CANNOT_EVALUATE, "Localized underbase coverage could not be verified",
+                 [local["error"]], local)
+    if local and local.get("failCount"):
+        return v(FAIL, f"{local['failCount']} localized region(s) missing underbase",
+                 ["Review highlighted regions; whole-ink coverage cannot clear local omissions.",
+                  "Normal trap edges have a 0.75pt allowance plus one measurement pixel.",
+                  "Region boxes locate raster defects, not named words or Illustrator objects."], local)
+    if local and local.get("flagCount"):
+        return v(FLAG, f"{local['flagCount']} small unsupported region(s) need review",
+                 ["Differences exceed the edge allowance but are too small for a confident failure.",
+                  "Inspect the highlighted regions before release."], local)
     cov = ctx.get("coverage")
     if not cov:
         return v(NOT_APPLICABLE, "no underbase to measure against")
@@ -515,7 +528,7 @@ def under_coverage(f, ctx, p):
         return v(FLAG, f"{len(bare)} ink(s) only partly based", rows +
                  ["Partly-based colour prints two different shades on a dark garment."],
                  {"partial": bare})
-    return v(PASS, "every colour is either fully based or deliberately unbased", rows)
+    return v(PASS, "no localized underbase omission detected" if local else "every colour is either fully based or deliberately unbased", rows + (local.get("notes", []) if local else []), local or {})
 
 
 @rule("UNDERBASE_ROLE_AGREES")

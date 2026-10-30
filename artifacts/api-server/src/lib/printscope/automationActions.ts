@@ -25,7 +25,8 @@ export async function actionPreview(orderId: string, checkDropbox = true) {
         FROM sepscope_automation_intake i JOIN printscope_jobs j ON j.id=i.job_id
         WHERE i.environment=$1 AND i.order_id=$2 AND i.file_id=$3 AND i.revision=$4 ORDER BY i.created_at DESC LIMIT 1`,
         [environment,orderId,f.id,sha])).rows[0];
-      files.push({id:f.id,name:f.name,sha,jobId:row?.job_id??null,state:row?.state??"not_inspected",verdict:row?.result?.verdict??null,inspectionComplete:row?.result?.completeness?.complete===true,resultHash:row?digest(JSON.stringify(row.result)):null,ruleVersion:row?.rule_version_id??null});
+      const local=row?.result?.ctx?.local_underbase;
+      files.push({id:f.id,name:f.name,sha,jobId:row?.job_id??null,state:row?.state??"not_inspected",verdict:row?.result?.verdict??null,inspectionComplete:row?.result?.completeness?.complete===true && local?.version===1 && !local.error && !local.failCount && !local.flagCount,resultHash:row?digest(JSON.stringify(row.result)):null,ruleVersion:row?.rule_version_id??null});
     } catch(e:any) {files.push({id:f.id,name:f.name,state:"unavailable",verdict:null,error:String(e.message)});}
   }
   const unsettled=inv.files.some((f:any)=>{
@@ -49,7 +50,7 @@ export async function actionPreview(orderId: string, checkDropbox = true) {
     } catch(e:any) {blockers.push(String(e.message));}
   }
   const allPass=files.length>0 && files.every(f=>f.state==="completed" && f.verdict==="pass" && f.inspectionComplete);
-  if(!allPass) blockers.push("Pass actions require every current OUTPUT file to have a passing inspection.");
+  if(!allPass) blockers.push("Pass actions require every current OUTPUT file to have a complete passing inspection with the localized underbase check. Re-inspect legacy results from Jobs.");
   const canPass=checkDropbox && commonClear && !!folder && allPass && blockers.length===0;
   const imprint=(await pool.query(`SELECT count(*)::int AS count FROM pv_imprints WHERE order_id=$1 AND matrix_name ~* '(screen|print)'`,[orderId])).rows[0];
   const token=digest(JSON.stringify({orderId,customerId:inv.contact?.customer?.id,status:inv.status.id,files,task:inv.prepTasks,

@@ -49,9 +49,12 @@ class GoldenBaselineTests(unittest.TestCase):
                 # Rasterization is deterministic; share plates within this
                 # fixture, then release them to bound test memory usage.
                 with patch.object(RS, "plates", lru_cache(maxsize=4)(RS.plates)):
-                    ctx = RUN.build_ctx(str(path), facts)
-                    with patch.object(RS, "info_bar_cut", return_value=None):
-                        old_ctx = RUN.build_ctx(str(path), facts)
+                    # Preserve the historical detector contract independently
+                    # of the new localized check (covered in test_local_underbase).
+                    with patch.object(RUN.LOCAL, "inspect", return_value=None):
+                        ctx = RUN.build_ctx(str(path), facts)
+                        with patch.object(RS, "info_bar_cut", return_value=None):
+                            old_ctx = RUN.build_ctx(str(path), facts)
                 results = DT.evaluate(facts, ctx, table)
                 before = {r["code"]: r for r in DT.evaluate(facts, old_ctx, table)}
                 changed = [r["code"] for r in results

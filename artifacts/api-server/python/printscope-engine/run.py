@@ -10,6 +10,7 @@ import raster as RS
 import vector as VEC
 
 import config as CFG
+import local_underbase as LOCAL
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 QUEUE = CFG.QUEUE_DIR
@@ -274,6 +275,7 @@ def build_ctx(src, facts):
             ctx["ink_overlaps"] = overlaps
         except Exception as exc:
             ctx["ink_overlap_error"] = f"{type(exc).__name__}: {exc}"
+    ctx["local_underbase"] = LOCAL.inspect(src, facts, RS)
     return ctx
 
 

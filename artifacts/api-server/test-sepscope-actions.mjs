@@ -28,7 +28,7 @@ function reset(){
  invoice:{id:"invoice",visualId:1,customerName:"Fixture",status:{id:"source",name:"Ready"},contact:{customer:{id:"customer"}},prepTasks:[{id:"task",name:"Prep",completed:false}],files:[{id:"file",name:"Front_OUTPUT.ai",timestamps:{updatedAt:"2020-01-01"}}]},
  async query(sql,args){
   if(sql.includes("pg_try"))return {rows:[{locked:true}]};
-  if(sql.includes("FROM sepscope_automation_intake"))return {rows:[{job_id:"job",state:"completed",result:{verdict:h.verdict??"pass",completeness:{complete:true}},rule_version_id:1}]};
+  if(sql.includes("FROM sepscope_automation_intake"))return {rows:[{job_id:"job",state:"completed",result:{verdict:h.verdict??"pass",completeness:{complete:true},ctx:h.legacy?{}:{local_underbase:{version:1}}},rule_version_id:1}]};
   if(sql.includes("FROM pv_imprints"))return {rows:[{count:1}]};
   if(sql.startsWith("INSERT"))return {rowCount:1,rows:[{id:"action"}]};
   return {rows:[],rowCount:0};
@@ -79,3 +79,8 @@ h=testReset();p=await dev.actionPreview(testId);
 result=await dev.approveActions(testId,{...input,token:p.token},"admin");
 assert.equal(result.action.state,"completed");assert.equal(h.writes[0],"archive");assert.equal(h.writes.at(-1),"task");
 console.log("PASS: restricted dev guards; email-only, status-only and archive/task paths. All external services mocked.");
+h=testReset();h.legacy=true;p=await dev.actionPreview(testId);
+assert.equal(p.canPass,false);
+await assert.rejects(()=>dev.approveActions(testId,{...input,token:p.token},"admin"));
+assert.deepEqual(h.writes,[]);
+console.log("PASS: legacy Pass results cannot authorize archival.");

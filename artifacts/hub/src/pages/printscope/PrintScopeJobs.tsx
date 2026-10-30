@@ -485,6 +485,7 @@ export function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onR
           </div>
         </details>
         <div className="gaps">
+        {!res.ctx?.local_underbase?.version && <div className="gap"><b>Legacy coverage check.</b><span>This result predates localized missing-underbase detection. Re-inspect before relying on its Pass result or approving archive/task actions.</span></div>}
         {comp.complete === false && (
           <div className="gap">
             <b>Not fully checked.</b>
@@ -522,7 +523,7 @@ export function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onR
           </div>
         </section>
       ) : (
-        <PlateViewer previews={res.previews || []} jobId={job.id} />
+        <PlateViewer previews={res.previews || []} jobId={job.id} regions={res.ctx?.local_underbase?.regions || []} />
       )}
 
       <section className="blk">
@@ -589,7 +590,8 @@ export function PrintScopeDetail({ job, onReinspect }: { job: PrintscopeJob, onR
   );
 }
 
-export function PlateViewer({ previews, jobId }: { previews: any[], jobId: string }) {
+export function PlateViewer({ previews, jobId, regions = [] }: { previews: any[], jobId: string; regions?: any[] }) {
+  const [showDefects,setShowDefects] = useState(true);
   const [ab, setAb] = useState<number>(-1);
   const [zoomPct, setZoomPct] = useState<number>(100);
   const [colourPct, setColourPct] = useState<number>(100);
@@ -728,6 +730,15 @@ export function PlateViewer({ previews, jobId }: { previews: any[], jobId: strin
             // Reserve the board envelope independently of which plates are visible.
             aspectRatio: `${maxW} / ${maxH}`
           }}>
+            {showDefects && regions.filter(r=>ab===-1 || r.artboard===ab).map((r,i)=>{
+              const board=previews.find(p=>p.index===r.artboard);
+              if(!board || !Array.isArray(r.bbox)) return null;
+              const [x,y,w,h]=r.bbox;
+              return <div key={`defect-${i}`} title={`${r.ink}: ${r.status === "fail" ? "Missing underbase" : "Review coverage"} (${r.areaPt2} pt²)`}
+                style={{position:"absolute",zIndex:20,left:`${100*x*board.w/maxW}%`,top:`${100*y*board.h/maxH}%`,
+                  width:`${100*w*board.w/maxW}%`,height:`${100*h*board.h/maxH}%`,minWidth:3,minHeight:3,
+                  border:`2px solid ${r.status==="fail"?"#ef4444":"#f59e0b"}`,background:"rgba(239,68,68,.15)"}} />;
+            })}
             {layerRows.map((p, i) => {
               const key = p.abIndex + '|' + p.ink;
               const isHidden = hiddenKeys.has(key);
@@ -756,6 +767,7 @@ export function PlateViewer({ previews, jobId }: { previews: any[], jobId: strin
           </div>
         </div>
         <div className="vecnote">
+          {regions.length>0 && <label className="block mb-2"><input type="checkbox" checked={showDefects} onChange={e=>setShowDefects(e.target.checked)} /> Highlight underbase findings — red: missing, amber: review. Boxes locate regions, not exact contours.</label>}
           {'Swatches and layers run bottom to top by leading ink number (1, 2, 10); underbase stays beneath colour. Unnumbered inks follow in name order. '}
           {ab === -1 
             ? 'All artboards share this order. Fade the colour to read the trap: base pulled inside the colour edge is a choke, colour sitting proud of the base is a spread. '
