@@ -87,6 +87,10 @@ Code-investigation pointers, to recheck when planning: API printQueue autoPrint 
 
 ### User's goal
 
+Expanded execution plan: [Google review requests from Hub](google-review-request-plan.md),
+recorded October 30, 2026 with the current Constant Contact workflow and proposed
+approval queue. Deferred; no sending or implementation authorized.
+
 Replace a manual review-request process with a Hub view of recently completed orders, allowing one or multiple requests by email. Start manually and later automate. Avoid repeated requests, especially to people who already reviewed.
 
 ### Proposed interface

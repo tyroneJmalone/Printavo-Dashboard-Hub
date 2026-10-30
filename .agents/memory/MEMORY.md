@@ -89,6 +89,7 @@
 - [Dashboard metric policy](dashboard-metric-policy.md) — New/Repeat count distinct active accounts by fixed pre-2026 history; preserve quote/invoice splits and original-date caveats.
 - [Deferred Hub user reporting](hub-user-reporting.md) — detailed usage-reporting discussion logged for later; implementation and tracking are not authorized.
 - [Collections sales sheets](collections-sales-sheets.md) — standalone deferred enhancement record; exact-image template assembly, reusable placements, optional AI, batches and email.
+- [Google review requests](google-review-requests.md) — manual Constant Contact workflow; deferred staff-approved queue plan and later automation safeguards.
 - [Dashboard query performance](dashboard-query-performance.md) — share work within queries before caching; repeated materialized-CTE scans need query changes, not base-table indexes.
 - [PostgreSQL fixture sequences](postgres-fixture-sequences.md) — temp tables copying defaults can advance public sequences despite rollback; give fixtures their own sequences.
 - [Vite JSX generic instrumentation](vite-jsx-generic-instrumentation.md) — explicit generic JSX tags can break metadata injection; specialize component aliases outside JSX.

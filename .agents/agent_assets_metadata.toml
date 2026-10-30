@@ -501,3 +501,17 @@ mtime_ms = 1791986433486
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/5c075836-1deb-4d7c-803d-c0458018213a/110fd6cf-53d7-4243-8779-717fd2052685"
 storage_version_token = "1791986460801505"
 content_type = "image/png"
+
+[[outputs]]
+id = "3Eg5-6ZvVN6rb9ySgWwUo"
+uri = "file://exports/google-review-request-plan.html"
+type = "html"
+title = "Google Review Requests — Future Enhancement Plan"
+description = "Detailed proposal for an approval queue, eligibility rules, Constant Contact delivery options, duplicate prevention, and future automation. Deferred; no sending enabled."
+logical_id = "786b0fa7-4757-483e-81f7-01368453a2f4"
+content_hash = "sha256:f3a5076e9c192d8c29ba057ea7546671b3fdf632c13a9f27b07488eafbc77950"
+size = 14141
+mtime_ms = 1793341432815
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:a090a2b7-f09c-43de-96c8-04df19d90af9/786b0fa7-4757-483e-81f7-01368453a2f4/ee662310-31c1-409a-b16c-1948739b291b"
+storage_version_token = "1793341433214012"
+content_type = "text/html"

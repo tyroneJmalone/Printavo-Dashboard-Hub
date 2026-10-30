@@ -35,6 +35,7 @@ _Updated Aug 7, 2026. A living snapshot for choosing next steps. Detailed reason
 ## 3. Ideas backlog (assessed, not yet planned)
 
 ### Dedicated future-enhancement pages
+- [Google review-request queue and delivery plan](google-review-request-plan.md) — replaces calendar/spreadsheet preparation with eligibility and staff approval; Constant Contact options, suppression/history, safe sending and future automation. Deferred.
 - [Collection-based client sales sheets](collections-sales-sheets-idea.md) — full October 30 discussion: fixed Mint templates, exact supplied images/logos, product mockups, reusable placements, optional AI, batches, downloads, and eventual email. Deferred; no implementation authorized.
 - [Hub user reporting](hub-user-reporting-idea.md) — deferred user-usage reporting discussion and safeguards.
 
