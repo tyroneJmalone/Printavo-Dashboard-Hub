@@ -43,6 +43,6 @@ export async function automationData() {
     limitations:["Pass actions always require staff confirmation of all required output files. Imprint counts are advisory, not proof of completeness.",
       "Dropbox requires files.content.write permission. Existing customer/#invoice folders only; no overwrites or folder creation.",
       "Automatic actions apply only to new failed inspections after activation, never the existing backlog. Successful inspections remain staff-reviewed.",
-      "Development blocks upstream actions except explicitly approved administrator tests on #20625 in restricted live-test mode. No scheduled tests or automatic test actions.",
+      "Development blocks upstream actions except explicitly approved administrator tests on #20625 and #23450 in restricted live-test mode. No scheduled tests or automatic test actions.",
       "Recent intake view shows up to 300 file versions; preview always checks the complete live invoice."]};
 }

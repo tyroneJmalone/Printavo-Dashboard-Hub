@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {assertTestScope,assertTestFiles,TEST_ORDER_ID} from "../src/lib/printscope/testMode";
+import {assertTestScope,assertTestFiles,TEST_ORDER_ID,isTestInvoice} from "../src/lib/printscope/testMode";
 test("restricted test guard rejects other invoices, production, automatic actions and unselected files",()=>{
   const s={restrictedTestMode:true,enabled:false,automaticActions:false};
   assert.doesNotThrow(()=>assertTestScope("development",s,TEST_ORDER_ID,false,true));
+  assert.doesNotThrow(()=>assertTestScope("development",s,"24912771",false,true));
+  assert.equal(isTestInvoice("24912771","23450"),true);
+  assert.equal(isTestInvoice("24912771","20625"),false);
+  assert.equal(isTestInvoice("23450","23450"),false);
   for(const [env,settings,id,auto,explicit] of [
     ["production",s,TEST_ORDER_ID,false,true],
     ["development",s,"123",false,true],

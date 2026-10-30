@@ -6,14 +6,15 @@ import { digest, FAILURE_STATUS, normalizeName } from "./automationPolicy";
 import { readInvoice, downloadOutput, findInvoiceFolder, liveStatuses, archiveFile, archivePath, uploadLink } from "./automationProviders";
 import { getSettings } from "./automationStore";
 import { environment } from "./worker";
-import { assertTestScope, assertTestFiles, TEST_ORDER_ID, TEST_VISUAL_ID } from "./testMode";
+import { assertTestScope, assertTestFiles, isTestInvoice } from "./testMode";
 import { deliverNotification } from "./notificationDelivery";
 
 export async function actionPreview(orderId: string, checkDropbox = true) {
   const settings=await getSettings(), inv=await readInvoice(orderId);
   const testMode=environment==="development" && settings.restrictedTestMode===true;
   const blockers:string[]=[]; const files:any[]=[];
-  if(testMode && (orderId!==TEST_ORDER_ID || String(inv.visualId)!==TEST_VISUAL_ID)) blockers.push("Restricted tests only allow invoice #20625.");
+  const testEligible=isTestInvoice(orderId,String(inv.visualId));
+  if(testMode && !testEligible) blockers.push("Restricted tests only allow invoices #20625 and #23450.");
   if(!settings.allowedStatusIds.includes(inv.status.id)) blockers.push("Invoice is no longer in an eligible source status.");
   if(inv.prepTasks.length!==1 || inv.prepTasks[0].completed) blockers.push("Expected exactly one incomplete Prep Separations task.");
   if(!inv.files.length) blockers.push("No current OUTPUT.ai production files.");
@@ -55,7 +56,7 @@ export async function actionPreview(orderId: string, checkDropbox = true) {
     settingsVersion:settings.version,folder:checkDropbox?folder:null,failureStatus:failureStatuses[0]?.id,testMode,email:settings.email}));
   return {token,orderId,visualId:String(inv.visualId),customerName:inv.customerName,statusName:inv.status.name,
     statusId:inv.status.id,customerId:inv.contact?.customer?.id,files,task:inv.prepTasks.length===1?inv.prepTasks[0]:null,folder,
-    blockers,canPass,canFail,testMode,emailRecipient:settings.email,printImprints:imprint?.count??null,completeness:"Staff confirmation required",
+    blockers,canPass,canFail,testMode,testEligible,emailRecipient:settings.email,printImprints:imprint?.count??null,completeness:"Staff confirmation required",
     failureStatusId:failureStatuses[0]?.id,settingsVersion:settings.version};
 }
 export async function approveActions(orderId: string, input:{token:string;decision:"pass"|"fail"|"email";confirmComplete:boolean;note:string;testMode?:boolean;selectedFileIds?:string[]}, actor:string, automatic=false) {
@@ -69,7 +70,7 @@ export async function approveActions(orderId: string, input:{token:string;decisi
     if(!locked) throw new Error("Another reviewer is processing this invoice.");
     const preview=await actionPreview(orderId,!automatic);
     if(environment!=="production") {
-      if(preview.visualId!==TEST_VISUAL_ID) throw new Error("Test invoice identity changed.");
+      if(!isTestInvoice(orderId,preview.visualId)) throw new Error("Test invoice identity changed.");
       assertTestFiles(input.selectedFileIds,preview.files);
     }
     if(preview.token!==input.token) throw new Error("Invoice, file, inspection, settings or folder changed. Refresh the preview.");
@@ -105,8 +106,8 @@ export async function approveActions(orderId: string, input:{token:string;decisi
         await step("Send restricted-test failure email",async()=>{
           const emailId=randomUUID();
           const body={from:`Mint Printworks Hub <${process.env.FROM_EMAIL??"noreply@mintprintworks.com"}>`,
-            to:settings.email,subject:"[TEST] SepScope inspection failed — #20625",
-            text:`Restricted development test for invoice #20625.\n\n${preview.files.filter(f=>f.verdict==="fail").map(f=>"- "+f.name).join("\n")}\n\nOpen SepScope inspection findings in the development preview.\nThis notification does not change the invoice status, complete its task, or move files.\nPrintavo: https://www.printavo.com/invoices/${TEST_ORDER_ID}`};
+            to:settings.email,subject:`[TEST] SepScope inspection failed — #${preview.visualId}`,
+            text:`Restricted development test for invoice #${preview.visualId}.\n\n${preview.files.filter(f=>f.verdict==="fail").map(f=>"- "+f.name).join("\n")}\n\nOpen SepScope inspection findings in the development preview.\nThis notification does not change the invoice status, complete its task, or move files.\nPrintavo: https://www.printavo.com/invoices/${orderId}`};
           await pool.query("INSERT INTO sepscope_automation_emails(id,environment,batch_key,state,body) VALUES($1,$2,$3,'sending',$4)",[emailId,environment,"test:"+id,JSON.stringify(body)]);
           try {
             await deliverNotification(body,emailId);

@@ -240,8 +240,8 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
         {data.environment==="development" && <div className="md:col-span-2 border border-amber-600 rounded p-3 text-sm">
           <label className="flex gap-2 font-semibold"><input type="checkbox" disabled={ro} checked={form.restrictedTestMode}
             onChange={e=>{setForm(f=>({...f,restrictedTestMode:e.target.checked,enabled:false,automaticActions:false}));setDirty(true);}} />
-            Restricted live-test mode — invoice #20625 only</label>
-          <p className="text-xs mt-2">Real Printavo, email and Dropbox actions, individually confirmed by an administrator. Saving this mode disables scheduled scans and automatic actions. Scan now is limited to #20625. All current OUTPUT files must be explicitly selected as test files before an action. No action runs merely by enabling this mode.</p>
+            Restricted live-test mode — invoices #20625 and #23450 only</label>
+          <p className="text-xs mt-2">Real Printavo, email and Dropbox actions, individually confirmed by an administrator. Saving this mode disables scheduled scans and automatic actions. Scan now is limited to #20625 and #23450. All current OUTPUT files must be explicitly selected as test files before an action. No action runs merely by enabling this mode.</p>
         </div>}
         <div className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm font-semibold">
@@ -385,7 +385,7 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
   };
 
   const canSubmit = !!p && !!decision && confirmed && !preview.isPending && !approve.isPending &&
-    (!p.testMode || (role==="admin" && String(p.visualId)==="20625" && p.files.length>0 && selectedFiles.length===p.files.length)) &&
+    (!p.testMode || (role==="admin" && ["20625","23450"].includes(String(p.visualId)) && p.files.length>0 && selectedFiles.length===p.files.length)) &&
     (decision === "pass" ? p.canPass && complete : p.canFail);
 
   return (
@@ -410,7 +410,7 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
           {p && (
             <>
               {p.testMode && <div className="border border-amber-500 bg-amber-950 text-amber-100 rounded p-3 text-xs space-y-2">
-                <strong>RESTRICTED LIVE TEST — #20625 only</strong>
+                <strong>RESTRICTED LIVE TEST — invoice #{p.visualId}</strong>
                 <p>These are real actions. Status changes may trigger Printavo’s own notifications. Verify those automations before confirming.</p>
                 <p>Email recipient: <strong>{p.emailRecipient}</strong>. The email test sends a [TEST] failure notification only.</p>
                 <p>Pass: copy selected OUTPUT files to <strong>{p.folder?.path ?? "unresolved Dropbox folder"}</strong>, verify each copy, remove those attachments from Printavo, then complete the prep task. No folders are created. Keep backup copies before confirming.</p>
@@ -476,7 +476,7 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
                   <>
                     <textarea maxLength={2000} value={note} onChange={e => setNote(e.target.value)} placeholder="Note (optional)" className="border border-[var(--line-2)] rounded p-2 text-sm h-16 bg-[var(--surface-2)] text-[var(--ink)] placeholder:text-[var(--ink-3)] [color-scheme:dark]" />
                     <label className="flex items-start gap-2 text-xs font-semibold"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />
-                      I confirm: {decision === "email" ? `send a real test failure email to ${p.emailRecipient}` : decision === "pass" ? "archive the reviewed files, remove their Printavo attachments and complete the prep task" : "change this invoice to PRINT ERROR - REVIEW"}{p.testMode ? " for internal invoice #20625. I verified the test files, backups and notification side effects." : "."}</label>
+                      I confirm: {decision === "email" ? `send a real test failure email to ${p.emailRecipient}` : decision === "pass" ? "archive the reviewed files, remove their Printavo attachments and complete the prep task" : "change this invoice to PRINT ERROR - REVIEW"}{p.testMode ? ` for test invoice #${p.visualId}. I verified the test files, backups and notification side effects.` : "."}</label>
                     <button disabled={!canSubmit} onClick={submit} className="bg-slate-800 text-white py-2 rounded font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
                       {approve.isPending && <Loader2 size={14} className="animate-spin" />} Approve {decision}</button>
                   </>

@@ -14,6 +14,10 @@ not a client invoice, and proposed it for status/email/task/archive tests.
 The user approved adding a restricted live-test mode for this invoice—not
 automatically enabling the mode or executing live tests.
 
+The user subsequently explicitly approved adding #23450 to SepScope's
+restricted test allowlist alongside #20625. Do not infer this is a general
+test invoice for other modules or permission to execute actions now.
+
 **Why:** The user supplied the invoice's internal purpose and suggested planting
 a bad OUTPUT file to exercise the failure workflow.
 
