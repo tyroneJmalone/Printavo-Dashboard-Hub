@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetSepscopeAutomation, getGetSepscopeAutomationQueryKey,
@@ -41,7 +41,12 @@ export function PrintScopeAutomation() {
     query: { queryKey: getGetSepscopeAutomationQueryKey(), refetchInterval: 15_000 },
   });
   const data = raw as unknown as Data | undefined;
+  const search = useSearch();
+  const requestedOrder = new URLSearchParams(search).get("review");
   const [reviewOrder, setReviewOrder] = useState<string | null>(null);
+  useEffect(() => {
+    setReviewOrder(requestedOrder && /^\d+$/.test(requestedOrder) ? requestedOrder : null);
+  }, [requestedOrder]);
 
   if (isLoading) return (
     <div className="p-6 space-y-3" style={{ height: "calc(100% - 48px)" }}>
@@ -410,12 +415,13 @@ function ReviewDialog({ orderId, onClose }: { orderId: string; onClose: () => vo
           )}
           {p && (
             <>
+              <p className="text-xs text-slate-300">Approved pass/fail actions append each file’s inspection date and result to Printavo Production Notes, preserving existing content. Avoid editing those notes in Printavo while actions run. Email-only tests do not write notes.</p>
               {p.testMode && <div className="border border-amber-500 bg-amber-950 text-amber-100 rounded p-3 text-xs space-y-2">
                 <strong>RESTRICTED LIVE TEST — invoice #{p.visualId}</strong>
                 <p>These are real actions. Status changes may trigger Printavo’s own notifications. Verify those automations before confirming.</p>
                 <p>Email recipient: <strong>{p.emailRecipient}</strong>. The email test sends a [TEST] failure notification only.</p>
                 <p>Pass: copy selected OUTPUT files to <strong>{p.folder?.path ?? "unresolved Dropbox folder"}</strong>, verify each copy, remove those attachments from Printavo, then complete the prep task. No folders are created. Keep backup copies before confirming.</p>
-                <p>Failure: change status to PRINT ERROR - REVIEW only; task and attachments remain unchanged.</p>
+                <p>Failure: record inspection results in Production Notes and change status to PRINT ERROR - REVIEW; task and attachments remain unchanged.</p>
                 {role!=="admin" && <p>Only administrators may execute live tests.</p>}
               </div>}
               <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-2">

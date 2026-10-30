@@ -9,7 +9,7 @@ const lit = JSON.stringify;
 export async function readInvoice(id: string): Promise<any> {
   const client = getPrintavoClient();
   const data: any = await client.query(`query { invoice(id:${lit(id)}) {
-    id visualId nickname status {id name}
+    id visualId nickname productionNote status {id name}
     contact {id fullName customer {id companyName}}
     productionFiles(first:25) {nodes {id name fileUrl timestamps {updatedAt createdAt}} pageInfo {hasNextPage endCursor}}
     tasks(first:25) {nodes {id name completed} pageInfo {hasNextPage endCursor}}

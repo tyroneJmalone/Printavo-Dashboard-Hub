@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { statusUpdateMutation, taskUpdateMutation } from "@workspace/printavo";
+import { statusUpdateMutation, taskUpdateMutation, invoiceUpdateMutation } from "@workspace/printavo";
 import { getPrintavoClient } from "../printavoGateway";
 import { digest, FAILURE_STATUS, normalizeName } from "./automationPolicy";
 import { readInvoice, downloadOutput, findInvoiceFolder, liveStatuses, archiveFile, archivePath, uploadLink } from "./automationProviders";
@@ -8,6 +8,7 @@ import { getSettings } from "./automationStore";
 import { environment } from "./worker";
 import { assertTestScope, assertTestFiles, isTestInvoice } from "./testMode";
 import { deliverNotification } from "./notificationDelivery";
+import { escapeHtml, inspectionNotes, reviewLinks } from "./inspectionCommunication";
 
 export async function actionPreview(orderId: string, checkDropbox = true) {
   const settings=await getSettings(), inv=await readInvoice(orderId);
@@ -21,12 +22,12 @@ export async function actionPreview(orderId: string, checkDropbox = true) {
   for(const f of inv.files) {
     try {
       const {sha}=await downloadOutput(f);
-      const row=(await pool.query(`SELECT i.job_id,j.state,j.result,j.rule_version_id
+      const row=(await pool.query(`SELECT i.job_id,j.state,j.result,j.rule_version_id,j.completed_at
         FROM sepscope_automation_intake i JOIN printscope_jobs j ON j.id=i.job_id
         WHERE i.environment=$1 AND i.order_id=$2 AND i.file_id=$3 AND i.revision=$4 ORDER BY i.created_at DESC LIMIT 1`,
         [environment,orderId,f.id,sha])).rows[0];
       const local=row?.result?.ctx?.local_underbase;
-      files.push({id:f.id,name:f.name,sha,jobId:row?.job_id??null,state:row?.state??"not_inspected",verdict:row?.result?.verdict??null,inspectionComplete:row?.result?.completeness?.complete===true && local?.version===1 && !local.error && !local.failCount && !local.flagCount,resultHash:row?digest(JSON.stringify(row.result)):null,ruleVersion:row?.rule_version_id??null});
+      files.push({id:f.id,name:f.name,sha,jobId:row?.job_id??null,inspectedAt:row?.completed_at ? new Date(row.completed_at).toISOString() : null,state:row?.state??"not_inspected",verdict:row?.result?.verdict??null,inspectionComplete:row?.result?.completeness?.complete===true && local?.version===1 && !local.error && !local.failCount && !local.flagCount,resultHash:row?digest(JSON.stringify(row.result)):null,ruleVersion:row?.rule_version_id??null});
     } catch(e:any) {files.push({id:f.id,name:f.name,state:"unavailable",verdict:null,error:String(e.message)});}
   }
   const unsettled=inv.files.some((f:any)=>{
@@ -102,13 +103,31 @@ export async function approveActions(orderId: string, input:{token:string;decisi
         if(current.version!==preview.settingsVersion) throw new Error("Automation settings changed; remaining actions held.");
         return live;
       };
+      // Record only confirmed Pass/Fail evidence, under the same approval and durable
+      // one-attempt write guard as the other actions. Email-only tests remain read-only.
+      if(input.decision!=="email") {
+        const live=await requireCurrent();
+        for(const f of live.files) if((await downloadOutput(f)).sha!==preview.files.find(x=>x.id===f.id)?.sha) throw new Error("Artwork changed since review.");
+        const existing=live.productionNote??"";
+        const next=inspectionNotes(existing,preview.files.filter(f=>["pass","fail"].includes(f.verdict)),input.testMode===true);
+        if(next!==existing) await step("Record inspection in Production Notes",async()=>{
+          const fresh=await requireCurrent();
+          if((fresh.productionNote??"")!==existing) throw new Error("Production Notes changed; refresh before continuing.");
+          await getPrintavoClient().mutate(invoiceUpdateMutation(orderId,{productionNote:next}));
+          const updated=await readInvoice(orderId);
+          if(updated.productionNote!==next) throw new Error("Production Notes update not confirmed; verify in Printavo before retrying.");
+          return {jobIds:preview.files.filter(f=>["pass","fail"].includes(f.verdict)).map(f=>f.jobId)};
+        });
+      }
       if(input.decision==="email") {
         await requireCurrent();
         await step("Send restricted-test failure email",async()=>{
           const emailId=randomUUID();
+          const links=reviewLinks(orderId,preview.files.filter(f=>f.verdict==="fail"),true);
           const body={from:`Mint Printworks Hub <${process.env.FROM_EMAIL??"noreply@mintprintworks.com"}>`,
             to:settings.email,subject:`[TEST] SepScope inspection failed — #${preview.visualId}`,
-            text:`Restricted development test for invoice #${preview.visualId}.\n\n${preview.files.filter(f=>f.verdict==="fail").map(f=>"- "+f.name).join("\n")}\n\nOpen SepScope inspection findings in the development preview.\nThis notification does not change the invoice status, complete its task, or move files.\nPrintavo: https://www.printavo.com/invoices/${orderId}`};
+            text:`Restricted development test for invoice #${preview.visualId}.\n\n${preview.files.filter(f=>f.verdict==="fail").map(f=>"- "+f.name).join("\n")}\n\n${links.text}\nThis notification does not change the invoice status, notes, task, or files.\nPrintavo: https://www.printavo.com/invoices/${orderId}`,
+            html:`<p>Restricted development test for invoice #${escapeHtml(String(preview.visualId))}.</p>${links.html}<p>This notification does not change the invoice status, notes, task, or files.</p>`};
           await pool.query("INSERT INTO sepscope_automation_emails(id,environment,batch_key,state,body) VALUES($1,$2,$3,'sending',$4)",[emailId,environment,"test:"+id,JSON.stringify(body)]);
           try {
             await deliverNotification(body,emailId);

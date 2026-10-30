@@ -7,6 +7,7 @@ import { scheduleSlot, digest } from "./automationPolicy";
 import { queueScan } from "./automationIntake";
 import { actionPreview, approveActions } from "./automationActions";
 import { logger } from "../logger";
+import { escapeHtml, reviewLinks } from "./inspectionCommunication";
 
 export async function automationTick() {
   if(environment!=="production") return;
@@ -37,9 +38,12 @@ export async function automationTick() {
         const findings=Array.isArray(rules) ? rules.filter((r:any)=>["fail","error"].includes(r.verdict??r.status??r.severity)).slice(0,8).map((r:any)=>r.title??r.name??r.code??"Failed check").join(", ") : "";
         return `- ${f.filename}${findings?": "+findings:" — open SepScope for findings"}`;
       });
+      const links=reviewLinks(batch.order_id,failures);
+      const message=`Invoice #${first.visualId} — ${first.customerName??""}\n\n${lines.join("\n")}\n\n${settings.automaticActions ? "Automatic failure actions enabled; check the action log for the confirmed outcome." : "Awaiting staff review — this notification has not changed the invoice status."}`;
       const body={from:`Mint Printworks Hub <${process.env.FROM_EMAIL??"noreply@mintprintworks.com"}>`,to:settings.email,
         subject:`SepScope inspection failed — #${first.visualId}`,
-        text:`Invoice #${first.visualId} — ${first.customerName??""}\n\n${lines.join("\n")}\n\n${settings.automaticActions ? "Automatic failure actions enabled; check the action log for the confirmed outcome." : "Awaiting staff review — this notification has not changed the invoice status."}\n\nPrintavo: https://www.printavo.com/invoices/${batch.order_id}\nReview: https://MintHub.replit.app/printscope/automation\n${failures.map((f:any)=>`${f.filename}: https://MintHub.replit.app/printscope?job=${f.jobId}`).join("\n")}`};
+        text:`${message}\n\n${links.text}\n\nPrintavo: https://www.printavo.com/invoices/${batch.order_id}`,
+        html:`<p>${escapeHtml(message).replace(/\n/g,"<br>")}</p>${links.html}<p><a href="https://www.printavo.com/invoices/${encodeURIComponent(batch.order_id)}">View Printavo invoice</a></p>`};
       await c.query(`INSERT INTO sepscope_automation_emails(id,environment,batch_key,state,body) VALUES($1,$2,$3,'pending',$4) ON CONFLICT DO NOTHING`,
         [randomUUID(),environment,key,JSON.stringify(body)]);
     }

@@ -15,6 +15,11 @@ times; the user chose 6:30 a.m. as the starting time. Timezone has not been
 explicitly confirmed.
 Start with staff approval required for every action, with an AutoPrint-like
 toggle to enable automatic actions later. Inspection itself can be scheduled.
+Inspection-result Production Notes follow the approved pass/fail action boundary,
+not scan completion; email-only tests must not write notes. Append per-inspection
+evidence while retaining existing notes and history.
+**Why:** The requested inspection audit trail must not silently bypass the
+existing staff-approval requirement for Printavo changes.
 Ignore the artwork-approval wording in the task: the user says orders reaching
 this stage are assumed approved.
 
