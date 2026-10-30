@@ -30,7 +30,7 @@ export async function actionPreview(orderId: string, checkDropbox = true) {
   }
   const unsettled=inv.files.some((f:any)=>{
     const time=Date.parse(f.timestamps?.updatedAt??f.timestamps?.createdAt??"");
-    return !Number.isFinite(time) || Date.now()-time<settings.settleMinutes*60_000;
+    return settings.settleMinutes>0 && (!Number.isFinite(time) || Date.now()-time<settings.settleMinutes*60_000);
   });
   if(unsettled) blockers.push("Some output files are still within the upload settling period.");
   const prior=(await pool.query("SELECT id FROM sepscope_automation_actions WHERE environment=$1 AND order_id=$2 AND state IN ('running','review_required') LIMIT 1",[environment,orderId])).rows[0];

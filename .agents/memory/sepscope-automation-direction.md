@@ -50,6 +50,13 @@ on the initial scan, without excluding new files on older invoices.
 **How to apply:** Filter by production-file creation time before downloading,
 not invoice creation time or file modification time.
 
+Settling delay is optional; the user approved zero minutes for scheduled
+batches and deliberate live tests, retaining a configurable delay.
+**Why:** Holding a file at scan time could defer it for an entire scheduled
+batch interval; staff approval and file-version checks remain the safeguards.
+**How to apply:** Zero must disable the settling gate in both intake and
+action review, without disabling the Added After cutoff or completeness review.
+
 Search for an existing invoice folder within the verified customer's root;
 do not silently create folders or pick an ambiguous/cross-customer match.
 The build may add a narrowly scoped archive write path, but the existing

@@ -77,7 +77,8 @@ test("disabled safe defaults and settings validation",()=>{
   assert.deepEqual(defaults.times,["06:30"]);
   const {automaticSince,...s}=defaults;
   assert.ok(settingsInput.safeParse({...s,version:0}).success);
-  for(const patch of [{times:[]},{times:["24:00"]},{weekdays:[7]},{email:"bad"},{settleMinutes:0},{timezone:"bad/zone"}]) assert.ok(!settingsInput.safeParse({...s,version:0,...patch}).success);
+  for(const settleMinutes of [0,1,10,120]) assert.ok(settingsInput.safeParse({...s,version:0,settleMinutes}).success);
+  for(const patch of [{times:[]},{times:["24:00"]},{weekdays:[7]},{email:"bad"},{settleMinutes:-1},{settleMinutes:121},{settleMinutes:0.5},{timezone:"bad/zone"}]) assert.ok(!settingsInput.safeParse({...s,version:0,...patch}).success);
 });
 test("Eastern schedule, extra slots, weekday selection and DST repetition",()=>{
   const s={...defaults,enabled:true,times:["06:30","14:00"]};

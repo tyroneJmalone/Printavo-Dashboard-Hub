@@ -77,7 +77,7 @@ async function executeScan(runId: string, actor: string, settings: Awaited<Retur
           }
           const metadata={visualId:String(inv.visualId),customerName:inv.customerName,customerId:inv.contact?.customer?.id,filename:file.name,sourceStatusId:inv.status.id};
           const changed=Date.parse(file.timestamps?.updatedAt ?? file.timestamps?.createdAt ?? "");
-          if(!Number.isFinite(changed) || Date.now()-changed<settings.settleMinutes*60_000) {
+          if(settings.settleMinutes>0 && (!Number.isFinite(changed) || Date.now()-changed<settings.settleMinutes*60_000)) {
             hold({...context,reason:!Number.isFinite(changed) ? "Missing or invalid file modification date."
               : `Waiting for the ${settings.settleMinutes}-minute settling period; eligible after ${new Date(changed+settings.settleMinutes*60_000).toISOString()}.`});continue;
           }

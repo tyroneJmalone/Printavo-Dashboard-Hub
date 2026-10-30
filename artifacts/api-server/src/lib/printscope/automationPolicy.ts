@@ -5,7 +5,7 @@ export const FAILURE_STATUS = "PRINT ERROR - REVIEW";
 export const defaults = {
   enabled: false, times: ["06:30"], weekdays: [0,1,2,3,4,5,6],
   timezone: "America/New_York", email: "art@mintprintworks.com",
-  automaticActions: false, allowedStatusIds: [] as string[], settleMinutes: 10,
+  automaticActions: false, allowedStatusIds: [] as string[], settleMinutes: 0,
   automaticSince: null as string | null,
   addedAfter: "2026-10-27",
   restrictedTestMode: false,
@@ -17,7 +17,7 @@ export const settingsInput = z.object({
   timezone: z.string().refine(v => {try { new Intl.DateTimeFormat("en-US",{timeZone:v}); return true;} catch {return false;}}),
   email: z.string().email(), automaticActions: z.boolean(),
   allowedStatusIds: z.array(z.string().regex(/^\d+$/)).max(100),
-  settleMinutes: z.number().int().min(1).max(120),
+  settleMinutes: z.number().int().min(0).max(120),
   addedAfter: z.string().date(),
   restrictedTestMode: z.boolean().default(false),
 }).strict();

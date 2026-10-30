@@ -275,7 +275,8 @@ function SettingsPanel({ data, isAdmin }: { data: Data; isAdmin: boolean }) {
             <label className="flex flex-col text-[10px] uppercase font-bold tracking-wider text-ink-3 gap-1">Timezone
               <input disabled={ro} className={input} value={form.timezone} onChange={e => set("timezone", e.target.value)} /></label>
             <label className="flex flex-col text-[10px] uppercase font-bold tracking-wider text-ink-3 gap-1">Settle minutes
-              <input type="number" min={0} disabled={ro} className={`${input} w-24`} value={form.settleMinutes} onChange={e => set("settleMinutes", Number(e.target.value))} /></label>
+              <input type="number" min={0} max={120} disabled={ro} className={`${input} w-24`} value={form.settleMinutes} onChange={e => set("settleMinutes", Number(e.target.value))} /></label>
+            <p className="text-xs text-ink-3">0 = no settling delay. Staff approval and file-change checks still apply.</p>
           </div>
           <p className="text-xs text-ink-2">Only files added on or after this date in {form.timezone} are downloaded for inspection. Applies to every scan until changed; older files and files without an upload date are skipped.</p>
           <label className="flex flex-col text-[10px] uppercase font-bold tracking-wider text-ink-3 gap-1">Summary email
