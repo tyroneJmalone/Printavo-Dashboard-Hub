@@ -81,6 +81,7 @@
 - [Pipeline status policy](pipeline-status-policy.md) — approved/Art invoices belong in Nurturing; expanded Won/Done aliases; Dead must not match Deadline.
 - [Pipeline owner choices](pipeline-owner-policy.md) — Sales Pipeline owner selector is limited to All, Info, Tommy, Andrew, Medina, and Tyler.
 - [PrintScope renderer compatibility](printscope-renderer-compatibility.md) — MuPDF unitless SVG dimensions can silently omit choke masks even when golden verdicts match.
+- [SepScope underbase expectations](sepscope-underbase-expectations.md) — localized missing base must not be hidden by high whole-ink coverage.
 - [SepScope pilot policy](printscope-pilot-policy.md) — formerly PrintScope; read-only comparisons and limited pilot-copy expiry, with historical identity preserved.
 - [SepScope automation direction](sepscope-automation-direction.md) — approved scheduled OUTPUT intake with staff-gated actions; completeness remains manual and archive writes need permission.
 - [Shipment tracking policy](shipment-tracking-policy.md) — Shippo connection is not paid-tracking consent; known-package delivery does not prove full PO delivery.
