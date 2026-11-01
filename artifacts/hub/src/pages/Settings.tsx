@@ -23,6 +23,7 @@ import { useStaff } from "@/components/auth/StaffGate";
 import { StaffAccessCard } from "@/components/settings/StaffAccessCard";
 import { ModuleAccessCard } from "@/components/settings/ModuleAccessCard";
 import { AdminPinCard } from "@/components/settings/AdminPinCard";
+import { PrintavoConnectionCard } from "@/components/settings/PrintavoConnectionCard";
 import { Settings as SettingsIcon, Loader2, Truck, Save } from "lucide-react";
 
 function apiError(err: unknown): string | undefined {
@@ -335,6 +336,7 @@ export default function Settings() {
       case "staff-access": return <StaffAccessCard />;
       case "module-access": return <ModuleAccessCard />;
       case "admin-pin": return <AdminPinCard />;
+      case "printavo-connection": return <PrintavoConnectionCard />;
       case "ai-connections": return <AiContext />;
       case "knowledge-base": return <KnowledgeBase />;
       case "email-access": return <EmailAccess />;

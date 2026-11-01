@@ -13,3 +13,7 @@ with automation later.
 **How to apply:** Use `docs/google-review-request-plan.md`. Delivery-provider,
 fulfillment, timing and suppression rules remain proposals. Do not start sends
 or activate tracking from this record.
+
+The user requested that the Google Business Profile monitoring/reply feasibility
+findings be included in the same plan. That section is a deferred companion
+proposal, not approval to connect Google or publish responses.

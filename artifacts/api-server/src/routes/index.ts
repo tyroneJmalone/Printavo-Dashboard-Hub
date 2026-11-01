@@ -9,6 +9,7 @@ import staffRouter from "./staff";
 import syncRouter from "./sync";
 import backupRouter from "./backup";
 import printavoRouter from "./printavo";
+import printavoConnectionRouter from "./printavoConnection";
 import reportsRouter from "./reports";
 import orderActivityLogRouter from "./orderActivityLog";
 import dashboardRouter from "./dashboard";
@@ -96,6 +97,7 @@ router.use(staffRouter); // admin-only routes — requireAdmin per route inside
 router.use(syncRouter);
 router.use(backupRouter); // /backup/export is admin-only (requireAdmin per route)
 router.use(printavoRouter);
+router.use(printavoConnectionRouter);
 router.use(reportsRouter);
 router.use(orderActivityLogRouter);
 router.use(dashboardRouter);
@@ -151,7 +153,7 @@ if (isMintbucksConfigured()) {
 // Printavo ⇄ moMINTum task sync — needs both the moMINTum DB and Printavo
 // credentials. Admin-gated inside; manual trigger only until the interval
 // poller phase ships.
-if (isMomintumConfigured() && printavoConfigured()) {
+if (isMomintumConfigured()) {
   router.use("/printavo-tasks", printavoTasksRouter);
 }
 

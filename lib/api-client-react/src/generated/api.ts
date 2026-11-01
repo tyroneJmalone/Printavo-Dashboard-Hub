@@ -396,7 +396,9 @@ import type {
   PqStatusRulesResponse,
   PreviewChipplyDataBody,
   PrintQueueOrdersResponse,
+  PrintavoConnectionRequest,
   PrintavoConnectionResult,
+  PrintavoConnectionStatus,
   PrintavoLinkStatus,
   PrintavoOrderHistory,
   PrintavoOrderSummary,
@@ -564,6 +566,141 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetPrintavoConnectionUrl = () => {
+
+
+
+
+  return `/api/auth/printavo-connection`
+}
+
+export const getPrintavoConnection = async ( options?: RequestInit): Promise<PrintavoConnectionStatus> => {
+
+  return customFetch<PrintavoConnectionStatus>(getGetPrintavoConnectionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrintavoConnectionQueryKey = () => {
+    return [
+    `/api/auth/printavo-connection`
+    ] as const;
+    }
+
+
+export const getGetPrintavoConnectionQueryOptions = <TData = Awaited<ReturnType<typeof getPrintavoConnection>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintavoConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrintavoConnectionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrintavoConnection>>> = ({ signal }) => getPrintavoConnection({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrintavoConnection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrintavoConnectionQueryResult = NonNullable<Awaited<ReturnType<typeof getPrintavoConnection>>>
+export type GetPrintavoConnectionQueryError = ErrorType<unknown>
+
+
+
+export function useGetPrintavoConnection<TData = Awaited<ReturnType<typeof getPrintavoConnection>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrintavoConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrintavoConnectionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePrintavoConnectionUrl = () => {
+
+
+
+
+  return `/api/auth/printavo-connection`
+}
+
+export const updatePrintavoConnection = async (printavoConnectionRequest: PrintavoConnectionRequest, options?: RequestInit): Promise<PrintavoConnectionStatus> => {
+
+  return customFetch<PrintavoConnectionStatus>(getUpdatePrintavoConnectionUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(printavoConnectionRequest)
+  }
+);}
+
+
+
+
+export const getUpdatePrintavoConnectionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePrintavoConnection>>, TError,{data: BodyType<PrintavoConnectionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePrintavoConnection>>, TError,{data: BodyType<PrintavoConnectionRequest>}, TContext> => {
+
+const mutationKey = ['updatePrintavoConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePrintavoConnection>>, {data: BodyType<PrintavoConnectionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updatePrintavoConnection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePrintavoConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof updatePrintavoConnection>>>
+    export type UpdatePrintavoConnectionMutationBody = BodyType<PrintavoConnectionRequest>
+    export type UpdatePrintavoConnectionMutationError = ErrorType<void>
+
+    export const useUpdatePrintavoConnection = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePrintavoConnection>>, TError,{data: BodyType<PrintavoConnectionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePrintavoConnection>>,
+        TError,
+        {data: BodyType<PrintavoConnectionRequest>},
+        TContext
+      > => {
+      return useMutation(getUpdatePrintavoConnectionMutationOptions(options));
+    }
 
 export const getGetSalesWorkspaceUrl = (params: GetSalesWorkspaceParams,) => {
   const normalizedParams = new URLSearchParams();

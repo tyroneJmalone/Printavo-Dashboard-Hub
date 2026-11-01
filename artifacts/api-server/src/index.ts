@@ -1,4 +1,5 @@
 import app from "./app";
+import { initializePrintavoConnection } from "./lib/printavoConnection";
 import { startAutoPrintAlerts } from "./lib/printQueue/autoPrint/alerts";
 import { startPrintscopeWorker } from "./lib/printscope/worker";
 import { startSepscopeAutomation } from "./lib/printscope/automationScheduler";
@@ -32,7 +33,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+initializePrintavoConnection().then(() => app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -76,4 +77,7 @@ app.listen(port, (err) => {
   // PRINTAVO_TASK_SYNC_ENABLED=true — and that flag must be true in at most
   // ONE environment (dev vs deployment duplicate-twin hazard, see replit.md).
   startTaskSyncPoller(logger);
+})).catch(() => {
+  logger.error("Could not initialize Printavo connection settings");
+  process.exit(1);
 });

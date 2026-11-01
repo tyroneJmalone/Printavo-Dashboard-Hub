@@ -43,6 +43,37 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /auth/printavo-connection:
+    get:
+      operationId: getPrintavoConnection
+      tags: [auth]
+      responses:
+        "200":
+          description: Admin-only connection metadata; never returns the token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoConnectionStatus"
+    put:
+      operationId: updatePrintavoConnection
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrintavoConnectionRequest"
+      responses:
+        "200":
+          description: Verified and saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrintavoConnectionStatus"
+        "400":
+          description: Invalid input
+        "502":
+          description: Verification failed; existing connection retained
   /customers/sales/workspace:
     get:
       operationId: getSalesWorkspace
@@ -9019,6 +9050,36 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    PrintavoConnectionRequest:
+      type: object
+      required: [email, expiresOn]
+      properties:
+        email:
+          type: string
+          format: email
+        token:
+          type: string
+          maxLength: 4096
+          description: Omit or leave blank to retain the existing token.
+        expiresOn:
+          type: [string, "null"]
+          description: Calendar date YYYY-MM-DD, or null to clear.
+    PrintavoConnectionStatus:
+      type: object
+      required: [email, configured, expiresOn, source, environment, updatedAt]
+      properties:
+        email:
+          type: string
+        configured:
+          type: boolean
+        expiresOn:
+          type: [string, "null"]
+        source:
+          type: string
+        environment:
+          type: string
+        updatedAt:
+          type: [string, "null"]
     SepscopeAutomationData:
       type: object
       additionalProperties: true

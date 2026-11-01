@@ -28,6 +28,7 @@ export const NETWORK_RETRY_DELAYS_MS = [2000, 6000];
 export interface PrintavoClientOptions {
   email: string;
   token: string;
+  credentials?: () => Promise<{ email: string; token: string }>;
   endpoint?: string;
   minIntervalMs?: number;
 }
@@ -74,6 +75,7 @@ export class PrintavoClient {
   private readonly endpoint: string;
   private readonly email: string;
   private readonly token: string;
+  private readonly credentials?: PrintavoClientOptions["credentials"];
 
   private requestCount = 0;
   private retryCount = 0;
@@ -84,6 +86,7 @@ export class PrintavoClient {
   constructor(options: PrintavoClientOptions) {
     this.email = options.email;
     this.token = options.token;
+    this.credentials = options.credentials;
     this.endpoint = options.endpoint ?? PRINTAVO_ENDPOINT;
     this.gate = new RequestGate(options.minIntervalMs ?? MIN_INTERVAL_MS);
   }
@@ -243,14 +246,15 @@ export class PrintavoClient {
     query: string,
     variables: Record<string, unknown>,
   ): Promise<Response> {
+    const credentials = this.credentials ? await this.credentials() : { email: this.email, token: this.token };
     this.requestCount += 1;
     this.lastRequestAt = new Date();
     return fetch(this.endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        email: this.email,
-        token: this.token,
+        email: credentials.email,
+        token: credentials.token,
       },
       body: JSON.stringify({ query, variables }),
     });

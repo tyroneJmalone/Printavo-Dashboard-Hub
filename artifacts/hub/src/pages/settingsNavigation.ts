@@ -13,6 +13,7 @@ export const settingsSections: readonly SettingsSection[] = [
   { id: "module-access", label: "Module Access", group: "access", adminOnly: true },
   { id: "admin-pin", label: "Admin PIN", group: "access", adminOnly: true },
   { id: "ai-connections", label: "AI Connections", group: "connections", adminOnly: true },
+  { id: "printavo-connection", label: "Printavo", group: "connections", adminOnly: true },
   { id: "knowledge-base", label: "Knowledge Base", group: "connections", module: "knowledge" },
   { id: "email-access", label: "Email Access", group: "connections", adminOnly: true },
   { id: "voice-profiles", label: "Voice Profiles", group: "connections" },

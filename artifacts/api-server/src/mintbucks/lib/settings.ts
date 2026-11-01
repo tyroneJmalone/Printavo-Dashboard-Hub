@@ -120,11 +120,10 @@ export async function setSetting(key: SettingsKey, value: string | null): Promis
 }
 
 export async function getPrintavoConfig(): Promise<{ apiKey: string; email: string; shopUrl?: string } | null> {
-  const [apiKey, email] = await Promise.all([
-    getSetting("printavo_api_key"),
-    getSetting("printavo_email"),
-  ]);
-  if (!apiKey || !email) return null;
+  // Use Hub's connection without writing standalone Mint Bucks' credential rows.
+  const { connectionConfigured, connectionCredentials } = await import("../../lib/printavoConnection");
+  if (!connectionConfigured()) return null;
+  const { token: apiKey, email } = await connectionCredentials();
   const shopUrl = await getSetting("printavo_shop_url");
   return { apiKey, email, shopUrl: shopUrl ?? undefined };
 }

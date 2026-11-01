@@ -1,11 +1,10 @@
 import { PrintavoClient, type PrintavoClientStats } from "@workspace/printavo";
+import { connectionConfigured, connectionCredentials } from "./printavoConnection";
 
 let client: PrintavoClient | null = null;
 
 export function printavoConfigured(): boolean {
-  return Boolean(
-    process.env["PRINTAVO_API_EMAIL"] && process.env["PRINTAVO_API_TOKEN"],
-  );
+  return connectionConfigured();
 }
 
 /**
@@ -17,12 +16,12 @@ export function getPrintavoClient(): PrintavoClient {
   if (!client) {
     const email = process.env["PRINTAVO_API_EMAIL"];
     const token = process.env["PRINTAVO_API_TOKEN"];
-    if (!email || !token) {
+    if (!printavoConfigured()) {
       throw new Error(
         "PRINTAVO_API_EMAIL and PRINTAVO_API_TOKEN must be set to talk to Printavo",
       );
     }
-    client = new PrintavoClient({ email, token });
+    client = new PrintavoClient({ email: email || "", token: token || "", credentials: connectionCredentials });
   }
   return client;
 }

@@ -5,6 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface PrintavoConnectionRequest {
+  email: string;
+  /**
+     * Omit or leave blank to retain the existing token.
+     * @maxLength 4096
+     */
+  token?: string;
+  /**
+     * Calendar date YYYY-MM-DD, or null to clear.
+     * @nullable
+     */
+  expiresOn: string | null;
+}
+
+export interface PrintavoConnectionStatus {
+  email: string;
+  configured: boolean;
+  /** @nullable */
+  expiresOn: string | null;
+  source: string;
+  environment: string;
+  /** @nullable */
+  updatedAt: string | null;
+}
+
 export interface SepscopeAutomationData { [key: string]: unknown }
 
 export interface SepscopeSettingsRequest {

@@ -8,6 +8,36 @@
 import * as zod from 'zod';
 
 
+export const GetPrintavoConnectionResponse = zod.object({
+  "email": zod.string(),
+  "configured": zod.boolean(),
+  "expiresOn": zod.string().nullable(),
+  "source": zod.string(),
+  "environment": zod.string(),
+  "updatedAt": zod.string().nullable()
+})
+
+
+export const updatePrintavoConnectionBodyTokenMax = 4096;
+
+
+
+export const UpdatePrintavoConnectionBody = zod.object({
+  "email": zod.string().email(),
+  "token": zod.string().max(updatePrintavoConnectionBodyTokenMax).optional().describe('Omit or leave blank to retain the existing token.'),
+  "expiresOn": zod.string().nullable().describe('Calendar date YYYY-MM-DD, or null to clear.')
+})
+
+export const UpdatePrintavoConnectionResponse = zod.object({
+  "email": zod.string(),
+  "configured": zod.boolean(),
+  "expiresOn": zod.string().nullable(),
+  "source": zod.string(),
+  "environment": zod.string(),
+  "updatedAt": zod.string().nullable()
+})
+
+
 export const GetSalesWorkspaceQueryParams = zod.object({
   "from": zod.coerce.string(),
   "to": zod.coerce.string(),

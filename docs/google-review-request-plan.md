@@ -224,6 +224,47 @@ and send, stale/missing fulfillment evidence, partial delivery, reopened orders,
 provider timeout after possible acceptance, restarts, batch partial failure,
 pause behavior and suppression of old backlog on first activation.
 
+## Companion feature: Google Reviews monitoring and replies
+
+Google's Business Profile API supports listing reviews for managed locations,
+reading ratings, comments, public reviewer information, creation/update times
+and existing business replies. It supports publishing/updating a business reply
+and deleting that reply, but not deleting a customer's review.
+
+Proposed Hub layout: separate **Requests** and **Reviews & Replies** views.
+Constant Contact handles outbound requests; Google supplies reviews and publishes
+staff-approved responses. Begin with configurable scheduled review checks,
+new/unanswered filters, rating/date filters, and alerts. Real-time notifications
+for new or updated reviews are possible through Google's Cloud Pub/Sub, but add
+setup and operational complexity that may not be necessary at Mint's volume.
+
+Staff should review and explicitly approve public replies. Optional AI may draft
+responses, never publish by default. Record the approving/publishing user and
+time; re-read the review and existing reply before publishing to avoid overwriting
+another staff member's work. Handle edits, removals, failed syncs and uncertain
+publication results explicitly. Public replies must not reveal private order or
+customer details. Evaluate Google's API storage/retention policies before building.
+
+Google does not provide the reviewer's customer email address or Printavo invoice
+number. A public-name match is only a suggestion, not proof of identity or campaign
+conversion. Require staff confirmation for customer links. Clicks from Constant
+Contact do not prove that a review was submitted. Do not use sentiment to decide
+who is invited to review.
+
+Access requires an approved Google Cloud project and OAuth authorization from an
+owner/manager of Mint's Business Profile. Google's current prerequisites include
+a verified profile active for at least 60 days and a business website. Existing
+Drive/Gmail access does not establish Business Profile authorization. Account
+approval, scopes and location access have not been verified.
+
+Documentation reviewed:
+- https://developers.google.com/my-business/content/review-data
+- https://developers.google.com/my-business/content/prereqs
+- https://developers.google.com/my-business/content/notification-setup
+
+This is a deferred companion proposal, not authorization to connect accounts,
+enable monitoring or publish replies.
+
 ## Decisions to return to
 Which statuses signify fulfillment and which are excluded? Which timestamp is
 trustworthy? What delay/lookback is appropriate? Who is the right contact?
