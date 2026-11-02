@@ -1,3 +1,17 @@
+export const RECENT_AUTO_PRINT_RUN_LIMIT = 14;
+
+type DiscoveryRun = { status: string; discoveryState?: string | null; discoveryMessage?: string | null; error?: string | null };
+
+export function isDiscoveryFailure(run: DiscoveryRun): boolean {
+  return run.status === "failed" && (run.discoveryState === "failed" ||
+    (!run.discoveryState && /^Live auto-print discovery failed\b/.test(run.error ?? "")));
+}
+
+export function runDiscoveryMessage(run: DiscoveryRun): string | null {
+  if (!isDiscoveryFailure(run)) return run.discoveryMessage ?? null;
+  return "Discovery failed — eligible orders will be checked again next cycle while AutoPrint is enabled. The invoice list could not be fetched, so no individual print jobs were created and there is nothing to retry from this run. Matching order count is unknown. Orders must still meet the configured conditions when the next scan runs.";
+}
+
 export type HistoryJob = {
   status: string;
   docType: string;

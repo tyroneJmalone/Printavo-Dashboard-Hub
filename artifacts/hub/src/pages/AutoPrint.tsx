@@ -7,7 +7,7 @@ import { AutoPrintFollowupPanel } from "@/components/autoprint/AutoPrintFollowup
 import { AutoPrintInvoiceSearch } from "@/components/autoprint/AutoPrintInvoiceSearch";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AutoPrintRetryQueue } from "./AutoPrintRetryQueue";
-import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
+import { RECENT_AUTO_PRINT_RUN_LIMIT, isDiscoveryFailure, runDiscoveryMessage, hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
 import {
   useGetAutoPrintConfig,
   getGetAutoPrintConfigQueryKey,
@@ -1274,7 +1274,7 @@ function RunPanel() {
                 RUN_STATUS_STYLES[activeRun.status] ?? "bg-slate-500/15 text-slate-300"
               }`}
             >
-              {activeRun.status}
+              {isDiscoveryFailure(activeRun) ? "Discovery failed" : activeRun.status}
             </span>
             {activeRun.dryRun && (
               <span className="px-1.5 py-0.5 rounded text-[11px] bg-sky-500/15 text-sky-300">
@@ -1287,7 +1287,7 @@ function RunPanel() {
             {running && <Loader2 size={13} className="animate-spin text-slate-400" />}
           </div>
           <div className="text-slate-300 mt-1.5">{countsLine(activeRun)}</div>
-          {activeRun.discoveryMessage && <div className="text-slate-400 mt-1">{activeRun.discoveryMessage}</div>}
+          {runDiscoveryMessage(activeRun) && <div className="text-slate-400 mt-1">{runDiscoveryMessage(activeRun)}</div>}
           {activeRun.error && (
             <div className="text-red-300 mt-1">{activeRun.error}</div>
           )}
@@ -1385,16 +1385,17 @@ function LinkedRun({ runId }: { runId: string }) {
   });
   return (
     <div className="mb-3 rounded-lg border border-sky-500/40 bg-sky-500/5 px-3 py-2 text-[12px]" data-testid="panel-linked-run">
-      <div className="text-[11px] uppercase tracking-wide text-sky-300">Linked run (older than the latest 10)</div>
+      <div className="text-[11px] uppercase tracking-wide text-sky-300">Linked run (outside the latest {RECENT_AUTO_PRINT_RUN_LIMIT})</div>
       {isLoading ? <p role="status" className="text-slate-400 mt-1">Loading linked run…</p>
         : isError || !run ? <p role="alert" className="text-red-300 mt-1">Could not load the linked run. <button type="button" onClick={() => refetch()} className="underline">Retry</button></p>
         : <>
           <div className="mt-1 flex items-center gap-2">
-            <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${RUN_STATUS_STYLES[run.status] ?? "bg-slate-500/15 text-slate-300"}`}>{run.status}</span>
+            <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${RUN_STATUS_STYLES[run.status] ?? "bg-slate-500/15 text-slate-300"}`}>{isDiscoveryFailure(run) ? "Discovery failed" : run.status}</span>
             {run.dryRun && <span className="px-1.5 py-0.5 rounded text-[11px] bg-sky-500/15 text-sky-300">dry run</span>}
             <span className="text-slate-400 ml-auto">{fmtTime(run.startedAt)}</span>
           </div>
           <div className="text-slate-400 mt-1">{countsLine(run)}</div>
+          {runDiscoveryMessage(run) && <div className="text-slate-400 mt-1">{runDiscoveryMessage(run)}</div>}
           {run.error && <div className="text-red-300 mt-0.5">{run.error}</div>}
           <RunJobs key={run.id} run={run} />
           <AutoPrintFollowupPanel runId={run.id} />
@@ -1408,10 +1409,10 @@ function HistoryTables() {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(linkedRunId);
   useEffect(() => { if (linkedRunId) setExpandedRunId(linkedRunId); }, [linkedRunId]);
   const { data: runData, isLoading, isError, refetch } = useListAutoPrintRuns(
-    { limit: 10 },
+    { limit: RECENT_AUTO_PRINT_RUN_LIMIT },
     {
       query: {
-        queryKey: getListAutoPrintRunsQueryKey({ limit: 10 }),
+        queryKey: getListAutoPrintRunsQueryKey({ limit: RECENT_AUTO_PRINT_RUN_LIMIT }),
         refetchInterval: 15000,
       },
     },
@@ -1424,7 +1425,7 @@ function HistoryTables() {
     <div className="space-y-4">
       <AutoPrintSection title="Recent run logs" id="autoprint-run-history" revealParam="run" testId="autoprint-history-section">
         {linkedOffPage && linkedRunId && <LinkedRun runId={linkedRunId} />}
-        <p className="text-[12px] text-slate-400 mb-3">Showing the latest 10 runs. Expand a run to review its invoices, skipped reasons, reprints, and separate PO copies. “Sent to printer” means PrintNode accepted the job, not confirmed paper output.</p>
+        <p className="text-[12px] text-slate-400 mb-3">Showing the latest {RECENT_AUTO_PRINT_RUN_LIMIT} runs. Expand a run to review its invoices, skipped reasons, reprints, and separate PO copies. “Sent to printer” means PrintNode accepted the job, not confirmed paper output.</p>
         {isLoading ? <p className="text-slate-400 text-xs">Loading runs…</p> : isError ? <p role="alert" className="text-red-300 text-xs">Could not load runs. <button type="button" onClick={() => refetch()} className="underline">Retry</button></p> : runs.length === 0 ? (
           <p className="text-[12px] text-slate-500">No runs yet.</p>
         ) : (
@@ -1442,7 +1443,7 @@ function HistoryTables() {
                       RUN_STATUS_STYLES[r.status] ?? "bg-slate-500/15 text-slate-300"
                     }`}
                   >
-                    {r.status}
+                    {isDiscoveryFailure(r) ? "Discovery failed" : r.status}
                   </span>
                   {r.dryRun && (
                     <span className="px-1.5 py-0.5 rounded text-[11px] bg-sky-500/15 text-sky-300">
@@ -1457,7 +1458,7 @@ function HistoryTables() {
                   </span>
                 </div>
                 <div className="text-slate-400 mt-1">{countsLine(r)}</div>
-                {r.discoveryMessage && <div className="text-slate-400 mt-1">{r.discoveryMessage}</div>}
+                {runDiscoveryMessage(r) && <div className="text-slate-400 mt-1">{runDiscoveryMessage(r)}</div>}
                 {r.error && <div className="text-red-300 mt-0.5">{r.error}</div>}
                 {r.advanceSkipped && <div className="text-amber-300 mt-0.5">{r.advanceSkipped}</div>}
                 <button type="button" aria-expanded={expandedRunId === r.id} aria-controls={`run-jobs-${r.id}`} onClick={() => setExpandedRunId(expandedRunId === r.id ? null : r.id)} className="mt-2 flex items-center gap-1 text-sky-300 underline underline-offset-2">

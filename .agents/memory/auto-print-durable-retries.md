@@ -2,6 +2,16 @@
 name: Auto-print durable retry boundaries
 description: Recovery permission, lease fences, and safe retry semantics
 ---
+The user needs weekend failure history to remain visible through Monday morning;
+the requested recent-history window is 14 runs. Discovery failures are not
+individual print failures and must not imply a workorder exists to retry.
+
+**Why:** More than ten scheduled attempts can occur before staff reviews an
+outage on Monday. An expired API token can prevent discovery before any jobs exist.
+
+**How to apply:** Preserve the original error and explain that a subsequent
+enabled scan checks current eligibility again; never fabricate historical candidates.
+
 Only failures known to occur before PrintNode submission may retry automatically.
 An accepted PrintNode ID or an uncertain POST outcome must never be automatically resent.
 Lease expiry after the submission fence requires reconciliation, not another send.

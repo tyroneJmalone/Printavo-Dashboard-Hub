@@ -1,6 +1,18 @@
 import test from "node:test";
 import { retryHistory } from "./autoPrintHistoryHelpers.ts";
+import { RECENT_AUTO_PRINT_RUN_LIMIT, isDiscoveryFailure, runDiscoveryMessage } from "./autoPrintHistoryHelpers.ts";
 import assert from "node:assert/strict";
+test("recent logs retain 14 runs and distinguish discovery failures from print failures", () => {
+  assert.equal(RECENT_AUTO_PRINT_RUN_LIMIT, 14);
+  const failed = { status: "failed", discoveryState: "failed", error: "Printavo GraphQL error: Unauthorized" };
+  assert.equal(isDiscoveryFailure(failed), true);
+  assert.match(runDiscoveryMessage(failed)!, /no individual print jobs were created/);
+  assert.match(runDiscoveryMessage(failed)!, /next cycle while AutoPrint is enabled/);
+  assert.equal(isDiscoveryFailure({ status: "failed", error: "Live auto-print discovery failed on invoices page 1: Unauthorized" }), true);
+  assert.equal(isDiscoveryFailure({ status: "failed", discoveryState: "complete", error: "Unauthorized" }), false);
+  assert.equal(isDiscoveryFailure({ status: "success", discoveryState: "complete" }), false);
+  assert.equal(runDiscoveryMessage({ status: "failed", discoveryState: "complete", discoveryMessage: "Discovery completed" }), "Discovery completed");
+});
 import { hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset } from "./autoPrintHistoryHelpers.ts";
 
 const invoice = { status: "skipped", docType: "workorder", isReprint: false };
