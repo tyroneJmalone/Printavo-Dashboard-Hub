@@ -8,6 +8,32 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Admin-only changelog and curated planning documents
+ */
+export const GetAdminUpdatesResponse = zod.object({
+  "releases": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "status": zod.enum(['prepared', 'published', 'historical']),
+  "date": zod.string().nullable(),
+  "notes": zod.array(zod.object({
+  "category": zod.enum(['New features', 'Improvements', 'Fixes', 'Admin action needed']),
+  "text": zod.string()
+}))
+})),
+  "documents": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string(),
+  "status": zod.enum(['Idea', 'Planned', 'In progress', 'Needs verification', 'Deferred']),
+  "updatedOn": zod.string().nullable(),
+  "filename": zod.string(),
+  "content": zod.string()
+}))
+})
+
+
 export const GetPrintavoConnectionResponse = zod.object({
   "email": zod.string(),
   "configured": zod.boolean(),

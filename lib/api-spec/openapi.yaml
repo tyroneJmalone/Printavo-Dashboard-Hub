@@ -43,6 +43,20 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /auth/admin-updates:
+    get:
+      operationId: getAdminUpdates
+      tags: [auth]
+      summary: Admin-only changelog and curated planning documents
+      responses:
+        "200":
+          description: Read-only release notes and source documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUpdates"
+        "403":
+          description: Administrator access required
   /auth/printavo-connection:
     get:
       operationId: getPrintavoConnection
@@ -9050,6 +9064,63 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    AdminUpdates:
+      type: object
+      required: [releases, documents]
+      properties:
+        releases:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminRelease"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPlanningDocument"
+    AdminRelease:
+      type: object
+      required: [id, title, status, date, notes]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [prepared, published, historical]
+        date:
+          type: [string, "null"]
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminReleaseNote"
+    AdminReleaseNote:
+      type: object
+      required: [category, text]
+      properties:
+        category:
+          type: string
+          enum: [New features, Improvements, Fixes, Admin action needed]
+        text:
+          type: string
+    AdminPlanningDocument:
+      type: object
+      required: [id, title, summary, status, updatedOn, filename, content]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        status:
+          type: string
+          enum: [Idea, Planned, In progress, Needs verification, Deferred]
+        updatedOn:
+          type: [string, "null"]
+        filename:
+          type: string
+        content:
+          type: string
     PrintavoConnectionRequest:
       type: object
       required: [email, expiresOn]

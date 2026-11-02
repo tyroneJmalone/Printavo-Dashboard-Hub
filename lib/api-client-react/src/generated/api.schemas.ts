@@ -5,6 +5,66 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AdminReleaseStatus = typeof AdminReleaseStatus[keyof typeof AdminReleaseStatus];
+
+
+export const AdminReleaseStatus = {
+  prepared: 'prepared',
+  published: 'published',
+  historical: 'historical',
+} as const;
+
+export type AdminReleaseNoteCategory = typeof AdminReleaseNoteCategory[keyof typeof AdminReleaseNoteCategory];
+
+
+export const AdminReleaseNoteCategory = {
+  New_features: 'New features',
+  Improvements: 'Improvements',
+  Fixes: 'Fixes',
+  Admin_action_needed: 'Admin action needed',
+} as const;
+
+export interface AdminReleaseNote {
+  category: AdminReleaseNoteCategory;
+  text: string;
+}
+
+export interface AdminRelease {
+  id: string;
+  title: string;
+  status: AdminReleaseStatus;
+  /** @nullable */
+  date: string | null;
+  notes: AdminReleaseNote[];
+}
+
+export type AdminPlanningDocumentStatus = typeof AdminPlanningDocumentStatus[keyof typeof AdminPlanningDocumentStatus];
+
+
+export const AdminPlanningDocumentStatus = {
+  Idea: 'Idea',
+  Planned: 'Planned',
+  In_progress: 'In progress',
+  Needs_verification: 'Needs verification',
+  Deferred: 'Deferred',
+} as const;
+
+export interface AdminPlanningDocument {
+  id: string;
+  title: string;
+  summary: string;
+  status: AdminPlanningDocumentStatus;
+  /** @nullable */
+  updatedOn: string | null;
+  filename: string;
+  content: string;
+}
+
+export interface AdminUpdates {
+  releases: AdminRelease[];
+  documents: AdminPlanningDocument[];
+}
+
 export interface PrintavoConnectionRequest {
   email: string;
   /**

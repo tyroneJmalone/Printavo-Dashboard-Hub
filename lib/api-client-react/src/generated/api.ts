@@ -29,6 +29,7 @@ import type {
   AddTeamMember201,
   AdminPinStatus,
   AdminUnlockPoFileRequest,
+  AdminUpdates,
   AiAuditEventRecord,
   AiAuditReview,
   AiConsumerCreated,
@@ -566,6 +567,83 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAdminUpdatesUrl = () => {
+
+
+
+
+  return `/api/auth/admin-updates`
+}
+
+/**
+ * @summary Admin-only changelog and curated planning documents
+ */
+export const getAdminUpdates = async ( options?: RequestInit): Promise<AdminUpdates> => {
+
+  return customFetch<AdminUpdates>(getGetAdminUpdatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminUpdatesQueryKey = () => {
+    return [
+    `/api/auth/admin-updates`
+    ] as const;
+    }
+
+
+export const getGetAdminUpdatesQueryOptions = <TData = Awaited<ReturnType<typeof getAdminUpdates>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminUpdates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminUpdatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminUpdates>>> = ({ signal }) => getAdminUpdates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminUpdates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminUpdatesQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminUpdates>>>
+export type GetAdminUpdatesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Admin-only changelog and curated planning documents
+ */
+
+export function useGetAdminUpdates<TData = Awaited<ReturnType<typeof getAdminUpdates>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminUpdates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminUpdatesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetPrintavoConnectionUrl = () => {
 

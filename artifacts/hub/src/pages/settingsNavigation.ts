@@ -22,6 +22,7 @@ export const settingsSections: readonly SettingsSection[] = [
   { id: "auto-print", label: "Auto Print", group: "rules", module: "production" },
   { id: "purchasing-status-rules", label: "Purchasing Status Rules", group: "rules", module: "purchasing" },
   { id: "shipping-address", label: "Shipping address", group: "general", module: "purchasing" },
+  { id: "updates-plans", label: "Updates & Planned Features", group: "general", adminOnly: true },
 ];
 
 const legacySections: Record<string, string> = {

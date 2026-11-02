@@ -10,6 +10,7 @@ import syncRouter from "./sync";
 import backupRouter from "./backup";
 import printavoRouter from "./printavo";
 import printavoConnectionRouter from "./printavoConnection";
+import adminUpdatesRouter from "./adminUpdates";
 import reportsRouter from "./reports";
 import orderActivityLogRouter from "./orderActivityLog";
 import dashboardRouter from "./dashboard";
@@ -98,6 +99,7 @@ router.use(syncRouter);
 router.use(backupRouter); // /backup/export is admin-only (requireAdmin per route)
 router.use(printavoRouter);
 router.use(printavoConnectionRouter);
+router.use(adminUpdatesRouter);
 router.use(reportsRouter);
 router.use(orderActivityLogRouter);
 router.use(dashboardRouter);

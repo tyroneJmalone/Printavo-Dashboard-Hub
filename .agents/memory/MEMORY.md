@@ -1,4 +1,5 @@
 - [Canonical plan & status report](plan-status-report.md) — Tyler's status PDF is exports/printavo-hub-plan-status.html (styled sheet); update it in place, never create a new-format doc.
+- [Admin updates policy](admin-updates-policy.md) — maintain read-only release notes and full planning docs; prepared is not published, and historical dates must not be invented.
 - [Vendor submit runs off the snapshot](vendor-submit-snapshot.md) — any per-line field needed at SanMar/S&S submit time must persist end-to-end, not cart-only.
 - [Purchasing color matching](purchasing-color-matching.md) — PO matching must preserve merchandise identity; palette-family similarity is not permission to order a substitute.
 - [Purchasing warehouse proximity](purchasing-warehouse-proximity.md) — coverage/consolidation first, then NH-relative proximity; regional estimates are not carrier transit guarantees.

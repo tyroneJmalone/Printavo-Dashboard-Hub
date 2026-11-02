@@ -1,0 +1,45 @@
+[
+  {
+    "id": "admin-updates-library",
+    "title": "Admin updates and planning library",
+    "status": "prepared",
+    "date": null,
+    "notes": [
+      { "category": "New features", "text": "Settings → General → Updates & Planned Features now provides an admin-only changelog and a searchable library of existing enhancement plans." },
+      { "category": "Improvements", "text": "Read full planning documents inside Hub or download the original Markdown. Proposed ideas remain separate from approved work." },
+      { "category": "Admin action needed", "text": "Publish the update to make this section available in the live Hub. Prepared labels are maintained release records, not automatic deployment detection." }
+    ]
+  },
+  {
+    "id": "connection-settings-history",
+    "title": "Printavo connection management",
+    "status": "historical",
+    "date": null,
+    "notes": [
+      { "category": "New features", "text": "Settings → Connections → Printavo lets administrators verify and save a replacement API token and record its expiration date." },
+      { "category": "Improvements", "text": "Preview and published connection overrides are kept separate. Leaving the token blank retains the current token." },
+      { "category": "Admin action needed", "text": "Credential rotation affects this Hub environment only, not other integrated platforms. Environment-based configuration expects PRINTAVO_API_TOKEN and PRINTAVO_API_EMAIL." }
+    ]
+  },
+  {
+    "id": "sepscope-history",
+    "title": "SepScope automation and inspection safeguards",
+    "status": "historical",
+    "date": null,
+    "notes": [
+      { "category": "New features", "text": "SepScope → Automation supports scheduled OUTPUT-file intake, held/skipped and failed details, and staff review before external actions." },
+      { "category": "Improvements", "text": "Automation failure emails include a review link. Approved actions record inspection results in Printavo Production Notes and support Dropbox archiving." },
+      { "category": "Fixes", "text": "Inspection checks were strengthened for localized missing underbase. Archive verification checks the Dropbox destination before removing the Printavo source file." }
+    ]
+  },
+  {
+    "id": "planning-documents-history",
+    "title": "Future enhancement discussions documented",
+    "status": "historical",
+    "date": null,
+    "notes": [
+      { "category": "Improvements", "text": "Dedicated plans preserve the discussions about Collection-based sales sheets, user activity reporting, and Google review requests with review monitoring and replies." },
+      { "category": "Admin action needed", "text": "These documents are proposals, not enabled features or approval to activate tracking, send campaigns, or publish review replies." }
+    ]
+  }
+]

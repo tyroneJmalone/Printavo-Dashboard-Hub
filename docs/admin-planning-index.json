@@ -1,0 +1,66 @@
+[
+  {
+    "id": "google-reviews",
+    "title": "Google review requests and review monitoring",
+    "summary": "Staff-approved request queue, Constant Contact delivery, Google review monitoring and replies, consent and duplicate-send safeguards.",
+    "status": "Deferred",
+    "updatedOn": null,
+    "filename": "google-review-request-plan.md"
+  },
+  {
+    "id": "collections-sales-sheets",
+    "title": "Collection-based client sales sheets",
+    "summary": "Mint-branded templates using exact product images and client logos, reusable placements, optional AI, batch downloads and future email delivery.",
+    "status": "Deferred",
+    "updatedOn": null,
+    "filename": "collections-sales-sheets-idea.md"
+  },
+  {
+    "id": "user-reporting",
+    "title": "Hub user activity reporting",
+    "summary": "Daily, weekly, monthly and custom-range usage by user, with activity definitions and privacy safeguards. Tracking is not enabled by this proposal.",
+    "status": "Deferred",
+    "updatedOn": null,
+    "filename": "hub-user-reporting-idea.md"
+  },
+  {
+    "id": "profitability",
+    "title": "Invoice profitability",
+    "summary": "Compare invoice revenue with vendor costs, separate garment markup and decoration revenue, and consider labor and supplies later.",
+    "status": "Deferred",
+    "updatedOn": null,
+    "filename": "invoice-profitability-discussion.md"
+  },
+  {
+    "id": "fireflies",
+    "title": "Fireflies integration discovery",
+    "summary": "Meeting notes, transcripts, summaries and customer linking; requires a visibility and permissions audit before choosing an integration approach.",
+    "status": "Deferred",
+    "updatedOn": null,
+    "filename": "fireflies-hub-integration-plan.md"
+  },
+  {
+    "id": "marketing",
+    "title": "Marketing module discussion",
+    "summary": "Future marketing reporting and workflow ideas, including Jotform. Discussion only, not authorization to connect accounts or send campaigns.",
+    "status": "Deferred",
+    "updatedOn": null,
+    "filename": "marketing-module-brainstorm.md"
+  },
+  {
+    "id": "operations",
+    "title": "Operations and customer-growth ideas",
+    "summary": "Detailed proposals for inventory visibility, workorder annotations and review requests, including phased options and safety considerations.",
+    "status": "Deferred",
+    "updatedOn": null,
+    "filename": "recent-operations-ideas.md"
+  },
+  {
+    "id": "roadmap",
+    "title": "Status and roadmap — historical planning record",
+    "summary": "Broader project roadmap with mixed completion states. Its dated claims are a historical reference, not a current deployment or approval record.",
+    "status": "Needs verification",
+    "updatedOn": null,
+    "filename": "status-and-roadmap.md"
+  }
+]

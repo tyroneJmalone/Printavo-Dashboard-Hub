@@ -24,6 +24,7 @@ import { StaffAccessCard } from "@/components/settings/StaffAccessCard";
 import { ModuleAccessCard } from "@/components/settings/ModuleAccessCard";
 import { AdminPinCard } from "@/components/settings/AdminPinCard";
 import { PrintavoConnectionCard } from "@/components/settings/PrintavoConnectionCard";
+import { UpdatesPlansCard } from "@/components/settings/UpdatesPlansCard";
 import { Settings as SettingsIcon, Loader2, Truck, Save } from "lucide-react";
 
 function apiError(err: unknown): string | undefined {
@@ -314,6 +315,7 @@ const GROUPS: { id: SettingsGroup; label: string }[] = [
   { id: "access", label: "Access" },
   { id: "connections", label: "Connections / Integrations" },
   { id: "rules", label: "Rules / Automations" },
+  { id: "general", label: "General" },
 ];
 
 export default function Settings() {
@@ -346,6 +348,7 @@ export default function Settings() {
       case "auto-print": return <AutoPrint />;
       case "purchasing-status-rules": return <StatusRules />;
       case "shipping-address": return <GeneralShipping />;
+      case "updates-plans": return <UpdatesPlansCard />;
       default: return <p className="p-6 text-slate-400">No settings are available for your account.</p>;
     }
   };
