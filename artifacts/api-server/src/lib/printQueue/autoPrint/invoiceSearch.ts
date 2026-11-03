@@ -1,4 +1,5 @@
 import { pool } from "@workspace/db";
+import { currentInvoiceStatuses } from "./currentStatus";
 
 /** Read-only: exact invoice lookup, including history outside recent-run/queue limits. */
 export const invoiceSearchSql = `
@@ -29,6 +30,8 @@ WITH records AS (
 SELECT * FROM records ORDER BY "occurredAt" DESC, id DESC LIMIT 51 OFFSET $2`;
 
 export async function searchInvoice(invoice: string, offset: number) {
-  const { rows } = await pool.query(invoiceSearchSql, [invoice, offset]);
-  return { items: rows.slice(0, 50), hasMore: rows.length > 50 };
+  const [{ rows }, current] = await Promise.all([
+    pool.query(invoiceSearchSql, [invoice, offset]), currentInvoiceStatuses([invoice]),
+  ]);
+  return { items: rows.slice(0, 50), hasMore: rows.length > 50, current: current.get(invoice)! };
 }

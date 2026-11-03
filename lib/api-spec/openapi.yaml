@@ -43,6 +43,17 @@ tags:
   - name: knowledge
     description: Staff knowledge base and grounded customer-message playground
 paths:
+  /print-queue/autoprint/summary-email:
+    get:
+      operationId: getAutoPrintSummaryEmail
+      tags: [printQueue]
+      responses:
+        "200":
+          description: Summary email schedule and recent delivery states
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoPrintSummaryEmail"
   /auth/admin-updates:
     get:
       operationId: getAdminUpdates
@@ -9064,6 +9075,42 @@ components:
       description: Current invoice/quote owner email
       schema: { type: string }
   schemas:
+    AutoPrintSummaryEmail:
+      type: object
+      required: [recipient, schedule, deliveries]
+      properties:
+        recipient: { type: string }
+        schedule: { type: string }
+        deliveries:
+          type: array
+          items:
+            type: object
+            required: [slot, state]
+            properties:
+              slot: { type: string }
+              state: { type: string }
+              sentAt: { type: ["string", "null"] }
+    AutoPrintCurrentStatus:
+      type: object
+      required: [status, occurredAt, summary, details]
+      properties:
+        status: { type: string }
+        occurredAt: { type: ["string", "null"] }
+        summary: { type: string }
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/AutoPrintCurrentDetail"
+    AutoPrintCurrentDetail:
+      type: object
+      required: [status, label, message, occurredAt, runId, jobId]
+      properties:
+        status: { type: string }
+        label: { type: string }
+        message: { type: string }
+        occurredAt: { type: string }
+        runId: { type: string }
+        jobId: { type: string }
     AdminUpdates:
       type: object
       required: [releases, documents]
@@ -13965,8 +14012,9 @@ components:
         note: { type: string, minLength: 1, maxLength: 2000 }
     AutoPrintInvoiceSearchResponse:
       type: object
-      required: [items, hasMore]
+      required: [items, hasMore, current]
       properties:
+        current: { $ref: "#/components/schemas/AutoPrintCurrentStatus" }
         hasMore: { type: boolean }
         items:
           type: array

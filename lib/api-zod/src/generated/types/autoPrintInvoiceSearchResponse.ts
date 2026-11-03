@@ -5,9 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AutoPrintCurrentStatus } from './autoPrintCurrentStatus';
 import type { AutoPrintInvoiceSearchItem } from './autoPrintInvoiceSearchItem';
 
 export interface AutoPrintInvoiceSearchResponse {
+  current: AutoPrintCurrentStatus;
   hasMore: boolean;
   items: AutoPrintInvoiceSearchItem[];
 }

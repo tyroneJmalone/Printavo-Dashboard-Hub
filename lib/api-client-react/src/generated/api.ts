@@ -65,6 +65,7 @@ import type {
   AutoPrintRetryActionRequest,
   AutoPrintRun,
   AutoPrintRunsResponse,
+  AutoPrintSummaryEmail,
   BackupStatus,
   BrandingColor,
   BrandingColorList,
@@ -567,6 +568,77 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAutoPrintSummaryEmailUrl = () => {
+
+
+
+
+  return `/api/print-queue/autoprint/summary-email`
+}
+
+export const getAutoPrintSummaryEmail = async ( options?: RequestInit): Promise<AutoPrintSummaryEmail> => {
+
+  return customFetch<AutoPrintSummaryEmail>(getGetAutoPrintSummaryEmailUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAutoPrintSummaryEmailQueryKey = () => {
+    return [
+    `/api/print-queue/autoprint/summary-email`
+    ] as const;
+    }
+
+
+export const getGetAutoPrintSummaryEmailQueryOptions = <TData = Awaited<ReturnType<typeof getAutoPrintSummaryEmail>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutoPrintSummaryEmail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAutoPrintSummaryEmailQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAutoPrintSummaryEmail>>> = ({ signal }) => getAutoPrintSummaryEmail({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAutoPrintSummaryEmail>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAutoPrintSummaryEmailQueryResult = NonNullable<Awaited<ReturnType<typeof getAutoPrintSummaryEmail>>>
+export type GetAutoPrintSummaryEmailQueryError = ErrorType<unknown>
+
+
+
+export function useGetAutoPrintSummaryEmail<TData = Awaited<ReturnType<typeof getAutoPrintSummaryEmail>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAutoPrintSummaryEmail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAutoPrintSummaryEmailQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAdminUpdatesUrl = () => {
 

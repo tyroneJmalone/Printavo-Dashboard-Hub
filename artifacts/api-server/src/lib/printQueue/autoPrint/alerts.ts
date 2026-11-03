@@ -5,6 +5,7 @@ import type { Logger } from "pino";
 import { jobAlertEvents, runAlertEvents, type AlertEvent, type AlertAttempt } from "./alertEvents";
 import { sendAutoPrintFailureEmails } from "./failureEmails";
 import { monitorPrintNode } from "./printNodeMonitor";
+import { startAutoPrintSummaries } from "./summaryEmails";
 import { ALERT_BATCH_SIZE, ALERT_STREAMS, collectAlertPage, nextAlertCursor,
   type AlertCursor, type AlertStream } from "./alertCursor";
 
@@ -158,6 +159,7 @@ let started = false;
 export function startAutoPrintAlerts(log: Logger) {
   if (started || process.env.NODE_ENV !== "production") return;
   started = true;
+  startAutoPrintSummaries(log);
   let busy = false;
   const tick = async () => {
     if (busy) return;

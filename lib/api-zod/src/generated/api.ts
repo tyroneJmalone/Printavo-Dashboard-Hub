@@ -8,6 +8,17 @@
 import * as zod from 'zod';
 
 
+export const GetAutoPrintSummaryEmailResponse = zod.object({
+  "recipient": zod.string(),
+  "schedule": zod.string(),
+  "deliveries": zod.array(zod.object({
+  "slot": zod.string(),
+  "state": zod.string(),
+  "sentAt": zod.string().nullish()
+}))
+})
+
+
 /**
  * @summary Admin-only changelog and curated planning documents
  */
@@ -12404,6 +12415,19 @@ export const SearchAutoPrintInvoiceQueryParams = zod.object({
 })
 
 export const SearchAutoPrintInvoiceResponse = zod.object({
+  "current": zod.object({
+  "status": zod.string(),
+  "occurredAt": zod.string().nullable(),
+  "summary": zod.string(),
+  "details": zod.array(zod.object({
+  "status": zod.string(),
+  "label": zod.string(),
+  "message": zod.string(),
+  "occurredAt": zod.string(),
+  "runId": zod.string(),
+  "jobId": zod.string()
+}))
+}),
   "hasMore": zod.boolean(),
   "items": zod.array(zod.object({
   "id": zod.string(),

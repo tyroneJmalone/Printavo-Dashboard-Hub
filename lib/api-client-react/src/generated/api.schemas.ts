@@ -5,6 +5,36 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AutoPrintSummaryEmailDeliveriesItem = {
+  slot: string;
+  state: string;
+  /** @nullable */
+  sentAt?: string | null;
+};
+
+export interface AutoPrintSummaryEmail {
+  recipient: string;
+  schedule: string;
+  deliveries: AutoPrintSummaryEmailDeliveriesItem[];
+}
+
+export interface AutoPrintCurrentDetail {
+  status: string;
+  label: string;
+  message: string;
+  occurredAt: string;
+  runId: string;
+  jobId: string;
+}
+
+export interface AutoPrintCurrentStatus {
+  status: string;
+  /** @nullable */
+  occurredAt: string | null;
+  summary: string;
+  details: AutoPrintCurrentDetail[];
+}
+
 export type AdminReleaseStatus = typeof AdminReleaseStatus[keyof typeof AdminReleaseStatus];
 
 
@@ -6363,6 +6393,7 @@ export interface AutoPrintInvoiceSearchItem {
 }
 
 export interface AutoPrintInvoiceSearchResponse {
+  current: AutoPrintCurrentStatus;
   hasMore: boolean;
   items: AutoPrintInvoiceSearchItem[];
 }

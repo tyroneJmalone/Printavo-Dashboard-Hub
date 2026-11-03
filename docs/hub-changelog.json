@@ -1,5 +1,16 @@
 [
   {
+    "id": "autoprint-current-status-and-summaries",
+    "title": "AutoPrint invoice status overview and scheduled summaries",
+    "status": "prepared",
+    "date": null,
+    "notes": [
+      { "category": "New features", "text": "Invoice search now shows a dated current AutoPrint outcome with expandable document-level details. Routine skips do not hide the last live print result; PrintNode errors and active correction holds remain visible." },
+      { "category": "New features", "text": "Daily summary emails run at 8:00 AM and 2:00 PM Eastern to it@mintprintworks.com, covering the previous summary window and unresolved recent carryover. AutoPrint displays the schedule and recent delivery states." },
+      { "category": "Admin action needed", "text": "Summaries start at the next scheduled slot after publication. Preview never sends them. Success describes accepted submission, not confirmed paper output; pending retries remain explicitly pending. No jobs are reprinted or changed by summaries." }
+    ]
+  },
+  {
     "id": "printnode-downstream-monitoring",
     "title": "AutoPrint downstream PrintNode monitoring",
     "status": "prepared",

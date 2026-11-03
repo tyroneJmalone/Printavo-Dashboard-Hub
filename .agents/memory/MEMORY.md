@@ -72,6 +72,7 @@
 - [Auto-print live freshness](auto-print-live-freshness.md) — source-status discovery bypasses recent sync depth; incomplete reads mean unknown matches, never cached fallback.
 - [Auto-print durable retries](auto-print-durable-retries.md) — pre-submit failures may retry; uncertain sends require reconciliation; recovery stages approval without printing.
 - [PrintNode monitoring](printnode-monitoring-policy.md) — downstream errors stay separate from accepted submissions; done is spooler delivery, never proof of paper output.
+- [AutoPrint summaries](autoprint-summary-policy.md) — approved 8 AM/2 PM Eastern emails; current invoice outcomes must distinguish skips, unresolved reviews and downstream errors.
 - [AutoPrint follow-up corrections](autoprint-followup-policy.md) — current-rule, preview-confirm MERCH status/category corrections must never reprint or bypass uncertain-write holds.
 - [Auto-print alert cursors](autoprint-alert-cursor-policy.md) — late commits require bounded reconciliation behind forward progress; delivery and checkpoints must commit atomically.
 - [Workorder visual references](workorder-visual-reference.md) — preserve actual Printavo layout; user rejected fictional redesigns; purchasing notes belong beside each line’s Goods Status.

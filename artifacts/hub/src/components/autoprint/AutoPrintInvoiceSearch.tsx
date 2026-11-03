@@ -34,6 +34,7 @@ export function AutoPrintInvoiceSearch() {
     refetchInterval: invoice ? 15000 : false,
   });
   const items = history.data?.pages.flatMap(p => p.items) ?? [];
+  const current = history.data?.pages[0]?.current;
   return <section aria-labelledby="invoice-search-title" className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 space-y-3">
     <h2 id="invoice-search-title" className="text-sm font-semibold text-slate-100">Find an invoice in AutoPrint</h2>
     <p className="text-xs text-slate-400">Search all saved print, retry, and status/category correction records. Newest activity appears first; older failures remain visible as history.</p>
@@ -55,6 +56,23 @@ export function AutoPrintInvoiceSearch() {
     {invoice && <div className="space-y-3">
       <p className="text-sm text-slate-200" role="status">Invoice #{invoice}{history.isFetching ? " · Searching…" : ` · ${items.length} records loaded`}</p>
       {history.isError && <p role="alert" className="text-sm text-red-300">Could not search AutoPrint history. <button className="underline" onClick={() => history.refetch()}>Try again</button></p>}
+      {!history.isError && current && <div className="rounded-lg border border-slate-600 bg-slate-950 p-4 space-y-2" data-testid="invoice-current-status">
+        <div className="flex flex-wrap justify-between gap-2">
+          <strong className={current.status === "FAILED" ? "text-red-300" : current.status === "NEEDS REVIEW" ? "text-amber-300" : current.status === "SUCCESS" ? "text-emerald-300" : "text-sky-300"}>Current AutoPrint status: {current.status}</strong>
+          {current.occurredAt && <time dateTime={current.occurredAt} className="text-xs text-slate-400">{time(current.occurredAt)}</time>}
+        </div>
+        <p className="text-xs text-slate-400">{current.summary}</p>
+        <details>
+          <summary className="cursor-pointer text-sm text-sky-300">Expand current status details ({current.details.length})</summary>
+          <div className="mt-3 space-y-3">
+            {current.details.map((d, i) => <div key={`${d.jobId}-${i}`} className="border-t border-slate-700 pt-2 text-xs">
+              <p className="text-slate-200">{d.label} · <strong>{d.status}</strong> · {time(d.occurredAt)}</p>
+              <p className="mt-1 whitespace-pre-wrap text-slate-400">{d.message}</p>
+              {d.runId && <Link className="text-sky-300 underline" href={`${settingsHref("auto-print", `run=${encodeURIComponent(d.runId)}`)}#autoprint-run-history`}>Open supporting run</Link>}
+            </div>)}
+          </div>
+        </details>
+      </div>}
       {!history.isPending && !history.isError && !items.length && <p className="text-sm text-slate-400">No saved AutoPrint records for this invoice. Older unrecorded skips cannot be searched.</p>}
       <div className="max-h-[36rem] overflow-y-auto space-y-2">
         {items.map(item => {
