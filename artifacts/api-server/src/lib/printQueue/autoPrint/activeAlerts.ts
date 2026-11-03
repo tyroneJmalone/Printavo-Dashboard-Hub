@@ -4,7 +4,19 @@ import { pqAdminAlertsTable as alerts, pqPrintJobsTable as jobs, pqPrintRunsTabl
 /** Inbox visibility only. Durable alerts and print audit records are never deleted. */
 export const activeAlertPredicate = sql`(
   (
-    ${alerts.jobId} IS NOT NULL AND (
+    ${alerts.eventKey} LIKE 'printnode:%' AND (
+      (${alerts.payload}->>'retryState' IN ('printnode_error','printnode_expired')
+        AND ${jobs.snapshotMetadata}->'printNodeMonitor'->>'state' IN ('error','expired'))
+      OR (${alerts.eventKey} LIKE '%:monitor-unavailable'
+        AND ${jobs.snapshotMetadata}->'printNodeMonitor'->>'state' = 'unavailable')
+      OR (${alerts.eventKey} LIKE '%:stalled'
+        AND ${jobs.snapshotMetadata}->'printNodeMonitor'->>'terminal' = 'false'
+        AND ${jobs.snapshotMetadata}->'printNodeMonitor'->>'state' <> 'unavailable')
+    )
+  )
+  OR
+  (
+    ${alerts.eventKey} NOT LIKE 'printnode:%' AND ${alerts.jobId} IS NOT NULL AND (
       ${jobs.status} IN ('failed', 'held', 'exhausted', 'submission_unknown')
       OR (${jobs.status} = 'printed' AND nullif(${jobs.errorMessage}, '') IS NOT NULL)
       OR (${jobs.status} = 'pending' AND (
@@ -16,6 +28,7 @@ export const activeAlertPredicate = sql`(
     AND NOT EXISTS (
       SELECT 1 FROM pq_admin_alerts newer
       WHERE newer.job_id = ${alerts.jobId}
+        AND newer.event_key NOT LIKE 'printnode:%'
         AND (newer.created_at, newer.id) > (${alerts.createdAt}, ${alerts.id})
     )
   )

@@ -7,6 +7,7 @@ import { AutoPrintFollowupPanel } from "@/components/autoprint/AutoPrintFollowup
 import { AutoPrintInvoiceSearch } from "@/components/autoprint/AutoPrintInvoiceSearch";
 import { useStaff } from "@/components/auth/StaffGate";
 import { AutoPrintRetryQueue } from "./AutoPrintRetryQueue";
+import { PrintNodeObservation } from "@/components/autoprint/PrintNodeObservation";
 import { RECENT_AUTO_PRINT_RUN_LIMIT, isDiscoveryFailure, runDiscoveryMessage, hasUnrecordedSkips, isPurchaseOrder, jobReasonLabel, jobStatusLabel, matchesHistoryFilter, needsReconciliation, nextHistoryOffset, retryHistory, type HistoryFilter } from "./autoPrintHistoryHelpers";
 import {
   useGetAutoPrintConfig,
@@ -1308,7 +1309,7 @@ function RunJobs({ run }: { run: AutoPrintRun }) {
     initialPageParam: 0,
     queryFn: ({ pageParam, signal }) => listAutoPrintJobs({ runId: run.id, limit: pageSize, offset: pageParam }, { signal }),
     getNextPageParam: (last, pages) => nextHistoryOffset(last.jobs.length, pages.length, pageSize),
-    refetchInterval: run.status === "running" ? 15000 : false,
+    refetchInterval: run.status === "running" ? 15000 : 30000,
   });
   const jobs = history.data?.pages.flatMap((page) => page.jobs) ?? [];
   const visible = jobs.filter((job) => matchesHistoryFilter(job, filter));
@@ -1349,6 +1350,7 @@ function RunJobs({ run }: { run: AutoPrintRun }) {
             {needsReconciliation(job) && <p role="note" className="text-amber-300">Do not automatically resend. Check PrintNode and the physical printer and reconcile this attempt first; paper output is not confirmed.</p>}
             {job.targetStatusName && <p className="text-slate-400">Routing destination: {job.targetStatusName}</p>}
             {job.errorMessage && <p className="text-red-300">{job.errorMessage}</p>}
+            <PrintNodeObservation metadata={job.snapshotMetadata} accepted={!!job.printnodeJobId} />
             <RetryDetails metadata={job.snapshotMetadata} />
             <details className="text-slate-500">
               <summary className="cursor-pointer">Audit details</summary>
@@ -1424,6 +1426,7 @@ function HistoryTables() {
   return (
     <div className="space-y-4">
       <AutoPrintSection title="Recent run logs" id="autoprint-run-history" revealParam="run" testId="autoprint-history-section">
+        <p className="text-[12px] text-slate-400 mb-3">Published Hub monitors accepted PrintNode jobs from the last 14 days. Checks run in batches, about every two minutes per job. Errors, expired jobs, hour-long delays, and repeated monitoring failures alert administrators. No automatic reprints. PrintNode “done” means delivery to the computer’s print queue, not confirmed paper output.</p>
         {linkedOffPage && linkedRunId && <LinkedRun runId={linkedRunId} />}
         <p className="text-[12px] text-slate-400 mb-3">Showing the latest {RECENT_AUTO_PRINT_RUN_LIMIT} runs. Expand a run to review its invoices, skipped reasons, reprints, and separate PO copies. “Sent to printer” means PrintNode accepted the job, not confirmed paper output.</p>
         {isLoading ? <p className="text-slate-400 text-xs">Loading runs…</p> : isError ? <p role="alert" className="text-red-300 text-xs">Could not load runs. <button type="button" onClick={() => refetch()} className="underline">Retry</button></p> : runs.length === 0 ? (

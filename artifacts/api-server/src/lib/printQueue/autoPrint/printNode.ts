@@ -69,6 +69,13 @@ export async function listPrinters(): Promise<PrintNodePrinter[]> {
 }
 
 /** Submit a PDF print job. Returns the PrintNode job id. */
+export async function getPrintJobStates(ids: string[]): Promise<unknown> {
+  if (!ids.length || ids.length > 20 || ids.some(id => !/^[1-9]\d*$/.test(id))) {
+    throw new Error("Invalid PrintNode job IDs");
+  }
+  return request<unknown>("GET", `/printjobs/${ids.join(",")}/states`);
+}
+
 export async function submitPdfPrintJob(opts: {
   printerId: number;
   title: string;

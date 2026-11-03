@@ -1,5 +1,15 @@
 [
   {
+    "id": "printnode-downstream-monitoring",
+    "title": "AutoPrint downstream PrintNode monitoring",
+    "status": "prepared",
+    "date": null,
+    "notes": [
+      { "category": "New features", "text": "Published Hub checks accepted PrintNode jobs from the last 14 days and alerts administrators about downstream errors, expiry, long delays, or repeated status-check failures." },
+      { "category": "Improvements", "text": "Run-log documents show the latest PrintNode status and check time. Done means delivered to the computer’s print queue, not confirmed paper output. Monitoring never reprints or changes Printavo." }
+    ]
+  },
+  {
     "id": "autoprint-discovery-log-clarity",
     "title": "AutoPrint weekend log visibility",
     "status": "prepared",

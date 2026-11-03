@@ -12,24 +12,25 @@ const RECIPIENT = "it@mintprintworks.com";
 
 /** Read-only sources; no printer, Printavo mutation, or status-worker dependency. */
 export async function emailIncidents(since: string): Promise<FailureEmail[]> {
-  const active = await db.select({ id: alerts.id, jobId: alerts.jobId, runId: alerts.runId,
+  const active = await db.select({ id: alerts.id, eventKey: alerts.eventKey, jobId: alerts.jobId, runId: alerts.runId,
     payload: alerts.payload, error: jobs.errorMessage }).from(alerts)
     .leftJoin(jobs, eq(jobs.id, alerts.jobId)).leftJoin(runs, eq(runs.id, alerts.runId))
     .where(and(activeAlertPredicate, sql`${alerts.createdAt} >= ${since}::timestamptz`,
       sql`NOT EXISTS (SELECT 1 FROM app_settings delivery
-        WHERE delivery.key = ${PREFIX} || 'alert:' || coalesce(${alerts.jobId}::text, ${alerts.runId}::text)
+        WHERE delivery.key = ${PREFIX} || 'alert:' || CASE WHEN ${alerts.eventKey} LIKE 'printnode:%'
+          THEN ${alerts.eventKey} ELSE coalesce(${alerts.jobId}::text, ${alerts.runId}::text) END
         AND (delivery.value->>'state' IN ('sent','review_required')
           OR (delivery.value->>'nextAt')::timestamptz > now()))`,
-      sql`NOT EXISTS (SELECT 1 FROM app_settings correction
+      sql`(${alerts.eventKey} LIKE 'printnode:%' OR NOT EXISTS (SELECT 1 FROM app_settings correction
         CROSS JOIN LATERAL jsonb_array_elements(coalesce(correction.value->'invoices','[]')) entry
         WHERE correction.key LIKE 'autoprint.followup.preview:%'
           AND entry->>'jobId' = ${alerts.jobId}::text AND entry->>'state' = 'updated'
-          AND ${jobs.status} = 'printed')`))
+          AND ${jobs.status} = 'printed'))`))
     .limit(25);
   const incidents: FailureEmail[] = active.map(row => {
     const p = row.payload as { title: string; reason: string; visualId: string | null; occurredAt: string };
-    return { key: `alert:${row.jobId ?? row.runId}`, title: p.title, invoice: p.visualId,
-      reason: row.error || p.reason, at: p.occurredAt };
+    return { key: `alert:${row.eventKey.startsWith("printnode:") ? row.eventKey : row.jobId ?? row.runId}`, title: p.title, invoice: p.visualId,
+      reason: row.eventKey.startsWith("printnode:") ? p.reason : row.error || p.reason, at: p.occurredAt };
   });
   const other = await pool.query<FailureEmail>(`
     WITH candidates AS (

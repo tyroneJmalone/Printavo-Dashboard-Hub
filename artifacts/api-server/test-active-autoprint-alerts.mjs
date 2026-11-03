@@ -15,11 +15,15 @@ try {
         WITH pq_print_jobs AS (
           SELECT id, status, error_message, 'workorder'::text AS doc_type, 'job-run'::text AS run_id,
             CASE WHEN id='expired' THEN now()-interval '1 hour' ELSE now()+interval '1 hour' END AS lease_until,
-            now()-interval '1 hour' AS created_at
+            now()-interval '1 hour' AS created_at,
+            CASE WHEN id='node-error' THEN '{"printNodeMonitor":{"state":"error","terminal":true}}'::jsonb
+              WHEN id='node-done' THEN '{"printNodeMonitor":{"state":"done","terminal":true}}'::jsonb
+              ELSE '{}'::jsonb END AS snapshot_metadata
           FROM (VALUES ('recovered','printed',null),('retry','retry_pending','403'),
             ('exhausted','exhausted','403'),('held','held','Review'),('unknown','submission_unknown','Unknown'),
             ('skip','skipped','Expected'),('cancel','cancelled','Cancelled'),('active','pending',null),
-            ('expired','pending',null),('status-failed','printed','Status update failed')) j(id,status,error_message)
+            ('expired','pending',null),('status-failed','printed','Status update failed'),
+            ('node-error','printed',null),('node-done','printed',null)) j(id,status,error_message)
         ), pq_print_runs AS (
           SELECT 'job-run'::text AS id, 'success'::text AS status, false AS dry_run,
             '{}'::jsonb AS summary, now()-interval '2 hours' AS started_at,
@@ -33,10 +37,13 @@ try {
           ) r(id,status,error,age)
           \${recovered ? "UNION ALL SELECT 'recovery','success',false,'{}'::jsonb,now()-interval '5 minutes',now(),now()" : ""}
         ), pq_admin_alerts AS (
-          SELECT id, id AS job_id, 'job-run'::text AS run_id, '{}'::jsonb AS payload, now()-interval '1 minute' AS created_at
+          SELECT id, id AS job_id, 'job-run'::text AS run_id,
+            CASE WHEN id LIKE 'node-%' THEN '{"retryState":"printnode_error"}'::jsonb ELSE '{}'::jsonb END AS payload,
+            now()-interval '1 minute' AS created_at,
+            CASE WHEN id LIKE 'node-%' THEN 'printnode:' || id || ':failure' ELSE id END AS event_key
             FROM pq_print_jobs
-          UNION ALL SELECT 'older-exhausted','exhausted','job-run','{}'::jsonb,now()-interval '10 minutes'
-          UNION ALL SELECT id,null,id,jsonb_build_object('reason',summary->>'error'),started_at
+          UNION ALL SELECT 'older-exhausted','exhausted','job-run','{}'::jsonb,now()-interval '10 minutes','older-exhausted'
+          UNION ALL SELECT id,null,id,jsonb_build_object('reason',summary->>'error'),started_at,id
             FROM pq_print_runs WHERE id IN ('old-warning','new-warning','discovery')
         ), app_settings AS (
           SELECT 'autoprint.makeups-additions-baseline'::text AS key,
@@ -50,9 +57,9 @@ try {
       \`;
       try {
         const ids = async (r=false,b=false) => (await pool.query(query(r,b),predicate.params)).rows.map(r=>r.id);
-        assert.deepEqual(await ids(),['discovery','exhausted','expired','held','new-warning','status-failed','unknown']);
-        assert.deepEqual(await ids(true),['exhausted','expired','held','new-warning','status-failed','unknown']);
-        assert.deepEqual(await ids(true,true),['exhausted','expired','held','status-failed','unknown']);
+        assert.deepEqual(await ids(),['discovery','exhausted','expired','held','new-warning','node-error','status-failed','unknown']);
+        assert.deepEqual(await ids(true),['exhausted','expired','held','new-warning','node-error','status-failed','unknown']);
+        assert.deepEqual(await ids(true,true),['exhausted','expired','held','node-error','status-failed','unknown']);
         console.log('PASS active inbox SQL: recovered, scheduled, skipped, cancelled, deduplication, expired leases, unknown acceptance, status failures, run recovery, Makeups baseline recovery');
       } finally { await pool.end(); }
     `},

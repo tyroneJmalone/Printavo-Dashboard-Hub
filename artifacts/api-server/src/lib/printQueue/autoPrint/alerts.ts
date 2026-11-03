@@ -4,6 +4,7 @@ import { and, asc, eq, gt, gte, inArray, sql } from "drizzle-orm";
 import type { Logger } from "pino";
 import { jobAlertEvents, runAlertEvents, type AlertEvent, type AlertAttempt } from "./alertEvents";
 import { sendAutoPrintFailureEmails } from "./failureEmails";
+import { monitorPrintNode } from "./printNodeMonitor";
 import { ALERT_BATCH_SIZE, ALERT_STREAMS, collectAlertPage, nextAlertCursor,
   type AlertCursor, type AlertStream } from "./alertCursor";
 
@@ -162,6 +163,9 @@ export function startAutoPrintAlerts(log: Logger) {
     if (busy) return;
     busy = true;
     try {
+      // Monitoring failure must never prevent existing notifications or printing.
+      try { await monitorPrintNode(log); }
+      catch (err) { log.error({ err }, "PrintNode monitor failed; existing alerts continue"); }
       await collectAutoPrintAlerts(log);
       await sendAutoPrintFailureEmails(log);
     }
