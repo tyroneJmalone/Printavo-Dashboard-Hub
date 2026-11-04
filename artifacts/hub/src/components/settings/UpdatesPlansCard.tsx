@@ -7,7 +7,7 @@ const input = "w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 
 const CATEGORY_ORDER = ["Admin action needed", "New features", "Improvements", "Fixes"];
 const RELEASE_LABEL: Record<AdminRelease["status"], string> = {
   prepared: "Prepared for publishing",
-  published: "Published",
+  published: "Included in published build",
   historical: "Historical summary (publish date unverified)",
 };
 const RELEASE_TONE: Record<AdminRelease["status"], string> = {
@@ -231,7 +231,7 @@ export function UpdatesPlansCard() {
   return <section className="max-w-4xl space-y-5 p-4 lg:p-6">
     <div>
       <h2 className="text-xl font-semibold text-white">Updates & planned features</h2>
-      <p className="mt-1 text-sm text-slate-400">Read-only. Release notes and planning documents as recorded; dates appear only where they were recorded. Release labels are maintained manually, not detected from deployments.</p>
+      <p className="mt-1 text-sm text-slate-400">Read-only. The published app identifies release entries included in its running build; preview keeps unconfirmed entries marked as prepared. Dates appear only when recorded. Historical summaries retain their original labels. Planning documents are maintained separately and are not marked completed by publishing.</p>
     </div>
     <div role="tablist" aria-label="Updates views" className="flex gap-1 border-b border-slate-700">
       {tabs.map(({ id, label, icon: Icon }, index) => <button key={id} role="tab" type="button" id={`tab-${id}`} aria-selected={tab === id} aria-controls={`panel-${id}`} tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)}

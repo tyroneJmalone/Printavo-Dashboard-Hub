@@ -14,9 +14,13 @@ and use New features, Improvements, Fixes, and Admin action needed.
 - `historical`: backfilled summary with unverified release timing. Leave `date`
   null instead of assigning a guessed deployment date.
 
-This is a curated release record, not automatic deployment detection. A prepared
-label does not establish that a deployed build lacks the feature. Updating a
-record requires another build/publish, like any source-controlled content.
+Release descriptions are curated and must be updated alongside each implemented
+feature or fix. At runtime, the published server presents bundled `prepared`
+records as `published` ("Included in published build"). Preview retains the
+source status. This confirms inclusion only, not the first publication date:
+never substitute today's date, build time, or server startup time for that date.
+Historical entries and planning documents are not automatically promoted.
+New descriptions and documents still require a build/publish to reach the live app.
 
 Keep entries concise and describe where staff can find the feature and any
 required administrator action. Do not include credentials or private tokens.

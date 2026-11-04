@@ -31,6 +31,25 @@ try {
   }
   assert.ok(data.releases.some(r => r.status === "prepared"));
   assert.ok(data.releases.filter(r => r.status === "historical").every(r => r.date === null));
+  const oldDeployment = process.env.REPLIT_DEPLOYMENT;
+  const oldMode = process.env.NODE_ENV;
+  try {
+    process.env.REPLIT_DEPLOYMENT = "1";
+    process.env.NODE_ENV = "production";
+    const live = await (await fetch(url, { headers: { "x-test-admin": "1" } })).json();
+    assert.equal(live.releases.filter(r => r.status === "prepared").length, 0);
+    for (const entry of data.releases) {
+      const actual = live.releases.find(r => r.id === entry.id);
+      assert.deepEqual(actual, { ...entry, status: entry.status === "prepared" ? "published" : entry.status });
+    }
+    assert.deepEqual(live.documents, data.documents);
+    process.env.NODE_ENV = "development";
+    const preview = await (await fetch(url, { headers: { "x-test-admin": "1" } })).json();
+    assert.deepEqual(preview, data);
+  } finally {
+    if (oldDeployment === undefined) delete process.env.REPLIT_DEPLOYMENT; else process.env.REPLIT_DEPLOYMENT = oldDeployment;
+    if (oldMode === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = oldMode;
+  }
   assert.equal((await fetch(url, { method: "POST", headers: { "x-test-admin": "1" } })).status, 404);
   assert.equal((await fetch(url + "/../../secret", { headers: { "x-test-admin": "1" } })).status, 404);
   console.log("PASS: admin guard wiring, read-only endpoint, no-store, curated documents match sources, honest release metadata");

@@ -1,5 +1,15 @@
 [
   {
+    "id": "updates-published-build-labels",
+    "title": "Updates log reflects the running published build",
+    "status": "prepared",
+    "date": null,
+    "notes": [
+      { "category": "Fixes", "text": "The published app now labels bundled prepared release entries as Included in published build. Preview keeps prepared labels; unknown publication dates remain unrecorded." },
+      { "category": "Improvements", "text": "Historical summaries and planned-feature documents retain their separate status. Publishing does not imply that a proposal has been completed." }
+    ]
+  },
+  {
     "id": "autoprint-current-status-and-summaries",
     "title": "AutoPrint invoice status overview and scheduled summaries",
     "status": "prepared",
@@ -38,7 +48,7 @@
     "notes": [
       { "category": "New features", "text": "Settings → General → Updates & Planned Features now provides an admin-only changelog and a searchable library of existing enhancement plans." },
       { "category": "Improvements", "text": "Read full planning documents inside Hub or download the original Markdown. Proposed ideas remain separate from approved work." },
-      { "category": "Admin action needed", "text": "Publish the update to make this section available in the live Hub. Prepared labels are maintained release records, not automatic deployment detection." }
+      { "category": "Improvements", "text": "Release descriptions are maintained alongside implementation. The published app identifies entries included in its build without inventing original publication dates." }
     ]
   },
   {
